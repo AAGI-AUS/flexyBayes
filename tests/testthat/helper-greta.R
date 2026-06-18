@@ -35,6 +35,13 @@
 # both installed and usable. Use this everywhere a test fits through greta.
 skip_if_greta_backend_unusable <- function() {
   testthat::skip_if_not_installed("greta")
+  # greta's Python / TensorFlow stack is intentionally absent on the CI matrix.
+  # Skip on CI *before* the usability probe: on Windows, calling
+  # `tensorflow::tf_version()` triggers reticulate's uv-based auto-provisioning
+  # (a large, slow TensorFlow download) that fails the job non-deterministically
+  # rather than returning FALSE the way it does on Linux / macOS. Skipping first
+  # keeps the probe -- and the download -- off CI entirely.
+  testthat::skip_on_ci()
   if (!.fb_greta_usable()) {
     testthat::skip("greta backend unusable (Python / TensorFlow stack unavailable)")
   }
