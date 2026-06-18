@@ -1,0 +1,24 @@
+pandoc: 3.8.3
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  flexyBayes-01-getting-started: flexyBayes-01-getting-started.html
+  flexyBayes-02-asreml-formulas: flexyBayes-02-asreml-formulas.html
+  flexyBayes-03-regression: flexyBayes-03-regression.html
+  flexyBayes-04-hierarchical: flexyBayes-04-hierarchical.html
+  flexyBayes-05-structured-covariance: flexyBayes-05-structured-covariance.html
+  flexyBayes-06-priors: flexyBayes-06-priors.html
+  flexyBayes-07-met-and-genomics: flexyBayes-07-met-and-genomics.html
+  flexyBayes-08-downstream-analysis: flexyBayes-08-downstream-analysis.html
+  flexyBayes-09-spatio-temporal: flexyBayes-09-spatio-temporal.html
+  flexyBayes-10-triangulation: flexyBayes-10-triangulation.html
+  flexyBayes-11-lgm-feasibility: flexyBayes-11-lgm-feasibility.html
+  flexyBayes-12-backend-internals: flexyBayes-12-backend-internals.html
+  flexyBayes-13-lgm-feasibility-memory: flexyBayes-13-lgm-feasibility-memory.html
+  flexyBayes-14-engine-selection: flexyBayes-14-engine-selection.html
+  flexyBayes-15-extending-backends: flexyBayes-15-extending-backends.html
+  flexyBayes-16-big-data-streaming: flexyBayes-16-big-data-streaming.html
+last_built: 2026-06-18T05:50Z
+urls:
+  reference: https://aagi-aus.github.io/flexyBayes/reference
+  article: https://aagi-aus.github.io/flexyBayes/articles

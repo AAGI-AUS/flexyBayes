@@ -1,0 +1,809 @@
+# flexyBayes
+
+Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax
+
+`flexyBayes` is a multi-backend Bayesian mixed-model framework with
+cross-engine posterior **triangulation** exposed as a first-class
+robustness diagnostic. The package routes one model specification to
+greta (MCMC), INLA (integrated nested Laplace approximation), or brms
+(Stan passthrough), and tells you — with evidence — when the engines
+agree, when they differ, and why a backend was refused.
+
+> **Development release (v0.8.3).** All exports are at the experimental
+> `lifecycle` stage and the API may change within the 0.x series. Not on
+> CRAN. The full multi-environment-trial model (genotype-by-environment
+> interaction random effects together with a heteroscedastic
+> per-environment residual) is **not yet supported** by any backend.
+> Read `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` before
+> relying on results.
+
+## Which entry point do I use?
+
+| If you have… | Use | Notes |
+|----|----|----|
+| ASReml syntax (`fixed` / `random` / `rcov`) | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | Variance-component / agricultural workflows. |
+| brms or lme4 syntax (`y ~ x + (1 \| g)`) | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | The grammar is detected from the call; `syntax =` forces it. |
+| A pre-built greta model | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | Pass the `greta::model()` object (or its [`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md) representation) straight in. |
+| To force one engine | [`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md) / [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) / [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | Single-engine pins; a conflicting `backend` is refused. |
+| Two fits you want to compare across engines | [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md) | Auto-resolves canonical parameter names. |
+
+[`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+is the short alias for
+[`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md);
+either name is the universal entry that spans every backend.
+
+## Which backend will I get?
+
+| Verb | `greta` | `inla` | `brms` (Stan) | `auto` |
+|----|:--:|:--:|:--:|:--:|
+| [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | ✓ | ✓ | ✓ | ✓ (greta or INLA via `lgm_gate()`) |
+| [`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md) | ✓ | – | – | – |
+| [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) | – | ✓ | – | – |
+| [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | – | – | ✓ | – |
+
+The universal entry reaches any backend: name one with `backend =`, or
+let `backend = "auto"` choose. Each `fb_<engine>()` pin fits exactly one
+engine and refuses a conflicting `backend`. `backend = "auto"` runs the
+LGM feasibility gate and routes to INLA on acceptance, otherwise to
+greta; it never routes to Stan, because brms’s first-call Stan compile
+(typically 30–60 s) is incompatible with the auto-fast-path promise.
+Reach Stan explicitly with
+[`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md)
+or `fb(..., backend = "brms")`.
+
+## Backend support
+
+flexyBayes is standalone-functional with any one backend installed, and
+the planner (see *Quick start*) needs none at all. The backends differ
+in install burden and in what they offer.
+
+| Backend | On CRAN? | Install burden | Inference | In flexyBayes |
+|----|----|----|----|----|
+| INLA | No (own repository) | Moderate — binary, no compiler | Approximate (nested Laplace) | Supported |
+| brms (Stan) | Yes | Heavy — first-call Stan compile (~30–60 s) | MCMC (sampling error only) | Supported |
+| greta | No (greta-dev R-universe) | Heavy — Python + TensorFlow stack | MCMC (sampling error only) | Supported |
+| gretaR | No (opt-in) | Heavy — torch | MCMC (out-of-process NUTS) | Dormant, opt-in |
+
+All exports are at the **experimental** `lifecycle` stage; see
+`API_STABILITY.md` in the source repository for what that guarantees.
+The fastest way to explore the package without any backend is the
+planner; for a worked fit with production sampling settings and honest
+diagnostics, follow the *getting started* vignette.
+
+### Backend support by model class
+
+What each backend does, by model class, reflecting the 2026-06 empirical
+validation. “Supported” means the syntax emits and the model is tested;
+it does not promise that every fit converges at small budgets –
+convergence is model-specific and is always reported, so treat a high
+R-hat badge as a diagnostic, not a result.
+
+| Model class | greta | INLA | brms |
+|----|----|----|----|
+| Gaussian LMM, simple random intercepts | validated | validated | validated |
+| GLMM (binomial / Poisson / NB), simple RE | validated | validated | validated |
+| Random slopes, structured covariance, GBLUP, pedigree, separable spatial, splines | supported | supported | supported |
+| **Interaction / nested random effects (GxE)** | does **not** converge | **refused** | **refused** |
+| **Heteroscedastic / per-stratum residual** (`dsum`) | does **not** converge | **refused** | **refused** |
+| Interaction *fixed* effects, binomial path | supported | **known bug** | supported |
+
+> **Capability boundary (read before relying on flexyBayes for METs).**
+> The full multi-environment-trial model – genotype-by-environment
+> *interaction random effects* together with a *heteroscedastic
+> per-environment residual* – is **not fittable by any flexyBayes
+> backend in this release**. ASReml and `lme4` fit it; flexyBayes does
+> not yet. This is the package’s central open problem. See
+> `inst/KNOWN_ISSUES.md`
+> (`system.file("KNOWN_ISSUES.md", package = "flexyBayes")`) for the
+> full status, the per-backend reasons, and the intended route to a fix.
+> Until then, flexyBayes is an honest multi-backend orchestration and
+> triangulation tool for the model classes above – not yet a stand-alone
+> Bayesian replacement for full ASReml-style MET analysis.
+
+**Breeder MET summaries.**
+[`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md)
+(overall performance, stability, GxE BLUPs, factor loadings, environment
+genetic correlations) requires a **greta** factor-analytic
+(`fa(env, k):gen`) fit — it is computed from the identified *realised*
+effects, which fit on greta. On an INLA or brms fit it refuses with a
+pointer to the right path; the scalable INLA MET route gives variance
+components via [`summary()`](https://rdrr.io/r/base/summary.html) /
+[`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md).
+
+## Installation
+
+``` r
+
+# greta (R-native MCMC backend) — archived from CRAN, served via the
+# greta-dev R-universe
+install.packages("greta",
+  repos = c("https://greta-dev.r-universe.dev", getOption("repos")))
+greta::install_greta_deps()
+
+# INLA (approximate-inference backend) — not on CRAN
+install.packages("INLA",
+  repos = c(getOption("repos"),
+            INLA = "https://inla.r-inla-download.org/R/stable"))
+
+# brms (Stan passthrough) — on CRAN
+install.packages("brms")
+
+# flexyBayes itself (not yet on CRAN) -- install from the repository:
+# install.packages("remotes")
+remotes::install_github("AAGI-AUS/flexyBayes")
+```
+
+`flexyBayes` degrades gracefully when an optional engine is missing:
+each backend is detected at run time, and a model sent to an unavailable
+engine is refused with a clear message naming what to install rather
+than failing obscurely.
+
+## Quick start
+
+The planner needs no inference backend and is the fastest way to see
+what flexyBayes will do with a model: it builds the intermediate
+representation, chooses a backend, and reports the plan without fitting.
+
+``` r
+
+library(flexyBayes)
+data(sleepstudy, package = "lme4")
+
+# Inspect the routing decision and representation plan -- no backend needed
+plan <- flexybayes(
+  fixed  = Reaction ~ Days,
+  random = ~ Subject,
+  data   = sleepstudy,
+  plan   = TRUE
+)
+plan
+```
+
+To fit, install at least one backend (see *Backend support* above). The
+following uses production sampling settings; the *getting started*
+vignette walks through the same fit with its convergence diagnostics.
+
+``` r
+
+fit <- flexybayes(
+  fixed  = Reaction ~ Days,
+  random = ~ Subject,
+  data   = sleepstudy,
+  n_samples = 2000, warmup = 5000, chains = 4
+)
+
+# Standard R output
+summary(fit)
+coef(fit)
+confint(fit)
+
+# emmeans + marginaleffects
+emmeans::emmeans(fit, ~ Days, at = list(Days = c(0, 5)))
+marginaleffects::avg_slopes(fit)
+```
+
+## Cross-engine triangulation
+
+Fit the same model on two backends and compare:
+
+``` r
+
+fit_g <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                    data = sleepstudy, backend = "greta")
+fit_i <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                    data = sleepstudy, backend = "inla")
+
+triangulate(fit_g, fit_i)
+#> Common parameters: 3
+#> # A tibble: 3 × 5
+#>   parameter   mean_diff sd_ratio tail_drift wasserstein_1
+#>   <chr>           <dbl>    <dbl>      <dbl>         <dbl>
+#> 1 (Intercept)    -0.04     0.997     0.012          0.04
+#> 2 Days            0.001    1.001     0.003          0.001
+#> 3 sigma           0.12     1.004     0.020          0.12
+```
+
+Add a third engine via brms / Stan:
+
+``` r
+
+fit_s <- fb_brms(Reaction ~ Days + (1 | Subject), data = sleepstudy)
+
+triangulate(fit_g, fit_s)
+triangulate(fit_i, fit_s)
+```
+
+[`canonical_names()`](https://aagi-aus.github.io/flexyBayes/reference/canonical_names.md)
+does the work of aligning backend-native parameter names (greta’s
+`sigma_g`, INLA’s `Precision for g` on the precision scale, brms’s
+`sd_g__Intercept`) to a single canonical name with the correct scale
+transform — no `name_map` argument needed in standard cases.
+
+## Companion accessors
+
+| Accessor | Returns |
+|----|----|
+| `backend_decision(fit)` | The captured dispatch trace: backend, path, `lgm_gate` checks, reason. |
+| `prior_summary(fit)` | The resolved prior — auto-default (weakly-informative bounded uniform on SD; half-Cauchy advised for small group counts), user-supplied [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md), or legacy scalar bridge. |
+| `canonical_names(fit)` | The backend-native ↔︎ canonical-name table with per-row scale transforms. |
+| `review_code = TRUE` on [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | Inspect-before-fit workflow; `cat_code(rev)` prints the generated backend code; `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. [`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md) raises a documented refusal: the user’s model is already greta-side, so there is no flexyBayes-generated code string to inspect (model-graph pretty-printer reserved for a future release). |
+
+## Output structure
+
+Every fit carries three (or four) top-level slots:
+
+``` r
+
+fit$glm         # GLM-compatible shim — works with summary(), emmeans,
+                # marginaleffects, effectsize, broom
+
+fit$greta       # native greta output (when backend = "greta")
+fit$inla        # native INLA output (when backend = "inla")
+fit$brms        # live brmsfit (when backend = "brms")
+
+fit$extras      # BLUPs, variance components, convergence diagnostics,
+                # generated code, parsed IR, run time, captured call
+```
+
+## Supported ASReml syntax (reference)
+
+``` r
+
+# Fixed effects
+yield ~ env                  # fixed factor
+yield ~ env + x_cov          # factor + covariate
+yield ~ 0 + env              # means model (no intercept)
+yield ~ env + I(x^2)         # expression terms
+
+# Random effects
+random = ~ geno                       # simple iid
+random = ~ block:rep                  # nested
+random = ~ vm(geno, Gmat)             # GBLUP (dense V; both backends)
+random = ~ vm(geno, chol = L)         # user-supplied Cholesky (greta only; v0.3.7+)
+random = ~ vm(geno, precision = Q)    # user-supplied sparse precision (INLA preferred; v0.3.7+)
+random = ~ ped(animal, Amat)          # pedigree (animal model)
+random = ~ ped(animal, A_inv,
+               use_sparse_precision = TRUE)  # sparse pedigree precision (v0.3.7+)
+random = ~ at(env):geno               # diagonal GxE
+random = ~ us(env):id(geno)           # unstructured GxE
+random = ~ fa(env, 2):id(geno)        # factor-analytic GxE
+random = ~ ar1(row):id(col)           # spatial AR1
+random = ~ spl(x_cov)                 # P-spline
+
+# Residual
+rcov = ~ units                # iid residuals (default)
+rcov = ~ at(env):units        # heterogeneous by environment
+
+# Families
+family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |
+         "gamma" | "beta"
+```
+
+## Vignettes
+
+Sixteen numbered vignettes ship with the package:
+
+1.  Getting started
+2.  ASReml-shaped formulas
+3.  Foundational regression
+4.  Hierarchical models
+5.  Structured covariance
+6.  Priors and regularisation
+7.  METs and genomic selection
+8.  Downstream analysis
+9.  Spatio-temporal models
+10. Cross-engine triangulation
+11. LGM feasibility filter
+12. Backend internals
+13. LGM feasibility and memory
+14. Choosing an engine: the universal entry and the engine pins
+15. Architecture: the backend registry and how a new engine joins
+16. Big-data streaming
+
+Heavy MCMC vignettes use a `.Rmd.orig` precompile pattern; the `.Rmd`
+that ships in the package tarball is the pre-evaluated static output.
+Browse them with `browseVignettes("flexyBayes")` **after a full
+install** — `R CMD build` then `R CMD INSTALL` the tarball, or
+`devtools::install(build_vignettes = TRUE)`. A plain `install_github()`
+or source-directory install does **not** build the vignettes into
+`inst/doc`.
+
+Several reference vignettes (02, 04, 05, 07) fit at small sampling
+budgets and print diagnostics that do not meet the convergence
+thresholds; each opens with an “illustration of output *shape*, not
+inference” disclaimer. For a convergence-clean workflow see the *getting
+started* and *cross-engine triangulation* vignettes.
+
+## Design principles
+
+- **Indexing, not model matrices**: parameters are sized by number of
+  levels (`p`), not observations (`N`), giving O(p) memory for random
+  effects.
+- **Non-centred parameterisation**: all random effects use NCP for
+  efficient MCMC sampling.
+- **Cholesky decomposition**: known covariance matrices (G, A) are
+  decomposed once.
+- **Triangulation as first-class output**: the package is built around
+  the claim that *evidence of cross-engine agreement* is the signature
+  flexyBayes deliverable, not “one more Bayesian mixed- model frontend”.
+
+## Correctness
+
+flexyBayes ships an extensive `testthat` suite (`devtools::test()`)
+covering the paths most likely to hide errors: fixed-effect and factor
+models against [`lm()`](https://rdrr.io/r/stats/lm.html) /
+`lme4::lmer()` references, random intercepts and the asreml-route random
+slopes, structured-covariance terms, streaming-aggregation equivalence
+to the per-row fit, weights, offsets, missing-response handling, backend
+routing and the structured refusal taxonomy, prior translation, and
+cross-engine
+[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+agreement. The *cross-engine triangulation* and per-family vignettes
+show clean reproducible checks; the structured-covariance reference
+vignettes are explicitly marked non-inferential where a model does not
+mix at vignette-scale budgets.
+
+## Testing & CI
+
+Continuous integration validates the INLA, brms, and engine-independent
+surface (the ASReml / brms parsers, the intermediate representation,
+`lgm_gate()`, the dispatch policy table, the refusal registry, the prior
+DSL, and the
+[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+metrics). The **greta** integration path (Python + TensorFlow) is
+**not** installed on the standard CI matrix, so a green CI run does not
+include live greta fits; greta-dependent tests gate via
+`skip_if_no_greta()` and are run locally / via a manual
+greta-integration check. Run the full suite locally with
+`devtools::test()` after `greta::install_greta_deps()`.
+
+## Known limitations
+
+flexyBayes refuses what it cannot yet fit rather than fitting it
+silently. The current release does not cover the following; each is a
+roadmap deferral, and a request that needs one is met with a structured
+refusal naming the gap, not a quiet wrong answer.
+
+- **Full multi-environment-trial (MET) models**: genotype-by-environment
+  *interaction random effects* (`gen:loc`, `gen:loc:yearf`) and
+  *heteroscedastic per-environment residuals* (`dsum(~ units | env)`)
+  are **not fittable by any trustworthy backend in this release** – INLA
+  and brms refuse them, greta expresses but does not converge on them.
+  This is the package’s central open problem; see `inst/KNOWN_ISSUES.md`
+  for the full status and the intended route to a fix. Use ASReml or
+  `lme4` for the full MET model today.
+- **Spatial structure**: only separable AR1 (`ar1(row):id(col)`) is
+  supported. Intrinsic CAR and BYM2 areal models are not implemented.
+  You can express a custom spatial precision by passing your own matrix
+  to `vm(g, precision = Q)`, but there is no BYM2 helper.
+- **Smooth terms**: univariate penalised splines (`s(x)`, `spl(x)`) are
+  supported. Multivariate and tensor-product smooths (`te()`, `ti()`,
+  `t2()`) are refused and deferred to a later release.
+- **Hidden-Markov, multi-state, and survival models**: not supported.
+  Survival / time-to-event families are refused at the family gate. A
+  NIMBLE backend covering these is on the roadmap with no fixed release
+  target.
+- **Missing data**: flexyBayes does not impute. Greta and the brms
+  (Stan) passthrough require complete cases for the model variables;
+  INLA treats an `NA` response as a prediction target. Resolve
+  missingness (drop or impute) before fitting, or use the prediction
+  path deliberately.
+
+## Requirements
+
+- R ≥ 4.1.0
+- greta ≥ 0.4.0 (Python + TensorFlow + TensorFlow Probability)
+- INLA (optional, via Additional_repositories)
+- brms (optional, for the Stan passthrough)
+
+## Contributing
+
+Contributions are welcome. See `CONTRIBUTING.md` for the development
+workflow (fork, `usethis::pr_init()`, `devtools::check()` must pass, and
+a `NEWS.md` bullet for any user-facing change) and `CODE_OF_CONDUCT.md`
+(Contributor Covenant). Please report bugs and request features at
+<https://github.com/AAGI-AUS/flexyBayes/issues>. The package’s
+architecture decisions are indexed in `DESIGN_DECISIONS.md`.
+
+## Citation
+
+If you use `flexyBayes` in your research, please cite:
+
+    @software{flexyBayes,
+      title  = {flexyBayes: Flexible Bayesian Mixed Models with ASReml
+                and brms-Style Syntax},
+      author = {Moldovan, Max and Tanaka, Emi and Hui, Francis K.C. and
+                Forte Deltell, Anabel},
+      year   = {2026},
+      url    = {https://github.com/AAGI-AUS/flexyBayes}
+    }
+
+## License
+
+GPL (≥ 3)
+
+# Package index
+
+## Verbs
+
+The universal entry, the single-engine pins, the feasibility planner,
+cross-engine triangulation, and approximation validation.
+
+- [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+  [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+  : Bayesian Mixed Models with ASReml Syntax
+- [`flexybayes_stream()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes_stream.md)
+  : Fit a mixed model to an out-of-core dataset by streaming aggregation
+- [`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md)
+  : Fit a flexyBayes model via the greta engine
+- [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md)
+  : Fit a flexyBayes model via the INLA engine
+- [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md)
+  : Fit a flexyBayes model via the brms (Stan) engine
+- [`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+  : Plan a flexyBayes fit without firing the backend
+- [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+  : Cross-engine posterior triangulation
+- [`validate_approximation()`](https://aagi-aus.github.io/flexyBayes/reference/validate_approximation.md)
+  : Validate an approximate model fit against its bias bound
+- [`proceed()`](https://aagi-aus.github.io/flexyBayes/reference/proceed.md)
+  : Advance a deferred-execution object into its fit
+
+## Ingest adapters
+
+Turn a model specification into a backend-agnostic representation.
+
+- [`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md)
+  : Ingest an ASReml-format model specification into the flexyBayes IR
+- [`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md)
+  : Ingest a brms-format formula into the flexyBayes IR
+- [`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md)
+  : Ingest a user-built greta model into the flexyBayes IR
+
+## Constructor nouns
+
+The four classed input constructors: priors, covariance carriers,
+approximation schemes, and engine selections.
+
+- [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)
+  : Specify priors via the PC-canonical hybrid DSL
+
+- [`fb_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_cov.md)
+  : Construct a structured-covariance carrier
+
+- [`fb_approx()`](https://aagi-aus.github.io/flexyBayes/reference/fb_approx.md)
+  : Construct an approximation-scheme specification
+
+- [`fb_engine()`](https://aagi-aus.github.io/flexyBayes/reference/fb_engine.md)
+  : Construct an inference-engine specification
+
+- [`is_fb_cov()`](https://aagi-aus.github.io/flexyBayes/reference/is_fb_cov.md)
+  :
+
+  Test whether an object is an `fb_cov` carrier
+
+- [`is_fb_approx()`](https://aagi-aus.github.io/flexyBayes/reference/is_fb_approx.md)
+  :
+
+  Test whether an object is an `fb_approx` specification
+
+- [`is_fb_engine()`](https://aagi-aus.github.io/flexyBayes/reference/is_fb_engine.md)
+  :
+
+  Test whether an object is an `fb_engine` specification
+
+## Accessors and discovery
+
+Routing trace, refusal vocabulary, canonical names, prior summary,
+status.
+
+- [`backend_decision()`](https://aagi-aus.github.io/flexyBayes/reference/backend_decision.md)
+  : Backend dispatch trace for a flexyBayes fit
+- [`canonical_names()`](https://aagi-aus.github.io/flexyBayes/reference/canonical_names.md)
+  : Canonical parameter-name view for a flexyBayes fit
+- [`fb_backend_status()`](https://aagi-aus.github.io/flexyBayes/reference/fb_backend_status.md)
+  : Report inference-backend readiness
+- [`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md)
+  : Identified covariance for factor-analytic structured-covariance
+  terms
+- [`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md)
+  : List flexyBayes refusal reasons
+- [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md)
+  : Resolved-prior summary for a flexyBayes fit
+- [`gretaR_status()`](https://aagi-aus.github.io/flexyBayes/reference/gretaR_status.md)
+  : Introspect the gretaR backend slot
+- [`cat_code()`](https://aagi-aus.github.io/flexyBayes/reference/cat_code.md)
+  : Emit the generated backend code for a deferred review object
+
+## Cross-package interop
+
+Tidiers, emmeans, marginaleffects, and draws conversion.
+
+- [`tidy(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/tidy.flexybayes.md)
+  : Tidy a flexyBayes fit into a one-row-per-term data frame
+- [`tidy(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/tidy.flexybayes_inla.md)
+  : Tidy a per-row INLA fit into a one-row-per-term data frame
+- [`glance(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/glance.flexybayes.md)
+  [`glance(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/glance.flexybayes.md)
+  : Glance at a flexyBayes fit
+- [`augment(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/augment.flexybayes.md)
+  [`augment(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/augment.flexybayes.md)
+  : Augment a flexyBayes fit with fitted values and residuals
+- [`emm_basis(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/emm_basis.flexybayes.md)
+  [`emm_basis(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/emm_basis.flexybayes.md)
+  : emmeans support: estimation basis (greta backend)
+- [`recover_data(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/recover_data.flexybayes.md)
+  [`recover_data(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/recover_data.flexybayes.md)
+  : emmeans support: recover model data (greta backend)
+- [`get_coef(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_coef.flexybayes.md)
+  [`get_coef(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_coef.flexybayes.md)
+  : marginaleffects support: fixed-effect coefficients (greta backend)
+- [`get_vcov(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_vcov.flexybayes.md)
+  [`get_vcov(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_vcov.flexybayes.md)
+  : marginaleffects support: covariance (greta backend)
+- [`get_predict(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_predict.flexybayes.md)
+  [`get_predict(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_predict.flexybayes.md)
+  : marginaleffects support: population-level predictions (greta
+  backend)
+- [`get_data(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_data.flexybayes.md)
+  [`get_data(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/get_data.flexybayes.md)
+  : Model data accessor (greta backend)
+- [`set_coef(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/set_coef.flexybayes.md)
+  [`set_coef(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/set_coef.flexybayes.md)
+  : marginaleffects support: set coefficients (greta backend)
+- [`fb_as_draws_simple()`](https://aagi-aus.github.io/flexyBayes/reference/fb_as_draws_simple.md)
+  : Extract per-parameter posterior draws from a model fit
+
+## Methods
+
+S3 methods on the fit objects. Most are reached through their generic
+(for example [`coef()`](https://rdrr.io/r/stats/coef.html),
+[`predict()`](https://rdrr.io/r/stats/predict.html)); they are listed
+here for completeness.
+
+- [`summary(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/summary.flexybayes.md)
+  : Summarise a flexybayes object
+
+- [`summary(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/summary.flexybayes_aggregated.md)
+  : Summarise a flexybayes_aggregated object
+
+- [`summary(`*`<flexybayes_glm>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/summary.flexybayes_glm.md)
+  : Summary for flexybayes GLM-compatible object
+
+- [`summary(`*`<fb_plan>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/summary.fb_plan.md)
+  :
+
+  Summarise an `<fb_plan>` — verbose form
+
+- [`print(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.flexybayes.md)
+  : Print a flexybayes object
+
+- [`print(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.flexybayes_aggregated.md)
+  : Print a flexybayes_aggregated object
+
+- [`print(`*`<flexybayes_brms>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.flexybayes_brms.md)
+  : Print method for the brms-passthrough flexybayes subclass
+
+- [`print(`*`<flexybayes_direct_greta>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.flexybayes_direct_greta.md)
+  : Print a flexybayes object built via fb_greta() (direct greta entry)
+
+- [`print(`*`<fb_approx>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_approx.md)
+  :
+
+  Print an `fb_approx` specification
+
+- [`print(`*`<fb_cov>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_cov.md)
+  :
+
+  Print an `fb_cov` carrier
+
+- [`print(`*`<fb_engine>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_engine.md)
+  :
+
+  Print an `fb_engine` specification
+
+- [`print(`*`<fb_plan>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_plan.md)
+  :
+
+  Print an `<fb_plan>` — flight-checklist form
+
+- [`coef(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes.md)
+  : Extract fixed effect coefficients
+
+- [`coef(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes_inla.md)
+  : Fixed-effect coefficients of a per-row INLA fit
+
+- [`coef(`*`<flexybayes_direct_greta>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/coef.flexybayes_direct_greta.md)
+  : Extract canonical-named posterior means from an fb_greta() fit
+
+- [`confint(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/confint.flexybayes.md)
+  : Credible intervals for fixed effects
+
+- [`confint(`*`<flexybayes_brms>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/confint.flexybayes_brms.md)
+  : Credible intervals on the brms path
+
+- [`confint(`*`<flexybayes_glm>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/confint.flexybayes_glm.md)
+  : Credible intervals for flexybayes_glm
+
+- [`vcov(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/vcov.flexybayes.md)
+  : Extract variance-covariance matrix of fixed effects
+
+- [`vcov(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/vcov.flexybayes_inla.md)
+  : Posterior covariance of a per-row INLA fit's fixed effects
+
+- [`predict(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes.md)
+  : Predict from a flexybayes model
+
+- [`predict(`*`<flexybayes_brms>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_brms.md)
+  : Predict from a brms-passthrough flexybayes fit
+
+- [`predict(`*`<flexybayes_direct_greta>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_direct_greta.md)
+  : Predict from a flexybayes_direct_greta fit
+
+- [`predict(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_inla.md)
+  : Population-level predictions from a per-row INLA fit
+
+- [`fitted(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fitted.flexybayes.md)
+  : Extract fitted values
+
+- [`fitted(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/fitted.flexybayes_inla.md)
+  : In-sample fitted values from a per-row INLA fit
+
+- [`residuals(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes.md)
+  : Extract residuals
+
+- [`residuals(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/residuals.flexybayes_inla.md)
+  : Response residuals from a per-row INLA fit
+
+- [`plot(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
+  [`plot(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
+  [`plot(`*`<flexybayes_brms>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
+  [`plot(`*`<flexybayes_aggregated>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
+  [`plot(`*`<flexybayes_direct_greta>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
+  [`plot(`*`<flexybayes_glm>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/plot.flexybayes.md)
+  : Plot diagnostics for a flexybayes model
+
+- [`anova(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/anova.flexybayes.md)
+  : Compare flexybayes models
+
+- [`logLik(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/logLik.flexybayes.md)
+  : Log-likelihood (approximate)
+
+- [`logLik(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/logLik.flexybayes_inla.md)
+  : Log-likelihood of a per-row INLA fit (not computed)
+
+- [`logLik(`*`<flexybayes_brms>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/logLik.flexybayes_brms.md)
+  : Log-likelihood on the brms path
+
+- [`nobs(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/nobs.flexybayes.md)
+  : Number of observations
+
+- [`family(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/family.flexybayes.md)
+  : Extract model family
+
+- [`family(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/family.flexybayes_inla.md)
+  : Response family of a per-row INLA fit
+
+- [`formula(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/formula.flexybayes.md)
+  : Extract model formula
+
+- [`formula(`*`<flexybayes_inla>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/formula.flexybayes_inla.md)
+  : Fixed-effect model formula of a per-row INLA fit
+
+- [`model.matrix(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/model.matrix.flexybayes.md)
+  : Extract model matrix
+
+- [`update(`*`<flexybayes>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/update.flexybayes.md)
+  : Update a flexybayes model
+
+- [`as.data.frame(`*`<fb_plan>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/as.data.frame.fb_plan.md)
+  :
+
+  Coerce an `<fb_plan>` to data.frame — one row, stable columns
+
+## Specialised models
+
+Extreme-value and Dirichlet regression, genome-wide association, and
+genomic selection, with their fit methods and the cross-engine
+log-posterior producer.
+
+- [`fb_gev()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gev.md)
+  : Fit a generalised extreme value distribution to block maxima
+- [`print(`*`<fb_gev_fit>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_gev_fit.md)
+  : Print a GEV fit
+- [`tidy(`*`<fb_gev_fit>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/tidy.fb_gev_fit.md)
+  : Tidy a GEV fit
+- [`fb_dirichlet()`](https://aagi-aus.github.io/flexyBayes/reference/fb_dirichlet.md)
+  : Fit a Dirichlet distribution to compositional data
+- [`print(`*`<fb_dirichlet_fit>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/print.fb_dirichlet_fit.md)
+  : Print a Dirichlet fit
+- [`tidy(`*`<fb_dirichlet_fit>`*`)`](https://aagi-aus.github.io/flexyBayes/reference/tidy.fb_dirichlet_fit.md)
+  : Tidy a Dirichlet fit
+- [`fb_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gwas.md)
+  : Genome-wide association scan (EMMAX / P3D)
+- [`triangulate_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_gwas.md)
+  : Triangulate two genome-wide association scans
+- [`fb_gblup_cv()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gblup_cv.md)
+  : Genomic-prediction accuracy by cross-validation
+- [`genomic_summary()`](https://aagi-aus.github.io/flexyBayes/reference/genomic_summary.md)
+  : Genomic summary of a fitted relationship model
+- [`triangulate_genomic()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_genomic.md)
+  : Triangulate genomic model outputs across engines or against a field
+  lens
+- [`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md)
+  : Breeder summary of a factor-analytic multi-environment-trial fit
+- [`fb_log_posterior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_log_posterior.md)
+  : Emit a flexyBayes posterior as a log-density producer
+
+## Distribution helpers
+
+Custom response families and their random-number generators.
+
+- [`fb_family_gev()`](https://aagi-aus.github.io/flexyBayes/reference/fb_family_gev.md)
+  : Generalised extreme value (GEV) family object
+- [`rgev()`](https://aagi-aus.github.io/flexyBayes/reference/rgev.md) :
+  Simulate from a generalised extreme value distribution
+- [`fb_family_dirichlet()`](https://aagi-aus.github.io/flexyBayes/reference/fb_family_dirichlet.md)
+  : Dirichlet family object
+- [`rdirichlet()`](https://aagi-aus.github.io/flexyBayes/reference/rdirichlet.md)
+  : Simulate from a Dirichlet distribution
+
+## Datasets
+
+- [`met_example`](https://aagi-aus.github.io/flexyBayes/reference/met_example.md)
+  : Example Multi-Environment Trial (MET) Dataset
+
+## Package
+
+- [`flexyBayes`](https://aagi-aus.github.io/flexyBayes/reference/flexyBayes-package.md)
+  [`flexyBayes-package`](https://aagi-aus.github.io/flexyBayes/reference/flexyBayes-package.md)
+  : flexyBayes: Bayesian Mixed Models with ASReml Syntax via greta,
+  INLA, brms
+
+# Articles
+
+### Foundations
+
+- [Tutorial 01: Getting started with
+  flexyBayes](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-01-getting-started.md):
+- [Tutorial 02: asreml-shaped formulas: a
+  reference](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-02-asreml-formulas.md):
+- [Tutorial 03: Foundational regression: linear models, random effects,
+  and mgcv
+  smooths](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-03-regression.md):
+
+### Core mixed-model concepts
+
+- [Tutorial 04: Hierarchical models: random effects and
+  GLMMs](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-04-hierarchical.md):
+- [Tutorial 05: Structured covariance: us, fa, at, and design
+  components](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-05-structured-covariance.md):
+- [Tutorial 06: Default priors and the \`fb_prior()\`
+  DSL](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-06-priors.md):
+
+### Applied workflows
+
+- [Tutorial 07: Multi-environment trials and genomic
+  selection](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-07-met-and-genomics.md):
+- [Tutorial 08: Downstream analysis: emmeans, marginaleffects,
+  bayesplot,
+  loo](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-08-downstream-analysis.md):
+- [Tutorial 09: Spatio-temporal models: AR1, spatial,
+  temporal](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-09-spatio-temporal.md):
+
+### Advanced and internals
+
+- [Tutorial 10: Cross-engine triangulation: when Bayesian engines
+  disagree](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-10-triangulation.md):
+- [Tutorial 11: LGM feasibility: what \`lgm_gate()\` accepts and
+  refuses](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-11-lgm-feasibility.md):
+- [Tutorial 12: Backend internals: greta, INLA, and the intermediate
+  representation](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-12-backend-internals.md):
+- [Tutorial 13: Per-term INLA memory
+  feasibility](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-13-lgm-feasibility-memory.md):
+- [Choosing an engine: the universal entry and the engine
+  pins](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-14-engine-selection.md):
+- [Architecture: how the backend registry works and how a new engine
+  joins](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-15-extending-backends.md):
+- [Big data: streaming exact aggregation to a billion
+  rows](https://aagi-aus.github.io/flexyBayes/articles/flexyBayes-16-big-data-streaming.md):

@@ -1,0 +1,122 @@
+# Tutorial 13: Per-term INLA memory feasibility
+
+## 1. Why a per-term memory estimator?
+
+`lgm_gate()` rule 11 (`memory_feasibility_inla`) originally used a
+single multiplier on the preflight’s indexed estimate. That multiplier
+was a useful safety net but coarse: a model whose memory profile is
+dominated by one structured-covariance term could refuse for the wrong
+reason, and the diagnostic message named neither the binding term nor
+the representation class driving the projection.
+
+The gate now uses a per-term decomposition instead. Each random-effect
+term contributes bytes according to its representation class:
+
+| Representation | Bytes per term | Notes |
+|----|----|----|
+| `indexed_random_intercept` | `8 K + 4 N` | K-vector of latent u’s + integer index column. |
+| `indexed_structured_known` (precision) | `nnz(Q) * 16` | Sparse-matrix bytes-per-non-zero from Lindgren et al. (2011); falls back to `K * 16` when `known_matrices` is absent. |
+| `block_diagonal` | `sum_k n_k^2 * 8` | Block-diagonal V across K independent blocks; falls back to `K^2 * 8` worst case when `known_matrices` is absent. |
+| `dense_baseline` | (already in design_memory_bytes) | Dense N x p basis blocks. |
+
+The fixed-effect contribution is the design matrix’s `N x p * 8` bytes.
+The grand total is multiplied by an overhead factor (default 2.0;
+configurable via the `flexyBayes.preflight_inla_overhead_factor` option)
+that absorbs INLA’s internal stage-2 allocations.
+
+## 2. How to read the breakdown
+
+[`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+and `flexybayes(plan = TRUE)` surface the breakdown under the headline
+memory line of the plan’s print form. The underlying data sits on
+`plan$preflight$memory_estimate`:
+
+    List of 4
+     $ total          : num <total bytes after overhead>
+     $ breakdown      :'data.frame': <K + 1> obs. of  4 variables:
+      ..$ term_label    : chr  <one row per random term + "(fixed effects)">
+      ..$ representation: chr  <representation class>
+      ..$ bytes         : num  <bytes>
+      ..$ share         : num  <share of raw total>
+     $ overhead_factor: num 2
+     $ raw_total      : num <bytes before overhead>
+     - attr(*, "class") = c("fb_memory_estimate", "list")
+
+The shape is stable: the field names follow a closed vocabulary.
+`as.numeric(plan$preflight$memory_estimate)` returns the total in bytes,
+so existing scalar-numeric consumers continue to work unchanged.
+
+## 3. How to negotiate a memory refusal
+
+When the per-term estimator’s total exceeds the active ceiling,
+`lgm_gate()` refuses with `memory_feasibility_inla_per_term` and names
+the largest contributor on the condition’s diagnostic line. Four common
+patterns resolve the refusal:
+
+1.  **Route via greta.** `backend = "greta"` keeps the indexed
+    representation throughout MCMC; the dense materialisation INLA’s
+    stage-2 needs is bypassed entirely.
+2.  **Reduce structured-cov cardinality.** Aggregate levels of the
+    grouping factor when the science permits (e.g., site x season
+    instead of site x date).
+3.  **Switch dense to sparse precision.** If the structured covariance
+    has known sparse precision, pass `precision = solve(V)` instead of
+    `V` so the term routes through INLA’s sparse generic0 path.
+4.  **Raise the ceiling.** Pass `memory_ceiling_gb` (or set
+    `flexyBayes.preflight_ram_fraction`) when the machine genuinely has
+    the headroom and the per-term breakdown reads honestly.
+
+## 4. What the per-term estimator does not capture
+
+The per-term estimator covers the four exact representations flexyBayes
+supports today (dense, chol, precision/pedigree-sparse, blocks) plus the
+indexed random-effect and dense-basis fixed-effect shapes. Two surfaces
+are explicitly out of scope:
+
+- **SPDE meshes.** INLA’s `model = "spde2"` mesh allocations are
+  workflow-specific and not modelled here; a future release ships a
+  tensor-smooth estimator that covers the relevant shapes.
+- **Approximate schemes** (low-rank covariance carriers, variational
+  stage-2). These refuse at the routing layer until validated through
+  [`validate_approximation()`](https://aagi-aus.github.io/flexyBayes/reference/validate_approximation.md).
+
+## 5. References
+
+Lindgren, F., Rue, H., Lindstrom, J. (2011). “An explicit link between
+Gaussian fields and Gaussian Markov random fields: the stochastic
+partial differential equation approach.” *Journal of the Royal
+Statistical Society, Series B*, 73(4), 423-498.
+
+Rue, H., Martino, S., Chopin, N. (2009). “Approximate Bayesian inference
+for latent Gaussian models by using integrated nested Laplace
+approximations.” *Journal of the Royal Statistical Society, Series B*,
+71(2), 319-392.
+
+    #> R version 4.6.0 (2026-04-24)
+    #> Platform: x86_64-pc-linux-gnu
+    #> Running under: Ubuntu 24.04.4 LTS
+    #> 
+    #> Matrix products: default
+    #> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 
+    #> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.26.so;  LAPACK version 3.12.0
+    #> 
+    #> locale:
+    #>  [1] LC_CTYPE=C.UTF-8       LC_NUMERIC=C           LC_TIME=C.UTF-8       
+    #>  [4] LC_COLLATE=C.UTF-8     LC_MONETARY=C.UTF-8    LC_MESSAGES=C.UTF-8   
+    #>  [7] LC_PAPER=C.UTF-8       LC_NAME=C              LC_ADDRESS=C          
+    #> [10] LC_TELEPHONE=C         LC_MEASUREMENT=C.UTF-8 LC_IDENTIFICATION=C   
+    #> 
+    #> time zone: UTC
+    #> tzcode source: system (glibc)
+    #> 
+    #> attached base packages:
+    #> [1] stats     graphics  grDevices utils     datasets  methods   base     
+    #> 
+    #> loaded via a namespace (and not attached):
+    #>  [1] digest_0.6.39     desc_1.4.3        R6_2.6.1          fastmap_1.2.0    
+    #>  [5] xfun_0.58         cachem_1.1.0      knitr_1.51        htmltools_0.5.9  
+    #>  [9] rmarkdown_2.31    lifecycle_1.0.5   cli_3.6.6         sass_0.4.10      
+    #> [13] pkgdown_2.2.0     textshaping_1.0.5 jquerylib_0.1.4   systemfonts_1.3.2
+    #> [17] compiler_4.6.0    tools_4.6.0       ragg_1.5.2        bslib_0.11.0     
+    #> [21] evaluate_1.0.5    yaml_2.3.12       otel_0.2.0        jsonlite_2.0.0   
+    #> [25] rlang_1.2.0       fs_2.1.0

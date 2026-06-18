@@ -1,0 +1,136 @@
+# Architecture: how the backend registry works and how a new engine joins
+
+This vignette is for readers who want to understand how flexyBayes
+decides what each backend can do, and what it would take to add a new
+backend. It describes the package’s internal architecture; the surfaces
+shown here are intentionally not part of the everyday user API, so the
+code is illustrative rather than something a typical analysis calls.
+
+## Backend as a first-class axis
+
+The package is organised around a small number of closed-vocabulary
+registries – for representations, approximation schemes,
+backend-independence pairs, refusal reason-codes, and backends. Each is
+a locked table established when the package loads. A registry is the
+single home for one kind of fact, so the rest of the package reads from
+it rather than hard-coding the same knowledge in several places.
+
+The backend registry is the home for backend facts: the legitimate
+backend names, what grammars each can ingest, which inference paradigm
+each uses, which R package makes each usable, whether each is in the
+`auto` candidate set, and which models each can represent. Dispatch
+*consumes* these facts; it does not restate them.
+
+``` r
+
+# The active backends whose required package is installed.
+flexyBayes:::.available_backend_names()
+
+# The candidate set that `auto` considers by default.
+flexyBayes:::.auto_default_backend_names()
+```
+
+The design rule is *extend by registration, not by API growth*: new
+capability enters by adding a row to a registry, not by widening the
+public verb surface. The everyday surface –
+[`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+/
+[`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+plus the three engine pins – does not change when a backend is added.
+
+## What an entry records
+
+Each backend entry carries a fixed set of fields. The two that govern
+behaviour most directly are the inference `paradigm` and the
+`capability_predicate`.
+
+The `paradigm` is the honest label for how a backend draws inferences –
+for example, full Hamiltonian Monte Carlo versus a Laplace
+approximation. It is what lets
+[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+and the backend-independence registry report whether two fits are
+genuinely independent: two engines that share a paradigm agree for
+weaker reasons than two engines that do not. The brms backend keeps
+`brms` as its front-end name while recording its sampler paradigm
+separately, so a greta-and-brms comparison is graded as same-paradigm
+rather than being mistaken for independent evidence.
+
+The `capability_predicate` is a function of the model that returns
+either “this engine can represent it” or a single reason-code naming why
+it cannot. This is what makes gating *systematic* rather than a
+collection of special cases. For example, the brms predicate refuses an
+ASReml structured-covariance term, because Stan has no lossless
+translation for it:
+
+``` r
+
+d <- data.frame(
+  y    = rnorm(40),
+  env  = factor(rep(letters[1:4], each = 10L)),
+  geno = factor(rep(seq_len(10L), times = 4L))
+)
+ir <- fb_from_asreml(y ~ env, random = ~ geno, data = d)
+
+# greta can fit a plain random-intercept model; so can brms.
+flexyBayes:::.backend_can_fit("greta", ir)
+flexyBayes:::.backend_can_fit("brms",  ir)
+```
+
+A predicate delegates to the existing authority for its decision rather
+than duplicating it – the INLA predicate, for instance, asks the
+latent-Gaussian gate – so a model can never be judged feasible by one
+part of the package and infeasible by another.
+
+## Transparency by construction
+
+“All the backends the model supports” is an honest claim because every
+unsupported (model, engine) pair yields a registered, structured
+refusal. The refusal registry holds the closed vocabulary of
+reason-codes, and every user-facing refusal is drawn from it, so a
+refusal can always be matched on its code rather than parsed from free
+text.
+
+``` r
+
+# The registered refusal vocabulary (machine-readable reason-codes).
+fb_refusals()
+```
+
+On the `auto` path, the engines that were considered and rejected are
+recorded on the fit and surfaced by
+[`backend_decision()`](https://aagi-aus.github.io/flexyBayes/reference/backend_decision.md),
+so a user can always see why a particular backend was chosen.
+
+## What it takes to add a backend
+
+Adding a backend that uses an inference paradigm already present comes
+down to two things: registering the backend (its name, grammars,
+paradigm, required package, `auto` membership, and capability predicate)
+and providing an emit function that lowers the intermediate
+representation to that engine’s code. Dispatch resolves the emit
+function from the registry by name, so no call site needs to hard-code
+the new engine.
+
+A backend that introduces a *new* inference paradigm needs one more
+thing: an orchestration step, because the per-paradigm routing order and
+fallback policy – which engine is the fast path, which is the universal
+fallback, which is opt-in only because of compile latency – is genuine
+policy rather than mechanical iteration, and the package keeps it as
+explicit code rather than deriving it from the registry.
+
+The roster has room for growth by design. A backend slot can be
+provisioned in a dormant state – registered but not yet active, so it
+refuses cleanly at dispatch until activated – which is how a new
+front-end can be reserved before its emit path is ready.
+
+## Summary
+
+- Backend facts live in one locked registry; dispatch reads from it.
+- An entry records the inference `paradigm` (so
+  [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+  grades independence honestly) and a `capability_predicate` (so gating
+  is systematic and delegates to existing authorities).
+- Every unsupported pair yields a registered, structured refusal;
+  rejected routes are recorded on the fit.
+- A same-paradigm engine is added by registration plus an emit hookup; a
+  new paradigm additionally needs an orchestration step.

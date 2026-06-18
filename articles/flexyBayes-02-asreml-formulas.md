@@ -1,0 +1,577 @@
+# Tutorial 02: asreml-shaped formulas: a reference
+
+## 1. Scope
+
+> **This is a syntax-and-representation catalogue.** It demonstrates how
+> to *write* models across the term surface. The fits use small sampling
+> budgets so the document builds quickly, and several printed
+> diagnostics therefore do **not** meet the package’s own convergence
+> thresholds ($`\widehat{R} \le 1.01`$, ESS $`\ge 400`$); some model
+> classes also mix poorly on their backend at any budget. Read the
+> posterior summaries here as illustrations of the output *shape*, not
+> as inferential results. For a convergence-clean worked fit and the
+> trustworthy-fit workflow, see the *getting started* and *cross-engine
+> triangulation* vignettes.
+
+[`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+accepts the asreml-shaped specification
+
+``` r
+
+flexybayes(fixed = ..., random = ~ ..., rcov = ~ ..., data = ...,
+          known_matrices = list(...), weights = ...)
+```
+
+with three formulas — the fixed-effects model matrix, the random-
+effects covariance structure, and the residual covariance structure —
+plus a named list of pre-computed matrices (kinship, pedigree-derived
+numerator relationship, design covariance) and an optional weights
+vector. This vignette catalogues every term type the asreml-format
+parser accepts.
+
+The companion
+[`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md)
+entry — covered in the *getting started*, *hierarchical models*, and
+*foundational regression* vignettes — covers a subset of these term
+types via brms-style notation. For the full surface, asreml-shaped
+formulas are the reference path.
+
+> **`flexyBayes` does not depend on the proprietary `asreml` package.**
+> The DSL borrows ASReml’s notation; the inference engine is greta
+> (Hamiltonian Monte Carlo) or INLA (Laplace approximation), depending
+> on the backend chosen. ASReml syntax is referenced as a vocabulary,
+> not invoked as a dependency.
+
+We use the bundled `met_example` dataset throughout — ten genotypes
+across four environments with three replicates per cell, plus
+genotype-level kinship (`G_mat`) and pedigree-derived (`A_mat`)
+matrices.
+
+> **A note on the fits below.** This is a *syntax* reference. Each fit
+> exists to show that a term type parses, emits valid engine code, and
+> returns the expected structure – not to produce publication-grade
+> inference. The fits use modest MCMC budgets to keep the vignette fast,
+> and the structured-covariance terms (`vm`, `fa`, `us`, `ar1`) mix
+> slowly, so the convergence diagnostics printed here are deliberately
+> **not** tuned and should not be read as inference. The *getting
+> started* vignette shows production budgets and how to read
+> $`\widehat{R}`$ and ESS; the *hierarchical models* and *cross-engine
+> triangulation* vignettes develop inference quality.
+
+``` r
+
+library(flexyBayes)
+data(met_example, package = "flexyBayes")
+dat   <- met_example$dat
+G_mat <- met_example$G_mat
+A_mat <- met_example$A_mat
+str(dat, max.level = 1)
+#> 'data.frame':    120 obs. of  10 variables:
+#>  $ geno   : Factor w/ 10 levels "G1","G10","G2",..: 1 3 4 5 6 7 8 9 10 2 ...
+#>  $ env    : Factor w/ 4 levels "E1","E2","E3",..: 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ rep    : Factor w/ 3 levels "R1","R2","R3": 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ block  : Factor w/ 6 levels "B1","B2","B3",..: 1 2 3 4 5 6 1 2 3 4 ...
+#>  $ row    : Factor w/ 10 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+#>  $ col    : Factor w/ 12 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+#>  $ yield  : num  51.9 45 49.4 48.3 47.8 ...
+#>  $ x_cov  : num  -0.23 0.837 -1.745 1.689 0.865 ...
+#>  $ bin_y  : int  0 1 0 0 0 0 1 1 0 0 ...
+#>  $ count_y: int  10 7 5 9 9 9 4 6 5 8 ...
+#>  - attr(*, "out.attrs")=List of 2
+```
+
+## 2. Fixed-effect terms
+
+The `fixed` formula is a standard R model formula. Every term that
+[`stats::model.matrix()`](https://rdrr.io/r/stats/model.matrix.html)
+understands is accepted, including:
+
+| Term | Semantics |
+|----|----|
+| `factor` | factor main effect; one level absorbed into the intercept |
+| `continuous` | continuous covariate; linear coefficient |
+| `factor:factor` | two-factor interaction (factor_interaction internally) |
+| `factor:continuous` | factor-continuous interaction (separate slopes) |
+| `I(x^2)` | arbitrary I-quoted expression in the predictors |
+
+Two factor-interaction patterns, `*` and `:`, follow R’s standard
+semantics: `A * B` expands to `A + B + A:B`; `A:B` is the interaction
+alone.
+
+``` r
+
+fit_fix <- flexybayes(
+  fixed = yield ~ env, data = dat,
+  n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
+)
+fit_fix
+#> Bayesian mixed model  [flexyBayes / aggregated-gaussian]
+#> ------------------------------------------------------------ 
+#>   family:     gaussian ( identity link)
+#>   N obs:      120 
+#>   K cells:    4 
+#>   fixed:      2 
+#>   random:     0 
+#>   backend:    inla (path = aggregated_gaussian )
+#>   runtime:    2.05 sec
+#>   Representation: aggregated_exact (compression 30:1)
+#>   Engine:         INLA Laplace
+#>   aggregation: N = 120 rows -> K = 4 cells (ratio 30:1)
+#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#> ------------------------------------------------------------ 
+#>   $glm      -- per-row reconstructed fitted values + coef shim
+#>   $inla     -- raw aggregated INLA fit (use INLA's summary etc.)
+#>   $extras   -- summary, aggregation_meta, backend_decision
+```
+
+``` r
+
+fit_int <- flexybayes(
+  fixed = yield ~ env + x_cov + I(x_cov^2), data = dat,
+  n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
+)
+fit_int
+#> Bayesian fit  [flexybayes_inla / INLA backend]
+#> ------------------------------------------------------- 
+#>   formula: yield ~ 1 + env + x_cov + I(x_cov^2)
+#>   family:  gaussian
+#>   n_obs:   120
+#>   fixed:   6
+#>   random:  0
+#>   hyper:   1
+#>   runtime: 2.15 sec
+#>   numerical confirm: PASS
+#> ------------------------------------------------------- 
+#>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
+#>   $fb   -- the fb_terms IR used for dispatch
+```
+
+## 3. Random-effect simple terms
+
+Three closely-related terms designate an iid random effect on a factor:
+
+| Term | Semantics |
+|----|----|
+| `simple` (bare factor name in the random formula) | iid normal random effect on a factor |
+| `ide(g)` | identical-distribution random effect (synonym of simple) |
+| `id(g)` | identity-covariance — the same as simple |
+
+``` r
+
+fit_rand <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ geno,                       # 'simple' on a bare factor
+  data      = dat,
+  n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
+)
+fit_rand
+#> Bayesian mixed model  [flexyBayes / aggregated-gaussian]
+#> ------------------------------------------------------------ 
+#>   family:     gaussian ( identity link)
+#>   N obs:      120 
+#>   K cells:    40 
+#>   fixed:      2 
+#>   random:     1 
+#>   backend:    inla (path = aggregated_gaussian )
+#>   runtime:    2.14 sec
+#>   Representation: aggregated_exact (compression 3:1)
+#>   Engine:         INLA Laplace
+#>   aggregation: N = 120 rows -> K = 40 cells (ratio 3:1)
+#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#> ------------------------------------------------------------ 
+#>   $glm      -- per-row reconstructed fitted values + coef shim
+#>   $inla     -- raw aggregated INLA fit (use INLA's summary etc.)
+#>   $extras   -- summary, aggregation_meta, backend_decision
+```
+
+The random block reports the genotype-level standard deviation. The
+companion *hierarchical models* vignette covers the scientific
+interpretation; this vignette is purely about syntax.
+
+## 4. Random-effect terms with known covariance: `vm()` and `ped()`
+
+`vm(g, K)` lets you supply a pre-computed covariance for the
+random-effect levels — typically a kinship or genomic-relationship
+matrix:
+
+``` r
+
+fit_vm <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ vm(geno, Gmat),
+  data      = dat,
+  known_matrices = list(Gmat = G_mat),      # name in formula
+  n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
+)
+fit_vm
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~vm(geno, Gmat) 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 18.6 sec
+#>   Params : 4 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 4.73  [!] 
+#>   Min ESS: 17 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+`ped(g, A)` is the pedigree analogue — the same structure but with a
+numerator-relationship matrix derived from a known pedigree:
+
+``` r
+
+flexybayes(
+  fixed = yield ~ env,
+  random = ~ ped(geno, Amat),
+  data = dat,
+  known_matrices = list(Amat = A_mat),
+  ...
+)
+```
+
+## 5. Random-effect structured covariance terms
+
+Five term types describe structured covariance among random-effect
+levels — typically genotype-by-environment in agricultural settings.
+Each is covered in detail in the *structured covariance* vignette; this
+section gives the call shapes.
+
+| Term | Semantics |
+|----|----|
+| `at(env, simple):geno` | diagonal: independent genotype variances per environment |
+| `at(env, ide):geno` | identical to `at_simple` |
+| `us(env):geno` | unstructured: full $`n \times n`$ env covariance for genotype effects |
+| `fa(env, k):geno` | factor-analytic with `k` latent factors (Smith, Cullis, & Thompson, 2001) |
+| `ar1(env):geno` | first-order autoregressive in environment ordering |
+
+``` r
+
+fit_fa <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ fa(env, 2):geno,
+  data      = dat,
+  n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
+)
+fit_fa
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~fa(env, 2):geno 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 13.2 sec
+#>   Params : 5 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 16.094  [!] 
+#>   Min ESS: 0 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+The factor-analytic model with `k = 2` posits two latent factors through
+which genotype-by-environment interactions operate. The
+`structured covariance` and
+`multi-environment trials and genomic selection` vignettes interpret the
+factor-analytic loadings and build the corresponding biplot.
+
+## 6. Random-effect interactions: `nested` and `combo`
+
+Two compound patterns capture multi-factor random structures:
+
+| Term | Semantics |
+|----|----|
+| `A:B` (in random) | nested: each level of B within A as its own random level |
+| `A + B` (in random) | crossed: independent random effects on A and on B |
+| `A + A:B` | hierarchical (A and A-within-B both contribute) |
+
+``` r
+
+fit_nested <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ rep + rep:block,            # blocks-within-rep nested
+  data      = dat,
+  n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
+)
+fit_nested
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~rep + rep:block 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 12 sec
+#>   Params : 5 monitored; 2 fixed, 2 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 15.211  [!] 
+#>   Min ESS: 10 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+## 7. Splines and polynomials
+
+| Term | Semantics |
+|----|----|
+| `spl(x)` | cubic smoothing spline on `x` |
+| `spl(x, type = "bs", df = m)` | random B-spline with `m` basis functions |
+| `spl(x, type = "ps", df = m)` | penalised B-spline (P-spline) |
+| `pol(x, degree = d)` | polynomial of degree `d` (random coefficients) |
+
+Splines and polynomials live in the `random` formula because their
+coefficients are penalised — equivalent to a random effect with a
+smoothing-induced covariance. See the *foundational regression* vignette
+for examples.
+
+``` r
+
+flexybayes(fixed = y ~ 1, random = ~ spl(x, type = "ps", df = 15),
+          data = dat, ...)
+```
+
+## 8. Residual covariance: `rcov`
+
+The `rcov` formula describes structure on the residual error term. The
+default — unstated `rcov` — is iid Gaussian with a single $`\sigma_e`$.
+
+| Term | Semantics |
+|----|----|
+| `~ units` (default) | iid residual |
+| `~ at(env):units` | heterogeneous residual variance per environment |
+| `~ ar1(row):ar1(col)` | separable autoregressive errors on a regular field grid |
+
+``` r
+
+flexybayes(fixed = yield ~ rep, random = ~ geno,
+          rcov = ~ ar1(row):ar1(col),
+          data = field_data, ...)
+```
+
+The *spatio-temporal* vignette demonstrates the AR1×AR1 case in full.
+
+## 9. The `weights` argument
+
+A non-negative numeric weight vector scales the residual variance:
+$`y_i \sim \mathcal{N}(\mu_i, \sigma_e^2 / w_i)`$. Useful when
+observations are pre-aggregated (cell means, weighted averages, prior
+counts).
+
+``` r
+
+flexybayes(fixed = ..., data = ..., weights = w_i, ...)
+```
+
+## 10. The `family` and `link` arguments
+
+For non-Gaussian responses, set `family` and (optionally) override the
+canonical `link`:
+
+| `family`              | Default `link` |
+|-----------------------|----------------|
+| `"gaussian"`          | identity       |
+| `"binomial"`          | logit          |
+| `"poisson"`           | log            |
+| `"negative_binomial"` | log            |
+| `"gamma"`             | log            |
+| `"beta"`              | logit          |
+
+``` r
+
+flexybayes(fixed = y ~ x, random = ~ g, family = "binomial",
+          link = "probit", data = ..., ...)
+```
+
+## 11. Pitfalls
+
+**Factor inference inside the formula.** `flexyBayes` factor-coerces
+character columns automatically, but does *not* infer ordering. If your
+factor levels carry a natural order (low / medium / high), set the
+levels explicitly.
+
+**Match `known_matrices` keys to formula names.** The string keys of
+`known_matrices` must literally match the symbol names used inside
+`vm()` / `ped()` calls. A common mistake is `vm(geno, G_mat)` with
+`known_matrices = list(Gmat = G_mat)` — the name in the formula is
+`G_mat`, not `Gmat`. Either rename the formula symbol or rename the list
+key, but they must match.
+
+**`spl()` and `pol()` are random-effect terms.** Writing
+`fixed = y ~ spl(x)` will throw `could not find function "spl"` because
+[`model.frame()`](https://rdrr.io/r/stats/model.frame.html) evaluates
+the formula and there is no exported `spl` function. The correct
+invocation puts smoothers in `random`.
+
+## 12. Active prompts
+
+1.  Refit `met_example` with `random = ~ vm(geno, Amat)` (pedigree
+    relationship matrix) and compare the genotype-level posteriors with
+    the kinship version.
+2.  Replace `fa(env, 2):geno` with `us(env):geno`. Does the posterior on
+    genotype effects change appreciably? Why might it on a small
+    dataset?
+3.  Build a `at(env, simple):geno` model and a `at(env, ide):geno` model
+    on `met_example`. The two should give identical posteriors —
+    confirm.
+
+## 13. Companion: brms-shaped formulas
+
+Every model above is specified in the asreml grammar (`fixed` /
+`random`). The same models can equally be written in the lme4 / brms
+idiom, with the random structure carried in `(1 | g)` blocks; the
+universal entry accepts either grammar and auto-detects which one you
+used:
+
+``` r
+
+fit_b <- flexybayes(
+  yield ~ env + (1 | geno),     # brms-shaped; the same model as
+                                # fixed = yield ~ env, random = ~ geno
+  data         = dat,
+  backend      = "greta",
+  n_samples    = 1000,
+  warmup       = 2000,
+  chains       = 2,
+  verbose      = FALSE,
+  mcmc_verbose = FALSE
+)
+fit_b
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env + (1 | geno) 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 9 sec
+#>   Params : 4 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 1.161  [!] 
+#>   Min ESS: 8 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+The supported brms-shaped corpus is deliberately narrow: fixed effects
+plus single or crossed random intercepts, on Gaussian, binomial
+(single-column Bernoulli), or Poisson responses. Five representative
+shapes:
+
+| Shape | Form |
+|----|----|
+| Gaussian, fixed only | `y ~ x1 + x2` |
+| Gaussian random intercept | `y ~ x + (1 \| g)` |
+| Crossed random intercepts | `y ~ x + (1 \| g1) + (1 \| g2)` |
+| Bernoulli random intercept | `y ~ x + (1 \| g)` with `family = "binomial"` |
+| Poisson random intercept | `count ~ x + (1 \| g)` with `family = "poisson"` |
+
+Constructs outside this corpus — random slopes, smoothers (`s()`),
+Gaussian processes, autocorrelation
+([`ar()`](https://rdrr.io/r/stats/ar.html), `ma()`), multivariate or
+hurdle / mixture families, and LHS addition forms
+(`y | trials(n) ~ ...`) — raise a structured refusal at ingest that
+names both the offending construct and the closest supported
+alternative. For random slopes, the cleanest re-route is the
+asreml-style form `random = ~ g + g:x`; for the others, the *LGM
+feasibility* and *cross-engine triangulation* vignettes catalogue the
+principled boundaries.
+
+Backend choice is orthogonal to grammar. The universal entries
+[`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+/
+[`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
+take a `backend = c("auto", "greta", "inla", "brms")` argument (see the
+*hierarchical models* vignette for the dispatch flow); the engine pins
+[`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md),
+[`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md),
+and
+[`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md)
+fix the backend instead. Either grammar reaches the same cross-engine
+post-fit surface –
+[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+and the registry-driven canonical parameter-name resolver (no `name_map`
+is needed for the common fixed-effect + random-intercept cases).
+
+## 14. Session information
+
+``` r
+
+sessionInfo()
+#> R version 4.5.2 (2025-10-31)
+#> Platform: aarch64-apple-darwin20
+#> Running under: macOS Tahoe 26.5.1
+#> 
+#> Matrix products: default
+#> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+#> 
+#> time zone: Australia/Adelaide
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] flexyBayes_0.8.3
+#> 
+#> loaded via a namespace (and not attached):
+#>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+#>   [4] tensorflow_2.20.0      loo_2.9.0              S7_0.2.2              
+#>   [7] tensorA_0.36.2.1       INLA_25.10.19          TH.data_1.1-5         
+#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
+#>  [13] gretaR_0.2.0           sf_1.1-0               survival_3.8-3        
+#>  [16] processx_3.9.0         posterior_1.7.0        magrittr_2.0.5        
+#>  [19] compiler_4.5.2         rlang_1.2.0            progress_1.2.3        
+#>  [22] tools_4.5.2            data.table_1.18.2.1    knitr_1.51            
+#>  [25] prettyunits_1.2.0      bridgesampling_1.2-1   bit_4.6.0             
+#>  [28] classInt_0.4-11        reticulate_1.45.0      RColorBrewer_1.1-3    
+#>  [31] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
+#>  [34] withr_3.0.2            grid_4.5.2             xtable_1.8-8          
+#>  [37] e1071_1.7-17           future_1.70.0          ggplot2_4.0.3         
+#>  [40] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
+#>  [43] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#>  [46] mvtnorm_1.3-6          crayon_1.5.3           generics_0.1.4        
+#>  [49] RcppParallel_5.1.11-2  otel_0.2.0             tfruns_1.5.4          
+#>  [52] DBI_1.3.0              proxy_0.4-29           stringr_1.6.0         
+#>  [55] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
+#>  [58] coro_1.1.0             matrixStats_1.5.0      base64enc_0.1-6       
+#>  [61] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
+#>  [64] Matrix_1.7-4           sandwich_3.1-1         jsonlite_2.0.0        
+#>  [67] greta_0.5.1            callr_3.7.6            hms_1.1.4             
+#>  [70] bit64_4.8.0            listenv_0.10.1         units_1.0-1           
+#>  [73] glue_1.8.1             parallelly_1.47.0      codetools_0.2-20      
+#>  [76] distributional_0.7.0   stringi_1.8.7          gtable_0.3.6          
+#>  [79] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
+#>  [82] torch_0.17.0           R6_2.6.1               fmesher_0.7.0         
+#>  [85] evaluate_1.0.5         lattice_0.22-7         png_0.1-9             
+#>  [88] backports_1.5.1        tfautograph_0.3.2      rstantools_2.6.0      
+#>  [91] class_7.3-23           MatrixModels_0.5-4     Rcpp_1.1.1-1.1        
+#>  [94] checkmate_2.3.4        coda_0.19-4.1          nlme_3.1-168          
+#>  [97] whisker_0.4.1          xfun_0.57              zoo_1.8-15            
+#> [100] pkgconfig_2.0.3
+```
+
+## References
+
+Butler, D. G., Cullis, B. R., Gilmour, A. R., Gogel, B. J., & Thompson,
+R. (2017). *ASReml-R reference manual* (Version 4). VSN International.
+
+Gilmour, A. R., Cullis, B. R., & Verbyla, A. P. (1997). Accounting for
+natural and extraneous variation in the analysis of field experiments.
+*Journal of Agricultural, Biological, and Environmental Statistics*,
+2(3), 269–293.
+
+Smith, A. B., Cullis, B. R., & Thompson, R. (2001). Analyzing variety by
+environment data using multiplicative mixed models and adjustments for
+spatial field trend. *Biometrics*, 57(4), 1138–1147.
