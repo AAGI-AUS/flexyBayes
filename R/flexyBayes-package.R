@@ -1,4 +1,4 @@
-#' flexyBayes: Bayesian Mixed Models with ASReml Syntax via greta, INLA, and brms
+#' flexyBayes: Bayesian Mixed Models with ASReml Syntax via greta, INLA, brms
 #'
 #' `flexyBayes` lets you fit Bayesian mixed models using the formula syntax
 #' you already know from ASReml or `lme4`/`brms`, dispatched through one of

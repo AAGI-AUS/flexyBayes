@@ -195,6 +195,7 @@ test_that("capability predicates: greta universal, brms refuses structured-cov",
 })
 
 test_that("flexybayes(backend='brms') allows dense vm/ped but refuses non-dense-able structured carriers", {
+  skip_if_not_installed("brms")
   # Genomics expansion (G1): vm() / ped() with an exact dense-able
   # carrier now reach brms via its native known-covariance group term
   # (1 | gr(var, cov = K)) -- brms Cholesky-factors K internally. The

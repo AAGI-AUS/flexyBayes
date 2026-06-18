@@ -1,7 +1,6 @@
 linters: linters_with_defaults(
     line_length_linter(80),
     object_name_linter = NULL,         # snake_case verified manually; legacy ASReml tokens
-    cyclocomp_linter = NULL,           # heavy on parse_formula / codegen which are inherently long
     indentation_linter = NULL,         # `air format` is the source of truth for indentation
     object_length_linter = NULL,       # long descriptive domain names are intentional (cf. object_name_linter)
     commented_code_linter = NULL       # high false-positive rate on dash-banner headers + name-mapping docs

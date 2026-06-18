@@ -191,7 +191,9 @@ triangulate_genomic <- function(a, b, term = NULL, data_independence = NA) {
   }
   common <- intersect(names(gebv_a), names(gebv_b))
   if (length(common) < 3L) {
-    return(list(n_common = length(common), pearson = NA_real_, spearman = NA_real_))
+    return(list(
+      n_common = length(common), pearson = NA_real_, spearman = NA_real_
+    ))
   }
   va <- gebv_a[common]
   vb <- gebv_b[common]

@@ -356,7 +356,7 @@ print.fb_log_posterior_producer <- function(x, ...) {
   cat(sprintf("  support bounds: %s\n",
               if (bounded) "supplied (from parameter constraints)"
               else "unbounded"))
-  cat(sprintf("  log Z         : unknown (NA -- posterior marginal likelihood)\n"))
+  cat("  log Z         : unknown (NA -- posterior marginal likelihood)\n")
   cat(sprintf("  proposal seed : %s\n",
               if (!is.null(dr)) sprintf("%d posterior draws", nrow(dr))
               else "<none>"))
@@ -385,8 +385,10 @@ print.fb_log_posterior_producer <- function(x, ...) {
     # greta stores per-element lower / upper; recycle a scalar bound.
     lo <- nd$lower
     hi <- nd$upper
-    lo <- if (is.null(lo)) rep(-Inf, n_elem) else rep_len(as.numeric(lo), n_elem)
-    hi <- if (is.null(hi)) rep(Inf, n_elem) else rep_len(as.numeric(hi), n_elem)
+    lo <- if (is.null(lo)) rep(-Inf, n_elem) else
+      rep_len(as.numeric(lo), n_elem)
+    hi <- if (is.null(hi)) rep(Inf, n_elem) else
+      rep_len(as.numeric(hi), n_elem)
 
     if (n_elem == 1L) {
       coord_names <- nm
