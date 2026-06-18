@@ -1,0 +1,75 @@
+cff-version: 1.2.0
+message: "If you use flexyBayes in your research, please cite it as below."
+title: "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax"
+abstract: >-
+  Specify mixed models using familiar ASReml or brms-style formula syntax
+  and estimate them via Bayesian Markov chain Monte Carlo (greta),
+  integrated nested Laplace approximation (INLA), or a Stan passthrough
+  (brms), with cross-engine posterior triangulation as the signature
+  output. Returns results in formats compatible with the standard R
+  modelling ecosystem.
+type: software
+authors:
+  - given-names: "Max"
+    family-names: "Moldovan"
+    email: "max.moldovan@adelaide.edu.au"
+    orcid: "https://orcid.org/0000-0001-9680-8474"
+  - given-names: "Emi"
+    family-names: "Tanaka"
+    orcid: "https://orcid.org/0000-0002-1455-259X"
+  - given-names: "Francis K. C."
+    family-names: "Hui"
+    orcid: "https://orcid.org/0000-0003-0765-3533"
+  - given-names: "Anabel"
+    family-names: "Forte Deltell"
+    orcid: "https://orcid.org/0000-0001-9534-1817"
+version: 0.8.3
+date-released: "2026-06-17"
+license: GPL-3.0-or-later
+repository-code: "https://github.com/AAGI-AUS/flexyBayes"
+url: "https://github.com/AAGI-AUS/flexyBayes"
+keywords:
+  - bayesian-statistics
+  - mixed-models
+  - mcmc
+  - inla
+  - asreml
+  - greta
+  - r
+references:
+  - type: article
+    authors:
+      - family-names: "Simpson"
+        given-names: "Daniel"
+      - family-names: "Rue"
+        given-names: "Håvard"
+      - family-names: "Riebler"
+        given-names: "Andrea"
+      - family-names: "Martins"
+        given-names: "Thiago G."
+      - family-names: "Sørbye"
+        given-names: "Sigrunn H."
+    title: "Penalising Model Component Complexity: A Principled, Practical Approach to Constructing Priors"
+    journal: "Statistical Science"
+    year: 2017
+    volume: 32
+    issue: 1
+    start: 1
+    end: 28
+    doi: "10.1214/16-STS576"
+  - type: article
+    authors:
+      - family-names: "Rue"
+        given-names: "Håvard"
+      - family-names: "Martino"
+        given-names: "Sara"
+      - family-names: "Chopin"
+        given-names: "Nicolas"
+    title: "Approximate Bayesian inference for latent Gaussian models by using integrated nested Laplace approximations"
+    journal: "Journal of the Royal Statistical Society: Series B"
+    year: 2009
+    volume: 71
+    issue: 2
+    start: 319
+    end: 392
+    doi: "10.1111/j.1467-9868.2008.00700.x"

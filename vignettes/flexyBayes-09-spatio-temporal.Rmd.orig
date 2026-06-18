@@ -1,0 +1,297 @@
+---
+title: "Tutorial 09: Spatio-temporal models: AR1, spatial, temporal"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Tutorial 09: Spatio-temporal models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse  = TRUE,
+  comment   = "#>",
+  warning   = FALSE,
+  message   = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  dpi       = 150
+)
+options(flexyBayes.silence_default_prior_note = TRUE)
+greta_ok   <- requireNamespace("greta",   quietly = TRUE)
+agridat_ok <- requireNamespace("agridat", quietly = TRUE)
+ggplot2_ok <- requireNamespace("ggplot2", quietly = TRUE)
+set.seed(1400)
+mcmc_small <- list(n_samples = 1000, warmup = 2000, chains = 2)
+```
+
+# 1. Why spatio-temporal models?
+
+> **This is a syntax-and-representation catalogue.** It demonstrates how to
+> *write* models across the term surface. The fits use small sampling budgets
+> so the document builds quickly, and several printed diagnostics therefore do
+> **not** meet the package's own convergence thresholds
+> ($\widehat{R} \le 1.01$, ESS $\ge 400$); some model classes also mix poorly on
+> their backend at any budget. Read the posterior summaries here as
+> illustrations of the output *shape*, not as inferential results. For a
+> convergence-clean worked fit and the trustworthy-fit workflow, see the
+> *getting started* and *cross-engine triangulation* vignettes.
+
+
+Two classes of correlation are nearly universal in applied data and
+nearly always ignored:
+
+- **Spatial correlation.** Field trials, geostatistical surveys,
+  remote-sensing measurements: nearby observations are more similar
+  than distant ones, even after accounting for treatment effects.
+- **Temporal correlation.** Repeated measurements on the same
+  experimental unit: today's reading carries information about
+  tomorrow's, even after accounting for time trend.
+
+Ignoring either kind of correlation has the same effect: standard
+errors are biased downward, posterior credible intervals are too
+narrow, and inferences look more confident than the data warrant.
+
+`flexyBayes` covers two correlation structures:
+
+- **first-order autoregressive** (`ar1`) on a regular ordered factor
+  — for time, columns, or rows;
+- **separable two-dimensional autoregressive** (`ar1(row):ar1(col)`)
+  on a regular field grid — the workhorse of agricultural field-
+  trial analysis (Gilmour, Cullis, & Verbyla, 1997).
+
+INLA's spatial machinery — Besag-York-Mollié 2 (BYM2) for areal
+data, the stochastic partial differential equation (SPDE) approach
+for irregular geography, and the Hilbert-space approximate Gaussian
+process (HSGP) for fast continuous-domain approximations —
+substantially more powerful for irregular geographies — is on the
+roadmap.
+
+# 2. The spatial AR1×AR1 model: `stroup.nin`
+
+`agridat::stroup.nin` is the canonical Nebraska wheat trial (Stroup,
+2002): 56 genotypes laid out in a 22-row × 11-column field with
+some missing yields, replicated three times. The classic
+mixed-model analysis is:
+
+$$
+y_{ijk} = \mu + \tau_i + g_j + e_{ijk},
+$$
+
+with $\tau_i$ replicate effects, $g_j \sim \mathcal{N}(0,
+\sigma_g^2)$ random genotype effects, and $\{e_{ijk}\}$ residuals
+that are *correlated in space* — separable autoregressive on row and
+column.
+
+> **A note on the fits below — read first.** The spatial AR1×AR1 and the
+> temporal AR1 models here are structured-covariance models -- the
+> hardest case for Hamiltonian Monte Carlo, and greta-only (INLA refuses
+> the AR1×AR1 route). At the modest MCMC budgets used to keep the
+> vignette fast, these fits **frequently fail to mix** (large
+> $\widehat{R}$, near-zero ESS). Treat this vignette as a guide to
+> *specifying* spatial and temporal correlation structures, not as a
+> demonstration of inference; for a real analysis raise the budget
+> substantially and verify convergence as the *getting started* vignette
+> describes before interpreting anything.
+
+```{r stroup-data, eval = agridat_ok}
+library(flexyBayes)
+data(stroup.nin, package = "agridat")
+sn <- stroup.nin[!is.na(stroup.nin$yield) & !is.na(stroup.nin$rep), ]
+sn$row <- factor(sn$row)
+sn$col <- factor(sn$col)
+str(sn)
+```
+
+```{r stroup-fit, eval = greta_ok && agridat_ok}
+fit_spatial <- flexybayes(
+  fixed     = yield ~ 1 + rep,
+  random    = ~ gen,
+  rcov      = ~ ar1(row):ar1(col),
+  data      = sn,
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_spatial
+```
+
+The variance-component block reports the genotype variance and the
+two AR1 correlation parameters — one for rows, one for columns — plus
+the residual standard deviation. AR1 correlations near 1 indicate
+strong spatial autocorrelation; values near 0 indicate the
+independence model is approximately correct.
+
+A common diagnostic is the *plot* of the field-trial residuals: if
+spatial correlation has been adequately accounted for, the
+residuals are visually unstructured.
+
+```{r residual-plot, eval = greta_ok && agridat_ok && ggplot2_ok, fig.height = 4}
+sn$resid <- residuals(fit_spatial, type = "response")
+library(ggplot2)
+ggplot(sn, aes(x = as.numeric(col), y = as.numeric(row), fill = resid)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
+                       midpoint = 0) +
+  scale_y_reverse() +
+  coord_fixed() +
+  theme_minimal(base_size = 12) +
+  labs(x = "column", y = "row", fill = "residual",
+       title = "Field residuals after AR1 x AR1 spatial fit")
+```
+
+A patchy field — large red and blue regions — indicates remaining
+spatial structure that the AR1×AR1 has not captured. The natural
+extensions are an additional global spatial trend (e.g., `pol(row,
+2) + pol(col, 2)` in `random`) or a more flexible spatial covariance.
+
+# 3. Temporal correlation: longitudinal recast of `sleepstudy`
+
+The `sleepstudy` data are inherently longitudinal — ten consecutive
+days of measurement on each subject. The hierarchical-models
+vignette analysed it with a random subject intercept; here we add an
+AR1 correlation on the residuals to acknowledge that within-subject
+errors on adjacent days are likely correlated.
+
+```{r sleep-data, eval = greta_ok}
+data(sleepstudy, package = "lme4")
+sleepstudy$Days_f <- factor(sleepstudy$Days, levels = 0:9)
+str(sleepstudy)
+```
+
+```{r sleep-fit-ar1, eval = greta_ok}
+fit_temporal <- flexybayes(
+  fixed     = Reaction ~ Days,
+  random    = ~ Subject,
+  rcov      = ~ ar1(Days_f):Subject,
+  data      = sleepstudy,
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_temporal
+```
+
+The new variance component is the AR1 correlation parameter: the
+correlation between residuals one day apart. A correlation near
+zero means the random-intercept model has already absorbed most of
+the within-subject dependence; a correlation near one means the
+dependence is strong and the random-intercept fit was understating
+uncertainty.
+
+# 4. Spatial trend in addition to AR1
+
+Field trials often display *both* small-scale spatial correlation
+(captured by AR1×AR1) and *large-scale* spatial trend (a slowly
+varying gradient across the field). The two are layered:
+
+```r
+flexybayes(
+  fixed = yield ~ rep,
+  random = ~ gen + spl(row) + spl(col),         # global smooth trend
+  rcov   = ~ ar1(row):ar1(col),                  # local spatial AR1
+  data = ...
+)
+```
+
+The penalised splines on row and column capture global gradient; the
+AR1×AR1 captures local short-range correlation. This composite is
+the agronomy-textbook decomposition (Gilmour, Cullis, & Verbyla,
+1997).
+
+# 5. Limitations of the current spatial coverage
+
+`flexyBayes` covers regular grids with AR1 correlation. It does
+*not* cover:
+
+- **irregular geography** — the SPDE / Matérn approach (Lindgren,
+  Rue, & Lindström, 2011) is on the roadmap;
+- **areal data** — the BYM2 model (Riebler, Sørbye, Simpson, & Rue,
+  2016) is on the roadmap;
+- **continuous-time temporal correlation** — the
+  Ornstein–Uhlenbeck and continuous-AR processes are on the
+  roadmap;
+- **spatio-temporal interaction** — separable space-time covariance
+  is on the roadmap.
+
+For these models in the current release, route directly through
+`R-INLA` or `mgcv::gam(s = bs = "re")` with the relevant spatial
+basis. The *backend internals* vignette describes how a third-party
+fit can plug into `triangulate()` via the `fb_as_draws_simple`
+interface.
+
+# 6. Pitfalls
+
+**Row and column must be factors.** `flexyBayes` reads `ar1(row)` as
+"AR1 correlation on the levels of `row` in their factor order".
+Numeric `row` is coerced; if your row labels are not in field-order
+when factor-coerced, the AR1 correlation will be wrong. Set the
+factor levels explicitly: `factor(row, levels = sort(unique(row)))`.
+
+**The residual AR1 is not a substitute for design.** A poorly-
+designed trial cannot be rescued by spatial-error modelling. A
+randomised block design is still essential; the AR1 captures *what
+remains* after design accounts for the planned variation.
+
+**Identifiability with too few rows or columns.** A 4-row × 3-column
+field with 12 plots cannot identify both an AR1 correlation and a
+random-effect variance component — the data have insufficient degrees
+of freedom. Convergence diagnostics will flag this; refit without
+the AR1 and accept the simpler model.
+
+**INLA refuses AR1×AR1.** The `lgm_gate()` filter refuses spatial-AR1
+dispatch to INLA via the structured-covariance route, and the greta
+backend handles it natively. If you need the INLA approximation for a
+separable AR1 structure, route directly through `R-INLA` with
+`f(row, model = "ar1")` plus group indices (see the limitations above).
+
+# 7. Active prompts
+
+1. Refit `stroup.nin` with `rcov = ~ units` (no spatial structure).
+   How much does the genotype-level posterior change? How much
+   does $\sigma_e$ change?
+2. Add a spatial trend to the AR1×AR1 fit:
+   `random = ~ gen + spl(as.numeric(row)) + spl(as.numeric(col))`.
+   What happens to the AR1 correlation parameters?
+3. Refit `sleepstudy` with both random-subject-slope (asreml form:
+   `~ Subject + Subject:Days`) and the AR1 on residuals.
+   Which partition of variance dominates?
+
+# 8. Session information
+
+```{r session-info}
+sessionInfo()
+```
+
+# References
+
+Cullis, B. R., Smith, A. B., & Coombes, N. E. (2006). On the design
+of early generation variety trials with correlated data. *Journal of
+Agricultural, Biological, and Environmental Statistics*, 11(4),
+381–393.
+
+Gilmour, A. R., Cullis, B. R., & Verbyla, A. P. (1997). Accounting
+for natural and extraneous variation in the analysis of field
+experiments. *Journal of Agricultural, Biological, and Environmental
+Statistics*, 2(3), 269–293.
+
+Lindgren, F., Rue, H., & Lindström, J. (2011). An explicit link
+between Gaussian fields and Gaussian Markov random fields: The
+stochastic partial differential equation approach. *Journal of the
+Royal Statistical Society: Series B*, 73(4), 423–498.
+
+Riebler, A., Sørbye, S. H., Simpson, D., & Rue, H. (2016). An
+intuitive Bayesian spatial model for disease mapping that accounts
+for scaling. *Statistical Methods in Medical Research*, 25(4),
+1145–1165.
+
+Stroup, W. W. (2002). Power analysis based on spatial effects mixed
+models: A tool for comparing design and analysis strategies in the
+presence of spatial variability. *Journal of Agricultural,
+Biological, and Environmental Statistics*, 7(4), 491–511.

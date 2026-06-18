@@ -1,0 +1,92 @@
+Package: flexyBayes
+Title: Flexible Bayesian Mixed Models with ASReml and 'brms'-Style Syntax
+Version: 0.8.3
+Authors@R: c(
+    person("Max", "Moldovan", email = "max.moldovan@adelaide.edu.au",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-9680-8474")),
+    person("Emi", "Tanaka", role = "aut",
+           comment = c(ORCID = "0000-0002-1455-259X")),
+    person("Francis K.C.", "Hui", role = "aut",
+           comment = c(ORCID = "0000-0003-0765-3533")),
+    person("Anabel", "Forte Deltell", role = "aut",
+           comment = c(ORCID = "0000-0001-9534-1817"))
+    )
+Description: Specify mixed models using familiar ASReml or brms-style formula
+    syntax and estimate them via greta, INLA, or brms (Stan). Returns results
+    in formats compatible with the standard R modelling ecosystem including
+    'summary()', 'emmeans', 'marginaleffects', and 'effectsize'. The package
+    translates ASReml-style formulas (fixed, random, rcov) to backend-specific
+    code (greta, INLA, or brms) using an indexing approach that scales to large
+    agricultural datasets, and supports cross-engine posterior triangulation
+    as a robustness signal. Supports Gaussian, binomial, Poisson, negative
+    binomial, gamma, and beta families, as well as structured covariance
+    models (us, fa, ar1), genomic relationship matrices (GBLUP),
+    pedigree-based models, spatial models, and splines.
+License: GPL (>= 3)
+URL: https://github.com/AAGI-AUS/flexyBayes
+BugReports: https://github.com/AAGI-AUS/flexyBayes/issues
+Depends:
+    R (>= 4.1.0)
+Imports:
+    cli,
+    coda,
+    data.table,
+    generics,
+    lifecycle,
+    stats,
+    methods,
+    graphics,
+    splines,
+    mgcv,
+    Matrix,
+    utils
+Suggests:
+    greta (>= 0.4.0),
+    brms,
+    INLA,
+    fst (>= 0.9.0),
+    benchmarkme,
+    memuse,
+    bayesplot,
+    posterior,
+    ggplot2,
+    emmeans,
+    estimability,
+    marginaleffects,
+    insight,
+    effectsize,
+    loo,
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    agridat,
+    lme4,
+    nlme,
+    MASS,
+    sommer,
+    survival,
+    lavaan,
+    ordinal,
+    pscl,
+    faraway,
+    dplyr,
+    tidyr,
+    patchwork,
+    ggrepel,
+    fields,
+    sn,
+    tensorflow,
+    vdiffr,
+    withr
+Additional_repositories:
+    https://inla.r-inla-download.org/R/stable,
+    https://greta-dev.r-universe.dev
+Encoding: UTF-8
+Language: en-AU
+Roxygen: list(markdown = TRUE, roclets = c("rd", "namespace", "collate"))
+RoxygenNote: 7.3.3
+VignetteBuilder: knitr
+LazyData: true
+Config/testthat/edition: 3
+Config/testthat/parallel: true

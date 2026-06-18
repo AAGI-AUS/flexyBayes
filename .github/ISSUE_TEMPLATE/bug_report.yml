@@ -1,0 +1,61 @@
+name: Bug report
+description: Report unexpected behaviour or an error in flexyBayes
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. A small
+        reproducible example (reprex) is the single biggest
+        accelerator of a useful resolution. The
+        [reprex](https://reprex.tidyverse.org) package automates the
+        formatting.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One paragraph — what you expected, what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reprex
+    attributes:
+      label: Reproducible example
+      description: A minimal, self-contained R script that triggers the issue.
+      render: r
+    validations:
+      required: true
+
+  - type: textarea
+    id: session
+    attributes:
+      label: Session info
+      description: Output of `sessionInfo()` — especially the `flexyBayes`, `greta`, and `INLA` versions.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Which backend
+      description: Which dispatch path was the call running on?
+      options:
+        - greta
+        - INLA
+        - brms (passthrough)
+        - auto
+        - not applicable / not yet dispatched
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Anything else — verbose output, generated greta code, screenshots, related issues.
+    validations:
+      required: false

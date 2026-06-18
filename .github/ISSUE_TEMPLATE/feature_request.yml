@@ -1,0 +1,65 @@
+name: Feature request
+description: Propose a new feature or enhancement for flexyBayes
+title: "[feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature. The most useful proposals
+        describe a real workflow you currently cannot accomplish or
+        have to work around.
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What problem are you trying to solve? What's the current friction?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-api
+    attributes:
+      label: Proposed API
+      description: A code sketch of how you would call the feature. A rough sketch is fine — final API is decided collaboratively.
+      render: r
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways you have thought about solving this, including workarounds with the current package.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: Which part of the package would this affect?
+      options:
+        - Modelling API (flexybayes(), fb())
+        - Priors DSL (fb_prior())
+        - Backend dispatch / capability gating
+        - Triangulation
+        - Vignettes / documentation
+        - Tooling / CI / packaging
+        - Other
+    validations:
+      required: false
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Suggested stage
+      description: Which stage of the roadmap does this belong to, in your view?
+      options:
+        - 0.8.x patch
+        - next minor
+        - v1.0 or later
+        - not sure
+    validations:
+      required: false

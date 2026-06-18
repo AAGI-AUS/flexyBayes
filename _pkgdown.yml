@@ -1,0 +1,205 @@
+url: https://aagi-aus.github.io/flexyBayes/
+
+template:
+  bootstrap: 5
+  bootswatch: cosmo
+
+development:
+  mode: auto
+
+home:
+  title: flexyBayes — Flexible Bayesian mixed models with ASReml and brms-style syntax
+  description: >
+    Specify mixed models using ASReml-style or brms-style formula syntax,
+    estimate them via greta, INLA, or brms (Stan), and triangulate posterior
+    agreement across engines as a robustness signal.
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, tutorials, news]
+    right: [search, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/flexyBayes-01-getting-started.html
+    articles:
+      text: Tutorials
+      menu:
+        - text: "Foundations"
+        - text: 01 — Getting started
+          href: articles/flexyBayes-01-getting-started.html
+        - text: 02 — asreml-shaped formulas
+          href: articles/flexyBayes-02-asreml-formulas.html
+        - text: 03 — Foundational regression
+          href: articles/flexyBayes-03-regression.html
+        - text: "---"
+        - text: "Core mixed-model concepts"
+        - text: 04 — Hierarchical models
+          href: articles/flexyBayes-04-hierarchical.html
+        - text: 05 — Structured covariance
+          href: articles/flexyBayes-05-structured-covariance.html
+        - text: 06 — Priors and regularisation
+          href: articles/flexyBayes-06-priors.html
+        - text: "---"
+        - text: "Applied workflows"
+        - text: 07 — METs and genomic selection
+          href: articles/flexyBayes-07-met-and-genomics.html
+        - text: 08 — Downstream analysis
+          href: articles/flexyBayes-08-downstream-analysis.html
+        - text: 09 — Spatio-temporal models
+          href: articles/flexyBayes-09-spatio-temporal.html
+        - text: "---"
+        - text: "Advanced & internals"
+        - text: 10 — Cross-engine triangulation
+          href: articles/flexyBayes-10-triangulation.html
+        - text: 11 — LGM feasibility filter
+          href: articles/flexyBayes-11-lgm-feasibility.html
+        - text: 12 — Backend internals
+          href: articles/flexyBayes-12-backend-internals.html
+        - text: 14 — Choosing an engine
+          href: articles/flexyBayes-14-engine-selection.html
+        - text: 15 — Extending with a backend
+          href: articles/flexyBayes-15-extending-backends.html
+        - text: 16 — Big data — streaming aggregation
+          href: articles/flexyBayes-16-big-data-streaming.html
+
+reference:
+  - title: Verbs
+    desc: >
+      The universal entry, the single-engine pins, the feasibility
+      planner, cross-engine triangulation, and approximation validation.
+    contents:
+      - flexybayes
+      - flexybayes_stream
+      - fb
+      - fb_greta
+      - fb_inla
+      - fb_brms
+      - fb_plan
+      - triangulate
+      - validate_approximation
+      - proceed
+  - title: Ingest adapters
+    desc: Turn a model specification into a backend-agnostic representation.
+    contents:
+      - fb_from_asreml
+      - fb_from_brms
+      - fb_from_greta
+  - title: Constructor nouns
+    desc: >
+      The four classed input constructors: priors, covariance carriers,
+      approximation schemes, and engine selections.
+    contents:
+      - fb_prior
+      - fb_cov
+      - fb_approx
+      - fb_engine
+      - is_fb_cov
+      - is_fb_approx
+      - is_fb_engine
+  - title: Accessors and discovery
+    desc: Routing trace, refusal vocabulary, canonical names, prior summary, status.
+    contents:
+      - backend_decision
+      - canonical_names
+      - fb_backend_status
+      - fb_structured_cov
+      - fb_refusals
+      - prior_summary
+      - gretaR_status
+      - cat_code
+  - title: Cross-package interop
+    desc: Tidiers, emmeans, marginaleffects, and draws conversion.
+    contents:
+      - tidy.flexybayes
+      - glance.flexybayes
+      - augment.flexybayes
+      - emm_basis.flexybayes
+      - recover_data.flexybayes
+      - get_coef.flexybayes
+      - get_vcov.flexybayes
+      - get_predict.flexybayes
+      - get_data.flexybayes
+      - set_coef.flexybayes
+      - fb_as_draws_simple
+  - title: Methods
+    desc: >
+      S3 methods on the fit objects. Most are reached through their
+      generic (for example `coef()`, `predict()`); they are listed here
+      for completeness.
+    contents:
+      - summary.flexybayes
+      - summary.flexybayes_aggregated
+      - summary.flexybayes_glm
+      - summary.fb_plan
+      - print.flexybayes
+      - print.flexybayes_aggregated
+      - print.flexybayes_brms
+      - print.flexybayes_direct_greta
+      - print.fb_approx
+      - print.fb_cov
+      - print.fb_engine
+      - print.fb_plan
+      - coef.flexybayes
+      - coef.flexybayes_inla
+      - coef.flexybayes_direct_greta
+      - confint.flexybayes
+      - confint.flexybayes_brms
+      - confint.flexybayes_glm
+      - vcov.flexybayes
+      - vcov.flexybayes_inla
+      - predict.flexybayes
+      - predict.flexybayes_brms
+      - predict.flexybayes_direct_greta
+      - predict.flexybayes_inla
+      - fitted.flexybayes
+      - fitted.flexybayes_inla
+      - residuals.flexybayes
+      - residuals.flexybayes_inla
+      - plot.flexybayes
+      - anova.flexybayes
+      - logLik.flexybayes
+      - logLik.flexybayes_inla
+      - logLik.flexybayes_brms
+      - nobs.flexybayes
+      - family.flexybayes
+      - family.flexybayes_inla
+      - formula.flexybayes
+      - formula.flexybayes_inla
+      - model.matrix.flexybayes
+      - update.flexybayes
+      - as.data.frame.fb_plan
+  - title: Datasets
+    contents:
+      - met_example
+      - has_keyword("datasets")
+  - title: Package
+    contents:
+      - flexyBayes-package
+
+articles:
+  - title: Foundations
+    navbar: ~
+    contents:
+      - flexyBayes-01-getting-started
+      - flexyBayes-02-asreml-formulas
+      - flexyBayes-03-regression
+  - title: Core mixed-model concepts
+    contents:
+      - flexyBayes-04-hierarchical
+      - flexyBayes-05-structured-covariance
+      - flexyBayes-06-priors
+  - title: Applied workflows
+    contents:
+      - flexyBayes-07-met-and-genomics
+      - flexyBayes-08-downstream-analysis
+      - flexyBayes-09-spatio-temporal
+  - title: Advanced and internals
+    contents:
+      - flexyBayes-10-triangulation
+      - flexyBayes-11-lgm-feasibility
+      - flexyBayes-12-backend-internals
+      - flexyBayes-13-lgm-feasibility-memory
+      - flexyBayes-14-engine-selection
+      - flexyBayes-15-extending-backends
+      - flexyBayes-16-big-data-streaming

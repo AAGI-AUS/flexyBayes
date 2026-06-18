@@ -1,0 +1,584 @@
+---
+title: "Tutorial 05: Structured covariance: us, fa, at, and design components"
+date: "2026-06-06"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Tutorial 05: Structured covariance}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+# 1. Why structured covariance?
+
+> **This is a syntax-and-representation catalogue.** It demonstrates how to
+> *write* models across the term surface. The fits use small sampling budgets
+> so the document builds quickly, and several printed diagnostics therefore do
+> **not** meet the package's own convergence thresholds
+> ($\widehat{R} \le 1.01$, ESS $\ge 400$); some model classes also mix poorly on
+> their backend at any budget. Read the posterior summaries here as
+> illustrations of the output *shape*, not as inferential results. For a
+> convergence-clean worked fit and the trustworthy-fit workflow, see the
+> *getting started* and *cross-engine triangulation* vignettes.
+
+
+A *structured covariance* model places restrictions on the covariance
+matrix of a vector of random effects — typically genotype effects
+across environments, or time-points, or treatments. The simplest
+restriction is *independence* (the diagonal model); the most general
+is *unrestricted* (the unstructured model). Between these two
+extremes lie families of intermediate restrictions that trade
+parsimony for flexibility:
+
+- **diagonal**: each environment has its own variance; no
+  cross-environment correlation;
+- **compound symmetry**: a single variance and a single correlation;
+- **factor-analytic**: a small-rank approximation to the
+  cross-environment correlation, the workhorse of agricultural
+  multi-environment trial (MET) analysis (Smith, Cullis, & Thompson,
+  2001);
+- **autoregressive**: correlation decays geometrically with distance
+  in environment ordering — covered in the *spatio-temporal*
+  vignette;
+- **unstructured**: no restriction; the full $n(n+1)/2$ free entries
+  of an $n \times n$ symmetric positive-definite matrix.
+
+This vignette demonstrates the four primary structures
+`flexyBayes` exposes — diagonal (`at(env, simple)`), unstructured
+(`us(env)`), factor-analytic (`fa(env, k)`), and design variance
+components (nested random effects). The autoregressive case lives in
+the *spatio-temporal* vignette; the factor-analytic biplot lives in
+the *MET and genomic selection* vignette.
+
+INLA cannot fit these structures (the hyperparameter budget
+exceeds the gate's hard limit even at modest environment counts).
+The greta backend handles them all.
+
+> **A note on the fits below — read first.** Structured-covariance
+> models are the hardest case for Hamiltonian Monte Carlo. At the modest
+> MCMC budgets used here (kept small so the vignette builds quickly), the
+> fits below **frequently fail to mix** -- you will see large
+> $\widehat{R}$ and near-zero ESS, sometimes severely so. That is
+> expected for these models at a vignette-scale budget on the greta
+> sampler, and it is shown rather than hidden. **Treat this vignette
+> purely as a guide to *specifying* each covariance structure, not as a
+> demonstration of inference.** Reliable inference on these structures
+> needs a much larger budget (and, for the hardest of them, a more
+> specialised sampler than flexyBayes ships); always verify convergence as the
+> *getting started* vignette describes before interpreting anything, and
+> treat a non-mixing variance component as a signal to simplify the
+> structure or supply an explicit prior. For a factor-analytic `fa()` term,
+> note that the raw loadings are identified only up to rotation and sign --
+> their $\widehat{R}$ is expected to be large -- so judge convergence on the
+> identified covariance via `fb_structured_cov()` rather than the loadings.
+
+# 2. The diagonal: `at(env, simple):geno`
+
+The diagonal model — `at(env, simple):geno` — gives each environment
+its own genotype variance, but no correlation across environments.
+This is the natural starting point: it asks *"do genotypes differ in
+their variability across environments?"* without yet asking *"are
+those differences correlated?"*
+
+We use the bundled `met_example` (10 genotypes × 4 environments × 3
+reps).
+
+
+``` r
+library(flexyBayes)
+data(met_example, package = "flexyBayes")
+dat <- met_example$dat
+str(dat, max.level = 1)
+#> 'data.frame':	120 obs. of  10 variables:
+#>  $ geno   : Factor w/ 10 levels "G1","G10","G2",..: 1 3 4 5 6 7 8 9 10 2 ...
+#>  $ env    : Factor w/ 4 levels "E1","E2","E3",..: 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ rep    : Factor w/ 3 levels "R1","R2","R3": 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ block  : Factor w/ 6 levels "B1","B2","B3",..: 1 2 3 4 5 6 1 2 3 4 ...
+#>  $ row    : Factor w/ 10 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+#>  $ col    : Factor w/ 12 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+#>  $ yield  : num  51.9 45 49.4 48.3 47.8 ...
+#>  $ x_cov  : num  -0.23 0.837 -1.745 1.689 0.865 ...
+#>  $ bin_y  : int  0 1 0 0 0 0 1 1 0 0 ...
+#>  $ count_y: int  10 7 5 9 9 9 4 6 5 8 ...
+#>  - attr(*, "out.attrs")=List of 2
+```
+
+
+``` r
+fit_diag <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ at(env, simple):geno,
+  data      = dat,
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_diag
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~at(env, simple):geno 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 17.1 sec
+#>   Params : 4 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 60.656  [!] 
+#>   Min ESS: 7 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+The variance-component block reports one variance per environment.
+A wide environment-to-environment spread of these variances is the
+first signal that genotype expression depends on environment — i.e.,
+that genotype-by-environment interaction (GxE) is non-trivial.
+
+# 3. Heterogeneous residual variance: `rcov = ~ at(env):units`
+
+Heterogeneous *residual* variance — distinct from heterogeneous
+*genotype* variance — is the model in which $\sigma_e^2$ varies
+across some grouping factor:
+
+
+``` r
+fit_het <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ geno,
+  rcov      = ~ at(env):units,
+  data      = dat,
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_het
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~geno 
+#>   Rcov   : ~at(env):units 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 9.9 sec
+#>   Params : 4 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 9.679  [!] 
+#>   Min ESS: 12 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+The residual block now reports one $\sigma_e$ per environment. In
+field-trial data this is essentially always present — a wet
+environment has noisier measurement than a dry one — and ignoring it
+biases the genotype-effect posteriors.
+
+# 4. The factor-analytic: `fa(env, k):geno`
+
+The factor-analytic model — `fa(env, k):geno` with a small `k` (1, 2,
+or 3) — approximates the genotype-by-environment covariance with `k`
+latent factors. For nine environments, `k = 2` reduces 45 free
+parameters to 18; for thirty environments, `k = 3` reduces 465 free
+parameters to 90. It is the standard multi-environment-trial
+parameterisation (Smith, Cullis, & Thompson, 2001).
+
+
+``` r
+data(yan.winterwheat, package = "agridat")
+fit_fa <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ fa(env, 2):gen,
+  data      = yan.winterwheat,
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_fa
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~fa(env, 2):gen 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 14.2 sec
+#>   Params : 5 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 11.271  [!] 
+#>   Min ESS: 0 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+The variance-component block reports the loading variances and the
+specific (environment-only) variances; together these reconstruct the
+implied environment-by-environment covariance via
+$\boldsymbol{\Sigma} = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$,
+where $\boldsymbol{\Lambda}$ is the $n_{\text{env}} \times k$ loading
+matrix and $\boldsymbol{\Psi}$ is the diagonal of specific variances.
+The biplot interpretation lives in the *MET and genomic selection*
+vignette.
+
+# 5. The unstructured: `us(env):geno`
+
+The unstructured model places no restriction on the environment-by-
+environment covariance. It is preferable when the number of
+environments is small enough (typically $\le 4$ or $5$) that the
+$n(n+1)/2$ free entries are estimable from the data.
+
+
+``` r
+fit_us <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ us(env):geno,
+  data      = dat,                        # met_example, 4 envs
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_us
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~us(env):geno 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 13.2 sec
+#>   Params : 4 monitored; 2 fixed, 1 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 13.91  [!] 
+#>   Min ESS: 7 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+For four environments the unstructured model has 10 free entries —
+estimable but already loose with only 30 observations per environment.
+The convergence diagnostics (ESS, $\widehat{R}$) are the first thing
+to check on an unstructured fit; if they degrade, refit with `fa(env,
+2):geno` and accept the parsimonious approximation.
+
+The greta backend handles `us(env):geno` via Cholesky-factor
+parameterisation — internally, the covariance is parameterised as
+$\mathbf{L}\mathbf{L}^\top$ for a lower-triangular $\mathbf{L}$ with
+positive diagonal — which avoids the boundary problems that direct
+covariance-matrix priors suffer.
+
+# 6. Design variance components
+
+A *design* variance component is a random effect that captures
+trial-design structure: replicates, blocks-within-replicates,
+plots-within-blocks. Each layer is added as an independent random
+term:
+
+
+``` r
+fit_design <- flexybayes(
+  fixed     = yield ~ env,
+  random    = ~ rep + rep:block + geno,
+  data      = dat,
+  n_samples = mcmc_small$n_samples,
+  warmup    = mcmc_small$warmup,
+  chains    = mcmc_small$chains,
+  verbose   = FALSE
+)
+fit_design
+#> Bayesian mixed model  [flexyBayes]
+#> ------------------------------------------------------- 
+#>   Fixed  : yield ~ env 
+#>   Random : ~rep + rep:block + geno 
+#>   Family : gaussian ( identity link )
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 14.9 sec
+#>   Params : 6 monitored; 2 fixed, 3 random terms
+#>   Representation: exact
+#>   Engine:         greta MCMC
+#>   Max Rhat: 17.396  [!] 
+#>   Min ESS: 5 
+#> ------------------------------------------------------- 
+#>   $glm    -- GLM-compatible (summary, emmeans, etc.)
+#>   $greta  -- native greta (draws, model, calculate)
+#>   $extras -- diagnostics, BLUPs, variance components
+```
+
+The variance-component block reports separate variances for `rep`,
+`rep:block`, and `geno`. The intraclass-correlation interpretation
+generalises: each variance is a contribution to total variance, and
+the proportions tell you which design layer accounts for the most
+variation.
+
+In field experiments — incomplete blocks, alpha designs, row–column
+designs — the design VC is essential for honest standard errors. The
+*spatio-temporal* vignette extends this to spatial residual
+correlation on top of the design structure.
+
+# 7. Known-covariance inputs: chol, precision, pedigree opt-in
+
+The `vm()` and `ped()` special-terms accept the covariance carrier
+in multiple representations. The dense $V$ form is the default and
+remains unchanged from earlier releases; three additional formats
+let the caller skip a redundant factorisation, route through INLA's
+sparse-precision interface, or declare a sparse pedigree precision
+directly. The choice changes the computational path, not the model.
+
+The covariance carrier is declared with the `fb_cov()` constructor
+inside the random term: `vm(group, cov = fb_cov(M, type = ...))`. The
+`type` selects how the carrier is interpreted -- `"dense"`, `"chol"`,
+`"precision"`, `"blocks"`, or `"low_rank"`. The matrix `M` names an
+entry in `known_matrices`, resolved at fit time.
+
+**Dense $V$ (default; both backends).** Pass a covariance matrix
+directly. flexyBayes computes its Cholesky factor at fit time. The
+bare `vm(geno, Gmat)` form is the dense default; `fb_cov(Gmat,
+type = "dense")` is the explicit equivalent:
+
+
+``` r
+fit_dense <- flexybayes(
+  yield ~ env, random = ~ vm(geno, cov = fb_cov(Gmat, type = "dense")),
+  data = met_example, known_matrices = list(Gmat = G_mat),
+  backend = "greta"
+)
+```
+
+**User-supplied Cholesky factor (greta backend).** If the
+lower-triangular Cholesky factor of $V$ is already available
+(serialised from a prior step, or computed once across many fits),
+declare it with `fb_cov(L, type = "chol")` to skip the `t(chol(V))`
+recomputation:
+
+
+``` r
+L_user <- t(chol(G_mat))   # build once, reuse across fits
+fit_chol <- flexybayes(
+  yield ~ env, random = ~ vm(geno, cov = fb_cov(L_user, type = "chol")),
+  data = met_example, known_matrices = list(L_user = L_user),
+  backend = "greta"
+)
+```
+
+The chol input must be square and lower-triangular; the validator
+refuses on an upper-triangular or non-square input.
+
+**Sparse precision matrix (greta + INLA backends).** Many sources
+of structured covariance arrive sparse upstream of flexyBayes:
+pedigree-based $A^{-1}$ is sparse by construction, spatial
+precision matrices from BYM2 / ICAR are sparse, and many block-
+independent designs have sparse precision even when the
+covariance itself is dense. Passing the sparse precision directly
+avoids dense intermediates:
+
+
+``` r
+Q <- solve(G_mat)   # or build sparse Q directly via ICAR / BYM2
+fit_prec <- flexybayes(
+  yield ~ env, random = ~ vm(geno, cov = fb_cov(Q, type = "precision")),
+  data = met_example, known_matrices = list(Q = Q),
+  backend = "inla"
+)
+```
+
+On the INLA backend, sparse precision routes through INLA's
+user-defined precision interface
+`f(<var>_id, model = "generic0", Cmatrix = Q)` (Rue & Held 2005,
+*Gaussian Markov Random Fields*; Lindgren et al. 2011). The
+sparse path is the recommended route for large spatial / genomic
+problems where the dense covariance would not fit in memory. On
+greta the precision matrix is densified at fit time
+(`as.matrix(solve(chol(Q)))`), so the sparse-efficiency win is
+backend-specific.
+
+The validator checks symmetry and positive-definiteness; refusals
+name the failure mode (`precision_not_symmetric`,
+`precision_not_positive_definite`).
+
+**Pedigree sparse-precision opt-in.** When the user has already
+inverted the pedigree to $A^{-1}$ (or pulled sparse $A^{-1}$
+directly from `pedigreemm::getAInv()`), the `ped()` constructor
+takes a flag that routes through the sparse-precision codepath
+without a redundant inversion:
+
+
+``` r
+A_inv <- solve(A_mat)   # or pedigreemm::getAInv(ped_obj)
+fit_ped_sparse <- flexybayes(
+  yield ~ env,
+  random = ~ ped(animal, cov = fb_cov(A_inv, type = "precision",
+                                      sparse_precision = TRUE)),
+  data = animal_data, known_matrices = list(A_inv = A_inv),
+  backend = "inla"
+)
+```
+
+flexyBayes does not depend on `pedigreemm` or any pedigree-graph
+library; the user constructs $A^{-1}$ and passes it. The level
+ordering of the grouping factor must match the row/column order
+of the supplied precision matrix.
+
+**One carrier per term.** A single `vm()` term carries exactly one
+`fb_cov()` declaration. The five carrier types -- `"dense"`,
+`"chol"`, `"precision"`, `"blocks"`, `"low_rank"` -- are mutually
+exclusive within a carrier. The bare dense form `vm(geno, Gmat)`
+remains available as the default when no `cov =` is supplied.
+
+> **Deprecation (v0.4.0).** The legacy keyword carriers
+> `vm(group, chol = L)`, `vm(group, precision = Q)`,
+> `vm(group, blocks = list(...))`, and
+> `vm(group, low_rank_factor = U, low_rank_scheme = "pca")` are
+> deprecated in favour of `fb_cov()` and emit a migration warning.
+> They continue to work through this release and are removed at
+> v0.5.0.
+
+**Backend mapping.** With `backend = "auto"`, dispatch routes
+precision-type vm/ped to INLA (preferred for sparsity); chol-
+and dense-type vm/ped to greta. With explicit `backend = "inla"`,
+chol and dense vm/ped raise a structured `lgm_gate` refusal naming
+the actionable workaround (re-express as
+`vm(group, cov = fb_cov(solve(V), type = "precision"))`, or route
+via `backend = "greta"`).
+
+# 8. Comparing covariance structures
+
+Two competing structures on the same data are compared via PSIS-LOO
+(see the *downstream analysis* vignette for the manual log-likelihood
+computation). For factor-analytic versus unstructured, the rule of
+thumb is:
+
+- if `loo_compare` puts the unstructured fit ahead by more than
+  several standard errors, the constraints of the factor-analytic
+  approximation are too tight;
+- if `loo_compare` returns a difference smaller than its standard
+  error, the parsimonious factor-analytic is preferred.
+
+# 9. Pitfalls
+
+**Hyperparameter budget exceeded → INLA refuses.** `us(env):geno`
+with $n_{\text{env}} = 9$ has 45 free covariance entries — well above
+INLA's hyperparameter budget of 15. The package's `lgm_gate()`
+refuses INLA dispatch and routes to greta. The *LGM feasibility*
+vignette explains the override path if you have reasons to ignore
+the refusal.
+
+**Identifiability of factor-analytic loadings.** The factor-analytic
+parameterisation is non-identifiable up to rotation — multiple
+loading matrices reproduce the same covariance. The package fits
+without imposing a rotation; the *MET and genomic selection*
+vignette imposes a post-fit rotation for biplot interpretability.
+
+**Boundary on a heterogeneous-residual fit.** When one environment
+is much less variable than the others, the corresponding residual
+posterior can pile up near zero. The PC default prior keeps this
+honest; a long-tailed prior (lognormal) on the residual would push
+the posterior away from zero artefactually.
+
+**Convergence on small datasets with rich covariances.** A 12-genotype
+× 3-environment dataset cannot identify a $3 \times 3$ unstructured
+covariance — there are simply not enough observations per cell.
+Convergence diagnostics will flag this, but the more honest move is
+to choose `fa(env, 1):gen` (a one-factor approximation) up front.
+
+# 10. Active prompts
+
+1. Refit `met_example` with `fa(env, 1):geno` and `fa(env, 3):geno`.
+   How does the fit improve as `k` increases? (Compute
+   approximate PSIS-LOO via the manual route in the *downstream
+   analysis* vignette.)
+2. Compare `us(env):geno` and `fa(env, 2):geno` on `met_example`.
+   The two should give similar genotype-level posteriors with four
+   environments — confirm.
+3. Build a design-VC fit with `rep + rep:block + geno + geno:env`
+   on `met_example`. Which variance component dominates?
+
+# 11. Session information
+
+
+``` r
+sessionInfo()
+#> R version 4.5.2 (2025-10-31)
+#> Platform: aarch64-apple-darwin20
+#> Running under: macOS Tahoe 26.5.1
+#> 
+#> Matrix products: default
+#> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+#> 
+#> time zone: Australia/Adelaide
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] flexyBayes_0.8.3
+#> 
+#> loaded via a namespace (and not attached):
+#>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+#>   [4] tensorflow_2.20.0      loo_2.9.0              S7_0.2.2              
+#>   [7] tensorA_0.36.2.1       INLA_25.10.19          TH.data_1.1-5         
+#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
+#>  [13] gretaR_0.2.0           sf_1.1-0               survival_3.8-3        
+#>  [16] agridat_1.26           processx_3.9.0         magrittr_2.0.5        
+#>  [19] posterior_1.7.0        compiler_4.5.2         rlang_1.2.0           
+#>  [22] progress_1.2.3         tools_4.5.2            data.table_1.18.2.1   
+#>  [25] knitr_1.51             prettyunits_1.2.0      bridgesampling_1.2-1  
+#>  [28] bit_4.6.0              classInt_0.4-11        reticulate_1.45.0     
+#>  [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+#>  [34] KernSmooth_2.23-26     withr_3.0.2            grid_4.5.2            
+#>  [37] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
+#>  [40] ggplot2_4.0.3          globals_0.19.1         emmeans_2.0.2         
+#>  [43] scales_1.4.0           MASS_7.3-65            dichromat_2.0-0.1     
+#>  [46] cli_3.6.6              mvtnorm_1.3-6          crayon_1.5.3          
+#>  [49] generics_0.1.4         RcppParallel_5.1.11-2  otel_0.2.0            
+#>  [52] tfruns_1.5.4           DBI_1.3.0              proxy_0.4-29          
+#>  [55] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
+#>  [58] parallel_4.5.2         coro_1.1.0             matrixStats_1.5.0     
+#>  [61] base64enc_0.1-6        marginaleffects_0.32.0 brms_2.23.0           
+#>  [64] vctrs_0.7.3            Matrix_1.7-4           sandwich_3.1-1        
+#>  [67] jsonlite_2.0.0         greta_0.5.1            callr_3.7.6           
+#>  [70] hms_1.1.4              bit64_4.8.0            listenv_0.10.1        
+#>  [73] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
+#>  [76] codetools_0.2-20       distributional_0.7.0   stringi_1.8.7         
+#>  [79] gtable_0.3.6           tibble_3.3.1           pillar_1.11.1         
+#>  [82] Brobdingnag_1.2-9      torch_0.17.0           R6_2.6.1              
+#>  [85] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
+#>  [88] png_0.1-9              backports_1.5.1        tfautograph_0.3.2     
+#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.1-1.1        
+#>  [94] checkmate_2.3.4        coda_0.19-4.1          nlme_3.1-168          
+#>  [97] whisker_0.4.1          xfun_0.57              zoo_1.8-15            
+#> [100] pkgconfig_2.0.3
+```
+
+# References
+
+Smith, A. B., Cullis, B. R., & Thompson, R. (2001). Analyzing
+variety by environment data using multiplicative mixed models and
+adjustments for spatial field trend. *Biometrics*, 57(4), 1138–1147.
+
+Smith, A. B., Cullis, B. R., & Thompson, R. (2005). The analysis of
+crop cultivar breeding and evaluation trials: An overview of current
+mixed model approaches. *Journal of Agricultural Science*, 143(6),
+449–462.
+
+Patterson, H. D., & Williams, E. R. (1976). A new class of resolvable
+incomplete block designs. *Biometrika*, 63(1), 83–92.
+
+Piepho, H.-P., & Möhring, J. (2007). Computing heritability and
+selection response from unbalanced plant breeding trials. *Genetics*,
+177(3), 1881–1888.

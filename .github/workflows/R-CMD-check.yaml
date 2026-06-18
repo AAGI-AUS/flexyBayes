@@ -1,0 +1,92 @@
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: R-CMD-check
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release'}
+          - {os: macos-14,       r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'release'}
+          - {os: ubuntu-latest,  r: 'oldrel-1'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_FORCE_SUGGESTS_: false
+      _R_CHECK_CRAN_INCOMING_REMOTE_: false
+      # Skip RUNNING \donttest examples on CI: several illustrate fits
+      # that need optional backends (greta / brms / INLA) and datasets
+      # (lme4::sleepstudy) not installed here. The examples are still
+      # parsed and syntax-checked; they run on CRAN submission.
+      _R_CHECK_DONTTEST_EXAMPLES_: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      # greta requires Python + TensorFlow + tensorflow-probability.
+      # We do not install greta deps here: greta is in Suggests and the
+      # test suite skips greta-dependent tests via skip_if_no_greta()
+      # when the runtime is unavailable. CI verifies the non-greta
+      # surface; full greta integration is exercised locally / via a
+      # manual greta-integration check (no dedicated CI workflow exists).
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # dependencies: "hard" keeps pak from trying to resolve the
+          # heavy / special-repo Suggests (greta + TensorFlow, INLA,
+          # brms + Stan) which fail to solve on CI. The light Suggests
+          # the test suite and the VignetteBuilder need are listed
+          # explicitly; backend-specific tests skip via skip_on_ci() /
+          # skip_if_not_installed().
+          # greta is archived from CRAN, so install the R package from
+          # its GitHub source: that satisfies requireNamespace("greta")
+          # for the many pure-R codegen / dispatch / review tests. The
+          # Python/TensorFlow backend is NOT set up, so model-fitting
+          # tests still skip via skip_on_ci().
+          extra-packages: >-
+            any::rcmdcheck, any::knitr, any::rmarkdown, any::testthat,
+            any::withr, greta-dev/greta
+          needs: check
+          # INLA is in Additional_repositories; install only on Linux
+          # where the precompiled binaries are reliable.
+          dependencies: '"hard"'
+
+      - name: Install INLA on Linux release leg
+        if: runner.os == 'Linux' && matrix.config.r == 'release'
+        run: |
+          install.packages("INLA", repos = c(
+            getOption("repos"),
+            INLA = "https://inla.r-inla-download.org/R/stable"
+          ))
+        shell: Rscript {0}
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+          # Skip vignette building in BOTH build and check: the vignettes
+          # are illustrative (static / eval = FALSE) and reference heavy
+          # backends (greta, lme4) not installed on CI, so building them
+          # here would run that code and fail.
+          build_args: 'c("--no-manual", "--no-build-vignettes")'
+          args: 'c("--no-manual", "--as-cran", "--no-build-vignettes", "--ignore-vignettes")'

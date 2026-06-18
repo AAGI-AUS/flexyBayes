@@ -1,0 +1,48 @@
+/doc/
+/Meta/
+*.Rcheck/
+..Rcheck/
+*.tar.gz
+Rplots.pdf
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user
+.DS_Store
+inst/doc/
+revdep/
+*.o
+*.so
+*.dll
+*.icloud
+
+# AI-assistant scratch dirs (also in .Rbuildignore) -- never enter git or the build
+.claude/
+.positai/
+.cursor/
+
+# Internal / non-package artefacts -- kept local, not part of the public package
+paper/
+dev-narrative/
+NEWS_ARCHIVE.md
+inst/backend_contract.md
+inst/skip-ledger.md
+
+# Host-local INLA-mapping verification artefacts -- per-host (carry INLA
+# version, timestamp, agreement snapshot); must not enter shared history.
+# Regenerated locally by the INLA-verification tests; absence on a fresh
+# checkout is the intended fail-safe.
+inst/extdata/inla-verification/
+
+# Decision-knowledge archive -- local dev artefact, not part of the package.
+ledger/
+
+# pkgdown output (rebuilt by CI; not committed)
+docs/
+
+# Stress-harness outputs (generated; the harness scripts ship, the results
+# directory is local-only).
+tools/stress_results/
+
+# testthat transient failed-test records
+tests/testthat/_problems/

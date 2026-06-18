@@ -1,0 +1,42 @@
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: lint
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # cyclocomp is a lintr extra; declare to avoid the v0.4.3 gotcha.
+          # knitr + rmarkdown are the VignetteBuilder, needed to build
+          # local::. (the package) for linting.
+          extra-packages: any::lintr, any::cyclocomp, any::knitr, any::rmarkdown, local::.
+          needs: lint
+          # "hard" stops pak from trying to resolve the special-repo /
+          # heavy Suggests (INLA, greta) which fail to solve on CI.
+          dependencies: '"hard"'
+
+      - name: Lint
+        run: lintr::lint_package()
+        shell: Rscript {0}
+        env:
+          # Hard gate: the style backlog was cleared on 2026-06-01 via a
+          # full `air format` pass + manual residue fixes, and the .lintr
+          # config (object_length / commented_code disabled with rationale,
+          # line_length relaxed for tests/) brings lint_package() to zero.
+          # Lints now fail the check.
+          LINTR_ERROR_ON_LINT: true

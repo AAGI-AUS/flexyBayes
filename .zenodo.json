@@ -1,0 +1,55 @@
+{
+  "title": "flexyBayes: Flexible Bayesian mixed models with ASReml and brms-style syntax",
+  "description": "<p>An R package for specifying mixed models in ASReml-style or brms-style formula syntax and estimating them via greta, INLA, or brms (Stan), with cross-engine posterior triangulation as the signature output. Variance components take a weakly-informative bounded-uniform prior on the SD scale by default, with penalised-complexity (Simpson et al. 2017), half-Cauchy, and other priors available. Supports Gaussian, binomial, Poisson, negative binomial, gamma, and beta families; structured covariance (us, fa, ar1); genomic relationship matrices (GBLUP); pedigree-based models; spatial models; and splines.</p>",
+  "upload_type": "software",
+  "license": "GPL-3.0-or-later",
+  "version": "0.8.3",
+  "creators": [
+    {
+      "name": "Moldovan, Max",
+      "orcid": "0000-0001-9680-8474",
+      "affiliation": "Australian Agricultural Genomics Institute (AAGI-AUS); Adelaide University"
+    },
+    {
+      "name": "Tanaka, Emi",
+      "orcid": "0000-0002-1455-259X",
+      "affiliation": "Australian National University"
+    },
+    {
+      "name": "Hui, Francis K.C.",
+      "orcid": "0000-0003-0765-3533",
+      "affiliation": "Australian National University"
+    },
+    {
+      "name": "Forte Deltell, Anabel",
+      "orcid": "0000-0001-9534-1817",
+      "affiliation": "Universitat de València"
+    }
+  ],
+  "keywords": [
+    "Bayesian inference",
+    "mixed models",
+    "ASReml",
+    "greta",
+    "INLA",
+    "Markov chain Monte Carlo",
+    "penalised complexity priors",
+    "cross-engine triangulation",
+    "agricultural genomics",
+    "R"
+  ],
+  "communities": [],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/AAGI-AUS/flexyBayes",
+      "relation": "isSupplementTo",
+      "resource_type": "software"
+    }
+  ],
+  "references": [
+    "Simpson, D., Rue, H., Riebler, A., Martins, T. G., & Sørbye, S. H. (2017). Penalising model component complexity: a principled, practical approach to constructing priors. Statistical Science, 32(1), 1–28.",
+    "Rue, H., Martino, S., & Chopin, N. (2009). Approximate Bayesian inference for latent Gaussian models by using integrated nested Laplace approximations. Journal of the Royal Statistical Society: Series B, 71(2), 319–392."
+  ],
+  "language": "eng",
+  "notes": "Development release for public package review. All exported user-facing APIs are experimental; see API_STABILITY.md and NEWS.md for scope and known limitations."
+}

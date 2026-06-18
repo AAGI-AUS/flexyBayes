@@ -1,0 +1,71 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "flexyBayes",
+  "description": "Specify mixed models using ASReml-style or brms-style formula syntax and estimate them via greta (Bayesian MCMC), INLA (integrated nested Laplace approximation), or brms (Stan passthrough). Returns results in formats compatible with the standard R modelling ecosystem, with cross-engine posterior triangulation exposed as a first-class robustness diagnostic.",
+  "name": "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax",
+  "codeRepository": "https://github.com/AAGI-AUS/flexyBayes",
+  "issueTracker": "https://github.com/AAGI-AUS/flexyBayes/issues",
+  "license": "https://spdx.org/licenses/GPL-3.0-or-later",
+  "version": "0.8.3",
+  "programmingLanguage": {
+    "@type": "ComputerLanguage",
+    "name": "R",
+    "url": "https://r-project.org"
+  },
+  "runtimePlatform": "R version 4.5.2 (2025-10-31)",
+  "softwareRequirements": [
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "R",
+      "name": "R",
+      "version": ">= 4.1.0"
+    }
+  ],
+  "applicationCategory": "Statistics",
+  "keywords": [
+    "bayesian-statistics",
+    "mixed-models",
+    "mcmc",
+    "inla",
+    "asreml",
+    "greta",
+    "r"
+  ],
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Max",
+      "familyName": "Moldovan",
+      "email": "max.moldovan@adelaide.edu.au",
+      "@id": "https://orcid.org/0000-0001-9680-8474"
+    },
+    {
+      "@type": "Person",
+      "givenName": "Emi",
+      "familyName": "Tanaka",
+      "@id": "https://orcid.org/0000-0002-1455-259X"
+    },
+    {
+      "@type": "Person",
+      "givenName": "Francis K. C.",
+      "familyName": "Hui",
+      "@id": "https://orcid.org/0000-0003-0765-3533"
+    },
+    {
+      "@type": "Person",
+      "givenName": "Anabel",
+      "familyName": "Forte Deltell",
+      "@id": "https://orcid.org/0000-0001-9534-1817"
+    }
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "givenName": "Max",
+      "familyName": "Moldovan",
+      "email": "max.moldovan@adelaide.edu.au",
+      "@id": "https://orcid.org/0000-0001-9680-8474"
+    }
+  ]
+}
