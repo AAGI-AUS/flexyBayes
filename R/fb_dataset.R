@@ -237,6 +237,21 @@ print.fb_dataset <- function(x, ...) {
 # preflight per-term estimators to size random-intercept / random-
 # slope blocks without re-scanning the underlying data.table.
 .fb_dataset_levels <- function(ds, col) {
+  # Interaction terms arrive as a length > 1 `col` (e.g. gen:loc:yearf ->
+  # c("gen", "loc", "yearf")). Their level count is the number of distinct
+  # observed combinations, which is data-dependent and not recoverable from
+  # the per-column `dictionaries`. Count it from the retained data.table
+  # when it is present; a metadata-only dataset (data = NULL) returns
+  # NA_integer_, which the preflight escalates to a graceful
+  # `representation_unknown_for_preflight` refusal. Either way this replaces
+  # the un-vectorised `if (col %in% ...)` that raised the base-R
+  # "the condition has length > 1" error on any interaction random term.
+  if (length(col) > 1L) {
+    if (is.null(ds$data) || !all(col %in% names(ds$data))) {
+      return(NA_integer_)
+    }
+    return(as.integer(data.table::uniqueN(ds$data, by = col)))
+  }
   if (col %in% names(ds$dictionaries)) {
     return(length(ds$dictionaries[[col]]))
   }
