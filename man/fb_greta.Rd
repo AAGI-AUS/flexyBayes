@@ -8,7 +8,7 @@ fb_greta(...)
 }
 \arguments{
 \item{...}{Arguments passed to \code{\link[=flexybayes]{flexybayes()}} (e.g. \code{fixed}, \code{random},
-\code{rcov}, \code{data}, \code{family}, \code{prior}, \code{syntax}), or a native
+\code{residual}, \code{data}, \code{family}, \code{prior}, \code{syntax}), or a native
 \code{greta_model} / greta-source IR as the model-spec slot. The
 \code{backend} argument is pinned to \code{"greta"}; a conflicting \code{backend}
 value raises a structured refusal. The pre-v0.5.0 \verb{model = }
@@ -26,7 +26,7 @@ GLM-compatible shim, and the canonical-name map; see
 \description{
 Engine pin: fits the model with greta (full Hamiltonian Monte Carlo)
 only. This is sugar for \code{\link[=flexybayes]{flexybayes()}}\verb{(..., backend = "greta")} and
-accepts the same grammars --- an ASReml \code{fixed} / \code{random} / \code{rcov}
+accepts the same grammars --- an ASReml \code{fixed} / \code{random} / \code{residual}
 specification, a brms-style bar-grouped formula, or a native
 \code{greta_model} graph built with \code{greta::model()}. A formula is lowered
 through the shared emit path; a native graph is fit directly by

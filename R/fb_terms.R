@@ -33,7 +33,7 @@
 #                  family name (e.g., "gaussian", "binomial").
 # @param link      length-1 character or NULL -- link override.
 # @param intercept logical(1).
-# @param fixed_terms,random_terms,rcov_terms,addition_terms
+# @param fixed_terms,random_terms,residual_terms,addition_terms
 #                  list of term descriptors. Each element must be a
 #                  list with a non-empty character `type` field.
 #                  parse_formula.R types (e.g., "factor", "simple",
@@ -59,7 +59,7 @@ new_fb_terms <- function(
   intercept = TRUE,
   fixed_terms = list(),
   random_terms = list(),
-  rcov_terms = list(),
+  residual_terms = list(),
   addition_terms = list(),
   priors = NULL,
   data_summary = list(),
@@ -76,7 +76,7 @@ new_fb_terms <- function(
     intercept = intercept,
     fixed_terms = fixed_terms,
     random_terms = random_terms,
-    rcov_terms = rcov_terms,
+    residual_terms = residual_terms,
     addition_terms = addition_terms,
     priors = priors,
     data_summary = data_summary,
@@ -147,7 +147,7 @@ validate_fb_terms <- function(x) {
   for (slot in c(
     "fixed_terms",
     "random_terms",
-    "rcov_terms",
+    "residual_terms",
     "addition_terms"
   )) {
     if (!is.list(x[[slot]])) {
@@ -239,7 +239,7 @@ fb_link <- function(x) x$link
 fb_intercept <- function(x) x$intercept
 fb_fixed_terms <- function(x) x$fixed_terms
 fb_random_terms <- function(x) x$random_terms
-fb_rcov_terms <- function(x) x$rcov_terms
+fb_residual_terms <- function(x) x$residual_terms
 fb_addition_terms <- function(x) x$addition_terms
 fb_priors <- function(x) x$priors
 fb_data_summary <- function(x) x$data_summary
@@ -284,7 +284,7 @@ print.fb_terms <- function(x, ...) {
   cat("  terms:\n")
   cat("    fixed:    ", length(x$fixed_terms), "\n", sep = "")
   cat("    random:   ", length(x$random_terms), "\n", sep = "")
-  cat("    rcov:     ", length(x$rcov_terms), "\n", sep = "")
+  cat("    residual:     ", length(x$residual_terms), "\n", sep = "")
   cat("    addition: ", length(x$addition_terms), "\n", sep = "")
 
   cat(

@@ -59,7 +59,7 @@ emit_gretaR <- function(
   the_call = NULL,
   fixed = NULL,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   family = NULL,
   link = NULL,
   data_name = NULL,
@@ -183,7 +183,7 @@ emit_gretaR <- function(
         call_info = list(
           fixed = fixed,
           random = random,
-          rcov = rcov,
+          residual = residual,
           data_name = data_name,
           family = family,
           link = link

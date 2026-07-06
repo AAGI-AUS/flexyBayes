@@ -194,7 +194,7 @@
       call_info = list(
         fixed = quote(`<greta-direct entry>`),
         random = NULL,
-        rcov = NULL,
+        residual = NULL,
         chains = chains,
         n_samples = n_samples,
         warmup = warmup,
@@ -237,7 +237,7 @@
 #'
 #' Engine pin: fits the model with greta (full Hamiltonian Monte Carlo)
 #' only. This is sugar for [flexybayes()]`(..., backend = "greta")` and
-#' accepts the same grammars --- an ASReml `fixed` / `random` / `rcov`
+#' accepts the same grammars --- an ASReml `fixed` / `random` / `residual`
 #' specification, a brms-style bar-grouped formula, or a native
 #' `greta_model` graph built with `greta::model()`. A formula is lowered
 #' through the shared emit path; a native graph is fit directly by
@@ -249,7 +249,7 @@
 #' `canonical_names = c(...)))`.
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `fixed`, `random`,
-#'   `rcov`, `data`, `family`, `prior`, `syntax`), or a native
+#'   `residual`, `data`, `family`, `prior`, `syntax`), or a native
 #'   `greta_model` / greta-source IR as the model-spec slot. The
 #'   `backend` argument is pinned to `"greta"`; a conflicting `backend`
 #'   value raises a structured refusal. The pre-v0.5.0 `model = `

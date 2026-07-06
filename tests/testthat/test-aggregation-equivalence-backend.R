@@ -44,6 +44,20 @@
   }
 }
 
+# INLA's Laplace engine is reproducible only single-threaded: under the
+# default multi-threaded reduction the per-row and streamed fits drift
+# ~0.5-1% run-to-run, intermittently breaching the tight equivalence
+# tolerances below (RB14). Pin to one thread for this whole file so the
+# comparison is deterministic; restored at file teardown.
+if (requireNamespace("INLA", quietly = TRUE)) {
+  .eq_old_inla_threads <- INLA::inla.getOption("num.threads")
+  INLA::inla.setOption(num.threads = "1:1")
+  withr::defer(
+    INLA::inla.setOption(num.threads = .eq_old_inla_threads),
+    testthat::teardown_env()
+  )
+}
+
 for (fam in c("gaussian", "binomial", "poisson")) {
   test_that(paste0("INLA: per-row == streamed-aggregated [", fam, "]"), {
     skip_if_not_installed("INLA")

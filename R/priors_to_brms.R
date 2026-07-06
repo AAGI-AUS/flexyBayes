@@ -443,7 +443,7 @@
   # A single class-only row in brms covers all `b` coefficients.
   if (
     length(fb$fixed_terms) > 0L ||
-      length(fb$rcov_terms %||% list()) > 0L
+      length(fb$residual_terms %||% list()) > 0L
   ) {
     specs[[length(specs) + 1L]] <- list(
       string = sprintf("normal(0, %s)", .fmt_num(prior_fixed_sd)),

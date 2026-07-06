@@ -15,8 +15,8 @@ print.flexybayes <- function(x, ...) {
   if (!is.null(ci$random)) {
     cat("  Random :", deparse(ci$random), "\n")
   }
-  if (!is.null(ci$rcov) && !identical(deparse(ci$rcov), "~units")) {
-    cat("  Rcov   :", deparse(ci$rcov), "\n")
+  if (!is.null(ci$residual) && !identical(deparse(ci$residual), "~units")) {
+    cat("  Residual :", deparse(ci$residual), "\n")
   }
   cat("  Family :", mi$family, "(", mi$link, "link )\n")
 
@@ -910,7 +910,7 @@ update.flexybayes <- function(object, ...) {
   args <- list(
     fixed = cl$fixed,
     random = cl$random,
-    rcov = cl$rcov,
+    residual = cl$residual,
     data = object$glm$data,
     family = cl$family,
     link = cl$link,

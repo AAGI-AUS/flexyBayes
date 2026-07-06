@@ -128,17 +128,17 @@ A wide environment-to-environment spread of these variances is the
 first signal that genotype expression depends on environment — i.e.,
 that genotype-by-environment interaction (GxE) is non-trivial.
 
-# 3. Heterogeneous residual variance: `rcov = ~ at(env):units`
+# 3. Heterogeneous residual variance: `residual = ~ at(env):units`
 
 Heterogeneous *residual* variance — distinct from heterogeneous
 *genotype* variance — is the model in which $\sigma_e^2$ varies
 across some grouping factor:
 
-```{r het-rcov, eval = greta_ok}
+```{r het-residual, eval = greta_ok}
 fit_het <- flexybayes(
   fixed     = yield ~ env,
   random    = ~ geno,
-  rcov      = ~ at(env):units,
+  residual      = ~ at(env):units,
   data      = dat,
   n_samples = mcmc_small$n_samples,
   warmup    = mcmc_small$warmup,

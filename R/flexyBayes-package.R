@@ -17,11 +17,11 @@
 #' Two ingest paths share a single internal model representation
 #' (`fb_terms`):
 #'
-#' * [flexybayes()] — asreml-format entry: `fixed` / `random` / `rcov`
+#' * [flexybayes()] — asreml-format entry: `fixed` / `random` / `residual`
 #'   formulas, `known_matrices` for kinship / pedigree, `weights` for
 #'   pre-aggregated observations.
 #' * [fb()] / [flexybayes()] — the universal entry. Accepts an ASReml
-#'   (`fixed` / `random` / `rcov`) or brms-style (`y ~ x + (1 | g)`)
+#'   (`fixed` / `random` / `residual`) or brms-style (`y ~ x + (1 | g)`)
 #'   formula, or a native `greta::model()`, and any `backend`
 #'   (`"greta"`, `"inla"`, `"brms"`, or `"auto"`).
 #' * [fb_greta()] / [fb_inla()] / [fb_brms()] — single-engine pins.

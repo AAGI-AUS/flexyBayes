@@ -33,7 +33,7 @@ in \code{data_summary$known_matrices}.}
 }
 \value{
 An \code{fb_terms} object with \code{source = "greta"}, \code{intercept = NA},
-empty fixed / random / rcov term lists, and the populated
+empty fixed / random / residual term lists, and the populated
 \code{greta_meta} slot (carrying the model graph, target arrays, and the
 canonical-name map). Pass the returned IR straight to \code{\link[=fb]{fb()}} to fit
 the graph via greta while keeping a canonical-name map for
@@ -46,7 +46,7 @@ object -- flexyBayes's backend-agnostic intermediate representation
 downstream machinery (summaries, \code{\link[=triangulate]{triangulate()}}, canonical-name
 mapping) as a formula-ingested model. Unlike the formula adapters this
 is a post-hoc wrapper around an already-built graph, so the resulting
-IR is greta-only by construction: it carries no fixed / random / rcov
+IR is greta-only by construction: it carries no fixed / random / residual
 term lists, only the populated \code{greta_meta} slot.
 }
 \examples{

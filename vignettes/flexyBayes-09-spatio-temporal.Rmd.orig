@@ -111,7 +111,7 @@ str(sn)
 fit_spatial <- flexybayes(
   fixed     = yield ~ 1 + rep,
   random    = ~ gen,
-  rcov      = ~ ar1(row):ar1(col),
+  residual      = ~ ar1(row):ar1(col),
   data      = sn,
   n_samples = mcmc_small$n_samples,
   warmup    = mcmc_small$warmup,
@@ -168,7 +168,7 @@ str(sleepstudy)
 fit_temporal <- flexybayes(
   fixed     = Reaction ~ Days,
   random    = ~ Subject,
-  rcov      = ~ ar1(Days_f):Subject,
+  residual      = ~ ar1(Days_f):Subject,
   data      = sleepstudy,
   n_samples = mcmc_small$n_samples,
   warmup    = mcmc_small$warmup,
@@ -195,7 +195,7 @@ varying gradient across the field). The two are layered:
 flexybayes(
   fixed = yield ~ rep,
   random = ~ gen + spl(row) + spl(col),         # global smooth trend
-  rcov   = ~ ar1(row):ar1(col),                  # local spatial AR1
+  residual   = ~ ar1(row):ar1(col),                  # local spatial AR1
   data = ...
 )
 ```
@@ -253,7 +253,7 @@ separable AR1 structure, route directly through `R-INLA` with
 
 # 7. Active prompts
 
-1. Refit `stroup.nin` with `rcov = ~ units` (no spatial structure).
+1. Refit `stroup.nin` with `residual = ~ units` (no spatial structure).
    How much does the genotype-level posterior change? How much
    does $\sigma_e$ change?
 2. Add a spatial trend to the AR1×AR1 fit:

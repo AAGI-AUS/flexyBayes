@@ -8,16 +8,20 @@
 #'
 #' @param fixed Two-sided formula `response ~ fixed_effects`. This is the
 #'   universal entry's model slot: it accepts the ASReml `fixed` form
-#'   (paired with `random` / `rcov`) **or** a brms / lme4-style
+#'   (paired with `random` / `residual`) **or** a brms / lme4-style
 #'   bar-grouped formula such as `response ~ x + (1 | g)` (in which case
-#'   the grouping lives in the formula and `random` / `rcov` must be
+#'   the grouping lives in the formula and `random` / `residual` must be
 #'   left `NULL`). The grammar is detected from the call shape; use
 #'   `syntax` to force it.
 #' @param random One-sided formula: `~ random_terms` using ASReml syntax.
 #'   Supports `vm()`, `at()`, `us()`, `fa()`, `ar1()`, `spl()`, `ped()`,
 #'   `dsum()`, `id()`, and nested colon terms.
-#' @param rcov One-sided formula: `~ residual_structure`. Default `~ units`
+#' @param residual One-sided formula: `~ residual_structure`. Default `~ units`
 #'   (iid residuals). Use `~ at(env):units` for heterogeneous variance.
+#' @param rcov Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
+#'   the residual-structure argument; ASReml 4 renamed it to `residual` and
+#'   flexyBayes follows the ASReml 4 name. Supplying `rcov` now raises an
+#'   error -- use `residual` instead.
 #' @param data A data.frame containing all variables referenced in the formulas.
 #' @param family Character: `"gaussian"`, `"binomial"`, `"poisson"`,
 #'   `"negative_binomial"`, `"gamma"`, or `"beta"`.
@@ -231,7 +235,7 @@
 flexybayes <- function(
   fixed,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   data,
   family = "gaussian",
   link = NULL,
@@ -250,8 +254,26 @@ flexybayes <- function(
   backend = c("auto", "greta", "inla", "brms", "gretaR"),
   aggregate = "auto",
   plan = FALSE,
-  syntax = c("auto", "asreml", "brms", "greta")
+  syntax = c("auto", "asreml", "brms", "greta"),
+  rcov = lifecycle::deprecated()
 ) {
+  # `rcov` was the ASReml 3 name for the residual-structure argument;
+  # ASReml 4 renamed it to `residual`, and flexyBayes followed suit in
+  # 0.9.0. The formal is kept only as a tripwire so a stray `rcov =` --
+  # including one forwarded through an engine pin -- raises a guiding
+  # error instead of an opaque "unused argument".
+  if (lifecycle::is_present(rcov)) {
+    lifecycle::deprecate_stop(
+      when = "0.9.0",
+      what = "flexybayes(rcov)",
+      with = "flexybayes(residual)",
+      details = paste0(
+        "ASReml-R renamed this argument from `rcov` (ASReml 3) to ",
+        "`residual` (ASReml 4)."
+      )
+    )
+  }
+
   # Refuse approximate-scheme requests
   # before match.arg fires its generic "should be one of" error.
   # The structured refusal points to the future
@@ -368,7 +390,7 @@ flexybayes <- function(
 
   # Build the flexyBayes intermediate representation (IR). The universal
   # entry detects the grammar from the call shape -- ASReml
-  # fixed/random/rcov, a brms-style bar-grouped formula, or (reserved) a
+  # fixed/random/residual, a brms-style bar-grouped formula, or (reserved) a
   # greta_model -- and routes to the matching ingest adapter. ASReml
   # ingest is byte-identical to the historical direct fb_from_asreml()
   # call; `syntax = ` forces a grammar. See .build_ir_polymorphic() in
@@ -376,7 +398,7 @@ flexybayes <- function(
   fb <- .build_ir_polymorphic(
     fixed = fixed,
     random = random,
-    rcov = rcov,
+    residual = residual,
     data = data,
     family = family,
     link = link,
@@ -562,7 +584,7 @@ flexybayes <- function(
     # Emit the review code from the engine the user
     # pinned -- greta source (codegen) or Stan source (make_stancode()).
     # Both emit paths derive the model from the IR on return_code = TRUE,
-    # so the fixed / random / rcov args (display-only) pass through as-is.
+    # so the fixed / random / residual args (display-only) pass through as-is.
     emit_review_fn <- if (review_emit_backend == "brms") {
       emit_brms
     } else {
@@ -584,7 +606,7 @@ flexybayes <- function(
       the_call = the_call,
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       family = family,
       link = link,
       data_name = data_name
@@ -619,7 +641,7 @@ flexybayes <- function(
         the_call = the_call_proceed,
         fixed = fixed,
         random = random,
-        rcov = rcov,
+        residual = residual,
         family = family,
         link = link,
         data_name = data_name
@@ -650,7 +672,7 @@ flexybayes <- function(
     the_call = the_call,
     fixed = fixed,
     random = random,
-    rcov = rcov,
+    residual = residual,
     family = family,
     link = link,
     data_name = data_name,

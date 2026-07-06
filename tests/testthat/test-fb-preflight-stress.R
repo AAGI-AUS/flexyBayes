@@ -67,7 +67,7 @@ test_that("1e8-row metadata-only preflight: lazy O(terms) wall time + RSS", {
       intercept = TRUE,
       fixed_terms = list(list(type = "numeric", var = "x")),
       random_terms = list(list(type = "simple", var = "g", var_n = 1e5)),
-      rcov_terms = list(),
+      residual_terms = list(),
       addition_terms = list(),
       priors = list(),
       data_summary = list(n = 1e8),

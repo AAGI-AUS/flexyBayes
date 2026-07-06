@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 09: Spatio-temporal models: AR1, spatial, temporal"
-date: "2026-06-06"
+date: "2026-07-01"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -103,7 +103,7 @@ str(sn)
 fit_spatial <- flexybayes(
   fixed     = yield ~ 1 + rep,
   random    = ~ gen,
-  rcov      = ~ ar1(row):ar1(col),
+  residual      = ~ ar1(row):ar1(col),
   data      = sn,
   n_samples = mcmc_small$n_samples,
   warmup    = mcmc_small$warmup,
@@ -115,14 +115,14 @@ fit_spatial
 #> ------------------------------------------------------- 
 #>   Fixed  : yield ~ 1 + rep 
 #>   Random : ~gen 
-#>   Rcov   : ~ar1(row):ar1(col) 
+#>   Residual : ~ar1(row):ar1(col) 
 #>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 17.7 sec
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 6.8 sec
 #>   Params : 4 monitored; 2 fixed, 1 random terms
 #>   Representation: exact
 #>   Engine:         greta MCMC
-#>   Max Rhat: 1.539  [!] 
-#>   Min ESS: 11 
+#>   Max Rhat: 3.132  [!] 
+#>   Min ESS: 6 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible (summary, emmeans, etc.)
 #>   $greta  -- native greta (draws, model, calculate)
@@ -186,7 +186,7 @@ str(sleepstudy)
 fit_temporal <- flexybayes(
   fixed     = Reaction ~ Days,
   random    = ~ Subject,
-  rcov      = ~ ar1(Days_f):Subject,
+  residual      = ~ ar1(Days_f):Subject,
   data      = sleepstudy,
   n_samples = mcmc_small$n_samples,
   warmup    = mcmc_small$warmup,
@@ -198,14 +198,14 @@ fit_temporal
 #> ------------------------------------------------------- 
 #>   Fixed  : Reaction ~ Days 
 #>   Random : ~Subject 
-#>   Rcov   : ~ar1(Days_f):Subject 
+#>   Residual : ~ar1(Days_f):Subject 
 #>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 9.8 sec
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 6.6 sec
 #>   Params : 4 monitored; 2 fixed, 1 random terms
 #>   Representation: exact
 #>   Engine:         greta MCMC
-#>   Max Rhat: 1.436  [!] 
-#>   Min ESS: 38 
+#>   Max Rhat: 35.571  [!] 
+#>   Min ESS: 6 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible (summary, emmeans, etc.)
 #>   $greta  -- native greta (draws, model, calculate)
@@ -229,7 +229,7 @@ varying gradient across the field). The two are layered:
 flexybayes(
   fixed = yield ~ rep,
   random = ~ gen + spl(row) + spl(col),         # global smooth trend
-  rcov   = ~ ar1(row):ar1(col),                  # local spatial AR1
+  residual   = ~ ar1(row):ar1(col),                  # local spatial AR1
   data = ...
 )
 ```
@@ -287,7 +287,7 @@ separable AR1 structure, route directly through `R-INLA` with
 
 # 7. Active prompts
 
-1. Refit `stroup.nin` with `rcov = ~ units` (no spatial structure).
+1. Refit `stroup.nin` with `residual = ~ units` (no spatial structure).
    How much does the genotype-level posterior change? How much
    does $\sigma_e$ change?
 2. Add a spatial trend to the AR1×AR1 fit:
@@ -320,16 +320,16 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3    flexyBayes_0.8.3
+#> [1] ggplot2_4.0.3    flexyBayes_0.9.0
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
 #>   [4] tensorflow_2.20.0      loo_2.9.0              S7_0.2.2              
 #>   [7] tensorA_0.36.2.1       INLA_25.10.19          TH.data_1.1-5         
 #>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
-#>  [13] gretaR_0.2.0           sf_1.1-0               survival_3.8-3        
-#>  [16] agridat_1.26           processx_3.9.0         magrittr_2.0.5        
-#>  [19] posterior_1.7.0        compiler_4.5.2         rlang_1.2.0           
+#>  [13] gretaR_0.5.0           sf_1.1-0               agridat_1.26          
+#>  [16] survival_3.8-3         processx_3.9.0         posterior_1.7.0       
+#>  [19] magrittr_2.0.5         compiler_4.5.2         rlang_1.2.0           
 #>  [22] progress_1.2.3         tools_4.5.2            data.table_1.18.2.1   
 #>  [25] knitr_1.51             labeling_0.4.3         prettyunits_1.2.0     
 #>  [28] bridgesampling_1.2-1   bit_4.6.0              classInt_0.4-11       
@@ -353,10 +353,10 @@ sessionInfo()
 #>  [82] Brobdingnag_1.2-9      torch_0.17.0           R6_2.6.1              
 #>  [85] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
 #>  [88] png_0.1-9              backports_1.5.1        tfautograph_0.3.2     
-#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.1-1.1        
-#>  [94] checkmate_2.3.4        coda_0.19-4.1          nlme_3.1-168          
-#>  [97] whisker_0.4.1          xfun_0.57              zoo_1.8-15            
-#> [100] pkgconfig_2.0.3
+#>  [91] rstantools_2.6.0       class_7.3-23           MatrixModels_0.5-4    
+#>  [94] Rcpp_1.1.1-1.1         checkmate_2.3.4        coda_0.19-4.1         
+#>  [97] nlme_3.1-168           whisker_0.4.1          xfun_0.57             
+#> [100] zoo_1.8-15             pkgconfig_2.0.3
 ```
 
 # References

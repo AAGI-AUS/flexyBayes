@@ -8,7 +8,7 @@
 flexybayes(
   fixed,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   data,
   family = "gaussian",
   link = NULL,
@@ -27,13 +27,14 @@ flexybayes(
   backend = c("auto", "greta", "inla", "brms", "gretaR"),
   aggregate = "auto",
   plan = FALSE,
-  syntax = c("auto", "asreml", "brms", "greta")
+  syntax = c("auto", "asreml", "brms", "greta"),
+  rcov = lifecycle::deprecated()
 )
 
 fb(
   fixed,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   data,
   family = "gaussian",
   link = NULL,
@@ -52,15 +53,16 @@ fb(
   backend = c("auto", "greta", "inla", "brms", "gretaR"),
   aggregate = "auto",
   plan = FALSE,
-  syntax = c("auto", "asreml", "brms", "greta")
+  syntax = c("auto", "asreml", "brms", "greta"),
+  rcov = lifecycle::deprecated()
 )
 }
 \arguments{
 \item{fixed}{Two-sided formula \code{response ~ fixed_effects}. This is the
 universal entry's model slot: it accepts the ASReml \code{fixed} form
-(paired with \code{random} / \code{rcov}) \strong{or} a brms / lme4-style
+(paired with \code{random} / \code{residual}) \strong{or} a brms / lme4-style
 bar-grouped formula such as \code{response ~ x + (1 | g)} (in which case
-the grouping lives in the formula and \code{random} / \code{rcov} must be
+the grouping lives in the formula and \code{random} / \code{residual} must be
 left \code{NULL}). The grammar is detected from the call shape; use
 \code{syntax} to force it.}
 
@@ -68,7 +70,7 @@ left \code{NULL}). The grammar is detected from the call shape; use
 Supports \code{vm()}, \code{at()}, \code{us()}, \code{fa()}, \code{ar1()}, \code{spl()}, \code{ped()},
 \code{dsum()}, \code{id()}, and nested colon terms.}
 
-\item{rcov}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
+\item{residual}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
 (iid residuals). Use \code{~ at(env):units} for heterogeneous variance.}
 
 \item{data}{A data.frame containing all variables referenced in the formulas.}
@@ -252,6 +254,11 @@ grammar from the call shape (a bar-grouped formula is read as brms,
 otherwise ASReml); the other values force a grammar. \code{"greta"} (a
 native \code{greta_model}) is reserved: pass such models to \code{fb_greta()}
 in v0.4.x; direct ingest through the universal entry lands at v0.5.0.}
+
+\item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
+the residual-structure argument; ASReml 4 renamed it to \code{residual} and
+flexyBayes follows the ASReml 4 name. Supplying \code{rcov} now raises an
+error -- use \code{residual} instead.}
 }
 \value{
 An object of class \code{"flexybayes"} — a list with three components:

@@ -118,7 +118,7 @@
   list(type = "expression", label = lbl)
 }
 
-# Parse an ASReml one-sided formula (random or rcov) via AST walking
+# Parse an ASReml one-sided formula (random or residual) via AST walking
 #
 # @param formula One-sided formula: ~ random_terms
 # @param data data.frame

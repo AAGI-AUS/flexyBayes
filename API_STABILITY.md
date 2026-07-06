@@ -31,7 +31,7 @@ engine:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `rcov`); also accepts brms-style and greta-style grammar via `syntax = "auto"`. `backend = c("auto", "greta", "inla", "brms", "gretaR")`, default `"auto"`. `"auto"` never routes to Stan/brms. `prior` accepts an `fb_prior()` object. |
+| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style and greta-style grammar via `syntax = "auto"`. `backend = c("auto", "greta", "inla", "brms", "gretaR")`, default `"auto"`. `"auto"` never routes to Stan/brms. `prior` accepts an `fb_prior()` object. |
 | `fb()` | experimental | Literal alias for `flexybayes()`; documented but not promoted. |
 
 **Engine pins** fix one engine and therefore take **no** `backend` argument —

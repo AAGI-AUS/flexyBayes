@@ -25,11 +25,11 @@ the same model on the same data.
 Two ingest paths share a single internal model representation
 (\code{fb_terms}):
 \itemize{
-\item \code{\link[=flexybayes]{flexybayes()}} — asreml-format entry: \code{fixed} / \code{random} / \code{rcov}
+\item \code{\link[=flexybayes]{flexybayes()}} — asreml-format entry: \code{fixed} / \code{random} / \code{residual}
 formulas, \code{known_matrices} for kinship / pedigree, \code{weights} for
 pre-aggregated observations.
 \item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} — the universal entry. Accepts an ASReml
-(\code{fixed} / \code{random} / \code{rcov}) or brms-style (\code{y ~ x + (1 | g)})
+(\code{fixed} / \code{random} / \code{residual}) or brms-style (\code{y ~ x + (1 | g)})
 formula, or a native \code{greta::model()}, and any \code{backend}
 (\code{"greta"}, \code{"inla"}, \code{"brms"}, or \code{"auto"}).
 \item \code{\link[=fb_greta]{fb_greta()}} / \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} — single-engine pins.
@@ -70,6 +70,7 @@ B., Yao, Y., Kennedy, L., Gabry, J., Bürkner, P.-C., & Modrák, M.
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://aagi-aus.github.io/flexyBayes/}
   \item \url{https://github.com/AAGI-AUS/flexyBayes}
   \item Report bugs at \url{https://github.com/AAGI-AUS/flexyBayes/issues}
 }

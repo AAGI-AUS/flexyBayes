@@ -220,7 +220,7 @@ register_canonical_mapper <- function(backend, mapper) {
     intercept = pi$fixed$intercept %||% TRUE,
     fixed_terms = pi$fixed$terms %||% list(),
     random_terms = pi$random %||% list(),
-    rcov_terms = pi$rcov %||% list()
+    residual_terms = pi$residual %||% list()
   )
 }
 

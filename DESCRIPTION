@@ -1,6 +1,6 @@
 Package: flexyBayes
 Title: Flexible Bayesian Mixed Models with ASReml and 'brms'-Style Syntax
-Version: 0.8.3
+Version: 0.9.0
 Authors@R: c(
     person("Max", "Moldovan", email = "max.moldovan@adelaide.edu.au",
            role = c("aut", "cre"),
@@ -16,7 +16,7 @@ Description: Specify mixed models using familiar ASReml or brms-style formula
     syntax and estimate them via greta, INLA, or brms (Stan). Returns results
     in formats compatible with the standard R modelling ecosystem including
     'summary()', 'emmeans', 'marginaleffects', and 'effectsize'. The package
-    translates ASReml-style formulas (fixed, random, rcov) to backend-specific
+    translates ASReml-style formulas (fixed, random, residual) to backend-specific
     code (greta, INLA, or brms) using an indexing approach that scales to large
     agricultural datasets, and supports cross-engine posterior triangulation
     as a robustness signal. Supports Gaussian, binomial, Poisson, negative

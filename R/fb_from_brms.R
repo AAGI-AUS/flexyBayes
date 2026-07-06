@@ -332,7 +332,7 @@ fb_from_brms <- function(
     intercept = fixed_info$intercept,
     fixed_terms = fixed_info$terms,
     random_terms = random_terms,
-    rcov_terms = list(), # brms folds rcov into family
+    residual_terms = list(), # brms folds residual into family
     addition_terms = addition_terms,
     priors = priors,
     data_summary = data_summary,

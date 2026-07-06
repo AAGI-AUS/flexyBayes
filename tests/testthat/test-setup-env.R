@@ -164,16 +164,16 @@ test_that("setup_env stores weights", {
   expect_equal(ev$wt_atg, wts)
 })
 
-test_that("setup_env handles at_units rcov", {
+test_that("setup_env handles at_units residual", {
   dat <- data.frame(
     y = rnorm(20),
     env = factor(rep(1:4, 5))
   )
   fixed_info <- flexyBayes:::.parse_fixed(y ~ 1, dat)
-  rcov_terms <- flexyBayes:::.parse_formula(~ at(env):units, dat)
+  residual_terms <- flexyBayes:::.parse_formula(~ at(env):units, dat)
   ev <- new.env(parent = emptyenv())
 
-  flexyBayes:::.setup_env(ev, fixed_info, list(), rcov_terms, dat, list(), NULL)
+  flexyBayes:::.setup_env(ev, fixed_info, list(), residual_terms, dat, list(), NULL)
 
   expect_true("env_id" %in% ls(ev))
   expect_true("n_env" %in% ls(ev))

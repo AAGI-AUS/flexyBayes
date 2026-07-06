@@ -80,9 +80,10 @@ a sampling log-density; an honest abstain is preferred to a
 plausible-but-wrong log-density.
 
 Acyclic note. A consumer such as proxymix uses this callable without
-depending on flexyBayes; flexyBayes does not list proxymix in \code{Imports} or \code{Suggests}.
-The cross-package demonstration lives in a separate integration
-harness, not in this package, preserving the acyclic dependency graph.
+depending on flexyBayes; flexyBayes does not list proxymix in \code{Imports}
+or \code{Suggests}. The cross-package demonstration lives in a separate
+integration harness, not in this package, preserving the acyclic
+dependency graph.
 }
 \examples{
 \dontrun{

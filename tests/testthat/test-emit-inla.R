@@ -28,7 +28,7 @@ mk_fb_for_inla <- function(
     link = "identity",
     fixed_terms = list(list(type = "continuous", var = "x")),
     random_terms = random_terms,
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     source = "asreml"
   )
   flexyBayes:::lgm_gate(fb)
@@ -73,7 +73,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
       inner = "geno",
       k = 2L
     )),
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     source = "asreml"
   )
   forced <- flexyBayes:::lgm_gate(
@@ -97,7 +97,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     link = "identity",
     fixed_terms = list(list(type = "non_linear", expr = "a*exp(-b*x)")),
     random_terms = list(),
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     source = "asreml"
   )
   forced <- flexyBayes:::lgm_gate(
@@ -113,14 +113,14 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
   )
 })
 
-test_that(".build_inla_formula() fires the gate-broken-contract assertion on an unsupported rcov term type when the gate is bypassed", {
+test_that(".build_inla_formula() fires the gate-broken-contract assertion on an unsupported residual term type when the gate is bypassed", {
   fb_raw <- flexyBayes:::new_fb_terms(
     response = "y",
     family = "gaussian",
     link = "identity",
     fixed_terms = list(list(type = "continuous", var = "x")),
     random_terms = list(),
-    rcov_terms = list(list(type = "at_units", var = "env")),
+    residual_terms = list(list(type = "at_units", var = "env")),
     source = "asreml"
   )
   forced <- flexyBayes:::lgm_gate(
@@ -132,7 +132,7 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
   expect_s3_class(forced, "fb_terms")
   expect_error(
     flexyBayes:::.build_inla_formula(forced),
-    "lgm_gate broken contract.*rcov term type"
+    "lgm_gate broken contract.*residual term type"
   )
 })
 

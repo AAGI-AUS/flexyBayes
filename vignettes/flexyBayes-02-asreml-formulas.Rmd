@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 02: asreml-shaped formulas: a reference"
-date: "2026-06-06"
+date: "2026-07-01"
 output:
   rmarkdown::html_vignette:
     toc: true
@@ -29,7 +29,7 @@ vignette: >
 `flexybayes()` accepts the asreml-shaped specification
 
 ```r
-flexybayes(fixed = ..., random = ~ ..., rcov = ~ ..., data = ...,
+flexybayes(fixed = ..., random = ~ ..., residual = ~ ..., data = ...,
           known_matrices = list(...), weights = ...)
 ```
 
@@ -121,7 +121,7 @@ fit_fix
 #>   fixed:      2 
 #>   random:     0 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.05 sec
+#>   runtime:    2.37 sec
 #>   Representation: aggregated_exact (compression 30:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 4 cells (ratio 30:1)
@@ -147,7 +147,7 @@ fit_int
 #>   fixed:   6
 #>   random:  0
 #>   hyper:   1
-#>   runtime: 2.15 sec
+#>   runtime: 1.86 sec
 #>   numerical confirm: PASS
 #> ------------------------------------------------------- 
 #>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
@@ -182,7 +182,7 @@ fit_rand
 #>   fixed:      2 
 #>   random:     1 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.14 sec
+#>   runtime:    2.23 sec
 #>   Representation: aggregated_exact (compression 3:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 40 cells (ratio 3:1)
@@ -218,12 +218,12 @@ fit_vm
 #>   Fixed  : yield ~ env 
 #>   Random : ~vm(geno, Gmat) 
 #>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 18.6 sec
-#>   Params : 4 monitored; 2 fixed, 1 random terms
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 16.4 sec
+#>   Params : 5 monitored; 2 fixed, 1 random terms
 #>   Representation: exact
 #>   Engine:         greta MCMC
-#>   Max Rhat: 4.73  [!] 
-#>   Min ESS: 17 
+#>   Max Rhat: 2.7  [!] 
+#>   Min ESS: 7 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible (summary, emmeans, etc.)
 #>   $greta  -- native greta (draws, model, calculate)
@@ -272,11 +272,11 @@ fit_fa
 #>   Fixed  : yield ~ env 
 #>   Random : ~fa(env, 2):geno 
 #>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 13.2 sec
-#>   Params : 5 monitored; 2 fixed, 1 random terms
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 9.8 sec
+#>   Params : 6 monitored; 2 fixed, 1 random terms
 #>   Representation: exact
 #>   Engine:         greta MCMC
-#>   Max Rhat: 16.094  [!] 
+#>   Max Rhat: 12.4  [!] 
 #>   Min ESS: 0 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible (summary, emmeans, etc.)
@@ -314,12 +314,12 @@ fit_nested
 #>   Fixed  : yield ~ env 
 #>   Random : ~rep + rep:block 
 #>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 12 sec
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 8.7 sec
 #>   Params : 5 monitored; 2 fixed, 2 random terms
 #>   Representation: exact
 #>   Engine:         greta MCMC
-#>   Max Rhat: 15.211  [!] 
-#>   Min ESS: 10 
+#>   Max Rhat: 18.121  [!] 
+#>   Min ESS: 8 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible (summary, emmeans, etc.)
 #>   $greta  -- native greta (draws, model, calculate)
@@ -345,10 +345,10 @@ flexybayes(fixed = y ~ 1, random = ~ spl(x, type = "ps", df = 15),
           data = dat, ...)
 ```
 
-# 8. Residual covariance: `rcov`
+# 8. Residual covariance: `residual`
 
-The `rcov` formula describes structure on the residual error term.
-The default — unstated `rcov` — is iid Gaussian with a single
+The `residual` formula describes structure on the residual error term.
+The default — unstated `residual` — is iid Gaussian with a single
 $\sigma_e$.
 
 | Term | Semantics |
@@ -359,7 +359,7 @@ $\sigma_e$.
 
 ```r
 flexybayes(fixed = yield ~ rep, random = ~ geno,
-          rcov = ~ ar1(row):ar1(col),
+          residual = ~ ar1(row):ar1(col),
           data = field_data, ...)
 ```
 
@@ -453,12 +453,12 @@ fit_b
 #> ------------------------------------------------------- 
 #>   Fixed  : yield ~ env + (1 | geno) 
 #>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 9 sec
+#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 6.8 sec
 #>   Params : 4 monitored; 2 fixed, 1 random terms
 #>   Representation: exact
 #>   Engine:         greta MCMC
-#>   Max Rhat: 1.161  [!] 
-#>   Min ESS: 8 
+#>   Max Rhat: 8.353  [!] 
+#>   Min ESS: 5 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible (summary, emmeans, etc.)
 #>   $greta  -- native greta (draws, model, calculate)
@@ -520,14 +520,14 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] flexyBayes_0.8.3
+#> [1] flexyBayes_0.9.0
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
 #>   [4] tensorflow_2.20.0      loo_2.9.0              S7_0.2.2              
 #>   [7] tensorA_0.36.2.1       INLA_25.10.19          TH.data_1.1-5         
 #>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
-#>  [13] gretaR_0.2.0           sf_1.1-0               survival_3.8-3        
+#>  [13] gretaR_0.5.0           sf_1.1-0               survival_3.8-3        
 #>  [16] processx_3.9.0         posterior_1.7.0        magrittr_2.0.5        
 #>  [19] compiler_4.5.2         rlang_1.2.0            progress_1.2.3        
 #>  [22] tools_4.5.2            data.table_1.18.2.1    knitr_1.51            

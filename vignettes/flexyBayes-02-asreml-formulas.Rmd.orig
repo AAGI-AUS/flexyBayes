@@ -42,7 +42,7 @@ set.seed(1100)
 `flexybayes()` accepts the asreml-shaped specification
 
 ```r
-flexybayes(fixed = ..., random = ~ ..., rcov = ~ ..., data = ...,
+flexybayes(fixed = ..., random = ~ ..., residual = ~ ..., data = ...,
           known_matrices = list(...), weights = ...)
 ```
 
@@ -247,10 +247,10 @@ flexybayes(fixed = y ~ 1, random = ~ spl(x, type = "ps", df = 15),
           data = dat, ...)
 ```
 
-# 8. Residual covariance: `rcov`
+# 8. Residual covariance: `residual`
 
-The `rcov` formula describes structure on the residual error term.
-The default — unstated `rcov` — is iid Gaussian with a single
+The `residual` formula describes structure on the residual error term.
+The default — unstated `residual` — is iid Gaussian with a single
 $\sigma_e$.
 
 | Term | Semantics |
@@ -261,7 +261,7 @@ $\sigma_e$.
 
 ```r
 flexybayes(fixed = yield ~ rep, random = ~ geno,
-          rcov = ~ ar1(row):ar1(col),
+          residual = ~ ar1(row):ar1(col),
           data = field_data, ...)
 ```
 

@@ -70,7 +70,7 @@
       atg_model <- greta::model(mu_atg, tau_env, Lambda_geno_env_fa2, psi_geno_env_fa2, g_mat_geno_env_fa2, sigma_e_atg)
       atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE)
 
-# flexybayes() reproduces at(env):units rcov code byte-identical
+# flexybayes() reproduces at(env):units residual code byte-identical
 
     Code
       cat(code)

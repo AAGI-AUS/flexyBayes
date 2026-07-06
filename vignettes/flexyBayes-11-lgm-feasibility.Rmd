@@ -247,7 +247,7 @@ free entries — well over the budget.
 ``` r
 data(yan.winterwheat, package = "agridat")
 fb_us <- flexyBayes:::fb_from_asreml(
-  fixed = yield ~ env, random = ~ us(env):gen, rcov = NULL,
+  fixed = yield ~ env, random = ~ us(env):gen, residual = NULL,
   data = yan.winterwheat
 )
 ref_us <- flexyBayes:::lgm_gate(fb_us)
@@ -255,7 +255,7 @@ ref_us
 #> flexyBayes: INLA backend refused for this model.
 #> Reasons (2 structural failures):
 #>   - [hyperparam_budget] hyperparameter count = 46 exceeds hard limit 15 (CCD/grid integration intractable; INLA Laplace approximation deteriorates).
-#>     Diagnostic: count = likelihood (1) + random + rcov contributions
+#>     Diagnostic: count = likelihood (1) + random + residual contributions
 #>   - [random_term_type_inla] random term type "us_gxe" (unstructured G×E) is outside the INLA emit allowlist. INLA's f() machinery does not currently represent this structured-covariance class without an SPDE / kronecker expansion that the current INLA emit does not produce. Re-route via backend = "greta".
 #>     Diagnostic: fb$random_terms type(s): us_gxe
 #> Re-route: try backend = "brms" via fb_brms() for the Stan passthrough

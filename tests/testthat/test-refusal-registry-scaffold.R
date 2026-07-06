@@ -163,7 +163,7 @@ test_that(".refusal_registry holds the complete 54-code vocabulary", {
   # spot-check a representative new code from each family
   expect_true("precision_not_symmetric" %in% entries) # structured cov
   expect_true("low_rank_requires_greta" %in% entries) # approximation
-  expect_true("rcov_type_unsupported_for_aggregation" %in% entries) # aggregate emit
+  expect_true("residual_type_unsupported_for_aggregation" %in% entries) # aggregate emit
   expect_true("predict_kernel_invalid_include" %in% entries) # prediction
   expect_true("design_memory_exceeds_ceiling" %in% entries) # preflight
   expect_true("unsupported_family" %in% entries) # family gate

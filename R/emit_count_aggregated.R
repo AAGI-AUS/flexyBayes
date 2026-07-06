@@ -40,7 +40,7 @@ emit_count_aggregated <- function(
   the_call = NULL,
   fixed = NULL,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   family = NULL,
   link = NULL,
   data_name = NA_character_
@@ -99,7 +99,7 @@ emit_count_aggregated <- function(
     the_call = the_call,
     fixed = fixed,
     random = random,
-    rcov = rcov,
+    residual = residual,
     family = family,
     link = link,
     data_name = data_name,
@@ -446,7 +446,7 @@ emit_count_aggregated <- function(
   the_call,
   fixed,
   random,
-  rcov,
+  residual,
   family,
   link,
   data_name,
@@ -504,7 +504,7 @@ emit_count_aggregated <- function(
           terms = fb$fixed_terms
         ),
         random = fb$random_terms,
-        rcov = fb$rcov_terms,
+        residual = fb$residual_terms,
         family = list(
           family = fb$family,
           link = fb$link %||% .agg_count_link(fb$family)
@@ -514,7 +514,7 @@ emit_count_aggregated <- function(
       call_info = list(
         fixed = fixed,
         random = random,
-        rcov = rcov,
+        residual = residual,
         data_name = data_name,
         family = family,
         link = link,

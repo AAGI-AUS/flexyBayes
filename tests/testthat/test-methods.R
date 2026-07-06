@@ -84,13 +84,13 @@ make_mock_flexybayes <- function() {
       parse_info = list(
         fixed = list(response = "y", intercept = TRUE, terms = list()),
         random = list(),
-        rcov = list(list(type = "units")),
+        residual = list(list(type = "units")),
         family = list(family = "gaussian", link = "identity")
       ),
       call_info = list(
         fixed = y ~ 1,
         random = NULL,
-        rcov = NULL,
+        residual = NULL,
         data_name = "dat",
         family = "gaussian",
         link = NULL,

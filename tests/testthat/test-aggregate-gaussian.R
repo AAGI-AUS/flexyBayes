@@ -221,7 +221,7 @@ test_that("compression ratio reporting: balanced factor design", {
       intercept = TRUE,
       fixed_terms = fixed_terms,
       random_terms = random_terms,
-      rcov_terms = list(),
+      residual_terms = list(),
       addition_terms = list(),
       priors = list(),
       data_summary = list(n = 100L),

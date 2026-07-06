@@ -129,7 +129,7 @@
 #' downstream machinery (summaries, [triangulate()], canonical-name
 #' mapping) as a formula-ingested model. Unlike the formula adapters this
 #' is a post-hoc wrapper around an already-built graph, so the resulting
-#' IR is greta-only by construction: it carries no fixed / random / rcov
+#' IR is greta-only by construction: it carries no fixed / random / residual
 #' term lists, only the populated `greta_meta` slot.
 #'
 #' @param model A `greta_model` returned by `greta::model(...)`.
@@ -147,7 +147,7 @@
 #'   in `data_summary$known_matrices`.
 #'
 #' @return An `fb_terms` object with `source = "greta"`, `intercept = NA`,
-#'   empty fixed / random / rcov term lists, and the populated
+#'   empty fixed / random / residual term lists, and the populated
 #'   `greta_meta` slot (carrying the model graph, target arrays, and the
 #'   canonical-name map). Pass the returned IR straight to [fb()] to fit
 #'   the graph via greta while keeping a canonical-name map for
@@ -312,7 +312,7 @@ fb_from_greta <- function(
     intercept = NA,
     fixed_terms = list(),
     random_terms = list(),
-    rcov_terms = list(),
+    residual_terms = list(),
     addition_terms = list(),
     priors = priors,
     data_summary = data_summary,
