@@ -948,7 +948,12 @@ emit_gaussian_aggregated <- function(
 }
 
 
-.agg_inla_summarise <- function(engine_out, fb_aggregated, ri_plan, residual_plan) {
+.agg_inla_summarise <- function(
+  engine_out,
+  fb_aggregated,
+  ri_plan,
+  residual_plan
+) {
   inla_fit <- engine_out$inla
   fixed_summary <- inla_fit$summary.fixed
   beta_means <- fixed_summary$mean

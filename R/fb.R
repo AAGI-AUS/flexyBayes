@@ -167,7 +167,12 @@ fb_from_asreml <- function(
 # A non-formula, non-greta `spec` falls through to "asreml" so the
 # established fb_from_asreml() validation owns the error message
 # (behaviour-preserving for malformed input).
-.detect_grammar <- function(spec, random = NULL, residual = NULL, syntax = "auto") {
+.detect_grammar <- function(
+  spec,
+  random = NULL,
+  residual = NULL,
+  syntax = "auto"
+) {
   if (!identical(syntax, "auto")) {
     return(syntax)
   }
