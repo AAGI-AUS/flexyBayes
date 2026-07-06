@@ -274,6 +274,19 @@ fb_plan <- function(
     .fb_plan_predict_shape(predict_plan, fb, data)
   }
 
+  # ---- will_fit resolution ------------------------------------- #
+  # `will_fit` reflects whether the *chosen route* can actually run, not
+  # only whether the preflight cleared. For an inla/auto request the LGM
+  # gate runs, so a structural / memory gate refusal means the route
+  # cannot fit even when the preflight sized every term. An explicit
+  # greta / brms request bypasses the gate (gate_outcome stays NA), so it
+  # fits whenever the preflight clears -- this is the opt-in path by which
+  # a greta pin fits interaction random effects and a heteroscedastic
+  # residual that INLA (and therefore the auto default) still refuses.
+  gate_refuses <- backend %in% c("inla", "auto") &&
+    isTRUE(gate_outcome %in% c("refuse_structural", "refuse_memory"))
+  will_fit_final <- !preflight_refused && !gate_refuses
+
   # ---- memory estimate (bytes) --------------------------------- #
   mem_bytes <- preflight$total_estimate_bytes
   if (is.null(mem_bytes) || is.na(mem_bytes)) {
@@ -315,7 +328,7 @@ fb_plan <- function(
       backend_chosen = chosen_backend,
       path = chosen_path,
       reason_code = chosen_reason,
-      will_fit = !preflight_refused,
+      will_fit = will_fit_final,
       preflight_refused = preflight_refused,
       preflight_refusal = preflight$refusal,
       routing_policy_version = .ROUTING_POLICY_VERSION,
