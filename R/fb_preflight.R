@@ -602,6 +602,50 @@
     ))
   }
 
+  # nested (A:B) and combo (A:B:C) interaction random intercepts. The
+  # greta codegen emits these exactly like a "simple" random intercept:
+  # a single integer index column (combo_id / nested_id) into a k-length
+  # latent vector, where k is the number of distinct observed
+  # combinations. The memory shape is therefore identical to the "simple"
+  # branch (4N index + 8k latent) with no under-estimation, so they are
+  # sized here rather than escalated to representation_unknown. This lets
+  # an explicit greta request preflight-clear (the greta emit handles the
+  # gather); an inla/auto request is still refused downstream by the LGM
+  # gate (random_term_type_inla), so the honest INLA boundary is intact.
+  if (rtype %in% c("nested", "combo")) {
+    kk <- if (!is.na(k)) {
+      k
+    } else {
+      cols <- c(
+        as.character(term$vars),
+        as.character(term$inner),
+        as.character(term$outer)
+      )
+      cols <- cols[nzchar(cols)]
+      if (length(cols) == 0L) NA_integer_ else .fb_dataset_levels(fb_dataset, cols)
+    }
+    if (is.na(kk)) {
+      return(.preflight_entry(
+        label = label,
+        design_memory_bytes = NA_real_,
+        representation_class = "unknown",
+        aggregated_likelihood_candidate = FALSE,
+        term_kind = "random_intercept",
+        unknown_representation = TRUE
+      ))
+    }
+    bytes <- 4 * n_rows + 8 * kk + .FB_PREFLIGHT_TERM_OVERHEAD
+    return(.preflight_entry(
+      label = label,
+      design_memory_bytes = bytes,
+      representation_class = .representation_class(
+        "indexed_random_intercept"
+      ),
+      aggregated_likelihood_candidate = family_ok,
+      term_kind = "random_intercept"
+    ))
+  }
+
   # interaction_generic -- the parse_formula classifier's fallback
   # when no structured-interaction pattern matched (parse_formula.R
   # :214). Memory is unknown because the design shape is not
