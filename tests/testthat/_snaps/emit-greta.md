@@ -15,7 +15,7 @@
       distribution(y_atg_obs) <- normal(mu_i_atg, sigma_e_atg)
       # -- Model and MCMC -----------------------------------------
       atg_model <- greta::model(mu_atg, beta_x, sigma_e_atg)
-      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE)
+      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE, initial_values = greta::initials(mu_atg = 0.068586835))
 
 # flexybayes() reproduces simple random-effect code byte-identical
 
@@ -38,7 +38,7 @@
       distribution(y_atg_obs) <- normal(mu_i_atg, sigma_e_atg)
       # -- Model and MCMC -----------------------------------------
       atg_model <- greta::model(mu_atg, tau_env, sigma_geno, sigma_e_atg)
-      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE)
+      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE, initial_values = greta::initials(mu_atg = 0.068586835))
 
 # flexybayes() reproduces fa_gxe code byte-identical
 
@@ -68,7 +68,7 @@
       distribution(y_atg_obs) <- normal(mu_i_atg, sigma_e_atg)
       # -- Model and MCMC -----------------------------------------
       atg_model <- greta::model(mu_atg, tau_env, Lambda_geno_env_fa2, psi_geno_env_fa2, g_mat_geno_env_fa2, sigma_e_atg)
-      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE)
+      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE, initial_values = greta::initials(mu_atg = 0.068586835))
 
 # flexybayes() reproduces at(env):units residual code byte-identical
 
@@ -91,7 +91,7 @@
       distribution(y_atg_obs) <- normal(mu_i_atg, sigma_e_atg[env_id])
       # -- Model and MCMC -----------------------------------------
       atg_model <- greta::model(mu_atg, tau_env, sigma_geno, sigma_e_atg)
-      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE)
+      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE, initial_values = greta::initials(mu_atg = 0.068586835))
 
 # flexybayes() reproduces ar1_spatial code byte-identical
 
@@ -116,5 +116,5 @@
       distribution(y_atg_obs) <- normal(mu_i_atg, sigma_e_atg)
       # -- Model and MCMC -----------------------------------------
       atg_model <- greta::model(mu_atg, tau_env, sigma_sp_row_col, sigma_e_atg)
-      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE)
+      atg_draws <- greta::mcmc(atg_model, n_samples = 1000, warmup = 500, chains = 4, verbose = TRUE, initial_values = greta::initials(mu_atg = 0.068586835))
 

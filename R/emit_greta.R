@@ -115,7 +115,22 @@ emit_greta <- function(
   ctx <- .code_residual(ctx, residual_terms, data)
   ctx <- .code_predictor(ctx, fixed_info)
   ctx <- .code_likelihood(ctx, fixed_info, residual_terms, data, weights)
-  ctx <- .code_model(ctx, n_samples, warmup, chains, mcmc_verbose)
+  # Intercept warm start (Francis K. C. Hui): resolve a link-scale
+  # starting value from the response mean when the model carries an
+  # intercept. NULL (no warm start) otherwise.
+  intercept_init <- if (isTRUE(fixed_info$intercept)) {
+    .greta_intercept_init(data[[fixed_info$response]], fam_link)
+  } else {
+    NULL
+  }
+  ctx <- .code_model(
+    ctx,
+    n_samples,
+    warmup,
+    chains,
+    mcmc_verbose,
+    intercept_init = intercept_init
+  )
 
   code_str <- paste(ctx$code, collapse = "\n")
 
