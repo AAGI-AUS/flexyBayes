@@ -766,7 +766,16 @@
     return("<fixed:unnamed>")
   }
   # random
-  group <- if (!is.null(term$var)) as.character(term$var) else "?"
+  # `term$var` is a length > 1 character vector for interaction random
+  # terms (combo A:B:C -> c("A", "B", "C")); collapse it to a single
+  # "A:B:C" string so the label stays scalar. A vector label otherwise
+  # propagated into `per_term[[entry$label]] <- entry`, raising the
+  # base-R "no such index at level 1" error on any interaction term.
+  group <- if (!is.null(term$var)) {
+    paste(as.character(term$var), collapse = ":")
+  } else {
+    "?"
+  }
   if (identical(ttype, "simple")) {
     return(paste0("(1 | ", group, ")"))
   }
