@@ -622,7 +622,11 @@
         as.character(term$outer)
       )
       cols <- cols[nzchar(cols)]
-      if (length(cols) == 0L) NA_integer_ else .fb_dataset_levels(fb_dataset, cols)
+      if (length(cols) == 0L) {
+        NA_integer_
+      } else {
+        .fb_dataset_levels(fb_dataset, cols)
+      }
     }
     if (is.na(kk)) {
       return(.preflight_entry(
