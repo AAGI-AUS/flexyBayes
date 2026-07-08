@@ -1,5 +1,30 @@
 # flexyBayes 0.9.0
 
+## New features
+
+* **An explicit `backend = "greta"` request now fits crossed interaction
+  random effects and a heteroscedastic per-environment residual** -- the full
+  ASReml-style multi-environment-trial (MET) shape (`random = ~ gen + gen:env`,
+  `residual = ~ dsum(~ units | env)`). The greta code generator already gathered
+  these terms; the dispatch preflight now sizes `nested` / `combo` interaction
+  random intercepts (an index gather into a per-combination latent vector) so
+  the plan clears and the fit proceeds. The `auto` default is unchanged: it
+  still returns an honest structural refusal for models INLA cannot represent,
+  so `backend = "greta"` is a deliberate opt-in.
+* **The greta backend warm-starts the intercept from the response mean**
+  (identity / log / logit / probit link scale), shortening the initial sampler
+  transient while leaving the variance components and random effects at their
+  prior-draw starts so convergence diagnostics stay informative.
+
+## Bug fixes
+
+* **Interaction random terms no longer crash the dispatch plan.** A three-way
+  interaction random term (for example `gen:loc:yearf`) previously aborted the
+  preflight with a base-R "the condition has length > 1" error, then a
+  "no such index at level 1" error. The level-count helper now counts distinct
+  observed combinations and the term label collapses to a single string, so an
+  interaction random term reaches the normal (structural-refusal or fit) path.
+
 ## Breaking changes
 
 * **The residual-structure argument `rcov` is renamed to `residual`, matching
