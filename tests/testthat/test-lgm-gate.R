@@ -13,7 +13,7 @@ mk_fb <- function(
   family = "gaussian",
   fixed_terms = list(),
   random_terms = list(),
-  rcov_terms = list(list(type = "units")),
+  residual_terms = list(list(type = "units")),
   addition_terms = list(),
   priors = list(legacy = TRUE),
   source = "asreml"
@@ -23,7 +23,7 @@ mk_fb <- function(
     family = family,
     fixed_terms = fixed_terms,
     random_terms = random_terms,
-    rcov_terms = rcov_terms,
+    residual_terms = residual_terms,
     addition_terms = addition_terms,
     priors = priors,
     source = source
@@ -248,11 +248,11 @@ test_that(".lgm_check_random_term_inla_support() passes the allowlist", {
   expect_null(r$reason)
 })
 
-test_that(".lgm_check_rcov_term_inla_support() passes the allowlist", {
-  fb <- mk_fb(rcov_terms = list(list(type = "units")))
-  r <- flexyBayes:::.lgm_check_rcov_term_inla_support(fb)
+test_that(".lgm_check_residual_term_inla_support() passes the allowlist", {
+  fb <- mk_fb(residual_terms = list(list(type = "units")))
+  r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
   expect_true(r$pass)
-  expect_identical(r$rule_id, "rcov_term_type_inla")
+  expect_identical(r$rule_id, "residual_term_type_inla")
   expect_null(r$reason)
 })
 
@@ -316,13 +316,13 @@ test_that(".lgm_check_random_term_inla_support() refuses ar1 (autoregressive)", 
   expect_match(r$reason, "autoregressive lag-1")
 })
 
-# Rcov negative case: at_units triggers rcov_term_type_inla.
+# Residual negative case: at_units triggers residual_term_type_inla.
 
-test_that(".lgm_check_rcov_term_inla_support() refuses at_units (heterogeneous residual)", {
-  fb <- mk_fb(rcov_terms = list(list(type = "at_units", var = "env")))
-  r <- flexyBayes:::.lgm_check_rcov_term_inla_support(fb)
+test_that(".lgm_check_residual_term_inla_support() refuses at_units (heterogeneous residual)", {
+  fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+  r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
   expect_false(r$pass)
-  expect_identical(r$rule_id, "rcov_term_type_inla")
+  expect_identical(r$rule_id, "residual_term_type_inla")
   expect_match(r$reason, "\"at_units\"")
   expect_match(r$reason, "heterogeneous residual")
 })
@@ -340,11 +340,11 @@ test_that("lgm_gate() refuses a vm random term via random_term_type_inla", {
   expect_true(any(grepl("variance-matrix", text)))
 })
 
-test_that("lgm_gate() refuses an at_units rcov term via rcov_term_type_inla", {
-  fb <- mk_fb(rcov_terms = list(list(type = "at_units", var = "env")))
+test_that("lgm_gate() refuses an at_units residual term via residual_term_type_inla", {
+  fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
   out <- flexyBayes:::lgm_gate(fb)
   expect_s3_class(out, "lgm_refusal")
-  expect_identical(out$primary_rule, "rcov_term_type_inla")
+  expect_identical(out$primary_rule, "residual_term_type_inla")
 })
 
 # ---------------------------------------------------------------- #

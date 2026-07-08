@@ -212,7 +212,7 @@ test_that("CG-8: at(env):units generates heterogeneous residual", {
   dat <- make_test_data()
   code <- flexybayes(
     fixed = yield ~ 1,
-    rcov = ~ at(env):units,
+    residual = ~ at(env):units,
     data = dat,
     return_code = TRUE,
     verbose = FALSE

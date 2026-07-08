@@ -58,7 +58,7 @@ emit_brms <- function(
   the_call = NULL,
   fixed = NULL,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   family = NULL,
   link = NULL,
   data_name = NA_character_,
@@ -250,13 +250,13 @@ emit_brms <- function(
           terms = fb$fixed_terms
         ),
         random = fb$random_terms,
-        rcov = fb$rcov_terms,
+        residual = fb$residual_terms,
         family = list(family = fb$family, link = fb$link)
       ),
       call_info = list(
         fixed = fixed,
         random = random,
-        rcov = rcov,
+        residual = residual,
         data_name = data_name,
         family = family,
         link = link,

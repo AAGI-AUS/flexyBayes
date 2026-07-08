@@ -40,7 +40,7 @@ test_that("fb_from_brms() handles minimal gaussian fixed-only model", {
   expect_identical(fb$fixed_terms[[1]]$type, "continuous")
   expect_identical(fb$fixed_terms[[1]]$var, "x")
   expect_length(fb$random_terms, 0L)
-  expect_length(fb$rcov_terms, 0L)
+  expect_length(fb$residual_terms, 0L)
   expect_length(fb$addition_terms, 0L)
 })
 

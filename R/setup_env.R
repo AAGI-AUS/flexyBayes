@@ -8,7 +8,7 @@
 # @param ev Environment to populate
 # @param fixed_info Parsed fixed formula info
 # @param random_terms List of random term descriptors
-# @param rcov_terms List of rcov term descriptors
+# @param residual_terms List of residual term descriptors
 # @param data data.frame
 # @param known_matrices Named list of matrices
 # @param weights Optional numeric weight vector
@@ -16,7 +16,7 @@
   ev,
   fixed_info,
   random_terms,
-  rcov_terms,
+  residual_terms,
   data,
   known_matrices,
   weights
@@ -92,8 +92,8 @@
     }
   }
 
-  # Random and rcov id vectors / level counts / matrices
-  all_terms <- c(random_terms, rcov_terms)
+  # Random and residual id vectors / level counts / matrices
+  all_terms <- c(random_terms, residual_terms)
   for (term in all_terms) {
     .setup_term_env(ev, term, data, known_matrices)
   }
@@ -120,7 +120,7 @@
   levels(factor(data[[vname]]))
 }
 
-# Set up environment objects for a single random/rcov term
+# Set up environment objects for a single random/residual term
 .setup_term_env <- function(ev, term, data, known_matrices) {
   mk_id <- function(vname) {
     if (vname %in% names(data)) {

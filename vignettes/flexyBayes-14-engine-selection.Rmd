@@ -40,7 +40,7 @@ data(sleepstudy, package = "lme4")
 # brms / lme4-style grammar (a bar-grouped formula): detected automatically.
 fit <- fb(Reaction ~ Days + (1 | Subject), data = sleepstudy)
 
-# ASReml grammar: fixed / random / rcov.
+# ASReml grammar: fixed / random / residual.
 fit_asreml <- fb(
   fixed  = Reaction ~ Days,
   random = ~ Subject,
@@ -50,7 +50,7 @@ fit_asreml <- fb(
 
 The grammar is read from the call, never guessed from intent. A
 bar-grouped formula such as `Reaction ~ Days + (1 | Subject)` is read as
-brms grammar; a bar-free `fixed` formula paired with `random` / `rcov`
+brms grammar; a bar-free `fixed` formula paired with `random` / `residual`
 is ASReml grammar. The lone ambiguous case -- a bare `y ~ x` with no
 grouping, which means the same model either way -- defaults to ASReml.
 Force the reading with `syntax`:

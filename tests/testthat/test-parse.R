@@ -145,7 +145,7 @@ test_that("parse_formula handles spl(x)", {
   expect_equal(terms[[1]]$type, "spline")
 })
 
-test_that("parse_formula handles at(env):units (rcov)", {
+test_that("parse_formula handles at(env):units (residual)", {
   dat <- data.frame(env = factor(rep(1:4, each = 5)))
   terms <- flexyBayes:::.parse_formula(~ at(env):units, dat)
   expect_length(terms, 1)

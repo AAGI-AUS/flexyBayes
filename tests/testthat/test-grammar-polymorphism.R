@@ -108,7 +108,7 @@ test_that("the asreml IR is byte-identical to a direct fb_from_asreml() call", {
 # Structured refusals                                               #
 # ---------------------------------------------------------------- #
 
-test_that("a brms formula combined with ASReml random/rcov refuses", {
+test_that("a brms formula combined with ASReml random/residual refuses", {
   df <- mk_df()
   expect_error(
     flexyBayes:::.build_ir_polymorphic(
@@ -150,10 +150,10 @@ test_that("brms grammar with known_matrices refuses", {
   )
 })
 
-test_that("a native greta_model with ASReml random/rcov refuses", {
+test_that("a native greta_model with ASReml random/residual refuses", {
   # v0.5.0: the universal entry now FITS a native greta_model (no longer
   # deferred). But a native graph encodes its full structure itself, so
-  # combining it with the ASReml `random` / `rcov` slots is a category
+  # combining it with the ASReml `random` / `residual` slots is a category
   # error and refuses.
   df <- mk_df()
   fake <- structure(list(), class = "greta_model")

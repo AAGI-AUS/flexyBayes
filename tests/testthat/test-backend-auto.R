@@ -127,20 +127,20 @@ test_that("backend = 'auto' routes a Gaussian random-intercept model to INLA", {
 # (e) backend = "inla" on an LGM-incompatible model refuses         #
 # ---------------------------------------------------------------- #
 # A heterogeneous-residual at() structure triggers an LGM check
-# failure (rcov is not the iid units default). Use it to drive the
+# failure (residual is not the iid units default). Use it to drive the
 # refusal path.
 
 test_that("backend = 'inla' surfaces the INLA-side refusal cleanly", {
   d <- mk_lgm_data()
   # at(env):units is rejected at emit_inla()'s feasibility check
-  # (v0.1 does not support structured rcov for INLA). Under backend
+  # (v0.1 does not support structured residual for INLA). Under backend
   # = "inla" the refusal surfaces as a clean error; under backend =
   # "auto" the same refusal triggers the greta fallback (subtest f).
   err <- tryCatch(
     flexybayes(
       yield ~ env,
       random = ~geno,
-      rcov = ~ at(env):units,
+      residual = ~ at(env):units,
       data = d,
       backend = "inla",
       verbose = FALSE
@@ -169,7 +169,7 @@ test_that("backend = 'auto' on a non-LGM model falls back to greta with trace", 
     suppressWarnings(flexybayes(
       yield ~ env,
       random = ~geno,
-      rcov = ~ at(env):units,
+      residual = ~ at(env):units,
       data = d,
       backend = "auto",
       n_samples = 50L,
@@ -185,7 +185,7 @@ test_that("backend = 'auto' on a non-LGM model falls back to greta with trace", 
   )
   bd <- backend_decision(fit)
   expect_identical(bd$backend, "greta")
-  # ADR 0017: the gate's .lgm_check_rcov_term_inla_support() now
+  # ADR 0017: the gate's .lgm_check_residual_term_inla_support() now
   # catches at(env):units at gate time, so the only valid fall-back
   # path is auto_lgm_refuse. The pre-ADR-0017 emit-level path
   # ("auto_inla_emit_refuse") is architecturally unreachable.
@@ -227,7 +227,7 @@ test_that("ADR 0006 verification: explicit-greta + auto-accept + non-LGM refusal
     flexybayes(
       yield ~ env,
       random = ~geno,
-      rcov = ~ at(env):units,
+      residual = ~ at(env):units,
       data = d,
       backend = "inla",
       verbose = FALSE

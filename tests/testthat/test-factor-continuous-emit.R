@@ -395,7 +395,7 @@ test_that("lgm_gate accepts factor_numeric_interaction structurally", {
       )
     ),
     random_terms = list(),
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     priors = list(legacy = TRUE),
     source = "brms"
   )

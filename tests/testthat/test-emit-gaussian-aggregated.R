@@ -275,10 +275,10 @@ test_that("(j) aggregate = 'foo' (invalid) raises clear validation error", {
 test_that("(g) at(f):units refuses when f is not a cell key", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  # f3 is NOT in the formula's cell key but referenced in rcov.
+  # f3 is NOT in the formula's cell key but referenced in residual.
   dat$f3 <- factor(sample(letters[1:2], nrow(dat), replace = TRUE))
   # NOTE: this exercises the dispatch.R refusal for unsupported INLA
-  # rcov shapes at v0.3.2 (heterogeneous at_units on INLA is deferred);
+  # residual shapes at v0.3.2 (heterogeneous at_units on INLA is deferred);
   # the at-not-in-cell-key refusal lives in the greta path (also
   # deferred). The test confirms the IR doesn't silently produce an
   # invalid aggregated fit.
@@ -287,7 +287,7 @@ test_that("(g) at(f):units refuses when f is not a cell key", {
       yield = y,
       fixed = ~ f1 + f2,
       random = ~g,
-      rcov = ~ at(f3):units,
+      residual = ~ at(f3):units,
       data = dat,
       backend = "inla",
       aggregate = TRUE,

@@ -742,13 +742,13 @@
     since_version = "0.4.0"
   )
   .register_refusal(
-    reason_code = "rcov_type_unsupported_for_aggregation",
+    reason_code = "residual_type_unsupported_for_aggregation",
     description = paste0(
-      "Aggregated Gaussian emit: the rcov term type is outside the ",
+      "Aggregated Gaussian emit: the residual term type is outside the ",
       "supported aggregation scope."
     ),
     message_template = paste0(
-      "emit_gaussian_aggregated(): rcov term type '%s' is not ",
+      "emit_gaussian_aggregated(): residual term type '%s' is not ",
       "supported by the aggregated path. Only homogeneous (units / ",
       "id) and at_units heterogeneous residual are supported. Pass ",
       "aggregate = FALSE for the per-row path."
@@ -1042,11 +1042,11 @@
     reason_code = "grammar_brms_with_asreml_terms",
     description = paste0(
       "A brms-style bar-grouped formula was combined with ASReml ",
-      "`random` / `rcov` arguments on the universal entry."
+      "`random` / `residual` arguments on the universal entry."
     ),
     message_template = paste0(
       "A brms-style formula (with `(... | g)` grouping) cannot be ",
-      "combined with `random` / `rcov` (ASReml grammar). Put every ",
+      "combined with `random` / `residual` (ASReml grammar). Put every ",
       "grouping term inside the formula, or use the ASReml form ",
       "throughout."
     ),

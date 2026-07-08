@@ -7,7 +7,7 @@
 fb_from_asreml(
   fixed,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   data,
   family = "gaussian",
   link = NULL,
@@ -15,7 +15,8 @@ fb_from_asreml(
   known_matrices = list(),
   prior = NULL,
   prior_fixed_sd = 100,
-  prior_vc_sd = 1
+  prior_vc_sd = 1,
+  rcov = lifecycle::deprecated()
 )
 }
 \arguments{
@@ -24,7 +25,7 @@ fb_from_asreml(
 \item{random}{One-sided formula \code{~ random_terms} (ASReml syntax), or
 \code{NULL}.}
 
-\item{rcov}{One-sided formula \code{~ residual_structure}, or \code{NULL}. \code{NULL}
+\item{residual}{One-sided formula \code{~ residual_structure}, or \code{NULL}. \code{NULL}
 defaults to iid residuals (\code{list(list(type = "units"))}), matching
 \code{\link[=flexybayes]{flexybayes()}}.}
 
@@ -50,12 +51,16 @@ the scalar priors \code{prior_fixed_sd} / \code{prior_vc_sd}.}
 
 \item{prior_vc_sd}{Numeric hyperparameter for the variance-component
 priors when \code{prior} is \code{NULL}.}
+
+\item{rcov}{Defunct in flexyBayes 0.9.0. The ASReml 3 name for the
+residual-structure argument, renamed to \code{residual} in ASReml 4;
+supplying it now raises an error. Use \code{residual} instead.}
 }
 \value{
 An \code{fb_terms} object with \code{source = "asreml"}.
 }
 \description{
-Parses an ASReml-style \code{fixed} / \code{random} / \code{rcov} specification into
+Parses an ASReml-style \code{fixed} / \code{random} / \code{residual} specification into
 a \code{fb_terms} object -- flexyBayes's backend-agnostic intermediate
 representation (IR) of a model. The IR is what every engine emits
 from, so building it explicitly lets a power user inspect the parsed

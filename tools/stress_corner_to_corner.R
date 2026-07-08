@@ -167,8 +167,8 @@ probe_refuse("refuse.brms.structured_cov", "dispatch",
   fb_brms(y ~ vm(g), data = d_g))
 probe_refuse("refuse.inla.us_random", "dispatch",
   fb_inla(y ~ x, random = ~ us(g), data = d_g))
-probe_refuse("refuse.inla.at_units_rcov", "dispatch",
-  fb_inla(y ~ x, random = ~ g, rcov = ~ at(g):units, data = d_g))
+probe_refuse("refuse.inla.at_units_residual", "dispatch",
+  fb_inla(y ~ x, random = ~ g, residual = ~ at(g):units, data = d_g))
 
 # =============================================================================
 # AREA 2 -- SUSPECTED SILENT-FAILURE PROBES (verify empirically)

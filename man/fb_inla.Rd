@@ -8,7 +8,7 @@ fb_inla(...)
 }
 \arguments{
 \item{...}{Arguments passed to \code{\link[=flexybayes]{flexybayes()}} (e.g. \code{fixed}, \code{random},
-\code{rcov}, \code{data}, \code{family}, \code{prior}, \code{syntax}). The \code{backend} argument
+\code{residual}, \code{data}, \code{family}, \code{prior}, \code{syntax}). The \code{backend} argument
 is pinned to \code{"inla"} and must not be supplied.}
 }
 \value{
@@ -19,7 +19,7 @@ An object of class \code{"flexybayes"} (specifically a
 Engine pin: fits the model with INLA (integrated nested Laplace
 approximation) only. This is sugar for
 \code{\link[=flexybayes]{flexybayes()}}\verb{(..., backend = "inla")} and accepts the same arguments
-and grammars (an ASReml \code{fixed} / \code{random} / \code{rcov} specification or a
+and grammars (an ASReml \code{fixed} / \code{random} / \code{residual} specification or a
 brms-style bar-grouped formula -- see \code{\link[=flexybayes]{flexybayes()}} for the full
 argument list). The model must be latent-Gaussian feasible; if it is
 not, the shared \code{lgm_gate()} raises a structured refusal naming the

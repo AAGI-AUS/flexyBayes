@@ -32,7 +32,7 @@ emit_greta <- function(
   the_call = NULL,
   fixed = NULL,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   family = NULL,
   link = NULL,
   data_name = NA_character_
@@ -43,7 +43,7 @@ emit_greta <- function(
 
   # ---------------------------------------------------------------- #
   # Unwrap the IR back into the shape the existing helpers expect.   #
-  # fixed_info, random_terms, rcov_terms,                            #
+  # fixed_info, random_terms, residual_terms,                            #
   # fam_link are byte-identical to what flexybayes() previously      #
   # produced inline via .parse_fixed / .parse_formula /              #
   # .resolve_family.                                                 #
@@ -55,7 +55,7 @@ emit_greta <- function(
     terms = fb$fixed_terms
   )
   random_terms <- fb$random_terms
-  rcov_terms <- fb$rcov_terms
+  residual_terms <- fb$residual_terms
   fam_link <- list(family = fb$family, link = fb$link)
 
   # ---------------------------------------------------------------- #
@@ -68,7 +68,7 @@ emit_greta <- function(
     ev,
     fixed_info,
     random_terms,
-    rcov_terms,
+    residual_terms,
     data,
     known_matrices,
     weights
@@ -112,9 +112,9 @@ emit_greta <- function(
 
   ctx <- .code_fixed(ctx, fixed_info)
   ctx <- .code_random(ctx, random_terms, data, known_matrices)
-  ctx <- .code_rcov(ctx, rcov_terms, data)
+  ctx <- .code_residual(ctx, residual_terms, data)
   ctx <- .code_predictor(ctx, fixed_info)
-  ctx <- .code_likelihood(ctx, fixed_info, rcov_terms, data, weights)
+  ctx <- .code_likelihood(ctx, fixed_info, residual_terms, data, weights)
   ctx <- .code_model(ctx, n_samples, warmup, chains, mcmc_verbose)
 
   code_str <- paste(ctx$code, collapse = "\n")
@@ -222,7 +222,7 @@ emit_greta <- function(
       parse_info = list(
         fixed = fixed_info,
         random = random_terms,
-        rcov = rcov_terms,
+        residual = residual_terms,
         family = fam_link,
         # Collect non-NULL smooth_obj slots into a named list
         # keyed by smooth-term variable name. Empty list when the model
@@ -246,7 +246,7 @@ emit_greta <- function(
       call_info = list(
         fixed = fixed,
         random = random,
-        rcov = rcov,
+        residual = residual,
         data_name = data_name,
         family = family,
         link = link,

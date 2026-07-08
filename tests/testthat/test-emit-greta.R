@@ -78,13 +78,13 @@ test_that("flexybayes() reproduces fa_gxe code byte-identical", {
   expect_snapshot(cat(code))
 })
 
-test_that("flexybayes() reproduces at(env):units rcov code byte-identical", {
+test_that("flexybayes() reproduces at(env):units residual code byte-identical", {
   skip_if_no_greta()
   d <- mk_emit_data()
   code <- flexybayes(
     yield ~ env,
     random = ~geno,
-    rcov = ~ at(env):units,
+    residual = ~ at(env):units,
     data = d,
     prior_vc_sd = 1,
     verbose = FALSE,

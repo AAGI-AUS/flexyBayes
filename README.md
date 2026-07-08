@@ -21,7 +21,7 @@ agree, when they differ, and why a backend was refused.
 
 | If you have… | Use | Notes |
 |---|---|---|
-| ASReml syntax (`fixed` / `random` / `rcov`) | `fb()` / `flexybayes()` | Variance-component / agricultural workflows. |
+| ASReml syntax (`fixed` / `random` / `residual`) | `fb()` / `flexybayes()` | Variance-component / agricultural workflows. |
 | brms or lme4 syntax (`y ~ x + (1 \| g)`) | `fb()` / `flexybayes()` | The grammar is detected from the call; `syntax =` forces it. |
 | A pre-built greta model | `fb()` | Pass the `greta::model()` object (or its `fb_from_greta()` representation) straight in. |
 | To force one engine | `fb_greta()` / `fb_inla()` / `fb_brms()` | Single-engine pins; a conflicting `backend` is refused. |
@@ -255,8 +255,8 @@ random = ~ ar1(row):id(col)           # spatial AR1
 random = ~ spl(x_cov)                 # P-spline
 
 # Residual
-rcov = ~ units                # iid residuals (default)
-rcov = ~ at(env):units        # heterogeneous by environment
+residual = ~ units                # iid residuals (default)
+residual = ~ at(env):units        # heterogeneous by environment
 
 # Families
 family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |

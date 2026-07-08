@@ -110,7 +110,7 @@ test_that("print.flexybayes emits Representation:/Engine: adjacent (no Exact.:)"
         call_info = list(
           fixed = y ~ x,
           random = NULL,
-          rcov = NULL,
+          residual = NULL,
           chains = 2,
           n_samples = 100,
           warmup = 50

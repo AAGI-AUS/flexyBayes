@@ -60,7 +60,7 @@ test_that("dispatch: large-n path triggers preflight refusal with tight ceiling"
       the_call = NULL,
       fixed = y ~ 1,
       random = ~g,
-      rcov = NULL,
+      residual = NULL,
       family = "gaussian",
       link = "identity",
       data_name = "df"
@@ -106,7 +106,7 @@ test_that("dispatch: large-n path with generous ceiling passes through preflight
     the_call = NULL,
     fixed = y ~ 1,
     random = ~g,
-    rcov = NULL,
+    residual = NULL,
     family = "gaussian",
     link = "identity",
     data_name = "df"

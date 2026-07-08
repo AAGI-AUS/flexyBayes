@@ -5,7 +5,7 @@
 # over the universal entry with the engine fixed --- `fb_brms(...)` ==
 # `fb(..., backend = "brms")`. It fits via Stan (through brms) and accepts
 # every grammar the universal entry does (an ASReml `fixed` / `random` /
-# `rcov` specification or a brms-style bar-grouped formula); the grammar
+# `residual` specification or a brms-style bar-grouped formula); the grammar
 # is detected from the call shape, exactly as on `fb()`.
 #
 # Before v0.5.0 `fb_brms()` was the brms-GRAMMAR verb and carried a
@@ -28,7 +28,7 @@
 #'
 #' Engine pin: fits the model with Stan through brms only. This is sugar
 #' for [flexybayes()]`(..., backend = "brms")` and accepts the same
-#' arguments and grammars --- an ASReml `fixed` / `random` / `rcov`
+#' arguments and grammars --- an ASReml `fixed` / `random` / `residual`
 #' specification or a brms-style bar-grouped formula (see [flexybayes()]
 #' for the full argument list). flexyBayes builds the intermediate
 #' representation, translates the prior, calls `brms::brm()`, and wraps
@@ -43,7 +43,7 @@
 #' model is latent-Gaussian feasible, [fb_inla()].
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `formula` / `fixed`,
-#'   `random`, `rcov`, `data`, `family`, `prior`, `syntax`). The `backend`
+#'   `random`, `residual`, `data`, `family`, `prior`, `syntax`). The `backend`
 #'   argument is pinned to `"brms"`; a conflicting `backend` value raises a
 #'   structured refusal (the redundant `backend = "brms"` is accepted).
 #'   The pre-v0.5.0 `formula = ` argument is remapped to the universal

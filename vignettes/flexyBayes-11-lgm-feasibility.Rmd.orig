@@ -207,7 +207,7 @@ free entries — well over the budget.
 ```{r ref-budget}
 data(yan.winterwheat, package = "agridat")
 fb_us <- flexyBayes:::fb_from_asreml(
-  fixed = yield ~ env, random = ~ us(env):gen, rcov = NULL,
+  fixed = yield ~ env, random = ~ us(env):gen, residual = NULL,
   data = yan.winterwheat
 )
 ref_us <- flexyBayes:::lgm_gate(fb_us)

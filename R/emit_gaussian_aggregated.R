@@ -39,7 +39,7 @@
 #     to bit-exact precision (spike: differences <= 1e-4 on a 1000-row
 #     example).
 #
-# Heterogeneous residual: when the IR's rcov_terms include an
+# Heterogeneous residual: when the IR's residual_terms include an
 # `at_units` term (per-level residual variance, e.g. `at(env):units`),
 # the cell-mean machinery extends naturally PROVIDED the residual-
 # grouping factor is itself a cell key (so each cell has a single
@@ -66,7 +66,7 @@ emit_gaussian_aggregated <- function(
   the_call = NULL,
   fixed = NULL,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   family = NULL,
   link = NULL,
   data_name = NA_character_
@@ -129,9 +129,9 @@ emit_gaussian_aggregated <- function(
   wss_per_cell <- pmax(wss_per_cell, 0)
   WSS_total <- sum(wss_per_cell)
 
-  # Heterogeneous-residual handling: detect rcov_terms shape and
+  # Heterogeneous-residual handling: detect residual_terms shape and
   # validate that any at_units residual factor lies in the cell key.
-  rcov_plan <- .agg_emit_rcov_plan(fb, fb_aggregated)
+  residual_plan <- .agg_emit_residual_plan(fb, fb_aggregated)
 
   # Build per-RI level indices for the cell key (one per random_cols
   # entry; foundation already places each RI grouping factor into the
@@ -160,7 +160,7 @@ emit_gaussian_aggregated <- function(
       wss_per_cell = wss_per_cell,
       WSS_total = WSS_total,
       ri_plan = ri_plan,
-      rcov_plan = rcov_plan,
+      residual_plan = residual_plan,
       n_samples = n_samples,
       warmup = warmup,
       chains = chains,
@@ -177,7 +177,7 @@ emit_gaussian_aggregated <- function(
       wss_per_cell = wss_per_cell,
       WSS_total = WSS_total,
       ri_plan = ri_plan,
-      rcov_plan = rcov_plan,
+      residual_plan = residual_plan,
       verbose = verbose
     )
   }
@@ -190,12 +190,12 @@ emit_gaussian_aggregated <- function(
     backend = backend,
     engine_out = fit_engine_out,
     ri_plan = ri_plan,
-    rcov_plan = rcov_plan,
+    residual_plan = residual_plan,
     elapsed = elapsed,
     the_call = the_call,
     fixed = fixed,
     random = random,
-    rcov = rcov,
+    residual = residual,
     family = family,
     link = link,
     data_name = data_name,
@@ -225,9 +225,9 @@ emit_gaussian_aggregated <- function(
 # holds, but the cell-constant sigma property does not, so the per-row
 # vs per-cell algebraic identity breaks. Reason code
 # `heterogeneous_residual_factor_not_in_cell_key`.
-.agg_emit_rcov_plan <- function(fb, fb_aggregated) {
-  rcov <- fb$rcov_terms
-  if (length(rcov) == 0L) {
+.agg_emit_residual_plan <- function(fb, fb_aggregated) {
+  residual <- fb$residual_terms
+  if (length(residual) == 0L) {
     return(list(
       kind = "homogeneous",
       factor = NULL,
@@ -240,7 +240,7 @@ emit_gaussian_aggregated <- function(
   homogeneous_types <- c("units", "id", "ide", "simple")
   hetero_types <- c("at_units")
 
-  for (term in rcov) {
+  for (term in residual) {
     ttype <- term$type %||% "units"
     if (ttype %in% homogeneous_types) {
       next
@@ -282,16 +282,16 @@ emit_gaussian_aggregated <- function(
     }
     # Anything else (us_units, fa_units, ar1_units, ...) is out of scope.
     stop(.fb_refusal_condition(
-      reason_code = "rcov_type_unsupported_for_aggregation",
+      reason_code = "residual_type_unsupported_for_aggregation",
       message = paste0(
-        "emit_gaussian_aggregated(): rcov term type '",
+        "emit_gaussian_aggregated(): residual term type '",
         ttype,
         "' is not supported by the aggregated path. Only homogeneous ",
         "(units / id) and at_units heterogeneous residual are ",
         "supported. Pass aggregate = FALSE for the per-row path."
       ),
       family_class = "flexybayes_aggregate_emit_refusal",
-      rcov_type = ttype
+      residual_type = ttype
     ))
   }
   list(
@@ -340,7 +340,7 @@ emit_gaussian_aggregated <- function(
   wss_per_cell,
   WSS_total,
   ri_plan,
-  rcov_plan,
+  residual_plan,
   n_samples,
   warmup,
   chains,
@@ -441,7 +441,7 @@ emit_gaussian_aggregated <- function(
   mu_cell <- matmul_method(M_g, theta)
 
   # Residual sigma: scalar (homogeneous) or per-level (at_units).
-  if (identical(rcov_plan$kind, "homogeneous")) {
+  if (identical(residual_plan$kind, "homogeneous")) {
     sigma_g <- g$normal(0, prior_vc_sd, truncation = c(0, Inf))
     sigma_cell_g <- sigma_g
   } else {
@@ -449,9 +449,9 @@ emit_gaussian_aggregated <- function(
       0,
       prior_vc_sd,
       truncation = c(0, Inf),
-      dim = rcov_plan$n_levels
+      dim = residual_plan$n_levels
     )
-    sigma_cell_g <- sigma_g[rcov_plan$level_col]
+    sigma_cell_g <- sigma_g[residual_plan$level_col]
   }
 
   # (i) cell-mean weighted gaussian.
@@ -460,15 +460,15 @@ emit_gaussian_aggregated <- function(
   # (ii) within-cell SS gamma observation -- one per residual level
   # for at_units, one global for homogeneous. Skipped when degrees of
   # freedom <= 0 or WSS <= machine eps (single-obs cells).
-  if (identical(rcov_plan$kind, "homogeneous")) {
+  if (identical(residual_plan$kind, "homogeneous")) {
     df_total <- N - K
     if (df_total > 0L && WSS_total > .Machine$double.eps) {
       WSS_g <- g$as_data(WSS_total)
       g$`distribution<-`(WSS_g, g$gamma(df_total / 2, 1 / (2 * sigma_g^2)))
     }
   } else {
-    for (lv in seq_len(rcov_plan$n_levels)) {
-      idx <- which(rcov_plan$level_col == lv)
+    for (lv in seq_len(residual_plan$n_levels)) {
+      idx <- which(residual_plan$level_col == lv)
       n_level <- sum(n_k[idx])
       k_level <- length(idx)
       WSS_lv <- sum(wss_per_cell[idx])
@@ -540,7 +540,7 @@ emit_gaussian_aggregated <- function(
   wss_per_cell,
   WSS_total,
   ri_plan,
-  rcov_plan,
+  residual_plan,
   verbose
 ) {
   if (!requireNamespace("INLA", quietly = TRUE)) {
@@ -551,7 +551,7 @@ emit_gaussian_aggregated <- function(
     )
   }
 
-  if (identical(rcov_plan$kind, "at_units")) {
+  if (identical(residual_plan$kind, "at_units")) {
     stop(
       "emit_gaussian_aggregated() INLA: heterogeneous residual ",
       "at_units on INLA requires the multi-likelihood INLA stack ",
@@ -730,12 +730,12 @@ emit_gaussian_aggregated <- function(
   backend,
   engine_out,
   ri_plan,
-  rcov_plan,
+  residual_plan,
   elapsed,
   the_call,
   fixed,
   random,
-  rcov,
+  residual,
   family,
   link,
   data_name,
@@ -750,9 +750,9 @@ emit_gaussian_aggregated <- function(
   # mean/sd/q025/q975 per parameter. INLA: read summary.fixed +
   # summary.hyperpar.
   posterior_summary <- if (identical(backend, "greta")) {
-    .agg_greta_summarise(engine_out, fb_aggregated, ri_plan, rcov_plan)
+    .agg_greta_summarise(engine_out, fb_aggregated, ri_plan, residual_plan)
   } else {
-    .agg_inla_summarise(engine_out, fb_aggregated, ri_plan, rcov_plan)
+    .agg_inla_summarise(engine_out, fb_aggregated, ri_plan, residual_plan)
   }
 
   # Per-row reconstructed fitted values for the $glm shim.
@@ -797,14 +797,14 @@ emit_gaussian_aggregated <- function(
           terms = fb$fixed_terms
         ),
         random = fb$random_terms,
-        rcov = fb$rcov_terms,
+        residual = fb$residual_terms,
         family = list(family = fb$family, link = fb$link %||% "identity"),
         smooths = list() # the aggregated path excludes smooths.
       ),
       call_info = list(
         fixed = fixed,
         random = random,
-        rcov = rcov,
+        residual = residual,
         data_name = data_name,
         family = family,
         link = link,
@@ -826,7 +826,7 @@ emit_gaussian_aggregated <- function(
         N = fb_aggregated$N,
         K = fb_aggregated$K,
         compression = fb_aggregated$compression,
-        residual = rcov_plan$kind,
+        residual = residual_plan$kind,
         # Whether the posterior the user sees is the per-row-equivalent
         # one. The aggregated likelihood plus the default precision prior
         # recover the per-row posterior to numerical precision, so the
@@ -895,16 +895,16 @@ emit_gaussian_aggregated <- function(
   engine_out,
   fb_aggregated,
   ri_plan,
-  rcov_plan
+  residual_plan
 ) {
   draws <- engine_out$draws
   m <- do.call(rbind, draws)
 
   beta_idx <- seq_len(engine_out$p)
-  sigma_idx <- if (identical(rcov_plan$kind, "homogeneous")) {
+  sigma_idx <- if (identical(residual_plan$kind, "homogeneous")) {
     engine_out$p + 1L
   } else {
-    engine_out$p + seq_len(rcov_plan$n_levels)
+    engine_out$p + seq_len(residual_plan$n_levels)
   }
   tau_start <- max(sigma_idx) + 1L
   tau_idx <- if (length(ri_plan)) {
@@ -948,7 +948,12 @@ emit_gaussian_aggregated <- function(
 }
 
 
-.agg_inla_summarise <- function(engine_out, fb_aggregated, ri_plan, rcov_plan) {
+.agg_inla_summarise <- function(
+  engine_out,
+  fb_aggregated,
+  ri_plan,
+  residual_plan
+) {
   inla_fit <- engine_out$inla
   fixed_summary <- inla_fit$summary.fixed
   beta_means <- fixed_summary$mean

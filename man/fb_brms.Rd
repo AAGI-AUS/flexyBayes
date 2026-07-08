@@ -8,7 +8,7 @@ fb_brms(...)
 }
 \arguments{
 \item{...}{Arguments passed to \code{\link[=flexybayes]{flexybayes()}} (e.g. \code{formula} / \code{fixed},
-\code{random}, \code{rcov}, \code{data}, \code{family}, \code{prior}, \code{syntax}). The \code{backend}
+\code{random}, \code{residual}, \code{data}, \code{family}, \code{prior}, \code{syntax}). The \code{backend}
 argument is pinned to \code{"brms"}; a conflicting \code{backend} value raises a
 structured refusal (the redundant \code{backend = "brms"} is accepted).
 The pre-v0.5.0 \verb{formula = } argument is remapped to the universal
@@ -22,7 +22,7 @@ An object of class \code{"flexybayes_brms"} (a subclass of
 \description{
 Engine pin: fits the model with Stan through brms only. This is sugar
 for \code{\link[=flexybayes]{flexybayes()}}\verb{(..., backend = "brms")} and accepts the same
-arguments and grammars --- an ASReml \code{fixed} / \code{random} / \code{rcov}
+arguments and grammars --- an ASReml \code{fixed} / \code{random} / \code{residual}
 specification or a brms-style bar-grouped formula (see \code{\link[=flexybayes]{flexybayes()}}
 for the full argument list). flexyBayes builds the intermediate
 representation, translates the prior, calls \code{brms::brm()}, and wraps

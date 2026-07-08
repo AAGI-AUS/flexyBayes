@@ -635,7 +635,7 @@ test_that("posterior equivalence: dense V vs precision = solve(V) on greta", {
     intercept = parsed_fixed$intercept,
     fixed_terms = parsed_fixed$terms,
     random_terms = flexyBayes:::.parse_formula(random_expr, dat),
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     data_summary = list(n = nrow(dat))
   )
 }

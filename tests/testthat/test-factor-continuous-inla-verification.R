@@ -238,7 +238,7 @@ test_that("lgm_gate accepts INLA when verification artefact reports pass", {
       )
     ),
     random_terms = list(),
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     priors = list(legacy = TRUE),
     source = "brms"
   )
@@ -256,7 +256,7 @@ test_that("verification gate is no-op without factor_numeric_interaction term", 
     family = "gaussian",
     fixed_terms = list(list(type = "continuous", var = "x", label = "x")),
     random_terms = list(),
-    rcov_terms = list(list(type = "units")),
+    residual_terms = list(list(type = "units")),
     priors = list(legacy = TRUE),
     source = "brms"
   )

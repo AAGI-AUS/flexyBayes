@@ -1,3 +1,20 @@
+# flexyBayes 0.9.0
+
+## Breaking changes
+
+* **The residual-structure argument `rcov` is renamed to `residual`, matching
+  ASReml 4.** ASReml-R renamed this argument from `rcov` (ASReml 3) to
+  `residual` (ASReml 4); flexyBayes now follows the ASReml 4 name across every
+  entry point (`flexybayes()` / `fb()`, `fb_from_asreml()`, and the engine pins
+  `fb_greta()` / `fb_inla()` / `fb_brms()`). Supplying the old `rcov =` argument
+  now raises a guiding error pointing to `residual =`; update calls such as
+  `rcov = ~ at(env):units` to `residual = ~ at(env):units`. The residual grammar
+  itself is unchanged. The print method now labels the residual structure
+  `Residual` rather than `Rcov`, and the two associated refusal identifiers are
+  renamed to match (`rcov_type_unsupported_for_aggregation` ->
+  `residual_type_unsupported_for_aggregation`, `rcov_term_type_inla` ->
+  `residual_term_type_inla`).
+
 # flexyBayes 0.8.3
 
 A documentation-honesty and ergonomics release on the 0.8.x line. There are no

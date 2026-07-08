@@ -488,7 +488,7 @@
   the_call,
   fixed,
   random,
-  rcov,
+  residual,
   family,
   link,
   data_name,
@@ -543,7 +543,7 @@
       the_call = the_call,
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       family = family,
       link = link,
       data_name = data_name
@@ -602,7 +602,7 @@
       the_call = the_call,
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       family = family,
       link = link,
       data_name = data_name
@@ -694,7 +694,7 @@
       the_call = the_call,
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       family = family,
       link = link,
       data_name = data_name
@@ -866,7 +866,7 @@
             the_call = the_call,
             fixed = fixed,
             random = random,
-            rcov = rcov,
+            residual = residual,
             family = family,
             link = link,
             data_name = data_name
@@ -998,7 +998,7 @@
     the_call = the_call,
     fixed = fixed,
     random = random,
-    rcov = rcov,
+    residual = residual,
     family = family,
     link = link,
     data_name = data_name
@@ -1072,7 +1072,7 @@
   the_call,
   fixed,
   random,
-  rcov,
+  residual,
   family,
   link,
   data_name
@@ -1111,12 +1111,12 @@
 
   # at_units on INLA: the multi-likelihood INLA stack is still
   # deferred at v0.3.3 (queued for a later minor). If we'd otherwise
-  # route to INLA AND the rcov uses at_units, force the eff_backend
+  # route to INLA AND the residual uses at_units, force the eff_backend
   # down to greta (which supports the heterogeneous-residual aggregated
   # path) or fall through to per-row when greta isn't an option.
-  uses_at_units <- length(fb$rcov_terms) > 0L &&
+  uses_at_units <- length(fb$residual_terms) > 0L &&
     any(vapply(
-      fb$rcov_terms,
+      fb$residual_terms,
       function(t) identical(t$type %||% "", "at_units"),
       logical(1L)
     ))
@@ -1181,7 +1181,7 @@
       the_call = the_call,
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       family = family,
       link = link,
       data_name = data_name
@@ -1227,7 +1227,7 @@
       the_call = the_call,
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       family = family,
       link = link,
       data_name = data_name

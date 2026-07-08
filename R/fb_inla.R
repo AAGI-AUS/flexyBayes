@@ -58,7 +58,7 @@
 #' Engine pin: fits the model with INLA (integrated nested Laplace
 #' approximation) only. This is sugar for
 #' [flexybayes()]`(..., backend = "inla")` and accepts the same arguments
-#' and grammars (an ASReml `fixed` / `random` / `rcov` specification or a
+#' and grammars (an ASReml `fixed` / `random` / `residual` specification or a
 #' brms-style bar-grouped formula -- see [flexybayes()] for the full
 #' argument list). The model must be latent-Gaussian feasible; if it is
 #' not, the shared `lgm_gate()` raises a structured refusal naming the
@@ -70,7 +70,7 @@
 #' approximation.
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `fixed`, `random`,
-#'   `rcov`, `data`, `family`, `prior`, `syntax`). The `backend` argument
+#'   `residual`, `data`, `family`, `prior`, `syntax`). The `backend` argument
 #'   is pinned to `"inla"` and must not be supplied.
 #'
 #' @return An object of class `"flexybayes"` (specifically a

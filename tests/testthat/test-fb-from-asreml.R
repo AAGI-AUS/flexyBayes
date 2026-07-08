@@ -42,17 +42,17 @@ test_that("fb_from_asreml() handles a minimal gaussian fixed-only model", {
   expect_identical(fb$fixed_terms[[1]]$type, "continuous")
   expect_identical(fb$fixed_terms[[1]]$var, "x")
   expect_length(fb$random_terms, 0L)
-  expect_length(fb$rcov_terms, 1L)
-  expect_identical(fb$rcov_terms[[1]]$type, "units")
+  expect_length(fb$residual_terms, 1L)
+  expect_identical(fb$residual_terms[[1]]$type, "units")
   expect_length(fb$addition_terms, 0L)
   expect_identical(fb$source, "asreml")
   expect_identical(fb$data_summary$n, nrow(d))
 })
 
-test_that("fb_from_asreml() default rcov is ~ units (matches flexybayes)", {
+test_that("fb_from_asreml() default residual is ~ units (matches flexybayes)", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(yield ~ x, data = d)
-  expect_identical(fb$rcov_terms[[1]]$type, "units")
+  expect_identical(fb$residual_terms[[1]]$type, "units")
 })
 
 test_that("fb_from_asreml() handles intercept-only model", {
@@ -125,11 +125,11 @@ test_that("fb_from_asreml() handles heterogeneous residual (at_units)", {
   fb <- flexyBayes:::fb_from_asreml(
     yield ~ env,
     random = ~geno,
-    rcov = ~ at(env):units,
+    residual = ~ at(env):units,
     data = d
   )
-  expect_length(fb$rcov_terms, 1L)
-  expect_identical(fb$rcov_terms[[1]]$type, "at_units")
+  expect_length(fb$residual_terms, 1L)
+  expect_identical(fb$residual_terms[[1]]$type, "at_units")
 })
 
 # ---------------------------------------------------------------- #
@@ -231,13 +231,13 @@ test_that("fb_from_asreml() result passes validate_fb_terms() on a complex model
   fb <- flexyBayes:::fb_from_asreml(
     yield ~ env + x,
     random = ~ geno + fa(env, 2):id(geno),
-    rcov = ~ at(env):units,
+    residual = ~ at(env):units,
     data = d
   )
   expect_silent(flexyBayes:::validate_fb_terms(fb))
   expect_length(fb$fixed_terms, 2L)
   expect_length(fb$random_terms, 2L)
-  expect_identical(fb$rcov_terms[[1]]$type, "at_units")
+  expect_identical(fb$residual_terms[[1]]$type, "at_units")
   expect_identical(fb$source, "asreml")
 })
 

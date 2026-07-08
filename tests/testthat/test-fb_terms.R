@@ -20,7 +20,7 @@ test_that("new_fb_terms() constructs a valid object with defaults", {
   expect_true(obj$intercept)
   expect_length(obj$fixed_terms, 0L)
   expect_length(obj$random_terms, 0L)
-  expect_length(obj$rcov_terms, 0L)
+  expect_length(obj$residual_terms, 0L)
   expect_length(obj$addition_terms, 0L)
   expect_identical(obj$source, "asreml")
   expect_null(obj$priors)
@@ -46,7 +46,7 @@ test_that("new_fb_terms() preserves complex term descriptors", {
   random <- list(
     list(type = "fa_gxe", outer = "env", inner = "geno", k = 2L)
   )
-  rcov <- list(
+  residual <- list(
     list(type = "at_units", var = "env")
   )
   obj <- new_fb_terms(
@@ -54,12 +54,12 @@ test_that("new_fb_terms() preserves complex term descriptors", {
     family = gaussian(),
     fixed_terms = fixed,
     random_terms = random,
-    rcov_terms = rcov,
+    residual_terms = residual,
     source = "asreml"
   )
   expect_identical(obj$fixed_terms, fixed)
   expect_identical(obj$random_terms, random)
-  expect_identical(obj$rcov_terms, rcov)
+  expect_identical(obj$residual_terms, residual)
 })
 
 # ---------------------------------------------------------------- #

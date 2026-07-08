@@ -14,7 +14,7 @@
 
 #' Ingest an ASReml-format model specification into the flexyBayes IR
 #'
-#' Parses an ASReml-style `fixed` / `random` / `rcov` specification into
+#' Parses an ASReml-style `fixed` / `random` / `residual` specification into
 #' a `fb_terms` object -- flexyBayes's backend-agnostic intermediate
 #' representation (IR) of a model. The IR is what every engine emits
 #' from, so building it explicitly lets a power user inspect the parsed
@@ -26,9 +26,12 @@
 #' @param fixed Two-sided formula: `response ~ fixed_effects`.
 #' @param random One-sided formula `~ random_terms` (ASReml syntax), or
 #'   `NULL`.
-#' @param rcov One-sided formula `~ residual_structure`, or `NULL`. `NULL`
+#' @param residual One-sided formula `~ residual_structure`, or `NULL`. `NULL`
 #'   defaults to iid residuals (`list(list(type = "units"))`), matching
 #'   [flexybayes()].
+#' @param rcov Defunct in flexyBayes 0.9.0. The ASReml 3 name for the
+#'   residual-structure argument, renamed to `residual` in ASReml 4;
+#'   supplying it now raises an error. Use `residual` instead.
 #' @param data A data.frame containing every variable referenced.
 #' @param family Character family name (`gaussian`, `binomial`, `binary`,
 #'   `poisson`, `negative_binomial`, `negbinom`, `gamma`, `beta`).
@@ -62,7 +65,7 @@
 fb_from_asreml <- function(
   fixed,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   data,
   family = "gaussian",
   link = NULL,
@@ -70,8 +73,24 @@ fb_from_asreml <- function(
   known_matrices = list(),
   prior = NULL,
   prior_fixed_sd = 100,
-  prior_vc_sd = 1
+  prior_vc_sd = 1,
+  rcov = lifecycle::deprecated()
 ) {
+  # `rcov` is the ASReml 3 spelling of the residual-structure argument,
+  # renamed to `residual` in ASReml 4 and in flexyBayes 0.9.0. Kept only
+  # as a tripwire that raises a guiding error if supplied.
+  if (lifecycle::is_present(rcov)) {
+    lifecycle::deprecate_stop(
+      when = "0.9.0",
+      what = "fb_from_asreml(rcov)",
+      with = "fb_from_asreml(residual)",
+      details = paste0(
+        "ASReml-R renamed this argument from `rcov` (ASReml 3) to ",
+        "`residual` (ASReml 4)."
+      )
+    )
+  }
+
   # Delegate parsing to existing helpers verbatim -- no behaviour
   # change relative to flexybayes().
   fixed_info <- .parse_fixed(fixed, data)
@@ -80,8 +99,8 @@ fb_from_asreml <- function(
   } else {
     list()
   }
-  rcov_terms <- if (!is.null(rcov)) {
-    .parse_formula(rcov, data)
+  residual_terms <- if (!is.null(residual)) {
+    .parse_formula(residual, data)
   } else {
     list(list(type = "units"))
   }
@@ -121,7 +140,7 @@ fb_from_asreml <- function(
     intercept = fixed_info$intercept,
     fixed_terms = fixed_info$terms,
     random_terms = random_terms,
-    rcov_terms = rcov_terms,
+    residual_terms = residual_terms,
     addition_terms = addition_terms,
     priors = priors,
     data_summary = data_summary,
@@ -148,7 +167,12 @@ fb_from_asreml <- function(
 # A non-formula, non-greta `spec` falls through to "asreml" so the
 # established fb_from_asreml() validation owns the error message
 # (behaviour-preserving for malformed input).
-.detect_grammar <- function(spec, random = NULL, rcov = NULL, syntax = "auto") {
+.detect_grammar <- function(
+  spec,
+  random = NULL,
+  residual = NULL,
+  syntax = "auto"
+) {
   if (!identical(syntax, "auto")) {
     return(syntax)
   }
@@ -186,7 +210,7 @@ fb_from_asreml <- function(
 .build_ir_polymorphic <- function(
   fixed,
   random,
-  rcov,
+  residual,
   data,
   family,
   link,
@@ -209,10 +233,10 @@ fb_from_asreml <- function(
         call. = FALSE
       )
     }
-    if (!is.null(random) || !is.null(rcov) || length(known_matrices)) {
+    if (!is.null(random) || !is.null(residual) || length(known_matrices)) {
       stop(
         "A prebuilt greta-source IR already encodes the full model ",
-        "graph; it cannot be combined with `random`, `rcov`, or ",
+        "graph; it cannot be combined with `random`, `residual`, or ",
         "`known_matrices`.",
         call. = FALSE
       )
@@ -220,13 +244,13 @@ fb_from_asreml <- function(
     return(fixed)
   }
 
-  grammar <- .detect_grammar(fixed, random, rcov, syntax)
+  grammar <- .detect_grammar(fixed, random, residual, syntax)
   switch(
     grammar,
     asreml = fb_from_asreml(
       fixed = fixed,
       random = random,
-      rcov = rcov,
+      residual = residual,
       data = data,
       family = family,
       link = link,
@@ -237,14 +261,14 @@ fb_from_asreml <- function(
       prior_vc_sd = prior_vc_sd
     ),
     brms = {
-      if (!is.null(random) || !is.null(rcov)) {
+      if (!is.null(random) || !is.null(residual)) {
         stop(.fb_refusal_condition(
           reason_code = "grammar_brms_with_asreml_terms",
           message = paste0(
             "A brms-style formula (with `(... | g)` grouping) cannot be ",
-            "combined with `random` / `rcov` (ASReml grammar). Put every ",
+            "combined with `random` / `residual` (ASReml grammar). Put every ",
             "grouping term inside the formula, or use the ASReml ",
-            "`fixed` / `random` / `rcov` form throughout."
+            "`fixed` / `random` / `residual` form throughout."
           ),
           family_class = "flexybayes_grammar_brms_with_asreml_terms"
         ))
@@ -274,12 +298,12 @@ fb_from_asreml <- function(
     },
     greta = {
       # A native greta_model graph. It carries its own data and priors,
-      # so the ASReml `random` / `rcov` arguments are a category error
+      # so the ASReml `random` / `residual` arguments are a category error
       # here -- the structure lives in the graph, not in formula terms.
-      if (!is.null(random) || !is.null(rcov)) {
+      if (!is.null(random) || !is.null(residual)) {
         stop(
           "A native greta_model encodes its full structure in the ",
-          "graph; it cannot be combined with `random` / `rcov`. Build ",
+          "graph; it cannot be combined with `random` / `residual`. Build ",
           "the model with greta primitives, or use the ASReml / brms ",
           "formula grammar.",
           call. = FALSE

@@ -42,7 +42,7 @@ emit_inla <- function(
   the_call = NULL,
   fixed = NULL,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   family = NULL,
   link = NULL,
   data_name = NA_character_,
@@ -346,7 +346,7 @@ emit_inla <- function(
         call_info = list(
           fixed = fixed,
           random = random,
-          rcov = rcov,
+          residual = residual,
           data_name = data_name,
           family = family,
           link = link
@@ -585,19 +585,19 @@ emit_inla <- function(
     rhs_terms <- c(rhs_terms, contrib)
   }
 
-  # Heterogeneous residual / structured rcov
-  for (term in fb$rcov_terms) {
+  # Heterogeneous residual / structured residual
+  for (term in fb$residual_terms) {
     if (term$type != "units") {
       # Internal contract-violation assertion. See the
       # fixed-term site above for the rationale; the gate's
-      # .lgm_check_rcov_term_inla_support() owns this guard.
+      # .lgm_check_residual_term_inla_support() owns this guard.
       stop(
-        "lgm_gate broken contract: rcov term type \"",
+        "lgm_gate broken contract: residual term type \"",
         term$type,
         "\" reached emit_inla() despite a passing ",
         "gate. This is a flexyBayes internal bug -- the gate's ",
-        ".lgm_check_rcov_term_inla_support() allowlist is out ",
-        "of sync with .build_inla_formula()'s rcov guard. ",
+        ".lgm_check_residual_term_inla_support() allowlist is out ",
+        "of sync with .build_inla_formula()'s residual guard. ",
         "Please file an issue.",
         call. = FALSE
       )

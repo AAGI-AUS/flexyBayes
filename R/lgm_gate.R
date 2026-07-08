@@ -9,7 +9,7 @@
 # the original six (family, predictor, distributional, re_prior,
 # latent_class, hyperparam_budget) plus three INLA-emit-support
 # checks (fixed_term_type_inla, random_term_type_inla,
-# rcov_term_type_inla) that fold emit_inla()
+# residual_term_type_inla) that fold emit_inla()
 # structural refusals into the gate. Check 10 -- the post-fit
 # numerical-confirm gate -- is stubbed; it lands alongside
 # emit_inla()'s numerical-confirm pass where it can inspect
@@ -84,7 +84,7 @@ lgm_gate <- function(
     .lgm_check_hyperparam_budget(fb), # check 6
     .lgm_check_fixed_term_inla_support(fb), # check 7
     .lgm_check_random_term_inla_support(fb), # check 8
-    .lgm_check_rcov_term_inla_support(fb), # check 9
+    .lgm_check_residual_term_inla_support(fb), # check 9
     # check 10 -- conditional INLA-mapping
     # verification for the factor_numeric_interaction term class.
     # Refuses the INLA emit path when verification has not been run
@@ -466,7 +466,7 @@ print.lgm_refusal <- function(x, ...) {
   bad_types <- c("mixture", "hmm", "multistate")
   found <- character(0)
 
-  for (slot_name in c("fixed_terms", "random_terms", "rcov_terms")) {
+  for (slot_name in c("fixed_terms", "random_terms", "residual_terms")) {
     slot <- fb[[slot_name]]
     for (term in slot) {
       if (is.character(term$type) && term$type %in% bad_types) {
@@ -506,7 +506,7 @@ print.lgm_refusal <- function(x, ...) {
 #
 # Count hyperparameters: 1 likelihood (depending on family) + per
 # random-effect contribution (1 for simple, 2 for fa, k+ for fa_gxe,
-# n*(n+1)/2 for us_gxe, etc.) + per heterogeneous-rcov term. Refuse
+# n*(n+1)/2 for us_gxe, etc.) + per heterogeneous-residual term. Refuse
 # if total > 15 (CCD/grid intractable). Warn at >10 -- emit_inla
 # (deliverable 5+) will set int.strategy = "ccd" automatically.
 .lgm_check_hyperparam_budget <- function(
@@ -530,7 +530,7 @@ print.lgm_refusal <- function(x, ...) {
       diagnostic = paste0(
         "count = likelihood (",
         .lgm_family_hypers(fb),
-        ") + random + rcov contributions"
+        ") + random + residual contributions"
       )
     ))
   }
@@ -617,14 +617,14 @@ print.lgm_refusal <- function(x, ...) {
     re_hypers <- re_hypers + contrib
   }
 
-  rcov_hypers <- 0L
-  for (term in fb$rcov_terms) {
+  residual_hypers <- 0L
+  for (term in fb$residual_terms) {
     if (term$type != "units") {
-      rcov_hypers <- rcov_hypers + 1L
+      residual_hypers <- residual_hypers + 1L
     }
   }
 
-  fam_hypers + re_hypers + rcov_hypers
+  fam_hypers + re_hypers + residual_hypers
 }
 
 # ---------------------------------------------------------------- #
@@ -682,10 +682,10 @@ print.lgm_refusal <- function(x, ...) {
   c("simple", "ide", "id", "spline", "simple_slope_uncor")
 }
 
-# Allowlist: rcov-term types that emit_inla()'s rcov-term guard
+# Allowlist: residual-term types that emit_inla()'s residual-term guard
 # accepts. INLA folds residual variance into the likelihood and
-# does not represent structured-rcov forms; those refit via greta.
-.inla_rcov_term_type_allowlist <- function() {
+# does not represent structured-residual forms; those refit via greta.
+.inla_residual_term_type_allowlist <- function() {
   c("units")
 }
 
@@ -711,14 +711,14 @@ print.lgm_refusal <- function(x, ...) {
   )
 }
 
-# Human-readable label for a structured-rcov term type.
-.inla_rcov_term_class_label <- function(term_type) {
+# Human-readable label for a structured-residual term type.
+.inla_residual_term_class_label <- function(term_type) {
   switch(
     term_type,
     "at_units" = "heterogeneous residual by factor",
     "dsum" = "diagonal heterogeneous residual",
     "ar1_units" = "AR1 residual",
-    paste0("rcov term type \"", term_type, "\"")
+    paste0("residual term type \"", term_type, "\"")
   )
 }
 
@@ -867,48 +867,48 @@ print.lgm_refusal <- function(x, ...) {
   FALSE
 }
 
-# Check 9 -- Rcov-term type allowlist for the INLA emit path.
+# Check 9 -- Residual-term type allowlist for the INLA emit path.
 #
 # INLA folds residual variance into the likelihood and does not
 # expose a separate residual-structure surface. Only `units`
 # (homogeneous residual) passes; everything else (at_units / dsum
 # / ar1_units) refits via greta where the residual structure can
-# be represented explicitly. Refusal names the structured-rcov
+# be represented explicitly. Refusal names the structured-residual
 # case.
-.lgm_check_rcov_term_inla_support <- function(fb) {
-  allowed <- .inla_rcov_term_type_allowlist()
+.lgm_check_residual_term_inla_support <- function(fb) {
+  allowed <- .inla_residual_term_type_allowlist()
   bad <- character(0)
   labels <- character(0)
-  for (term in fb$rcov_terms) {
+  for (term in fb$residual_terms) {
     if (!is.character(term$type) || !(term$type %in% allowed)) {
       bad <- c(bad, as.character(term$type))
-      labels <- c(labels, .inla_rcov_term_class_label(term$type))
+      labels <- c(labels, .inla_residual_term_class_label(term$type))
     }
   }
   if (length(bad)) {
     first_type <- bad[[1L]]
     first_label <- labels[[1L]]
     return(.lgm_fail(
-      "rcov_term_type_inla",
+      "residual_term_type_inla",
       paste0(
-        "rcov term type \"",
+        "residual term type \"",
         first_type,
         "\" (",
         first_label,
         ") is outside the INLA emit ",
         "allowlist. INLA folds residual variance into the ",
-        "likelihood; structured-rcov forms refit via ",
+        "likelihood; structured-residual forms refit via ",
         "backend = \"greta\"."
       ),
       diagnostic = paste0(
-        "fb$rcov_terms type(s): ",
+        "fb$residual_terms type(s): ",
         paste(unique(bad), collapse = ", "),
         "; allowed: ",
         paste(allowed, collapse = ", ")
       )
     ))
   }
-  .lgm_pass("rcov_term_type_inla")
+  .lgm_pass("residual_term_type_inla")
 }
 
 # Check 10 -- verification gate

@@ -65,7 +65,7 @@ class(fb_t)
 #> [1] "fb_terms" "list"
 names(fb_t)
 #>  [1] "response"       "family"         "link"           "intercept"     
-#>  [5] "fixed_terms"    "random_terms"   "rcov_terms"     "addition_terms"
+#>  [5] "fixed_terms"    "random_terms"   "residual_terms"     "addition_terms"
 #>  [9] "priors"         "data_summary"   "capabilities"   "source"        
 #> [13] "greta_meta"
 ```
@@ -83,7 +83,7 @@ fb_t
 #>   terms:
 #>     fixed:    1
 #>     random:   1
-#>     rcov:     0
+#>     residual:     0
 #>     addition: 0
 #>   priors:    <user-supplied>
 #>   capabilities: <not yet evaluated by lgm_gate>
@@ -93,7 +93,7 @@ The four fields you read most often:
 
 - `$response`  — the response variable name (string).
 - `$family`    — the response family (string or `family` object).
-- `$fixed_terms`, `$random_terms`, `$rcov_terms` — lists of term
+- `$fixed_terms`, `$random_terms`, `$residual_terms` — lists of term
   descriptors. Each descriptor names its `type` (e.g., `"factor"`,
   `"continuous"`, `"simple"`, `"fa_gxe"`), the variables it touches,
   and any term-specific parameters.
@@ -103,7 +103,7 @@ The four fields you read most often:
 
 # 4. The two ingest paths
 
-`fb_from_asreml()` walks the fixed/random/rcov formulas of an
+`fb_from_asreml()` walks the fixed/random/residual formulas of an
 asreml-format call:
 
 
@@ -112,7 +112,7 @@ data(met_example, package = "flexyBayes")
 fb_a <- flexyBayes:::fb_from_asreml(
   fixed = yield ~ env,
   random = ~ fa(env, 2):geno,
-  rcov = NULL,
+  residual = NULL,
   data = met_example$dat
 )
 fb_a$random_terms[[1]]$type

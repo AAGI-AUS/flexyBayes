@@ -869,8 +869,8 @@
   ctx
 }
 
-# Generate code for residual (rcov) structure
-.code_rcov <- function(ctx, rcov_terms, data) {
+# Generate code for the residual structure
+.code_residual <- function(ctx, residual_terms, data) {
   ctx <- .add(
     ctx,
     "# -- Residual ------------------------------------------------"
@@ -878,13 +878,13 @@
   pvc <- ctx$prior_vc
 
   has_at_units <- any(vapply(
-    rcov_terms,
+    residual_terms,
     function(t) t$type == "at_units",
     logical(1)
   ))
 
   if (has_at_units) {
-    term <- Filter(function(t) t$type == "at_units", rcov_terms)[[1]]
+    term <- Filter(function(t) t$type == "at_units", residual_terms)[[1]]
     tag <- term$var
     ctx <- .add(
       ctx,
@@ -921,7 +921,7 @@
 }
 
 # Generate code for the likelihood
-.code_likelihood <- function(ctx, fixed_info, rcov_terms, data, weights) {
+.code_likelihood <- function(ctx, fixed_info, residual_terms, data, weights) {
   ctx <- .add(
     ctx,
     "# -- Likelihood ----------------------------------------------"
