@@ -172,7 +172,8 @@
   gate_outcome,
   preflight_outcome,
   inla_installed,
-  gretaR_activated
+  gretaR_activated,
+  fb = NULL
 ) {
   is_explicit <- user_request %in% c("greta", "brms", "inla")
   table <- .routing_policy_table()
@@ -204,15 +205,33 @@
     ))
   }
   row <- table[which(hits)[1L], ]
+  chosen_backend <- row$chosen_backend
+  reason_code <- row$reason_code
+
+  # Multi-stratum designed experiments (interaction random effects) that
+  # INLA refuses structurally route to brms -- the faithful full-HMC path
+  # -- rather than greta, when brms is installed and can fit the model.
+  # INLA collapses these variance components to zero and greta under-mixes
+  # them, while brms recovers them (validated on agridat::besag.met). This
+  # is the one case where brms enters auto's candidate set.
+  if (
+    identical(user_request, "auto") &&
+      identical(gate_outcome, "refuse_structural") &&
+      identical(chosen_backend, "greta") &&
+      !is.null(fb) &&
+      identical(.resolve_auto_fallback_backend(fb), "brms")
+  ) {
+    chosen_backend <- "brms"
+    reason_code <- "auto_multistratum_to_brms"
+  }
 
   # Rejected routes: empty for explicit user requests (policy
   # bypassed); otherwise enumerate the non-chosen backends with
   # per-backend reason codes derived from the same routing inputs.
+  # brms is a candidate only via the multi-stratum override above.
   rejected <- list()
   if (!is_explicit) {
-    # auto's policy considers {inla, greta, gretaR}; brms never
-    # appears in auto's candidate set.
-    chosen <- row$chosen_backend
+    chosen <- chosen_backend
     candidates <- c("inla", "greta", "gretaR")
     for (cand in setdiff(candidates, chosen)) {
       cand_reason <- switch(
@@ -233,8 +252,8 @@
   }
 
   list(
-    chosen_backend = row$chosen_backend,
-    reason_code = row$reason_code,
+    chosen_backend = chosen_backend,
+    reason_code = reason_code,
     rejected_routes = rejected
   )
 }
@@ -470,6 +489,38 @@
 
 
 # ---------------------------------------------------------------- #
+
+# .has_interaction_random_term() -- TRUE when the model carries a nested
+# (A:B) or combo (A:B:C) interaction random intercept: the multi-stratum
+# designed-experiment shape (gen:env + env:rep + env:rep:block).
+.has_interaction_random_term <- function(fb) {
+  any(vapply(
+    fb$random_terms,
+    function(t) isTRUE((t$type %||% "") %in% c("nested", "combo")),
+    logical(1L)
+  ))
+}
+
+# .resolve_auto_fallback_backend() -- when lgm_gate() refuses a model
+# structurally under backend = "auto", pick the fallback engine. A
+# multi-stratum designed experiment (interaction random effects) that brms
+# can fit routes to brms: the faithful full-HMC path, since INLA collapses
+# the finest variance components to zero and greta under-mixes them. brms
+# must be installed AND able to represent the model -- a structured-
+# covariance term (fa / us / ar1) has no lossless brms translation, so
+# those models stay on greta. Everything else falls back to greta as
+# before.
+.resolve_auto_fallback_backend <- function(fb) {
+  if (
+    .has_interaction_random_term(fb) &&
+      requireNamespace("brms", quietly = TRUE) &&
+      isTRUE(.backend_can_fit("brms", fb)$ok)
+  ) {
+    return("brms")
+  }
+  "greta"
+}
+
 
 .dispatch_backend <- function(
   fb,
@@ -753,6 +804,21 @@
       # Distinguish memory vs structural refusal for routing trace.
       is_memory <- identical(primary$rule_id, "memory_feasibility_inla")
       gate_outcome <- if (is_memory) "refuse_memory" else "refuse_structural"
+      # Resolve the fallback engine through the single routing brain
+      # (.resolve_routing), passing fb so a multi-stratum designed
+      # experiment routes to brms -- the faithful full-HMC path -- rather
+      # than greta. Passing fb also makes the plan (fb_plan) and the fit
+      # agree on the chosen backend.
+      routing <- .resolve_routing(
+        user_request = "auto",
+        gate_outcome = gate_outcome,
+        preflight_outcome = NA_character_,
+        inla_installed = inla_installed,
+        gretaR_activated = gretaR_activated,
+        fb = fb
+      )
+      fallback_backend <- routing$chosen_backend
+      is_multistratum <- !is_memory && .has_interaction_random_term(fb)
       # One-time per session (auto is now the default, so a per-call
       # note on every non-LGM model would nag). Silenceable outright
       # via the option; the routing trace always carries the decision
@@ -764,28 +830,42 @@
         )) &&
           !.emit_state_get("auto_fallback_note")
       ) {
-        message(
-          "backend = \"auto\": lgm_gate() refused (",
-          primary$rule_id,
-          ": ",
-          primary$reason,
-          "); falling back to greta. Pass backend = ",
-          "\"greta\" to silence, or backend = \"inla\" ",
-          "to force the refusal as an error."
-        )
+        if (identical(fallback_backend, "brms")) {
+          message(
+            "backend = \"auto\": lgm_gate() refused (",
+            primary$rule_id,
+            "); this is a multi-stratum designed experiment, so routing ",
+            "to brms -- the faithful full-HMC backend (INLA collapses ",
+            "these variance components). Pass backend = \"brms\" to silence."
+          )
+        } else if (is_multistratum) {
+          message(
+            "backend = \"auto\": lgm_gate() refused (",
+            primary$rule_id,
+            "); this is a multi-stratum designed experiment and brms (the ",
+            "faithful backend) is unavailable, so falling back to greta -- ",
+            "check convergence, greta under-mixes the finest strata. ",
+            "Install brms for the faithful path."
+          )
+        } else {
+          message(
+            "backend = \"auto\": lgm_gate() refused (",
+            primary$rule_id,
+            ": ",
+            primary$reason,
+            "); falling back to greta. Pass backend = ",
+            "\"greta\" to silence, or backend = \"inla\" ",
+            "to force the refusal as an error."
+          )
+        }
         .emit_state_set("auto_fallback_note", TRUE)
       }
-      routing <- .resolve_routing(
-        user_request = "auto",
-        gate_outcome = gate_outcome,
-        preflight_outcome = NA_character_,
-        inla_installed = inla_installed,
-        gretaR_activated = gretaR_activated
-      )
       decision <- .build_routing_decision(
-        backend = "greta",
+        backend = fallback_backend,
         path = if (is_memory) {
           "auto_lgm_refuse_memory"
+        } else if (identical(fallback_backend, "brms")) {
+          "auto_multistratum_to_brms"
         } else {
           "auto_lgm_refuse"
         },
@@ -793,7 +873,9 @@
         reason = paste0(
           "lgm_gate() refused (",
           primary$rule_id,
-          "); auto fell back to greta."
+          "); auto routed to ",
+          fallback_backend,
+          "."
         ),
         preflight_summary = preflight_result,
         representation_plan = .representation_plan_from_preflight(
@@ -970,7 +1052,14 @@
     )
   }
 
-  if (!requireNamespace("greta", quietly = TRUE)) {
+  # The auto path resolves the fallback engine into decision$backend
+  # (greta, or brms for a multi-stratum designed experiment); the
+  # explicit-greta path leaves it "greta".
+  fit_backend <- decision$backend %||% "greta"
+  if (
+    identical(fit_backend, "greta") &&
+      !requireNamespace("greta", quietly = TRUE)
+  ) {
     stop(
       "Package 'greta' is required for the greta backend. ",
       "Install with:\n",
@@ -982,7 +1071,7 @@
 
   # Emit entry-point resolved through the registry `engine` field
   # rather than a hard-coded symbol.
-  fit <- .backend_emit_fn("greta")(
+  fit <- .backend_emit_fn(fit_backend)(
     fb = fb,
     data = data,
     known_matrices = known_matrices,

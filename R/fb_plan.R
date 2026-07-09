@@ -229,7 +229,8 @@ fb_plan <- function(
       NA_character_
     },
     inla_installed = inla_installed,
-    gretaR_activated = gretaR_activated
+    gretaR_activated = gretaR_activated,
+    fb = fb
   )
 
   # ---- aggregation overrides chosen backend when eligible ------ #

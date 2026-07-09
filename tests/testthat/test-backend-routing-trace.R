@@ -245,6 +245,72 @@ test_that("ADR 0024 (g+): .resolve_routing() returns empty rejected_routes for e
 
 
 # ---------------------------------------------------------------- #
+# Multi-stratum designs route to brms (the faithful full-HMC path). #
+# INLA collapses these variance components to zero and greta under- #
+# mixes them; brms recovers them (agridat::besag.met).              #
+# ---------------------------------------------------------------- #
+
+test_that(".has_interaction_random_term() detects nested / combo terms", {
+  d <- data.frame(
+    y = rnorm(24),
+    g = factor(rep(1:4, 6)),
+    e = factor(rep(1:3, 8)),
+    b = factor(rep(1:2, 12))
+  )
+  fb_multi <- fb_from_asreml(y ~ 1, random = ~ g + g:e + e:b, data = d)
+  fb_simple <- fb_from_asreml(y ~ 1, random = ~ g, data = d)
+  expect_true(flexyBayes:::.has_interaction_random_term(fb_multi))
+  expect_false(flexyBayes:::.has_interaction_random_term(fb_simple))
+})
+
+test_that("auto routes a structurally-refused multi-stratum design to brms", {
+  skip_if_not_installed("brms")
+  d <- data.frame(
+    y = rnorm(24),
+    g = factor(rep(1:4, 6)),
+    e = factor(rep(1:3, 8)),
+    b = factor(rep(1:2, 12))
+  )
+  fb_multi <- fb_from_asreml(y ~ 1, random = ~ g + g:e + e:b, data = d)
+  out <- flexyBayes:::.resolve_routing(
+    user_request = "auto",
+    gate_outcome = "refuse_structural",
+    preflight_outcome = NA_character_,
+    inla_installed = TRUE,
+    gretaR_activated = FALSE,
+    fb = fb_multi
+  )
+  expect_equal(out$chosen_backend, "brms")
+  expect_equal(out$reason_code, "auto_multistratum_to_brms")
+})
+
+test_that("auto keeps greta for a structural refusal without interaction terms", {
+  d <- data.frame(y = rnorm(24), g = factor(rep(1:4, 6)))
+  fb_simple <- fb_from_asreml(y ~ 1, random = ~ g, data = d)
+  out <- flexyBayes:::.resolve_routing(
+    user_request = "auto",
+    gate_outcome = "refuse_structural",
+    preflight_outcome = NA_character_,
+    inla_installed = TRUE,
+    gretaR_activated = FALSE,
+    fb = fb_simple
+  )
+  expect_equal(out$chosen_backend, "greta")
+})
+
+test_that(".resolve_routing() without fb is backward-compatible (greta fallback)", {
+  out <- flexyBayes:::.resolve_routing(
+    user_request = "auto",
+    gate_outcome = "refuse_structural",
+    preflight_outcome = NA_character_,
+    inla_installed = TRUE,
+    gretaR_activated = FALSE
+  )
+  expect_equal(out$chosen_backend, "greta")
+})
+
+
+# ---------------------------------------------------------------- #
 # ADR §6 (h) -- approximate-scheme refusal                          #
 # ---------------------------------------------------------------- #
 

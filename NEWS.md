@@ -8,9 +8,21 @@
   `residual = ~ dsum(~ units | env)`). The greta code generator already gathered
   these terms; the dispatch preflight now sizes `nested` / `combo` interaction
   random intercepts (an index gather into a per-combination latent vector) so
-  the plan clears and the fit proceeds. The `auto` default is unchanged: it
-  still returns an honest structural refusal for models INLA cannot represent,
-  so `backend = "greta"` is a deliberate opt-in.
+  the plan clears and the fit proceeds. `backend = "greta"` is a deliberate
+  opt-in for the greta path; see the next entry for how `backend = "auto"` now
+  routes these models.
+* **`backend = "auto"` routes a multi-stratum designed experiment to brms --
+  the faithful full-HMC backend.** A model with interaction random effects
+  (`gen:env`, `env:rep`, `env:rep:block`) is refused structurally by INLA,
+  which collapses the finest variance components to zero. Rather than falling
+  back to greta -- which under-mixes them -- `auto` now routes such a model to
+  brms when brms is installed and can fit it, and brms recovers every variance
+  component against the ASReml / lme4 REML reference (validated on
+  `agridat::besag.met`). When brms is unavailable `auto` falls back to greta
+  with a convergence caveat. `emit_brms()` fits these interaction random
+  effects natively as `(1 | A:B)`; INLA continues to refuse them honestly. A
+  structured-covariance term (`fa` / `us` / `ar1`) has no lossless brms
+  translation, so those models stay on greta.
 * **The greta backend warm-starts the intercept from the response mean**
   (identity / log / logit / probit link scale), shortening the initial sampler
   transient while leaving the variance components and random effects at their
