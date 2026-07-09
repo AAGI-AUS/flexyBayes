@@ -1004,14 +1004,74 @@
   ctx
 }
 
+# Link-scale starting value for the intercept, from the response mean.
+# Warm-starting only the intercept (a fast-identified parameter) speeds
+# the initial transient without collapsing chain diversity: the variance
+# components and random effects keep greta's prior-draw start, so R-hat
+# stays informative. This is the surviving half of Francis K. C. Hui's
+# index-approach refinement -- his absent-interaction-cell zeroing is
+# already subsumed by the emit's factor(interaction(...)) ids, which only
+# ever allocate a coefficient for an observed combination. Returns NULL
+# (no warm start) whenever the response is unusable.
+.greta_intercept_init <- function(y, fam_link) {
+  y <- suppressWarnings(as.numeric(y))
+  y <- y[is.finite(y)]
+  if (length(y) == 0L) {
+    return(NULL)
+  }
+  m <- mean(y)
+  fam <- fam_link$family %||% "gaussian"
+  link <- fam_link$link %||% "identity"
+  val <- switch(
+    fam,
+    poisson = log(max(m, 0.1)),
+    gamma = log(max(m, 0.1)),
+    negative_binomial = log(max(m, 0.1)),
+    negbinom = log(max(m, 0.1)),
+    binomial = ,
+    binary = {
+      p <- min(max(m, 1e-3), 1 - 1e-3)
+      if (identical(link, "probit")) stats::qnorm(p) else stats::qlogis(p)
+    },
+    beta = {
+      p <- min(max(m, 1e-3), 1 - 1e-3)
+      stats::qlogis(p)
+    },
+    m
+  )
+  if (is.finite(val)) val else NULL
+}
+
 # Generate code for model() + mcmc()
-.code_model <- function(ctx, n_samples, warmup, chains, mcmc_verbose = TRUE) {
+.code_model <- function(
+  ctx,
+  n_samples,
+  warmup,
+  chains,
+  mcmc_verbose = TRUE,
+  intercept_init = NULL
+) {
   ctx <- .add(
     ctx,
     "# -- Model and MCMC -----------------------------------------"
   )
   params_str <- paste(unique(ctx$params), collapse = ", ")
   ctx <- .add(ctx, "atg_model <- greta::model(", params_str, ")")
+  # An intercept warm start is emitted only when the model carries the
+  # `mu_atg` intercept parameter and a finite starting value was resolved.
+  init_arg <- if (
+    !is.null(intercept_init) &&
+      is.finite(intercept_init) &&
+      "mu_atg" %in% ctx$params
+  ) {
+    paste0(
+      ", initial_values = greta::initials(mu_atg = ",
+      formatC(intercept_init, format = "g", digits = 8),
+      ")"
+    )
+  } else {
+    ""
+  }
   ctx <- .add(
     ctx,
     "atg_draws <- greta::mcmc(atg_model, n_samples = ",
@@ -1022,6 +1082,7 @@
     chains,
     ", verbose = ",
     mcmc_verbose,
+    init_arg,
     ")"
   )
   ctx
