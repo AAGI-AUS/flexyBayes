@@ -374,6 +374,25 @@ emit_brms <- function(
       next
     }
 
+    # Interaction random intercepts (nested A:B / combo A:B:C): brms forms
+    # the interaction grouping natively as (1 | A:B). This is the faithful
+    # full-HMC path for multi-stratum designed experiments -- validated on
+    # besag.met, where brms recovers every variance component while INLA
+    # collapses the finest strata. auto therefore keeps INLA's honest
+    # refusal for these models and routes them here.
+    if (ttype %in% c("nested", "combo")) {
+      int_vars <- if (identical(ttype, "nested")) {
+        c(term$outer, term$inner)
+      } else {
+        as.character(term$vars)
+      }
+      re_terms <- c(
+        re_terms,
+        paste0("(1 | ", paste(int_vars, collapse = ":"), ")")
+      )
+      next
+    }
+
     if (
       !ttype %in% c("simple", "ide", "id", "simple_slope_uncor")
     ) {
