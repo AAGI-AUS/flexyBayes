@@ -821,6 +821,10 @@
   # base-R "no such index at level 1" error on any interaction term.
   group <- if (!is.null(term$var)) {
     paste(as.character(term$var), collapse = ":")
+  } else if (identical(ttype, "nested")) {
+    paste(c(term$outer, term$inner), collapse = ":")
+  } else if (identical(ttype, "combo") && !is.null(term$vars)) {
+    paste(as.character(term$vars), collapse = ":")
   } else {
     "?"
   }
