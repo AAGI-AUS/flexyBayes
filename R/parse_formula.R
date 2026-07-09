@@ -308,7 +308,7 @@
     )),
     "dsum" = {
       arg <- expr[[2]]
-      grp <- tryCatch(
+      parsed <- tryCatch(
         {
           body_expr <- if (is.call(arg) && as.character(arg[[1]]) == "~") {
             arg[[length(arg)]]
@@ -316,17 +316,42 @@
             arg
           }
           if (is.call(body_expr) && as.character(body_expr[[1]]) == "|") {
-            deparse(body_expr[[3]])
+            list(inner = body_expr[[2]], grp = deparse(body_expr[[3]]))
           } else {
-            NULL
+            list(inner = NULL, grp = NULL)
           }
         },
         error = function(e) NULL
       )
-      if (!is.null(grp)) {
-        list(list(type = "at_units", var = grp, level = NULL))
-      } else {
+      if (is.null(parsed) || is.null(parsed$grp)) {
         list(list(type = "units"))
+      } else {
+        # Honesty guard: dsum() is represented ONLY as a per-region
+        # heteroscedastic variance (the inner term is `units`). A
+        # structured inner (ar1(), ar1():ar1(), us(), ...) would otherwise
+        # be silently reduced to at_units -- fitting a heteroscedastic
+        # model where a per-region spatial one was requested. Refuse loudly
+        # instead (charter: never silently reduce a model).
+        if (!.dsum_inner_is_plain_units(parsed$inner)) {
+          inner_txt <- paste(deparse(parsed$inner), collapse = "")
+          stop(.fb_refusal_condition(
+            reason_code = "dsum_structured_inner_unsupported",
+            message = sprintf(
+              paste0(
+                "dsum(~ %1$s | %2$s) requests a per-region structured ",
+                "residual, but flexyBayes represents dsum() only as a ",
+                "per-region heteroscedastic variance (inner = units). The ",
+                "structure `%1$s` would be silently dropped. Use ",
+                "dsum(~ units | %2$s) for per-region variances, or fit the ",
+                "structured residual on a single region with ~ %1$s (no ",
+                "dsum). Per-region structured residuals are planned for a ",
+                "future release."
+              ),
+              inner_txt, parsed$grp
+            )
+          ))
+        }
+        list(list(type = "at_units", var = parsed$grp, level = NULL))
       }
     },
     "lin" = list(list(type = "continuous", var = .dep(expr, 2))),
@@ -338,6 +363,28 @@
     # Default: treat as a simple named variable
     list(list(type = "simple", var = deparse(expr)))
   )
+}
+
+# A dsum() inner term is "plain units" -- the only residual structure
+# flexyBayes represents through dsum() (a per-region heteroscedastic
+# variance). Anything else (ar1(), ar1():ar1(), us(), ...) is structured;
+# rather than being silently reduced to at_units it is refused with
+# dsum_structured_inner_unsupported.
+.dsum_inner_is_plain_units <- function(expr) {
+  if (is.null(expr)) {
+    return(FALSE)
+  }
+  if (is.symbol(expr)) {
+    return(identical(as.character(expr), "units"))
+  }
+  if (is.call(expr)) {
+    fn <- as.character(expr[[1]])
+    if (fn %in% c("id", "idv", "ide") && length(expr) >= 2L) {
+      return(is.symbol(expr[[2]]) &&
+        identical(as.character(expr[[2]]), "units"))
+    }
+  }
+  FALSE
 }
 
 # Classify what an a:b interaction means in ASReml context

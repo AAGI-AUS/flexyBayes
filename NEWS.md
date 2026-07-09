@@ -24,6 +24,14 @@
   "no such index at level 1" error. The level-count helper now counts distinct
   observed combinations and the term label collapses to a single string, so an
   interaction random term reaches the normal (structural-refusal or fit) path.
+* **A structured `dsum()` residual no longer silently drops its spatial
+  structure.** `residual = ~ dsum(~ ar1(col):ar1(row) | env)` previously parsed
+  to a per-region heteroscedastic variance, discarding the separable
+  `ar1():ar1()` autocorrelation with no warning and fitting a different model
+  than the one written. flexyBayes represents `dsum()` only as a per-region
+  heteroscedastic variance (inner `units`), so a structured inner now raises a
+  clear refusal naming the dropped structure, rather than silently reducing the
+  model. Per-region structured residuals are planned for a future release.
 
 ## Breaking changes
 

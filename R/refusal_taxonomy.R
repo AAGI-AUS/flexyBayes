@@ -1158,6 +1158,27 @@
 }
 
 
+# 0.9.0 design-fidelity: a dsum() residual with a structured inner term
+# would otherwise be silently reduced to a per-region heteroscedastic
+# variance, dropping the spatial (ar1/us/...) structure the user wrote.
+.populate_refusal_registry_v0900 <- function() {
+  .register_refusal(
+    reason_code = "dsum_structured_inner_unsupported",
+    description = paste0(
+      "Residual dsum() with a structured inner term (ar1, us, ...). ",
+      "flexyBayes represents dsum() only as a per-region heteroscedastic ",
+      "variance, so a structured inner is refused rather than silently ",
+      "reduced to a heteroscedastic residual."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 design-fidelity",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  invisible(NULL)
+}
+
+
 # --- lock helper -------------------------------------------------- #
 
 # .lock_refusal_registry() --- locks the environment so no further

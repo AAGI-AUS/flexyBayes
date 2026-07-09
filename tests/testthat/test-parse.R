@@ -166,6 +166,35 @@ test_that("parse_formula handles dsum(~units|env)", {
   expect_equal(terms[[1]]$var, "env")
 })
 
+test_that("parse_formula refuses a structured dsum() inner (no silent drop)", {
+  dat <- data.frame(
+    env = factor(rep(1:2, each = 6)),
+    xf = factor(rep(1:3, 4)),
+    yf = factor(rep(1:2, 6))
+  )
+  # A separable spatial inner must refuse loudly, not silently reduce to
+  # a per-region heteroscedastic variance (the design-fidelity defect).
+  expect_error(
+    flexyBayes:::.parse_formula(~ dsum(~ ar1(xf):ar1(yf) | env), dat),
+    "structured residual"
+  )
+  # A single ar1() inner is structured too, so it also refuses.
+  expect_error(
+    flexyBayes:::.parse_formula(~ dsum(~ ar1(xf) | env), dat),
+    "structured residual"
+  )
+})
+
+test_that(".dsum_inner_is_plain_units allows only units / id(units)", {
+  expect_true(flexyBayes:::.dsum_inner_is_plain_units(quote(units)))
+  expect_true(flexyBayes:::.dsum_inner_is_plain_units(quote(idv(units))))
+  expect_false(flexyBayes:::.dsum_inner_is_plain_units(quote(ar1(xf))))
+  expect_false(
+    flexyBayes:::.dsum_inner_is_plain_units(quote(ar1(xf):ar1(yf)))
+  )
+  expect_false(flexyBayes:::.dsum_inner_is_plain_units(NULL))
+})
+
 test_that("parse_formula handles three-way combo", {
   dat <- data.frame(a = factor(1:2), b = factor(1:2), c = factor(1:2))
   terms <- flexyBayes:::.parse_formula(~ a:b:c, dat)

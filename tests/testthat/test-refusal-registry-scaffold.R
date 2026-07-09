@@ -151,8 +151,11 @@ test_that(".refusal_registry holds the complete 54-code vocabulary", {
   # data-aware factor-analytic rank upper bound is added:
   # fa_rank_exceeds_dim (fa(x, k) refused for k >= n_outer), the
   # identifiability complement of the data-free fa_rank_invalid floor
-  # (= 54).
-  expect_equal(length(entries), 54L)
+  # (= 54). At 0.9.0 the design-fidelity refusal
+  # dsum_structured_inner_unsupported is added (a structured dsum() inner
+  # -- ar1/us/... -- is refused rather than silently reduced to a
+  # per-region heteroscedastic variance) (= 55).
+  expect_equal(length(entries), 55L)
   expect_true("stan_cannot_represent_structured_cov" %in% entries)
   expect_true("grammar_brms_with_asreml_terms" %in% entries)
   expect_true("native_greta_requires_greta_backend" %in% entries)

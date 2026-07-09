@@ -109,6 +109,10 @@
   # gretaR backend activation: gretaR-specific refusal codes.
   .populate_refusal_registry_gretaR()
 
+  # 0.9.0 design-fidelity: refuse a structured dsum() inner rather than
+  # silently reducing it to a per-region heteroscedastic variance.
+  .populate_refusal_registry_v0900()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
