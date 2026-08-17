@@ -284,7 +284,8 @@ test_that("auto routes a structurally-refused multi-stratum design to brms", {
   expect_equal(out$reason_code, "auto_multistratum_to_brms")
 })
 
-test_that("auto keeps greta for a structural refusal without interaction terms", {
+test_that("auto reroutes a structural refusal to brms when greta is quarantined", {
+  skip_if_not_installed("brms")
   d <- data.frame(y = rnorm(24), g = factor(rep(1:4, 6)))
   fb_simple <- fb_from_asreml(y ~ 1, random = ~ g, data = d)
   out <- flexyBayes:::.resolve_routing(
@@ -295,10 +296,14 @@ test_that("auto keeps greta for a structural refusal without interaction terms",
     gretaR_activated = FALSE,
     fb = fb_simple
   )
-  expect_equal(out$chosen_backend, "greta")
+  # greta is quarantined; brms can fit the simple random-intercept model, so
+  # the auto structural-refusal path reroutes to brms (not the interaction
+  # multi-stratum reason, as there is no interaction term).
+  expect_equal(out$chosen_backend, "brms")
+  expect_equal(out$reason_code, "auto_greta_quarantined_to_brms")
 })
 
-test_that(".resolve_routing() without fb is backward-compatible (greta fallback)", {
+test_that(".resolve_routing() without fb refuses (no active route; greta quarantined)", {
   out <- flexyBayes:::.resolve_routing(
     user_request = "auto",
     gate_outcome = "refuse_structural",
@@ -306,7 +311,10 @@ test_that(".resolve_routing() without fb is backward-compatible (greta fallback)
     inla_installed = TRUE,
     gretaR_activated = FALSE
   )
-  expect_equal(out$chosen_backend, "greta")
+  # Without an fb the fallback engine cannot be resolved; greta is
+  # quarantined, so there is no active route -> refuse (NA chosen backend).
+  expect_true(is.na(out$chosen_backend))
+  expect_equal(out$reason_code, "auto_no_active_route")
 })
 
 

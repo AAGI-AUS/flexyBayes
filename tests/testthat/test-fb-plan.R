@@ -265,3 +265,93 @@ test_that("backend_decision() backward-compat: legacy fits return 8-field shape"
   required_legacy <- c("backend", "path", "gate_checks", "reason")
   expect_true(all(required_legacy %in% names(bd)))
 })
+
+# ---------------------------------------------------------------- #
+# (m) the plan agrees with dispatch on the combined MET model        #
+# ---------------------------------------------------------------- #
+#
+# `fb_plan()` used to read the LGM gate's verdict as the fit's verdict.
+# Under `backend = "auto"` that is wrong for every class the router
+# hands to brms: the gate refuses INLA, the router resolves brms, the
+# model fits, and the plan said "Will fit: no  (preflight refused)" --
+# wrong twice over, since the preflight had sized every term. A user who
+# plans before fitting was told the model would not run and then watched
+# it run.
+
+.test_plan_met_data <- function(seed = 20260815L) {
+  set.seed(seed)
+  d <- expand.grid(
+    rep = seq_len(3L),
+    gen = factor(sprintf("G%02d", seq_len(8L))),
+    env = factor(sprintf("E%d", seq_len(4L)))
+  )
+  d$yield <- stats::rnorm(nrow(d), 5, 1)
+  d
+}
+
+test_that("the plan says a combined MET model fits, because it does", {
+  skip_if_not_installed("brms")
+  d <- .test_plan_met_data()
+  p <- flexybayes(
+    fixed = yield ~ env, random = ~ gen + gen:env,
+    residual = ~ dsum(~ units | env), data = d,
+    backend = "auto", plan = TRUE, verbose = FALSE
+  )
+
+  expect_true(p$will_fit)
+  expect_identical(p$backend_chosen, "brms")
+  expect_identical(p$gate_outcome, "refuse_structural")
+  # The gate refusal is reported, and is no longer mistaken for the
+  # fit's verdict.
+  out <- utils::capture.output(print(p))
+  expect_true(any(grepl("Will fit:                yes", out, fixed = TRUE)))
+  expect_false(any(grepl("preflight refused", out, fixed = TRUE)))
+})
+
+test_that("a genuine dead end still says no, and says which one", {
+  d <- .test_plan_data_simple()
+  p <- fb_plan(
+    y ~ x + (1 | g), data = d, backend = "auto",
+    memory_ceiling_gb = 1e-9
+  )
+  expect_false(p$will_fit)
+  expect_identical(p$will_fit_reason, "preflight refused")
+  expect_true(any(grepl(
+    "preflight refused", utils::capture.output(print(p)), fixed = TRUE
+  )))
+})
+
+test_that("the plan's representation table carries the residual structure", {
+  skip_if_not_installed("brms")
+  d <- .test_plan_met_data()
+  p <- flexybayes(
+    fixed = yield ~ env, random = ~ gen + gen:env,
+    residual = ~ dsum(~ units | env), data = d,
+    backend = "auto", plan = TRUE, verbose = FALSE
+  )
+
+  classes <- vapply(
+    p$representation_plan,
+    function(rp) rp$representation_class %||% NA_character_,
+    character(1L)
+  )
+  expect_true("sectioned_residual" %in% classes)
+  ids <- vapply(p$representation_plan, function(rp) rp$term_id, character(1L))
+  expect_true(any(grepl("dsum(~ units | env)", ids, fixed = TRUE)))
+
+  # And it reaches the printed table, which is the surface a user reads.
+  out <- utils::capture.output(print(p))
+  expect_true(any(grepl("sectioned_residual", out, fixed = TRUE)))
+
+  # A homogeneous residual adds nothing.
+  q <- flexybayes(
+    fixed = yield ~ env, random = ~ gen, data = d,
+    backend = "auto", plan = TRUE, verbose = FALSE
+  )
+  q_classes <- vapply(
+    q$representation_plan,
+    function(rp) rp$representation_class %||% NA_character_,
+    character(1L)
+  )
+  expect_false("sectioned_residual" %in% q_classes)
+})

@@ -6,7 +6,7 @@
 # Wasserstein distance between two HMC fits ("implementation"
 # independence) underwrites a weaker claim than the same distance
 # between an HMC fit and a Laplace-approximation fit ("algorithmic"
-# independence). The label is the report's honesty machinery -- the
+# independence). The label is what keeps the report calibrated -- the
 # same posture R/approximation_registry.R takes for
 # approximation labels and R/refusal_taxonomy.R takes for
 # refusal codes: a closed vocabulary, an internal registry the backends

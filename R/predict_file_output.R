@@ -119,14 +119,12 @@
     "csv" = data.table::fwrite(out, file = output_file),
     "rds" = base::saveRDS(out, file = output_file),
     "fst" = {
-      if (!requireNamespace("fst", quietly = TRUE)) {
-        stop(
-          ".predict_write_file(): format = \"fst\" but the 'fst' ",
-          "package is not installed. .resolve_format() should ",
-          "have caught this; check upstream.",
-          call. = FALSE
-        )
-      }
+      .check_installed(
+        "fst",
+        ".predict_write_file(): format = \"fst\" but the 'fst' ",
+        "package is not installed. .resolve_format() should ",
+        "have caught this; check upstream."
+      )
       fst::write_fst(out, path = output_file)
     },
     stop(
@@ -280,7 +278,7 @@
     }
 
     # Apply link transform per draw before computing posterior
-    # intervals. This gives an honest posterior expectation on the
+    # intervals. This gives the posterior expectation on the
     # response scale rather than inv_link(mean(linear_predictor)),
     # which differs for non-identity links.
     per_draw <- if (identical(type, "response")) {

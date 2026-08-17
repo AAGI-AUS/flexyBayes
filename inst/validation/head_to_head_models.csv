@@ -1,0 +1,6 @@
+"model","label","n_obs","asreml_sec","flexybayes_sec","asreml_npar","flexybayes_npar","flexybayes_backend","flexybayes_min_ess","flexybayes_max_rhat","note"
+"rcbd","Randomised complete blocks",96,0.82,3.49,3,3,"inla",NA,NA,"Independent residual. The baseline: no structure to disagree about."
+"rcbd_large","Randomised complete blocks, 30 x 60",1800,0.04,3.6,3,3,"inla",NA,NA,"The same model with enough levels to determine the components."
+"ibd","Incomplete blocks",120,0.02,2.92,3,3,"inla",NA,NA,"Non-orthogonal blocking; genotype and block are partly confounded."
+"met_diag","MET, genotype variance by site",480,0.02,37.4,4,4,"brms",336.264577950793,1.0136503521351,"diag(site):gen -- one genotype variance per site, no covariance."
+"met_dsum","MET, residual variance by site",360,0.07,25.49,4,4,"brms",753.745484055324,1.00634027561392,"dsum(~ units | site) -- a separate residual variance per site."

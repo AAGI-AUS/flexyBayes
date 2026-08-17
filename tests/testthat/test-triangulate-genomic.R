@@ -107,6 +107,7 @@ test_that("triangulate_gwas() reports hit-set Jaccard, top-K overlap, and effect
 # ---------------------------------------------------------------- #
 
 test_that("triangulate_genomic() agrees across greta and brms GBLUP fits", {
+  skip_if_greta_backend_unusable() # greta arm quarantined -- re-entry guard
   skip_on_cran()
   skip_if_not_installed("greta")
   skip_if_not_installed("brms")

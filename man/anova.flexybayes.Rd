@@ -2,18 +2,33 @@
 % Please edit documentation in R/methods.R
 \name{anova.flexybayes}
 \alias{anova.flexybayes}
-\title{Compare flexybayes models}
+\title{Compare flexyBayes models on a plug-in information criterion}
 \usage{
 \method{anova}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A \code{flexybayes} fit supplying a conditional log-likelihood
+and a recorded parameter count.}
 
-\item{...}{Additional flexybayes objects to compare}
+\item{...}{Further \code{flexybayes} fits to compare against \code{object}.}
 }
 \value{
-A data frame with model comparison statistics
+Invisibly, a data frame with one row per model carrying the
+log-likelihood, parameter count, criterion value, and the difference
+from the best model. Printed as a side effect.
 }
 \description{
-Bayesian model comparison using WAIC or DIC.
+Ranks two or more fits by a DIC-shaped criterion built from the plug-in
+conditional log-likelihood of \code{\link[=logLik.flexybayes]{logLik.flexybayes()}} and the recorded
+parameter count. The criterion is approximate and the method says so on
+every print: it penalises the nominal parameter count rather than an
+effective one, so it is a coarse ordering, not a model-selection
+procedure.
+}
+\details{
+Every fit compared must supply both ingredients. A fit whose
+log-likelihood is \code{NA} -- an INLA fit reports a marginal likelihood, not
+a conditional one -- or which records no parameter count is refused by
+name, because ranking on an \code{NA} produces an ordering that looks
+computed and is not.
 }

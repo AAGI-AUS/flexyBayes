@@ -3,6 +3,8 @@ title: "Tutorial 07: Multi-environment trials and genomic selection"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
@@ -22,78 +24,56 @@ knitr::opts_chunk$set(
   dpi       = 150
 )
 options(flexyBayes.silence_default_prior_note = TRUE)
-greta_ok   <- requireNamespace("greta",   quietly = TRUE)
 inla_ok    <- requireNamespace("INLA",    quietly = TRUE)
+brms_ok    <- requireNamespace("brms",    quietly = TRUE)
 agridat_ok <- requireNamespace("agridat", quietly = TRUE)
 ggplot2_ok <- requireNamespace("ggplot2", quietly = TRUE)
 set.seed(1500)
-mcmc_small <- list(n_samples = 1000, warmup = 2000, chains = 2)
 ```
 
 # 1. The two questions of plant breeding
 
-> **This is a syntax-and-representation catalogue.** It demonstrates how to
-> *write* models across the term surface. The fits use small sampling budgets
-> so the document builds quickly, and several printed diagnostics therefore do
-> **not** meet the package's own convergence thresholds
-> ($\widehat{R} \le 1.01$, ESS $\ge 400$); some model classes also mix poorly on
-> their backend at any budget. Read the posterior summaries here as
-> illustrations of the output *shape*, not as inferential results. For a
-> convergence-clean worked fit and the trustworthy-fit workflow, see the
-> *getting started* and *cross-engine triangulation* vignettes.
-
-
 Crop variety evaluation poses two intertwined questions, and
-`flexyBayes` provides one statistical framework for both.
+`flexyBayes` writes both in one syntax, with different coverage behind
+each.
 
-1. **Multi-environment trials (METs).** Genotypes are evaluated
-   across many environments (locations × years). Their *rankings*
-   change across environments — *genotype-by-environment
-   interaction* (GxE). The first question is which genotypes are
-   best on average, and which trade off mean for stability.
-2. **Genomic selection.** Modern breeding programmes have genome-
-   wide markers on every candidate genotype, even those untested
-   in the field. Predicting the field performance of an *unphenotyped*
+1. **Multi-environment trials (METs).** Genotypes are evaluated across
+   many environments (locations by years). Their *rankings* change
+   across environments -- *genotype-by-environment interaction* (GxE).
+   The first question is which genotypes are best on average, and which
+   trade off mean for stability.
+2. **Genomic selection.** Modern breeding programmes have genome-wide
+   markers on every candidate genotype, even those untested in the
+   field. Predicting the field performance of an *unphenotyped*
    candidate from its markers is *genomic prediction*; selecting
    candidates by predicted performance is *genomic selection*
    (Meuwissen, Hayes, & Goddard, 2001).
 
-This vignette walks through both questions, fitting models on real
-agricultural data, and notes the connection through the kinship
-matrix.
+> **What this vignette runs.** Every model below is fitted live at a
+> budget and a `seed` stated in the call, so the numbers printed here
+> are the numbers a re-run returns, and every fit that is presented as
+> an estimate meets the package's convergence thresholds
+> ($\widehat{R} \le 1.01$, effective size $\ge 400$) -- the MET fit in
+> Section 2 is a 1,188-plot trial series and takes about a minute.
+> Where a structure has no fitting route, or has one but is not
+> identified by the data, the vignette says so at the point of use
+> rather than fitting it and hoping.
 
-> **A note on the routes below -- read first.** This vignette fits the
-> MET model two ways. The **recommended primary route is INLA**: the
-> independent (diagonal) genotype-by-environment model refits in a couple
-> of seconds and its fixed-effect and variance-component posteriors are
-> trustworthy at default settings, so the INLA fits below *are* usable
-> inference. The **factor-analytic (structured-covariance) route runs on
-> greta** and is shown as the slower, harder alternative: it is the hardest
-> case for Hamiltonian Monte Carlo, and at the modest MCMC budgets used here
-> it **frequently fails to mix** -- large $\widehat{R}$, near-zero ESS, and
-> factor-analytic loadings that do not sample reliably. Read the greta
-> factor-analytic loadings and biplots as illustrations of the *workflow*,
-> not as inference; the genomic-prediction (GBLUP / pedigree) fits later in
-> the vignette are likewise greta structured-covariance models held to the
-> same caution. Always verify convergence as the *getting started* and
-> *structured covariance* vignettes describe before interpreting a greta
-> structured fit. In particular, a factor-analytic term's raw loadings are
-> identified only up to rotation and sign, so their $\widehat{R}$ is
-> expected to be large even when the model has converged; judge convergence
-> on the *identified* covariance
-> $G = \Lambda\Lambda^\top + \mathrm{diag}(\psi)$ via `fb_structured_cov()`,
-> which is rotation- and sign-invariant.
+# 2. The multi-environment trial: `agridat::besag.met`
 
-# 2. Multi-environment trials: `yan.winterwheat`
+`agridat::besag.met` (Besag & Higdon, 1999) records corn yield for 64
+genotypes at 6 locations, each a randomised trial with three
+replicates: 1,188 plots. The replication matters for what follows --
+with more than one plot per genotype-location cell, the interaction
+variance and the error variance are separately identified. A MET summary
+table with a single mean per cell does not have that property, and
+Section 2.4 returns to it.
 
-`agridat::yan.winterwheat` (Yan & Tinker, 2006) records winter wheat
-yield for 18 genotypes in 9 Ontario environments — a small, classic
-dataset that produces interpretable MET results.
-
-```{r yw-data, eval = agridat_ok}
+```{r met-data, eval = agridat_ok}
 library(flexyBayes)
-data(yan.winterwheat, package = "agridat")
-str(yan.winterwheat)
+data(besag.met, package = "agridat")
+str(besag.met)
+table(besag.met$county, besag.met$rep)
 ```
 
 The natural mixed model is
@@ -102,141 +82,175 @@ $$
 y_{ijk} = \mu + e_j + g_i + (ge)_{ij} + \varepsilon_{ijk},
 $$
 
-with $e_j$ environment effects (fixed), $g_i$ genotype effects
-(random), $(ge)_{ij}$ genotype-by-environment interaction, and
-$\varepsilon_{ijk}$ residuals. The *parameterisation of $(ge)_{ij}$*
-is the modelling choice. Three options span the parsimony spectrum:
+with $e_j$ location effects (fixed), $g_i$ genotype effects (random),
+$(ge)_{ij}$ the genotype-by-location interaction, and
+$\varepsilon_{ijk}$ residuals. Two of those terms carry a modelling
+choice.
 
-- **diagonal (independent GxE)**: each genotype-by-environment cell
-  $(ge)_{ij} \sim \mathcal{N}(0, \sigma_{ge}^2)$, independent across
-  cells -- the parsimonious, scalable workhorse;
-- **factor-analytic** with `k = 2`: a small-rank approximation of the
-  full GxE covariance, the standard breeder's model for *stability*;
-- **unstructured**: the full $9 \times 9$ covariance, with 45 free
-  entries -- too many for 162 observations to identify.
+**The interaction.** Three parameterisations span the parsimony
+spectrum:
 
-## 2.1 Recommended route: the diagonal GxE model on INLA
+- **diagonal**, `diag(county):gen` -- one genotype variance per
+  location, no correlation between locations. Six parameters here;
+- **factor-analytic**, `fa(county, k):gen` -- a rank-$k$ approximation
+  of the full covariance, the standard breeder's model for *stability*;
+- **unstructured**, `us(county):gen` -- the full $6 \times 6$
+  covariance, 21 free entries.
 
-For the *mean-performance* question -- which genotypes are best on
-average, and how large is the GxE relative to the main effects -- the
-diagonal GxE model is both sufficient and fast. INLA fits it by
-deterministic Laplace approximation in a couple of seconds, with no
-sampler to tune and no convergence to chase, so its posteriors are
-usable inference rather than a workflow sketch. **This is the
-recommended starting point.**
+**The residual.** One error variance per location is the default
+assumption of the trade, not an elaboration: a dry site and an
+irrigated site do not have the same plot-to-plot noise.
+`residual = ~ dsum(~ units | county)` writes it, in ASReml's spelling.
 
-```{r yw-inla-fit, eval = inla_ok && agridat_ok}
-yan.winterwheat$ge <- interaction(
-  yan.winterwheat$gen,
-  yan.winterwheat$env,
-  drop = TRUE
+## 2.1 The model, fitted
+
+Both halves go in one call. The chunk below pins `backend = "brms"` so the
+page builds the same way on every machine. `backend = "auto"` would send
+the model to the same engine: INLA collapses the finest strata of a
+multi-stratum design, so the latent-Gaussian gate refuses it by name rather
+than reporting a zero variance.
+
+```{r met-fit, eval = brms_ok && agridat_ok}
+fit_met <- flexybayes(
+  fixed    = yield ~ county,
+  random   = ~ gen + diag(county):gen,
+  residual = ~ dsum(~ units | county),
+  data     = besag.met,
+  backend  = "brms",
+  n_samples = 1000, warmup = 1000, chains = 4, seed = 20260815L,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
-fit_inla <- flexybayes(
-  fixed   = yield ~ env,
-  random  = ~ gen + ge,
-  data    = yan.winterwheat,
-  backend = "inla",
-  verbose = FALSE
+fit_met
+```
+
+Three blocks in that output carry the model.
+
+The **variance components** give the genotype main-effect variance and
+one genotype variance per location -- the diagonal interaction. A
+location whose genotype variance is large is one where varieties
+separate; a location where it is small is one where they do not, and
+where trial resource is arguably wasted.
+
+The **residual block** gives one error variance per location, on the
+variance and the standard-deviation scale. These are *not* the fitted
+coefficients: brms represents a sectioned residual as a predictor on
+log sigma, so the coefficient `b_sigma_countyC2` exponentiates to a
+standard deviation and squares from there to a variance. The block does
+that arithmetic on the draws.
+
+The **convergence lines** are the ones to read first. At this budget
+the fit is clean; at a shorter one it would not be, and the numbers
+above it would be a sketch rather than an estimate.
+
+```{r met-varcomp, eval = brms_ok && agridat_ok}
+fit_met$extras$variance_comps
+```
+
+Read those intervals before reading the estimates. On this series the
+genotype main-effect standard deviation is several times any of the
+per-location interaction standard deviations, and each interaction
+interval runs down close to zero. That is a finding about the trial, not
+a fitting problem: these six locations rank the 64 genotypes largely
+alike, so a model with a genotype main effect and a per-location error
+variance already accounts for most of what is there, and the
+interaction adds little. A MET where the interaction dominates looks the
+other way round, and it is the case in which the factor-analytic model
+of Section 2.3 earns its extra parameters.
+
+## 2.2 Genotype means and stability
+
+Mean performance comes from the posterior of the genotype main effect,
+and stability from the spread of a genotype's interaction deviations
+across locations. Both are posteriors, so both come with uncertainty
+rather than as point rankings.
+
+```{r met-ranking, eval = brms_ok && agridat_ok}
+gen_effects <- brms::ranef(fit_met$brms)$gen[, "Estimate", "Intercept"]
+head(sort(gen_effects, decreasing = TRUE), 8)
+```
+
+```{r met-stability, eval = brms_ok && agridat_ok}
+# The diagonal term gives each genotype one deviation per location; a
+# genotype whose deviations spread widely is unstable across the series.
+dev <- brms::ranef(fit_met$brms)$gen[, "Estimate", ]
+ge_cols <- setdiff(colnames(dev), "Intercept")
+stability <- apply(dev[, ge_cols, drop = FALSE], 1L, stats::sd)
+head(sort(stability), 8)   # the eight most stable genotypes
+```
+
+A genotype high on the first list and low on the second is the one a
+breeder wants: good on average and consistent about it. The two lists
+disagreeing is the whole reason MET analysis exists -- though on this
+particular series, where the interaction variances are small, the
+stability ordering rests on differences the posterior barely resolves.
+Point estimates of a deviation spread are the least trustworthy summary
+in this vignette, and are shown here to demonstrate the accessor rather
+than to nominate a variety.
+
+## 2.3 The factor-analytic model: grammar, and the refusal
+
+The factor-analytic parameterisation with $k = 2$ reduces the
+unstructured $6 \times 6$ covariance to 12 entries (10 loadings and 2
+specific variances) and is the standard model for stability in the
+breeding literature (Smith, Cullis, & Thompson, 2001). The grammar
+parses it, so the formula catalogue can describe it, and no active
+engine emits it:
+
+```{r met-fa-refuse, eval = (inla_ok || brms_ok) && agridat_ok}
+refused <- tryCatch(
+  flexybayes(fixed = yield ~ county, random = ~ fa(county, 2):gen,
+             data = besag.met, verbose = FALSE),
+  error = function(e) e
 )
-fit_inla
+cat("Refused:", conditionMessage(refused), "\n")
 ```
 
-The fixed-effect environment means and the two variance components --
-the genotype main-effect variance $\sigma_g^2$ and the GxE cell
-variance $\sigma_{ge}^2$ -- read straight off the standard accessors.
-The `tidy()` method returns the fixed effects as a flat, `broom`-style
-table with the canonical `term` / `estimate` / `std.error` /
-`conf.low` / `conf.high` columns, identical in shape to what the greta
-and brms backends return -- so a cross-engine comparison table is an
-`rbind()`, not a hand-built reconciliation.
+Were it fittable, the variance-component block would report the loading
+variances and the specific variances, and `fb_structured_cov()` would
+reconstruct the implied location-by-location covariance
+$\boldsymbol{\Sigma} = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$
+(rotation- and sign-invariant, since raw loadings are identified only up
+to rotation and sign). Until then, the diagonal model of Section 2.1
+answers the mean-performance question, and the deviation spread of
+Section 2.2 answers a coarse version of the stability question.
 
-```{r yw-inla-tidy, eval = inla_ok && agridat_ok}
-head(tidy(fit_inla))
-```
+## 2.4 The unstructured model, and when it is identified
 
-The ratio $\sigma_{ge}^2 / (\sigma_g^2 + \sigma_{ge}^2)$ measures how
-much of the genotypic signal is environment-specific: a large ratio
-says rankings reshuffle across environments and a single
-*average-performance* number hides real GxE, which is precisely the
-case where the factor-analytic stability model below earns its extra
-parameters.
+`us(county):gen` fits on brms. Whether it is *identified* is a question
+about the data, not the engine.
 
-## 2.2 Slower alternative: the factor-analytic model on greta
+The unstructured term estimates 6 standard deviations and 15
+correlations alongside a residual variance. With replication inside each
+genotype-location cell, as in `besag.met`, the residual has its own
+information and the split is clean. With **one observation per cell** --
+the shape of most published MET tables -- it is not: the residual
+variance is confounded with the diagonal of the covariance, and the
+sampler walks the ridge between them. On `agridat::yan.winterwheat` (18
+genotypes, 9 environments, one plot per cell) the 45 covariance
+parameters converge cleanly, while `sigma` reaches $\widehat{R}$ 1.13 at
+an effective size of 36 with divergent transitions, and doubling the
+budget makes every one of those worse rather than better. The fitted
+covariance is then conditional on a residual the chains disagree about.
 
-The factor-analytic with `k = 2` reduces the unstructured $9 \times 9$
-covariance to 18 entries (16 loadings + 2 specific variances) and is
-the standard model for *stability* -- it decomposes each genotype's
-GxE into a few latent environmental gradients. It is a
-structured-covariance model, so it runs on the greta backend and is
-the **slower, harder-mixing** alternative to the diagonal model above:
-the loadings sample poorly at the small budget used here, and the fit
-below is a workflow illustration, not inference.
+Replication within cell, an informative prior on the residual, or the
+diagonal structure are the three ways out. Raising
+`control = list(adapt_delta = 0.95)` is not a fourth: it lowers the
+divergence count without identifying the split, so the covariance stays
+conditional on a residual the chains disagree about. Diagnostics are not
+optional here.
 
-```{r yw-fa-fit, eval = greta_ok && agridat_ok}
-fit_fa <- flexybayes(
-  fixed     = yield ~ env,
-  random    = ~ fa(env, 2):gen,
-  data      = yan.winterwheat,
-  n_samples = mcmc_small$n_samples,
-  warmup    = mcmc_small$warmup,
-  chains    = mcmc_small$chains,
-  verbose   = FALSE
-)
-fit_fa
-```
+# 3. Visualising GxE: the interaction plot
 
-The variance-component block reports the loading variances (one per
-factor) and the specific variances (one per environment). Together
-these reconstruct the implied environment-by-environment covariance
-$\boldsymbol{\Sigma} = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$.
-Use the factor-analytic route when the *stability* decomposition is the
-scientific target and a sampling budget large enough to mix it is
-available; use the diagonal INLA route for fast, trustworthy
-mean-performance inference and as the de-risking baseline you always
-fit first.
-
-# 3. Genotype rankings and stability
-
-Two questions plant breeders ask of every fit:
-
-- **Mean performance**: which genotypes have the highest predicted
-  yield, averaged across environments?
-- **Stability**: which genotypes maintain their ranking across
-  environments — and which do not?
-
-Mean performance comes from the posterior of the genotype effect $g_i$.
-Stability comes from the magnitude and direction of each genotype's
-factor scores: a genotype near the origin of the factor space is
-stable; a genotype far from the origin in factor 1 is sensitive to
-the dimension that factor 1 captures.
-
-```{r yw-ranking, eval = greta_ok && agridat_ok}
-draws  <- flexyBayes::fb_as_draws_simple(fit_fa)
-gen_levels <- levels(yan.winterwheat$gen)
-# Note: parameter names are backend-specific; the genotype effects
-# typically appear as g_i_1 ... g_i_18 or similar in the greta draws.
-# We summarise the posterior means and rank.
-gen_means <- vapply(seq_along(gen_levels), function(k) {
-  nm <- paste0("g_atg_", k)
-  if (!is.null(draws[[nm]])) mean(draws[[nm]]) else NA_real_
-}, numeric(1))
-names(gen_means) <- gen_levels
-sort(gen_means, decreasing = TRUE)
-```
-
-Note: the precise parameter naming inside `draws` varies with the
-generated greta program; `fit_fa$extras$code` shows the literal
-names. The pedagogical point is that the posterior of every random
-effect is available — *with full uncertainty quantification* — for
-ranking, contrasts, and downstream selection decisions.
-
-# 4. Visualising GxE: the interaction plot
-
-Before any model is fit, the canonical exploratory plot of MET data
-is the *genotype-by-environment interaction plot*.
+Before any model is fitted, the canonical exploratory display of MET
+data is the genotype-by-environment interaction plot. It is easiest to
+read on a small trial, so this one uses `agridat::yan.winterwheat` (Yan
+& Tinker, 2006) -- 18 genotypes in 9 Ontario environments, one plot per
+cell, which is exactly the unreplicated shape Section 2.4 warns about
+for modelling and which is perfectly good for looking at.
 
 ```{r yw-interaction-plot, eval = agridat_ok && ggplot2_ok, fig.height = 4}
 library(ggplot2)
+data(yan.winterwheat, package = "agridat")
 gxe <- aggregate(yield ~ gen + env, data = yan.winterwheat, mean)
 ggplot(gxe, aes(x = env, y = yield, group = gen, colour = gen)) +
   geom_line(alpha = 0.6) +
@@ -249,155 +263,238 @@ ggplot(gxe, aes(x = env, y = yield, group = gen, colour = gen)) +
        title = "yan.winterwheat: genotype means per environment")
 ```
 
-Crossing lines indicate GxE — the rank of a genotype changes across
-environments. Parallel lines indicate no GxE — the diagonal model
-suffices. In `yan.winterwheat`, the lines cross visibly, motivating
-the factor-analytic decomposition.
+Crossing lines indicate GxE -- the rank of a genotype changes across
+environments. Parallel lines indicate none, and a genotype main effect
+alone would then suffice. In `yan.winterwheat` the lines cross visibly.
 
-# 5. Genomic BLUP (GBLUP)
+# 4. Genomic BLUP (GBLUP)
 
 When genome-wide markers are available, the kinship matrix
-$\mathbf{G}$ — the realised additive genetic relationship matrix
-computed from marker genotypes (VanRaden, 2008) — replaces the
-default identity covariance in the genotype random effect:
+$\mathbf{G}$ -- the realised additive genetic relationship matrix
+computed from marker genotypes (VanRaden, 2008) -- replaces the default
+identity covariance in the genotype random effect:
 
 $$
 \mathbf{u} \mid \sigma_g^2 \sim \mathcal{N}\!\left(\mathbf{0},\, \sigma_g^2 \mathbf{G}\right).
 $$
 
-This is *genomic BLUP* (GBLUP). It pools information across
-genotypes via marker-based similarity, and — crucially — it
-extrapolates to *unphenotyped* genotypes whose markers are known.
+This is *genomic BLUP*. It pools information across genotypes by
+marker-based similarity and extrapolates to *unphenotyped*
+genotypes whose markers are known.
 
 `flexyBayes` plumbs this through the `vm()` term and the
-`known_matrices` argument:
+`known_matrices` argument. The example dataset that ships with the
+package carries a 10-genotype trial with its own $\mathbf{G}$ and
+$\mathbf{A}$ matrices:
 
-```{r gblup-fit, eval = greta_ok}
+```{r gblup-fit, eval = brms_ok}
 data(met_example, package = "flexyBayes")
 fit_gblup <- flexybayes(
   fixed     = yield ~ env,
   random    = ~ vm(geno, Gmat),
   data      = met_example$dat,
   known_matrices = list(Gmat = met_example$G_mat),
-  n_samples = mcmc_small$n_samples,
-  warmup    = mcmc_small$warmup,
-  chains    = mcmc_small$chains,
-  verbose   = FALSE
+  n_samples = 1000, warmup = 1000, chains = 4, seed = 20260815L,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_gblup
 ```
 
-The variance-component block reports a single $\sigma_g^2$ — the
-*additive genetic variance*. Combined with the residual variance,
-this gives the *narrow-sense heritability* $h^2 = \sigma_g^2 /
-(\sigma_g^2 + \sigma_e^2)$ on the appropriate plot mean basis
-(Falconer & Mackay, 1996).
+The variance-component block reports a single $\sigma_g^2$ -- the
+*additive genetic variance* under this $\mathbf{G}$ -- alongside the
+residual $\sigma_e^2$.
 
-```{r heritability, eval = greta_ok}
+## 4.1 Heritability, and which one
+
+Two heritabilities are in common use and they are not the same number.
+
+**Plot-level** (individual-plot basis) heritability is the proportion of
+single-plot phenotypic variance that is additive genetic:
+
+$$
+h^2_{\text{plot}} = \frac{\sigma_g^2}{\sigma_g^2 + \sigma_e^2}.
+$$
+
+**Mean-basis** (line-mean) heritability applies to a genotype *mean*
+over $r$ plots, so the error term is divided by the number of plots
+averaged (Falconer & Mackay, 1996):
+
+$$
+h^2_{\text{mean}} = \frac{\sigma_g^2}{\sigma_g^2 + \sigma_e^2 / r}.
+$$
+
+The mean-basis figure is always the larger of the two, and quoting it
+without naming $r$ makes it uninterpretable. Both are computed here
+from the draws, so each carries a credible interval rather than a point
+value. In `met_example` each genotype appears in 4 environments with 3
+replicates, so $r = 12$:
+
+```{r heritability, eval = brms_ok}
 draws <- flexyBayes::fb_as_draws_simple(fit_gblup)
-# vm(geno, Gmat) names the genotype SD `sigma_geno`.
-sigma_g <- draws$sigma_geno
-sigma_e <- draws$sigma_e_atg
-h2 <- sigma_g^2 / (sigma_g^2 + sigma_e^2)
-c(mean = mean(h2), q025 = quantile(h2, 0.025), q975 = quantile(h2, 0.975))
+var_g <- draws[["sd_geno__Intercept"]]^2
+var_e <- draws[["sigma"]]^2
+r_plots <- nrow(met_example$dat) / nlevels(met_example$dat$geno)
+
+h2_plot <- var_g / (var_g + var_e)
+h2_mean <- var_g / (var_g + var_e / r_plots)
+
+rbind(
+  plot_level = c(mean = mean(h2_plot), stats::quantile(h2_plot, c(0.025, 0.975))),
+  mean_basis = c(mean = mean(h2_mean), stats::quantile(h2_mean, c(0.025, 0.975)))
+)
 ```
 
-The credible interval on $h^2$ is the practitioner's first quantity
-of interest — a heritability of 0.4 with a tight interval is
-actionable for breeding-value selection; 0.4 with a wide interval is
-a warning that the data are insufficient for confident decisions.
+The interval is the practitioner's first quantity of interest, and here
+it is the story. The plot-level point estimate is a plausible
+heritability for yield, and its 95% interval spans a factor of three --
+ten genotypes cannot settle the question, whatever the point estimate
+says. The mean-basis figure is much higher, as it always is, because
+averaging twelve plots removes most of the error variance from the
+denominator. Neither number means anything quoted without its basis.
 
-# 6. Pedigree BLUP (the conventional alternative)
+# 5. Pedigree BLUP
 
-If a known pedigree is available — but no genome-wide markers — the
-pedigree-derived numerator relationship matrix $\mathbf{A}$ takes
-the role of $\mathbf{G}$:
+If a pedigree is available but no markers, the pedigree-derived
+numerator relationship matrix $\mathbf{A}$ takes the role of
+$\mathbf{G}$. The `ped()` term is the spelling that declares that
+provenance; the model it emits is the same known-covariance random
+effect that `vm()` emits, and either accepts either matrix.
 
-```{r pedigree-fit, eval = greta_ok}
+```{r pedigree-fit, eval = brms_ok}
 fit_ped <- flexybayes(
   fixed     = yield ~ env,
-  random    = ~ vm(geno, Amat),
+  random    = ~ ped(geno, Amat),
   data      = met_example$dat,
   known_matrices = list(Amat = met_example$A_mat),
-  n_samples = mcmc_small$n_samples,
-  warmup    = mcmc_small$warmup,
-  chains    = mcmc_small$chains,
-  verbose   = FALSE
+  n_samples = 1000, warmup = 1000, chains = 4, seed = 20260815L,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
-fit_ped
+fit_ped$extras$variance_comps
 ```
 
 GBLUP and pedigree BLUP are structurally identical; only the
-relationship matrix changes. When both markers and pedigree are
-available, the genomic-pedigree blend (`H` matrix; Christensen &
-Lund, 2010) is on the roadmap.
+relationship matrix changes. $\mathbf{A}$ carries *expected* relatedness
+from the pedigree, $\mathbf{G}$ the *realised* relatedness from markers,
+and the difference between them is Mendelian sampling -- which is why
+GBLUP separates full sibs and pedigree BLUP cannot. When both are
+available, the genomic-pedigree blend (the $\mathbf{H}$ matrix;
+Christensen & Lund, 2010) is on the roadmap.
 
-# 7. Genomic prediction error
+# 6. Genomic prediction accuracy
 
-The cross-validation procedure for genomic prediction holds out a
-random subset of phenotyped genotypes, fits the model on the rest,
-predicts the held-out genotypes from their markers + the trained
-$\sigma_g^2$ posterior, and compares predictions with realised
-phenotypes. The summary metric is *prediction accuracy*: the
-correlation between predicted and observed across the held-out set.
+Genomic selection is judged by *prediction accuracy*: the correlation
+between predicted and observed performance for genotypes whose
+phenotypes were held out, borrowing strength only through relatedness.
+`fb_gblup_cv()` runs that cross-validation analytically -- the GBLUP
+prediction equations evaluated per fold, with the variance components
+re-estimated by REML on each training set. No MCMC and no extra
+dependency: the folds are drawn internally from base R.
 
-```r
-# Sketch (full implementation depends on dataset structure):
-folds <- rsample::vfold_cv(unique(geno_id), v = 5)
-acc <- vapply(seq_along(folds$splits), function(k) {
-  train_id <- rsample::analysis(folds$splits[[k]])
-  test_id  <- rsample::assessment(folds$splits[[k]])
-  fit_k <- flexybayes(..., data = subset(dat, geno %in% train_id), ...)
-  pred  <- predict(fit_k, newdata = subset(dat, geno %in% test_id))
-  cor(pred, subset(dat, geno %in% test_id)$yield)
-}, numeric(1))
-mean(acc)
+Ten genotypes are far too few for the answer to mean anything, so this
+section uses a simulated population with family structure. That
+structure is the point: prediction accuracy comes from relatives in the
+training set, and a panel of genuinely unrelated individuals gives an
+accuracy near zero however many markers it carries.
+
+```{r gblup-cv, eval = TRUE}
+set.seed(2026)
+n_fam <- 100L; n_sib <- 8L; n_marker <- 800L
+p <- runif(n_marker, 0.15, 0.85)
+
+# One founder genotype per family, then eight sibs that segregate at a
+# quarter of the loci: relatives share most of the genome, families do
+# not.
+founder <- matrix(rbinom(n_fam * n_marker, 2L, rep(p, each = n_fam)),
+                  n_fam, n_marker)
+Z <- founder[rep(seq_len(n_fam), each = n_sib), , drop = FALSE]
+n <- nrow(Z)
+seg <- matrix(rbinom(n * n_marker, 2L, rep(p, each = n)), n, n_marker)
+resegregate <- matrix(runif(n * n_marker) < 0.25, n, n_marker)
+Z[resegregate] <- seg[resegregate]
+
+# VanRaden's realised relationship matrix, scaled to unit mean diagonal.
+Zc <- scale(Z, scale = FALSE)
+G <- tcrossprod(Zc) / n_marker
+G <- G / mean(diag(G)) + diag(n) * 1e-6
+
+# Additive values with variance 1, residual variance 1.5: a plot-level
+# heritability of 0.4 by construction.
+u <- as.vector(t(chol(G)) %*% rnorm(n))
+y <- 5 + u + rnorm(n, 0, sqrt(1.5))
+
+cv <- fb_gblup_cv(y, G, folds = 5L, seed = 7L)
+cv
 ```
 
-The Bayesian framework propagates uncertainty into the predictions —
-each prediction comes with a posterior distribution, not a single
-number. Decision-theoretic genomic selection uses these full
-distributions (Bauer, Reif, & Schipprack, 2009) rather than
-posterior-mean point predictions.
+The REML heritability sits near the 0.4 the data were generated with,
+and the accuracy is the number a breeding programme would plan on. Both
+are single-realisation estimates: at 200 individuals rather than 800 the
+same code returns a heritability closer to 0.25, which is sampling
+variation and not a property of the estimator.
 
-# 8. Pitfalls
+Predictions come out of the object in input order, so they can be joined
+back to the panel:
+
+```{r gblup-cv-predictions, eval = TRUE}
+head(round(cv$predicted, 3))
+c(accuracy = cv$accuracy, bias = cv$bias, h2 = cv$h2)
+```
+
+A bias (the slope of observed on predicted) near 1 means the predictions
+are on the right scale as well as in the right order -- which matters as
+soon as they are compared against a selection threshold rather than
+merely ranked.
+
+The Bayesian route propagates uncertainty further: each prediction from
+a fitted model is a posterior distribution, not a single number, and
+decision-theoretic selection uses the whole distribution (Bauer, Reif, &
+Schipprack, 2009).
+
+# 7. Pitfalls
 
 **Kinship matrix scaling.** $\mathbf{G}$ matrices are conventionally
 scaled so that their average diagonal equals 1. Different scaling
-conventions (VanRaden 2008 versus Astle & Balding 2009) shift the
-posterior on $\sigma_g^2$ by a constant. State the scaling explicitly
-when reporting heritability.
+conventions (VanRaden 2008 against Astle & Balding 2009) shift the
+posterior on $\sigma_g^2$ by a constant, and therefore shift
+heritability. State the scaling when reporting either.
 
-**Connectedness across environments.** Factor-analytic GxE assumes
-that *enough* genotypes are common across environments to identify
-the loadings. With strongly disconnected designs — different
-genotype sets per environment — `fa(env, 2):gen` may give noisy
-loadings; convergence diagnostics will flag this.
+**Which heritability.** Section 4.1. A mean-basis figure without its
+divisor $r$ cannot be compared with anything.
 
-**`spl()` for environmental covariates.** Many MET analyses have
-quantitative environmental covariates (temperature, rainfall) — fit
-these via `spl()` in the random formula to capture non-linear
-genotype-by-environment-covariate interactions.
+**One observation per cell.** Section 2.4. An unstructured GxE
+covariance on unreplicated data is not identified against the residual,
+and the fit will tell you so if the diagnostics are read.
 
-**Genotype-environment covariance versus genotype variance.** The
+**Connectedness across environments.** A factor-analytic GxE model needs
+enough genotypes common to each pair of environments to identify the
+loadings. Worth stating even while `fa(env, k):gen` has no active
+fitting route, since it applies equally once one exists.
+
+**`spl()` for environmental covariates.** Many MET analyses carry
+quantitative environmental covariates (temperature, rainfall). Fit these
+through `spl()` on the INLA backend to capture a non-linear response.
+
+**Genotype-environment covariance is not a genotype variance.** The
 factor-analytic model puts structure on $\mathrm{Var}(g_{ij})$ across
-environments; it does *not* introduce a separate $\sigma_g^2$
-hyperparameter. This is why the factor-analytic fit reports loading
-variances rather than a single genotype variance.
+environments; it does not introduce a separate $\sigma_g^2$
+hyperparameter. That is why a factor-analytic fit reports loading
+variances rather than one genotype variance.
 
-# 9. Active prompts
+# 8. Active prompts
 
-1. Refit `yan.winterwheat` with `fa(env, 1):gen`. How does the
-   posterior on `gen` change? Does the one-factor approximation
-   pick up the dominant pattern visible in the interaction plot?
-2. Compute the heritability from the GBLUP fit on `met_example`.
-   Is the credible interval narrow enough to support breeding
-   decisions?
-3. Replace the kinship matrix in the GBLUP fit with the pedigree
-   matrix and triangulate the two fits. Where do they agree, and
-   where do they differ?
+1. Refit `besag.met` with `random = ~ gen` only, dropping the
+   interaction. Does the genotype ranking of Section 2.2 change, and do
+   the residual variances absorb the difference?
+2. Compare the plot-level and mean-basis heritabilities from Section
+   4.1. How large is the gap at $r = 12$, and at $r = 2$?
+3. Refit the GBLUP model with the pedigree matrix in place of the
+   kinship matrix and triangulate the two fits. Where do they agree, and
+   where does Mendelian sampling separate them?
+4. Halve `n_fam` in Section 6 while holding the total sample size, so
+   the families get larger. What happens to prediction accuracy, and
+   why?
 
-# 10. Session information
+# 9. Session information
 
 ```{r session-info}
 sessionInfo()
@@ -407,26 +504,33 @@ sessionInfo()
 
 Bauer, A. M., Reif, J. C., & Schipprack, W. (2009). Reduction of the
 genetic distance for marker-assisted backcrossing. *Theoretical and
-Applied Genetics*, 119(1), 47–53.
+Applied Genetics*, 119(1), 47--53.
 
-Christensen, O. F., & Lund, M. S. (2010). Genomic prediction when
-some animals are not genotyped. *Genetics Selection Evolution*,
-42(2), 1–8.
+Besag, J., & Higdon, D. (1999). Bayesian analysis of agricultural field
+experiments. *Journal of the Royal Statistical Society, Series B*,
+61(4), 691--746.
+
+Christensen, O. F., & Lund, M. S. (2010). Genomic prediction when some
+animals are not genotyped. *Genetics Selection Evolution*, 42(2), 1--8.
 
 Falconer, D. S., & Mackay, T. F. C. (1996). *Introduction to
 quantitative genetics* (4th ed.). Longman.
 
-Meuwissen, T. H. E., Hayes, B. J., & Goddard, M. E. (2001).
-Prediction of total genetic value using genome-wide dense marker
-maps. *Genetics*, 157(4), 1819–1829.
+Meuwissen, T. H. E., Hayes, B. J., & Goddard, M. E. (2001). Prediction
+of total genetic value using genome-wide dense marker maps. *Genetics*,
+157(4), 1819--1829.
 
-Smith, A. B., Cullis, B. R., & Thompson, R. (2001). Analyzing
-variety by environment data using multiplicative mixed models and
-adjustments for spatial field trend. *Biometrics*, 57(4), 1138–1147.
+Piepho, H.-P., & Möhring, J. (2007). Computing heritability and
+selection response from unbalanced plant breeding trials. *Genetics*,
+177(3), 1881--1888.
+
+Smith, A. B., Cullis, B. R., & Thompson, R. (2001). Analyzing variety by
+environment data using multiplicative mixed models and adjustments for
+spatial field trend. *Biometrics*, 57(4), 1138--1147.
 
 VanRaden, P. M. (2008). Efficient methods to compute genomic
-predictions. *Journal of Dairy Science*, 91(11), 4414–4423.
+predictions. *Journal of Dairy Science*, 91(11), 4414--4423.
 
 Yan, W., & Tinker, N. A. (2006). Biplot analysis of multi-environment
 trial data: Principles and applications. *Canadian Journal of Plant
-Science*, 86(3), 623–645.
+Science*, 86(3), 623--645.

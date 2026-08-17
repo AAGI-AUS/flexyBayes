@@ -7,12 +7,14 @@
 \method{format}{fb_terms}(x, ...)
 }
 \arguments{
-\item{x}{an \code{fb_terms} object.}
+\item{x}{An \code{fb_terms} object, the parsed intermediate
+representation of a model.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-character(1).
+A length-one character string naming the ingest grammar, the
+response, and the fixed and random term counts.
 }
 \description{
 Internal S3 method, registered for dispatch only. Used by R's

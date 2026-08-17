@@ -18,14 +18,15 @@
 )
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A fitted \code{flexybayes} object of any backend.}
 
 \item{newdata}{Optional new data frame for prediction. If NULL, returns
 fitted values from the original data.}
 
 \item{type}{\code{"link"} for linear predictor, \code{"response"} for response scale.}
 
-\item{se.fit}{Logical: return standard errors?}
+\item{se.fit}{A single logical. \code{TRUE} returns standard errors
+alongside the predictions.}
 
 \item{chunk_size}{Optional integer. When supplied, and when
 \code{newdata} has more rows than \code{chunk_size}, prediction iterates
@@ -81,7 +82,7 @@ over rds / fst (R-only / fst-only). Useful for handing the
 prediction grid to a non-R consumer. Default \code{FALSE}. Only
 consulted when \code{output_file} is supplied and \code{format = "auto"}.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 If \code{output_file} is supplied: invisibly returns the path

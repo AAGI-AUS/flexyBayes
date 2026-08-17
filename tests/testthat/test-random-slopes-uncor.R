@@ -12,10 +12,11 @@
 #       intercept- and slope-variance components.
 #   (c) fb(y ~ x + (x | g)) raises a structured
 #       flexybayes_correlated_slope_unsupported condition with
-#       deferral_target = "v0.3", workaround = "(x || g)",
+#       deferral_target, workaround (the concrete uncorrelated
+#       spelling for the model at hand, not a placeholder),
 #       grouping_factor + slope_variable slots populated and a
-#       documented refusal message naming both v0.3 and the
-#       (x || g) workaround.
+#       refusal message that hands the reader the supported model
+#       and warns off the asreml factor-crossing spelling.
 #   (d-e) Refusal slot inspection.
 #   (f) Posterior matches lme4::lmer(REML = FALSE) on sleepstudy
 #       within W_1 <= 0.20 * tau_true on the slope SD (loosened per
@@ -109,7 +110,7 @@ test_that("(x | g) raises ADR 0020 structured deferral", {
   msg <- conditionMessage(err)
   expect_true(grepl("Correlated random slopes", msg))
   expect_true(grepl("future release", msg))
-  expect_true(grepl("\\(x \\|\\| g\\)", msg))
+  expect_true(grepl("(Days || Subject)", msg, fixed = TRUE))
   expect_true(grepl("structured-covariance", msg))
 })
 
@@ -138,9 +139,19 @@ test_that("(x | g) refusal carries workaround + grouping_factor + slope_variable
     fb_from_brms(Reaction ~ Days + (Days | Subject), data = d),
     error = function(e) e
   )
-  expect_identical(err$workaround, "(x || g)")
+  # The workaround slot names the spelling for THIS model, not a
+  # placeholder. Tutorials 01 and 04 taught the asreml crossing
+  # `~ Subject + Subject:Days` as the random-slope route; with numeric
+  # Days that is one iid deviation per Subject-Day cell, so the refusal
+  # has to hand the reader the model it means.
+  expect_identical(err$workaround, "(Days || Subject)")
   expect_identical(err$grouping_factor, "Subject")
   expect_identical(err$slope_variable, "Days")
+  msg <- conditionMessage(err)
+  expect_true(grepl("(Days || Subject)", msg, fixed = TRUE))
+  # The crossing appears only inside the warning against it.
+  expect_true(grepl("Do NOT reach for", msg, fixed = TRUE))
+  expect_true(grepl("Subject:Days", msg, fixed = TRUE))
 })
 
 
@@ -522,9 +533,9 @@ test_that("INLA path refuses (x || g) with deferral when verification artefact a
   )
   expect_s3_class(err, "flexybayes_inla_simple_slope_uncor_deferred")
   expect_identical(err$deferral_target, "a future release")
-  expect_identical(err$workaround, "backend = \"greta\"")
+  expect_identical(err$workaround, "backend = \"brms\"")
   msg <- conditionMessage(err)
   expect_true(grepl("future release", msg))
   expect_true(grepl("three-arbitrator verification test", msg, fixed = TRUE))
-  expect_true(grepl("backend = \"greta\"", msg, fixed = TRUE))
+  expect_true(grepl("backend = \"brms\"", msg, fixed = TRUE))
 })

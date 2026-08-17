@@ -3,6 +3,8 @@ title: "Tutorial 04: Hierarchical models: random effects and GLMMs"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
@@ -22,46 +24,46 @@ knitr::opts_chunk$set(
   dpi       = 150
 )
 options(flexyBayes.silence_default_prior_note = TRUE)
-greta_ok <- requireNamespace("greta",   quietly = TRUE)
-inla_ok  <- requireNamespace("INLA",    quietly = TRUE)
-lme4_ok  <- requireNamespace("lme4",    quietly = TRUE)
-mass_ok  <- requireNamespace("MASS",    quietly = TRUE)
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+lme4_ok <- requireNamespace("lme4", quietly = TRUE)
+mass_ok <- requireNamespace("MASS", quietly = TRUE)
 set.seed(1000)
 ```
 
 # 1. Why hierarchical?
 
-> **This is a syntax-and-representation catalogue.** It demonstrates how to
-> *write* models across the term surface. The fits use small sampling budgets
-> so the document builds quickly, and several printed diagnostics therefore do
-> **not** meet the package's own convergence thresholds
-> ($\widehat{R} \le 1.01$, ESS $\ge 400$); some model classes also mix poorly on
-> their backend at any budget. Read the posterior summaries here as
-> illustrations of the output *shape*, not as inferential results. For a
-> convergence-clean worked fit and the trustworthy-fit workflow, see the
-> *getting started* and *cross-engine triangulation* vignettes.
-
-A *hierarchical* model — in mixed-models language, a model with one
-or more random effects — partitions the residual variance into
+A *hierarchical* model -- in mixed-models language, a model with one
+or more random effects -- partitions the residual variance into
 between-cluster and within-cluster components. Three reasons this
 matters:
 
-1. **Honest standard errors.** Treating clustered observations as
-   independent shrinks standard errors and inflates Type I error.
+1. **Correctly sized standard errors.** Treating clustered
+   observations as independent shrinks standard errors and inflates
+   Type I error.
 2. **Borrowing of strength.** A random effect lets each cluster
    "borrow" information from the others through the shared variance
-   parameter — *partial pooling*. This is the source of the
+   parameter -- *partial pooling*. This is the source of the
    Bayesian shrinkage estimator.
 3. **Predictions for unseen clusters.** A random-effect fit gives a
    posterior distribution for the next group's mean, drawn from the
    estimated population.
 
-`flexyBayes` covers the full mixed-model surface — Gaussian linear
-mixed models (LMMs), generalised linear mixed models (GLMMs) with
-Poisson, binomial, gamma, and beta likelihoods, plus structured
-covariance models that the *structured covariance* and
-*spatio-temporal* vignettes take up. This vignette focuses on the
-foundational cases.
+`flexyBayes` fits Gaussian linear mixed models (LMMs) and generalised
+linear mixed models (GLMMs) with Poisson, binomial, negative-binomial,
+gamma, and beta likelihoods, with simple, crossed, nested and
+uncorrelated-slope random effects. Beyond that the coverage is
+selective rather than complete: some structured covariance models
+emit, others refuse by name, and which is which is tabulated in the
+package README and in `system.file("KNOWN_ISSUES.md", package =
+"flexyBayes")`. The *formula surface* and *spatio-temporal*
+vignettes take up the ones that fit.
+
+This vignette focuses on the foundational cases, letting
+`backend = "auto"` (the default) pick the fitting engine throughout --
+INLA where it applies (fast, deterministic), brms otherwise (Stan
+HMC). The *understanding dispatch and refusals* vignette covers how
+that choice is made.
 
 # 2. The Gaussian random intercept: `sleepstudy`
 
@@ -69,17 +71,27 @@ We start where the *getting started* vignette left off: a random
 intercept on `Subject` with `Reaction` as the response and `Days` as
 a fixed continuous covariate.
 
-```{r ri-fit, eval=greta_ok && lme4_ok}
+```{r ri-fit, eval = brms_ok && lme4_ok}
 library(flexyBayes)
 data(sleepstudy, package = "lme4")
-fit_ri <- fb_greta(
+fit_ri <- flexybayes(
   Reaction ~ Days + (1 | Subject), data = sleepstudy,
-  n_samples    = 2000, warmup = 5000, chains = 4,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
+  backend   = "brms",
+  n_samples = 2000, warmup = 5000, chains = 4,
+  seed = 20260815L,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_ri)
 ```
+
+> **Why `backend = "brms"` here, not the `"auto"` default.** INLA's
+> default prior on this specific model has a known instability on
+> `sleepstudy`: the `Subject`-level variance component can collapse to
+> numerically zero, run to run, with no warning. brms (Stan HMC) does
+> not share the failure mode. This vignette pins brms for this one
+> teaching example; `"auto"` is fine for the other models below. If
+> you hit an implausibly extreme variance component from INLA on your
+> own data, cross-check with `backend = "brms"` before trusting it.
 
 The `Subject`-level standard deviation summarises between-subject
 variation in baseline reaction time; the residual standard deviation
@@ -90,15 +102,12 @@ $$
 \text{ICC} = \frac{\sigma_{\text{Subject}}^2}{\sigma_{\text{Subject}}^2 + \sigma_e^2},
 $$
 
-a derived quantity that the `posterior::summarise_draws()` call
-computes from the draws.
+a derived quantity computed from the posterior draws:
 
-```{r icc, eval = greta_ok}
+```{r icc, eval = brms_ok && lme4_ok}
 draws <- flexyBayes::fb_as_draws_simple(fit_ri)
-# Greta names the random-effect SD after the grouping factor:
-# sigma_Subject (capital S to match `(1 | Subject)`).
-sigma_S <- draws[["sigma_Subject"]]
-sigma_e <- draws$sigma_e_atg
+sigma_S <- draws[["sd_Subject__Intercept"]]
+sigma_e <- draws[["sigma"]]
 icc <- sigma_S^2 / (sigma_S^2 + sigma_e^2)
 c(mean = mean(icc), q025 = quantile(icc, 0.025), q975 = quantile(icc, 0.975))
 ```
@@ -110,105 +119,112 @@ summary(lme4::lmer(Reaction ~ Days + (1 | Subject), data = sleepstudy))
 ```
 
 The Bayesian posterior means and `lme4`'s REML estimates agree to
-about the second decimal — because `Subject` has 18 levels, which is
+about the second decimal -- because `Subject` has 18 levels, which is
 on the cusp where REML and Bayesian fits start to diverge for small
 clusters.
 
-> **Reading the diagnostics.** The fits here use production MCMC budgets
-> (warmup 5000, four chains), so the fixed effects and the headline
-> variance components are reliable. As in the *getting started*
-> vignette, the slowest-mixing variance-related parameters can still sit
-> a little above the strict $\widehat{R} \le 1.01$ target -- variance
-> components are the hardest quantities for HMC, and greta's TensorFlow
-> sampler is not fully seed-reproducible -- so read a single run's worst
-> $\widehat{R}$ as indicative, and run longer or triangulate when a
-> variance component is itself the inferential target.
+# 3. Random intercept and slope
 
-# 3. Random intercept and slope (asreml-form)
+The full repeated-measures model lets each subject have its own slope
+on `Days` as well as its own intercept. There is one supported
+spelling for it, one refused spelling, and one lookalike that is a
+different model altogether. Getting the three apart is the point of
+this section.
 
-The full repeated-measures model lets each subject have its own
-slope on `Days` as well as its own intercept. The `lme4` syntax is
-`(Days | Subject)`. The brms-style grammar accepts only single or
-crossed random intercepts; for random slopes route through the
-asreml-style entry, which handles them via two random terms — the
-intercept and the interaction:
+## 3a. The supported form: `(Days || Subject)`
 
-```{r ris-fit, eval = greta_ok}
-fit_ris <- flexybayes(
-  fixed  = Reaction ~ Days,
-  random = ~ Subject + Subject:Days,
-  data   = sleepstudy,
-  n_samples = 2000, warmup = 5000, chains = 4, verbose = FALSE
-)
-summary(fit_ris)
-```
+The brms-style grammar takes the lme4 / brms double-pipe notation
+`(x || g)` for an *uncorrelated* random intercept and slope. Each level
+of the grouping factor carries an independent intercept deviation AND
+an independent slope deviation, each drawn from its own univariate
+normal with no correlation parameter shared between them. This matches
+the lme4 / brms semantics where `(Days || Subject)` expands to
+`(1 | Subject) + (0 + Days | Subject)`. The `(0 + x || g)` form drops
+the intercept block, fitting a slope-only random effect.
 
-This fit gives independent variance components for the random
-intercept and the random slope (no covariance between them). The
-fully bivariate `(Days | Subject)` model — with an estimated
-correlation between subject-level intercept and slope — uses an
-unstructured covariance, written as
-`random = ~ str(~Subject + Subject:Days, ~us(2):id(Subject))` in the
-asreml DSL. It is one of the constructions covered in the
-*structured covariance* vignette.
+Eighteen subjects therefore contribute eighteen intercept deviations
+and eighteen slopes, summarised by two variance components:
 
-# 3a. Uncorrelated random slopes via the brms-style grammar (lme4-style `(x || g)`)
-
-The brms-style grammar accepts the lme4 / brms double-pipe notation
-`(x || g)` for *uncorrelated* random intercept + slope -- each level of the
-grouping factor carries an independent intercept deviation AND an
-independent slope deviation, both drawn from their own univariate-
-normal priors with no correlation parameter shared between them.
-This matches the lme4 / brms semantics where `(Days || Subject)`
-expands to `(1 | Subject) + (0 + Days | Subject)`. The `(0 + x || g)`
-form drops the intercept block, fitting a slope-only random effect.
-Both shapes are structurally equivalent to the asreml-form
-`~ Subject + Subject:Days` construction in section 3 -- same
-posterior, different surface.
-
-```{r ris-uncor-fit, eval=greta_ok}
-fit_ris_uncor <- fb_greta(
+```{r ris-uncor-fit, eval = inla_ok || brms_ok}
+fit_ris_uncor <- flexybayes(
   Reaction ~ Days + (Days || Subject),
   data = sleepstudy,
   n_samples = 2000, warmup = 5000, chains = 4,
+  seed = 20260815L,
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_ris_uncor)
 ```
 
-The intercept-deviation hyperparameter is canonically named
-`sd_Subject` and the slope-deviation hyperparameter
-`sd_Days_Subject` -- the per-backend mapper handles the brms-side
-`sd_Subject__Days` <-> flexyBayes canonical `sd_Days_Subject`
-translation automatically. Inspect via `canonical_names()`:
+## 3b. The refused form: `(Days | Subject)`
 
-```{r ris-uncor-canon, eval=greta_ok}
-canonical_names(fit_ris_uncor)$map
+The correlated form adds a free correlation between a subject's
+intercept and its slope. That is a genuinely different model -- one
+more parameter, and a different shrinkage geometry -- and no active
+engine represents it, so the call refuses rather than silently
+returning the uncorrelated fit under the correlated model's name. The
+refusal carries a typed condition class
+(`flexybayes_correlated_slope_unsupported`) with slots
+`deferral_target`, `workaround`, `grouping_factor`, and
+`slope_variable`, so downstream tooling can pattern-match on the slots
+instead of parsing free text:
+
+```{r ris-correlated-refuse, eval = inla_ok || brms_ok}
+refused <- tryCatch(
+  flexybayes(Reaction ~ Days + (Days | Subject), data = sleepstudy,
+             verbose = FALSE),
+  error = function(e) e
+)
+cat(conditionMessage(refused))
 ```
 
-The correlated form `(Days | Subject)` (with a free correlation
-parameter between the subject-level intercept and slope) is not yet
-supported on the brms ingest path. Attempting it raises a
-structured refusal with a deferral pointer -- the workaround
-text suggests the `(Days || Subject)` form when the correlation is
-not of inferential interest, or the asreml-style structured
-covariance entry above when it is. The refusal carries a typed
-condition class (`flexybayes_correlated_slope_unsupported`) with
-slots `deferral_target`, `workaround`, `grouping_factor`, and
-`slope_variable` so downstream tooling can pattern-match.
+## 3c. The lookalike: `~ Subject + Subject:Days`
+
+Earlier versions of this vignette taught the ASReml crossing
+`random = ~ Subject + Subject:Days` as the asreml-form random slope.
+It is not one, and it is now refused:
+
+```{r ris-crossing-refuse, eval = inla_ok || brms_ok}
+crossing <- tryCatch(
+  flexybayes(fixed = Reaction ~ Days,
+             random = ~ Subject + Subject:Days,
+             data = sleepstudy, verbose = FALSE),
+  error = function(e) e
+)
+class(crossing)[1]
+cat(conditionMessage(crossing))
+```
+
+The spelling has two readings and they are different models. An ASReml
+user reads `Subject:Days` with numeric `Days` as a random regression --
+one slope per subject. The interaction crossing `flexyBayes` would
+otherwise emit is `(1 | Subject:Days)`: one independent deviation for
+every observed Subject-by-`Days` combination, which on `sleepstudy` is
+180 cells each holding a single observation. The two models do not share
+a parameter count, a shrinkage target, or a posterior, and the
+crossing's variance component is not the slope variance under another
+name. Rather than pick a reading, the package names both and stops.
+
+The distinction turns on the type of the inner variable. When both
+sides of the colon are factors -- `class:student`, `env:rep` -- the
+crossing is exactly what it looks like, a random effect over the
+interaction cells, and Section 4 uses it that way. Only a numeric inner
+variable triggers the refusal. Write `(Days || Subject)` for a slope, or
+convert `Days` to a factor if a per-cell effect is genuinely what is
+wanted.
 
 # 4. Crossed and nested random effects
 
-Two cluster variables that *cross* — every level of one is observed
-at every level of the other — are modelled with two parallel random
+Two cluster variables that *cross* -- every level of one is observed
+at every level of the other -- are modelled with two parallel random
 terms:
 
 ```r
 flexybayes(fixed = y ~ 1, random = ~ subject + item, data = ...)
 ```
 
-Two cluster variables that *nest* — each level of the inner is
-observed within exactly one level of the outer — are modelled with
+Two cluster variables that *nest* -- each level of the inner is
+observed within exactly one level of the outer -- are modelled with
 the inner-within-outer interaction:
 
 ```r
@@ -231,78 +247,84 @@ epil$subject <- factor(epil$subject)
 str(epil)
 ```
 
-```{r epil-fit-greta, eval=greta_ok && mass_ok}
-fit_pois_g <- fb_greta(
+```{r epil-fit, eval = inla_ok && mass_ok}
+fit_pois <- flexybayes(
   y ~ trt + (1 | subject), data = epil,
-  family       = "poisson",
-  n_samples    = 2000, warmup = 5000, chains = 4,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
+  family = "poisson",
+  n_samples = 2000, warmup = 5000, chains = 4,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
-summary(fit_pois_g)
-```
-
-```{r epil-fit-inla, eval=inla_ok && mass_ok}
-fit_pois_i <- fb_inla(
-  y ~ trt + (1 | subject), data = epil,
-  family  = "poisson",
-  verbose = FALSE
-)
-summary(fit_pois_i)
+summary(fit_pois)
 ```
 
 The intercept (on the log scale) is the baseline log-rate of
 seizures; the `trt` coefficient is the log rate-ratio for
-progabide versus placebo. Exponentiating gives the rate-ratio:
+progabide versus placebo. Exponentiating gives the rate-ratio,
+computed from the posterior draws:
 
-```{r epil-rate-ratio, eval = greta_ok && mass_ok}
-# greta names a 2-level factor trt as tau_trt[1,1] (placebo, baseline)
-# and tau_trt[2,1] (progabide). The rate ratio is the exponential of
-# the difference, which simplifies to exp(tau_trt[2,1]) once placebo
-# is absorbed into the intercept.
-draws <- flexyBayes::fb_as_draws_simple(fit_pois_g)
-rr <- exp(draws[["tau_trt[2,1]"]] - draws[["tau_trt[1,1]"]])
+```{r epil-rate-ratio, eval = inla_ok && mass_ok}
+draws <- flexyBayes::fb_as_draws_simple(fit_pois)
+rr <- exp(draws[["trtprogabide:1"]])
 c(mean = mean(rr), q025 = quantile(rr, 0.025), q975 = quantile(rr, 0.975))
 ```
 
-The cross-engine triangulation reads cleanly because the canonical
-parameter-name registry reconciles the greta and INLA naming
-conventions for fixed effects, factor levels, and group SDs; no
-user-supplied `name_map` is required:
+## 5.1 Cross-checking the fit against a second engine
 
-```{r epil-tri, eval=greta_ok && inla_ok && mass_ok}
-tri <- tryCatch(
-  triangulate(fit_pois_g, fit_pois_i),
-  error = function(e) {
-    message("triangulate() unavailable in this session: ",
-            conditionMessage(e))
-    NULL
-  }
+`triangulate()` compares posteriors from two fits of the *same* model on
+different engines. Same model, same data and the same prior on every
+compared variance component are a precondition, not a nicety: each fit
+carries a fingerprint of the question it answered, and two fits that
+disagree about the question are refused rather than compared. The
+canonical parameter-name registry reconciles INLA and brms naming
+automatically, so no user-supplied `name_map` is required:
+
+```{r epil-tri, eval = inla_ok && brms_ok && mass_ok}
+fit_pois_brms <- flexybayes(
+  y ~ trt + (1 | subject), data = epil,
+  family = "poisson", backend = "brms",
+  n_samples = 4000, warmup = 2000, chains = 4,
+  seed = 20260815L,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
-if (!is.null(tri)) tri
+triangulate(fit_pois, fit_pois_brms)
 ```
 
-As always with an approximate engine, scrutinise the variance
-components in the cross-check: INLA's Laplace estimate of a small-group
-random-effect variance can diverge from the MCMC value, and for very
-few groups it can be unstable across runs. Where the `sd_ratio` column
-flags such a divergence, trust the MCMC estimate or set an explicit
-prior -- the divergence is the triangulation doing its job, not a fault
-to hide.
+The report opens with an overall status -- `concordant`, `discordant` or
+`inconclusive` -- and then gives a verdict per parameter. The two fixed
+effects agree: the baseline log-rate and the treatment coefficient sit
+within a tenth of a posterior SD of each other, from two engines that
+share no inference algorithm and no code. That is evidence neither
+approximation is distorting them.
 
-If the planted-extreme example from the *cross-engine triangulation*
-vignette is fresh in mind, the `epil` data have a similar structure:
-patient 49 has anomalously high seizure counts, and the Pareto-$\hat{k}$
-diagnostic in `loo` will identify that patient as a leverage point.
-The recommended response is to refit with negative-binomial:
+`sd_subject` is flagged, and it is worth seeing why on the first
+triangulation you read. Its posterior mean and SD agree between the
+engines to a few per cent; what breaches the threshold is the
+Wasserstein-1 distance, which compares the whole marginal rather than
+its first two moments. The two distributions have the same centre and
+spread and a different shape -- the ordinary signature of a Laplace
+marginal for a variance component beside an HMC one. `discordant` means
+"look at this", not "one engine is wrong", and the thing to look at here
+is a known difference rather than a failure.
 
-```{r epil-nb, eval=greta_ok && mass_ok}
-fit_nb <- fb_greta(
+None of this is evidence that the *model* is right: both fits read the
+same parsed representation, so a mistranslation would be common-mode.
+The *cross-engine triangulation* vignette develops all of it into a full
+workflow -- what a disagreement means, which parameters the
+matched-prior gate leaves out, and a worked case where the flag is a
+genuine failure.
+
+If the planted-extreme example from that vignette is fresh in mind,
+the `epil` data have a similar structure: patient 49 has anomalously
+high seizure counts, and the Pareto-$\hat{k}$ diagnostic in `loo`
+will identify that patient as a leverage point. The recommended
+response is to refit with negative-binomial:
+
+```{r epil-nb, eval = (inla_ok || brms_ok) && mass_ok}
+fit_nb <- flexybayes(
   y ~ trt + (1 | subject), data = epil,
-  family       = "negative_binomial",
-  n_samples    = 2000, warmup = 5000, chains = 4,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
+  family = "negative_binomial",
+  n_samples = 2000, warmup = 5000, chains = 4,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_nb)
 ```
@@ -334,10 +356,10 @@ cbpp_expanded$herd <- factor(cbpp_expanded$herd)
 nrow(cbpp_expanded)
 ```
 
-```{r cbpp-fit, eval=inla_ok && lme4_ok}
-fit_bin <- fb_inla(
+```{r cbpp-fit, eval = inla_ok && lme4_ok}
+fit_bin <- flexybayes(
   y ~ period + (1 | herd), data = cbpp_expanded,
-  family  = "binomial",
+  family = "binomial", backend = "inla",
   verbose = FALSE
 )
 summary(fit_bin)
@@ -348,49 +370,31 @@ infection; the `period` coefficients describe how those log-odds
 change across the four observation periods. The `herd` random
 effect captures unobserved herd-level differences in baseline risk.
 
-# 7. Dispatch and refusal: `backend = "auto"`
+# 7. Dispatch is automatic
 
-The universal entries `flexybayes()` / `fb()` carry a `backend`
-argument: `"auto"` (the default — structural gate-then-route: INLA
-on accept, greta on refuse, with a silenceable note carrying the
-reason), `"greta"` (Hamiltonian Monte Carlo; covers every supported
-term type), `"inla"` (explicit LGM fast path; raises a structured
-refusal on non-LGM models), and `"brms"` (Stan). The engine pins
-`fb_greta()` / `fb_inla()` / `fb_brms()` fix the backend instead.
-
-```{r dispatch-auto, eval=greta_ok && lme4_ok}
-fit_auto <- flexybayes(
-  Reaction ~ Days + (1 | Subject), data = sleepstudy,
-  backend      = "auto",
-  n_samples    = 200, warmup = 200, chains = 1,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
-)
-backend_decision(fit_auto)
-```
-
-The trace records which backend ran, which gate checks were
-evaluated, and (on the refuse-to-greta path) the primary failure
-rule. Two silenceable notes — `flexyBayes.silence_auto_fallback_note`
-(LGM gate refuse) and `flexyBayes.silence_auto_inla_missing_note`
-(INLA package unavailable) — let you keep auto-dispatch quiet in
-batch pipelines once the routing behaviour is understood.
-
-The *LGM feasibility* and *backend internals* vignettes detail the
-six structural gate checks and the seventh post-fit numerical
-confirm, plus the two-key armed override path
-(`force = "inla"`, `acknowledge_silent_bias_risk = TRUE`,
-`reason = "..."`) for the rare cases when forced INLA dispatch is
-deliberate.
+Every fit above omitted `backend` and let the default, `"auto"`,
+choose INLA or brms per model. Pin an engine explicitly
+(`backend = "inla"` / `"brms"`) when you want to force a specific
+one -- Section 6 does this for `fit_bin`. The *understanding dispatch
+and refusals* vignette covers the full routing logic, what a refusal
+looks like, and how to read one.
 
 # 8. Pitfalls
 
-**Random slopes are not in the brms-style corpus.** Route
-random-slope models through `flexybayes(fixed, random = ~ A + A:B,
-data = ...)`. The fits are statistically equivalent to `lme4`'s
-`(B | A)` *with* `corr = 0`; for the bivariate version with an
-estimated correlation, use the structured covariance vignette's
-`str(~..., ~us(2):id(...))` pattern.
+**A random slope is `(x || g)`, not `~ g + g:x`.** The double-pipe
+form is in the brms-style corpus and emits on brms. The ASReml
+crossing with a numeric inner variable is a different model -- per-cell
+noise, not a slope -- and is refused rather than silently substituted.
+Section 3 works through all three spellings.
+
+**The bivariate correlated-slope model currently has no active fitting
+route.** The correlation between a subject's intercept and its slope
+needs an unstructured 2x2 covariance over the two random terms, which
+is what `random = ~ str(~Subject + Subject:Days, ~us(2):id(Subject))`
+asks for in ASReml. `str()` has no emit path on either active engine.
+Note that this is *not* the same construction as `us(env):geno`, the
+unstructured genotype-by-environment covariance, which does emit on
+brms -- the *formula surface* vignette covers that one.
 
 **Aggregated binomial via `trials()` is not in the brms-style
 corpus.** Expand to per-trial Bernoulli, or route through
@@ -405,19 +409,18 @@ to assess sensitivity.
 
 **Overdispersion in count data.** A Poisson GLMM that fails the
 posterior-predictive check on `var(y)` versus `mean(y)` is signalling
-overdispersion — refit with `family = "negative_binomial"`. This is the most
+overdispersion -- refit with `family = "negative_binomial"`. This is the most
 common cause of cross-engine disagreement on count GLMMs (pattern 1
 in the triangulation vignette).
 
 # 9. Active prompts
 
-1. Compare `fit_ri` (random intercept) and `fit_ris` (random
-   intercept + slope) on `sleepstudy`. Which has lower residual
-   standard deviation? Which has higher ESS per second of compute
-   time?
+1. Compare `fit_ri` (random intercept) and `fit_ris_uncor` (random
+   intercept and slope) on `sleepstudy`. Which has lower residual
+   standard deviation, and where did the variance it absorbed go?
 2. Run the `epil` Poisson fit, then refit with the negative-binomial.
    Use `triangulate()` to compare the variance-component posteriors
-   of each likelihood family on each backend.
+   of each family against a second engine.
 3. On `cbpp_expanded`, fit the model with random `herd` versus
    random `herd:period`. Which fits best by PSIS-LOO (manual; see
    the *downstream analysis* vignette)?
@@ -432,7 +435,7 @@ sessionInfo()
 
 Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting
 linear mixed-effects models using lme4. *Journal of Statistical
-Software*, 67(1), 1–48.
+Software*, 67(1), 1--48.
 
 Gelman, A., & Hill, J. (2007). *Data analysis using regression and
 multilevel/hierarchical models*. Cambridge University Press.
@@ -442,4 +445,4 @@ and S-PLUS*. Springer.
 
 Thall, P. F., & Vail, S. C. (1990). Some covariance models for
 longitudinal count data with overdispersion. *Biometrics*, 46(3),
-657–671.
+657--671.

@@ -1,11 +1,16 @@
 # Standard model interface for per-row INLA fits.
 #
-# A per-row INLA fit carries class `c("flexybayes_inla", "list")` and
-# deliberately does NOT inherit "flexybayes" (its internal shape differs
-# from the greta fit -- it has no `$glm` shim). That left it without the
+# A per-row INLA fit carries class
+# `c("flexybayes_inla", "flexybayes", "list")`. Before 0.9.0 it stood
+# outside the `flexybayes` parent, because its internal shape differs from
+# the greta fit -- it has no `$glm` shim -- and that left it without the
 # coef() / vcov() / predict() / formula() / family() interface the rest
 # of the R modelling ecosystem (emmeans, marginaleffects) dispatches on.
-# This file supplies those methods, reading the fixed-effect posterior
+# The methods below are the INLA-specific half of that interface and win
+# dispatch over the parent; the parent methods with no sibling here
+# resolve from the slots the object carries or refuse by name (see
+# R/methods.R). This file supplies those methods, reading the
+# fixed-effect posterior
 # from the INLA fit's `summary.fixed` (means, treatment-contrast basis)
 # and a Monte-Carlo joint covariance from `inla.posterior.sample()`
 # (the fit is built with `control.compute = list(config = TRUE)`).
@@ -23,13 +28,11 @@
 # as a matrix (n_samples x p) with `summary.fixed` rownames as columns.
 # INLA names the fixed effects in the latent field as "<name>:1".
 .inla_fixef_draws <- function(object, n_samples = 2000L) {
-  if (!requireNamespace("INLA", quietly = TRUE)) {
-    stop(
-      "Package 'INLA' is required to sample from a ",
-      "<flexybayes_inla> fit.",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "INLA",
+    "Package 'INLA' is required to sample from a ",
+    "<flexybayes_inla> fit."
+  )
   if (is.null(object$inla)) {
     stop("Cannot sample: the INLA fit object is missing.", call. = FALSE)
   }
@@ -95,7 +98,7 @@
 #' [marginaleffects::predictions()] via the flexyBayes support methods.
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return Named numeric vector of fixed-effect posterior means.
 #' @export
 coef.flexybayes_inla <- function(object, ...) {
@@ -115,7 +118,7 @@ coef.flexybayes_inla <- function(object, ...) {
 #' @param object A `flexybayes_inla` fit.
 #' @param n_samples Posterior sample size for the covariance estimate
 #'   (default 2000).
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return Posterior covariance matrix of the fixed effects, with
 #'   `summary.fixed` rownames as dimnames.
 #' @export
@@ -126,6 +129,67 @@ vcov.flexybayes_inla <- function(object, n_samples = 2000L, ...) {
   v
 }
 
+#' Credible intervals for the fixed effects of a per-row INLA fit
+#'
+#' Quantiles of INLA's own posterior marginals for the fixed effects, not
+#' frequentist confidence intervals and not a normal approximation to
+#' them. The bounds come from `INLA::inla.qmarginal()` applied to the
+#' marginal densities the fit stores, so any credible level is available
+#' rather than only the 0.95 that `summary.fixed` tabulates.
+#'
+#' Before 0.9.0 an INLA fit did not inherit the `flexybayes` parent class,
+#' so `confint()` on one reached `stats::confint.default` and failed on a
+#' missing `vcov` contract. This method is the INLA sibling of
+#' [confint.flexybayes()].
+#'
+#' @param object A `flexybayes_inla` fit carrying fixed-effect marginals.
+#' @param parm Character vector of coefficient names to return, or `NULL`
+#'   (the default) for every fixed effect.
+#' @param level Credible level for the interval, as a proportion. The
+#'   default `0.95` returns the 2.5th and 97.5th posterior percentiles.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A matrix with one row per fixed effect and two columns holding
+#'   the lower and upper credible bounds, named for the percentiles used.
+#' @export
+confint.flexybayes_inla <- function(
+  object,
+  parm = NULL,
+  level = 0.95,
+  ...
+) {
+  marg <- object$inla$marginals.fixed
+  if (is.null(marg) || length(marg) == 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "fit_lacks_posterior_draws",
+      message = paste0(
+        "confint() cannot form credible intervals for this INLA fit: it ",
+        "carries no fixed-effect posterior marginals. Refit with ",
+        "control.compute = list(return.marginals = TRUE), which is the ",
+        "flexyBayes default, or read the 0.95 bounds that summary() ",
+        "already reports."
+      )
+    ))
+  }
+
+  alpha <- 1 - level
+  probs <- c(alpha / 2, 1 - alpha / 2)
+
+  bounds <- t(vapply(
+    marg,
+    function(m) vapply(probs, INLA::inla.qmarginal, numeric(1), marginal = m),
+    numeric(2)
+  ))
+  dimnames(bounds) <- list(
+    names(marg),
+    paste0(round(probs * 100, 1), "%")
+  )
+
+  if (!is.null(parm)) {
+    bounds <- bounds[parm, , drop = FALSE]
+  }
+  bounds
+}
+
 #' Fixed-effect model formula of a per-row INLA fit
 #'
 #' The fixed-effect (population-level) formula, recovered from the
@@ -133,7 +197,7 @@ vcov.flexybayes_inla <- function(object, n_samples = 2000L, ...) {
 #' part of this formula.
 #'
 #' @param x A `flexybayes_inla` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A `formula`.
 #' @export
 formula.flexybayes_inla <- function(x, ...) {
@@ -159,7 +223,7 @@ formula.flexybayes_inla <- function(x, ...) {
 #' Response family of a per-row INLA fit
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A list with `family` and `link` entries.
 #' @export
 family.flexybayes_inla <- function(object, ...) {
@@ -175,7 +239,7 @@ family.flexybayes_inla <- function(object, ...) {
 #' `NULL` for an INLA fit because the object does not populate a `$glm` slot.
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A numeric vector of posterior-mean fitted values, one per
 #'   observation.
 #' @export
@@ -204,7 +268,7 @@ fitted.flexybayes_inla <- function(object, ...) {
 #' (`log(y) ~ ...`) residualises on the modelled scale.
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A numeric vector of response residuals, one per observation.
 #' @export
 residuals.flexybayes_inla <- function(object, ...) {
@@ -232,13 +296,13 @@ residuals.flexybayes_inla <- function(object, ...) {
 #' through [summary()]), not the *conditional* model log-likelihood that the
 #' `logLik()` generic denotes and that the greta / brms backends expose.
 #' Returning the marginal quantity under the `logLik` name would conflate two
-#' different things, so this method honestly returns `NA` (with the degrees of
+#' different things, so this method returns `NA` (with the degrees of
 #' freedom and observation count filled in) and a one-line note. This also
 #' lets downstream summaries (for example [glance()]) degrade gracefully
 #' instead of erroring with "no applicable method".
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A `logLik` object whose value is `NA_real_`, carrying `df` and
 #'   `nobs` attributes.
 #' @export
@@ -271,7 +335,7 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' @param type `"response"` or `"link"`.
 #' @param se.fit Logical: also return delta-method standard errors from
 #'   the fixed-effect covariance.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A numeric vector of predictions, or a list `fit` / `se.fit`
 #'   when `se.fit = TRUE`.
 #' @export

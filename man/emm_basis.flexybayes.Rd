@@ -18,7 +18,7 @@
 
 \item{grid}{Reference grid supplied by emmeans.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 A list with \code{X}, \code{bhat}, \code{nbasis}, \code{V}, \code{dffun}, \code{dfargs}.

@@ -606,15 +606,17 @@
     reason_code = "low_rank_requires_greta",
     description = paste0(
       "A smooth requesting the low_rank_smooth approximation was ",
-      "routed to a non-greta backend that cannot honour it."
+      "routed to a backend that cannot honour it. Since the greta ",
+      "quarantine that is every active engine, so the request refuses ",
+      "under `auto` as well as under an explicit `inla` / `brms`."
     ),
     message_template = paste0(
-      "A smooth requesting the low_rank_smooth approximation ",
-      "requires the greta backend; the '%s' backend represents ",
-      "smooths differently (INLA via rw2, brms via Stan spline ",
-      "bases) and cannot honour the rank-K basis truncation. ",
-      "Re-fit with backend = \"greta\", or drop the ",
-      "representation = ... argument to fit the exact smooth."
+      "A smooth requesting the low_rank_smooth approximation is ",
+      "honoured only by the greta backend, which is quarantined, so ",
+      "no active engine represents it: INLA fits a smooth via rw2 ",
+      "and brms via Stan spline bases, and neither can apply the ",
+      "rank-K basis truncation. Drop the representation = ... ",
+      "argument to fit the exact smooth on either active engine."
     ),
     registered_in_adr = "ADR 0027",
     plan_field = NA_character_,
@@ -940,12 +942,13 @@
   .register_refusal(
     reason_code = "review_code_backend_unsupported",
     description = paste0(
-      "review_code = TRUE was requested with a backend other than ",
-      "greta; the inspect-then-fit token is currently greta-only."
+      "review_code = TRUE was requested on a backend with no code to ",
+      "review. The inspect-then-fit token is scoped to the ",
+      "code-emitting engines, which among the active pair is brms."
     ),
     message_template = paste0(
-      "`review_code = TRUE` is currently supported only with backend ",
-      "= \"greta\". Pass backend = \"greta\" or drop review_code."
+      "`review_code = TRUE` is supported with backend = \"brms\" ",
+      "(Stan code). Pass backend = \"brms\", or drop review_code."
     ),
     registered_in_adr = "audit-2026-05-30",
     plan_field = NA_character_,
@@ -1026,12 +1029,258 @@
       "backend = \"brms\" (Stan) cannot represent this model: it ",
       "contains an asreml structured-covariance term (one of ",
       "vm/ped/fa/us/ar1) with no lossless brms/Stan translation. Re-fit ",
-      "with backend = \"greta\", or backend = \"inla\" when latent-",
-      "Gaussian feasible."
+      "with backend = \"inla\" when latent-Gaussian feasible."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
     since_version = "0.5.0"
+  )
+
+  # Raised when a model carrying a STRUCTURED RESIDUAL reaches brms --
+  # whether requested explicitly or reached through the auto fallback
+  # after an INLA runtime failure. brms reconstructs the fixed and
+  # random blocks only; a residual covariance has no lowering, so
+  # emitting would silently return an iid model under the requested
+  # model's name. Refusing is the only faithful outcome until a
+  # residual lowering exists and is validated against an independent
+  # oracle.
+  .register_refusal(
+    reason_code = "stan_cannot_represent_ar1_residual",
+    description = paste0(
+      "backend = \"brms\" (Stan) cannot represent an AR1 or separable ",
+      "AR1xAR1 residual covariance."
+    ),
+    message_template = paste0(
+      "backend = \"brms\" (Stan) cannot represent this model: it ",
+      "specifies an AR1 / separable AR1xAR1 residual covariance, and ",
+      "the brms emitter has no residual-structure lowering -- fitting ",
+      "would silently return an independent-residual model. Re-fit with ",
+      "backend = \"inla\", which emits the separable field over a ",
+      "complete one-observation-per-node grid."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  # Raised when a missing response reaches brms on a family whose response
+  # brms cannot sample. brms drops NA-response rows silently, so without
+  # this the augmentation layer would quietly become complete-case
+  # deletion; and its `mi()` addition term, which would fix that, is
+  # Gaussian-only.
+  .register_refusal(
+    reason_code = "brms_cannot_augment_nongaussian",
+    description = paste0(
+      "backend = \"brms\" cannot carry a missing response for a ",
+      "non-Gaussian family: its mi() addition term is Gaussian-only, and ",
+      "without it brms drops the rows."
+    ),
+    message_template = paste0(
+      "backend = \"brms\" cannot carry a missing response for this ",
+      "family. brms drops rows whose response is NA, and its `mi()` ",
+      "addition term -- which would sample them instead -- is supported ",
+      "only for Gaussian-family responses. Fitting anyway would silently ",
+      "delete the incomplete cells under the name of augmentation. Use ",
+      "backend = \"inla\", which carries a missing response as a native ",
+      "prediction target for every family, or pass na_action = \"omit\" ",
+      "to delete them deliberately."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  # -- missing responses (R/na_action.R) -----------
+  # The augmentation layer keeps a missing response as a latent quantity
+  # so the design index set stays intact. These three mark its edges.
+  .register_refusal(
+    reason_code = "missing_response_refused",
+    description = paste0(
+      "The response has missing values and na_action = \"fail\" was ",
+      "requested."
+    ),
+    message_template = paste0(
+      "The response has missing values and na_action = \"fail\". Use ",
+      "na_action = \"augment\" to carry them as latent quantities and ",
+      "keep the design intact, or na_action = \"omit\" to analyse the ",
+      "observed cells only."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  .register_refusal(
+    reason_code = "missing_covariate_not_supported",
+    description = paste0(
+      "A predictor has missing values. The missing-response device does ",
+      "not extend to covariates."
+    ),
+    message_template = paste0(
+      "A covariate has missing values. The missing-response device does ",
+      "not extend to predictors: a filled-in covariate is a fabricated ",
+      "observation, not a marginalised latent quantity. Supply the ",
+      "values, or drop the affected rows deliberately before fitting."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  .register_refusal(
+    reason_code = "augment_cell_not_determinable",
+    description = paste0(
+      "A design cell is absent from the data and the model depends on a ",
+      "variable whose value at that cell was never recorded."
+    ),
+    message_template = paste0(
+      "na_action = \"augment\" cannot complete the design grid: a cell ",
+      "is absent from the data and the model depends on a variable whose ",
+      "value there is not recorded anywhere. Supply the absent cells as ",
+      "rows with the design columns filled in and the response set to ",
+      "NA, or use na_action = \"omit\"."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  # Raised when a model carrying observation weights reaches dispatch.
+  # The ingest adapters parse `weights` into an addition term, but no
+  # active emitter consumes it: brms and INLA both generate identical
+  # code with and without weights, so a weighted fit silently returns
+  # the unweighted posterior. "Weights" also has no single meaning --
+  # inverse-residual-variance (the documented ASReml sense), frequency,
+  # likelihood-power, trials and exposure are different models, and for
+  # a Gaussian with unknown sigma raising each likelihood contribution
+  # to w_i is not the normalised model Var(y_i) = sigma^2 / w_i.
+  # Refusing until each mapping is implemented and validated against an
+  # analytic oracle is safer than a no-op that looks like a fit.
+  .register_refusal(
+    reason_code = "weights_not_supported",
+    description = paste0(
+      "Observation weights are parsed but not consumed by any active ",
+      "emitter, so a weighted fit is refused rather than silently ",
+      "returning the unweighted posterior."
+    ),
+    message_template = paste0(
+      "`weights` are not yet supported by the active backends. They are ",
+      "parsed and recorded, but neither the brms nor the INLA emitter ",
+      "consumes them -- a weighted fit would return the UNWEIGHTED ",
+      "posterior with no indication. Refusing rather than fitting the ",
+      "wrong model. Drop `weights`, or pre-scale the response if the ",
+      "intended semantics is exactly Var(y_i) = sigma^2 / w_i."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  # at(f, level) selects levels; diag(f) / idh(f) vary the variance across
+  # all of them. The two are easy to conflate because they share a spelling
+  # and both "do something per level", but they are different models: the
+  # conditioned form gives the effect only where the condition holds, the
+  # diagonal form gives it everywhere with a level-specific variance. Fitting
+  # one under the other's name is exactly the failure this package refuses.
+  .register_refusal(
+    reason_code = "at_level_conditioning_unsupported",
+    description = paste0(
+      "at(f, level):g conditions a random effect on selected levels of f, ",
+      "which no active emitter represents. It is NOT the heterogeneous ",
+      "variance structure diag(f):g, and is refused rather than fitted as ",
+      "one."
+    ),
+    message_template = paste0(
+      "at(<factor>, <level>):<term> conditions the random effect on ",
+      "selected levels, which is a different model from a heterogeneous ",
+      "variance across all of them. No active backend represents the ",
+      "conditioned form. Drop the level to fit diag(<factor>):<term>."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  # corh() is the structure between diag() and us(): k variances plus ONE
+  # shared correlation. brms group-level effects offer only the two ends --
+  # uncorrelated, or fully unstructured -- so the middle has no faithful
+  # emit. Approximating it in either direction changes the parameter count
+  # and the meaning, so it is named and refused instead.
+  .register_refusal(
+    reason_code = "corh_no_equicorrelation_representation",
+    description = paste0(
+      "corh(f):g requests heterogeneous variances with a single shared ",
+      "correlation. No active backend represents an equicorrelation ",
+      "group-level structure; brms offers uncorrelated or fully ",
+      "unstructured and nothing between."
+    ),
+    message_template = paste0(
+      "corh(<factor>):<term> requests heterogeneous variances with one ",
+      "shared correlation, which no active backend represents. Use ",
+      "diag(<factor>):<term> for heterogeneous variances with no ",
+      "correlation, or us(<factor>):<term> to estimate every pairwise ",
+      "correlation freely."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  .register_refusal(
+    reason_code = "heterogeneous_residual_multiple_factors",
+    description = paste0(
+      "More than one heterogeneous-residual term was supplied. A residual ",
+      "is sectioned by one factor; nesting several would require their ",
+      "interaction, which the user must state explicitly."
+    ),
+    message_template = paste0(
+      "More than one heterogeneous-residual term was supplied. A residual ",
+      "is sectioned by ONE factor; if the intent is a variance per ",
+      "combination, form the interaction and section by that."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  # A residual variance can only vary where a residual variance exists.
+  # Poisson and binomial have no free scale parameter -- their dispersion is
+  # a function of the mean -- so `sigma ~ f` would put a predictor on a
+  # parameter the model does not have.
+  .register_refusal(
+    reason_code = "heterogeneous_residual_family_has_no_sigma",
+    description = paste0(
+      "A heterogeneous residual was requested for a family with no residual ",
+      "scale parameter (Poisson, binomial and relatives), whose dispersion ",
+      "is determined by the mean."
+    ),
+    message_template = paste0(
+      "A heterogeneous residual variance was requested for a family that ",
+      "has no residual scale parameter to vary -- its dispersion is a ",
+      "function of the mean. Model the dispersion directly for that family, ",
+      "or fit a Gaussian on a transformed response."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+
+  .register_refusal(
+    reason_code = "stan_cannot_represent_structured_residual",
+    description = paste0(
+      "backend = \"brms\" (Stan) cannot represent a structured residual ",
+      "covariance outside the iid `units` form."
+    ),
+    message_template = paste0(
+      "backend = \"brms\" (Stan) cannot represent this model: its ",
+      "residual term is outside the iid `units` form brms carries as ",
+      "the family scale parameter, and the brms emitter has no ",
+      "residual-structure lowering -- fitting would silently return an ",
+      "independent-residual model."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
   )
 
   # -- grammar polymorphism on the universal entry --
@@ -1083,9 +1332,9 @@
     ),
     message_template = paste0(
       "A native greta model graph is fit by greta::mcmc() and is ",
-      "greta-only by construction; the requested backend cannot fit it. ",
-      "Use backend = \"greta\" (or the default), or rebuild the model in ",
-      "the ASReml / brms formula grammar to reach another engine."
+      "greta-only by construction; the requested backend cannot fit it, ",
+      "and greta is quarantined. Rebuild the model in the ASReml / brms ",
+      "formula grammar to reach an active engine."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1172,6 +1421,324 @@
     ),
     message_template = "%s",
     registered_in_adr = "Spec 2 design-fidelity",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  # Reshape R1 (2026-07-24): greta / gretaR quarantined as fitting engines.
+  .register_refusal(
+    reason_code = "backend_quarantined",
+    description = paste0(
+      "An explicit backend request named a quarantined engine (greta / ",
+      "gretaR). Quarantined engines are retained as re-entry candidates, ",
+      "not active fitting engines; the active backends are brms + INLA."
+    ),
+    message_template = paste0(
+      "backend = \"%s\" is quarantined: retained as a re-entry candidate, ",
+      "not an active fitting engine. Use backend = \"inla\" or ",
+      "\"brms\" (re-entry is repair + conform, section 4.1)."
+    ),
+    registered_in_adr = "Reshape R1 / S4.1",
+    plan_field = "rejected_routes",
+    since_version = "0.9.1"
+  )
+  .register_refusal(
+    reason_code = "native_greta_fit_quarantined",
+    description = paste0(
+      "A native greta model graph was submitted for fitting. greta::mcmc() ",
+      "is quarantined, so an unfitted native graph has no active fit path; ",
+      "the greta import grammar reads an already-fitted object's draws only."
+    ),
+    message_template = paste0(
+      "A native greta model graph is fit by greta::mcmc(), which is ",
+      "quarantined. Rebuild the model in the ASReml / brms formula grammar ",
+      "to fit via INLA or brms."
+    ),
+    registered_in_adr = "Reshape R1 / S4.1 / C1",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
+  )
+  .register_refusal(
+    reason_code = "auto_no_active_route",
+    description = paste0(
+      "backend = \"auto\" found no active backend able to faithfully fit ",
+      "the model: INLA refused it and brms cannot represent it, and greta ",
+      "is quarantined. No silent fallback -- auto refuses."
+    ),
+    message_template = paste0(
+      "backend = \"auto\": no active backend can faithfully fit this model ",
+      "(INLA refused; brms cannot represent it; greta quarantined). ",
+      "Reformulate for INLA / brms, or fit a structure the active engines ",
+      "support."
+    ),
+    registered_in_adr = "Reshape R1 / S4.1 / A3",
+    plan_field = "rejected_routes",
+    since_version = "0.9.1"
+  )
+  # WP16 (2026-07-25): INLA separable-spatial latent field.
+  .register_refusal(
+    reason_code = "ar1_spatial_requires_complete_grid",
+    description = paste0(
+      "A separable ar1(row):ar1(col) spatial term on INLA is emitted as an ",
+      "AR1xAR1 latent field, faithful only with one observation per grid ",
+      "node. The data are an incomplete or replicated grid."
+    ),
+    message_template = "%s",
+    registered_in_adr = "WP16 / v6 S9",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
+  )
+  invisible(NULL)
+}
+
+
+# 0.9.0 fidelity-of-names pass. Two families of refusal register here.
+#
+# The first renames the separable AR1 spatial structure. The INLA emit is a
+# latent AR1 field plus the observation-level Gaussian nugget -- four
+# parameters -- which is not the three-parameter nugget-free residual an
+# ASReml user writes as `residual = ~ ar1(row):ar1(col)`. The residual
+# spelling is therefore refused by name and the field is written on the
+# random side, where a random field is what it is.
+#
+# The second closes the parser: an unrecognised call, and every IR type that
+# parses for the formula catalogue without an emit path, now reaches a named
+# refusal instead of an untyped stop or -- worse -- a silent reinterpretation
+# as a plain variable.
+.populate_refusal_registry_v0900_names <- function() {
+  .register_refusal(
+    reason_code = "ar1_residual_not_representable",
+    description = paste0(
+      "A separable AR1 process written on the residual side. INLA ",
+      "represents it as a latent random field plus the observation-level ",
+      "Gaussian noise -- four parameters -- and cannot fit ASReml's ",
+      "three-parameter nugget-free residual, so the residual spelling is ",
+      "refused rather than fitted under a name it does not have."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 D-A",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "stan_cannot_represent_ar1_field",
+    description = paste0(
+      "A random-side AR1 or separable AR1xAR1 latent field on brms. The ",
+      "field is a Kronecker autoregressive precision that only the INLA ",
+      "emit builds; brms has no lowering for it."
+    ),
+    message_template = paste0(
+      "A random-side AR1 field -- ar1(t), or the separable ",
+      "ar1(row):ar1(col) -- is emitted by INLA only, as a latent ",
+      "autoregressive field plus the Gaussian observation nugget. brms has ",
+      "no lowering for a Kronecker autoregressive precision, so it would ",
+      "return an independent-effect model under the same name. Fit it with ",
+      "backend = \"inla\" on a complete grid with one observation per node."
+    ),
+    registered_in_adr = "Spec 2 D-A",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "asreml_function_not_recognised",
+    description = paste0(
+      "A call in a random or residual formula whose function is outside the ",
+      "recognised ASReml vocabulary. Previously such a call was read as a ",
+      "plain variable named after its own source text."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 S1",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "ar2_not_representable",
+    description = paste0(
+      "ar2() parses for the formula catalogue and has no emit path on ",
+      "either active engine."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 S1",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "str_not_representable",
+    description = paste0(
+      "str() declares a covariance structure over a group of terms. It ",
+      "parses for the formula catalogue and has no emit path on either ",
+      "active engine."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 S1",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "fa_not_representable",
+    description = paste0(
+      "A factor-analytic covariance, fa(f, k) or fa(f, k):g. It parses for ",
+      "the formula catalogue and no active engine emits a factor-analytic ",
+      "covariance."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 S1",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "interaction_not_representable",
+    description = paste0(
+      "An interaction of two structured terms that matches none of the ",
+      "recognised interaction patterns -- us(trait):vm(gen), say. It parsed ",
+      "into the catalogue's generic-interaction node, which no engine emits."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 S1",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "brms_cannot_represent_term",
+    description = paste0(
+      "A random-effect term type reached the brms formula reconstruction ",
+      "with no branch to lower it. It is refused by name rather than ",
+      "dropped from the emitted model."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 S2",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "numeric_variable_in_random_interaction",
+    description = paste0(
+      "A numeric variable inside a nested or multi-way random interaction. ",
+      "The spelling reads as a random regression to an ASReml user and as ",
+      "one independent deviation per cell to the emitted model; flexyBayes ",
+      "refuses rather than choosing one of the two readings."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 2 D-D",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "triangulate_incomparable_fits",
+    description = paste0(
+      "Two fits handed to triangulate() whose model fingerprints disagree ",
+      "-- a different formula, family, link, dataset or recorded prior. The ",
+      "distance between their posteriors would measure the difference ",
+      "between two questions rather than between two engines."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 3 B7",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "row_count_exceeds_integer",
+    description = paste0(
+      "A single-file or in-memory source reports more rows than R's ",
+      "integer type holds. Recording the count would coerce it to NA, so ",
+      "the aggregation plan and the fitted object would carry no row ",
+      "count. Partitioned .fst input keeps its total as a double and has ",
+      "no such ceiling."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 N8",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "family_argument_not_recognised",
+    description = paste0(
+      "The `family` argument was neither a single family name nor a ",
+      "usable `stats` family object, or a family object and an explicit ",
+      "`link =` named different links. A family object supplies its own ",
+      "link, so resolving the disagreement either way would fit a model ",
+      "the call did not ask for."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 6c C3",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "met_summary_not_available",
+    description = paste0(
+      "fb_met_summary() was called on a fit it cannot summarise: an ",
+      "active-engine fit (the breeder summary reads realised ",
+      "factor-analytic effects, which only the quarantined greta backend ",
+      "produces), a fit carrying no fa() term, or one carrying no draws."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 A5.1",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "inla_gate_refused",
+    description = paste0(
+      "An explicit backend = \"inla\" request that lgm_gate() refused. ",
+      "The gate's structural check-list is the message and rides on the ",
+      "condition in its `lgm_refusal` slot; the failing rule supplies a ",
+      "second condition class so one rule can be caught on its own."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 A5.5",
+    plan_field = "rejected_routes",
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "fit_lacks_posterior_draws",
+    description = paste0(
+      "A method needing the posterior itself -- draws on a sampling ",
+      "engine, marginal densities on INLA -- was called on a fit that ",
+      "carries neither. The refusal replaces an empty result that would ",
+      "read as an answer."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 S14",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "conditional_loglik_not_available",
+    description = paste0(
+      "No plug-in conditional log-likelihood exists for this fit -- the ",
+      "family has no implemented form, the response or family record is ",
+      "absent, or the engine reports a marginal likelihood instead. ",
+      "Returning NA would let AIC() and anova() present a comparison that ",
+      "was never computed."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 S14",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "model_matrix_not_recoverable",
+    description = paste0(
+      "model.matrix() was called on a fit carrying no fixed-effect ",
+      "formula or no fitted data, so the population-level design cannot ",
+      "be rebuilt. Base R would silently return an intercept-only matrix ",
+      "built from the calling frame."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 S14",
+    plan_field = NA_character_,
+    since_version = "0.9.0"
+  )
+  .register_refusal(
+    reason_code = "update_call_not_reconstructable",
+    description = paste0(
+      "update() was called on a fit whose recorded argument set is ",
+      "incomplete. Re-fitting would substitute package defaults for the ",
+      "unrecorded arguments -- a relationship matrix or a prior scale ",
+      "among them -- and return a different model under the same name."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Spec 5 S14",
     plan_field = NA_character_,
     since_version = "0.9.0"
   )

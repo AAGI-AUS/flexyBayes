@@ -40,28 +40,36 @@
 #' approximation. Useful for verifying the backend chosen, memory
 #' estimate, and any structural refusals before paying the fit cost.
 #'
-#' @param formula     a brms-style two-sided formula
-#'   (`y ~ x + s(z) + (1 | g)`).
-#' @param data        a data.frame.
-#' @param backend     one of `"greta"`, `"inla"`, `"brms"`, `"auto"`
-#'   (default `"auto"`).
-#' @param priors      optional `fb_prior()` list; defaults to the v0.2
-#'   uniform-on-SD default.
-#' @param known_matrices  named list of structured-covariance matrices
-#'   referenced by `vm()` or `ped()` terms.
-#' @param family,link standard family/link arguments.
-#' @param weights     optional observation weights.
-#' @param aggregate   `"auto"` / `TRUE` / `FALSE` --- as on `flexybayes()`.
-#' @param memory_ceiling_gb  optional override for the preflight memory
-#'   ceiling (defaults to `flexyBayes.preflight_ceiling_gb` option, or
-#'   `flexyBayes.preflight_ram_fraction` x available RAM).
-#' @param predict_plan optional `list(newdata = ..., chunk_size = ...)`
-#'   to compute a prediction-shape plan. Plan-only;
-#'   does not fire `predict()`.
-#' @param ...         currently unused; reserved for future plan inputs.
+#' @param formula     A brms-style two-sided formula such as
+#'   `y ~ x + s(z) + (1 | g)`. The same formula the fit would receive.
+#' @param data        A data.frame holding every variable the formula
+#'   names. Planning reads its dimensions and column types, never its
+#'   values.
+#' @param backend     A single string, one of `"auto"` (the default),
+#'   `"inla"`, `"brms"`, or `"greta"`. Chooses the engine the plan
+#'   reports on, with `"auto"` planning the route dispatch would take.
+#' @param priors      An optional `fb_prior()` list. Defaults to the
+#'   uniform-on-SD default the fit would inject.
+#' @param known_matrices  A named list of structured-covariance matrices
+#'   referenced by `vm()` or `ped()` terms. Empty when the model names
+#'   none.
+#' @param family,link Standard family and link arguments, given as
+#'   single strings.
+#' @param weights     An optional numeric vector of observation weights,
+#'   one per row of `data`.
+#' @param aggregate   `"auto"`, `TRUE`, or `FALSE`, read exactly as on
+#'   `flexybayes()`.
+#' @param memory_ceiling_gb  An optional numeric override for the
+#'   preflight memory ceiling. Defaults to the
+#'   `flexyBayes.preflight_ceiling_gb` option, or to
+#'   `flexyBayes.preflight_ram_fraction` of available RAM.
+#' @param predict_plan An optional `list(newdata = ..., chunk_size =
+#'   ...)` requesting a prediction-shape plan. Plan-only, so it never
+#'   fires `predict()`.
+#' @param ...         Currently unused, reserved for future plan inputs.
 #'
-#' @return an `<fb_plan>` classed list. See `print.fb_plan()` for the
-#'   surface; `summary.fb_plan()` for the verbose dump;
+#' @returns An `<fb_plan>` classed list. See `print.fb_plan()` for the
+#'   one-screen surface, `summary.fb_plan()` for the verbose dump, and
 #'   `as.data.frame.fb_plan()` for the programmatic-consumer shape.
 #'
 #' @export
@@ -238,9 +246,19 @@ fb_plan <- function(
   # aggregated-INLA path when the plan declares eligibility. Mirror
   # that decision on the <fb_plan> so the plan matches the fit it
   # would produce.
+  #
+  # Eligibility of the aggregation plan is necessary but not sufficient:
+  # the aggregated route runs on INLA, so the INLA gate must also have
+  # accepted the model. Without that clause the plan announced
+  # `aggregated_inla` for a model the gate had just refused structurally,
+  # and the live fit -- which never reaches the aggregated emitter for a
+  # gate-refused model -- went to brms instead. A plan that names a route
+  # dispatch would not take is worse than no plan at all.
+  gate_accepted <- identical(gate_outcome, "accept")
   if (
     (isTRUE(aggregate) || identical(aggregate, "auto")) &&
       isTRUE(agg$eligible) &&
+      gate_accepted &&
       !preflight_refused &&
       inla_installed &&
       backend != "brms"
@@ -261,6 +279,7 @@ fb_plan <- function(
     fb,
     known_matrices
   )
+  representation_plan <- .annotate_residual_terms(representation_plan, fb)
 
   # ---- cov_validation_policy ----------------------------------- #
   cov_policy <- .cov_validation_policy(known_matrices = known_matrices, fb = fb)
@@ -276,17 +295,29 @@ fb_plan <- function(
   }
 
   # ---- will_fit resolution ------------------------------------- #
-  # `will_fit` reflects whether the *chosen route* can actually run, not
-  # only whether the preflight cleared. For an inla/auto request the LGM
-  # gate runs, so a structural / memory gate refusal means the route
-  # cannot fit even when the preflight sized every term. An explicit
-  # greta / brms request bypasses the gate (gate_outcome stays NA), so it
-  # fits whenever the preflight clears -- this is the opt-in path by which
-  # a greta pin fits interaction random effects and a heteroscedastic
-  # residual that INLA (and therefore the auto default) still refuses.
-  gate_refuses <- backend %in% c("inla", "auto") &&
-    isTRUE(gate_outcome %in% c("refuse_structural", "refuse_memory"))
-  will_fit_final <- !preflight_refused && !gate_refuses
+  # `will_fit` reflects whether the *chosen route* can actually run. That
+  # is a question about the route the router resolved, not about the LGM
+  # gate's verdict on INLA: under `backend = "auto"` a structural gate
+  # refusal is where the interesting routing starts, because the router
+  # then falls through to brms for the multi-stratum and
+  # heterogeneous-variance classes and that route fits. The earlier
+  # reading -- gate refused, therefore no fit -- told a user their
+  # multi-environment-trial model would not fit and then fitted it under
+  # the same call without `plan = TRUE`.
+  #
+  # A route is resolved when the policy table (plus the greta-quarantine
+  # fallback) named a backend. Where it named none, `chosen_reason`
+  # carries which dead end it was, and the printed line says so instead
+  # of blaming the preflight for every refusal.
+  route_resolved <- !is.na(chosen_backend)
+  will_fit_final <- !preflight_refused && route_resolved
+  will_fit_reason <- if (will_fit_final) {
+    NA_character_
+  } else if (preflight_refused) {
+    "preflight refused"
+  } else {
+    paste0("no active route: ", chosen_reason)
+  }
 
   # ---- memory estimate (bytes) --------------------------------- #
   mem_bytes <- preflight$total_estimate_bytes
@@ -330,6 +361,7 @@ fb_plan <- function(
       path = chosen_path,
       reason_code = chosen_reason,
       will_fit = will_fit_final,
+      will_fit_reason = will_fit_reason,
       preflight_refused = preflight_refused,
       preflight_refusal = preflight$refusal,
       routing_policy_version = .ROUTING_POLICY_VERSION,
@@ -586,6 +618,56 @@ fb_plan <- function(
 }
 
 
+# .annotate_residual_terms() --- adds the residual structure to the
+# representation plan.
+#
+# The preflight estimator walks the fixed and random terms only, because
+# its job is the design-memory ceiling and a residual carries no design
+# block. The consequence on the plan surface was that a sectioned
+# residual -- half of a multi-environment-trial model, and the half a
+# user is most likely to have got wrong -- did not appear in the plan at
+# all: the printed table listed `env`, `(1 | gen)` and `gen:env`, and
+# said nothing about the four residual variances the fit would estimate.
+# The entries added here are descriptive only; nothing downstream reads
+# them for a memory decision.
+.annotate_residual_terms <- function(representation_plan, fb) {
+  terms <- Filter(
+    function(t) !identical(t$type %||% "", "units"),
+    fb$residual_terms %||% list()
+  )
+  if (length(terms) == 0L) {
+    return(representation_plan)
+  }
+  if (is.null(representation_plan)) {
+    representation_plan <- list()
+  }
+
+  for (term in terms) {
+    type <- term$type %||% "unknown"
+    var_name <- term$var %||% term$row_var %||% NA_character_
+    entry <- if (identical(type, "at_units")) {
+      list(
+        term_id = paste0("residual: dsum(~ units | ", var_name, ")"),
+        representation_class = "sectioned_residual",
+        justification = paste0(
+          "one residual variance per level of `", var_name,
+          "`; no scalar sigma"
+        )
+      )
+    } else {
+      arg <- if (is.na(var_name)) "" else paste0("(", var_name, ")")
+      list(
+        term_id = paste0("residual: ", type, arg),
+        representation_class = paste0("residual_", type),
+        justification = "residual structure carried on the IR"
+      )
+    }
+    representation_plan[[entry$term_id]] <- entry
+  }
+  representation_plan
+}
+
+
 # Stable column ordering for as.data.frame.fb_plan() ----------------- #
 .FB_PLAN_DF_COLS <- c(
   "backend_requested",
@@ -618,14 +700,20 @@ fb_plan <- function(
 # ---------------------------------------------------------------- #
 
 #' Print an `<fb_plan>` --- flight-checklist form
-#' @param x   an `<fb_plan>` object.
-#' @param ... unused.
+#'
+#' @param x   An `<fb_plan>` object as returned by `fb_plan()`.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the checklist it prints.
 #' @export
 print.fb_plan <- function(x, ...) {
   cat("== flexyBayes plan ", strrep("=", 38), "\n", sep = "")
   cat(
     "  Will fit:                ",
-    if (isTRUE(x$will_fit)) "yes" else "no  (preflight refused)",
+    if (isTRUE(x$will_fit)) {
+      "yes"
+    } else {
+      paste0("no  (", x$will_fit_reason %||% "no active route", ")")
+    },
     "\n",
     sep = ""
   )
@@ -779,8 +867,11 @@ print.fb_plan <- function(x, ...) {
 
 
 #' Summarise an `<fb_plan>` --- verbose form
-#' @param object an `<fb_plan>` object.
-#' @param ...    unused.
+#'
+#' @param object An `<fb_plan>` object as returned by `fb_plan()`.
+#' @param ...    Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `object` unchanged. Called for the preflight and
+#'   representation tables it prints.
 #' @export
 summary.fb_plan <- function(object, ...) {
   print(object)
@@ -821,10 +912,12 @@ summary.fb_plan <- function(object, ...) {
 #' Stable column ordering by the internal vector `.FB_PLAN_DF_COLS`;
 #' adding new fields appends rather than reorders.
 #'
-#' @param x         an `<fb_plan>` object.
-#' @param row.names unused.
-#' @param optional  unused.
-#' @param ...       unused.
+#' @param x         An `<fb_plan>` object as returned by `fb_plan()`.
+#' @param row.names Ignored. Present for compatibility with the generic.
+#' @param optional  Ignored. Present for compatibility with the generic.
+#' @param ...       Ignored. Present for compatibility with the generic.
+#' @returns A one-row data.frame whose columns follow the internal
+#'   `.FB_PLAN_DF_COLS` order, with one column per recorded plan field.
 #' @export
 as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
   row <- list(

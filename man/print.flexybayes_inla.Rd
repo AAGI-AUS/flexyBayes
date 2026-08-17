@@ -7,12 +7,13 @@
 \method{print}{flexybayes_inla}(x, ...)
 }
 \arguments{
-\item{x}{a \code{flexybayes_inla} object.}
+\item{x}{A \code{flexybayes_inla} object, the fit an INLA run returns.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the one-screen summary
+it prints.
 }
 \description{
 Internal S3 method. Brief one-screen summary of an INLA fit

@@ -41,7 +41,9 @@
 #' @param ... Ignored by current methods (reserved for future
 #'   per-component selection).
 #'
-#' @return A `prior_summary_flexybayes` object (list). Components:
+#' @returns A `prior_summary_flexybayes` object, a list carrying the
+#'   components below.
+#'
 #'   \describe{
 #'     \item{`kind`}{One of `"fb_prior"`, `"legacy_scalar"`,
 #'       `"no_prior_recorded"`.}
@@ -125,6 +127,54 @@ prior_summary.default <- function(object, ...) {
 # Implementation                                                   #
 # ---------------------------------------------------------------- #
 
+# .prior_summary_engine_default() --- the parameters this package did not
+# prior, and why.
+#
+# The declared `fb_prior` covers the terms the default-prior walker
+# reaches. Everything else runs under the engine's own hyperprior, and
+# before 0.9.0 `prior_summary()` printed the declaration alone, so a
+# combined GxE model reported the shared default on one variance
+# component while the other silently carried brms's student_t(3, 0, 2.5).
+# The fingerprint already records the gap for triangulate()'s
+# matched-prior gate; this reads the same record.
+.prior_summary_engine_default <- function(object) {
+  fp <- object$extras$fingerprint
+  if (!is.null(fp) && length(fp$engine_default_params) > 0L) {
+    return(fp$engine_default_params)
+  }
+  fb_terms <- object$extras$fb_terms
+  if (is.null(fb_terms)) {
+    return(character(0))
+  }
+  rec <- tryCatch(.fb_prior_record(fb_terms), error = function(e) NULL)
+  if (is.null(rec)) character(0) else rec$engine_default
+}
+
+# .prior_summary_residual_lowering() --- name the residual parameter the
+# model actually has.
+#
+# A sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
+# residual a distributional predictor: the model has no scalar `sigma`,
+# and the declared uniform on the SD scale is retargeted onto the
+# log-sigma coefficients. Printing `sigma ~ uniform(0, U)` for such a fit
+# names a parameter the model does not contain and a distribution Stan
+# did not use, so the summary carries the retarget explicitly.
+.prior_summary_residual_lowering <- function(object) {
+  fb_terms <- object$extras$fb_terms
+  if (is.null(fb_terms)) {
+    return(NULL)
+  }
+  sectioned <- Filter(
+    function(t) identical(t$type %||% "", "at_units"),
+    fb_terms$residual_terms %||% list()
+  )
+  if (length(sectioned) == 0L) {
+    return(NULL)
+  }
+  term <- sectioned[[1L]]
+  term$var %||% term$outer %||% NA_character_
+}
+
 .prior_summary_impl <- function(object, backend_label, declaration_only) {
   fb_terms <- object$extras$fb_terms
   priors <- if (!is.null(fb_terms)) fb_terms$priors else NULL
@@ -182,6 +232,25 @@ prior_summary.default <- function(object, ...) {
   }
 
   out$declaration_only <- isTRUE(declaration_only)
+
+  # What the declaration does not cover. Both slots exist so a reader of
+  # the printed summary sees the whole prior, not the half this package
+  # chose.
+  out$engine_default <- .prior_summary_engine_default(object)
+  out$residual_lowered_to <- .prior_summary_residual_lowering(object)
+
+  # brms is the authority on what reached Stan, so on a brms fit the
+  # engine's own table is carried rather than reconstructed. This is what
+  # closes the gap the declaration alone leaves: a retargeted residual
+  # prior and an engine default both appear here under their real names.
+  out$engine_prior_table <- if (
+    identical(backend_label, "brms") && !is.null(object$brms)
+  ) {
+    tryCatch(brms::prior_summary(object$brms), error = function(e) NULL)
+  } else {
+    NULL
+  }
+
   structure(out, class = c("prior_summary_flexybayes", "list"))
 }
 
@@ -257,5 +326,34 @@ print.prior_summary_flexybayes <- function(x, ...) {
       )
     }
   )
+
+  # ---- What the declaration above does not say ------------------------
+
+  if (!is.null(x$residual_lowered_to) && !is.na(x$residual_lowered_to)) {
+    cat(
+      "\n  Residual: this model has no scalar `sigma`. The residual is a\n",
+      "  distributional predictor with one log-sigma coefficient per level\n",
+      "  of `", x$residual_lowered_to, "`, and a declared uniform on the SD\n",
+      "  scale is retargeted onto those coefficients on the log scale --\n",
+      "  it is not applied as written above.\n",
+      sep = ""
+    )
+  }
+
+  if (length(x$engine_default) > 0L) {
+    cat(
+      "\n  Carrying the engine's own default (not this package's):\n",
+      sep = ""
+    )
+    for (nm in names(x$engine_default)) {
+      cat("    ", nm, " -- ", x$engine_default[[nm]], "\n", sep = "")
+    }
+  }
+
+  if (!is.null(x$engine_prior_table)) {
+    cat("\n  As it reached Stan (brms::prior_summary):\n")
+    print(x$engine_prior_table)
+  }
+
   invisible(x)
 }

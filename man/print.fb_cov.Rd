@@ -7,12 +7,13 @@
 \method{print}{fb_cov}(x, ...)
 }
 \arguments{
-\item{x}{An \code{fb_cov} object.}
+\item{x}{An \code{fb_cov} object as returned by \code{\link[=fb_cov]{fb_cov()}}.}
 
-\item{...}{Unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-\code{x}, invisibly.
+Invisibly, \code{x} unchanged. Called for the one-line carrier
+description it prints.
 }
 \description{
 Print an \code{fb_cov} carrier

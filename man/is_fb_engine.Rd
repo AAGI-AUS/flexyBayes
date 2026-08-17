@@ -7,10 +7,11 @@
 is_fb_engine(x)
 }
 \arguments{
-\item{x}{An object.}
+\item{x}{Any R object. The test is a class check, not a structural
+one.}
 }
 \value{
-\code{TRUE} if \code{x} is an \code{fb_engine} object.
+\code{TRUE} if \code{x} is an \code{fb_engine} object, \code{FALSE} otherwise.
 }
 \description{
 Test whether an object is an \code{fb_engine} specification

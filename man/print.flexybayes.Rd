@@ -2,15 +2,21 @@
 % Please edit documentation in R/methods.R
 \name{print.flexybayes}
 \alias{print.flexybayes}
-\title{Print a flexybayes object}
+\title{Print a compact description of a flexyBayes fit}
 \usage{
 \method{print}{flexybayes}(x, ...)
 }
 \arguments{
-\item{x}{A flexybayes object}
+\item{x}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
+}
+\value{
+Invisibly, \code{x} unchanged. Called for the description it
+prints.
 }
 \description{
-Print a flexybayes object
+Reports the call the fit came from, the engine that ran it, the model
+dimensions, and the headline posterior quantities. Use \code{\link[=summary]{summary()}} for
+the full coefficient and variance-component tables.
 }

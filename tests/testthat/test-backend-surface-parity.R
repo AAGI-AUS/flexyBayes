@@ -108,13 +108,21 @@ test_that("plot() dispatches on an INLA fit: effects + residuals render, MCMC-on
     mcmc_verbose = FALSE
   ))
 
+  # Until 0.9.0 this assertion read expect_false(inherits(fi, "flexybayes")):
+  # the INLA fit deliberately stood outside the parent class, which forced a
+  # parallel S3 method for every generic and sent the five generics with no
+  # INLA sibling to stats::*.default. The parent is now shared -- see
+  # test-class-graph.R for what each of those five does on an INLA fit.
   expect_s3_class(fi, "flexybayes_inla")
-  expect_false(inherits(fi, "flexybayes"))
+  expect_true(inherits(fi, "flexybayes"))
 
   grDevices::pdf(file = NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
 
-  # The forest plot reads coef() / confint(), which INLA supports.
+  # The forest plot reads coef() / confint(). Before the parent was shared,
+  # confint() on an INLA fit fell through to stats::confint.default, which
+  # built a normal approximation from vcov(); it now reads INLA's own
+  # marginal quantiles via confint.flexybayes_inla().
   expect_no_error(plot(fi, type = "effects"))
 
   # The residual plot reads fitted() / residuals(), which the INLA fit now

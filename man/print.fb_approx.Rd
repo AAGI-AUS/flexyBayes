@@ -7,12 +7,13 @@
 \method{print}{fb_approx}(x, ...)
 }
 \arguments{
-\item{x}{An \code{fb_approx} object.}
+\item{x}{An \code{fb_approx} object as returned by \code{\link[=fb_approx]{fb_approx()}}.}
 
-\item{...}{Unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-\code{x}, invisibly.
+Invisibly, \code{x} unchanged. Called for the one-line
+specification it prints.
 }
 \description{
 Print an \code{fb_approx} specification

@@ -34,6 +34,17 @@ ambiguity of the raw loadings -- so their posterior summaries are
 interpretable; judge convergence on these and on the identified
 covariance (\code{\link[=fb_structured_cov]{fb_structured_cov()}}) rather than on the raw loadings.
 }
+\section{Lifecycle}{
+
+Superseded while greta is quarantined. The breeder summaries are
+computed from realised factor-analytic effects, and no active engine
+emits an \code{fa(env, k):gen} term, so on a brms or INLA fit the function
+abstains by name (\code{met_summary_not_available}). What an active engine
+does report for a multi-environment trial is the variance components,
+through \code{\link[=summary]{summary()}}, and on brms the genotype-by-environment
+covariance of a \code{diag()} or \code{us()} term through \code{brms::VarCorr()}.
+}
+
 \examples{
 \dontrun{
 fit <- flexybayes(

@@ -64,10 +64,12 @@
 #' not, the shared `lgm_gate()` raises a structured refusal naming the
 #' offending term, exactly as `flexybayes(backend = "inla")` does.
 #'
-#' Sampling-control arguments (`n_samples`, `warmup`, `chains`,
-#' `mcmc_verbose`) are accepted for call-compatibility with the other
-#' engine pins but are inert under INLA's deterministic Laplace
-#' approximation.
+#' Sampling-control arguments (`n_samples`, `warmup`, `chains`, `seed`,
+#' `control`, `mcmc_verbose`) are accepted for call-compatibility with the
+#' other engine pins but are inert under INLA's deterministic Laplace
+#' approximation. `seed` and `control` say so when supplied: the fit is
+#' repeatable without a seed, because nothing in the approximation is
+#' drawn.
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `fixed`, `random`,
 #'   `residual`, `data`, `family`, `prior`, `syntax`). The `backend` argument

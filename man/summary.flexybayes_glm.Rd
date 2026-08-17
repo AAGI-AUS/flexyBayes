@@ -7,9 +7,14 @@
 \method{summary}{flexybayes_glm}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes_glm object (accessed via \code{fit$glm})}
+\item{object}{A \code{flexybayes_glm} object, reached as \code{fit$glm} on any
+fitted \code{flexybayes} object.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored. Present for compatibility with the generic.}
+}
+\value{
+Invisibly, the printed coefficient table as a data.frame, or
+\code{NULL} when the object carries no fixed effects.
 }
 \description{
 Similar to \code{summary.glm()} but with Bayesian posterior statistics

@@ -14,9 +14,10 @@
 
 # Shared recover_data core for either backend.
 .fb_recover_data <- function(object, ...) {
-  if (!requireNamespace("emmeans", quietly = TRUE)) {
-    stop("Package 'emmeans' is required for this method.", call. = FALSE)
-  }
+  .check_installed(
+    "emmeans",
+    "Package 'emmeans' is required for this method."
+  )
   trms <- .fb_fixef_terms(object)
   data <- .fb_fit_data(object)
   if (is.null(data)) {
@@ -40,9 +41,10 @@
 # basis so emmeans rejects non-estimable combinations on the over-
 # parameterised (greta) basis. df = Inf -> z-based intervals.
 .fb_emm_basis <- function(object, trms, xlev, grid, ...) {
-  if (!requireNamespace("emmeans", quietly = TRUE)) {
-    stop("Package 'emmeans' is required for this method.", call. = FALSE)
-  }
+  .check_installed(
+    "emmeans",
+    "Package 'emmeans' is required for this method."
+  )
   bhat <- coef(object)
   V <- vcov(object)
   data <- .fb_fit_data(object)
@@ -83,7 +85,7 @@ recover_data.flexybayes_inla <- function(object, ...) {
 #' @param trms Fixed-effect terms supplied by emmeans.
 #' @param xlev Factor levels supplied by emmeans.
 #' @param grid Reference grid supplied by emmeans.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A list with `X`, `bhat`, `nbasis`, `V`, `dffun`, `dfargs`.
 #' @exportS3Method emmeans::emm_basis
 emm_basis.flexybayes <- function(object, trms, xlev, grid, ...) {

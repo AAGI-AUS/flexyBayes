@@ -7,12 +7,14 @@
 \method{print}{lgm_refusal}(x, ...)
 }
 \arguments{
-\item{x}{an \code{lgm_refusal} object.}
+\item{x}{An \code{lgm_refusal} object, as returned by the feasibility
+gate when a model falls outside the latent Gaussian class.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the refusal template it
+prints.
 }
 \description{
 Internal S3 method, registered for dispatch only. Emits the

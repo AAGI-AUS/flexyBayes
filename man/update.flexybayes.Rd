@@ -2,18 +2,31 @@
 % Please edit documentation in R/methods.R
 \name{update.flexybayes}
 \alias{update.flexybayes}
-\title{Update a flexybayes model}
+\title{Re-fit a flexyBayes model with modified arguments}
 \usage{
 \method{update}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A \code{flexybayes} fit carrying a complete argument record in
+\verb{$extras$call_info}.}
 
-\item{...}{Arguments to override (e.g., \code{n_samples = 2000})}
+\item{...}{Named arguments overriding the recorded call, for example
+\code{n_samples = 2000L} or a replacement \code{data} frame.}
 }
 \value{
-A new flexybayes object
+A new fitted \code{flexybayes} object of the same engine as the
+original, unless an override routes it elsewhere.
 }
 \description{
-Re-fit the model with modified arguments.
+Rebuilds the original \code{\link[=flexybayes]{flexybayes()}} call from the argument record the
+fit carries, applies the overrides supplied in \code{...}, and re-fits.
+}
+\details{
+The record has to be complete for this to be safe. An argument the fit
+did not record would be re-supplied as its default, so a re-fit could
+quietly drop a relationship matrix or a prior scale and return a
+different model under the same name. When any of the thirteen recorded
+arguments is absent, the method refuses and names what is missing rather
+than re-fitting a model the user did not ask for. INLA fits currently
+record six of the thirteen and therefore refuse.
 }

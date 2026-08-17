@@ -46,3 +46,7 @@ tools/stress_results/
 
 # testthat transient failed-test records
 tests/testthat/_problems/
+
+# Review documents stay in the private workspace archive (ledger cairn
+# 2026-08-17-release-nine-review-record is the public anchor)
+review/

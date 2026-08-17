@@ -2,14 +2,14 @@
 
 ## Supported versions
 
-Security fixes are issued against the current development release
-(`0.8.3`, on the 0.8.x line) and the latest CRAN release (when present).
+Security fixes are issued against the development release in progress
+(`0.9.0`, on the 0.9.x line) and the latest CRAN release (when present).
 Older released versions are not back-patched.
 
 | Version | Supported |
 |---------|-----------|
-| 0.8.x   | yes (current development line) |
-| 0.3.x – 0.7.x | best-effort (local release tarballs only; no public release) |
+| 0.9.x   | yes (the line under active development) |
+| 0.3.x – 0.8.x | best-effort (local release tarballs only; no public release) |
 | < 0.3   | no        |
 
 ## Reporting a vulnerability
@@ -38,8 +38,8 @@ we can confirm the report was received.
 
 ## Scope
 
-The package is pure R glue plus generated greta / INLA code. Likely
-areas of security interest:
+The package is pure R glue plus generated INLA and brms / Stan code.
+Likely areas of security interest:
 
 - inputs that can reach `eval()` / `parse()` paths during formula
   parsing or code generation;

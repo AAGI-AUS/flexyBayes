@@ -50,6 +50,8 @@ emit_brms <- function(
   n_samples = 1000L,
   warmup = 500L,
   chains = 4L,
+  seed = NULL,
+  control = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
   verbose = TRUE,
@@ -64,28 +66,28 @@ emit_brms <- function(
   data_name = NA_character_,
   ...
 ) {
-  if (!is_fb_terms(fb)) {
-    stop("`fb` must be an fb_terms object.", call. = FALSE)
-  }
+  .check_fb_terms(fb, "`fb` must be an fb_terms object.")
 
-  if (!requireNamespace("brms", quietly = TRUE)) {
-    stop(
-      "Package 'brms' is required for backend = \"brms\". ",
-      "Install via:\n  install.packages('brms')\n",
-      "A working C++ toolchain (rstan or cmdstanr) is required ",
-      "for Stan compilation.",
-      call. = FALSE
-    )
-  }
-  if (!requireNamespace("posterior", quietly = TRUE)) {
-    stop(
-      "Package 'posterior' is required for the brms posterior ",
-      "extraction shim. Install via install.packages('posterior').",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "brms",
+    "Package 'brms' is required for backend = \"brms\". ",
+    "Install via:\n  install.packages('brms')\n",
+    "A working C++ toolchain (rstan or cmdstanr) is required ",
+    "for Stan compilation."
+  )
+  .check_installed(
+    "posterior",
+    "Package 'posterior' is required for the brms posterior ",
+    "extraction shim. Install via install.packages('posterior')."
+  )
 
   # -- formula + family + prior ------------------------------------
+  # A missing response has to be handled explicitly here: brms drops those
+  # rows otherwise, silently turning augmentation into deletion.
+  mi_mode <- .fb_brms_missing_response_mode(fb, data)
+  if (identical(mi_mode, "mi")) {
+    attr(fb, "brms_mi_response") <- TRUE
+  }
   brms_form <- .fb_to_brms_formula(fb)
   # Materialised relationship covariances for any vm() / ped() term,
   # threaded into brms via data2 (empty list when there are none).
@@ -165,6 +167,12 @@ emit_brms <- function(
         warmup = as.integer(warmup),
         silent = if (isTRUE(verbose)) 0L else 2L,
         refresh = if (isTRUE(mcmc_verbose)) 200L else 0L,
+        # Reproducibility and sampler tuning reach Stan from the public
+        # entry point. brms's own defaults are seed = NA (draw a seed)
+        # and control = NULL (Stan's own adapt_delta and max_treedepth),
+        # so a NULL from flexybayes() maps onto exactly those.
+        seed = if (is.null(seed)) NA else as.integer(seed),
+        control = control,
         ...
       ),
       warning = function(w) {
@@ -265,10 +273,22 @@ emit_brms <- function(
         n_samples = n_samples,
         warmup = warmup,
         chains = chains,
+        seed = seed,
+        control = control,
         prior_fixed_sd = prior_fixed_sd,
         prior_vc_sd = prior_vc_sd
       ),
       run_time = elapsed,
+      # What has to match before this fit can be compared with another
+      # engine's. Built here rather than at comparison time because the
+      # analysis data are what the fit actually saw, and by the time
+      # triangulate() runs the caller may hold a different object of the
+      # same name. See R/model_fingerprint.R.
+      fingerprint = .fb_model_fingerprint(
+        fb,
+        data,
+        prior_vc_sd = prior_vc_sd
+      ),
       model_info = list(
         n_obs = nrow(data),
         # brms_form may carry `(x || g)` which
@@ -378,7 +398,7 @@ emit_brms <- function(
     # the interaction grouping natively as (1 | A:B). This is the faithful
     # full-HMC path for multi-stratum designed experiments -- validated on
     # besag.met, where brms recovers every variance component while INLA
-    # collapses the finest strata. auto therefore keeps INLA's honest
+    # collapses the finest strata. auto therefore keeps INLA's
     # refusal for these models and routes them here.
     if (ttype %in% c("nested", "combo")) {
       int_vars <- if (identical(ttype, "nested")) {
@@ -393,15 +413,93 @@ emit_brms <- function(
       next
     }
 
+    # Heterogeneous variance over an outer factor: ASReml's diag(f):g, and
+    # its synonyms idh(f):g and at(f):g. A separate variance for every level
+    # of the outer factor, with no covariance between them.
+    #
+    # brms writes this as an UNCORRELATED random slope, (0 + f || g): for each
+    # level of the grouping factor a vector of level-specific effects, whose
+    # standard deviations are free and whose correlations are suppressed.
+    #
+    # The mapping is validated against ASReml rather than assumed --
+    # design-preserving-missingness/oracle_heterogeneous.R fits
+    # `diag(site):gen` in ASReml, the explicit dummy() expansion in lme4 and
+    # this emit in brms on the same data, and checks the PARAMETER COUNT
+    # before the values: a diagonal over k levels is exactly k variances and 0
+    # covariances. The two REML arms agree to 3.5e-05 and all three fit the
+    # diagonal structure.
+    #
+    # The count matters because values alone cannot distinguish diag() from
+    # us() when the true cross-level correlations are zero. It was checking
+    # the count that caught lme4's `||` quietly fitting a correlated block for
+    # a factor slope, which a value comparison had passed.
+    if (identical(ttype, "at_simple")) {
+      if (!is.null(term$level)) {
+        stop(.fb_refusal_condition(
+          reason_code = "at_level_conditioning_unsupported",
+          message = paste0(
+            "at(", term$outer, ", ", paste(term$level, collapse = ", "),
+            "):", term$inner, " conditions the random effect on selected ",
+            "levels of ", term$outer, ", which is a different model from a ",
+            "heterogeneous variance across all of them. Drop the level to ",
+            "fit diag(", term$outer, "):", term$inner, "."
+          )
+        ))
+      }
+      re_terms <- c(
+        re_terms,
+        paste0("(0 + ", term$outer, " || ", term$inner, ")")
+      )
+      next
+    }
+
+    # corh(f):g asks for heterogeneous variances with ONE correlation shared
+    # by every pair of levels -- k + 1 parameters, sitting between diag()'s k
+    # and us()'s k(k+1)/2. brms offers no such structure: a group-level term
+    # is either uncorrelated (`||`) or fully unstructured (`|`), with prior
+    # classes `sd` and `cor` and nothing between them. (brms does have a
+    # compound-symmetry structure, cosy(), but it applies to the RESIDUAL
+    # autocorrelation, not to group-level effects.)
+    #
+    # Approximating it with us() would fit k(k+1)/2 - 1 parameters nobody
+    # asked for and report correlations the model was meant to constrain
+    # equal; approximating it with diag() would drop the correlation
+    # entirely. Both are a different model wearing this one's name.
+    if (identical(ttype, "corh_gxe")) {
+      stop(.fb_refusal_condition(
+        reason_code = "corh_no_equicorrelation_representation",
+        message = paste0(
+          "corh(", term$outer, "):", term$inner, " requests heterogeneous ",
+          "variances with a single shared correlation. No active backend ",
+          "represents that structure: brms group-level effects are either ",
+          "uncorrelated or fully unstructured, with nothing between. Use ",
+          "diag(", term$outer, "):", term$inner, " for heterogeneous ",
+          "variances with no correlation, or us(", term$outer, "):",
+          term$inner, " to estimate every pairwise correlation freely."
+        )
+      ))
+    }
+
+    # Unstructured covariance over an outer factor: ASReml's us(f):g. The
+    # same construction with correlations RETAINED -- a single character
+    # apart from the diagonal case above, and the whole difference between
+    # k parameters and k(k+1)/2 of them.
+    if (identical(ttype, "us_gxe")) {
+      re_terms <- c(
+        re_terms,
+        paste0("(0 + ", term$outer, " | ", term$inner, ")")
+      )
+      next
+    }
+
     if (
       !ttype %in% c("simple", "ide", "id", "simple_slope_uncor")
     ) {
-      stop(
-        "emit_brms() does not yet support random term type \"",
-        ttype,
-        "\". Re-route via backend = \"greta\".",
-        call. = FALSE
-      )
+      stop(.fb_refusal_condition(
+        reason_code = "brms_cannot_represent_term",
+        message = .brms_term_refusal_message(term),
+        term_type = ttype
+      ))
     }
     grp <- term$var
     if (is.null(grp) || !nzchar(grp)) {
@@ -439,14 +537,214 @@ emit_brms <- function(
     fixed_rhs
   }
 
-  stats::as.formula(paste(response, "~", rhs))
+  # `mi` marks the response as partially missing so brms samples the absent
+  # values as parameters instead of dropping their rows. Added only when the
+  # caller asks for it -- see .fb_brms_missing_response_mode().
+  lhs <- if (isTRUE(attr(fb, "brms_mi_response"))) {
+    paste(response, "| mi()")
+  } else {
+    response
+  }
+
+  main <- stats::as.formula(paste(lhs, "~", rhs))
+
+  # Heterogeneous residual variance: ASReml's dsum(~ units | site), and the
+  # at(site):units spelling that parses to the same node. A separate residual
+  # variance per level of the sectioning factor.
+  #
+  # brms expresses it as distributional regression on sigma. Two details make
+  # or break the mapping, and both are read off a live fit rather than assumed
+  # (design-preserving-missingness, the residual-heterogeneity probe):
+  #
+  #   * the predictor is on LOG sigma, so a coefficient is not a variance --
+  #     the variance for a level is exp(2 * b). Comparing brms's `b_sigma_*`
+  #     against ASReml's `site!R` directly would compare a log-scale contrast
+  #     against a variance.
+  #   * `0 + f` gives one coefficient PER LEVEL rather than contrasts against
+  #     a reference, which is what lines up with ASReml's per-section
+  #     variances.
+  #
+  # Against ASReml's dsum on the same simulated data, fitted through
+  # flexybayes() and its default priors, this returns per-site
+  # posterior-mean variances of 0.1146 / 1.1516 / 4.6981 where ASReml
+  # gives 0.1093 / 1.1248 / 4.6079 -- within 4.8%, largest on the
+  # smallest variance, which is where a posterior mean and a REML point
+  # estimate are least alike. Probe 2 of
+  # design-preserving-missingness/oracle_heterogeneous.R, run
+  # 2026-08-15. The entry point exposes no sampler seed, so those digits
+  # are one run's realisation at a bulk effective size above 8,000; the
+  # per-site percentages are stable, the last digit is not.
+  het <- Filter(function(t) identical(t$type %||% "", "at_units"),
+                fb$residual_terms %||% list())
+  if (length(het) == 0L) {
+    return(main)
+  }
+  if (length(het) > 1L) {
+    stop(.fb_refusal_condition(
+      reason_code = "heterogeneous_residual_multiple_factors",
+      message = paste0(
+        "More than one heterogeneous-residual term was supplied (",
+        paste(vapply(het, function(t) t$var %||% "?", character(1)),
+              collapse = ", "),
+        "). A residual is sectioned by one factor; nesting several would ",
+        "need their interaction, which must be stated explicitly."
+      )
+    ))
+  }
+  term <- het[[1L]]
+  if (!is.null(term$level)) {
+    stop(.fb_refusal_condition(
+      reason_code = "at_level_conditioning_unsupported",
+      message = paste0(
+        "at(", term$var, ", ", paste(term$level, collapse = ", "),
+        "):units conditions the residual on selected levels of ", term$var,
+        ", which is a different model from a heterogeneous residual across ",
+        "all of them. Drop the level to fit dsum(~ units | ", term$var, ")."
+      )
+    ))
+  }
+
+  # A residual variance only exists for a family that HAS one. Poisson and
+  # binomial carry no sigma, so `sigma ~ f` would be a predictor on a
+  # parameter the model does not have -- brms would error, or worse, accept
+  # it for a family where sigma means something else.
+  fam <- tolower(as.character(fb$family %||% "gaussian"))
+  if (!fam %in% c("gaussian", "student", "t", "lognormal", "skew_normal")) {
+    stop(.fb_refusal_condition(
+      reason_code = "heterogeneous_residual_family_has_no_sigma",
+      message = paste0(
+        "A heterogeneous residual variance was requested for family '", fam,
+        "', which has no residual scale parameter to vary -- its dispersion ",
+        "is a function of the mean. Model the dispersion directly for that ",
+        "family, or fit a Gaussian on a transformed response."
+      )
+    ))
+  }
+
+  brms::bf(main, stats::as.formula(paste("sigma ~ 0 +", term$var)))
+}
+
+# .brms_term_refusal_message() --- what to tell a user whose random term has
+# no branch in the reconstruction above.
+#
+# The reconstruction rebuilds the fixed and random blocks from the IR, so a
+# term it does not recognise would simply not appear in the emitted formula:
+# a model missing a component, returned without complaint. The refusal is
+# therefore mandatory, and it names the term type and the route that does
+# fit rather than a bare "not supported".
+.brms_term_refusal_message <- function(term) {
+  ttype <- term$type %||% "<unknown>"
+  var_name <- term$var %||% "x"
+  route <- switch(
+    ttype,
+    "spline" = paste0(
+      "A penalised spline is emitted by INLA as a second-order random ",
+      "walk, so fit spl(", var_name, ") with backend = \"inla\"."
+    ),
+    "smooth_mgcv" = paste0(
+      "An mgcv smooth basis has no brms lowering in the ASReml grammar. ",
+      "Fit s(", var_name, ") with backend = \"inla\", which carries it as ",
+      "a second-order random walk."
+    ),
+    "polynomial" = paste0(
+      "Fit pol(", var_name, ") with backend = \"inla\", or write the ",
+      "polynomial terms in the fixed part of the formula."
+    ),
+    "continuous" = paste0(
+      "A continuous variable in the random part is a random regression. ",
+      "Write the slope as (", var_name, " || <grouping factor>) in the ",
+      "brms-style grammar."
+    ),
+    "at" = paste0(
+      "Write the heterogeneous variance as diag(", var_name,
+      "):<inner factor>, which brms emits as (0 + ", var_name,
+      " || <inner factor>)."
+    ),
+    "us" = paste0(
+      "Write the unstructured covariance as us(", var_name,
+      "):<inner factor>, which brms emits as (0 + ", var_name,
+      " | <inner factor>)."
+    ),
+    "ar1" = ,
+    "ar1_spatial" = paste0(
+      "An autoregressive latent field is emitted by INLA only. Fit it ",
+      "with backend = \"inla\" on a complete grid with one observation ",
+      "per node."
+    ),
+    "vm_gxe" = paste0(
+      "A known-covariance term crossed with a second factor has no brms ",
+      "lowering. Fit vm(", term$inner %||% var_name,
+      ", K) on its own, or use ASReml for the crossed form."
+    ),
+    paste0(
+      "No active engine emits this structure. fb_terms() will describe ",
+      "what was parsed, and the capability table in the README lists what ",
+      "each engine fits."
+    )
+  )
+  paste0(
+    "brms cannot represent the random term type \"", ttype,
+    "\": the brms formula reconstruction has no lowering for it, and ",
+    "emitting the model without the term would answer a different ",
+    "question. ", route
+  )
+}
+
+# .fb_brms_missing_response_mode() --- decide how brms should treat a
+# missing response, and refuse where it cannot treat it faithfully.
+#
+# brms drops rows whose response is NA. Silently: a 48-row dataset with six
+# missing responses reaches Stan as N = 42, with a warning that is easy to
+# miss and no effect on the returned object. That makes
+# `na_action = "augment"` on brms mean complete-case deletion -- the
+# argument promises the design is preserved and delivers the opposite.
+#
+# The repair depends on the family, because brms's `mi()` addition term is
+# Gaussian-only. `bf(y | mi() ~ ...)` with family = poisson raises
+# "Argument 'mi' is not supported for family 'poisson(log)'", and the same
+# for bernoulli. So:
+#
+#   gaussian     -> `y | mi() ~ ...`, and brms samples the missing responses.
+#   non-Gaussian -> refuse, and point at INLA, which carries a missing
+#                   response as a native prediction target for every family.
+#
+# Refusing is not a limitation being papered over. Under ignorability the
+# parameter posterior is the same whether the cell is imputed or omitted, so
+# a user who wants the non-Gaussian fit can pass na_action = "omit" and get
+# a correct answer -- what they cannot have is deletion wearing the name of
+# augmentation.
+.fb_brms_missing_response_mode <- function(fb, data) {
+  resp <- fb$response
+  has_missing <- !is.null(resp) && nzchar(resp) &&
+    resp %in% names(data) && anyNA(data[[resp]])
+  if (!has_missing) {
+    return("none")
+  }
+  fam <- tolower(as.character(fb$family %||% "gaussian"))
+  if (fam %in% c("gaussian", "lognormal", "student", "t")) {
+    return("mi")
+  }
+  entry <- .lookup_refusal("brms_cannot_augment_nongaussian")
+  stop(.fb_refusal_condition(
+    reason_code = "brms_cannot_augment_nongaussian",
+    message = if (!is.null(entry)) {
+      entry$message_template
+    } else {
+      paste0(
+        "backend = \"brms\" cannot carry a missing response for family \"",
+        fam, "\"."
+      )
+    },
+    family_class = "flexybayes_brms_cannot_augment_nongaussian",
+    backend = "brms"
+  ))
 }
 
 # Resolve the covariance-matrix symbol a vm() / ped() term references on
 # the brms route. brms reaches GBLUP / pedigree BLUP only through an
 # exact dense-able carrier (dense / chol / precision); the block-
-# diagonal and low-rank carriers are greta / INLA-only and are refused
-# loudly rather than mis-rendered.
+# diagonal and low-rank carriers are INLA-only and are refused loudly
+# rather than mis-rendered.
 .fb_brms_covname <- function(term) {
   cov <- term$cov_representation
   fmt <- (cov$format %||% "dense")
@@ -454,7 +752,7 @@ emit_brms <- function(
     stop(
       "emit_brms() supports vm() / ped() only with an exact dense-able ",
       "covariance carrier (dense / chol / precision); the \"", fmt,
-      "\" carrier is greta / INLA-only. Re-route via backend = \"greta\".",
+      "\" carrier is INLA-only. Re-route via backend = \"inla\".",
       call. = FALSE
     )
   }
@@ -666,13 +964,21 @@ emit_brms <- function(
   )
 
   if (length(b_cols) > 0L) {
-    coefs <- colMeans(draws_mat[, b_cols, drop = FALSE])
-    vcov_mx <- stats::cov(draws_mat[, b_cols, drop = FALSE])
+    fixed_draws <- draws_mat[, b_cols, drop = FALSE]
+    coefs <- colMeans(fixed_draws)
+    vcov_mx <- stats::cov(fixed_draws)
     rownames(vcov_mx) <- colnames(vcov_mx) <- canon_names
     names(coefs) <- canon_names
+    # The draws travel with the summary statistics so summary() and
+    # confint() can report a posterior quantile interval and a
+    # probability of direction counted from the draws, rather than
+    # normal approximations to both presented under the exact
+    # quantities' names.
+    colnames(fixed_draws) <- canon_names
   } else {
     coefs <- numeric(0)
     vcov_mx <- matrix(numeric(0), 0L, 0L)
+    fixed_draws <- NULL
   }
 
   # fitted values: dispatch through the stats::fitted generic to the
@@ -714,7 +1020,8 @@ emit_brms <- function(
       y = y_vec
     ),
     class = c("flexybayes_glm", "list"),
-    posterior_vcov = vcov_mx
+    posterior_vcov = vcov_mx,
+    posterior_draws = fixed_draws
   )
   glm_obj
 }
@@ -789,9 +1096,23 @@ emit_brms <- function(
   colnames(psrf) <- c("Point est.", "Upper C.I.")
   rownames(psrf) <- summ$variable
 
+  # Divergent transitions are a separate signal from R-hat and ESS: a
+  # chain can mix well over a region it never reached. Counted here so the
+  # fit carries it, since triangulate()'s diagnostics gate reads the fit
+  # rather than re-deriving the sampler state. NA when the sampler does
+  # not report NUTS parameters.
+  n_div <- tryCatch(
+    {
+      np <- brms::nuts_params(brmsfit)
+      sum(np$Value[np$Parameter == "divergent__"], na.rm = TRUE)
+    },
+    error = function(e) NA_integer_
+  )
+
   list(
     gelman = list(psrf = psrf),
-    n_eff = stats::setNames(summ$ess_bulk, summ$variable)
+    n_eff = stats::setNames(summ$ess_bulk, summ$variable),
+    n_divergent = n_div
   )
 }
 
@@ -837,6 +1158,144 @@ emit_brms <- function(
 
 
 # ---------------------------------------------------------------- #
+# Per-level residual variances on a sectioned residual              #
+# ---------------------------------------------------------------- #
+#
+# A sectioned residual leaves no scalar `sigma` behind, so the variance-
+# component table above -- which reads `sd_*` rows and `sigma` -- reports
+# nothing at all for the residual. What the model carries instead is a
+# vector of coefficients on LOG sigma, one per level of the sectioning
+# factor. A reader who takes `b_sigma_envE2` for an ASReml `env_2!R` is
+# off by a logarithm and a square.
+#
+# The block below closes that gap on the surface a user actually reads.
+# Both quantities are summarised FROM THE DRAWS of exp(b) and exp(2 * b),
+# not by transforming a posterior mean: exp() is convex, so
+# exp(2 * mean(b)) is a different number from mean(exp(2 * b)) and the
+# gap grows with the coefficient's posterior spread. The point summary is
+# the median because it is the one summary the monotone transform carries
+# through exactly, and the interval is the transformed quantile pair for
+# the same reason.
+
+# The sectioned-residual terms carried by a fit's IR, if any.
+.brms_at_units_terms <- function(object) {
+  Filter(
+    function(t) identical(t$type %||% "", "at_units"),
+    object$extras$parse_info$residual %||% list()
+  )
+}
+
+# One row per level of the sectioning factor: the residual variance and
+# the residual standard deviation, each as a posterior median and a 95%
+# credible interval on the natural scale.
+#
+# Returns NULL when the fit carries no sectioned residual, when the draws
+# are unavailable, or when the emitted coefficients cannot be matched to
+# the factor -- a partial table would be worse than none, because the
+# level labels are the whole point.
+.brms_residual_by_level_table <- function(object, probs = c(0.025, 0.975)) {
+  terms <- .brms_at_units_terms(object)
+  if (length(terms) != 1L || is.null(object$brms)) {
+    return(NULL)
+  }
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    return(NULL)
+  }
+  var_name <- terms[[1L]]$var %||% NA_character_
+  if (is.na(var_name)) {
+    return(NULL)
+  }
+
+  draws <- tryCatch(
+    as.matrix(posterior::as_draws_matrix(object$brms)),
+    error = function(e) NULL
+  )
+  if (is.null(draws)) {
+    return(NULL)
+  }
+  cols <- grep("^b_sigma_", colnames(draws), value = TRUE)
+  if (length(cols) == 0L) {
+    return(NULL)
+  }
+
+  # `sigma ~ 0 + f` names each coefficient <factor><level>, so the level
+  # is what remains once the factor's own name is removed. Ordering
+  # follows the data's factor levels where they are recoverable, so the
+  # printed block reads in the same order as every other per-level
+  # summary the user has seen.
+  labels <- sub(paste0("^b_sigma_", var_name), "", cols)
+  declared <- tryCatch(
+    levels(object$brms$data[[var_name]]),
+    error = function(e) NULL
+  )
+  if (!is.null(declared) && setequal(labels, declared)) {
+    ord <- match(declared, labels)
+    cols <- cols[ord]
+    labels <- labels[ord]
+  }
+
+  summarise <- function(x) {
+    q <- stats::quantile(x, probs = probs, names = FALSE, na.rm = TRUE)
+    c(stats::median(x, na.rm = TRUE), q[1L], q[2L])
+  }
+  rows <- lapply(seq_along(cols), function(i) {
+    b <- draws[, cols[[i]]]
+    v <- summarise(exp(2 * b))
+    s <- summarise(exp(b))
+    data.frame(
+      level = labels[[i]],
+      variance = v[[1L]],
+      variance_lower = v[[2L]],
+      variance_upper = v[[3L]],
+      sd = s[[1L]],
+      sd_lower = s[[2L]],
+      sd_upper = s[[3L]],
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  attr(out, "factor") <- var_name
+  attr(out, "probs") <- probs
+  out
+}
+
+# Render the block. Shared by print() and summary() so the two cannot
+# drift apart; a no-op on every fit without a sectioned residual.
+.print_brms_residual_by_level <- function(object) {
+  tab <- .brms_residual_by_level_table(object)
+  if (is.null(tab)) {
+    return(invisible(NULL))
+  }
+  probs <- attr(tab, "probs")
+  cat(
+    "\n-- Residual by level of `", attr(tab, "factor"),
+    "` (posterior median, ", round(100 * diff(probs)), "% interval) ",
+    strrep("-", 8), "\n",
+    sep = ""
+  )
+  body <- data.frame(
+    level = tab$level,
+    variance = round(tab$variance, 4),
+    lower = round(tab$variance_lower, 4),
+    upper = round(tab$variance_upper, 4),
+    SD = round(tab$sd, 4),
+    SD.lower = round(tab$sd_lower, 4),
+    SD.upper = round(tab$sd_upper, 4),
+    stringsAsFactors = FALSE
+  )
+  print(body, row.names = FALSE)
+  cat(
+    "  Summarised from the draws of exp(2 * b_sigma_<level>); the fitted\n",
+    "  coefficients are on log sigma, so neither they nor their posterior\n",
+    "  means are variances. There is no scalar residual variance in this\n",
+    "  model -- the sectioning replaces it.\n",
+    sep = ""
+  )
+  invisible(tab)
+}
+
+
+# ---------------------------------------------------------------- #
 # Subclass S3 overrides on the brms path                            #
 # ---------------------------------------------------------------- #
 
@@ -848,7 +1307,7 @@ emit_brms <- function(
 #' diagnostics as the greta path).
 #'
 #' @param x A `flexybayes_brms` object.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @export
 print.flexybayes_brms <- function(x, ...) {
   ci <- x$extras$call_info
@@ -906,6 +1365,8 @@ print.flexybayes_brms <- function(x, ...) {
     if (is.finite(mn)) cat("  Min ESS:", round(mn, 0), "\n")
   }
 
+  .print_brms_residual_by_level(x)
+
   cat(strrep("-", 55), "\n")
   cat("  $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)\n")
   cat("  $brms   -- live brmsfit (loo, posterior_predict, summary)\n")
@@ -919,22 +1380,20 @@ print.flexybayes_brms <- function(x, ...) {
 #' Uses the brms posterior draws directly (the parent
 #' `confint.flexybayes` reads `$greta$draws`, which is `NULL` on
 #' the brms-passthrough path). Returns quantile-based credible
-#' bounds over the b_<term> rows; row names are stripped of the
+#' bounds over the `b_<term>` rows; row names are stripped of the
 #' brms `b_` prefix to align with `coef()`.
 #'
 #' @param object A `flexybayes_brms` object.
 #' @param parm Subset of fixed-effect names to return (NULL = all).
 #' @param level Credible level (default 0.95).
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @export
 confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
-  if (!requireNamespace("posterior", quietly = TRUE)) {
-    stop(
-      "Package 'posterior' is required for confint() on brms ",
-      "fits.",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "posterior",
+    "Package 'posterior' is required for confint() on brms ",
+    "fits."
+  )
   draws <- as.matrix(posterior::as_draws_matrix(object$brms))
   cn <- colnames(draws)
   b_cols <- cn[grepl("^b_", cn)]
@@ -1023,13 +1482,11 @@ predict.flexybayes_brms <- function(
   # `.brmsfit` methods dispatch automatically via the generic.
   # Pull the exported generic directly from the brms namespace so
   # the call is portable whether or not the user has loaded brms.
-  if (!requireNamespace("brms", quietly = TRUE)) {
-    stop(
-      "Package 'brms' is required for predict() on a ",
-      "flexybayes_brms object.",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "brms",
+    "Package 'brms' is required for predict() on a ",
+    "flexybayes_brms object."
+  )
   brms_fn <- if (type == "link") {
     get("posterior_linpred", envir = asNamespace("brms"))
   } else {
@@ -1062,7 +1519,7 @@ predict.flexybayes_brms <- function(
 #' carries the observation count.
 #'
 #' @param object A `flexybayes_brms` object.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @export
 logLik.flexybayes_brms <- function(object, ...) {
   # Dispatch to brms's `log_lik` exported generic. brms ships

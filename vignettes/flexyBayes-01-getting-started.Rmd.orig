@@ -3,6 +3,8 @@ title: "Tutorial 01: Getting started with flexyBayes"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
@@ -22,7 +24,6 @@ knitr::opts_chunk$set(
   message   = FALSE
 )
 options(flexyBayes.silence_default_prior_note = TRUE)
-greta_ok <- requireNamespace("greta", quietly = TRUE)
 inla_ok  <- requireNamespace("INLA",  quietly = TRUE)
 brms_ok  <- requireNamespace("brms",  quietly = TRUE)
 set.seed(100)
@@ -30,8 +31,8 @@ set.seed(100)
 
 # 1. Why Bayesian mixed models?
 
-Restricted maximum likelihood (REML) — the workhorse behind `lme4`,
-`nlme`, and ASReml — returns a single point estimate of each variance
+Restricted maximum likelihood (REML) -- the workhorse behind `lme4`,
+`nlme`, and ASReml -- returns a single point estimate of each variance
 component plus a Wald-style standard error. Two situations make this
 summary uncomfortable.
 
@@ -48,38 +49,48 @@ summary uncomfortable.
 A Bayesian fit replaces the point estimate with the *full posterior
 distribution*. You see directly how much mass the data place near
 zero, and you can propagate that uncertainty into derived quantities
-— predictions, contrasts, best linear unbiased predictors (BLUPs) —
+-- predictions, contrasts, best linear unbiased predictors (BLUPs) --
 without leaning on quadratic approximations.
 
 `flexyBayes` is built around one principle: switching from REML to
-Bayesian inference should not change the formula you write. If you
-can express the model in ASReml-style syntax, `flexybayes()` fits
-it. If you prefer brms-style notation, `fb()` fits the same model
-(it auto-detects which grammar you used). Both routes go through a
-shared internal representation, and
-the same fitted object supports `summary()`, `predict()`,
+Bayesian inference should not change the formula you write. Write the
+model in ASReml-style syntax and `flexybayes()` either fits it on an
+active engine or refuses it by name, telling you which structure has
+no representation and what the nearest supported model is. Write it in
+brms-style notation and `fb()` does the same with the same
+guarantee (it auto-detects which grammar you used). The refusal is the
+point: the alternative to refusing is fitting a neighbouring model
+under the requested model's name, which is the failure mode a formula
+translator has to be built against. What fits and what refuses,
+per engine and per model class, is tabulated in the package README
+and in `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
+
+Both routes go through a shared internal representation, and the same
+fitted object supports `summary()`, `predict()`,
 `emmeans::emmeans()`, `marginaleffects::predictions()`, and the
 `bayesplot::*` family.
 
 # 2. Installation
 
 `flexyBayes` requires R 4.1.0 or later. Inference happens through one of
-two engines.
+two active engines.
 
-- **greta** (default). A TensorFlow-backed Hamiltonian Monte Carlo
-  (HMC) sampler. Covers every term type in the asreml-format domain-
-  specific language (DSL).
-- **INLA** — integrated nested Laplace approximation (Rue et al.,
-  2009). A deterministic Laplace approximation over the latent
-  Gaussian model (LGM) class. Substantially faster than HMC, but
-  with a narrower scope.
+- **brms** (Stan). A Hamiltonian Monte Carlo (HMC) sampler covering
+  most of the term-type surface, including structures INLA cannot
+  represent.
+- **INLA** -- integrated nested Laplace approximation (Rue et al.,
+  2009). A deterministic approximation over the latent Gaussian model
+  (LGM) class. Substantially faster than HMC, over a narrower scope,
+  and *approximate*: representing a model exactly and inferring it
+  exactly are separate claims, and INLA's nested Laplace is
+  approximate inference even where the representation is faithful.
+  Section 4 returns to this.
 
 Install both:
 
 ```r
-# greta and its TensorFlow backend
-install.packages("greta")
-greta::install_greta_deps()      # one-time Python/TF setup
+# brms and its Stan backend
+install.packages("brms")
 
 # INLA — not on CRAN; from the INLA team's repository
 install.packages(
@@ -103,8 +114,17 @@ install.packages(c("emmeans", "marginaleffects", "bayesplot",
 ```
 
 If INLA cannot be installed on your platform, the package degrades
-gracefully. The greta backend remains available; INLA-only paths emit
-clear messages and you simply do without `triangulate()` for now.
+gracefully: INLA-only paths (the fast LGM route, `triangulate()`
+cross-checks that need a second engine) emit clear messages, and brms
+covers everything else.
+
+> **greta and gretaR.** Earlier releases fit models via greta
+> (TensorFlow-backed HMC). greta and gretaR have since been
+> withdrawn as fitting engines -- `backend = "greta"` now refuses with
+> a structured message rather than fitting. If you have older code
+> pinned to `fb_greta()` or `backend = "greta"`, drop the pin; `"auto"`
+> (or an explicit `"inla"` / `"brms"`) now covers the same ground on
+> the two active engines. See `NEWS.md` for the full rationale.
 
 # 3. The four-verb API
 
@@ -114,19 +134,20 @@ implicitly changes the choice of backend.
 
 | Verb | When to use |
 |---|---|
-| `flexybayes()` / `fb()` | Principal / universal entry. Asreml-style (`fixed = ..., random = ~ g, residual = ~ ...`) or brms-style (`response ~ x + (1 \| g)`) formulas; auto-detects the grammar and takes a `backend` argument to choose the engine. Full term-type surface (`fa`, `us`, `at`, `ar1`, `vm`, `ped`, `spl`, `pol`). |
-| `fb_greta()` / `fb_inla()` / `fb_brms()` | Engine pins: fix the backend to greta (HMC), INLA (Laplace), or Stan (brms). Each accepts the same two formula grammars; `fb_greta()` also accepts a user-built native `greta_model`. |
+| `flexybayes()` / `fb()` | Principal / universal entry. Asreml-style (`fixed = ..., random = ~ g, residual = ~ ...`) or brms-style (`response ~ x + (1 \| g)`) formulas; auto-detects the grammar and takes a `backend` argument to choose the engine. The ASReml term vocabulary it *parses* is wider than the set either engine emits -- `fa()`, `corh()` and an AR1 residual parse and then refuse -- so consult the capability table before assuming a term fits. |
+| `fb_inla()` / `fb_brms()` | Engine pins: fix the backend to INLA (Laplace) or Stan (brms). Each accepts the same two formula grammars. `fb_greta()` still exists but refuses -- greta is quarantined (see Section 2). |
 | `triangulate()` | Cross-engine posterior comparison. Takes two fits from different backends and reports per-parameter agreement metrics. |
 
 The universal entries `flexybayes()` / `fb()` take a `backend`
-argument: `"auto"` (the default — gate-driven routing: INLA on
-accept, greta on refuse, with a silenceable note carrying the
-reason), `"greta"` (HMC), `"inla"` (explicit LGM fast path; refuses
+argument: `"auto"` (the default -- gate-driven routing: INLA when the
+model is LGM-eligible, brms otherwise, and a typed refusal when
+neither can represent the model -- never a silent fallback to a
+quarantined engine), `"inla"` (explicit LGM fast path; refuses
 non-LGM models with a structured message), and `"brms"` (Stan). The
-engine pins `fb_greta()` / `fb_inla()` / `fb_brms()` fix the backend
-instead of taking the argument. The dispatch trace is available
-post-fit via `backend_decision()`. The *backend internals* vignette
-walks through the dispatch flow end-to-end.
+engine pins `fb_inla()` / `fb_brms()` fix the backend instead of
+taking the argument. The dispatch trace is available post-fit via
+`backend_decision()`. The *understanding dispatch and refusals*
+vignette walks through the dispatch flow end-to-end.
 
 # 4. Your first model
 
@@ -144,53 +165,81 @@ str(sleepstudy)
 We start with a brms-style formula -- it reads exactly as in
 `lme4::lmer()` or `brms::brm()`: `Reaction ~ Days + (1 | Subject)` --
 and fit it with the brms (Stan) engine pin `fb_brms()`, which samples
-this small hierarchical model to clean convergence:
+this small hierarchical model to clean convergence. `seed` is passed
+to Stan through brms, so the draws below are the draws a reader who
+runs the same call gets:
 
 ```{r sleepstudy-fb-brms, eval=brms_ok}
 fit_brms <- fb_brms(
   Reaction ~ Days + (1 | Subject),
   data         = sleepstudy,
-  n_samples    = 1000,
-  warmup       = 1000,
+  n_samples    = 2000,
+  warmup       = 2000,
   chains       = 4,
+  seed         = 20260815L,
   verbose      = FALSE,
   mcmc_verbose = FALSE
 )
 fit_brms
 ```
 
-The printed summary includes a `Representation: exact` line. This reports that
+The printed summary includes a `Representation: exact (model, not inference)`
+line. This reports that
 the model was emitted to the backend without structural approximation: every
 term in the formula is represented as written, with no low-rank or sparse
 truncation. It describes the model *representation*, not the *inference*. The
-greta and brms (Stan) backends draw from the posterior by MCMC, so their only
-inferential error is Monte Carlo sampling error, whereas the INLA backend
-always performs *approximate* inference (integrated nested Laplace
-approximation) whether or not its representation is exact. flexyBayes treats
-"exact representation" and "exact inference" as separate claims and makes only
-the first (see `API_STABILITY.md`, section "Inference semantics").
+brms (Stan) backend draws from the posterior by MCMC, so its only inferential
+error is Monte Carlo sampling error, whereas the INLA backend always performs
+*approximate* inference (integrated nested Laplace approximation) whether or
+not its representation is exact. flexyBayes treats "exact representation" and
+"exact inference" as separate claims and makes only the first (see
+`API_STABILITY.md`, section "Inference semantics").
 
 ### A note on random *intercepts* versus random *slopes*
 
-The same data also supports `Reaction ~ Days + (Days | Subject)` — a
-per-subject slope on top of the intercept. The brms-style grammar
-accepts random intercepts only (single or crossed); random slopes
-raise a structured refusal naming the offending construct:
+The same data also supports a per-subject slope on `Days` on top of the
+intercept. There are two spellings, and they are different models.
 
-```r
-fb_greta(Reaction ~ Days + (Days | Subject), data = sleepstudy)
-#> Error: random slopes (Days | Subject) are not in the supported
-#>   brms-style corpus. Express the random structure in asreml-style
-#>   form via flexybayes(fixed = Reaction ~ Days,
-#>                       random = ~ Subject + Subject:Days, ...).
+The **uncorrelated** form, `(Days || Subject)`, gives each subject its
+own intercept deviation and its own slope deviation, each with its own
+variance and no correlation parameter between them. It is supported and
+emits on brms:
+
+```{r sleepstudy-slope-uncor, eval = brms_ok}
+fit_slope <- fb_brms(
+  Reaction ~ Days + (Days || Subject),
+  data         = sleepstudy,
+  n_samples    = 1000,
+  warmup       = 1000,
+  chains       = 4,
+  seed         = 20260815L,
+  verbose      = FALSE,
+  mcmc_verbose = FALSE
+)
+fit_slope
 ```
 
-The asreml-style entry `flexybayes()` covers a wider term surface
-(factor-analytic, unstructured, autoregressive, pedigree, smooths)
-and is documented in the *asreml-shaped formulas* vignette; the
-*hierarchical models* vignette covers the random-slope case via the
-asreml route. For the remainder of this introduction we keep the
-random intercept.
+The **correlated** form, `(Days | Subject)`, adds a free correlation
+between a subject's intercept and slope. No active engine represents it,
+so it refuses rather than quietly fitting the uncorrelated model in its
+place:
+
+```{r sleepstudy-slope-cor, eval = brms_ok}
+refused <- tryCatch(
+  fb_brms(Reaction ~ Days + (Days | Subject), data = sleepstudy),
+  error = function(e) e
+)
+cat(conditionMessage(refused))
+```
+
+Read the last paragraph of that message carefully, because it names a
+trap. The ASReml crossing `random = ~ Subject + Subject:Days` looks like
+the asreml way to write a random slope and is not one: with a *numeric*
+`Days` the crossing is one independent deviation per Subject-by-Day
+cell -- 180 of them on `sleepstudy` -- rather than eighteen per-subject
+slopes. The *hierarchical models* vignette works through both spellings
+side by side. For the remainder of this introduction we keep the random
+intercept.
 
 # 5. What is inside a fit?
 
@@ -212,19 +261,20 @@ The output is laid out in three blocks.
 3. **Sampler diagnostics.** Effective sample size (ESS) and the
    rank-normalised $\widehat{R}$ (Vehtari et al., 2021). The targets
    for a trustworthy fit are ESS $\ge 400$ and $\widehat{R} \le 1.01$
-   on every parameter. The fixed effects and the residual SD reach
-   them; the Subject-level variance component and its latent
-   per-subject deviations mix more slowly -- variance components are
-   among the slowest-mixing quantities in hierarchical MCMC -- so the
-   worst of them does not reach the strict bar at a vignette-scale
-   budget. How far above it lands varies from run to run, because
-   greta's TensorFlow-backed sampler is not fully seed-reproducible; in
-   practice it sits in roughly the $\widehat{R} \approx 1.1$ to $1.4$
-   range. The honest reading: the quantities you interpret are
-   reliable, while the hardest-mixing nuisance parameter is not yet at
-   the strict bar. Two moves address it -- run longer (more warmup and
-   draws), or cross-check against a different algorithm, which the next
-   section does with INLA.
+   on every parameter. The Subject-level variance component and its
+   latent per-subject deviations mix more slowly than the fixed effects
+   -- variance components are among the slowest-mixing quantities in
+   hierarchical MCMC -- and at a shorter budget than the one used here
+   the worst of them does not reach the strict bar, which is why the
+   budget is what it is. The call above passes `seed = 20260815L`
+   through to Stan, so a repeat run reproduces these numbers on the
+   same machine and toolchain -- across machines, or when Stan runs its
+   chains under threading, the reduction order can move the last
+   digits. Read the block as printed: the quantities you
+   interpret are at the bar, and any parameter that is not says so on
+   its own row. Two moves address a short one -- run longer (more
+   warmup and draws), or cross-check against a different algorithm,
+   which the next section does with INLA.
 
 A coefficient plot of the fixed effects is one line:
 
@@ -259,8 +309,8 @@ coefficients, via `b("name") ~ normal(...)` in `fb_prior()`.
 # 6. The same model on a second engine
 
 `fit_brms` is a Markov chain Monte Carlo (MCMC) fit; INLA runs a
-fundamentally different algorithm — a Laplace approximation over a
-small set of hyperparameters — and finishes almost instantly:
+fundamentally different algorithm -- a Laplace approximation over a
+small set of hyperparameters -- and finishes almost instantly:
 
 ```{r sleepstudy-fb-inla, eval=inla_ok}
 fit_inla <- fb_inla(
@@ -271,9 +321,35 @@ fit_inla <- fb_inla(
 summary(fit_inla)
 ```
 
-Both engines have fitted the same posterior, one by Stan's Hamiltonian
-Monte Carlo and one by INLA's Laplace approximation. *How well do they
-agree?* That is the question `triangulate()` answers. The canonical
+```{r sleepstudy-inla-subject-sd, eval = inla_ok}
+hp <- fit_inla$inla$summary.hyperpar
+1 / sqrt(hp["Precision for Subject", "mean"])
+```
+
+> **Read that number before going further.** On this dataset, INLA's
+> default prior on the `Subject`-level variance frequently drives it
+> to a numerically-collapsed near-zero value -- not a modest
+> shrinkage, a genuine degeneracy (`sigma` many orders of magnitude
+> below anything physically plausible). This is a known instability
+> specific to this model on this dataset, not a general property of
+> INLA. It is shown deliberately, not patched away, because it is
+> exactly the failure mode the next paragraph exists to catch.
+>
+> The collapsed value does not reproduce either. Repeated runs of this
+> same call return `Precision for Subject` many orders of magnitude
+> apart, because nothing in the data fixes where a degenerate mode
+> sits, and the fixed effects move in the last decimals with it. A
+> `seed` cannot help: the Laplace approximation draws no random
+> numbers, so the movement is in the optimiser's landing point rather
+> than in a sampler. The brms block above is seeded and reproduces
+> exactly. Treat instability across re-runs of a *deterministic* engine
+> as the same signal as a failed convergence diagnostic on a sampler.
+
+Both engines were given the same model. Stan's Hamiltonian Monte Carlo
+and INLA's Laplace approximation are two routes to the posterior of
+that model, and on this dataset they do not arrive at the same place --
+the INLA Subject variance collapsed, the brms one did not. *How far
+apart are they?* That is the question `triangulate()` answers. The canonical
 parameter-name registry reconciles each engine's internal names -- brms's
 `b_Intercept`, `b_Days`, `sd_Subject__Intercept`, `sigma`, and INLA's
 `(Intercept)`, `Days`, `Precision for Subject`,
@@ -295,33 +371,44 @@ tri <- tryCatch(
 if (!is.null(tri)) tri
 ```
 
-The output is a per-parameter readout. The column to focus on first is
-`wasserstein_1` — a scale-respecting distance between the two posterior
-marginals — read alongside the SD ratio and the tail-quantile
-differences. Values near zero indicate agreement.
+The output opens with an overall status -- `concordant`, `discordant` or
+`inconclusive` -- and then gives a per-parameter readout with a verdict
+on each. The columns to read are `mean_shift_sd` and `w1_sd`, the mean
+difference and the Wasserstein-1 distance expressed in posterior-SD
+units, alongside the SD ratio. Values near zero and a ratio near one
+indicate agreement.
 
-For the fixed effects the two engines agree closely -- the intercept
-and the `Days` slope match to within a credible-interval width. The
-Subject variance component is where an approximate engine earns
-scrutiny. INLA's integrated nested Laplace approximation is fast and
-accurate for the fixed-effect structure of a latent Gaussian model, but
-its estimate of a *small-group* variance component -- here there are
-only eighteen subjects -- is fragile: depending on the numerical
-optimisation it may track the MCMC estimate or shrink the component
-sharply toward zero. The `sd_ratio` column is where any such divergence
-shows. That fragility is the lesson, not a detail to hide: a single
-approximate fit of a small-group variance component is not trustworthy
-on its own. Triangulate it against MCMC, or supply an explicit
+Before any of that is reported, `triangulate()` checks that the two fits
+answered the same question (same model, same data, same recorded prior
+on each variance component) and that each passed its own convergence
+diagnostics. A fit at too small a sampling budget returns
+`inconclusive` rather than a verdict, which is why this one is sampled
+at a production budget.
+
+The Subject variance component is where an approximate engine earns
+scrutiny: `sd_ratio` on that row reads as an enormous, unmissable
+divergence -- exactly what a collapsed INLA estimate looks like next
+to a working MCMC one. It does not stay in that row either: the
+between-subject variation has to go somewhere, so the residual SD
+absorbs it and the fixed effects inherit the wrong uncertainty. INLA's integrated nested Laplace approximation
+is fast and accurate for the fixed-effect structure of a latent
+Gaussian model, but its estimate of a *small-group* variance
+component -- here there are only eighteen subjects -- can be fragile
+under the default prior on some datasets, this one included. That
+fragility is the lesson, not a detail to hide: a single approximate
+fit of a small-group variance component is not trustworthy on its
+own. Triangulate it against MCMC, or supply an explicit
 penalised-complexity prior on the SD (the *priors and regularisation*
 vignette shows how). The *cross-engine triangulation* vignette
 catalogues this and the other common disagreement patterns and the
-protocol for diagnosing each. A divergence of more than 0.1 SD on a
-parameter you care about is a *finding*, not a bug.
+protocol for diagnosing each. A divergence this large on a parameter
+you care about is a *finding*, not something to average away.
 
 ### Letting the package choose the backend
 
 `backend = "auto"` runs the model through `lgm_gate()` and routes to
-INLA on accept, greta on refuse:
+INLA on accept, brms otherwise -- refusing outright, never silently,
+when neither can represent the model:
 
 ```{r sleepstudy-auto, eval=inla_ok}
 fit_auto <- flexybayes(
@@ -340,8 +427,10 @@ backend_decision(fit_auto)
 `backend_decision()` returns the dispatch trace: which backend ran,
 which gate checks were evaluated, and the reason. On a Gaussian
 random-intercept model the gate accepts and (when INLA is installed)
-the auto path lands on INLA; otherwise it falls back to greta with a
-silenceable note.
+the auto path lands on INLA -- which is exactly the fit whose
+Subject-level variance collapsed above. `"auto"` optimises for speed
+first; pin `backend = "brms"` explicitly whenever a small-group
+variance component is itself the quantity you care about.
 
 # 7. Where to next?
 
@@ -350,17 +439,16 @@ suggested reading order:
 
 | Vignette | What it covers |
 |---|---|
-| Foundational regression | one- and two-way fixed effects; smooths via `mgcv::s()`; comparison with `lm()` |
-| Hierarchical models | random intercepts, nested and crossed effects, Poisson and binomial generalised linear mixed models (GLMMs); backend dispatch in practice |
-| asreml-shaped formulas | the full term-type catalogue: `factor`, `fa`, `us`, `at`, `ar1`, `vm`, `ped`, … |
+| Foundational regression | one- and two-way fixed effects; univariate smooths; comparison with `lm()` |
+| Hierarchical models | random intercepts, nested and crossed effects, the two random-slope spellings, Poisson and binomial generalised linear mixed models (GLMMs) |
+| The formula surface | the term-type catalogue -- what parses, what emits, what refuses -- and the structured-covariance machinery: `diag`, `us`, per-level residual variances, known-covariance carriers |
 | Priors and regularisation | the `fb_prior()` DSL, the uniform-on-SD default, the fixed-effect default, prior-predictive checks |
-| Cross-engine triangulation | the signature feature: when engines disagree, what it means, what to do |
-| LGM feasibility | what `lgm_gate()` accepts, what it refuses, and how to override |
-| Downstream analysis | `emmeans`, `marginaleffects`, `bayesplot`, `loo` |
-| Backend internals | the IR, `emit_greta`, `emit_inla`, capability gating, the gretaR slot |
-| Structured covariance | `us`, `fa`, `at`, design variance components |
-| Spatio-temporal | AR1, geostatistical, temporal correlation |
 | Multi-environment trials and genomics | MET, genotype-by-environment interaction (GxE), GBLUP (genomic BLUP) |
+| Downstream analysis | `emmeans`, `marginaleffects`, `bayesplot`, `loo` |
+| Spatio-temporal | the separable AR1 field, the complete-grid requirement, missing plots |
+| Cross-engine triangulation | when engines disagree, what it means, what to do |
+| Understanding dispatch and refusals | how `lgm_gate()` and the capability predicates choose an engine, how to read a refusal, and the backend registry a new engine registers into |
+| Big-data streaming | exact sufficient-statistic aggregation for datasets that do not fit in memory |
 
 # 8. Pitfalls
 
@@ -381,28 +469,39 @@ measurement-error magnitude), set it explicitly via `fb_prior()`. If
 you are reproducing a published analysis that used a different prior,
 use that prior.
 
-**INLA's scope is narrower than greta's.** Random slopes, structured
-covariance models, finite mixtures, and a few non-Gaussian families
-fall outside the LGM class. `flexyBayes` detects these structurally
-via `lgm_gate()` and either routes to greta or refuses with a
-structured message that names the rule violated.
+**INLA's scope is narrower than brms's, and each has terms the other
+refuses.** Random slopes, interaction random effects, heterogeneous
+genotype variances and heterogeneous residuals are outside what the
+INLA emit represents, and `lgm_gate()` refuses them structurally;
+`"auto"` routes those models to brms. The traffic runs the other way
+too -- the separable AR1 spatial field and the P-spline emit on INLA
+and refuse on brms. Neither engine covers the whole ASReml term
+vocabulary, and a term outside both refuses rather than being
+approximated. The capability table in the README says which is which.
+
+**A collapsed variance component from INLA is not always visible in
+`summary()`.** Print the derived SD explicitly (`1 / sqrt(precision)`)
+rather than trusting a glance at the hyperparameter table -- an
+astronomically large precision reads as a small number next to
+plausible-looking fixed effects. Section 6 shows the pattern.
 
 # 9. Active prompts
 
 Try the following while the package is loaded:
 
-1. Re-fit `fit_greta` at a much shorter `warmup = 300` and then a much
+1. Re-fit `fit_brms` at a much shorter `warmup = 300` and then a much
    longer `warmup = 12000`. How do the ESS and $\widehat{R}$ of
-   `sigma_Subject` respond, and which parameters are most sensitive to
-   the warmup budget? Does the posterior mean of `Days` shift at all?
-2. Inspect `fit_greta$extras$code`: this is the literal greta program
-   that `flexyBayes` generated. Compare it with the program generated
-   by the asreml-style call
+   `sd_Subject__Intercept` respond, and which parameters are most
+   sensitive to the warmup budget? Does the posterior mean of `Days`
+   shift at all?
+2. Pass `return_code = TRUE` to `fb_brms()` and inspect the returned
+   Stan code -- this is the literal program `flexyBayes` generated.
+   Compare it with the program generated by the asreml-style call
    `flexybayes(fixed = Reaction ~ Days, random = ~ Subject,
-   data = sleepstudy, ...)`.
-3. Pass `prior_vc_sd = 1` to `fb_greta()` and refit. The default-prior
+   data = sleepstudy, return_code = TRUE)`.
+3. Pass `prior_vc_sd = 1` to `fb_brms()` and refit. The default-prior
    announcement disappears (you have opted into the legacy
-   lognormal). Does the posterior on `sigma_Subject` change
+   lognormal). Does the posterior on `sd_Subject__Intercept` change
    appreciably?
 
 # 10. Session information
@@ -417,29 +516,29 @@ Belenky, G., Wesensten, N. J., Thorne, D. R., Thomas, M. L., Sing,
 H. C., Redmond, D. P., Russo, M. B., & Balkin, T. J. (2003). Patterns
 of performance degradation and restoration during sleep restriction
 and subsequent recovery: A sleep dose-response study. *Journal of
-Sleep Research*, 12(1), 1–12.
+Sleep Research*, 12(1), 1--12.
 
 Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting
 linear mixed-effects models using lme4. *Journal of Statistical
-Software*, 67(1), 1–48.
+Software*, 67(1), 1--48.
 
 Gelman, A. (2006). Prior distributions for variance parameters in
-hierarchical models. *Bayesian Analysis*, 1(3), 515–534.
+hierarchical models. *Bayesian Analysis*, 1(3), 515--534.
 
 Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y.-S. (2008). A weakly
 informative default prior distribution for logistic and other
-regression models. *Annals of Applied Statistics*, 2(4), 1360–1383.
+regression models. *Annals of Applied Statistics*, 2(4), 1360--1383.
 
 Gelman, A., Meng, X.-L., & Stern, H. (1996). Posterior predictive
 assessment of model fitness via realized discrepancies. *Statistica
-Sinica*, 6(4), 733–760.
+Sinica*, 6(4), 733--760.
 
 Rue, H., Martino, S., & Chopin, N. (2009). Approximate Bayesian
 inference for latent Gaussian models by using integrated nested
 Laplace approximations. *Journal of the Royal Statistical Society:
-Series B*, 71(2), 319–392.
+Series B*, 71(2), 319--392.
 
 Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C.
 (2021). Rank-normalization, folding, and localization: An improved
 $\widehat{R}$ for assessing convergence of MCMC. *Bayesian Analysis*,
-16(2), 667–718.
+16(2), 667--718.

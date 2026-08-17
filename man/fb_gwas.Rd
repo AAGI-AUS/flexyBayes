@@ -57,7 +57,7 @@ score test, so a whole-genome scan is feasible without a per-marker
 model fit.
 }
 \details{
-The backends (greta / INLA / brms) are not used by the scan itself ---
+The backends (INLA / brms) are not used by the scan itself ---
 it is a deterministic frequentist fast path. They enter only when a
 handful of significant loci are re-fit as full Bayesian models for
 credible effect sizes, which is affordable at that reduced scale.

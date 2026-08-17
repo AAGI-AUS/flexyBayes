@@ -14,7 +14,7 @@
 
 \item{coefs}{Replacement coefficient vector.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 The fit with a coefficient override attached.

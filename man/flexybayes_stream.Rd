@@ -11,7 +11,7 @@ flexybayes_stream(
   family = "gaussian",
   trials = NULL,
   exposure = NULL,
-  backend = c("inla", "greta"),
+  backend = "inla",
   chunk_rows = 5e+06,
   prior = NULL,
   fit = TRUE,
@@ -43,8 +43,10 @@ column, or \code{NULL} for Bernoulli (one trial per row).}
 \item{exposure}{For \code{family = "poisson"}, the name of the exposure /
 offset column, or \code{NULL} for unit exposure.}
 
-\item{backend}{The estimation backend, \code{"inla"} (default) or
-\code{"greta"}.}
+\item{backend}{The estimation backend. \code{"inla"} is the default and the
+only active choice: INLA is the one engine with an aggregated emit.
+\code{"greta"} is still recognised so that passing it refuses by name
+(\code{backend_quarantined}) rather than failing on argument matching.}
 
 \item{chunk_rows}{The number of rows to read per chunk. Larger chunks
 read faster but use more peak memory; the default 5e6 keeps peak

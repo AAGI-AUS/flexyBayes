@@ -29,7 +29,9 @@ prior_summary(object, ...)
 per-component selection).}
 }
 \value{
-A \code{prior_summary_flexybayes} object (list). Components:
+A \code{prior_summary_flexybayes} object, a list carrying the
+components below.
+
 \describe{
 \item{\code{kind}}{One of \code{"fb_prior"}, \code{"legacy_scalar"},
 \code{"no_prior_recorded"}.}

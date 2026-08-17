@@ -64,7 +64,7 @@
 
 #' marginaleffects support: fixed-effect coefficients (greta backend)
 #' @param model A `flexybayes` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return Named numeric vector of coefficients.
 #' @exportS3Method marginaleffects::get_coef
 get_coef.flexybayes <- function(model, ...) .fb_get_coef(model, ...)
@@ -77,7 +77,7 @@ get_coef.flexybayes_inla <- function(model, ...) .fb_get_coef(model, ...)
 #' marginaleffects support: set coefficients (greta backend)
 #' @param model A `flexybayes` fit.
 #' @param coefs Replacement coefficient vector.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return The fit with a coefficient override attached.
 #' @exportS3Method marginaleffects::set_coef
 set_coef.flexybayes <- function(model, coefs, ...) {
@@ -93,7 +93,7 @@ set_coef.flexybayes_inla <- function(model, coefs, ...) {
 
 #' marginaleffects support: covariance (greta backend)
 #' @param model A `flexybayes` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return Fixed-effect covariance matrix.
 #' @exportS3Method marginaleffects::get_vcov
 get_vcov.flexybayes <- function(model, ...) .fb_get_vcov(model, ...)
@@ -110,7 +110,7 @@ get_vcov.flexybayes_inla <- function(model, ...) .fb_get_vcov(model, ...)
 #' and average predictions without an explicit `newdata`.
 #'
 #' @param x A `flexybayes` fit.
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return The model data frame.
 #' @exportS3Method insight::get_data
 get_data.flexybayes <- function(x, ...) .fb_get_data(x, ...)
@@ -124,7 +124,7 @@ get_data.flexybayes_inla <- function(x, ...) .fb_get_data(x, ...)
 #' @param model A `flexybayes` fit.
 #' @param newdata Data frame to predict on (default: fit data).
 #' @param type Prediction scale (identity link only).
-#' @param ... Ignored.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @return A data frame with `rowid` and `estimate`.
 #' @exportS3Method marginaleffects::get_predict
 get_predict.flexybayes <- function(

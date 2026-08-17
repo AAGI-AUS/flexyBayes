@@ -71,9 +71,10 @@ lgm_gate <- function(
   reason = NULL,
   preflight = NULL
 ) {
-  if (!is_fb_terms(fb)) {
-    stop("`fb` must be an fb_terms object (see fb_from_asreml).", call. = FALSE)
-  }
+  .check_fb_terms(
+    fb,
+    "`fb` must be an fb_terms object (see fb_from_asreml)."
+  )
 
   checks <- list(
     .lgm_check_family(fb), # check 1
@@ -180,9 +181,11 @@ is_lgm_refusal <- function(x) inherits(x, "lgm_refusal")
 #' structured refusal template: rule id + one-line gloss +
 #' diagnostic + re-route hint + override hint + docs pointer.
 #'
-#' @param x   an `lgm_refusal` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `lgm_refusal` object, as returned by the feasibility
+#'   gate when a model falls outside the latent Gaussian class.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the refusal template it
+#'   prints.
 #' @keywords internal
 #' @export
 print.lgm_refusal <- function(x, ...) {
@@ -208,10 +211,11 @@ print.lgm_refusal <- function(x, ...) {
     }
   }
   cat(
-    "Re-route: try backend = \"brms\" via fb_brms() for the Stan ",
-    "passthrough\n  (model must be in the brms corpus), or ",
-    "backend = \"greta\" for the broader\n  flexyBayes formula ",
-    "path. NIMBLE is planned future work, not yet implemented.\n",
+    "Re-route: brms is the other active engine -- pass backend = ",
+    "\"brms\"\n  (or call fb_brms()) when it can represent the model. ",
+    "Under the\n  default backend = \"auto\" that re-route is already ",
+    "attempted, and\n  auto refuses when brms cannot represent the model ",
+    "either. greta and\n  gretaR are quarantined and are never selected.\n",
     sep = ""
   )
   cat(
@@ -226,7 +230,7 @@ print.lgm_refusal <- function(x, ...) {
     "reason>\")\n",
     sep = ""
   )
-  cat("Docs: vignette(\"flexyBayes-11-lgm-feasibility\").\n")
+  cat("Docs: vignette(\"flexyBayes-11-dispatch-and-refusals\").\n")
   invisible(x)
 }
 
@@ -609,6 +613,15 @@ print.lgm_refusal <- function(x, ...) {
       } else {
         2L
       },
+      # The autoregressive latent fields carry more than one hyperparameter
+      # each, and the budget is what decides whether INLA's numerical
+      # integration is tractable, so an under-count here buys a fit that
+      # should have been refused. INLA's f(model = "ar1") has a marginal
+      # precision and a lag-1 correlation (2); the grouped form adds the
+      # group correlation (3). The observation-level nugget that completes
+      # the four-parameter separable model is the likelihood's own
+      # precision, already counted by .lgm_family_hypers().
+      "ar1" = 2L,
       "ar1_spatial" = 3L,
       "spline" = 1L,
       "polynomial" = 1L,
@@ -686,7 +699,35 @@ print.lgm_refusal <- function(x, ...) {
 # accepts. INLA folds residual variance into the likelihood and
 # does not represent structured-residual forms; those refit via greta.
 .inla_residual_term_type_allowlist <- function() {
+  # 0.9.0: the separable AR1 field moved to the random side. INLA emits it
+  # as a latent autoregressive field plus the observation-level Gaussian
+  # nugget -- four parameters against the three of ASReml's nugget-free
+  # residual -- so the residual spelling is refused by name at dispatch
+  # (.refuse_unrepresentable_structures(), R/dispatch.R) and only the
+  # homogeneous residual reaches the INLA emit.
   c("units")
+}
+
+# What the OTHER active engine does with this model, asked rather than
+# assumed.
+#
+# The gate's refusals used to close with "and no other active backend
+# represents it either", which was true when they were written and became
+# false the moment brms learned to emit a term. A gate refusal for us(f):g
+# or a nested random effect would then tell a user no engine could fit a
+# model that `backend = "auto"` fits on the next line. The predicate is the
+# authority on what brms represents, so the sentence asks it.
+.lgm_other_engine_note <- function(fb) {
+  if (isTRUE(.capability_brms(fb))) {
+    return(paste0(
+      "brms does represent this model -- pass backend = \"brms\", or ",
+      "leave backend = \"auto\", which routes there when INLA refuses."
+    ))
+  }
+  paste0(
+    "brms cannot represent it either, so no active backend can fit it ",
+    "faithfully (greta, which could, has been withdrawn -- see NEWS.md)."
+  )
 }
 
 # Human-readable label for a structured-covariance random-term
@@ -706,6 +747,9 @@ print.lgm_refusal <- function(x, ...) {
     "us_gxe" = "unstructured G\u00d7E",
     "ar1" = "autoregressive lag-1",
     "ar1_spatial" = "AR1 spatial",
+    "corh_gxe" = "equicorrelated G\u00d7E",
+    "nested" = "nested / interaction random effect",
+    "combo" = "multi-way interaction random effect",
     "polynomial" = "polynomial random effect",
     paste0("random term type \"", term_type, "\"")
   )
@@ -745,8 +789,7 @@ print.lgm_refusal <- function(x, ...) {
         "fixed term type \"",
         bad[[1L]],
         "\" is outside the INLA emit allowlist. ",
-        "Re-route via backend = \"greta\" (broader formula path) ",
-        "or backend = \"brms\" (Stan passthrough)."
+        "Re-route via backend = \"brms\" (Stan passthrough)."
       ),
       diagnostic = paste0(
         "fb$fixed_terms type(s): ",
@@ -802,14 +845,15 @@ print.lgm_refusal <- function(x, ...) {
         "\". Re-express as vm(",
         first$var,
         ", precision = solve(V)) to use INLA's generic0 ",
-        "sparse-precision path, or route via backend = \"greta\"."
+        "sparse-precision path, or route via backend = \"brms\", ",
+        "which accepts the dense / chol format directly."
       )
     } else {
       paste0(
-        "INLA's f() machinery does not currently represent ",
-        "this structured-covariance class without an SPDE / ",
-        "kronecker expansion that the current INLA emit does not ",
-        "produce. Re-route via backend = \"greta\"."
+        "INLA's f() machinery does not currently represent this term ",
+        "class without an SPDE / kronecker expansion that the current ",
+        "INLA emit does not produce. ",
+        .lgm_other_engine_note(fb)
       )
     }
     return(.lgm_fail(
@@ -855,6 +899,13 @@ print.lgm_refusal <- function(x, ...) {
   if (term$type %in% c("simple", "ide", "id", "spline", "simple_slope_uncor")) {
     return(TRUE)
   }
+  # WP16: AR1 (1D) and separable AR1xAR1 spatial latent fields on INLA.
+  # emit_inla() validates the one-observation-per-node grid condition and
+  # refuses an incomplete / replicated grid there (gate accepts the class;
+  # emit validates the instance -- the simple_slope_uncor pattern).
+  if (term$type %in% c("ar1", "ar1_spatial")) {
+    return(TRUE)
+  }
   if (term$type %in% c("vm", "ped")) {
     cov <- term$cov_representation
     if (is.null(cov)) {
@@ -869,12 +920,12 @@ print.lgm_refusal <- function(x, ...) {
 
 # Check 9 -- Residual-term type allowlist for the INLA emit path.
 #
-# INLA folds residual variance into the likelihood and does not
-# expose a separate residual-structure surface. Only `units`
-# (homogeneous residual) passes; everything else (at_units / dsum
-# / ar1_units) refits via greta where the residual structure can
-# be represented explicitly. Refusal names the structured-residual
-# case.
+# INLA folds residual variance into the likelihood and does not expose a
+# separate residual-structure surface. Only `units` (the homogeneous
+# residual) passes. A heterogeneous residual -- dsum(~ units | f), at(f):units
+# -- is emitted by brms as distributional regression on sigma; a separable
+# autoregressive residual is refused by name before the gate sees it, since
+# the field that would fit it belongs on the random side.
 .lgm_check_residual_term_inla_support <- function(fb) {
   allowed <- .inla_residual_term_type_allowlist()
   bad <- character(0)
@@ -896,9 +947,9 @@ print.lgm_refusal <- function(x, ...) {
         "\" (",
         first_label,
         ") is outside the INLA emit ",
-        "allowlist. INLA folds residual variance into the ",
-        "likelihood; structured-residual forms refit via ",
-        "backend = \"greta\"."
+        "allowlist. INLA folds residual variance into the likelihood and ",
+        "has no separate residual-structure surface. ",
+        .lgm_other_engine_note(fb)
       ),
       diagnostic = paste0(
         "fb$residual_terms type(s): ",
@@ -915,13 +966,22 @@ print.lgm_refusal <- function(x, ...) {
 # for the `factor_numeric_interaction` term class.
 #
 # The fixed-term allowlist (check 7) accepts the new term class
-# structurally, but the INLA mapper for this class only ships if the
-# three-arbitrator verification test (INLA vs greta vs lme4 on a
-# gaussian-identity fixture) has passed on this host. The
-# verification artefact lives at
+# structurally, but the INLA mapper for this class is not admitted on
+# the shipped surface: the three-arbitrator verification (INLA vs greta
+# vs lme4 on a gaussian-identity fixture) named greta as one of its
+# arbitrators, and greta has since been withdrawn as a fitting engine,
+# so the criterion cannot be re-run as designed. The check therefore
+# refuses on every host, and `auto` routes the term class to brms.
+#
+# The artefact at
 # `inst/extdata/inla-verification/factor_numeric_interaction.rds`
-# and carries `pass = TRUE` only after the verification test in
-# `tests/testthat/test-factor-continuous-inla-verification.R` runs.
+# survives as a developer verification hook and nothing more. It is
+# excluded from the build (`.Rbuildignore`), it is untracked, and it is
+# read only when the developer option below is switched on by hand --
+# so a host that happens to carry one gets exactly the behaviour a host
+# without one gets. Until 0.9.0 the artefact's presence flipped the gate
+# from refuse to accept, which meant a locally built tarball and a clean
+# clone of the same commit did not fit the same models.
 #
 # If the IR contains no `factor_numeric_interaction` term, this
 # check is a trivial pass -- the gate is term-class-specific.
@@ -938,12 +998,10 @@ print.lgm_refusal <- function(x, ...) {
     return(.lgm_pass(rule_id))
   }
 
-  # Probe the on-disk verification artefact. The artefact is written
-  # by tests/testthat/test-factor-continuous-inla-verification.R after
-  # a successful three-arbitrator run. Absence is treated identically
-  # to a recorded failure -- the policy forbids silent translation
-  # of an unverified mapping.
-  verified <- .factor_numeric_interaction_inla_verified()
+  # Shipped behaviour never reads the artefact; only a developer who has
+  # set the option by hand does, and then only to rehearse the mapping.
+  verified <- .fb_dev_verification_artefacts_enabled() &&
+    .factor_numeric_interaction_inla_verified()
   if (isTRUE(verified)) {
     return(.lgm_pass(rule_id))
   }
@@ -951,27 +1009,45 @@ print.lgm_refusal <- function(x, ...) {
   .lgm_fail(
     rule_id,
     paste0(
-      "factor:continuous indexed interaction INLA mapping ",
-      "deferred (no successful three-arbitrator ",
-      "verification artefact on this host). Re-route via ",
-      "backend = \"greta\" (which provides the treatment-coded ",
-      "indexed-slope emit) or backend = \"brms\" (Stan ",
-      "passthrough)."
+      "factor:continuous indexed interaction INLA mapping is not ",
+      "admitted: its three-arbitrator verification named greta as one ",
+      "arbitrator, and greta is quarantined (see NEWS.md), so the ",
+      "criterion cannot be re-run as designed. Pass ",
+      "backend = \"brms\", or leave backend = \"auto\", which routes ",
+      "there when INLA refuses."
     ),
     diagnostic = paste0(
-      "verification artefact path: ",
+      "the refusal is host-independent: the developer verification ",
+      "artefact at ",
       .factor_numeric_interaction_verification_path(),
-      "; expected `pass = TRUE` on a stored ",
-      "<flexybayes_inla_verification> record."
+      " is excluded from the build and is read only when ",
+      "options(flexyBayes.dev_inla_verification_artefacts = TRUE) is ",
+      "set by hand."
     )
   )
+}
+
+# Developer switch for the host-local INLA verification artefacts.
+#
+# FALSE (the default, and the only value any shipped surface sees) means
+# the artefacts under inst/extdata/inla-verification/ are inert: the
+# gate and the emit refuse the two deferred term classes regardless of
+# what is on disk. A developer rehearsing a mapping sets the option to
+# TRUE for the duration of the rehearsal.
+#
+# The option exists so the verification machinery stays runnable without
+# letting an untracked, unshipped file decide what the package fits.
+.fb_dev_verification_artefacts_enabled <- function() {
+  isTRUE(getOption("flexyBayes.dev_inla_verification_artefacts", FALSE))
 }
 
 # Look up the on-disk INLA-verification artefact for the
 # factor_numeric_interaction term class. Returns TRUE iff the
 # artefact exists, is readable, and reports a passing verification
 # run; FALSE in every other case (missing, unreadable, malformed,
-# pass = FALSE).
+# pass = FALSE). Callers gate this on
+# .fb_dev_verification_artefacts_enabled() -- it is not consulted on the
+# shipped path.
 .factor_numeric_interaction_inla_verified <- function() {
   path <- .factor_numeric_interaction_verification_path()
   if (!file.exists(path)) {
@@ -984,12 +1060,10 @@ print.lgm_refusal <- function(x, ...) {
   isTRUE(rec$pass)
 }
 
-# Absolute path to the verification artefact. Lives in inst/extdata
-# so it ships with the installed package (and is reachable via
-# system.file() from the test harness). The directory is created on
-# demand by the verification test; the directory may not exist on a
-# fresh checkout, in which case .factor_numeric_interaction_inla_verified()
-# returns FALSE as expected.
+# Path to the developer verification artefact. The directory is excluded
+# from the build, so `system.file()` resolves it only in a source tree
+# under `pkgload::load_all()`; from an installed package the path falls
+# back to a session-temporary location that no shipped code writes.
 .factor_numeric_interaction_verification_path <- function() {
   base <- system.file(
     "extdata",
@@ -1106,8 +1180,9 @@ print.lgm_refusal <- function(x, ...) {
         paste0(
           "INLA path's per-term memory estimate (%.2f GB) ",
           "exceeds the active ceiling (%.2f GB). Re-route via ",
-          "backend = \"greta\" for the indexed representation, ",
-          "or reduce structured-cov cardinality."
+          "backend = \"brms\", or leave backend = \"auto\", which ",
+          "routes there when INLA refuses; or reduce structured-cov ",
+          "cardinality."
         ),
         inla_gb,
         ceiling_gb
@@ -1142,8 +1217,11 @@ print.lgm_refusal <- function(x, ...) {
       paste0(
         "INLA path's projected design memory (%.2f GB; ",
         "~%.0fx the indexed estimate) exceeds the active ",
-        "ceiling (%.2f GB). Re-route via backend = \"greta\" ",
-        "for the indexed representation."
+        "ceiling (%.2f GB). The indexed representation that would ",
+        "avoid this ceiling was greta-only; greta has been withdrawn ",
+        "as a fitting engine (see NEWS.md). Reduce the model or data ",
+        "scale, or raise the memory ceiling if the projection is ",
+        "conservative for your hardware."
       ),
       inla_gb,
       multiplier,

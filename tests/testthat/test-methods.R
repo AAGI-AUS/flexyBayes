@@ -129,6 +129,24 @@ test_that("print.flexybayes produces output", {
   expect_output(print(fit), "MCMC")
 })
 
+test_that("print.flexybayes lists only the slots the fit carries", {
+  # The component footer used to name `$greta` unconditionally, so a fit
+  # from an engine that never builds a greta model still advertised one.
+  fit <- make_mock_flexybayes()
+  greta_lines <- utils::capture.output(print(fit))
+  expect_true(any(grepl("$greta", greta_lines, fixed = TRUE)))
+
+  # Same object with the greta slot replaced by a brms slot: the footer
+  # follows the object, not the historical default.
+  brms_shaped <- fit
+  brms_shaped$greta <- NULL
+  brms_shaped$brms <- list()
+  brms_lines <- utils::capture.output(print(brms_shaped))
+  expect_false(any(grepl("$greta", brms_lines, fixed = TRUE)))
+  expect_true(any(grepl("$brms", brms_lines, fixed = TRUE)))
+  expect_true(any(grepl("$extras", brms_lines, fixed = TRUE)))
+})
+
 test_that("summary.flexybayes produces output", {
   fit <- make_mock_flexybayes()
   expect_output(summary(fit), "Fixed effects")
@@ -253,26 +271,39 @@ test_that("augment.flexybayes returns data with .fitted and .resid", {
 
 test_that("plot.flexybayes runs without error for residuals", {
   fit <- make_mock_flexybayes()
+  # Draw to a null device: without one the plot lands in an
+  # Rplots.pdf in tests/testthat/, which every suite run then
+  # recreates in the working tree.
+  grDevices::pdf(file = NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(plot(fit, type = "residuals"))
 })
 
 test_that("plot.flexybayes runs without error for effects", {
   fit <- make_mock_flexybayes()
+  grDevices::pdf(file = NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(plot(fit, type = "effects"))
 })
 
 test_that("plot.flexybayes runs without error for variance", {
   fit <- make_mock_flexybayes()
+  grDevices::pdf(file = NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(plot(fit, type = "variance"))
 })
 
 test_that("plot.flexybayes runs without error for blups", {
   fit <- make_mock_flexybayes()
+  grDevices::pdf(file = NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(plot(fit, type = "blups"))
 })
 
 test_that("plot.flexybayes runs without error for pp_check", {
   fit <- make_mock_flexybayes()
+  grDevices::pdf(file = NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(plot(fit, type = "pp_check"))
 })
 

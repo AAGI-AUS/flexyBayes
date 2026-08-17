@@ -20,39 +20,46 @@ fb_plan(
 )
 }
 \arguments{
-\item{formula}{a brms-style two-sided formula
-(\code{y ~ x + s(z) + (1 | g)}).}
+\item{formula}{A brms-style two-sided formula such as
+\code{y ~ x + s(z) + (1 | g)}. The same formula the fit would receive.}
 
-\item{data}{a data.frame.}
+\item{data}{A data.frame holding every variable the formula
+names. Planning reads its dimensions and column types, never its
+values.}
 
-\item{backend}{one of \code{"greta"}, \code{"inla"}, \code{"brms"}, \code{"auto"}
-(default \code{"auto"}).}
+\item{backend}{A single string, one of \code{"auto"} (the default),
+\code{"inla"}, \code{"brms"}, or \code{"greta"}. Chooses the engine the plan
+reports on, with \code{"auto"} planning the route dispatch would take.}
 
-\item{priors}{optional \code{fb_prior()} list; defaults to the v0.2
-uniform-on-SD default.}
+\item{priors}{An optional \code{fb_prior()} list. Defaults to the
+uniform-on-SD default the fit would inject.}
 
-\item{known_matrices}{named list of structured-covariance matrices
-referenced by \code{vm()} or \code{ped()} terms.}
+\item{known_matrices}{A named list of structured-covariance matrices
+referenced by \code{vm()} or \code{ped()} terms. Empty when the model names
+none.}
 
-\item{family, link}{standard family/link arguments.}
+\item{family, link}{Standard family and link arguments, given as
+single strings.}
 
-\item{weights}{optional observation weights.}
+\item{weights}{An optional numeric vector of observation weights,
+one per row of \code{data}.}
 
-\item{aggregate}{\code{"auto"} / \code{TRUE} / \code{FALSE} --- as on \code{flexybayes()}.}
+\item{aggregate}{\code{"auto"}, \code{TRUE}, or \code{FALSE}, read exactly as on
+\code{flexybayes()}.}
 
-\item{memory_ceiling_gb}{optional override for the preflight memory
-ceiling (defaults to \code{flexyBayes.preflight_ceiling_gb} option, or
-\code{flexyBayes.preflight_ram_fraction} x available RAM).}
+\item{memory_ceiling_gb}{An optional numeric override for the
+preflight memory ceiling. Defaults to the
+\code{flexyBayes.preflight_ceiling_gb} option, or to
+\code{flexyBayes.preflight_ram_fraction} of available RAM.}
 
-\item{predict_plan}{optional \code{list(newdata = ..., chunk_size = ...)}
-to compute a prediction-shape plan. Plan-only;
-does not fire \code{predict()}.}
+\item{predict_plan}{An optional \code{list(newdata = ..., chunk_size = ...)} requesting a prediction-shape plan. Plan-only, so it never
+fires \code{predict()}.}
 
-\item{...}{currently unused; reserved for future plan inputs.}
+\item{...}{Currently unused, reserved for future plan inputs.}
 }
 \value{
-an \verb{<fb_plan>} classed list. See \code{print.fb_plan()} for the
-surface; \code{summary.fb_plan()} for the verbose dump;
+An \verb{<fb_plan>} classed list. See \code{print.fb_plan()} for the
+one-screen surface, \code{summary.fb_plan()} for the verbose dump, and
 \code{as.data.frame.fb_plan()} for the programmatic-consumer shape.
 }
 \description{

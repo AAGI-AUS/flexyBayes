@@ -11,6 +11,14 @@
 #     fb_prior + auto-default origin metadata.
 #   - The print method labels auto-default vs user-supplied priors
 #     and flags fb_greta() fits as declaration-only.
+#
+# The skip_if_no_greta() gates below are retained deliberately. Each of
+# those four cases is about a greta-specific route -- the legacy scalar
+# bridge that only reaches greta and brms, and the fb_greta()
+# declaration-only flag -- and greta is quarantined as a fitting engine,
+# so they skip. The active-engine behaviour of prior_summary() is covered
+# without a skip in test-orphaned-exports-live.R, on live INLA and brms
+# fits, which is where the function's live contract now lives.
 
 
 

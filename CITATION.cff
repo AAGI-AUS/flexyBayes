@@ -3,11 +3,17 @@ message: "If you use flexyBayes in your research, please cite it as below."
 title: "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax"
 abstract: >-
   Specify mixed models using familiar ASReml or brms-style formula syntax
-  and estimate them via Bayesian Markov chain Monte Carlo (greta),
-  integrated nested Laplace approximation (INLA), or a Stan passthrough
-  (brms), with cross-engine posterior triangulation as the signature
-  output. Returns results in formats compatible with the standard R
-  modelling ecosystem.
+  and estimate them via INLA or brms (Stan). Returns results in formats
+  compatible with the standard R modelling ecosystem, and compares the
+  same model across engines with triangulate(), a diagnostic on a gated
+  overlap rather than a validation contract. Supports a selected set of
+  structured covariance models -- diagonal and unstructured
+  genotype-by-environment variances, per-level residual variances,
+  known-covariance genomic and pedigree models, separable AR1 spatial
+  fields on INLA, and univariate P-splines. Structures outside this set,
+  including factor-analytic terms and the ASReml residual autoregressive
+  formulation, raise typed refusals naming the nearest implemented
+  alternative.
 type: software
 authors:
   - given-names: "Max"
@@ -17,15 +23,15 @@ authors:
   - given-names: "Emi"
     family-names: "Tanaka"
     orcid: "https://orcid.org/0000-0002-1455-259X"
-  - given-names: "Francis K. C."
+  - given-names: "Francis K.C."
     family-names: "Hui"
     orcid: "https://orcid.org/0000-0003-0765-3533"
   - given-names: "Anabel"
     family-names: "Forte Deltell"
     orcid: "https://orcid.org/0000-0001-9534-1817"
-version: 0.8.3
-date-released: "2026-06-17"
-license: GPL-3.0-or-later
+version: 0.9.0
+date-released: "2026-08-15"
+license: MIT
 repository-code: "https://github.com/AAGI-AUS/flexyBayes"
 url: "https://github.com/AAGI-AUS/flexyBayes"
 keywords:

@@ -66,7 +66,8 @@
 #'   `FALSE`, un-mapped names appear in the returned `$unmapped`
 #'   element.
 #' @param ... Additional arguments (ignored by current methods).
-#' @return A list with components:
+#' @returns A list holding the canonical-name map and its provenance.
+#'
 #'   \describe{
 #'     \item{`map`}{Named character vector keyed by backend-native
 #'       parameter name with canonical name as the value.}
@@ -533,8 +534,49 @@ register_canonical_mapper <- function(backend, mapper) {
   # comparison pit precision against standard deviation.
   # Hyperpar names do not carry the ":1" suffix.
   prec_to_sd <- function(prec) sqrt(1 / prec)
+  # WP16: AR1 / separable AR1xAR1 spatial latent-field hyperparameters. INLA
+  # names them "Rho for <idx>", "GroupRho for <idx>", "Precision for <idx>"
+  # where <idx> is the f() index column (<row_var>_id). Map to canonical
+  # rho_row / rho_col / sd_spatial; the two Rho values are correlations
+  # (identity, no transform), the Precision is the field precision -> SD.
+  # Matched BEFORE the generic "Precision for <group>" rule so the field
+  # precision resolves to sd_spatial, not sd_<idx>.
+  spatial_idx <- character(0)
+  for (t in c(
+    fb_terms$random_terms %||% list(),
+    fb_terms$residual_terms %||% list()
+  )) {
+    tt <- t$type %||% ""
+    if (identical(tt, "ar1_spatial")) {
+      spatial_idx <- c(spatial_idx, paste0(t$row_var, "_id"))
+    } else if (identical(tt, "ar1")) {
+      spatial_idx <- c(spatial_idx, paste0(t$var, "_id"))
+    }
+  }
   hyper_names <- rownames(fit$inla$summary.hyperpar) %||% character(0)
   for (nm in hyper_names) {
+    sp_hit <- FALSE
+    for (idx in spatial_idx) {
+      if (identical(nm, paste0("Rho for ", idx))) {
+        map[nm] <- "rho_row"
+        sp_hit <- TRUE
+        break
+      }
+      if (identical(nm, paste0("GroupRho for ", idx))) {
+        map[nm] <- "rho_col"
+        sp_hit <- TRUE
+        break
+      }
+      if (identical(nm, paste0("Precision for ", idx))) {
+        map[nm] <- "sd_spatial"
+        transform[[nm]] <- prec_to_sd
+        sp_hit <- TRUE
+        break
+      }
+    }
+    if (sp_hit) {
+      next
+    }
     if (identical(nm, "Precision for the Gaussian observations")) {
       map[nm] <- "sigma"
       transform[[nm]] <- prec_to_sd

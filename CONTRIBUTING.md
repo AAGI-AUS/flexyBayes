@@ -142,11 +142,12 @@ R CMD INSTALL flexyBayes_<version>.tar.gz
 cd flexyBayes && Rscript vignettes/_precompile.R
 ```
 
-Pre-requisites: greta + TF warm, INLA installed, brms installed.
-The driver knits each `.Rmd.orig` into its sibling `.Rmd`; failures
-are reported per-vignette and the script exits non-zero on any.
+Pre-requisites: INLA installed, brms installed with a warm Stan
+toolchain. The driver knits each `.Rmd.orig` into its sibling `.Rmd`;
+failures are reported per-vignette and the script exits non-zero on
+any. Selective refresh is `Rscript vignettes/_precompile.R --only 01`.
 Expected wall-time on a warm M1 / M2 Mac: 10-15 minutes for the
-full 16-vignette deck.
+full eleven-vignette deck.
 
 ### Documentation
 

@@ -1,0 +1,246 @@
+ASReml spatial top-up: 34 of 34 spatial cells superseded (850 short rows replaced).
+Read 170 banked cells (66388 rows).
+
+========================================================================
+Run coverage -- which cells are banked, and what refused
+========================================================================
+     design  slice cells seeds
+     <char> <char> <int> <int>
+ 1:     ibd      A    19    25
+ 2:     met      A    19    25
+ 3:    rcbd      A    19    25
+ 4:  rowcol      A    19    25
+ 5: spatial      A    19    25
+ 6:     ibd      B    12    25
+ 7:     met      B    12    25
+ 8:    rcbd      B    12    25
+ 9:  rowcol      B    12    25
+10: spatial      B    12    25
+11:     ibd      C     6    25
+12:     met      C     6    25
+13:    rcbd      C     6    25
+14:  rowcol      C     6    25
+15: spatial      C     6    25
+
+Refusals and unavailable fits, by method:
+    design          method
+    <char>          <char>
+1:     ibd   asreml_device
+2:     ibd       lme4_drop
+3:    rcbd   asreml_device
+4: spatial flexybayes_omit
+                                                 refusal     n
+                                                  <char> <int>
+1:                                                  <NA>     4
+2:                                                  <NA>     1
+3:                                                  <NA>     1
+4: flexybayes_refusal_ar1_spatial_requires_complete_grid   825
+
+========================================================================
+The device identity, against an independently written REML
+  ASReml's -F phi device vs a direct observed-data REML that shares no
+  code with it. Absolute difference on the variance components.
+========================================================================
+       p comparisons median_abs max_abs frac_over_1e2
+   <num>       <int>      <num>   <num>         <num>
+1:  0.00         400   5.78e-05 0.00644        0.0000
+2:  0.05        1200   6.65e-05 0.00754        0.0000
+3:  0.10        1200   7.62e-05 0.00799        0.0000
+4:  0.20        1200   9.71e-05 0.00970        0.0000
+5:  0.30        7125   1.35e-04 2.75000        0.0060
+6:  0.50        1200   2.62e-04 0.93600        0.0175
+7:  0.70        1185   7.49e-04 7.69000        0.1435
+
+Up to 20% missing: 4000 comparisons, 0 exceed 1e-2, largest 0.0097.
+The device and the independent likelihood are the same analysis there.
+
+Beyond that the agreement degrades, and the reason is not the device.
+At severe missingness the restricted likelihood flattens: components
+collapse to the boundary and two correct optimisers stop on different
+points of a ridge. Estimates at p = 0.70 should be read as unreliable
+in both implementations, not as one disagreeing with the other.
+
+========================================================================
+Slice A  the proportion sweep
+  Does augmentation still reproduce the device as more goes missing,
+  and where does complete-case deletion depart from it?
+========================================================================
+
+flexybayes_augment vs asreml_device -- agreement rate by proportion
+Key: <design>
+    design     0  0.05   0.1   0.2   0.3   0.5   0.7
+    <char> <num> <num> <num> <num> <num> <num> <num>
+1:     ibd  0.67  0.64  0.62  0.56  0.58  0.55  0.28
+2:     met  0.67  0.67  0.68  0.69  0.72  0.75  0.80
+3:    rcbd  0.69  0.70  0.71  0.73  0.76  0.69  0.49
+4:  rowcol  1.00  1.00  1.00  0.98  0.96  0.91  0.57
+5: spatial  0.63  0.60  0.60  0.51  0.42  0.35  0.30
+
+lme4_drop vs asreml_device -- agreement rate by proportion
+Key: <design>
+    design     0  0.05   0.1   0.2   0.3   0.5   0.7
+    <char> <num> <num> <num> <num> <num> <num> <num>
+1:     ibd     1  1.00  1.00  1.00  1.00  1.00  0.82
+2:     met     1  1.00  1.00  1.00  1.00  1.00  1.00
+3:    rcbd     1  1.00  1.00  1.00  1.00  0.97  0.96
+4:  rowcol     1  1.00  1.00  1.00  1.00  1.00  0.96
+5: spatial     1  0.95  0.91  0.92  0.89  0.85  0.69
+
+Refusal rate for na_action = 'omit', by design and proportion:
+Key: <design>
+    design     0  0.05   0.1   0.2   0.3   0.5   0.7
+    <char> <num> <num> <num> <num> <num> <num> <num>
+1:     ibd     0     0     0     0     0     0     0
+2:     met     0     0     0     0     0     0     0
+3:    rcbd     0     0     0     0     0     0     0
+4:  rowcol     0     0     0     0     0     0     0
+5: spatial     0     1     1     1     1     1     1
+
+Within-estimator effect of deleting rather than keeping.
+REML: device vs complete-case. Bayes: augment vs omit.
+If the device preserves what deletion loses, these track each other.
+Key: <design>
+    design  reml_0 reml_0.05 reml_0.1 reml_0.2 reml_0.3 reml_0.5 reml_0.7
+    <char>   <num>     <num>    <num>    <num>    <num>    <num>    <num>
+1:     ibd -0.0002    -2e-04   -2e-04   -4e-04   -3e-04   -4e-04   -1e-03
+2:     met  0.0000     0e+00    0e+00    0e+00    0e+00   -1e-04   -2e-04
+3:    rcbd  0.0000    -1e-04   -1e-04   -2e-04   -2e-04   -2e-04   -5e-04
+4:  rowcol -0.0001    -1e-04   -1e-04    0e+00   -1e-04   -2e-04   -1e-03
+5: spatial -0.0356        NA       NA       NA       NA       NA       NA
+   bayes_0 bayes_0.05 bayes_0.1 bayes_0.2 bayes_0.3 bayes_0.5 bayes_0.7
+     <num>      <num>     <num>     <num>     <num>     <num>     <num>
+1:   1e-04     -1e-04    -1e-04     0e+00         0     0e+00    -1e-04
+2:   1e-04      0e+00     0e+00    -1e-04         0     0e+00     1e-04
+3:   0e+00      1e-04     0e+00     1e-04         0    -1e-04     1e-04
+4:   0e+00      0e+00     0e+00     0e+00         0     0e+00     1e-04
+5:   1e-04         NA        NA        NA        NA        NA        NA
+
+  Note: spatial REML column reads -0.0356 with NOTHING missing. That is lme4
+  fitting an iid residual where ASReml fits AR1xAR1 -- a model mismatch,
+  not a cost of deletion. Only the Bayes column is a like-for-like
+  comparison on that design.
+
+========================================================================
+Slice B  the mechanism axis, measured against TRUTH
+  Under a non-ignorable mechanism augmentation and deletion are both
+  biased, so agreement between them says nothing. What the document
+  claims is that the bias is a property of the MECHANISM, not of the
+  choice between the two.
+========================================================================
+Left out of every relative-bias table, because the true value is too
+near zero for a relative measure to carry meaning:
+  spatial:nugget (truth 0.02)
+
+Key: <design, mechanism, strength>
+     design   mechanism strength flexybayes_augment lme4_drop
+     <char>      <char>   <char>              <num>     <num>
+ 1:     ibd mnar_bottom moderate             -0.212    -0.221
+ 2:     ibd mnar_bottom   strong             -0.381    -0.330
+ 3:     ibd mnar_bottom     weak             -0.168    -0.177
+ 4:     ibd mnar_design moderate             -0.196    -0.192
+ 5:     ibd mnar_design   strong             -0.229    -0.226
+ 6:     ibd mnar_design     weak             -0.151    -0.143
+ 7:     ibd mnar_latent moderate             -0.125    -0.123
+ 8:     ibd mnar_latent   strong             -0.176    -0.158
+ 9:     ibd mnar_latent     weak             -0.079    -0.128
+10:     ibd    mnar_top moderate             -0.256    -0.264
+11:     ibd    mnar_top   strong             -0.364    -0.355
+12:     ibd    mnar_top     weak             -0.077    -0.088
+13:     met mnar_bottom moderate             -0.164    -0.197
+14:     met mnar_bottom   strong             -0.314    -0.327
+15:     met mnar_bottom     weak             -0.079    -0.092
+16:     met mnar_design moderate             -0.155    -0.199
+17:     met mnar_design   strong             -0.259    -0.301
+18:     met mnar_design     weak             -0.046    -0.060
+19:     met mnar_latent moderate             -0.123    -0.124
+20:     met mnar_latent   strong             -0.229    -0.254
+21:     met mnar_latent     weak             -0.013    -0.055
+22:     met    mnar_top moderate             -0.176    -0.201
+23:     met    mnar_top   strong             -0.345    -0.359
+24:     met    mnar_top     weak             -0.048    -0.072
+25:    rcbd mnar_bottom moderate             -0.236    -0.250
+26:    rcbd mnar_bottom   strong             -0.354    -0.384
+27:    rcbd mnar_bottom     weak             -0.088    -0.109
+28:    rcbd mnar_design moderate             -0.155    -0.180
+29:    rcbd mnar_design   strong             -0.260    -0.292
+30:    rcbd mnar_design     weak             -0.115    -0.112
+31:    rcbd mnar_latent moderate             -0.095    -0.106
+32:    rcbd mnar_latent   strong             -0.142    -0.167
+33:    rcbd mnar_latent     weak             -0.064    -0.083
+34:    rcbd    mnar_top moderate             -0.199    -0.204
+35:    rcbd    mnar_top   strong             -0.277    -0.302
+36:    rcbd    mnar_top     weak             -0.060    -0.087
+37:  rowcol mnar_bottom moderate             -0.234    -0.257
+38:  rowcol mnar_bottom   strong             -0.359    -0.361
+39:  rowcol mnar_bottom     weak             -0.108    -0.136
+40:  rowcol mnar_design moderate             -0.174    -0.189
+41:  rowcol mnar_design   strong             -0.285    -0.284
+42:  rowcol mnar_design     weak             -0.104    -0.114
+43:  rowcol mnar_latent moderate             -0.162    -0.168
+44:  rowcol mnar_latent   strong             -0.164    -0.174
+45:  rowcol mnar_latent     weak             -0.096    -0.102
+46:  rowcol    mnar_top moderate             -0.206    -0.211
+47:  rowcol    mnar_top   strong             -0.372    -0.379
+48:  rowcol    mnar_top     weak             -0.128    -0.136
+49: spatial mnar_bottom moderate             -0.222    -0.238
+50: spatial mnar_bottom   strong             -0.403    -0.430
+51: spatial mnar_bottom     weak             -0.044    -0.121
+52: spatial mnar_design moderate             -0.146    -0.177
+53: spatial mnar_design   strong             -0.186    -0.265
+54: spatial mnar_design     weak             -0.081    -0.131
+55: spatial mnar_latent moderate             -0.153    -0.323
+56: spatial mnar_latent   strong             -0.364    -0.433
+57: spatial mnar_latent     weak             -0.079    -0.133
+58: spatial    mnar_top moderate             -0.164    -0.349
+59: spatial    mnar_top   strong             -0.390    -0.433
+60: spatial    mnar_top     weak             -0.075    -0.130
+     design   mechanism strength flexybayes_augment lme4_drop
+     <char>      <char>   <char>              <num>     <num>
+
+For contrast, the same quantity under the IGNORABLE mechanisms:
+Key: <design, mechanism>
+     design mechanism flexybayes_augment lme4_drop
+     <char>    <char>              <num>     <num>
+ 1:     ibd       mar             -0.158    -0.121
+ 2:     ibd      mcar             -0.102    -0.088
+ 3:     met       mar             -0.007    -0.032
+ 4:     met      mcar              0.015     0.005
+ 5:    rcbd       mar             -0.053    -0.070
+ 6:    rcbd      mcar             -0.059    -0.070
+ 7:  rowcol       mar             -0.143    -0.151
+ 8:  rowcol      mcar             -0.094    -0.096
+ 9: spatial       mar             -0.018    -0.075
+10: spatial      mcar             -0.065    -0.104
+
+BASELINE -- the same quantity with NOTHING missing (p = 0).
+Read the two tables above against this row, not against zero:
+Key: <design>
+    design flexybayes_augment lme4_drop
+    <char>              <num>     <num>
+1:     ibd             -0.071    -0.055
+2:     met             -0.005    -0.025
+3:    rcbd             -0.077    -0.110
+4:  rowcol             -0.062    -0.068
+5: spatial              0.005    -0.060
+
+========================================================================
+Slice C  the size axis
+  Whether the cost of deletion shrinks as the trial grows, which is
+  the practitioner's question: does this matter on a real trial or
+  only on a small one?
+========================================================================
+Key: <design, mechanism>
+     design   mechanism  large medium  small
+     <char>      <char>  <num>  <num>  <num>
+ 1:     ibd        mcar 0.0001 0.0006 0.0021
+ 2:     ibd mnar_bottom 0.0001 0.0005 0.0016
+ 3:     met        mcar 0.0000 0.0000 0.0003
+ 4:     met mnar_bottom 0.0000 0.0001 0.0004
+ 5:    rcbd        mcar 0.0000 0.0004 0.0009
+ 6:    rcbd mnar_bottom 0.0001 0.0002 0.0013
+ 7:  rowcol        mcar 0.0000 0.0001 0.0007
+ 8:  rowcol mnar_bottom 0.0001 0.0002 0.0012
+ 9: spatial        mcar 0.0287 0.0403 0.0556
+10: spatial mnar_bottom 0.0344 0.0464 0.0609
+
+Written: results/sweep_summary.rds

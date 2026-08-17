@@ -37,13 +37,11 @@
   mcmc_verbose = TRUE,
   the_call = NULL
 ) {
-  if (!requireNamespace("greta", quietly = TRUE)) {
-    stop(
-      "Package 'greta' is required to fit a native greta model. ",
-      "Install with:\n  install.packages('greta')",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "greta",
+    "Package 'greta' is required to fit a native greta model. ",
+    "Install with:\n  install.packages('greta')"
+  )
 
   model <- fb$greta_meta$model
   if (is.null(model) || !inherits(model, "greta_model")) {
@@ -311,10 +309,11 @@ fb_greta <- function(...) {
 #' the greta-direct path).
 #'
 #' @param fit A `flexybayes` object.
-#' @return A list with the following components. The first four
-#'   are present on every fit; the four routing-trace
-#'   fields are present on v0.3.6+ fits and NULL
-#'   on earlier fits for backward compatibility.
+#' @returns A list holding the recorded dispatch trace. The first four
+#'   components are present on every fit. The four routing-trace fields
+#'   are present on fits from v0.3.6 onwards and `NULL` on earlier ones,
+#'   for backward compatibility.
+#'
 #'   \describe{
 #'     \item{`backend`}{Character; one of `"greta"`, `"inla"`,
 #'       `"brms"`, `"gretaR"`.}

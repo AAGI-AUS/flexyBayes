@@ -4,7 +4,7 @@
 # backends name them differently and the breeding values must be matched
 # by genotype. These verbs harmonise via the same engine-agnostic
 # extraction genomic_summary() uses, so a GBLUP fit on greta, INLA, or
-# brms triangulates against another -- and, crucially, against an external
+# brms triangulates against another -- and against an external
 # field-standard *lens* (a REML answer from sommer, a GWAS hit list from
 # GEMMA / rrBLUP) supplied as a plain list. flexyBayes core stays lean: it
 # never depends on the field tools; the companion (flexyBayesOrchestra)

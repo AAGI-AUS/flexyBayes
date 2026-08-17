@@ -23,6 +23,10 @@
   # One-time note when the auto path's INLA fit
   # fails numerically and falls back to greta.
   .flexybayes_emit_state$auto_inla_numerical_fallback_note <- FALSE
+  # One-time warning when the augment path carries more than roughly a
+  # third of the fitted rows as unobserved responses; the estimand, not
+  # the device, is what degrades there.
+  .flexybayes_emit_state$high_missingness_warning <- FALSE
   invisible(NULL)
 }
 

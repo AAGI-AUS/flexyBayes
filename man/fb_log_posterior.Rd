@@ -57,8 +57,8 @@ are flattened in column-major order with index suffixes (e.g.
 \code{beta[1,1]}, \code{beta[2,1]}).}
 \item{\code{log_normalizer}}{The additive correction that would normalise
 the density, i.e. \verb{-log Z}. For a posterior the marginal likelihood
-is generally unknown, so this is \code{NA_real_} -- honest, and the
-consumer reports a shifted (not absolute) divergence.}
+is generally unknown, so this is \code{NA_real_} and the consumer
+reports a shifted (not absolute) divergence.}
 \item{\code{support_lower}, \code{support_upper}}{Length-\code{n_dim} numeric support
 bounds taken from the model's parameter constraints (\code{NA} for an
 unbounded coordinate). A variance / scale parameter is bounded below
@@ -76,7 +76,7 @@ unnormalised natural-scale log-posterior exactly. The \strong{brms} and
 \strong{INLA} backends abstain with an informative condition -- brms's
 log-density lives on the Stan unconstrained scale with a version-fragile
 name mapping, and INLA's posterior is a deterministic approximation, not
-a sampling log-density; an honest abstain is preferred to a
+a sampling log-density. Abstaining is preferred to emitting a
 plausible-but-wrong log-density.
 
 Acyclic note. A consumer such as proxymix uses this callable without
@@ -85,6 +85,15 @@ or \code{Suggests}. The cross-package demonstration lives in a separate
 integration harness, not in this package, preserving the acyclic
 dependency graph.
 }
+\section{Lifecycle}{
+
+Superseded while greta is quarantined. greta was the only backend that
+produced a real C4 log-density; both active engines abstain with the
+classed condition \code{fb_c4_unavailable}, for the reasons given above.
+The generic and its methods are retained so a consumer can dispatch on
+the abstention rather than discovering the gap by a missing method.
+}
+
 \examples{
 \dontrun{
 library(greta)

@@ -94,6 +94,15 @@
   list(
     name = "gretaR",
     skip_reason = function() {
+      # gretaR was QUARANTINED 2026-07-24 (reshape R1): the old gretaR-centric
+      # conformance battery skips as a re-entry guard. brms + INLA conformance
+      # is now covered by test-backend-conformance-open-oracle.R.
+      if (isTRUE(tryCatch(
+        flexyBayes:::.backend_is_quarantined("gretaR"),
+        error = function(e) FALSE
+      ))) {
+        return("gretaR backend quarantined (registry status)")
+      }
       if (!nzchar(home) && !installed_ok) {
         return(paste0(
           "gretaR >= ",

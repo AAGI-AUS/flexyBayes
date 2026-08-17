@@ -7,12 +7,13 @@
 \method{print}{fb_prior}(x, ...)
 }
 \arguments{
-\item{x}{an \code{fb_prior} object.}
+\item{x}{An \code{fb_prior} object as returned by \code{\link[=fb_prior]{fb_prior()}}.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the specification list
+it prints.
 }
 \description{
 Print method for fb_prior

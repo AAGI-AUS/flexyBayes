@@ -3,6 +3,8 @@ title: "Tutorial 06: Default priors and the `fb_prior()` DSL"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
@@ -21,14 +23,15 @@ knitr::opts_chunk$set(
   fig.height = 4,
   dpi       = 150
 )
-greta_ok <- requireNamespace("greta", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
 set.seed(700)
 ```
 
 # 1. Why priors matter
 
 In the Bayesian view, every parameter must have a prior. *Default*
-priors — the ones a software package chooses for you — are loaded
+priors -- the ones a software package chooses for you -- are loaded
 with implicit assumptions, and those assumptions can dominate
 inference when the data are weakly informative. Two situations in
 which a default does most of the work:
@@ -36,14 +39,14 @@ which a default does most of the work:
 - **Small group counts.** A random-effect standard deviation
   estimated from ten clusters borrows heavily from the prior. A
   long-tailed prior on $\sigma$ then propagates a long-tailed
-  posterior on the BLUPs (best linear unbiased predictors — the
+  posterior on the BLUPs (best linear unbiased predictors -- the
   shrinkage-style point estimates of cluster-level deviations from
   the grand mean), even when the data themselves contain almost no
   signal about variance.
 - **Boundary problems.** When the variance is near zero, the
   posterior on $\sigma$ has most of its mass close to the boundary.
   A prior with a mode at zero (or, like a uniform, no preference at
-  all) reflects this honestly; a prior with a mode away from zero
+  all) reflects this; a prior with a mode away from zero
   introduces an artefactual bump.
 
 `flexyBayes` ships a *bounded uniform* prior on the SD scale as
@@ -94,14 +97,14 @@ interactions, and `I()`-expression terms. The choice of `sd = 100`
 rests on four pieces:
 
 1. **Empirical scale.** Across the responses `flexyBayes` is built
-   for — yields in t/ha, reaction times in ms, log-rates of count
-   data, logit-scale event probabilities — $|\beta| \le 100$ already
+   for -- yields in t/ha, reaction times in ms, log-rates of count
+   data, logit-scale event probabilities -- $|\beta| \le 100$ already
    covers central-tendency shifts of several hundred units on the
    natural response scale. Wider priors then add no information that
    any sensible analyst has not already excluded by their choice of
    units.
 2. **Literature anchoring.** Gelman et al. (2008, *Annals of Applied
-   Statistics* 2(4):1360–1383) propose weakly-informative Cauchy(0,
+   Statistics* 2(4):1360--1383) propose weakly-informative Cauchy(0,
    2.5) on standardised predictors as the regression-coefficient
    default; on the natural scale, $\mathcal{N}(0, 100)$ is broader
    than that recommendation by design (we don't pre-standardise the
@@ -126,7 +129,7 @@ coefficients with `b("name") ~ normal(mean, sd)` in `fb_prior()`.
 
 `fb_prior()` accepts variadic two-sided formulas of the form
 `target ~ distribution(args)` and returns a structured prior object
-that any `flexybayes()`, `fb_brms()`, or `fb_greta()` call can
+that any `flexybayes()`, `fb_inla()`, or `fb_brms()` call can
 consume.
 
 ```{r dsl-overview}
@@ -158,11 +161,11 @@ Families supported:
 | Family | Closed-form on $\sigma$ |
 |---|---|
 | `uniform(lower, upper)` | bounded uniform on SD (the default for variance components) |
-| `pc(upper, prob)` | Exponential$(-\log(\text{prob})/\text{upper})$ — penalised complexity (Simpson et al., 2017) |
+| `pc(upper, prob)` | Exponential$(-\log(\text{prob})/\text{upper})$ -- penalised complexity (Simpson et al., 2017) |
 | `half_normal(scale)` | half-normal $\mathcal{HN}(0, \text{scale})$ |
 | `half_cauchy(scale)` | half-Cauchy $\mathcal{HC}(0, \text{scale})$ |
 | `student_t(df, scale)` | $t_{\text{df}}(0, \text{scale})$ on the SD scale |
-| `normal(mean, sd)` | $\mathcal{N}(\text{mean}, \text{sd}^2)$ — for fixed effects |
+| `normal(mean, sd)` | $\mathcal{N}(\text{mean}, \text{sd}^2)$ -- for fixed effects |
 | `exponential(rate)` | Exponential$(\text{rate})$ |
 | `lkj(eta)` | LKJ correlation prior |
 
@@ -173,8 +176,9 @@ sensitivity. With 18 subjects, the prior on the subject-level
 $\sigma$ does meaningful work. We compare three priors:
 
 1. The uniform default.
-2. A half-Cauchy(2.5) — a more informative weakly-informative prior
-   recommended for very small $J$ (Gelman, 2006, §4).
+2. A half-normal(2.5) -- a more concentrated weakly-informative prior,
+   recommended alongside half-Cauchy for very small $J$ (Gelman,
+   2006, §4).
 3. The legacy lognormal(0, 1).
 
 ```{r sleepstudy-data}
@@ -182,72 +186,85 @@ data(sleepstudy, package = "lme4")
 sd_y <- sd(sleepstudy$Reaction)
 ```
 
-```{r prior-default-fit, eval = greta_ok}
+> **`backend = "brms"` pinned throughout this section.** INLA's fit
+> to this exact model (`sleepstudy`'s `Subject` random intercept) has
+> a known instability -- the variance component can collapse to
+> numerically zero, and which run collapses is not reproducible even
+> at a fixed seed. Comparing *priors* needs a *reliable* engine
+> underneath; brms (Stan HMC) does not share the failure mode. The
+> *getting started* and *hierarchical models* vignettes discuss the
+> INLA instability itself.
+
+```{r prior-default-fit, eval = brms_ok}
 options(flexyBayes.silence_default_prior_note = FALSE)
 fit_default <- flexybayes(
   fixed = Reaction ~ Days, random = ~ Subject, data = sleepstudy,
-  n_samples = 500, warmup = 500, chains = 2, verbose = FALSE
+  backend = "brms",
+  n_samples = 1000, warmup = 1500, chains = 2,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 options(flexyBayes.silence_default_prior_note = TRUE)
 ```
 
 The announcement message lists the chosen $U$, the family / scale
-basis, the small-$J$ half-Cauchy guidance, and the override knobs. We
+basis, the small-$J$ half-normal guidance, and the override knobs. We
 keep this fit as the reference.
 
-```{r prior-halfcauchy-fit, eval = greta_ok}
-priors_hc <- fb_prior(
-  sigma                 ~ half_cauchy(scale = 2.5),
-  sd(group = "Subject") ~ half_cauchy(scale = 2.5)
+```{r prior-halfnormal-fit, eval = brms_ok}
+priors_hn <- fb_prior(
+  sigma                 ~ half_normal(scale = 2.5),
+  sd(group = "Subject") ~ half_normal(scale = 2.5)
 )
-fit_hc <- flexybayes(
+fit_hn <- flexybayes(
   fixed = Reaction ~ Days, random = ~ Subject, data = sleepstudy,
-  prior = priors_hc,
-  n_samples = 500, warmup = 500, chains = 2, verbose = FALSE
+  backend = "brms", prior = priors_hn,
+  n_samples = 1000, warmup = 1500, chains = 2,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 ```
 
-```{r prior-legacy-fit, eval = greta_ok}
+```{r prior-legacy-fit, eval = brms_ok}
 fit_legacy <- flexybayes(
   fixed = Reaction ~ Days, random = ~ Subject, data = sleepstudy,
+  backend = "brms",
   prior_vc_sd = 1,                          # opt back into legacy
-  n_samples = 500, warmup = 500, chains = 2, verbose = FALSE
+  n_samples = 1000, warmup = 1500, chains = 2,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 ```
 
 A simple posterior-mean comparison on the subject-level SD:
 
-```{r prior-compare-table, eval = greta_ok}
+```{r prior-compare-table, eval = brms_ok}
 extract_sigma <- function(fit) {
   d <- flexyBayes::fb_as_draws_simple(fit)
-  s <- d$sigma_Subject %||% d[["sigma_g"]] %||% d$sigma_e_atg
+  s <- d[["sd_Subject__Intercept"]]
   c(mean = mean(s), q025 = quantile(s, 0.025), q975 = quantile(s, 0.975))
 }
-`%||%` <- function(a, b) if (!is.null(a)) a else b
-rbind(default = extract_sigma(fit_default),
-      halfcau = extract_sigma(fit_hc),
-      legacy  = extract_sigma(fit_legacy))
+rbind(default    = extract_sigma(fit_default),
+      halfnormal = extract_sigma(fit_hn),
+      legacy     = extract_sigma(fit_legacy))
 ```
 
-The uniform default and the half-Cauchy give similar posteriors —
-both are weakly informative. The legacy lognormal pulls the
-posterior toward smaller $\sigma$ because lognormal(0, 1) puts most
-of its mass below 5, which is small relative to $\mathrm{sd}(y)
-\approx 56$. None of the three is *wrong* — they encode different
-prior information, and the data have only mild leverage to override
-them. *That sensitivity is the diagnosis*: with eighteen subjects, the
+The uniform default and the legacy lognormal land close together
+here; the half-normal(2.5) pulls the posterior mean noticeably lower
+-- its thinner tails are more concentrated at this scale than either
+the uniform or the lognormal(0, 1) implies, and with eighteen
+subjects the data do not have enough leverage to pull free of that
+concentration. None of the three is *wrong* -- they encode different
+prior information. *That sensitivity is the diagnosis*: with eighteen subjects, the
 prior is not a nuisance, it is a co-author.
 
 # 5. Prior-predictive checks
 
-Before fitting the data, you can simulate the prior predictive — the
+Before fitting the data, you can simulate the prior predictive -- the
 distribution of data implied by the prior alone. A prior-predictive
 check (Gabry, Simpson, Vehtari, Betancourt, & Gelman, 2019) asks
 whether the prior predicts data *roughly compatible with the
 observed scale*. A widely off-scale prior is a red flag, often
 visible before running any MCMC.
 
-```{r prior-predictive, eval = greta_ok, fig.height = 3.5}
+```{r prior-predictive, fig.height = 3.5}
 n_sim   <- 200
 sigma_e <- runif(n_sim, 0, 5 * sd_y)        # uniform default on SD
 sigma_g <- runif(n_sim, 0, 5 * sd_y)
@@ -267,21 +284,27 @@ abline(v = mean(sleepstudy$Reaction), col = "firebrick", lwd = 2)
 If the observed mean reaction time (firebrick line) lies inside the
 prior-predictive distribution of `mean(y)`, the prior is not in
 massive conflict with the data scale. If it sits in the extreme
-tail, the prior is fighting the data — refit with a less aggressive
+tail, the prior is fighting the data -- refit with a less aggressive
 prior, or rescale the response, before inferring anything.
 
 # 6. Cross-engine prior translation
 
 `fb_prior()` is the cross-engine *interlingua*: a single prior
 specification compiles to the parameterisation each backend
-expects. greta receives a direct standard-deviation prior; INLA
-receives a `pc.prec` block tuned to match the same upper-tail
-statement. Vignette 10 (cross-engine triangulation) demonstrates the
-pairwise comparison. Direct INLA dispatch on brms-shaped formulas is
-available via `fb_inla()` (equivalently `flexybayes(..., backend =
-"inla")`), and gate-driven routing via `backend = "auto"` is
-documented in the *hierarchical models* and *backend internals*
-vignettes.
+expects. brms receives a direct Stan prior statement on the
+standard-deviation scale; INLA receives a `pc.prec` block tuned to
+match the same upper-tail statement (only a subset of prior families
+translate to each backend -- Section 3's family table applies
+per-backend, not universally; brms in particular does not yet
+translate `half_cauchy` anywhere in the DSL -- `uniform`, `pc`, and
+`half_normal` are the supported SD-scale families on that path, and
+`normal` / `student_t` the supported fixed-effect families). The
+*cross-engine triangulation*
+vignette demonstrates the pairwise comparison. Direct INLA dispatch
+on brms-shaped formulas is available via `fb_inla()` (equivalently
+`flexybayes(..., backend = "inla")`), and gate-driven routing via
+`backend = "auto"` is documented in the *hierarchical models* and
+*understanding dispatch and refusals* vignettes.
 
 # 7. Penalised-complexity priors (advanced appendix)
 
@@ -302,15 +325,16 @@ $$
 The mode is at zero and the density decays exponentially with rate
 $\lambda$. Use it via `pc(upper = U, prob = alpha)` in `fb_prior()`:
 
-```{r pc-explicit, eval = greta_ok}
+```{r pc-explicit, eval = brms_ok}
 priors_pc <- fb_prior(
   sigma                 ~ pc(upper = sd_y / 4, prob = 0.05),
   sd(group = "Subject") ~ pc(upper = sd_y / 4, prob = 0.05)
 )
 fit_pc <- flexybayes(
   fixed = Reaction ~ Days, random = ~ Subject, data = sleepstudy,
-  prior = priors_pc,
-  n_samples = 500, warmup = 500, chains = 2, verbose = FALSE
+  backend = "brms", prior = priors_pc,
+  n_samples = 1000, warmup = 1500, chains = 2,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 extract_sigma(fit_pc)
 ```
@@ -325,13 +349,16 @@ For sparse-signal regression, the horseshoe prior (Carvalho, Polson,
 & Scott, 2010) provides aggressive shrinkage to zero on coefficients
 that the data leave unidentified, while preserving large effects.
 The horseshoe is *not* a Gaussian prior on the latent field, so it
-falls outside the latent Gaussian model class — INLA cannot fit it
-directly. The greta backend can fit it via a half-Cauchy hierarchy
-on the coefficient-level scales.
+falls outside the latent Gaussian model class -- INLA cannot fit it
+directly. brms and Stan can express a horseshoe hierarchy natively,
+so this is not blocked by the greta quarantine the way the
+genotype-by-environment structured-covariance family is (the
+genotype-by-environment section of the *formula surface* vignette) -- it is simply not wired into
+`fb_prior()` yet.
 
 `fb_prior()` does not yet expose `horseshoe()` as a target. A future
 release will add `horseshoe(global, slab)` for fixed-effect
-coefficient vectors and route it through greta. Also planned for a
+coefficient vectors, routed through brms. Also planned for a
 subsequent release: a publishable numerical study of inference
 sensitivity to the choice of variance-component prior across
 realistic mixed-model applications.
@@ -348,26 +375,36 @@ priors directly into `INLA::inla()`, *do* think about it.
 **Setting the upper bound of a uniform / PC prior to a multiple of
 $\mathrm{sd}(y)$ without thinking about the scale.** $U =
 5\,\mathrm{sd}(y)$ encodes a much weaker prior than $U =
-\mathrm{sd}(y)$ — five times wider support. The right $U$ is one
+\mathrm{sd}(y)$ -- five times wider support. The right $U$ is one
 you can defend: the largest plausible random-effect SD given
 everything you know about the problem.
 
 **Mistaking weak priors for "objective" priors.** All priors encode
 information; uniform and very wide priors encode the information
 that the parameter could be very large. That information sometimes
-matters more than expected — the small-group-count case is the
+matters more than expected -- the small-group-count case is the
 canonical example.
+
+**An implausible variance-component estimate might be an engine
+artefact, not a real posterior.** Section 4's `backend = "brms"` pin
+is not incidental -- on some small-group Gaussian models, INLA's
+inner optimiser can land on a numerically-degenerate near-zero
+variance regardless of which prior is stated, and it is not
+reproducible run to run. Before reading anything into a
+suspiciously-extreme variance component from INLA, cross-check it
+with `backend = "brms"`.
 
 # 10. Active prompts
 
 1. Refit the sleep-study model with `prior_vc_sd = 0.1`. How does
-   the posterior on `sigma_Subject` compare with the uniform default?
+   the posterior on `sd_Subject__Intercept` compare with the uniform
+   default?
 2. Vary $U$ in the uniform default from $\mathrm{sd}(y) / 8$ to
    $10\,\mathrm{sd}(y)$ via an explicit `fb_prior(sd(...) ~ uniform(0, U))`.
    Plot the posterior mean of $\sigma_{\mathrm{Subject}}$ against $U$.
    At what $U$ does the data dominate the prior?
 3. Run a prior-predictive check on a Poisson hierarchical model
-   (use `MASS::epil`). Compare the uniform default to a half-Cauchy(2.5)
+   (use `MASS::epil`). Compare the uniform default to a half-normal(2.5)
    prior on the group SD.
 
 # 11. Session information
@@ -379,20 +416,20 @@ sessionInfo()
 # References
 
 Carvalho, C. M., Polson, N. G., & Scott, J. G. (2010). The horseshoe
-estimator for sparse signals. *Biometrika*, 97(2), 465–480.
+estimator for sparse signals. *Biometrika*, 97(2), 465--480.
 
 Gabry, J., Simpson, D., Vehtari, A., Betancourt, M., & Gelman, A.
 (2019). Visualization in Bayesian workflow. *Journal of the Royal
-Statistical Society: Series A*, 182(2), 389–402.
+Statistical Society: Series A*, 182(2), 389--402.
 
 Gelman, A. (2006). Prior distributions for variance parameters in
-hierarchical models. *Bayesian Analysis*, 1(3), 515–534.
+hierarchical models. *Bayesian Analysis*, 1(3), 515--534.
 
 Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y.-S. (2008). A weakly
 informative default prior distribution for logistic and other
-regression models. *Annals of Applied Statistics*, 2(4), 1360–1383.
+regression models. *Annals of Applied Statistics*, 2(4), 1360--1383.
 
 Simpson, D., Rue, H., Riebler, A., Martins, T. G., & Sørbye, S. H.
 (2017). Penalising model component complexity: A principled,
 practical approach to constructing priors. *Statistical Science*,
-32(1), 1–28.
+32(1), 1--28.

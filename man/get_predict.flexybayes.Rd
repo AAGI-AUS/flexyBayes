@@ -16,7 +16,7 @@
 
 \item{type}{Prediction scale (identity link only).}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 A data frame with \code{rowid} and \code{estimate}.

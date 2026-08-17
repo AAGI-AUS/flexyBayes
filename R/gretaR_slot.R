@@ -102,7 +102,8 @@
 #' matrix or release notes can call `gretaR_status()` to inspect why
 #' the slot is dormant and how to wake it.
 #'
-#' @return A list with components:
+#' @returns A list reporting the state of the dormant gretaR slot.
+#'
 #'   \describe{
 #'     \item{`activated`}{Logical: `TRUE` if
 #'       `options(flexyBayes.gretaR_activated)` is set AND a future
@@ -161,8 +162,9 @@ gretaR_status <- function() {
   msg <- paste0(
     "The gretaR backend slot is currently dormant (reason: ",
     reason,
-    "). Recommended fallback: pass backend = \"greta\" ",
-    "for the same model. Activation procedure:\n",
+    "). greta is quarantined as well, so the fallback is an active ",
+    "engine: pass backend = \"inla\" or \"brms\", or leave ",
+    "backend = \"auto\". Activation procedure:\n",
     paste0("  ", seq_along(proc), ". ", proc, collapse = "\n")
   )
   cond <- structure(

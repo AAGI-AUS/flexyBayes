@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{A \code{flexybayes_brms} object.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \description{
 Mirrors \code{print.flexybayes} (call info + run time + diagnostics)

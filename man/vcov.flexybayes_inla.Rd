@@ -12,7 +12,7 @@
 \item{n_samples}{Posterior sample size for the covariance estimate
 (default 2000).}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 Posterior covariance matrix of the fixed effects, with

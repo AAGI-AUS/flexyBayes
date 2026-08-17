@@ -1,8 +1,696 @@
 # flexyBayes 0.9.0
 
+A stable release of the supported capability set, ready for testing --
+published as a pre-release while the first collaborator round completes.
+Entries appear newest-first within each section, so where a later change
+supersedes an earlier one on the same line -- the greta quarantine over
+the greta-only MET route, for instance -- the superseding entry is the
+one above.
+
+## Licence
+
+* **The package is now licensed under MIT** (previously GPL >= 3), by the
+  authors' decision of 2026-08-17. `LICENSE`, `LICENSE.md` and every
+  metadata surface (`CITATION.cff`, `codemeta.json`, `.zenodo.json`)
+  changed together.
+
+## Vignette rendering
+
+* **Inline math no longer towers over the sentence it sits in.** The
+  vignette engine loads MathJax v2, whose TeX web fonts render visibly
+  larger than the vignette body text. Every vignette now includes a
+  shared header asset (`vignettes/_mathjax-scale.html`) that pins the
+  MathJax output scale to the body font before the loader runs, and a
+  test fails any vignette -- current or future -- that drops the
+  reference.
+
+## The plan, the build and the fit agree
+
+* **`plan = TRUE` no longer names a route the fit would not take.** On a
+  `residual = ~ dsum(~ units | env)` model the plan reported
+  `Backend chosen: inla` and `Path: aggregated_inla` on the same screen as
+  `Gate outcome: refuse_structural (residual_term_type_inla)`, while the
+  live call routed to brms. Two defects combined: `.fb_aggregation_plan()`
+  enumerated the structured residuals it could not aggregate and so let a
+  sectioned residual through, and the plan's aggregation override treated
+  an eligible aggregation plan as enough to choose the aggregated INLA
+  route without asking whether the gate had accepted the model. The
+  aggregation scope now names the one residual that IS cell-constant --
+  plain `units` -- and the override requires an accepting gate.
+
+* **An untracked file no longer decides what INLA fits.** The INLA gate
+  for a factor-by-numeric interaction read an `.rds` under
+  `inst/extdata/inla-verification/`. That directory is untracked but was
+  not build-excluded, so a tarball built in a working tree carried a file
+  a clean clone of the same commit did not -- and the two fitted different
+  models. The directory is excluded from the build, and the artefacts are
+  now a developer rehearsal hook read only under
+  `options(flexyBayes.dev_inla_verification_artefacts = TRUE)`. Both
+  affected term classes -- the factor-by-numeric fixed interaction and the
+  uncorrelated random slope `(x || g)` -- refuse on every host, and both
+  refusals now say why: their three-arbitrator verification named greta as
+  one arbitrator, and greta is quarantined. The factor-by-numeric refusal
+  recommended `backend = "greta"`; it names brms.
+
+* **`tools/check_build_parity.R`** builds a tarball from the working tree
+  and one from a clean `git archive` of HEAD and fails on any difference
+  between their file lists. It also checks that every `.Rbuildignore` line
+  compiles as a regular expression, because the file has no comment syntax
+  and a `#` line containing an unbalanced parenthesis aborts `R CMD build`.
+
+* **`backend = "auto"` on a host without INLA routes to brms.** It
+  announced "routing to greta" and built a greta routing decision -- a
+  branch that predates the quarantine, so every `auto` call on such a host
+  advertised a quarantined engine and then refused. It now resolves
+  through the same fallback the other auto paths use.
+
+* **`family = binomial()` works.** A `stats` family object reached
+  `tolower()` and a scalar `if`, and the user saw base R's "the condition
+  has length > 1". Family objects and unevaluated family generators are
+  accepted, and a family object supplies its own link, so `Gamma()` means
+  the inverse link it names rather than the log link `family = "gamma"`
+  defaults to. A family object handed a contradicting `link` refuses
+  (`family_argument_not_recognised`) instead of choosing one.
+
+* **The aggregation cell key is a set of variables, not a list of terms.**
+  `y ~ a * b` produces three terms over two variables, and the planner
+  multiplied the term-level counts, so a replicated 4-by-4 factorial that
+  compresses 320 rows into 16 cells was sized at 256 and refused as
+  unproductive. The runtime aggregator had always keyed on the union, so
+  the plan and the emitter disagreed about the quantity the decision turns
+  on.
+
+* **A factor-interaction design column refuses the aggregated route.**
+  Probing what the corrected planner then admits found the reason the
+  first defect had been hiding: both aggregated emitters name
+  model-matrix columns in the INLA formula, and INLA does not resolve a
+  column called `a2:b2` even backticked. The aggregated route refuses by
+  name and points at the per-row route, which uses INLA's own `a:b`
+  notation and fits the model.
+
+* **The aggregated header names the fit's own family.**
+  `print()` and `summary()` on an aggregated fit said
+  `aggregated-gaussian` from a string literal, so a binomial or Poisson
+  fit from the count aggregator carried the wrong family on the surface
+  the package uses to signal exactness.
+
+## Fidelity of names
+
+* **The separable AR1 spatial structure is now written on the random side.**
+  This is a breaking change within the unreleased 0.9.0 line.
+
+  ``` r
+  # before
+  flexybayes(yield ~ 1, residual = ~ ar1(row):ar1(col), data = trial)
+
+  # after
+  flexybayes(yield ~ 1, random = ~ ar1(row):ar1(col), data = trial)
+  ```
+
+  The INLA emit builds a latent autoregressive field plus the Gaussian
+  observation nugget: four parameters on a field grid -- the row
+  correlation, the column correlation, the field SD and the nugget SD.
+  `residual = ~ ar1(row):ar1(col)` is ASReml's name for a *different* model,
+  the nugget-free separable residual, which has three parameters and which
+  the four-parameter model contains as the nugget goes to zero. On data with
+  real plot-to-plot noise the two return different correlations, because a
+  nugget-free model must absorb independent noise into the correlated
+  structure. Emitting one under the other's name was the one place the
+  package kept the original spelling for a model it was not fitting.
+
+  A random-side field is a random effect, so the new spelling states the
+  model truthfully. The residual spelling now refuses by name
+  (`ar1_residual_not_representable`), naming both routes: the random-side
+  field, or ASReml itself for the residual formulation. The emit, the grid
+  conditions and the recovered values are unchanged -- only the spelling
+  moves. brms refuses the field (`stan_cannot_represent_ar1_field`); it has
+  no lowering for a Kronecker autoregressive precision.
+
+* **`summary()` and `print()` report all four field parameters**, labelled
+  and on the correlation and standard-deviation scales, rather than leaving
+  INLA's precision-scale names (`Rho for row_id`, `GroupRho for row_id`) to
+  be translated by the reader. The fourth parameter is exactly what
+  separates this model from ASReml's, so a user who acts on the
+  correlations can see what they are acting on.
+
+* **`lgm_gate()`'s hyperparameter budget counts the field's own
+  parameters** -- two for `ar1(t)`, three for the separable form, with the
+  observation nugget counted on the family side. It previously counted the
+  1-D field as one, and the budget is what decides whether INLA's numerical
+  integration stays tractable.
+
+* **The random / residual grammar is a closed vocabulary.** An unrecognised
+  call was read as a plain variable whose name was its own source text, so
+  `ar2(row)` became a lookup for a column called `"ar2(row)"` and
+  `corgh(site):gen` became a crossing of two invented factors. Any call
+  outside the recognised set now refuses (`asreml_function_not_recognised`),
+  naming the token and the nearest spellings the parser does read.
+
+* **The structures that parse for the formula catalogue but have no emit
+  path are refused by name**: `ar2()` points at `ar1()`, `cor()` reuses the
+  equicorrelation refusal, `str()` names the per-term structures to write
+  instead, `fa()` names `us()` and `diag()`, and an interaction matching
+  none of the recognised patterns -- `us(trait):vm(gen)`, the multi-trait
+  idiom -- says so. All of these previously reached an `lgm_gate()` print on
+  INLA and an untyped `stop()` on brms, two vocabularies for one fact.
+
+* **The brms formula reconstruction refuses by name instead of stopping
+  untyped** (`brms_cannot_represent_term`), naming the term type and the
+  route that does fit it. `spl()` on brms is the common case and now points
+  at INLA.
+
+* **A numeric variable inside a nested or multi-way random interaction is
+  refused** (`numeric_variable_in_random_interaction`). `~ Subject +
+  Subject:Days` with numeric `Days` reads as a random regression to an
+  ASReml user and emits as one independent deviation per Subject-by-Day
+  cell -- 180 of them on `sleepstudy` -- and both readings are defensible.
+  The refusal names them and the route to each: `(Days || Subject)` for the
+  slope, an explicit factor conversion for the per-cell effect. A crossing
+  of two factors is untouched.
+
+## Triangulation is a gated diagnostic
+
+* **`triangulate()` now gates the comparison before reporting it.** It
+  compared any two objects that produced draws, on any parameters whose
+  names happened to coincide, whatever model, data, prior or convergence
+  state each carried. A distance between two such posteriors measures the
+  difference between two questions, and there was nothing in the output
+  that said so.
+
+  Three gates now run first.
+
+  - **Comparability.** Every fit records a model fingerprint at fit time:
+    the canonical formula triple, family and link, the data dimensions,
+    column names and a content digest, and the prior recorded on each
+    variance component. Two fits whose fingerprints disagree raise
+    `triangulate_incomparable_fits`, naming the first element that
+    differs. There is deliberately no override argument -- comparing two
+    different models is a different operation. A fit built outside the
+    package carries no fingerprint, so comparability cannot be verified
+    and the status is `inconclusive` rather than silently assumed.
+  - **Diagnostics.** A brms fit passes on R-hat at most 1.01, bulk ESS at
+    least 400 and no divergent transitions; an INLA fit passes its own
+    numerical-confirm gate. A failing fit yields `inconclusive` and no
+    parameter verdict at all, because disagreement between an unconverged
+    fit and a converged one is not a finding.
+  - **Matched priors.** A variance component is compared only when both
+    fits record the same prior for it. The rest come back `not_compared`
+    with the reason -- most often that the term is outside the
+    default-prior walker, so each engine chose its own hyperprior.
+
+* **The result carries a status**, `concordant` / `discordant` /
+  `inconclusive`, plus a per-parameter verdict, the mean shift and the
+  Wasserstein-1 distance in posterior-SD units. The thresholds behind the
+  verdicts (0.1 SD, 0.1 SD, an SD ratio inside [0.9, 1.1]) are documented
+  as heuristics for directing attention, in the sense Gelman et al. (2020)
+  use for cross-implementation checks. They carry no error rate, and the
+  man page states plainly that the package ships no simulation-based
+  calibration of its own fits, so `concordant` is not a calibration claim.
+
+* **The man page and the README stop presenting triangulation as the
+  package's validation contract.** It is a diagnostic on a gated overlap.
+  Agreement between two engines reading the same parsed model cannot
+  detect a mistranslation of that model, and both surfaces now say so
+  where the function is introduced rather than in a footnote.
+
+## Priors reach more of the model
+
+* **The default uniform-on-SD prior now reaches nested, `diag`/`idh`/`at`
+  and `us` group terms** on the brms path. It previously walked simple,
+  uncorrelated-slope, `vm` and `ped` terms only, which meant the terms
+  most likely to be triangulated -- multi-stratum and
+  genotype-by-environment variances -- were the ones on which the two
+  engines were never asked the same question. Fits of those models with no
+  explicit `prior` will shift: the variance components now carry
+  `uniform(0, U)` where they previously carried whatever the engine chose.
+
+* **Terms still outside the walker are recorded as engine defaults**
+  rather than passed over in silence: the `us` correlation block (which
+  keeps brms's LKJ), multi-way random interactions, and the AR1 latent
+  field (which keeps INLA's own hyperprior). The record is what lets
+  `triangulate()` exclude them by name instead of comparing them.
+
+* **The heterogeneous-residual prior retarget now uses the multiplier that
+  actually produced its bound.** With `sigma ~ 0 + f` the scalar residual
+  prior has no parameter to attach to, so it is retargeted onto the
+  log-sigma coefficients as `normal(log(sd(y)), 1)`. The code recovered
+  `sd(y)` by dividing the uniform bound by 2.5 -- the superseded
+  penalised-complexity default's multiplier -- while the uniform default
+  had moved to `U = 5 * sd(y)`. The prior's median residual SD was
+  therefore twice the data SD rather than the data SD its own rationale
+  states. The bound `U` is unchanged; the divisor now reads from the same
+  constant that sets it, and heterogeneous-residual fits under the default
+  prior will shift slightly.
+
+## The combined multi-environment-trial model fits
+
+* **Interaction random effects and a sectioned residual now fit together**,
+  on brms, and the capability table says so. The two halves had been tested
+  apart, the combination only at the emit level, and every public surface
+  said as much -- the matrix row read `emits`, meaning the Stan program
+  carried both blocks and nobody had run it. It runs:
+  `tests/testthat/test-met-combined.R` asserts both blocks in the emitted
+  formula and in the Stan program, then fits the model on simulated
+  multi-environment data and asserts every R-hat below 1.05, no divergent
+  transitions, and per-environment residual variances recovered in the order
+  they were simulated in. `auto` reaches brms for this class; INLA still
+  refuses it structurally.
+
+  The verified fit is 120 rows. `flexybayes()` forwards no `control` list to
+  Stan, so a trial series large enough to need a raised `adapt_delta` has no
+  route to one, and that is the next thing this capability needs.
+
+* **`summary()` and `print()` report the per-level residual variances** on a
+  fit with a sectioned residual. `sigma ~ 0 + f` puts the predictor on log
+  sigma, so a `b_sigma_*` coefficient is neither a variance nor a standard
+  deviation, and the sectioning leaves no scalar `sigma` for the
+  variance-component table to report -- the residual was simply absent from
+  the printed output of a model whose whole point was the residual. Both
+  quantities are now summarised from the draws of `exp(2 * b)` and
+  `exp(b)`, as posterior medians with a credible interval, labelled by the
+  factor's own levels. They are not point transforms of a posterior mean:
+  `exp()` is convex, so those are different numbers.
+
+* **`fb_plan()` no longer reports that a model will not fit and then fits
+  it.** Under `backend = "auto"` the plan read the latent-Gaussian gate's
+  verdict on INLA as the fit's verdict, so every model the router hands to
+  brms -- multi-stratum designs, heterogeneous variances, the combined MET
+  model above -- printed `Will fit: no (preflight refused)` while also
+  printing `Backend chosen: brms`. Both halves of that line were wrong: the
+  preflight had sized every term, and the chosen route fits. `will_fit` now
+  follows the resolved route, and where there genuinely is none the printed
+  reason names which dead end it was.
+
+* **The plan's representation table includes the residual structure.** A
+  sectioned residual is half of a multi-environment-trial model and did not
+  appear in the plan at all.
+
+* **The convergence warning stopped misdiagnosing `us()` terms.** It blamed
+  non-identified factor-analytic loadings, which does not apply: brms
+  parameterises `us(f):g` by standard deviations and a Cholesky correlation
+  factor, and those converge. What fails at one observation per cell is the
+  split between the covariance diagonal and the residual, which are
+  confounded there -- and the old text sent the reader to
+  `fb_structured_cov()`, which abstains for `us()` terms. The note now names
+  the confounding and the two remedies that work on it, replication within
+  cell or an informative prior on the residual.
+
+## Heterogeneous variances
+
+* **`diag(f):g`, `idh(f):g` and `at(f):g` now fit**, on the brms backend: a
+  separate variance for every level of the outer factor, with no covariance
+  between them. This is the workhorse structure of a multi-environment trial,
+  where the genotype variance differs by site, and it previously refused on
+  both active backends -- it had been a greta capability, and greta is
+  quarantined. ASReml treats `diag()` and `idh()` as the same structure, and
+  so does flexyBayes: all three spellings emit identical code.
+
+* **`us(f):g`** emits the correlated sibling, one character apart in the brms
+  formula and the whole difference between *k* parameters and *k(k+1)/2*.
+
+* **Heterogeneous residuals**: `dsum(~ units | f)`, and the `at(f):units`
+  spelling that parses to the same node, now lower to distributional
+  regression on the residual scale. Refused for families that have no
+  residual scale parameter to vary -- a Poisson's dispersion is a function of
+  its mean, so there is nothing there to make heterogeneous.
+
+* **`at(f, level):g` is refused rather than treated as diagonal.**
+  Conditioning a random effect on selected levels is a different model from
+  varying its variance across all of them; the two share a spelling, which is
+  exactly how one gets fitted under the other's name.
+
+  The mappings are validated against ASReml before use, not after, in
+  `oracle_heterogeneous.R`: ASReml's `diag(site):gen`, an explicit `lme4`
+  expansion and the brms emit are fitted on the same data and checked on the
+  PARAMETER COUNT before the values, because estimates alone cannot tell a
+  diagonal structure from an unstructured one when the true cross-level
+  correlations are zero. The two REML arms agree to 3.5e-05; all three fit
+  exactly *k* variances and no covariances.
+
+  The residual side has its own probe in the same script, with four arms so
+  that neither Bayesian arm is its own oracle. Fitted through `flexybayes()`
+  on 360 simulated plots, the per-site posterior-mean residual variances are
+  0.1146 / 1.1516 / 4.6981 where ASReml's `dsum` gives
+  0.1093 / 1.1248 / 4.6079 and `nlme::varIdent` reproduces ASReml to
+  1.3e-07. The largest gap is 4.8 per cent, on the smallest of the three
+  variances, which is where a posterior mean and a REML point estimate are
+  least alike. Every arm fits three free residual scales, no covariance, and
+  no scalar `sigma` -- the structure is asserted before any value is
+  compared. Run of 2026-08-15, `results/oracle_het.log`.
+
+## Missing responses preserve the design
+
+* **New `na_action` argument on `flexybayes()` / `fb()`**, defaulting to
+  `"augment"`. A missing response removes an observation, not a design node.
+  Where the model carries a covariance indexed by the design -- a separable
+  AR1(row) x AR1(col) residual over a field trial -- deleting the row of a
+  lost plot changes the index set the covariance is built over, so the model
+  that gets fitted is no longer the model that was written down. Under
+  `"augment"` such rows are retained and carried as latent quantities, and
+  design cells absent from the data frame are reinstated where their model
+  variables are determinable. This is ASReml's `na.method(y = "include")`
+  behaviour. `"omit"` drops them (complete-case); `"fail"` refuses.
+
+  The layer adds no inference machinery: INLA already treats an NA response
+  as a latent prediction target and marginalises it. What is new is keeping
+  the design intact so the engine is handed the right index set. Previously
+  a single lost plot made an `ar1(row):ar1(col)` model unfittable, since the
+  emit refuses an incomplete grid.
+
+  Under ignorability the parameter posterior is the same whether the cell is
+  imputed or omitted -- augmentation preserves the *representation*, not
+  information. Where missingness depends on the unobserved response itself,
+  both are biased and neither this argument nor any diagnostic here will say
+  so. Missing *covariates* are refused under every setting: a filled-in
+  predictor is a fabricated observation, which is a deliberate departure
+  from ASReml's drop-or-zero-fill and a stricter one.
+
+  Validated against oracles flexyBayes did not author, in
+  `design-preserving-missingness/`: ASReml's own device, an independently
+  written observed-data REML (so ASReml is not its own oracle), and
+  complete-case `lme4`. What that sweep establishes is a **REML device
+  identity** -- the ASReml augment device and the independent observed-data
+  REML agree to about 1e-4 relative on every design -- and not an identity
+  between a flexyBayes posterior and a REML estimate, which is a different
+  claim and is not made here. Complete-case deletion reproduces the device
+  on iid designs and departs on the correlated-residual one, which is the
+  whole subject.
+
+* The fitted object records what the layer did, under
+  `$extras$na_action`. Whether a posterior was computed on the design as
+  laid out or on the plots that survived was not otherwise recoverable.
+
+## Model-fidelity fixes
+
+* **The vignette deck merges from thirteen pages to eleven.** Two pairs
+  overlapped enough that a reader had to hold both open. *Structured
+  covariance* (05) is now part of the formula-surface page (02), which
+  carries the whole term catalogue plus heterogeneous residual variance,
+  design variance components, the `vm()` / `ped()` carriers and the
+  genotype-by-environment family in one place. *Extending backends* (15)
+  is now Section 9 of *dispatch and refusals* (11), next to the gate and
+  the capability trail it describes, with its live registry dump and its
+  availability-versus-capability split intact. No scientific content was
+  dropped, the two shipped filenames are unchanged, and the numbering
+  gaps at 05 and 12--15 record the merges. One stale claim was corrected
+  on the way: `ar1(env):geno` has an INLA route, which the retired page
+  denied.
+
+* **The teaching pages pass `seed`.** Tutorial 01 told the reader that
+  Stan's sampler was seeded while the call above it passed none, so the
+  printed diagnostics could not be reproduced from the code shown. The
+  brms fits in *getting started*, *multi-environment trials and genomic
+  selection* and *cross-engine triangulation* now pass a seed, and two
+  knits of each return identical output. The INLA half of *getting
+  started* still does not reproduce -- the collapsed `Subject` precision
+  lands orders of magnitude apart between runs, single-threaded as well
+  as threaded -- and the page now says so, since instability across
+  re-runs of a deterministic engine carries the same warning as a failed
+  sampler diagnostic. Baked numbers on those three pages moved with the
+  seeds.
+
+* **The triangulation page's posterior-predictive check draws from the
+  posterior predictive.** Section 5.3 simulated from the posterior-mean
+  linear predictor with the group intercepts dropped, the same error
+  Tutorial 08's `loo` repair had just fixed one page over. It now uses
+  `brms::posterior_predict()` and keeps the mean surface beside it for
+  contrast: the two are five-fold apart at the upper percentile. The
+  page's lead also stopped saying that INLA silently approximates
+  outside the latent-Gaussian class -- `lgm_gate()` refuses the model
+  before INLA is called -- and the walk-back on what cross-engine
+  agreement buys now leads rather than trails.
+
+* **`flexybayes()` gains `seed` and `control`, so a brms fit is
+  reproducible and its sampler is tunable.** Neither was reachable: the
+  entry point took no `...`, so `set.seed()` before a call did not pin
+  Stan's stream and `adapt_delta` could only be raised by dropping to
+  `brms::brm()` directly. The gap was load-bearing rather than cosmetic --
+  the package's own heterogeneous-variance oracle measured 0.27 percent
+  run-to-run drift on the per-environment variances it quotes.
+
+  ``` r
+  flexybayes(
+    yield ~ site, random = ~ gen, data = trial,
+    seed = 20260815L, control = list(adapt_delta = 0.95)
+  )
+  ```
+
+  Both are forwarded to `brms::brm()` and recorded on the fit, so
+  `update()` repeats them. `NULL` maps onto brms's own defaults (`seed =
+  NA`, `control = NULL`) rather than being passed through. The INLA path
+  is a deterministic Laplace approximation with no random stream and no
+  adaptation phase, so both are no-ops there and say so once per fit;
+  silence the note with
+  `options(flexyBayes.silence_sampler_arg_note = TRUE)`. The
+  convergence warning now names `adapt_delta` as a route where divergent
+  transitions are the symptom, and says plainly that on an unstructured
+  term at one observation per cell it lowers the divergence count without
+  identifying the split.
+
+* **Tutorial 08's `loo` now includes the subject offsets, and shows why
+  that matters.** The ELPD was computed from a pointwise log-likelihood
+  built out of population-level coefficients only, which answers the
+  leave-one-out question for a *new* subject rather than for a new
+  observation on a subject already in the data. The tell was a `p_loo` of
+  57 on a three-parameter mean structure. The vignette now takes the
+  array from `brms::log_lik(fit$brms)` (`p_loo` 19.5, against 18 subjects
+  plus three parameters), keeps the population-level version alongside as
+  the mistake a reader would otherwise make, and tabulates the two.
+
+* **Tutorial 03 stops promising mgcv smooths in its title, converts
+  INLA's precision output, and checks its own recovery claim.** The title
+  named a capability no active engine has -- `s(x)` parses and is refused
+  -- and the text said the hyperparameter block reported a standard
+  deviation where INLA had printed a precision. The residual scale is now
+  converted to $\sigma = \tau^{-1/2}$, with the interval reversed as that
+  monotone-decreasing map requires, and the vignette tests rather than
+  asserts that the interval covers the simulation's 0.3.
+
+* **Tutorials 15 and 16 each run something.** Both shipped entirely
+  `eval = FALSE`. Tutorial 15 now knits its backend-registry dump live,
+  so the roster a reader sees is read out of the installed package.
+  Tutorial 16 gains a worked example small enough to execute at build
+  time -- the same 720-row model fitted with `aggregate = TRUE` and
+  `FALSE`, whose fixed-effect posteriors agree to six decimal places --
+  is retitled to match what a reader can run, states the streaming
+  envelope once (exact cell-likelihood aggregation for iid
+  exponential-family models with a small cell count, from partitioned
+  `.fst`, on INLA), and labels its billion-row tables as an external
+  benchmark rather than as vignette output.
+
+* **Augmenting past roughly 30 percent missing responses now says what
+  that does to the estimand.** The augmentation identity is algebraic and
+  holds at any missing fraction. What weakens is the restricted
+  likelihood it targets: variance components reach the boundary, the
+  surface flattens, and two correct implementations legitimately stop at
+  different points. A one-time warning states that, so a user comparing
+  the posterior against ASReml or lme4 at a high missing fraction reads a
+  disagreement as a property of the design rather than as evidence
+  against either fit. Silence with
+  `options(flexyBayes.silence_high_missingness_warning = TRUE)`. The
+  fraction is also recorded on the fit's missing-data metadata.
+
+* **A streaming source past `2^31 - 1` rows refuses instead of recording
+  `NA`.** Four sites cast the row count with `as.integer()`, which
+  returns `NA` past the integer limit, so a five-billion-row single file
+  would have produced an aggregation plan and a fitted object carrying no
+  row count at all rather than an error. They now raise
+  `row_count_exceeds_integer` and name the route that has no such
+  ceiling -- partitioned `.fst` input, whose reader keeps its total as a
+  double.
+
+* **`flexybayes_stream()` no longer offers greta as a backend.** INLA is
+  the only engine with an aggregated emit and is now the default and the
+  only active choice. `"greta"` stays in the recognised vocabulary so
+  passing it refuses by name (`backend_quarantined`) rather than failing
+  on argument matching.
+
+* **The greta S3 shim registers whichever order the packages load in.**
+  The registration was guarded on `isNamespaceLoaded("greta")`, which
+  answers only for the instant `.onLoad()` runs -- so a user who attached
+  flexyBayes first and greta second, the usual order, never received it.
+  A `setHook(packageEvent("greta", "onLoad"), ...)` registration covers
+  that direction. The registrar carries its own loadedness guard, since
+  `asNamespace()` would otherwise load greta and pay exactly the cost the
+  guard exists to avoid.
+
+* **`prior_summary()` reports the whole prior, not the half this package
+  chose.** On a fit with a distributional residual (`dsum(~ units | f)`)
+  it printed `sigma ~ uniform(0, U)` -- a parameter the model does not
+  contain, under a distribution Stan did not use, because the declared
+  uniform on the SD scale is retargeted onto the per-level log-sigma
+  coefficients. It also said nothing about terms the default-prior walker
+  does not reach, so a reader concluded the shared default had been
+  applied to both variance components of a combined GxE model when it had
+  been applied to one.
+
+  The summary now names the retarget explicitly, lists every parameter
+  carrying the engine's own default with the reason, and on a brms fit
+  carries `brms::prior_summary()` of the fitted model -- brms is the
+  authority on what reached Stan, so the check on the declaration is the
+  engine's own record rather than a second reconstruction.
+
+* **`fb_met_summary()` abstains by name.** It raised a bare `stop()` on
+  both active engines, the last export doing so. It now refuses with
+  `met_summary_not_available`, and points at `summary()` and
+  `brms::VarCorr()` rather than at `fb_structured_cov()`, which abstains
+  for every structure an active engine can fit. `fb_met_summary()` and
+  `fb_log_posterior()` carry a lifecycle note recording that they are
+  superseded while greta is quarantined, and both, with
+  `prior_summary()`, gain live tests on an active engine -- all three
+  previously had none that ran.
+
+* **The LGM gate's refusals carry a class.** `lgm_gate()` returns an
+  `<lgm_refusal>` value with a rule-by-rule check-list, and under an
+  explicit `backend = "inla"` request dispatch turned it into a bare
+  `stop()`. That left one refusal a caller could not catch by name while
+  every other refusal in the package carried
+  `flexybayes_refusal_<code>`. The message and the check-list are
+  unchanged; the throw site now raises `inla_gate_refused`, carries the
+  `<lgm_refusal>` object on the condition, and adds a
+  `flexybayes_lgm_<rule_id>` class so one failing rule can be caught
+  without catching the rest.
+
+* **INLA fits join the shared class graph.** An INLA fit was
+  `c("flexybayes_inla", "list")` while a brms fit was
+  `c("flexybayes_brms", "flexybayes", "list")`, so the two engines had no
+  common parent and every generic needed a parallel method. An INLA fit is
+  now `c("flexybayes_inla", "flexybayes", "list")`.
+
+  Five parent methods had no INLA sibling and so reached
+  `stats::*.default` on an INLA fit. Each now resolves its inputs from the
+  slots the object carries. `nobs()` and `model.matrix()` answer correctly.
+  `confint()` reads INLA's own posterior marginals through the new
+  `confint.flexybayes_inla()` method, where `stats::confint.default`
+  previously returned a normal approximation built from `vcov()` without
+  saying so. `update()` and `anova()` refuse by name
+  (`update_call_not_reconstructable`,
+  `conditional_loglik_not_available`): an INLA fit records six of the
+  thirteen arguments a re-fit needs, and INLA reports a marginal
+  log-likelihood rather than the conditional one a criterion would need.
+
+* **`logLik()` refuses instead of returning a silent `NA`.** The
+  `flexybayes` method wrapped its evaluation in `tryCatch()` and returned
+  `NA` with a warning on any failure, and returned `NA` without comment for
+  any family outside gaussian, binomial and poisson. `AIC()` and `anova()`
+  then consumed that `NA` as though a log-likelihood had been computed.
+  Both paths now raise a typed refusal naming the family or the missing
+  slot.
+
+* **The correlated-random-slope refusal now names the model to fit
+  instead.** `(x | g)` refused with a generic pointer at "(x || g)", and
+  Tutorials 01 and 04 filled the gap by teaching the ASReml crossing
+  `~ Subject + Subject:Days` as the random-slope route. With a numeric
+  `Days` that crossing is one independent deviation per Subject-by-Day
+  cell -- 180 of them on `sleepstudy` -- not a per-subject slope. The
+  refusal now spells out `(Days || Subject)` for the model at hand, says
+  what that model is, and warns against the crossing by name. The
+  condition's `workaround` slot carries the concrete spelling rather than
+  a placeholder.
+
+* **`library(flexyBayes)` no longer loads greta.** The load hook registers
+  a handful of greta S3 methods for the quarantined aggregated-greta emit,
+  and guarded that on `requireNamespace("greta")` -- which loads greta,
+  reticulate and TensorFlow on every session, for a path dispatch cannot
+  reach. The guard is now `isNamespaceLoaded("greta")`, so the shim
+  registers when the user has loaded greta themselves and costs nothing
+  otherwise. greta stops appearing in every `sessionInfo()`.
+
+* **A requested structured residual can no longer be dropped from the fitted
+  model.** `backend = "auto"` could fall back from INLA to brms on a model
+  carrying an `ar1(row):ar1(col)` residual, and brms has no
+  residual-covariance lowering at all -- so the emitted Stan program was an
+  intercept-only independent Gaussian, with neither row/column indices nor
+  correlation parameters, and no error was raised. Three routes reached that
+  outcome: the automatic fallback after an INLA runtime failure, the
+  code-inspection modes (`return_code` / `review_code`), which resolved
+  `"auto"` to brms unconditionally, and an explicit `backend = "brms"`
+  request, whose capability gate matched a single reason code by name and so
+  failed open on any capability added later.
+
+  The brms capability predicate now inspects `residual_terms` as well as
+  `random_terms`, against a positive allowlist (only the iid `units`
+  residual, which brms carries as the family scale parameter), so a residual
+  form the parser learns later defaults to a refusal rather than to silent
+  omission. Two refusal codes are registered:
+  `stan_cannot_represent_ar1_residual` and
+  `stan_cannot_represent_structured_residual`. The code-inspection modes now
+  gate their `"auto"` to brms resolution on the same predicate, and the
+  explicit-brms gate refuses on any capability failure, re-raising the
+  predicate's own reason code. A complete grid still emits the separable
+  AR1xAR1 field on INLA, unchanged.
+
+  The regression test that covered this path asserted on the returned
+  object's class and recorded backend, both of which were correct while the
+  model was wrong. It now asserts on the emitted code, and a new
+  `test-residual-structure-fidelity.R` holds that contract for both
+  directions: a structured residual either appears in the emitted model or
+  the call refuses.
+
+* Three refusal messages still directed users to `backend = "greta"` as a
+  workaround, which the quarantine had made unreachable.
+
+## Reshape -- two-engine faithful core (brms + INLA)
+
+* **greta and gretaR are quarantined as fitting engines** (reshape R1). The
+  active backends are now brms and INLA. `backend = "greta"` / `"gretaR"`
+  refuse with a structured `backend_quarantined` reason; `backend = "auto"`
+  routes to brms (when it can represent the model) or INLA, and refuses with
+  `auto_no_active_route` when neither can -- there is no silent greta fallback.
+  A native greta model graph can no longer be fit
+  (`native_greta_fit_quarantined`). The greta / gretaR registry descriptors,
+  the emit code, and the legacy greta *import* grammar (`fb_from_greta()`,
+  reading an already-fitted object's draws) are retained; re-entry is repair +
+  conform to the backend conformance battery, never a bare re-add. The backend
+  registry gains a `quarantined` lifecycle state alongside `active` / `dormant`.
+* **Closed a gap in the "no silent greta fallback" guarantee above.** A
+  DATA-dependent INLA runtime failure (for example
+  `ar1_spatial_requires_complete_grid` on an incomplete field-trial grid) took
+  a separate `backend = "auto"` code path from a structural `lgm_gate()`
+  refusal, and that path still hard-coded a greta fallback -- unreachable via
+  an explicit `backend = "greta"` request, but reachable through `"auto"` on
+  a model INLA's gate accepts but its emit refuses at fit time. It now
+  resolves through the same brms-or-refuse logic as every other auto
+  fallback, with a new regression test covering it.
+* **Swept the remaining stale "re-route to greta" advice** left over from the
+  quarantine, found via a `--as-cran` release rehearsal and a full-suite test
+  failure. `emit_brms()`'s correlated-random-slope refusal, `lgm_gate()`'s
+  generic refusal print method, and the `emit_inla()` uncorrelated-random-
+  slope verification deferral all pointed users at `backend = "greta"` as a
+  workaround; the last of these no longer even matched reality, since
+  `backend = "auto"` already falls back to brms on that exact refusal. All
+  three now name the working route (brms) instead, with the corresponding
+  tests updated to match. Also fixed the package startup banner and two
+  `stop()` messages (`fb_gwas()`, `fb_met_summary()`) that still listed
+  greta as an active engine.
+* **All sixteen vignettes reshaped for the two-engine core**, restructured
+  so eleven target a general audience and two (*dispatch and refusals*,
+  *extending backends*) are the technical/internals reference; the old
+  `flexyBayes-11-lgm-feasibility` / `-12-backend-internals` /
+  `-13-lgm-feasibility-memory` / `-14-engine-selection` vignettes are merged
+  into one *dispatch and refusals* vignette. README and `_pkgdown.yml`
+  rewritten to match.
+
 ## New features
 
-* **An explicit `backend = "greta"` request now fits crossed interaction
+* **Separable AR1(row) x AR1(col) spatial models on INLA (WP16).** A designed
+  field trial's spatial structure -- `ar1(row):ar1(col)`, or a 1D `ar1(t)`,
+  written as a random effect or a residual structure -- now fits on INLA as the
+  grouped-AR1 latent field `f(row, model = "ar1", group = col, control.group =
+  list(model = "ar1"))` plus the Gaussian nugget, with canonical `rho_row` /
+  `rho_col` / `sd_spatial` hyperparameters. `backend = "auto"` routes a designed
+  spatial trial to INLA. The latent-field representation is faithful under one
+  observation per grid node (validated against an independent GLS/REML oracle);
+  an incomplete or replicated grid refuses
+  (`ar1_spatial_requires_complete_grid`) rather than silently approximating.
+  This recovers -- faithfully -- the spatial capability the greta quarantine
+  removed (greta emitted `ar1(row):ar1(col)` as additive iid row/col effects).
+  The *spatio-temporal models* vignette is rewritten for the new INLA-native
+  path, including the complete-grid refusal on a real field trial with
+  missing plots and the graceful `"auto"` fallback to brms when it fires.
+
+* *(Superseded by the quarantine above.)* **An explicit `backend = "greta"`
+  request now fits crossed interaction
   random effects and a heteroscedastic per-environment residual** -- the full
   ASReml-style multi-environment-trial (MET) shape (`random = ~ gen + gen:env`,
   `residual = ~ dsum(~ units | env)`). The greta code generator already gathered
@@ -18,12 +706,13 @@
   back to greta -- which under-mixes them -- `auto` now routes such a model to
   brms when brms is installed and can fit it, and brms recovers every variance
   component against the ASReml / lme4 REML reference (validated on
-  `agridat::besag.met`). When brms is unavailable `auto` falls back to greta
-  with a convergence caveat. `emit_brms()` fits these interaction random
-  effects natively as `(1 | A:B)`; INLA continues to refuse them honestly. A
-  structured-covariance term (`fa` / `us` / `ar1`) has no lossless brms
-  translation, so those models stay on greta.
-* **The greta backend warm-starts the intercept from the response mean**
+  `agridat::besag.met`). `emit_brms()` fits these interaction random effects
+  natively as `(1 | A:B)`; INLA continues to refuse them by name. The
+  fallback-to-greta clause this entry originally carried was removed by the
+  quarantine above: when brms cannot represent the model, `auto` now refuses
+  with `auto_no_active_route`.
+* *(Superseded by the quarantine above.)* **The greta backend warm-starts the
+  intercept from the response mean**
   (identity / log / logit / probit link scale), shortening the initial sampler
   transient while leaving the variance components and random effects at their
   prior-draw starts so convergence diagnostics stay informative.
@@ -62,7 +751,7 @@
 
 # flexyBayes 0.8.3
 
-A documentation-honesty and ergonomics release on the 0.8.x line. There are no
+A documentation-accuracy and ergonomics release on the 0.8.x line. There are no
 modelling-behaviour changes; the additions are accessor coverage, clearer
 refusals, and metadata / vignette consistency for the first public development
 release.
@@ -110,7 +799,7 @@ release.
   (rows = parameter draws, columns = parameters on the natural / constrained
   scale) and returns one unnormalised `log p(theta | data)` per row; it
   carries `parameter_names`, an `NA` `log_normalizer` (a posterior's marginal
-  likelihood is generally unknown -- honest, not fabricated), the
+  likelihood is generally unknown -- reported as unknown, not fabricated), the
   parameters' `support_lower` / `support_upper` bounds, and the fit's
   posterior `draws` to seed the consumer's proposal.
 
@@ -124,7 +813,7 @@ release.
   `fb_c4_unavailable` condition: brms's log-density lives on the Stan
   unconstrained scale with a version-fragile name mapping, and INLA's
   posterior is a deterministic Laplace / grid approximation rather than a
-  sampling log-density, so an honest abstain is preferred to a
+  sampling log-density, so a plain abstain is preferred to a
   plausible-but-wrong producer (the Independent Oracle Principle). flexyBayes
   does not depend on proxymix -- the cross-package demonstration lives in a
   separate integration harness, preserving the acyclic dependency graph.
@@ -277,7 +966,7 @@ emit path, and an INLA-led multi-environment-trial vignette.
   the same triangulatable result. The fit-level accessor lands with the
   multi-backend GBLUP route.
 
-## Triangulation honesty
+## Triangulation accuracy
 
 * `triangulate()` gained a `data_independence` argument and a
   `shared_upstream_caveat` result field (Independent Oracle Principle). It
@@ -379,7 +1068,7 @@ emit path, and an INLA-led multi-environment-trial vignette.
   distributional metrics: `wasserstein_1`, `sd_ratio`, `mean_diff`, and the
   quantile differences. (The per-fit, within-engine rank-normalised R-hat used as
   a convergence diagnostic is unaffected.)
-* **Honest default-prior provenance.** The default variance-component prior
+* **Default-prior provenance stated in full.** The default variance-component prior
   (bounded uniform on each SD; `U = 5 * sd(y)` for Gaussian) was attributed
   "following Gelman (2006)". Gelman (2006) in fact recommends a half-t /
   half-Cauchy for variance components with few groups and cautions against a flat
@@ -440,7 +1129,7 @@ distribution-preserving predictive check (the surrogate axis).
   cleanly behind their gates).
 - **`fitted()`, `residuals()`, and `logLik()` methods for INLA fits.** `fitted()`
   and `residuals()` now return values for a `flexybayes_inla` fit (previously
-  `NULL`); `logLik()` returns an honest `NA` with the right shape where INLA does
+  `NULL`); `logLik()` returns `NA` with the right shape where INLA does
   not expose a likelihood, rather than erroring.
 - **`fb_surrogate_ppc(whiten = TRUE)` whitens the outputs before the MMD.** The
   predictive draws and `observed` are Mahalanobis-whitened by their pooled
@@ -551,7 +1240,7 @@ distribution-preserving predictive check (the surrogate axis).
   `fb_surrogate_prediction` with the predictive mean matrix and a per-row
   cross-output covariance array. A marginals-only surrogate (independent
   `rff`, or a conformer reporting only `<o>_sd`) returns a diagonal
-  covariance, so the call is always honest.
+  covariance, so the call always states what it used.
 - **`fb_surrogate_ies()` consumes the joint predictive covariance.** When the
   surrogate is joint, the full cross-output predictive covariance enters the
   ES-MDA data covariance (`use_surrogate_cov = TRUE`, default), so correlated

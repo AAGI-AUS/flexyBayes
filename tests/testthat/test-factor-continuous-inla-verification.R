@@ -188,12 +188,18 @@ test_that("INLA mapping for factor_numeric_interaction passes 3-arbitrator gate"
   )
 })
 
-# Companion check: the gate consults the artefact and accepts when
-# verification is recorded as passing. Tests the artefact -> gate
-# pickup in isolation from the INLA fit so the test is fast and the
-# pickup logic is exercised on every Tier-2 run.
+# Companion check: the artefact -> gate pickup, in isolation from the
+# INLA fit so it is fast.
+#
+# Since 0.9.0 the pickup is a developer rehearsal hook and nothing more.
+# The artefact directory is excluded from the build and the option below
+# is off on every shipped surface, so an artefact that reports
+# `pass = TRUE` lifts the gate only for a developer who asked for it by
+# hand. The default-off half of that contract is asserted in
+# test-inla-verification-artefact-policy.R, which is where the P0-2
+# reproducibility policy lives.
 
-test_that("lgm_gate accepts INLA when verification artefact reports pass", {
+test_that("the artefact lifts the gate only under the developer option", {
   art_dir <- system.file(
     "extdata",
     "inla-verification",
@@ -215,6 +221,9 @@ test_that("lgm_gate accepts INLA when verification artefact reports pass", {
     )
   }
 
+  withr::local_options(
+    list(flexyBayes.dev_inla_verification_artefacts = TRUE)
+  )
   fb <- flexyBayes:::new_fb_terms(
     response = "y",
     family = "gaussian",

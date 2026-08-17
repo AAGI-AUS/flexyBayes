@@ -15,30 +15,33 @@ triangulate(
 )
 }
 \arguments{
-\item{fit_a}{a fit object with a \code{fb_as_draws_simple} method
-(e.g., \code{flexybayes} from greta, \code{flexybayes_inla} from INLA).}
+\item{fit_a}{A fit object carrying a \code{fb_as_draws_simple} method,
+which means \code{flexybayes_brms} from the brms path or
+\code{flexybayes_inla} from the INLA path.}
 
-\item{fit_b}{a second fit object, typically from a different
-backend.}
+\item{fit_b}{A second fit object of the same kind, typically produced
+by the other backend on the same model and data.}
 
-\item{name_map}{named character vector or list mapping fit_b's
-parameter names (left) to canonical names matching fit_a
-(right). Optional.}
+\item{name_map}{An optional named character vector or list mapping
+\code{fit_b}'s parameter names (left) to canonical names matching
+\code{fit_a} (right).}
 
-\item{transform_a, transform_b}{named list of functions, each
-taking a numeric vector of posterior draws and returning a
+\item{transform_a, transform_b}{An optional named list of functions,
+each taking a numeric vector of posterior draws and returning a
 numeric vector of the same length. Names key parameters in
 \code{fit_a} / \code{fit_b} (using each fit's \emph{original} parameter
 names). Common use: pass
 \code{transform_b = list("Precision for g" = function(x) 1 / sqrt(x))}
 to convert INLA's precision draws to standard-deviation scale
-so they line up with greta's \code{sigma_g}. Optional.}
+so they line up with brms's \code{sd_g__Intercept}. Optional, and
+normally unnecessary -- \code{\link[=canonical_names]{canonical_names()}} supplies the common
+transforms.}
 
-\item{n_samples}{integer: number of posterior samples to draw
-for fits whose extractor needs sampling (e.g., INLA via
-\code{INLA::inla.posterior.sample}).}
+\item{n_samples}{A single integer giving the number of posterior
+samples to draw for fits whose extractor needs sampling, such as
+INLA via \code{INLA::inla.posterior.sample}.}
 
-\item{data_independence}{single logical declaring whether the two fits were
+\item{data_independence}{A single logical declaring whether the two fits were
 built on independently-sourced data. \code{triangulate()} measures inter-fit
 \emph{agreement}, and the backend-independence registry certifies code (not
 data) independence -- so if both fits share the same upstream data, a
@@ -50,23 +53,98 @@ silently mistaken for corroboration of a shared data fact (Independent
 Oracle Principle).}
 }
 \value{
-a \code{triangulate_result} S3 object (list). Key fields:
-\code{metrics} (data.frame, one row per common parameter),
-\code{common} (character), \code{only_a}, \code{only_b}, \code{n_common},
+A \code{triangulate_result} S3 object (a list). Key fields:
+\code{metrics} (a data.frame with one row per common parameter and the
+columns \code{param}, \code{mean_a}, \code{mean_b}, \code{mean_diff}, \code{sd_a}, \code{sd_b},
+\code{sd_ratio}, \code{q025_diff}, \code{q975_diff}, \code{wasserstein_1},
+\code{mean_shift_sd}, \code{w1_sd}, \code{verdict}, \code{reason}), \code{status} (one of
+\code{"concordant"}, \code{"discordant"}, \code{"inconclusive"}),
+\code{status_reasons} (character, why a status is inconclusive or
+discordant), \code{comparability} (the fingerprint verdict),
+\code{diagnostics} (the per-fit diagnostic summaries), \code{common}
+(character), \code{only_a}, \code{only_b}, \code{n_common}, \code{n_compared},
 \code{source_a}, \code{source_b}.
 }
 \description{
 Compute per-parameter posterior comparison metrics across two
-Bayesian fits produced via different backends (greta / INLA /
-brms passthrough). The signature feature of flexyBayes.
+Bayesian fits produced on different backends (INLA and the brms /
+Stan passthrough).
 }
 \details{
 For each parameter present in both fits (post \code{name_map}), the
-returned table reports: posterior means, posterior SDs, Q2.5 /
-Q97.5 differences (tail drift), Wasserstein-1 distance (1D
-empirical), the SD ratio, and an R-hat-on-means scalar that
-compares between-engine vs within-engine variance. Parameters
+returned table reports each fit's posterior mean and SD, the
+difference in means, the ratio of SDs, the Q2.5 and Q97.5 differences
+(tail drift), and the 1D empirical Wasserstein-1 distance. Parameters
 present in only one fit are reported in \code{only_a} / \code{only_b}.
+
+\code{triangulate()} is a diagnostic on a gated overlap, not the package's
+validation contract. Agreement is not validation: the parser, the
+intermediate representation, the prior interlingua and the data
+preparation are shared, so two engines can agree on a mistranslated
+model. What agreement does support is the narrower claim that neither
+engine's approximation is distorting the posterior of the compared
+parameters, and it supports even that only inside the three gates
+described below.
+}
+\section{The three gates}{
+
+\strong{Comparability.} Fits made by \code{\link[=flexybayes]{flexybayes()}} carry a model
+fingerprint: the canonical formula triple, the family and link, the
+data dimensions, column names and a content digest, and the prior
+recorded for each variance component. Two fingerprints that disagree
+raise a typed refusal (\code{flexybayes_refusal_triangulate_incomparable_fits})
+naming the first element that differs. There is no override argument:
+comparing two models is a different operation, and it is not this one.
+A fit built outside the package carries no fingerprint, so
+comparability cannot be verified and the overall status is
+\code{inconclusive}.
+
+\strong{Diagnostics.} A brms fit passes when every model parameter has
+R-hat at or below 1.01 and bulk effective sample size at or above 400,
+with no divergent transitions; an INLA fit passes its own
+numerical-confirm gate (mode status and a finite marginal likelihood).
+A failing fit yields status \code{inconclusive} and no parameter verdicts:
+disagreement between an unconverged fit and a converged one is not a
+finding.
+
+\strong{Matched priors.} A variance component (\code{sigma}, \verb{sd_<group>},
+\verb{cor_<group>}, \verb{rho_*}) is compared only when both fits record the
+same prior for it -- the shared default this package injects before
+dispatch, or an identical explicit \code{\link[=fb_prior]{fb_prior()}}. Components outside
+that record are reported as \code{not_compared} with the reason, most often
+that the term is outside the default-prior walker and each engine
+chose its own hyperprior. Fixed-effect coefficients are compared
+without a prior match: both engines put a vague normal on them, and
+the fixed structure itself is already part of the fingerprint.
+}
+
+\section{Thresholds and what they are not}{
+
+A parameter is called concordant when the absolute mean difference is
+at most 0.1 posterior SD, the Wasserstein-1 distance is at most 0.1
+posterior SD, and the SD ratio lies in [0.9, 1.1]; the reference
+scale is the larger of the two posterior SDs. The overall status is
+\code{discordant} when any compared parameter is discordant, \code{concordant}
+when all are, and \code{inconclusive} when a gate blocked the comparison or
+nothing was left to compare.
+
+These cut-offs are \strong{heuristics}, in the sense Gelman et al. (2020)
+use for cross-implementation checks in the Bayesian workflow: they are
+chosen to flag differences a reader should look at, not derived from a
+sampling distribution, and they carry no error rate. A \code{concordant}
+verdict is not a calibration statement. flexyBayes ships no
+simulation-based calibration of its own fits (Talts et al., 2018), so
+whether either engine is calibrated for a given model and dataset
+remains an open question and future work.
+
+Read \code{discordant} as "look at this", not as "one engine is wrong".
+Wasserstein-1 compares the whole marginal, so two posteriors whose
+means and SDs agree can still be flagged on shape alone -- which is
+the expected signature of a Laplace marginal for a variance component
+next to an HMC one. All three metrics are estimated from finite draws,
+and the Wasserstein-1 estimate in particular is biased upward at small
+\code{n_samples}; raise \code{n_samples} and re-run before reading a borderline
+flag as a finding.
 
 Backends use different parameter naming conventions; supply
 \verb{name_map = c(<fit_b name> = <canonical name>, ...)} to align
@@ -74,8 +152,8 @@ them. Without alignment, only literal-match parameter names are
 compared.
 
 Backends also use different \emph{parameter scales} for variance
-components -- INLA reports precision (\verb{Precision for g}), greta
-reports standard deviation (\code{sigma_g}). Supply
+components -- INLA reports precision (\verb{Precision for g}), brms
+reports standard deviation (\code{sd_g__Intercept}). Supply
 \code{transform_a} / \code{transform_b} -- named lists of one-argument
 functions keyed by parameter name -- to put the two posteriors on
 a common scale before comparison. Transforms are applied first;
@@ -84,7 +162,8 @@ fit_a's canonical names. Names in \code{transform_b} therefore refer to
 fit_b's \emph{original} parameter names, not the post-\code{name_map}
 canonical names.
 }
-\section{Matched priors}{
+
+\section{Aggregated fits and matched priors}{
 
 When one of the inputs is an aggregated-gaussian fit (cell-level
 sufficient statistics rather than the per-row likelihood), the
@@ -107,34 +186,35 @@ inputs carry the same prior with \code{\link[=prior_summary]{prior_summary()}}.
 # Live INLA posterior sampling can fail in restricted-process
 # check environments (the `inla.posterior.sample` parallelism
 # check trips); the example uses `\dontrun{}` deliberately. On
-# an interactive install with greta + INLA + sn available it
+# an interactive install with INLA + brms + sn available it
 # runs in a few seconds.
 \dontrun{
-if (requireNamespace("greta", quietly = TRUE) &&
-    requireNamespace("INLA",  quietly = TRUE)) {
+if (requireNamespace("brms", quietly = TRUE) &&
+    requireNamespace("INLA", quietly = TRUE)) {
   set.seed(1)
   d <- data.frame(y = rnorm(40), x = rnorm(40),
                   g = factor(rep(1:5, 8)))
-  fit_g <- fb(y ~ x + (1 | g), data = d, backend = "greta",
-              n_samples = 100, warmup = 100, chains = 1,
-              verbose = FALSE)
+  fit_b <- fb(y ~ x + (1 | g), data = d, backend = "brms",
+              n_samples = 500, warmup = 500, chains = 2,
+              verbose = FALSE, mcmc_verbose = FALSE)
   fit_i <- fb(y ~ x + (1 | g), data = d, backend = "inla",
               verbose = FALSE)
-  prec_to_sd <- function(x) 1 / sqrt(x)
-  tri <- triangulate(
-    fit_g, fit_i,
-    transform_b = list(
-      "Precision for g"                         = prec_to_sd,
-      "Precision for the Gaussian observations" = prec_to_sd
-    ),
-    name_map = c(
-      "(Intercept):1"                           = "mu_atg",
-      "x:1"                                     = "beta_x",
-      "Precision for g"                         = "sigma_g",
-      "Precision for the Gaussian observations" = "sigma_e_atg"
-    )
-  )
-  print(tri)
+  # canonical_names() aligns the names and the precision-to-SD
+  # transform, so no name_map is needed in the common cases.
+  print(triangulate(fit_b, fit_i))
 }
 }
+}
+\references{
+Gelman, A., Vehtari, A., Simpson, D., Margossian, C. C., Carpenter,
+B., Yao, Y., et al. (2020). Bayesian workflow. \emph{arXiv preprint}
+arXiv:2011.01808.
+
+Talts, S., Betancourt, M., Simpson, D., Vehtari, A., & Gelman, A.
+(2018). Validating Bayesian inference algorithms with
+simulation-based calibration. \emph{arXiv preprint} arXiv:1804.06788.
+
+Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., et al. (2021).
+Rank-normalization, folding, and localization: an improved R-hat for
+assessing convergence of MCMC. \emph{Bayesian Analysis}, 16(2), 667--718.
 }

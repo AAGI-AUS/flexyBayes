@@ -1,8 +1,15 @@
 # S3 methods for the flexybayes class
 
-#' Print a flexybayes object
-#' @param x A flexybayes object
-#' @param ... Additional arguments (ignored)
+#' Print a compact description of a flexyBayes fit
+#'
+#' Reports the call the fit came from, the engine that ran it, the model
+#' dimensions, and the headline posterior quantities. Use [summary()] for
+#' the full coefficient and variance-component tables.
+#'
+#' @param x A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the description it
+#'   prints.
 #' @export
 print.flexybayes <- function(x, ...) {
   ci <- x$extras$call_info
@@ -79,19 +86,75 @@ print.flexybayes <- function(x, ...) {
     cat("  Min ESS:", round(min_eff, 0), "\n")
   }
 
+  # The component list is read off the object instead of being declared,
+  # so a fit only ever advertises a slot it actually carries. The former
+  # fixed block named `$greta` on every object printed through this
+  # method, including brms and INLA fits that have no such slot.
   cat(strrep("-", 55), "\n")
-  cat("  $glm    -- GLM-compatible (summary, emmeans, etc.)\n")
-  cat("  $greta  -- native greta (draws, model, calculate)\n")
-  cat("  $extras -- diagnostics, BLUPs, variance components\n")
+  .print_fit_components(
+    x,
+    c(
+      glm = "GLM-compatible (summary, emmeans, etc.)",
+      brms = "live brmsfit (loo, posterior_predict, summary)",
+      inla = "raw INLA fit (use INLA's summary, plot, etc.)",
+      greta = "native greta (draws, model, calculate)",
+      extras = "diagnostics, BLUPs, variance components"
+    ),
+    width = 8L
+  )
 
   invisible(x)
 }
 
-#' Summarise a flexybayes object
+
+#' Print the component list a fitted object actually carries
 #'
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return Invisibly returns the posterior summary
+#' Prints one line per slot the object holds, taking the wording and the
+#' print order from the caller's label table. A slot named in the table
+#' but absent from the object is skipped, so a print method cannot
+#' advertise a component the backend never built.
+#'
+#' @param x A fitted object stored as a list, whose names are the slot
+#'   names to be matched against `labels`.
+#' @param labels A named character vector of one-line slot descriptions,
+#'   named by slot and ordered as the lines should print.
+#' @param width Integer field width for the `$slot` column. Callers pass
+#'   the width their surrounding output already uses so the `--`
+#'   separators stay aligned.
+#' @returns Invisibly, a character vector of the slot names printed, in
+#'   print order. Called for the lines it writes to the console.
+#'
+#' @noRd
+#' @keywords internal
+.print_fit_components <- function(x, labels, width = 8L) {
+  present <- intersect(names(labels), names(x))
+  for (slot in present) {
+    cat(
+      "  ",
+      formatC(paste0("$", slot), width = -width),
+      "-- ",
+      labels[[slot]],
+      "\n",
+      sep = ""
+    )
+  }
+  invisible(present)
+}
+
+#' Summarise a flexyBayes fit
+#'
+#' Prints the fixed-effect posterior summaries, the variance components,
+#' and the sampler or approximation diagnostics the backend recorded. On a
+#' brms fit with a sectioned residual it additionally prints the residual
+#' variance and standard deviation for each level of the sectioning
+#' factor, computed from the draws rather than by transforming a
+#' posterior mean.
+#'
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns Invisibly, a list holding the posterior summary tables the
+#'   method printed, so a caller can use the numbers without re-parsing
+#'   the output.
 #' @export
 summary.flexybayes <- function(object, ...) {
   ci <- object$extras$call_info
@@ -172,6 +235,11 @@ summary.flexybayes <- function(object, ...) {
     cat("  (none available)\n")
   }
 
+  # A sectioned residual has no scalar sigma for the table above to
+  # report, so the per-level variances are printed in their own block
+  # (a no-op on every other fit). See R/emit_brms.R.
+  .print_brms_residual_by_level(object)
+
   # Convergence
   cat("\n-- Convergence ", strrep("-", 45), "\n")
   conv <- object$extras$convergence
@@ -205,6 +273,18 @@ summary.flexybayes <- function(object, ...) {
 # guarantee holds (aggregated posterior == per-row posterior under the
 # default prior); the "custom" case flags that an explicit prior was
 # supplied and points at prior_summary().
+.agg_fit_label <- function(mi) {
+  # The aggregated header hard-coded "aggregated-gaussian" on every
+  # aggregated fit, including the binomial and Poisson emits the count
+  # aggregator produces -- a wrong family name on the surface the
+  # package uses to signal exactness. Read it off the fit.
+  fam <- mi$family %||% NA_character_
+  if (!is.character(fam) || length(fam) != 1L || is.na(fam) || !nzchar(fam)) {
+    return("aggregated")
+  }
+  paste0("aggregated-", fam)
+}
+
 .agg_prior_label <- function(pp) {
   switch(
     pp,
@@ -219,21 +299,25 @@ summary.flexybayes <- function(object, ...) {
 
 #' Print a flexybayes_aggregated object
 #'
-#' Brief one-screen summary of an aggregated-gaussian fit produced by
+#' Brief one-screen summary of a fit produced by
 #' `flexybayes(..., aggregate = "auto"/TRUE)` or `fb_brms(..., aggregate
-#' = ...)`. Includes the `exactness` field and the cell
-#' compression ratio (when N/K >= 2).
+#' = ...)`. The header names the fit's own family
+#' (`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`).
+#' Includes the `exactness` field and the cell compression ratio (when
+#' N/K >= 2).
 #'
-#' @param x   a `<flexybayes_aggregated>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   A `<flexybayes_aggregated>` object, as returned by a fit
+#'   run on the aggregated representation.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the one-screen summary
+#'   it prints.
 #' @export
 print.flexybayes_aggregated <- function(x, ...) {
   mi <- x$extras$model_info
   am <- x$extras$aggregation_meta
   bd <- x$extras$backend_decision
 
-  cat("Bayesian mixed model  [flexyBayes / aggregated-gaussian]\n")
+  cat(sprintf("Bayesian mixed model  [flexyBayes / %s]\n", .agg_fit_label(mi)))
   cat(strrep("-", 60), "\n")
   cat("  family:    ", mi$family, "(", mi$link, "link)\n")
   cat("  N obs:     ", mi$n_obs, "\n")
@@ -256,10 +340,20 @@ print.flexybayes_aggregated <- function(x, ...) {
   if (!is.null(am$prior_parametrization)) {
     cat("  priors:    ", .agg_prior_label(am$prior_parametrization), "\n")
   }
+  # An aggregated fit carries `$inla` or `$greta` depending on the engine
+  # that ran it, so the component list is read off the object rather than
+  # assuming the INLA path.
   cat(strrep("-", 60), "\n")
-  cat("  $glm      -- per-row reconstructed fitted values + coef shim\n")
-  cat("  $inla     -- raw aggregated INLA fit (use INLA's summary etc.)\n")
-  cat("  $extras   -- summary, aggregation_meta, backend_decision\n")
+  .print_fit_components(
+    x,
+    c(
+      glm = "per-row reconstructed fitted values + coef shim",
+      inla = "raw aggregated INLA fit (use INLA's summary etc.)",
+      greta = "raw aggregated greta draws (coda mcmc.list)",
+      extras = "summary, aggregation_meta, backend_decision"
+    ),
+    width = 10L
+  )
   invisible(x)
 }
 
@@ -267,12 +361,15 @@ print.flexybayes_aggregated <- function(x, ...) {
 #' Summarise a flexybayes_aggregated object
 #'
 #' Posterior summary read off the aggregated INLA fit's
-#' `summary.fixed` + `summary.hyperpar` slots. Shows the
-#' compression line when N/K >= 2.
+#' `summary.fixed` + `summary.hyperpar` slots. The header names the
+#' fit's own family. Shows the compression line when N/K >= 2.
 #'
-#' @param object a `<flexybayes_aggregated>` object.
-#' @param ...    unused.
-#' @return invisibly returns the posterior summary list.
+#' @param object A `<flexybayes_aggregated>` object, as returned by a fit
+#'   run on the aggregated representation.
+#' @param ...    Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, a list holding the posterior summary tables the
+#'   method printed, so a caller can use the numbers without re-parsing
+#'   the output.
 #' @export
 summary.flexybayes_aggregated <- function(object, ...) {
   mi <- object$extras$model_info
@@ -280,7 +377,10 @@ summary.flexybayes_aggregated <- function(object, ...) {
   bd <- object$extras$backend_decision
   ps <- object$extras$summary
 
-  cat("Bayesian mixed model summary  [flexyBayes / aggregated-gaussian]\n")
+  cat(sprintf(
+    "Bayesian mixed model summary  [flexyBayes / %s]\n",
+    .agg_fit_label(mi)
+  ))
   cat(strrep("=", 65), "\n")
   cat("  family:    ", mi$family, "/", mi$link, "\n")
   cat("  N =", mi$n_obs, ", K =", mi$n_cells, "\n")
@@ -330,36 +430,67 @@ summary.flexybayes_aggregated <- function(object, ...) {
 
 
 #' Extract fixed effect coefficients
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return Named numeric vector of posterior mean fixed effects
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A named numeric vector of the fixed effects' posterior means,
+#'   on the treatment-contrast basis, named for the design-matrix
+#'   columns. Empty when the model carries no fixed effects.
 #' @export
 coef.flexybayes <- function(object, ...) {
   object$glm$coefficients
 }
 
 #' Extract variance-covariance matrix of fixed effects
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return Posterior covariance matrix of fixed effect coefficients
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns The posterior covariance matrix of the fixed effects, square
+#'   with one row and column per coefficient and dimnames taken from
+#'   [coef()]. This is a posterior covariance, not a sampling-theory
+#'   variance estimate, though the downstream packages that consume it
+#'   treat it as one.
 #' @export
 vcov.flexybayes <- function(object, ...) {
   attr(object$glm, "posterior_vcov")
 }
 
-#' Credible intervals for fixed effects
+#' Credible intervals for the fixed effects of a flexyBayes fit
 #'
-#' Returns posterior quantile-based credible intervals, not
-#' frequentist confidence intervals.
+#' Returns posterior quantile-based credible intervals, not frequentist
+#' confidence intervals: the bounds are empirical quantiles of the
+#' fixed-effect posterior draws the fit carries.
 #'
-#' @param object A flexybayes object
-#' @param parm Parameter names (NULL for all fixed effects)
-#' @param level Credible level (default 0.95)
-#' @param ... Additional arguments (ignored)
-#' @return Matrix with lower and upper credible bounds
+#' This method reads the draws slot written by the greta-shaped emits
+#' (`fit$greta$draws`). A fit from an engine that stores its posterior in
+#' another shape reaches its own method -- [confint.flexybayes_inla()] for
+#' INLA, [confint.flexybayes_brms()] for brms. An object that carries
+#' neither is refused by name rather than returned empty, because an empty
+#' interval matrix reads as "no fixed effects" and not as "this fit cannot
+#' answer the question".
+#'
+#' @param object A `flexybayes` fit carrying a `$greta$draws` posterior
+#'   slot.
+#' @param parm Character vector of parameter names to return, or `NULL`
+#'   (the default) for every fixed effect.
+#' @param level Credible level for the interval, as a proportion. The
+#'   default `0.95` returns the 2.5th and 97.5th posterior percentiles.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A matrix with one row per fixed effect and two columns holding
+#'   the lower and upper credible bounds, named for the percentiles used.
 #' @export
 confint.flexybayes <- function(object, parm = NULL, level = 0.95, ...) {
   draws <- object$greta$draws
+  if (is.null(draws)) {
+    stop(.fb_refusal_condition(
+      reason_code = "fit_lacks_posterior_draws",
+      message = paste0(
+        "confint() cannot form credible intervals for this fit: it carries ",
+        "no posterior-draw slot (`$greta$draws`). The fit's class is <",
+        paste(class(object), collapse = ", "), ">. Fixed-effect intervals ",
+        "are available from summary() on every active engine, and an INLA ",
+        "fit answers confint() from its own marginals."
+      )
+    ))
+  }
   all_draws <- do.call(rbind, lapply(draws, as.matrix))
 
   # Get fixed effect column names
@@ -440,18 +571,24 @@ confint.flexybayes <- function(object, parm = NULL, level = 0.95, ...) {
 }
 
 #' Extract fitted values
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return Numeric vector of posterior mean fitted values
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A numeric vector of in-sample fitted values on the response
+#'   scale, one per row of the fitted data, each the posterior mean of
+#'   that observation's conditional expectation. Rows carried as latent
+#'   under `na_action = "augment"` receive a fitted value like any other.
 #' @export
 fitted.flexybayes <- function(object, ...) {
   object$glm$fitted.values
 }
 
 #' Extract residuals
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return Numeric vector of residuals (observed - fitted)
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A numeric vector of response residuals, the observed value
+#'   minus the posterior-mean fitted value, one per row of the fitted
+#'   data. A row whose response was missing and carried as latent has no
+#'   observed value and returns `NA`.
 #' @export
 residuals.flexybayes <- function(object, ...) {
   object$glm$residuals
@@ -459,12 +596,13 @@ residuals.flexybayes <- function(object, ...) {
 
 #' Predict from a flexybayes model
 #'
-#' @param object A flexybayes object
+#' @param object A fitted `flexybayes` object of any backend.
 #' @param newdata Optional new data frame for prediction. If NULL, returns
 #'   fitted values from the original data.
 #' @param type `"link"` for linear predictor, `"response"` for response scale.
-#' @param se.fit Logical: return standard errors?
-#' @param ... Additional arguments (ignored)
+#' @param se.fit A single logical. `TRUE` returns standard errors
+#'   alongside the predictions.
+#' @param ... Ignored. Present for compatibility with the generic.
 #' @param chunk_size Optional integer. When supplied, and when
 #'   `newdata` has more rows than `chunk_size`, prediction iterates
 #'   over chunks of this size and concatenates the results. Default
@@ -806,50 +944,88 @@ predict.flexybayes <- function(
   )
 }
 
-#' Log-likelihood (approximate)
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return logLik object
+#' Plug-in conditional log-likelihood of a flexyBayes fit
+#'
+#' Evaluates the conditional log-likelihood at the posterior-mean fitted
+#' values -- a plug-in quantity, not a posterior summary, and not the
+#' marginal likelihood. It exists so `AIC()`-style comparisons of two fits
+#' from the same engine have something to read.
+#'
+#' The method computes what the object carries and refuses by name when it
+#' carries too little. Three requirements are checked before any arithmetic
+#' runs: the response vector in `$glm$y`, the fitted values from
+#' [fitted()], and a recorded family. A Gaussian fit additionally sharpens
+#' its residual scale from the posterior draws when they are present, and
+#' otherwise falls back to the residual root-mean-square. Families outside
+#' the Gaussian, binomial and Poisson set have no plug-in form here and are
+#' refused rather than reported as `NA`, because a silent `NA` propagates
+#' into `anova()` and `AIC()` as though the comparison had been made.
+#'
+#' INLA fits reach [logLik.flexybayes_inla()] instead, which states that
+#' INLA reports a marginal log-likelihood and returns `NA` with that
+#' message.
+#'
+#' @param object A `flexybayes` fit carrying a response vector, fitted
+#'   values, and a recorded response family.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A `logLik` object: the scalar log-likelihood with `df` and
+#'   `nobs` attributes taken from the fit's recorded model information.
 #' @export
 logLik.flexybayes <- function(object, ...) {
   y <- object$glm$y
-  fitted <- fitted(object)
   fam_link <- object$extras$parse_info$family
-
-  ll <- tryCatch(
-    {
-      if (fam_link$family == "gaussian") {
-        # Get residual SD from posterior
-        all_draws <- do.call(rbind, lapply(object$greta$draws, as.matrix))
-        sigma_cols <- grep("^sigma_e_atg", colnames(all_draws), value = TRUE)
-        if (length(sigma_cols) > 0) {
-          sigma_e <- mean(all_draws[, sigma_cols[1]])
-        } else {
-          sigma_e <- sqrt(mean((y - fitted)^2))
-        }
-        sum(dnorm(y, mean = fitted, sd = sigma_e, log = TRUE))
-      } else if (fam_link$family %in% c("binomial", "binary")) {
-        p <- pmax(pmin(fitted, 1 - 1e-10), 1e-10)
-        sum(dbinom(y, size = 1, prob = p, log = TRUE))
-      } else if (fam_link$family == "poisson") {
-        sum(dpois(y, lambda = pmax(fitted, 1e-10), log = TRUE))
-      } else {
-        NA_real_
-      }
-    },
-    error = function(e) {
-      # Surface the failure rather than silently returning NA (charter:
-      # never swallow an error). Downstream anova() / AIC() see the NA and
-      # the user sees why.
-      warning(
-        "logLik() could not be computed (",
-        conditionMessage(e),
-        "); returning NA.",
-        call. = FALSE
+  if (is.null(y) || is.null(fam_link$family)) {
+    stop(.fb_refusal_condition(
+      reason_code = "conditional_loglik_not_available",
+      message = paste0(
+        "logLik() cannot be computed for this fit: it carries ",
+        if (is.null(y)) "no response vector (`$glm$y`)" else
+          "no recorded response family",
+        ". The fit's class is <", paste(class(object), collapse = ", "),
+        ">. Returning NA here would let AIC() and anova() report a ",
+        "comparison that was never made."
       )
-      NA_real_
+    ))
+  }
+
+  fitted_values <- stats::fitted(object)
+
+  # ---- Plug-in evaluation, one branch per supported family -------------
+  if (identical(fam_link$family, "gaussian")) {
+    # The posterior draws sharpen the residual scale where they exist. A
+    # fit without them (an engine storing its posterior in another shape)
+    # still has a well-defined plug-in scale from the residuals, so this
+    # is a fallback rather than a refusal.
+    sigma_e <- NA_real_
+    draws <- object$greta$draws
+    if (!is.null(draws)) {
+      all_draws <- do.call(rbind, lapply(draws, as.matrix))
+      sigma_cols <- grep("^sigma_e_atg", colnames(all_draws), value = TRUE)
+      if (length(sigma_cols) > 0L) {
+        sigma_e <- mean(all_draws[, sigma_cols[1L]])
+      }
     }
-  )
+    if (!is.finite(sigma_e)) {
+      sigma_e <- sqrt(mean((y - fitted_values)^2))
+    }
+    ll <- sum(stats::dnorm(y, mean = fitted_values, sd = sigma_e, log = TRUE))
+  } else if (fam_link$family %in% c("binomial", "binary")) {
+    p <- pmax(pmin(fitted_values, 1 - 1e-10), 1e-10)
+    ll <- sum(stats::dbinom(y, size = 1L, prob = p, log = TRUE))
+  } else if (identical(fam_link$family, "poisson")) {
+    ll <- sum(stats::dpois(y, lambda = pmax(fitted_values, 1e-10), log = TRUE))
+  } else {
+    stop(.fb_refusal_condition(
+      reason_code = "conditional_loglik_not_available",
+      message = paste0(
+        "logLik() has no plug-in conditional log-likelihood for the '",
+        fam_link$family, "' family. The implemented families are ",
+        "gaussian, binomial and poisson. Use the engine's own model ",
+        "comparison instead -- loo::loo() on brms draws, or the DIC and ",
+        "WAIC that summary() reports for an INLA fit."
+      )
+    ))
+  }
 
   structure(
     ll,
@@ -859,59 +1035,142 @@ logLik.flexybayes <- function(object, ...) {
   )
 }
 
-#' Number of observations
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return Integer
+#' Number of observations a flexyBayes fit was fitted to
+#'
+#' Reads the observation count recorded at emit time, so the answer is the
+#' number of rows the engine actually saw. On a fit whose missing responses
+#' were augmented rather than dropped, that count includes the augmented
+#' design cells.
+#'
+#' @param object A `flexybayes` fit of any engine.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A single integer, the number of observations in the fitted
+#'   data.
 #' @export
 nobs.flexybayes <- function(object, ...) {
   object$extras$model_info$n_obs
 }
 
 #' Extract model family
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return A family object
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns The response family the model was fitted under, as the
+#'   `family` object the fit recorded at emit time -- so it names the
+#'   family and link the engine actually used, not the string the caller
+#'   passed.
 #' @export
 family.flexybayes <- function(object, ...) {
   object$glm$family
 }
 
 #' Extract model formula
-#' @param x A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return The fixed formula
+#' @param x A fitted `flexybayes` object of any backend.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns The fixed-effect (population-level) formula as a `formula`
+#'   object. Random-effect and residual-structure terms are not part of
+#'   it: read them from the fit's `fb_terms` intermediate representation,
+#'   or from [fb_plan()] before fitting.
 #' @export
 formula.flexybayes <- function(x, ...) {
   x$glm$formula
 }
 
-#' Extract model matrix
-#' @param object A flexybayes object
-#' @param ... Additional arguments (ignored)
-#' @return The fixed effects model matrix
+#' Fixed-effect model matrix of a flexyBayes fit
+#'
+#' Rebuilds the population-level design matrix from the formula and data
+#' the fit carries. Random-effect and residual-structure terms are not part
+#' of it: this is the basis the fixed-effect coefficients are expressed in.
+#'
+#' The formula and data are resolved from whichever slots the object holds.
+#' The greta-shaped and brms-shaped emits keep both under `$glm`; an INLA
+#' fit keeps its data at `$data` and recovers its fixed-effect formula
+#' through [formula.flexybayes_inla()]. An object supplying neither is
+#' refused by name, since `model.matrix()` on a `NULL` formula silently
+#' returns the intercept-only matrix of the calling frame's data.
+#'
+#' @param object A `flexybayes` fit carrying a fixed-effect formula and the
+#'   data it was fitted to.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A numeric matrix with one row per observation and one column
+#'   per fixed-effect basis column, carrying the usual `assign` attribute.
 #' @export
 model.matrix.flexybayes <- function(object, ...) {
-  model.matrix(object$glm$formula, data = object$glm$data)
+  form <- object$glm$formula
+  if (is.null(form)) {
+    form <- tryCatch(stats::formula(object), error = function(e) NULL)
+  }
+  dat <- object$glm$data %||% object$data
+
+  if (is.null(form) || is.null(dat)) {
+    stop(.fb_refusal_condition(
+      reason_code = "model_matrix_not_recoverable",
+      message = paste0(
+        "model.matrix() cannot rebuild the fixed-effect design for this ",
+        "fit: it carries ",
+        if (is.null(form)) "no fixed-effect formula" else "no fitted data",
+        ". The fit's class is <", paste(class(object), collapse = ", "),
+        ">. Rebuild the design from the original call instead."
+      )
+    ))
+  }
+
+  stats::model.matrix(form, data = dat)
 }
 
-#' Update a flexybayes model
+#' Re-fit a flexyBayes model with modified arguments
 #'
-#' Re-fit the model with modified arguments.
+#' Rebuilds the original [flexybayes()] call from the argument record the
+#' fit carries, applies the overrides supplied in `...`, and re-fits.
 #'
-#' @param object A flexybayes object
-#' @param ... Arguments to override (e.g., `n_samples = 2000`)
-#' @return A new flexybayes object
+#' The record has to be complete for this to be safe. An argument the fit
+#' did not record would be re-supplied as its default, so a re-fit could
+#' quietly drop a relationship matrix or a prior scale and return a
+#' different model under the same name. When any of the thirteen recorded
+#' arguments is absent, the method refuses and names what is missing rather
+#' than re-fitting a model the user did not ask for. INLA fits currently
+#' record six of the thirteen and therefore refuse.
+#'
+#' @param object A `flexybayes` fit carrying a complete argument record in
+#'   `$extras$call_info`.
+#' @param ... Named arguments overriding the recorded call, for example
+#'   `n_samples = 2000L` or a replacement `data` frame.
+#' @returns A new fitted `flexybayes` object of the same engine as the
+#'   original, unless an override routes it elsewhere.
 #' @export
 update.flexybayes <- function(object, ...) {
   cl <- object$extras$call_info
-  dots <- list(...)
+  required <- c(
+    "fixed", "random", "residual", "family", "link", "known_matrices",
+    "weights", "n_samples", "warmup", "chains", "prior_fixed_sd",
+    "prior_vc_sd"
+  )
+  missing_fields <- setdiff(required, names(cl))
+  dat <- object$glm$data %||% object$data
 
+  if (length(missing_fields) > 0L || is.null(dat)) {
+    stop(.fb_refusal_condition(
+      reason_code = "update_call_not_reconstructable",
+      message = paste0(
+        "update() cannot re-fit this model: its recorded call is ",
+        "incomplete, so a re-fit would silently substitute defaults for ",
+        if (length(missing_fields) > 0L) {
+          paste0("`", paste(missing_fields, collapse = "`, `"), "`")
+        } else {
+          "the fitted data"
+        },
+        ". The fit's class is <", paste(class(object), collapse = ", "),
+        ">. Re-issue the original flexybayes() call with the arguments ",
+        "you want changed."
+      )
+    ))
+  }
+
+  dots <- list(...)
   args <- list(
     fixed = cl$fixed,
     random = cl$random,
     residual = cl$residual,
-    data = object$glm$data,
+    data = dat,
     family = cl$family,
     link = cl$link,
     known_matrices = cl$known_matrices,
@@ -919,6 +1178,10 @@ update.flexybayes <- function(object, ...) {
     n_samples = cl$n_samples,
     warmup = cl$warmup,
     chains = cl$chains,
+    # Carried so a re-fit repeats the sampler settings the original used.
+    # Absent from a pre-0.9.0 record, where NULL is the old behaviour.
+    seed = cl$seed,
+    control = cl$control,
     prior_fixed_sd = cl$prior_fixed_sd,
     prior_vc_sd = cl$prior_vc_sd
   )
@@ -931,35 +1194,61 @@ update.flexybayes <- function(object, ...) {
   do.call(flexybayes, args)
 }
 
-#' Compare flexybayes models
+#' Compare flexyBayes models on a plug-in information criterion
 #'
-#' Bayesian model comparison using WAIC or DIC.
+#' Ranks two or more fits by a DIC-shaped criterion built from the plug-in
+#' conditional log-likelihood of [logLik.flexybayes()] and the recorded
+#' parameter count. The criterion is approximate and the method says so on
+#' every print: it penalises the nominal parameter count rather than an
+#' effective one, so it is a coarse ordering, not a model-selection
+#' procedure.
 #'
-#' @param object A flexybayes object
-#' @param ... Additional flexybayes objects to compare
-#' @return A data frame with model comparison statistics
+#' Every fit compared must supply both ingredients. A fit whose
+#' log-likelihood is `NA` -- an INLA fit reports a marginal likelihood, not
+#' a conditional one -- or which records no parameter count is refused by
+#' name, because ranking on an `NA` produces an ordering that looks
+#' computed and is not.
+#'
+#' @param object A `flexybayes` fit supplying a conditional log-likelihood
+#'   and a recorded parameter count.
+#' @param ... Further `flexybayes` fits to compare against `object`.
+#' @returns Invisibly, a data frame with one row per model carrying the
+#'   log-likelihood, parameter count, criterion value, and the difference
+#'   from the best model. Printed as a side effect.
 #' @export
 anova.flexybayes <- function(object, ...) {
   models <- c(list(object), list(...))
   n_models <- length(models)
 
-  # Compute log-likelihoods
+  # ---- Both ingredients must exist for every fit ------------------------
+  # logLik() on an INLA fit returns NA by design (marginal, not
+  # conditional), and an INLA fit records no n_params. Either alone makes
+  # the criterion unformable, so both are checked before any arithmetic.
   lls <- vapply(
     models,
-    function(m) {
-      ll <- logLik(m)
-      as.numeric(ll)
-    },
+    function(m) as.numeric(stats::logLik(m)),
     numeric(1)
   )
-
   n_params <- vapply(
     models,
-    function(m) {
-      m$extras$model_info$n_params
-    },
+    function(m) as.integer(m$extras$model_info$n_params %||% NA_integer_),
     integer(1)
   )
+  unusable <- which(!is.finite(lls) | is.na(n_params))
+  if (length(unusable) > 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "conditional_loglik_not_available",
+      message = paste0(
+        "anova() cannot rank these fits: model",
+        if (length(unusable) == 1L) " " else "s ",
+        paste(unusable, collapse = ", "),
+        " supplied no finite conditional log-likelihood or no parameter ",
+        "count. INLA fits are the usual case -- INLA reports a marginal ",
+        "log-likelihood, and its DIC and WAIC are already in summary(). ",
+        "For brms fits, loo::loo_compare() is the supported comparison."
+      )
+    ))
+  }
 
   # Approximate DIC-like comparison
   dic <- -2 * lls + 2 * n_params
@@ -980,8 +1269,10 @@ anova.flexybayes <- function(object, ...) {
   cat(strrep("-", 50), "\n")
   print(result)
   cat(
-    "\nNote: DIC is approximate. For rigorous comparison,\n",
-    "use loo::loo() on the greta draws.\n"
+    "\nNote: this criterion is approximate -- it penalises the nominal\n",
+    "parameter count, not an effective one. For a defensible comparison\n",
+    "of brms fits use loo::loo_compare(); an INLA fit already reports\n",
+    "DIC and WAIC in summary().\n"
   )
 
   invisible(result)

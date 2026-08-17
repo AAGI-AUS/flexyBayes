@@ -7,12 +7,14 @@
 \method{print}{fb_preflight}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_preflight>} object.}
+\item{x}{An \verb{<fb_preflight>} object, as built by the design-memory
+preflight.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the per-term table it
+prints.
 }
 \description{
 Diagnostic print of the design-memory preflight result:

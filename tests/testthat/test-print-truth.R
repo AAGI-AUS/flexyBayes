@@ -50,7 +50,7 @@ test_that("Engine: greta MCMC for a greta-backed fit", {
   fit <- .test_truth_fit(backend = "greta", path = "explicit_greta")
   repr <- flexyBayes:::.repr_label_for_fit(fit, fit$extras$backend_decision)
   engine <- flexyBayes:::.engine_label_for_fit(fit, fit$extras$backend_decision)
-  expect_equal(repr, "exact")
+  expect_equal(repr, "exact (model, not inference)")
   expect_equal(engine, "greta MCMC")
 })
 
@@ -62,7 +62,7 @@ test_that("Engine: INLA Laplace for an INLA-backed fit", {
   fit <- .test_truth_fit(backend = "inla", path = "explicit_inla_accept")
   repr <- flexyBayes:::.repr_label_for_fit(fit, fit$extras$backend_decision)
   engine <- flexyBayes:::.engine_label_for_fit(fit, fit$extras$backend_decision)
-  expect_equal(repr, "exact")
+  expect_equal(repr, "exact (model, not inference)")
   expect_equal(engine, "INLA Laplace")
 })
 

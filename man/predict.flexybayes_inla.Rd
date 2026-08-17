@@ -22,7 +22,7 @@
 \item{se.fit}{Logical: also return delta-method standard errors from
 the fixed-effect covariance.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 A numeric vector of predictions, or a list \code{fit} / \code{se.fit}

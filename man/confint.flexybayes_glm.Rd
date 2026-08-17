@@ -7,14 +7,33 @@
 \method{confint}{flexybayes_glm}(object, parm = NULL, level = 0.95, ...)
 }
 \arguments{
-\item{object}{A flexybayes_glm object}
+\item{object}{A \code{flexybayes_glm} object, reached as \code{fit$glm} on any
+fitted \code{flexybayes} object.}
 
-\item{parm}{Parameter names}
+\item{parm}{A character vector naming the parameters to report, or
+\code{NULL} (the default) for every fixed effect.}
 
-\item{level}{Credible level}
+\item{level}{A single numeric giving the credible level, defaulting
+to 0.95.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored. Present for compatibility with the generic.}
+}
+\value{
+A two-column matrix of interval bounds, carrying an
+\code{interval_basis} attribute of \code{"posterior_quantile"} or
+\code{"normal_approximation"}.
 }
 \description{
-Returns posterior quantile-based credible intervals.
+Posterior quantile credible intervals, computed from the fixed-effect
+draws.
+}
+\details{
+Where the draws are unavailable the method falls back to the
+normal-approximation interval \eqn{\hat\beta \pm z_{\alpha/2}
+\mathrm{sd}}, and marks the returned matrix with
+\code{attr(, "interval_basis") == "normal_approximation"}. The two agree
+only for a symmetric posterior; on a skewed one they can differ
+materially, which is why the basis is reported rather than assumed.
+Earlier versions documented this method as quantile-based while
+always returning the approximation.
 }

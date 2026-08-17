@@ -48,7 +48,7 @@
 #          full decomposition.
 #   tol    Relative tolerance for the PSD contract. Eigenvalues in
 #          [-tol * lambda_max, 0) are numerical noise and are clamped to
-#          0 (recorded honestly on `negative_clamped`); an eigenvalue
+#          0 (and recorded on `negative_clamped`); an eigenvalue
 #          below -tol * lambda_max is genuine indefiniteness and is
 #          refused (K is not a valid covariance).
 #   name   Symbol name for messages (e.g. the known-matrix label).

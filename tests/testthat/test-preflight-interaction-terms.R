@@ -17,9 +17,15 @@ test_that("a three-way interaction random term preflights without crashing", {
 
   expect_s3_class(p, "fb_plan")
   # INLA cannot represent the crossed interaction random effect, so the
-  # honest structural refusal is the correct outcome -- what matters is
-  # that it is a refusal, not a base-R crash.
-  expect_false(p$will_fit)
+  # structural refusal is the correct gate outcome -- what matters here
+  # is that it is a refusal, not a base-R crash.
+  expect_identical(p$gate_outcome, "refuse_structural")
+  # The refusal is INLA's, not the model's: under `auto` the router
+  # resolves to brms, which emits `(1 | a:b:cc)`, so the plan reports a
+  # fit rather than the gate's verdict.
+  skip_if_not_installed("brms")
+  expect_identical(p$backend_chosen, "brms")
+  expect_true(p$will_fit)
 })
 
 test_that(".fb_dataset_levels counts distinct observed combinations for interactions", {

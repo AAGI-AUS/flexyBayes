@@ -2,18 +2,25 @@
 % Please edit documentation in R/methods.R
 \name{summary.flexybayes}
 \alias{summary.flexybayes}
-\title{Summarise a flexybayes object}
+\title{Summarise a flexyBayes fit}
 \usage{
 \method{summary}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-Invisibly returns the posterior summary
+Invisibly, a list holding the posterior summary tables the
+method printed, so a caller can use the numbers without re-parsing
+the output.
 }
 \description{
-Summarise a flexybayes object
+Prints the fixed-effect posterior summaries, the variance components,
+and the sampler or approximation diagnostics the backend recorded. On a
+brms fit with a sectioned residual it additionally prints the residual
+variance and standard deviation for each level of the sectioning
+factor, computed from the draws rather than by transforming a
+posterior mean.
 }

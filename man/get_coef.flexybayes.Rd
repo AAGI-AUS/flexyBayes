@@ -12,7 +12,7 @@
 \arguments{
 \item{model}{A \code{flexybayes_inla} fit.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 Named numeric vector of coefficients.

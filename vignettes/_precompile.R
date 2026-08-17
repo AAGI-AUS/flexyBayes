@@ -163,7 +163,13 @@ for (f in basename(orig_files)) {
     failures <- c(failures, f)
   } else {
     n_ok <- n_ok + 1L
-    cat(sprintf("[precompile] OK %s (%.1f s)\n", out, as.numeric(dt)))
+    # Fix the units: difftime picks its own (secs / mins / hours), so a
+    # bare as.numeric() reported a 1.3-minute knit as "1.3 s".
+    cat(sprintf(
+      "[precompile] OK %s (%.1f s)\n",
+      out,
+      as.numeric(dt, units = "secs")
+    ))
   }
 }
 

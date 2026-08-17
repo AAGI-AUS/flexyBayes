@@ -92,9 +92,11 @@
 #' dimensions; the second is a prompt directing the user to
 #' [cat_code()] for inspection and [proceed()] to advance the fit.
 #'
-#' @param x   a `<flexybayes_review>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   A `<flexybayes_review>` object as returned by
+#'   `flexybayes(review_code = TRUE)`.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the two summary lines it
+#'   prints.
 #' @keywords internal
 #' @export
 print.flexybayes_review <- function(x, ...) {
@@ -157,17 +159,20 @@ print.flexybayes_review <- function(x, ...) {
 #' object (greta R code for [flexybayes()] / `fb_greta()`; Stan
 #' code via [brms::stancode()] for `fb_brms()`) to a connection.
 #'
-#' @param x   a `<flexybayes_review>` object.
-#' @param ... method-specific arguments. The `flexybayes_review`
-#'   method accepts `file` (connection; default `stdout()`).
-#' @return invisibly returns the code string.
+#' @param x   A `<flexybayes_review>` object carrying the generated
+#'   backend code.
+#' @param ... Method-specific arguments. The `flexybayes_review` method
+#'   accepts `file`, a connection defaulting to `stdout()`.
+#' @returns Invisibly, the code as a character vector. Called for the
+#'   code it writes to `file`.
 #' @export
 cat_code <- function(x, ...) {
   UseMethod("cat_code")
 }
 
 #' @rdname cat_code
-#' @param file connection to write to (default `stdout()`).
+#' @param file A connection to write the code to, defaulting to
+#'   `stdout()`.
 #' @export
 cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
   writeLines(x$code, con = file)
@@ -187,11 +192,11 @@ cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
 #' via the backend driver, caches the result in-place, and
 #' returns the fit. A second call returns the cached fit.
 #'
-#' @param x   a `<flexybayes_review>` object.
-#' @param ... reserved for future deferred-execution classes
-#'   (e.g., deferred triangulation).
-#' @return the fit object the originating call would have
-#'   returned (class `flexybayes`).
+#' @param x   A `<flexybayes_review>` object holding the deferred fit.
+#' @param ... Reserved for future deferred-execution classes, such as a
+#'   deferred triangulation.
+#' @returns The fit object the originating call would have returned, of
+#'   class `flexybayes`. A second call returns the cached fit.
 #' @export
 proceed <- function(x, ...) {
   UseMethod("proceed")

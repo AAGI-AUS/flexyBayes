@@ -1,9 +1,12 @@
-# PR3: an explicit `backend = "greta"` request is the opt-in path by which
-# flexyBayes fits the MET structures INLA (and therefore the auto default)
-# refuses -- crossed interaction random effects and a heteroscedastic
-# per-environment residual. The auto default keeps its honest structural
-# refusal; only an explicit greta pin plans as will_fit. These are
-# plan-level tests (no greta install required).
+# PR3, as amended after the greta quarantine: crossed interaction random
+# effects and a heteroscedastic per-environment residual are the MET
+# structures INLA cannot represent, and an explicit `backend = "greta"`
+# request was once the only route that planned as will_fit. It is not any
+# more -- the router resolves the same model to brms under `auto`, and
+# brms fits it (tests/testthat/test-met-combined.R runs it). The plan
+# surface must say so: reading the LGM gate's verdict on INLA as the
+# fit's verdict told a user this model would not run and then ran it.
+# These are plan-level tests (no greta install required).
 
 test_that("an explicit greta pin plans will_fit for interaction + heteroscedastic models", {
   set.seed(1)
@@ -18,13 +21,17 @@ test_that("an explicit greta pin plans will_fit for interaction + heteroscedasti
   )
   expect_true(p_greta$will_fit)
 
-  # the same model on the auto default keeps the honest INLA refusal
+  # The same model on the auto default: the INLA gate still refuses on
+  # structure, and the route resolved past it to brms, which fits.
+  skip_if_not_installed("brms")
   p_auto <- flexybayes(
     y ~ e, random = ~ g + g:e, residual = ~ dsum(~ units | e),
     data = d, plan = TRUE, backend = "auto"
   )
-  expect_false(p_auto$will_fit)
   expect_identical(p_auto$gate_outcome, "refuse_structural")
+  expect_identical(p_auto$backend_chosen, "brms")
+  expect_identical(p_auto$path, "auto_multistratum_to_brms")
+  expect_true(p_auto$will_fit)
 
   # a simple random intercept is unaffected on both routes
   expect_true(flexybayes(y ~ e, random = ~ g, data = d, plan = TRUE)$will_fit)

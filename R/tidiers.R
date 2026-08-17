@@ -3,7 +3,8 @@
 #
 # A flexyBayes fit is a backend-specific S3 list: the greta route returns
 # `flexybayes`, the brms route `c("flexybayes_brms", "flexybayes", ...)`,
-# and the INLA route `c("flexybayes_inla", "list")`. Downstream code that
+# and the INLA route `c("flexybayes_inla", "flexybayes", "list")`.
+# Downstream code that
 # wanted a flat one-row-per-term summary had to reach into backend-specific
 # slots, which is fragile and -- worse -- different across backends, so a
 # triangulation table that compared greta against INLA was hand-built every
@@ -79,7 +80,7 @@ generics::augment
 #'   [tidy.flexybayes_inla()]
 #' @examplesIf requireNamespace("generics", quietly = TRUE)
 #' \dontrun{
-#' fit <- flexybayes(yield ~ env, data = dat, backend = "greta")
+#' fit <- flexybayes(yield ~ env, data = dat, backend = "brms")
 #' tidy(fit)
 #' tidy(fit, effects = "random")
 #' }
@@ -153,8 +154,10 @@ tidy.flexybayes <- function(
 
 #' Tidy a per-row INLA fit into a one-row-per-term data frame
 #'
-#' The INLA backend returns a `flexybayes_inla` object that does not inherit
-#' from `flexybayes`, so it needs its own `tidy()` method. The fixed-effect
+#' The INLA backend returns a `flexybayes_inla` object whose internal
+#' layout differs from the other engines' -- it has no `$glm` shim -- so it
+#' needs its own `tidy()` method even though it shares the `flexybayes`
+#' parent class. The fixed-effect
 #' summary is read directly off INLA's `summary.fixed` table, whose `mean`,
 #' `sd`, and `0.025quant` / `0.975quant` columns map cleanly onto the
 #' `broom`-canonical `estimate`, `std.error`, `conf.low`, and `conf.high`.
@@ -316,9 +319,13 @@ augment.flexybayes <- function(x, data = NULL, ...) {
 }
 
 # ---- INLA: glance() / augment() not available (tidy() only) ------------
-# INLA fits do not inherit "flexybayes", so without these the generic
-# raises a bare "no applicable method" error. These give an on-brand,
-# actionable refusal instead and make methods("glance"/"augment") list INLA.
+# An INLA fit inherits "flexybayes" (the class graph was aligned at
+# 0.9.0), so the parent methods below are reachable on it. They cannot
+# answer from an INLA fit's slots -- glance() reports sampler diagnostics
+# and augment() needs the per-row model frame the Laplace fit does not
+# keep -- so the INLA methods refuse by name and point at what does work,
+# rather than letting the parent produce an empty or misleading result.
+# They also make methods("glance") / methods("augment") list INLA.
 
 #' @rdname glance.flexybayes
 #' @export

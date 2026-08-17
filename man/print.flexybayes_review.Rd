@@ -7,12 +7,14 @@
 \method{print}{flexybayes_review}(x, ...)
 }
 \arguments{
-\item{x}{a \verb{<flexybayes_review>} object.}
+\item{x}{A \verb{<flexybayes_review>} object as returned by
+\code{flexybayes(review_code = TRUE)}.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the two summary lines it
+prints.
 }
 \description{
 Two-line summary of a \verb{<flexybayes_review>} object returned when

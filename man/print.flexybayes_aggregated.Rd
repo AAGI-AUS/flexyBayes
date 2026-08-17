@@ -7,15 +7,19 @@
 \method{print}{flexybayes_aggregated}(x, ...)
 }
 \arguments{
-\item{x}{a \verb{<flexybayes_aggregated>} object.}
+\item{x}{A \verb{<flexybayes_aggregated>} object, as returned by a fit
+run on the aggregated representation.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the one-screen summary
+it prints.
 }
 \description{
-Brief one-screen summary of an aggregated-gaussian fit produced by
-\code{flexybayes(..., aggregate = "auto"/TRUE)} or \code{fb_brms(..., aggregate = ...)}. Includes the \code{exactness} field and the cell
-compression ratio (when N/K >= 2).
+Brief one-screen summary of a fit produced by
+\code{flexybayes(..., aggregate = "auto"/TRUE)} or \code{fb_brms(..., aggregate = ...)}. The header names the fit's own family
+(\code{aggregated-gaussian}, \code{aggregated-binomial}, \code{aggregated-poisson}).
+Includes the \code{exactness} field and the cell compression ratio (when
+N/K >= 2).
 }

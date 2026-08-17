@@ -7,9 +7,12 @@
 \method{print}{fb_plan}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_plan>} object.}
+\item{x}{An \verb{<fb_plan>} object as returned by \code{fb_plan()}.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
+}
+\value{
+Invisibly, \code{x} unchanged. Called for the checklist it prints.
 }
 \description{
 Print an \verb{<fb_plan>} --- flight-checklist form

@@ -7,12 +7,14 @@
 \method{coef}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-Named numeric vector of posterior mean fixed effects
+A named numeric vector of the fixed effects' posterior means,
+on the treatment-contrast basis, named for the design-matrix
+columns. Empty when the model carries no fixed effects.
 }
 \description{
 Extract fixed effect coefficients

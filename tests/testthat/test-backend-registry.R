@@ -68,10 +68,12 @@ test_that("the v0.5.0 population registers the expected backends", {
     flexyBayes:::.registered_backend_names(),
     c("greta", "inla", "brms", "gretaR")
   )
-  expect_identical(flexyBayes:::.lookup_backend("greta")$status, "active")
+  # greta / gretaR were QUARANTINED 2026-07-24 (reshape R1): retained as
+  # re-entry descriptors, not active fitting engines.
+  expect_identical(flexyBayes:::.lookup_backend("greta")$status, "quarantined")
   expect_identical(flexyBayes:::.lookup_backend("inla")$status, "active")
   expect_identical(flexyBayes:::.lookup_backend("brms")$status, "active")
-  expect_identical(flexyBayes:::.lookup_backend("gretaR")$status, "active")
+  expect_identical(flexyBayes:::.lookup_backend("gretaR")$status, "quarantined")
   # (koine, the dormant 4th-backend slot, moved to flexyBayesOrchestra in the
   # lean-core split, 2026-06-06; it is no longer registered in the core.)
   # brms is retained as the engine label (the brms -> stan rename was
@@ -117,11 +119,13 @@ test_that("CONSISTENCY: verb match.arg vocabularies are all registered", {
 })
 
 test_that("CONSISTENCY: auto candidate set matches default_in_auto flags", {
-  # The current dispatch candidate list lives in .resolve_routing();
-  # the registry's default_in_auto-TRUE names must equal it.
+  # The current dispatch candidate list lives in .resolve_routing(); the
+  # registry's default_in_auto-TRUE AND active names must equal it. Since the
+  # greta / gretaR quarantine (2026-07-24) only inla is an auto default (brms
+  # is opt-in; greta / gretaR are quarantined, never auto candidates).
   expect_setequal(
     flexyBayes:::.auto_default_backend_names(),
-    c("greta", "inla", "gretaR")
+    "inla"
   )
   # brms is deliberately NOT auto-default (opt-in only; Stan compile
   # latency would break the auto fast-path promise -- ADR 0024).
@@ -137,9 +141,10 @@ test_that(".available_backend_names() are active and installed", {
       expect_true(requireNamespace(e$available_pkg, quietly = TRUE), info = nm)
     }
   }
-  # gretaR is activated; it is "available" iff the gretaR package is installed
-  # (the version-floor probe is enforced downstream, in emit_gretaR()).
-  expect_identical("gretaR" %in% avail, nzchar(system.file(package = "gretaR")))
+  # gretaR is QUARANTINED (2026-07-24): never "available" even when the
+  # gretaR package is installed -- .available_backend_names() lists only
+  # active backends.
+  expect_false("gretaR" %in% avail)
 })
 
 test_that("capability predicates: greta universal, brms refuses structured-cov", {

@@ -7,15 +7,21 @@
 \method{summary}{flexybayes_inla}(object, ...)
 }
 \arguments{
-\item{object}{a \code{flexybayes_inla} object.}
+\item{object}{A \code{flexybayes_inla} object, the fit an INLA run
+returns.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns the summary list.
+Invisibly, the summary list, carrying a \code{spatial_field} data
+frame when the model holds an AR1 field.
 }
 \description{
 Returns the fixed / random / hyperpar posterior summary tables
-produced by INLA. Internal S3 method.
+produced by INLA. A fit carrying an autoregressive latent field also
+gets a \code{spatial_field} element: the field's own parameters on the
+correlation and standard-deviation scales, which is the form a reader
+needs and INLA's precision-scale hyperparameter table is not.
+Internal S3 method.
 }
 \keyword{internal}

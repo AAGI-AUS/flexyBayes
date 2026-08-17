@@ -142,7 +142,13 @@
     return(list())
   }
 
-  fn <- as.character(expr[[1]])
+  # A namespaced or computed head (`pkg::fn`, `f[[1]]`) is not a name, so
+  # as.character() would return a multi-element vector and switch() would
+  # abort on it. Reduce to the empty string, which no vocabulary entry
+  # matches, and let the closed-vocabulary refusal below name what was
+  # written.
+  fn_head <- expr[[1L]]
+  fn <- if (is.name(fn_head)) as.character(fn_head) else ""
 
   # Binary operators
   if (fn == "+") {
@@ -248,6 +254,28 @@
       var = .dep(expr, 2),
       level = if (length(expr) > 2) .dep(expr, 3) else NULL
     )),
+    # diag() and idh() are ASReml's own spellings for a diagonal variance
+    # structure over a factor: one variance per level, no covariance. They are
+    # the same structure `at(f)` produces without a level, and ASReml treats
+    # them as identical -- fitted side by side it returns the same components
+    # and the same standard errors for diag(site):gen and idh(site):gen. They
+    # map to the same node so the downstream emit has one path, not three.
+    #
+    # Neither takes a level: conditioning on selected levels is what at()'s
+    # second argument is for, and silently accepting one here would let a
+    # conditioned model wear a diagonal model's name.
+    "diag" = ,
+    "idh" = list(list(
+      type = "at",
+      var = .dep(expr, 2),
+      level = NULL
+    )),
+    # corh() sits between diag() and us(): heterogeneous variances with ONE
+    # common correlation shared by every pair of levels. Parsed to its own
+    # type so it can be refused by name -- neither active engine represents
+    # it, and it must not fall through to the diagonal or the unstructured
+    # form, both of which it is genuinely different from.
+    "corh" = list(list(type = "corh", var = .dep(expr, 2))),
     "ar1" = list(list(type = "ar1", var = .dep(expr, 2))),
     "ar2" = list(list(type = "ar2", var = .dep(expr, 2))),
     "cor" = list(list(type = "cor", var = .dep(expr, 2))),
@@ -326,7 +354,7 @@
       if (is.null(parsed) || is.null(parsed$grp)) {
         list(list(type = "units"))
       } else {
-        # Honesty guard: dsum() is represented ONLY as a per-region
+        # Fidelity guard: dsum() is represented ONLY as a per-region
         # heteroscedastic variance (the inner term is `units`). A
         # structured inner (ar1(), ar1():ar1(), us(), ...) would otherwise
         # be silently reduced to at_units -- fitting a heteroscedastic
@@ -360,9 +388,86 @@
       var = .dep(expr, 2),
       degree = if (length(expr) > 2) as.integer(expr[[3]]) else 2L
     )),
-    # Default: treat as a simple named variable
-    list(list(type = "simple", var = deparse(expr)))
+    # Default: the vocabulary above is closed, so anything reaching here is
+    # a call flexyBayes does not recognise. It used to be read as a plain
+    # variable named after its own source text, which turned ar2(row) into a
+    # column lookup for "ar2(row)" and corgh(site):gen into a nested effect
+    # of two invented factors -- a silent reinterpretation of the model.
+    .stop_asreml_function_not_recognised(expr)
   )
+}
+
+# ---------------------------------------------------------------- #
+# The closed ASReml function vocabulary                            #
+# ---------------------------------------------------------------- #
+#
+# Every function name .walk()'s switch() answers to. Membership here is not
+# a promise that the structure fits: ar2(), cor(), str() and fa() parse into
+# the formula catalogue and are refused by name at dispatch, and te() / ti()
+# / t2() refuse at parse. The point of the list is that a call outside it
+# never reaches the "simple variable" branch.
+.asreml_function_vocabulary <- function() {
+  c(
+    "ar1", "ar2", "at", "cor", "corh", "diag", "dsum", "fa", "id", "ide",
+    "idh", "lin", "ped", "pol", "s", "spl", "str", "t2", "te", "ti", "us",
+    "vm"
+  )
+}
+
+# The suggestion pool: everything the walker reads into an IR node. The
+# tensor-product smooths are held back because they refuse at parse with no
+# alternative of their own, so pointing a user at one would move them from a
+# refusal they can act on to a refusal they cannot. Every other entry either
+# fits or refuses by name with its own named alternative, which is a useful
+# next step even where it is not a fit.
+.asreml_suggestion_pool <- function() {
+  setdiff(.asreml_function_vocabulary(), c("te", "ti", "t2"))
+}
+
+# Nearest recognised spellings to an unrecognised token, by edit distance.
+# corgh -> corh, cor; ar3 -> ar1. Returns at most three, closest first, and
+# nothing at all when the token is far enough from everything that a
+# suggestion would be noise rather than help.
+.nearest_asreml_spellings <- function(token, max_n = 3L) {
+  pool <- .asreml_suggestion_pool()
+  d <- as.integer(utils::adist(token, pool, ignore.case = TRUE))
+  if (min(d) > 3L) {
+    return(character(0))
+  }
+  ord <- order(d, pool)
+  keep <- ord[d[ord] <= min(d) + 1L]
+  pool[utils::head(keep, max_n)]
+}
+
+# Refusal for a call outside the closed vocabulary. Names the token, states
+# that the grammar is closed, and offers the nearest implemented spellings.
+.stop_asreml_function_not_recognised <- function(expr) {
+  token <- paste(deparse(expr[[1L]]), collapse = "")
+  near <- .nearest_asreml_spellings(token)
+  suggestion <- if (length(near) > 0L) {
+    lead <- if (length(near) > 1L) {
+      " The nearest spellings flexyBayes reads are "
+    } else {
+      " The nearest spelling flexyBayes reads is "
+    }
+    paste0(lead, paste0(near, "()", collapse = ", "), ".")
+  } else {
+    ""
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "asreml_function_not_recognised",
+    message = paste0(
+      "\"", paste(deparse(expr), collapse = ""), "\" uses the function ",
+      token, "(), which is not in the ASReml vocabulary flexyBayes reads. ",
+      "The random / residual grammar is a closed set, so an unrecognised ",
+      "call is refused rather than read as a variable of that name.",
+      suggestion,
+      " The recognised set is ",
+      paste0(.asreml_function_vocabulary(), "()", collapse = ", "),
+      "; the ASReml formula-surface tutorial lists what each one fits."
+    ),
+    token = token
+  ))
 }
 
 # A dsum() inner term is "plain units" -- the only residual structure
@@ -404,6 +509,11 @@
   # US GxE:     us(env) : id(geno)
   if (lt == "us" && rt %in% c("id", "ide", "simple")) {
     return(list(list(type = "us_gxe", outer = l$var, inner = r$var)))
+  }
+  # CORH GxE:   corh(env) : id(geno) -- heterogeneous variances, ONE shared
+  # correlation. Carried as its own node so the refusal can name it.
+  if (lt == "corh" && rt %in% c("id", "ide", "simple")) {
+    return(list(list(type = "corh_gxe", outer = l$var, inner = r$var)))
   }
   # at(env):units  - heterogeneous residual
   if (lt == "at" && rt == "units") {
@@ -534,12 +644,20 @@
       term
     },
     "nested" = {
+      .stop_if_numeric_in_random_interaction(
+        c(term$outer, term$inner),
+        data
+      )
       if (term$outer %in% names(data)) {
         term$n_outer <- nlevels(factor(data[[term$outer]]))
       }
       if (term$inner %in% names(data)) {
         term$n_inner <- nlevels(factor(data[[term$inner]]))
       }
+      term
+    },
+    "combo" = {
+      .stop_if_numeric_in_random_interaction(term$vars, data)
       term
     },
     "factor_numeric_interaction" = {
@@ -549,13 +667,11 @@
       term
     },
     "smooth_mgcv" = {
-      if (!requireNamespace("mgcv", quietly = TRUE)) {
-        stop(
-          "`mgcv` is required for s() smooth terms. ",
-          "Install with: install.packages(\"mgcv\")",
-          call. = FALSE
-        )
-      }
+      .check_installed(
+        "mgcv",
+        "`mgcv` is required for s() smooth terms. ",
+        "Install with: install.packages(\"mgcv\")"
+      )
       if (is.null(term$var) || !term$var %in% names(data)) {
         stop(.fb_refusal_condition(
           reason_code = "smooth_variable_not_in_data",
@@ -655,6 +771,79 @@
     term
   )
 }
+
+# ---------------------------------------------------------------- #
+# Numeric variables inside a random interaction                     #
+# ---------------------------------------------------------------- #
+#
+# `random = ~ Subject + Subject:Days` with numeric Days is the spelling an
+# ASReml user reaches for when they want a random regression: a per-subject
+# slope on Days. It is not what the crossing emits. `Subject:Days` builds an
+# interaction grouping factor, so the emitted model carries one independent
+# deviation per (Subject, Days) cell -- 180 of them on sleepstudy, against
+# the eighteen slopes the user meant.
+#
+# Both readings are defensible and they are different models, so the term is
+# refused rather than resolved by fiat. The message names the two readings
+# and the route to each: (x || g) for the uncorrelated slope, an explicit
+# factor conversion for the per-cell effect.
+.stop_if_numeric_in_random_interaction <- function(vars, data) {
+  vars <- vars[!is.na(vars)]
+  vars <- vars[vars %in% names(data)]
+  if (length(vars) == 0L) {
+    return(invisible(NULL))
+  }
+  numeric_flag <- vapply(
+    vars,
+    function(v) is.numeric(data[[v]]) && !is.factor(data[[v]]),
+    logical(1L)
+  )
+  if (!any(numeric_flag)) {
+    return(invisible(NULL))
+  }
+
+  label <- paste(vars, collapse = ":")
+  numeric_vars <- vars[numeric_flag]
+  group_vars <- vars[!numeric_flag]
+  n_cells <- prod(vapply(
+    vars,
+    function(v) length(unique(data[[v]])),
+    numeric(1L)
+  ))
+  slope_route <- if (length(numeric_vars) == 1L && length(group_vars) == 1L) {
+    paste0(
+      "For the random regression write (", numeric_vars, " || ",
+      group_vars, ") in the brms-style grammar -- an uncorrelated ",
+      "per-", group_vars, " slope on ", numeric_vars,
+      ", which both engines represent."
+    )
+  } else {
+    paste0(
+      "For a random regression write the slope in the brms-style grammar ",
+      "as (", numeric_vars[[1L]], " || <grouping factor>)."
+    )
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "numeric_variable_in_random_interaction",
+    message = paste0(
+      label, " puts the numeric variable ",
+      paste0("`", numeric_vars, "`", collapse = ", "),
+      " inside a random interaction, and the two readings of that ",
+      "spelling are different models. ASReml reads it as a random ",
+      "regression on the numeric variable within the grouping factor. ",
+      "The interaction crossing flexyBayes would emit instead gives one ",
+      "independent deviation per cell -- ", format(n_cells), " of them ",
+      "here. flexyBayes refuses rather than choosing one reading for ",
+      "you. ", slope_route,
+      " For a genuine per-cell effect convert the variable first: ",
+      "data$", numeric_vars[[1L]], " <- factor(data$", numeric_vars[[1L]],
+      ")."
+    ),
+    numeric_vars = numeric_vars,
+    term_label = label
+  ))
+}
+
 
 # ---------------------------------------------------------------- #
 # Contrast-detection guard for factor:continuous interactions       #

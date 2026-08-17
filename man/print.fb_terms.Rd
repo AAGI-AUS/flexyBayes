@@ -7,12 +7,14 @@
 \method{print}{fb_terms}(x, ...)
 }
 \arguments{
-\item{x}{an \code{fb_terms} object.}
+\item{x}{An \code{fb_terms} object, the parsed intermediate
+representation of a model.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the term listing it
+prints.
 }
 \description{
 Internal S3 method, registered for dispatch only. Used during

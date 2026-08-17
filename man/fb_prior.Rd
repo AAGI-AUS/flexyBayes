@@ -7,8 +7,11 @@
 fb_prior(...)
 }
 \arguments{
-\item{...}{one or more two-sided formulas of the form
-\code{target ~ distribution(args)}. Examples:
+\item{...}{One or more two-sided formulas of the form
+\code{target ~ distribution(args)}, one per parameter being given a
+prior.
+
+Examples:
 \itemize{
 \item \code{sigma ~ pc(upper = 2, prob = 0.05)}
 \item \code{sd(group = "subject") ~ half_normal(scale = 1)}
@@ -28,8 +31,9 @@ Structured-covariance terms (\code{us}, \code{fa}, \code{ar1}, \code{vm}, \code{
 fall back to the legacy scale prior.}
 }
 \value{
-an \code{fb_prior} object (S3, inherits from list) with
-\verb{$specs} carrying the parsed \code{target} / \code{spec} pairs.
+An \code{fb_prior} object, an S3 class inheriting from list,
+whose \verb{$specs} element carries the parsed \code{target} and \code{spec}
+pairs.
 }
 \description{
 The flexyBayes prior DSL (domain-specific language) lives on the

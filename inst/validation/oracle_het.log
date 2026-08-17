@@ -1,0 +1,146 @@
+run: 2026-08-15 17:45:57 ACST
+R version 4.5.2 (2025-10-31)
+Online License checked out Sat Aug 15 17:45:58 2026
+asreml 4.2.0.392 | lme4 2.0.1 | nlme 3.1.168 | brms 2.23.0 | rstan 2.32.7 | posterior 1.7.0 
+
+flexyBayes 0.9.0 -- multi-backend Bayesian mixed models (INLA / brms) with cross-engine triangulation
+  Development release: all exports experimental; not on CRAN. See system.file("KNOWN_ISSUES.md", package = "flexyBayes").
+flexyBayes loaded from source tree flexyBayes/ (version 0.9.0)
+
+MET: 3 sites x 40 genotypes x 4 reps = 480 plots
+truth, genotype variance by site: 0.25 1.44 4.84 
+truth, residual variance: 0.36 
+
+asreml  diag(site):gen  -> 0.269 1.806 4.57 | resid 0.363 
+lme4    dummy() expansion -> 0.269 1.806 4.57 | resid 0.363 
+Compiling Stan program...
+Start sampling
+brms    (0 + site || gen) -> 0.289 1.875 4.824 | resid 0.365 
+Warning message:
+Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+Running the chains for more iterations may help. See
+https://mc-stan.org/misc/warnings.html#bulk-ess 
+
+====================================================================
+STRUCTURE -- how many parameters did each engine actually fit?
+====================================================================
+   engine variances covariances diagonal
+   <char>     <int>       <int>   <lgcl>
+1: asreml         3           0     TRUE
+2:   lme4         3           0     TRUE
+3:   brms         3           0     TRUE
+
+A diagonal structure over 3 sites means exactly 3 variances and
+0 covariances. Any engine reporting covariances has fitted us(), not
+diag(), whatever its formula appeared to say.
+
+STRUCTURE VERDICT: PASS -- every arm fitted the diagonal structure
+
+====================================================================
+VALUES -- per-site genotype variance, ascending, plus the residual
+====================================================================
+       gen_site1 gen_site2 gen_site3  resid
+asreml    0.2693    1.8058    4.5699 0.3629
+lme4      0.2693    1.8057    4.5698 0.3629
+brms      0.2893    1.8750    4.8240 0.3650
+truth      0.2500   1.4400   4.8400   0.3600 
+
+asreml vs lme4 : max relative difference 3.51e-05
+  Two REML implementations, no shared code. Agreement here is what
+  establishes that the SPECIFICATION means the same thing in both.
+
+brms vs asreml : max relative difference 0.0745
+  A posterior mean is not a REML estimate; judged on whether the
+  per-site magnitudes and ordering track, not on identity.
+
+Written: results/oracle_heterogeneous.rds
+
+
+====================================================================
+PROBE 2 -- heterogeneous residual, dsum(~ units | site)
+====================================================================
+data: 3 sites x 30 genotypes x 4 reps = 360 plots, seed 7
+truth, residual variance by site: 0.16 1 4 
+truth, genotype variance: 0.64 
+
+asreml  dsum(~ units | site) -> 0.1093 1.1248 4.6079 | gen 0.7728 
+nlme    varIdent(~ 1 | site)-> 0.1093 1.1248 4.6079 | gen 0.7728 
+Compiling Stan program...
+Start sampling
+flexyBayes: variance-component prior default is uniform(0, 11.4) on every SD (residual sigma + every named random-effect group): a weakly-informative choice for moderate group counts. For very small groups, Gelman (2006) recommends a half-Cauchy instead -- see ?fb_prior. Scale basis = "identity_sd_uniform". Pass `prior_vc_sd` explicitly for the legacy lognormal(0, prior_vc_sd) default, `prior = fb_prior(...)` for full control, or options(flexyBayes.silence_default_prior_note = TRUE) to silence this notice.
+
+Priors flexybayes() injected for arm 4 (read off the fitted model):
+                        prior class coef group  dpar  source
+          normal(0.822198, 1)     b            sigma    user
+         student_t(3, 0, 2.5)    sd                  default
+ uniform(0, 11.3774769813858)    sd        gen          user
+  (sd(y) = 2.2755 on this dataset)
+brms           sigma ~ 0 + site -> 0.1118 1.1443 4.6854 (posterior mean)
+flexybayes     sigma ~ 0 + site -> 0.1146 1.1516 4.6981 (posterior mean)
+
+====================================================================
+STRUCTURE -- how many free residual scales did each engine fit?
+====================================================================
+       engine residual_scales residual_covariances sectioned
+       <char>           <int>                <int>    <lgcl>
+1:     asreml               3                    0      TRUE
+2:       nlme               3                    0      TRUE
+3:       brms               3                    0      TRUE
+4: flexybayes               3                    0      TRUE
+
+A residual sectioned by 3 sites means exactly 3 free scales and 0
+covariances between sections.
+
+Scalar `sigma` still a parameter on the brms arms: brms=FALSE flexybayes=FALSE
+It must be FALSE. `sigma ~ 0 + site` REPLACES the scalar residual
+scale; an emit that kept it would be fitting a homogeneous residual
+with a predictor beside it, and would still print k numbers.
+
+STRUCTURE VERDICT: PASS -- every arm sectioned the residual
+
+====================================================================
+VALUES -- residual variance per site
+====================================================================
+                   site1  site2  site3
+asreml            0.1093 1.1248 4.6079
+nlme              0.1093 1.1248 4.6079
+brms              0.1118 1.1443 4.6854
+flexybayes        0.1146 1.1516 4.6981
+brms_median       0.1102 1.1318 4.6338
+brms_point        0.1105 1.1340 4.6461
+flexybayes_median 0.1128 1.1384 4.6414
+flexybayes_point  0.1132 1.1413 4.6575
+truth     0.1600   1.0000   4.0000 
+
+`_median` is the posterior median of exp(2 * b) and `_point` is
+exp(2 * mean(b)), the point transform. The unsuffixed brms rows are
+posterior means of exp(2 * b). All three are different summaries of the
+same draws and must not be quoted interchangeably.
+
+asreml vs nlme : max relative difference 1.32e-07
+  Two REML implementations, no shared code. Agreement here is what
+  establishes that dsum() and varIdent() name the same structure.
+
+brms vs asreml : max relative difference 0.0229 (posterior mean), 0.00767 (median)
+  per site (posterior mean):  0.0229 0.0173 0.0168 
+
+flexybayes vs asreml : max relative difference 0.0481 (posterior mean), 0.0319 (median)
+  per site (posterior mean):  0.0481 0.0238 0.0196 
+
+====================================================================
+CONVERGENCE -- a posterior summary is only as good as its ESS
+====================================================================
+
+brms (4 chains x 4000 post-warmup draws)
+         variable      mean   median         sd     rhat  ess_bulk  ess_tail
+1 resid_var_site1 0.1118335 0.110169 0.01725968 1.000786  9255.478 10477.681
+2 resid_var_site2 1.1443472 1.131750 0.15586765 1.000680 13588.667  9964.379
+3 resid_var_site3 4.6854204 4.633847 0.61559744 1.000030 10830.133  9429.427
+
+flexybayes (4 chains x 4000 post-warmup draws)
+         variable      mean   median         sd     rhat  ess_bulk  ess_tail
+1 resid_var_site1 0.1145889 0.112814 0.01796459 1.000803  8190.649 10042.392
+2 resid_var_site2 1.1515932 1.138425 0.15545440 1.000878 10791.537  9767.223
+3 resid_var_site3 4.6980779 4.641368 0.62570377 1.000007 11430.111  9852.251
+
+Written: results/oracle_dsum.rds

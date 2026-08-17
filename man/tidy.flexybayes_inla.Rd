@@ -23,8 +23,10 @@ A \code{data.frame} with one row per fixed-effect term and the columns
 \code{conf.low} / \code{conf.high}.
 }
 \description{
-The INLA backend returns a \code{flexybayes_inla} object that does not inherit
-from \code{flexybayes}, so it needs its own \code{tidy()} method. The fixed-effect
+The INLA backend returns a \code{flexybayes_inla} object whose internal
+layout differs from the other engines' -- it has no \verb{$glm} shim -- so it
+needs its own \code{tidy()} method even though it shares the \code{flexybayes}
+parent class. The fixed-effect
 summary is read directly off INLA's \code{summary.fixed} table, whose \code{mean},
 \code{sd}, and \verb{0.025quant} / \verb{0.975quant} columns map cleanly onto the
 \code{broom}-canonical \code{estimate}, \code{std.error}, \code{conf.low}, and \code{conf.high}.

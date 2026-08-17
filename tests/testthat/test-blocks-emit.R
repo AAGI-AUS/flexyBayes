@@ -125,6 +125,7 @@ test_that(".validate_blocks_input() refuses with blocks_empty_list", {
 # ---------------------------------------------------------------- #
 
 test_that("codegen: blocks path emits t(chol(as.matrix(Matrix::bdiag(...)))) sqrt expression", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   dat <- data.frame(
     geno = factor(rep(seq_len(5L), length.out = 60L)),
     yield = rnorm(60L, 50, 5)

@@ -124,7 +124,7 @@ test_that(".refusal_registry carries the v0.3.10 first-migration entries", {
 # reasons and the internal aggregate-out-of-scope control-flow
 # signals are deliberately excluded (see fb_refusals() docs).
 
-test_that(".refusal_registry holds the complete 54-code vocabulary", {
+test_that(".refusal_registry holds the complete refusal vocabulary", {
   reg <- flexyBayes:::.refusal_registry
   entries <- ls(envir = reg, all.names = TRUE)
   # 31 from the Phase 1C bulk migration + the family-support refusal,
@@ -155,8 +155,85 @@ test_that(".refusal_registry holds the complete 54-code vocabulary", {
   # dsum_structured_inner_unsupported is added (a structured dsum() inner
   # -- ar1/us/... -- is refused rather than silently reduced to a
   # per-region heteroscedastic variance) (= 55).
-  expect_equal(length(entries), 55L)
+  # At 0.9.1 the greta / gretaR quarantine adds three refusal codes
+  # (backend_quarantined, native_greta_fit_quarantined, auto_no_active_route)
+  # (= 58), and WP16 adds ar1_spatial_requires_complete_grid (= 59).
+  # The residual-structure fidelity fix adds two: brms has no
+  # residual-covariance lowering, so a structured residual reaching it must
+  # refuse rather than emit a model without the term
+  # (stan_cannot_represent_ar1_residual,
+  # stan_cannot_represent_structured_residual) (= 61), and weights, parsed
+  # but consumed by no emitter, are refused rather than silently returning
+  # the unweighted posterior (weights_not_supported) (= 62). The
+  # missing-response augmentation layer adds three: na_action = "fail"
+  # with a missing response (missing_response_refused), a missing
+  # predictor, which the device does not cover
+  # (missing_covariate_not_supported), and a design cell absent from the
+  # data whose model variables were never recorded
+  # (augment_cell_not_determinable) (= 65). brms drops NA-response rows and
+  # its mi() addition term is Gaussian-only, so a missing response on a
+  # non-Gaussian family refuses rather than being silently deleted
+  # (brms_cannot_augment_nongaussian) (= 66). at(f, level):g conditions the
+  # random effect on selected levels, which no active emitter represents and
+  # which is a different model from the heterogeneous variance diag(f):g that
+  # shares its spelling (at_level_conditioning_unsupported) (= 67).
+  # The 0.9.0 fidelity-of-names pass adds nine. The separable AR1 field is
+  # respelled: the residual form names ASReml's three-parameter nugget-free
+  # process and refuses (ar1_residual_not_representable), and the random-side
+  # field is INLA-only (stan_cannot_represent_ar1_field) (= 72). The parser
+  # vocabulary closes, so an unrecognised call is refused rather than read as
+  # a variable of that name (asreml_function_not_recognised), and the four
+  # parse-for-catalogue structures with no emit path are refused by name
+  # (ar2_not_representable, str_not_representable, fa_not_representable,
+  # interaction_not_representable) (= 77). The brms formula reconstruction's
+  # untyped stop becomes a named refusal (brms_cannot_represent_term) (= 78),
+  # and a numeric variable inside a random interaction is refused rather than
+  # resolved to one of its two readings
+  # (numeric_variable_in_random_interaction) (= 79). triangulate() gains a
+  # comparability gate, and two fits of different models are refused rather
+  # than compared (triangulate_incomparable_fits) (= 80). Aligning the class
+  # graph so INLA fits inherit `flexybayes` makes five parent methods
+  # reachable on them, and the four that cannot answer from an INLA fit's
+  # slots refuse by name rather than erroring obscurely or returning an
+  # empty result (fit_lacks_posterior_draws,
+  # conditional_loglik_not_available, model_matrix_not_recoverable,
+  # update_call_not_reconstructable) (= 84). An explicit backend = "inla"
+  # request that the gate refuses stops with a class rather than a bare
+  # simpleError, which was the last untyped refusal vocabulary in the
+  # package (inla_gate_refused) (= 85). fb_met_summary() abstained with a
+  # bare simpleError on both active engines and is now typed
+  # (met_summary_not_available) (= 86).
+  # A single-file or in-memory streaming source past 2^31 - 1 rows refuses
+  # rather than recording NA (row_count_exceeds_integer) (= 87).
+  # A `family` argument that is neither a name nor a usable stats family
+  # object -- or a family object contradicting an explicit `link =` --
+  # refuses rather than reaching base R's scalar `if` and erroring with
+  # "the condition has length > 1" (family_argument_not_recognised)
+  # (= 88).
+  expect_equal(length(entries), 88L)
+  expect_true("family_argument_not_recognised" %in% entries)
+  expect_true("row_count_exceeds_integer" %in% entries)
+  expect_true("met_summary_not_available" %in% entries)
+  expect_true("inla_gate_refused" %in% entries)
+  expect_true("fit_lacks_posterior_draws" %in% entries)
+  expect_true("conditional_loglik_not_available" %in% entries)
+  expect_true("model_matrix_not_recoverable" %in% entries)
+  expect_true("update_call_not_reconstructable" %in% entries)
+  expect_true("triangulate_incomparable_fits" %in% entries)
+  expect_true("at_level_conditioning_unsupported" %in% entries)
+  expect_true("ar1_residual_not_representable" %in% entries)
+  expect_true("stan_cannot_represent_ar1_field" %in% entries)
+  expect_true("asreml_function_not_recognised" %in% entries)
+  expect_true("brms_cannot_represent_term" %in% entries)
+  expect_true("numeric_variable_in_random_interaction" %in% entries)
+  expect_true("brms_cannot_augment_nongaussian" %in% entries)
+  expect_true("missing_response_refused" %in% entries)
+  expect_true("missing_covariate_not_supported" %in% entries)
+  expect_true("augment_cell_not_determinable" %in% entries)
   expect_true("stan_cannot_represent_structured_cov" %in% entries)
+  expect_true("stan_cannot_represent_ar1_residual" %in% entries)
+  expect_true("stan_cannot_represent_structured_residual" %in% entries)
+  expect_true("weights_not_supported" %in% entries)
   expect_true("grammar_brms_with_asreml_terms" %in% entries)
   expect_true("native_greta_requires_greta_backend" %in% entries)
   expect_true("engine_pin_backend_conflict" %in% entries)

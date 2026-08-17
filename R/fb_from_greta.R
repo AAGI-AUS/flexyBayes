@@ -266,9 +266,10 @@ fb_from_greta <- function(
   # user-supplied prior can be diff'd against the variable-node
   # distributions on the target arrays).
   if (!is.null(prior)) {
-    if (!inherits(prior, "fb_prior")) {
-      stop("`prior` must be an `fb_prior` object (or NULL).", call. = FALSE)
-    }
+    .check_fb_prior(
+      prior,
+      "`prior` must be an `fb_prior` object (or NULL)."
+    )
   }
 
   # Greta-meta slot: arrays + canonical_map +

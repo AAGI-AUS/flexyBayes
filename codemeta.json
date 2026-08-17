@@ -2,12 +2,12 @@
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
   "identifier": "flexyBayes",
-  "description": "Specify mixed models using ASReml-style or brms-style formula syntax and estimate them via greta (Bayesian MCMC), INLA (integrated nested Laplace approximation), or brms (Stan passthrough). Returns results in formats compatible with the standard R modelling ecosystem, with cross-engine posterior triangulation exposed as a first-class robustness diagnostic.",
+  "description": "Specify mixed models using familiar ASReml or brms-style formula syntax and estimate them via INLA or brms (Stan). Returns results in formats compatible with the standard R modelling ecosystem, and compares the same model across engines with triangulate(), a diagnostic on a gated overlap rather than a validation contract. Supports a selected set of structured covariance models -- diagonal and unstructured genotype-by-environment variances, per-level residual variances, known-covariance genomic and pedigree models, separable AR1 spatial fields on INLA, and univariate P-splines. Structures outside this set, including factor-analytic terms and the ASReml residual autoregressive formulation, raise typed refusals naming the nearest implemented alternative.",
   "name": "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax",
   "codeRepository": "https://github.com/AAGI-AUS/flexyBayes",
   "issueTracker": "https://github.com/AAGI-AUS/flexyBayes/issues",
-  "license": "https://spdx.org/licenses/GPL-3.0-or-later",
-  "version": "0.8.3",
+  "license": "https://spdx.org/licenses/MIT",
+  "version": "0.9.0",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
@@ -48,7 +48,7 @@
     },
     {
       "@type": "Person",
-      "givenName": "Francis K. C.",
+      "givenName": "Francis K.C.",
       "familyName": "Hui",
       "@id": "https://orcid.org/0000-0003-0765-3533"
     },

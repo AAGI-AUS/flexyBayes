@@ -14,9 +14,12 @@ flexybayes(
   link = NULL,
   known_matrices = list(),
   weights = NULL,
+  na_action = c("augment", "omit", "fail"),
   n_samples = 1000,
   warmup = 500,
   chains = 4,
+  seed = NULL,
+  control = NULL,
   prior = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
@@ -40,9 +43,12 @@ fb(
   link = NULL,
   known_matrices = list(),
   weights = NULL,
+  na_action = c("augment", "omit", "fail"),
   n_samples = 1000,
   warmup = 500,
   chains = 4,
+  seed = NULL,
+  control = NULL,
   prior = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
@@ -67,42 +73,143 @@ left \code{NULL}). The grammar is detected from the call shape; use
 \code{syntax} to force it.}
 
 \item{random}{One-sided formula: \code{~ random_terms} using ASReml syntax.
-Supports \code{vm()}, \code{at()}, \code{us()}, \code{fa()}, \code{ar1()}, \code{spl()}, \code{ped()},
-\code{dsum()}, \code{id()}, and nested colon terms.}
+Supports \code{vm()}, \code{at()}, \code{diag()}, \code{idh()}, \code{us()}, \code{fa()}, \code{ar1()},
+\code{spl()}, \code{ped()}, \code{dsum()}, \code{id()}, and nested colon terms.
+
+\strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
+one variance per level of \code{f} with no covariance between levels -- the
+usual multi-environment structure, where the genotype variance differs by
+site. ASReml treats \code{diag()} and \code{idh()} as the same structure and so does
+flexyBayes; the three spellings emit identical code. \code{us(f):g} estimates
+every pairwise correlation instead, at \code{k(k+1)/2} parameters against
+\code{diag()}'s \code{k}.
+
+\code{corh(f):g} -- heterogeneous variances with a single shared correlation --
+is refused: no active backend has an equicorrelation group-level
+structure, and approximating it with either neighbour would change the
+parameter count. \code{at(f, level):g} is also refused, because conditioning
+on selected levels is a different model from varying the variance across
+all of them.
+
+These structures fit on brms. INLA refuses them structurally, so \code{auto}
+routes such a model to brms.
+
+\strong{Spatial and temporal autoregressive fields.} \code{ar1(t)} and the
+separable \code{ar1(row):ar1(col)} are written here, on the random side, and
+emitted on INLA as a latent autoregressive field plus the Gaussian
+observation nugget. Four hyperparameters on a field grid: the row
+correlation, the column correlation, the field SD and the nugget SD, all
+four printed by \code{summary()}. The field is faithful only with one
+observation per grid node, so an incomplete or replicated grid refuses
+(keep the unobserved nodes as design cells with the default
+\code{na_action = "augment"}). brms has no lowering for a Kronecker
+autoregressive precision and refuses.
+
+That four-parameter model is \strong{not} ASReml's separable residual, which
+is one correlated residual with no independent plot error -- three
+parameters, nested inside this one as the nugget goes to zero. On data
+with real plot-to-plot noise the two return different correlations,
+because a nugget-free model must absorb independent noise into the
+correlated structure. On a 14 x 12 grid with true correlations 0.6 and
+0.3 and a nugget worth 22\% of the total variance, ASReml returns 0.513
+and 0.150 where flexyBayes returns 0.588 and 0.202. Neither is wrong;
+they are different models, and writing the field on the random side is
+what keeps them distinguishable by name.}
 
 \item{residual}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
-(iid residuals). Use \code{~ at(env):units} for heterogeneous variance.}
+(iid residuals). \code{~ dsum(~ units | env)}, and the equivalent
+\code{~ at(env):units}, give a separate residual variance per level of \code{env}.
+Only families that carry a residual scale parameter can have one made
+heterogeneous -- a Poisson's dispersion is a function of its mean, so
+there is nothing there to vary, and the request is refused.
+
+\code{~ ar1(row):ar1(col)} and \code{~ ar1(t)} are \strong{refused} here: they name
+ASReml's nugget-free separable residual, which neither active engine
+fits. The refusal points at the random-side field described under
+\code{random} above, and at ASReml for the residual formulation itself.}
 
 \item{data}{A data.frame containing all variables referenced in the formulas.}
 
 \item{family}{Character: \code{"gaussian"}, \code{"binomial"}, \code{"poisson"},
-\code{"negative_binomial"}, \code{"gamma"}, or \code{"beta"}.}
+\code{"negative_binomial"}, \code{"gamma"}, or \code{"beta"}. A \code{stats} family
+object (\code{binomial()}, \code{gaussian()}) is also accepted and supplies
+its own link, so \code{Gamma()} means the inverse link it names rather
+than the log link \code{family = "gamma"} defaults to. Passing a family
+object together with a contradicting \code{link} is refused rather than
+resolved.}
 
 \item{link}{Character or NULL: override the default link function
-(e.g., \code{"probit"} for binomial).}
+(e.g., \code{"probit"} for binomial). Leave it unset when \code{family} is a
+family object, which carries its own link.}
 
 \item{known_matrices}{Named list of matrices referred to in the random
 formula (e.g., \code{list(Gmat = G_mat, Amat = A_mat)}). The carrier is
 declared with the \code{\link[=fb_cov]{fb_cov()}} constructor inside the random term:
-a dense covariance (\code{vm(group, cov = fb_cov(G, type = "dense"))}),
-a user-supplied lower-triangular Cholesky factor
-(\code{vm(group, cov = fb_cov(L, type = "chol"))}; greta backend only),
+a dense covariance (\code{vm(group, cov = fb_cov(G, type = "dense"))};
+brms), a user-supplied lower-triangular Cholesky factor
+(\code{vm(group, cov = fb_cov(L, type = "chol"))}; brms),
 or a sparse precision matrix \code{Matrix::dgCMatrix}
-(\code{vm(group, cov = fb_cov(Q, type = "precision"))}; greta and INLA
-backends). The bare dense forms \code{vm(group, V = ...)} /
+(\code{vm(group, cov = fb_cov(Q, type = "precision"))}; INLA and brms).
+INLA takes the precision, pedigree-precision and block carriers only,
+and refuses a dense or Cholesky carrier by name, pointing at
+\code{solve(V)} or at brms. The bare dense forms \code{vm(group, V = ...)} /
 \code{ped(group, A = ...)} remain the default; the legacy v0.3.7
 keyword carriers (\verb{chol = }, \verb{precision = }, \verb{blocks = },
 \verb{low_rank_factor = }) are deprecated and emit a migration warning.
-See the structured-covariance vignette for per-type worked examples.}
+See the formula-surface vignette for per-type worked examples.}
 
-\item{weights}{Optional numeric weight vector (length N); sets
-Var = sigma^2 / w.}
+\item{weights}{Optional numeric weight vector (length N). \strong{Not yet
+supported by the active backends}: the value is parsed and recorded
+in the model representation, but neither the brms nor the INLA
+emitter consumes it, so a non-constant vector is refused
+(\code{weights_not_supported}) rather than silently producing the
+unweighted posterior. Earlier documentation described the ASReml
+inverse-variance sense, \code{Var(y_i) = sigma^2 / w_i}; that mapping is
+the intended one, and will be implemented alongside the other
+weight semantics (frequency, likelihood-power, trials, exposure),
+which are different models and cannot share one argument silently.}
+
+\item{na_action}{How to treat observations whose response is missing.
+\code{"augment"} (default) retains them, carrying the missing response as
+a latent quantity the engine marginalises, and completes the design
+grid where the absent cells are determinable. This is ASReml's
+\code{na.method(y = "include")} behaviour, and it matters whenever the
+model carries a covariance indexed by the design: deleting the row
+of a lost plot changes the index set a separable AR1 field is
+built over, so the fitted model is no longer the model that was
+written down. \code{"omit"} drops the rows (complete-case); a structured
+covariance over the resulting broken grid then refuses downstream.
+\code{"fail"} refuses if any response is missing.
+
+Under ignorability the posterior for the model parameters is the
+same either way -- augmentation preserves the representation, not
+information. Where missingness depends on the unobserved response
+itself, both are biased and neither this argument nor any diagnostic
+here will tell you so. Missing \emph{covariates} are refused under every
+setting.}
 
 \item{n_samples}{Integer: number of posterior samples per chain.}
 
 \item{warmup}{Integer: number of warmup (burn-in) iterations per chain.}
 
 \item{chains}{Integer: number of MCMC chains.}
+
+\item{seed}{Integer or \code{NULL}: the sampler's random seed, forwarded to
+\code{brms::brm(seed = )}. Two brms fits of the same model to the same data
+under the same seed return identical draws. \code{set.seed()} before the
+call does not achieve this -- Stan draws from its own stream -- so a
+posterior quoted to more than about two significant figures needs this
+argument. \code{NULL} (the default) leaves the seed to brms and the run is
+not reproducible. The INLA path is a deterministic Laplace
+approximation and has no random stream, so the argument is a no-op
+there and says so once.}
+
+\item{control}{A named list of sampler control settings or \code{NULL},
+forwarded to \code{brms::brm(control = )}. This is the route to
+\code{adapt_delta} and \code{max_treedepth}: \code{control = list(adapt_delta = 0.95)}
+is the standard first response to divergent transitions. \code{NULL} (the
+default) uses brms's own settings. A no-op on the INLA path, as
+\code{seed} is.}
 
 \item{prior}{An optional \code{fb_prior()} object specifying priors via the
 PC-canonical hybrid DSL (preferred). When supplied it overrides
@@ -138,16 +245,19 @@ fires only when \code{prior_vc_sd} is passed explicitly. Silence the
 one-time announcement message via
 \code{options(flexyBayes.silence_default_prior_note = TRUE)}.}
 
-\item{verbose}{Logical: print generated greta code to console.}
+\item{verbose}{Logical: print the generated backend code to the console.}
 
-\item{mcmc_verbose}{Logical: show MCMC progress bar from greta.}
+\item{mcmc_verbose}{Logical: show the sampler's progress bar. Has no
+effect on the deterministic INLA path.}
 
-\item{return_code}{Logical: if TRUE, return the generated code string
-without fitting the model.}
+\item{return_code}{Logical: if TRUE, return the generated backend code
+without fitting the model -- the Stan program on \code{backend = "brms"},
+the INLA formula, family and hyperparameter list on
+\code{backend = "inla"}.}
 
 \item{review_code}{Logical: if TRUE, do not fit the model immediately;
 instead return a \verb{<flexybayes_review>} deferred-execution object
-carrying the generated backend code, the resolved prior, the
+carrying the generated Stan code, the resolved prior, the
 parsed intermediate representation (IR), the captured call, and
 a snapshot of \code{.Random.seed}. Inspect the code with \code{\link[=cat_code]{cat_code()}};
 run the deferred fit with \code{\link[=proceed]{proceed()}}; a second \code{\link[=proceed]{proceed()}} call
@@ -158,85 +268,93 @@ via \code{options(flexyBayes.review_code_default = TRUE)}; the
 argument value at call time always wins. Closest published
 precedent: \code{\link[brms:stancode]{brms::make_stancode()}} plus the \code{chains = 0} idiom
 for "do everything except sampling". \code{review_code = TRUE} and
-\code{return_code = TRUE} are mutually exclusive.}
+\code{return_code = TRUE} are mutually exclusive. brms is the only engine
+with a code slot, so \code{review_code = TRUE} is available under
+\code{backend = "brms"} and under \code{"auto"} (which resolves the code modes
+to brms). Under \code{backend = "inla"} it refuses with
+\code{review_code_backend_unsupported}: the deferred-execution token would
+need an INLA-side code slot, which is queued for a later release.}
 
-\item{backend}{Character: one of \code{"auto"} (\strong{default}), \code{"greta"},
-\code{"inla"}, or \code{"brms"}. Under \code{"auto"} the call consults
-\code{lgm_gate()} and routes to INLA when the model is latent-Gaussian
-feasible (deterministic and faster on that certified class), and to
-greta (full MCMC, the universal fallback) otherwise --- so a
-no-\code{backend} call reaches every available engine the model supports.
+\item{backend}{Character: one of \code{"auto"} (\strong{default}), \code{"inla"},
+\code{"brms"}, \code{"greta"}, or \code{"gretaR"}. Two engines are active. INLA is
+the deterministic Laplace path over the latent-Gaussian model class;
+brms is the Stan passthrough. greta and gretaR are \strong{quarantined}:
+their registry descriptors and emit code are retained as re-entry
+candidates, but an explicit request for either refuses with
+\code{backend_quarantined} before any emit, and \code{"auto"} never selects
+them. See \code{NEWS.md} for the reshape.
 
-\strong{Caution (small-group random effects).} Both backends now apply
-the same default prior --- the exact uniform-on-SD (the INLA path
-represents it faithfully via an expression-prior on the log-precision
-rather than the former PC approximation), so the two engines agree on
-the variance component far more closely than in earlier versions. A
-model with very few groups nonetheless carries a weakly-identified
-variance component (the data say little about the between-group
-spread), and INLA's Laplace approximation is less accurate there than
-full MCMC. For a flagship random-intercept model with few groups,
-prefer \code{backend = "greta"} or supply an explicit informative prior
-(a half-Cauchy, per Gelman 2006; see the \emph{priors} vignette).
-\code{\link[=fb_backend_status]{fb_backend_status()}} reports which engines are usable.
+\strong{What \code{"auto"} does.} The call runs \code{lgm_gate()} and routes to INLA
+when the model is latent-Gaussian feasible and INLA is installed.
+Otherwise it routes to brms when brms is installed \emph{and} its
+capability predicate accepts the model. When neither can represent
+the model, the call refuses with \code{auto_no_active_route} rather than
+fitting something else. There is no silent fallback.
+\code{\link[=backend_decision]{backend_decision()}} surfaces the full dispatch trace (including
+\code{rejected_routes}) post-fit, and \code{\link[=fb_backend_status]{fb_backend_status()}} reports which
+engines are usable. The one-time notes on the auto path are
+silenceable via \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} (gate refusal or an INLA numerical failure) and
+\code{options(flexyBayes.silence_auto_inla_missing_note = TRUE)} (INLA not
+installed).
 
-\strong{Convergence.} MCMC fits (\code{"greta"}, \code{"brms"}) emit a warning when
-the sampler may not have converged (a parameter with Rhat at or above
-1.1, or a low effective sample size). Treat such a posterior with
-caution --- increase \code{warmup} / \code{n_samples}, simplify the model, or
-supply a more informative prior --- and inspect the full diagnostics
-with \code{\link[=summary]{summary()}}. Silence the warning (for intentionally short fits)
-via \code{options(flexyBayes.silence_convergence_warning = TRUE)}. The INLA
+\strong{What each engine represents.} INLA takes simple iid random
+effects, P-splines, the sparse-precision and pedigree carriers of
+\code{vm()} / \code{ped()}, and separable AR1 fields; it refuses
+heterogeneous variances (\code{diag} / \code{idh} / \code{at}), unstructured \code{us()},
+interaction random effects, and heterogeneous residuals. brms takes
+interaction random effects \code{(1 | a:b)}, uncorrelated random slopes
+\code{(x || g)}, heterogeneous genotype variances (\code{diag} / \code{idh} / \code{at}),
+unstructured \code{us(f):g}, per-level residual variances
+(\code{dsum(~ units | f)}), and the dense / Cholesky / precision carriers
+of \code{vm()} / \code{ped()}; it refuses correlated random slopes \code{(x | g)},
+AR1 residual structures, \code{corh()}, factor-analytic GxE, and splines.
+The generated per-class table is in \code{README.md} and
+\code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
+
+\strong{Caution (small-group random effects).} Both engines apply the same
+default prior --- the exact uniform-on-SD, which the INLA path
+represents via an expression-prior on the log-precision rather than
+the former PC approximation --- so they agree on the variance
+component far more closely than in earlier versions. A model with
+very few groups nonetheless carries a weakly-identified variance
+component (the data say little about the between-group spread), and
+INLA's Laplace approximation is less accurate there than full MCMC.
+For a flagship random-intercept model with few groups, pin
+\code{backend = "brms"} or supply an explicit informative prior (a
+half-Cauchy, per Gelman 2006; see the \emph{priors and regularisation}
+vignette).
+
+\strong{Convergence.} The brms fit emits a warning when the sampler may
+not have converged (a parameter with Rhat at or above 1.1, or a low
+effective sample size). Treat such a posterior with caution ---
+increase \code{warmup} / \code{n_samples}, simplify the model, or supply a more
+informative prior --- and inspect the full diagnostics with
+\code{\link[=summary]{summary()}}. Silence the warning (for intentionally short fits) via
+\code{options(flexyBayes.silence_convergence_warning = TRUE)}. The INLA
 path is deterministic and carries no such warning.
 
-On the greta backend, generalised mixed models (a \code{poisson} or
-\code{binomial} family with random effects) adapt more slowly than the
-Gaussian case and need a larger \code{warmup} than the default --- a few
-thousand iterations is typical, and the convergence warning above will
-tell you when more is needed. This is an adaptation-budget matter, not
-a parameterisation one: the random effects already use the
-non-centred form, which mixes at least as well as the centred form
-across the regimes tested. For a latent-Gaussian GLMM the \code{"auto"}
-route sidesteps the question entirely by fitting it with INLA.
-Factor-analytic / unstructured covariance terms (greta only) are
-harder still and may not mix at modest budgets; judge their
-convergence on the identified covariance via \code{\link[=fb_structured_cov]{fb_structured_cov()}}
-rather than the rotation-/sign-ambiguous raw loadings.
-
-\code{"greta"} forces full MCMC; \code{"inla"} forces INLA and raises a
-structured refusal if the model is not LGM-feasible; \code{"brms"} is the
-Stan passthrough via brms (refuses asreml structured-covariance
-terms --- \code{vm}/\code{ped}/\code{fa}/\code{us}/\code{ar1} --- that have no lossless Stan
-translation). Under \code{"auto"}, falling back to greta (gate refusal,
-INLA not installed, or an INLA numerical failure) emits a one-time
-silenceable note; \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} silences the gate-refusal / numerical-fallback note and
-\code{options(flexyBayes.silence_auto_inla_missing_note = TRUE)} the
-INLA-not-installed note. \code{\link[=backend_decision]{backend_decision()}} surfaces the full
-dispatch trace (including \code{rejected_routes}) post-fit. When
-\code{return_code = TRUE} or \code{review_code = TRUE} is requested under
-\code{"auto"}, the call resolves to greta (the code-producing engine);
-an explicit \code{backend = "inla"} with \code{review_code = TRUE} raises a
-structured refusal until INLA-side \code{code}-slot support lands.}
+\strong{Code inspection.} brms is the only engine with a code slot, so
+\code{return_code = TRUE} / \code{review_code = TRUE} under \code{"auto"} resolve to
+brms --- but only when brms can represent the model. Where it cannot,
+the call refuses with \code{auto_no_active_route} rather than returning
+the code for a different model. \code{backend = "inla"} with
+\code{return_code = TRUE} returns the INLA formula, family and
+hyperparameter list; with \code{review_code = TRUE} it refuses until the
+INLA-side code slot lands.}
 
 \item{aggregate}{One of \code{"auto"} (default), \code{TRUE}, or \code{FALSE}.
-Exact sufficient-statistics aggregation gate. \code{"auto"}
-consults the aggregation plan and routes through the per-cell
-emit path when the IR is in scope (gaussian-identity, binomial-logit,
-or poisson-log; fixed + random-intercept; productive compression)
-\strong{on \code{backend = "inla"}}; on \code{backend = "greta"}, \code{"auto"} falls
-through to the per-row path even when the plan is eligible (\code{TRUE}
-is required to activate the greta aggregated emit explicitly).
-\code{TRUE} forces aggregation on either backend -- raises a structured
-refusal when the plan declares ineligibility. \code{FALSE} skips the gate
-entirely. Aggregated fits carry \verb{$exactness == "aggregated_exact"}
-and the dispatch trace's \code{path} slot reads \code{"aggregated_gaussian"}
-(gaussian) or \code{"aggregated_count"} (binomial / poisson). For
-out-of-core datasets that do not fit in memory, see
-\code{\link[=flexybayes_stream]{flexybayes_stream()}}. The asymmetry is documented behaviour rather
-than a bug: greta
-uses dense-matrix per-row emit by default for predictable RAM,
-and switching to the aggregated path silently would change the
-posterior numerical profile without an explicit opt-in.}
+Exact sufficient-statistics aggregation gate. INLA is the only
+engine with an aggregated emit. \code{"auto"} consults the aggregation
+plan and routes through the per-cell path when the IR is in scope
+(gaussian-identity, binomial-logit, or poisson-log; fixed plus
+random intercept; productive compression) and the model reaches
+INLA. \code{TRUE} forces aggregation and raises a structured refusal when
+the plan declares ineligibility, or when no active engine offers an
+aggregated route. \code{FALSE} skips the gate entirely. Aggregated fits
+carry \verb{$exactness == "aggregated_exact"} and the dispatch trace's
+\code{path} slot reads \code{"aggregated_gaussian"} (gaussian) or
+\code{"aggregated_count"} (binomial / poisson). For out-of-core datasets
+that do not fit in memory, see \code{\link[=flexybayes_stream]{flexybayes_stream()}}.}
 
 \item{plan}{Logical: if \code{TRUE}, short-circuit after intermediate
 representation (IR) build and return a \verb{<fb_plan>} object
@@ -251,9 +369,11 @@ immediately semantics.  Mutually exclusive with \code{return_code} and
 \item{syntax}{One of \code{"auto"} (default), \code{"asreml"}, \code{"brms"}, or
 \code{"greta"}. Selects how \code{fixed} is interpreted. \code{"auto"} detects the
 grammar from the call shape (a bar-grouped formula is read as brms,
-otherwise ASReml); the other values force a grammar. \code{"greta"} (a
-native \code{greta_model}) is reserved: pass such models to \code{fb_greta()}
-in v0.4.x; direct ingest through the universal entry lands at v0.5.0.}
+otherwise ASReml); the other values force a grammar. \code{"greta"} reads
+a native \code{greta_model} graph. That grammar still parses, but fitting
+one is quarantined with the engine
+(\code{native_greta_fit_quarantined}); use \code{\link[=fb_from_greta]{fb_from_greta()}} to lift an
+already-fitted greta object into the shared accessor surface.}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and
@@ -261,31 +381,38 @@ flexyBayes follows the ASReml 4 name. Supplying \code{rcov} now raises an
 error -- use \code{residual} instead.}
 }
 \value{
-An object of class \code{"flexybayes"} — a list with three components:
+An object of class \code{"flexybayes"}, a list with three
+components.
+
 \describe{
 \item{\verb{$glm}}{A GLM-compatible object (class \code{c("flexybayes_glm", "glm", "lm")}) with posterior mean coefficients, vcov, residuals, fitted values,
 etc. Works with \code{summary()}, \code{emmeans()}, \code{marginaleffects()},
 \code{effectsize()}.}
-\item{\verb{$greta}}{Native greta output: \code{model}, \code{draws} (mcmc.list),
-\code{greta_arrays}, and \code{env}. Use with \code{bayesplot}, \code{greta::calculate()},
-\code{posterior::as_draws()}.}
+\item{\verb{$brms} or \verb{$inla}}{The native backend object --- a live \code{brmsfit}
+on the brms path, or INLA's own fitted object on the INLA path. Use
+with \code{bayesplot}, \code{posterior::as_draws()}, and each engine's own
+accessors. There is no \verb{$greta} slot: an explicit greta request
+refuses before a fit object exists.}
 \item{\verb{$extras}}{Additional outputs: posterior \code{summary}, \code{convergence}
 diagnostics, \code{variance_comps}, \code{blups}, \code{predictions}, generated \code{code},
 \code{param_names}, \code{parse_info}, \code{call_info}, \code{run_time}, \code{model_info}.}
 }
 
-If \code{return_code = TRUE}, returns a character string of greta code instead.
+If \code{return_code = TRUE}, returns the generated backend code instead: a
+character string holding the Stan program on the brms path, or a list of
+the formula, family and hyperparameter specification on the INLA path.
 }
 \description{
-Specify mixed models using ASReml formula syntax and estimate them via
-Bayesian MCMC using greta. Returns a three-part result: a GLM-compatible
-object for use with standard R packages (emmeans, marginaleffects, etc.),
-native greta output for Bayesian diagnostics, and extras for secondary
-analyses.
+Specify mixed models using ASReml formula syntax and estimate them on one
+of two active engines: INLA (integrated nested Laplace approximation) or
+brms (the Stan passthrough). Returns a three-part result: a
+GLM-compatible object for use with standard R packages (emmeans,
+marginaleffects, etc.), the native backend object for engine-specific
+diagnostics, and extras for secondary analyses.
 }
 \examples{
 \dontrun{
-# live fit -- needs a backend (greta Python/TF, INLA, or brms/Stan)
+# live fit -- needs an active backend (INLA or brms/Stan)
 data(met_example, package = "flexyBayes")
 # Simple random intercept model (small budget for example purposes)
 fit <- flexybayes(

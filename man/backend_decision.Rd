@@ -10,10 +10,11 @@ backend_decision(fit)
 \item{fit}{A \code{flexybayes} object.}
 }
 \value{
-A list with the following components. The first four
-are present on every fit; the four routing-trace
-fields are present on v0.3.6+ fits and NULL
-on earlier fits for backward compatibility.
+A list holding the recorded dispatch trace. The first four
+components are present on every fit. The four routing-trace fields
+are present on fits from v0.3.6 onwards and \code{NULL} on earlier ones,
+for backward compatibility.
+
 \describe{
 \item{\code{backend}}{Character; one of \code{"greta"}, \code{"inla"},
 \code{"brms"}, \code{"gretaR"}.}

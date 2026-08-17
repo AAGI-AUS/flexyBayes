@@ -7,7 +7,7 @@
 \alias{plot.flexybayes_aggregated}
 \alias{plot.flexybayes_direct_greta}
 \alias{plot.flexybayes_glm}
-\title{Plot diagnostics for a flexybayes model}
+\title{Plot diagnostics for a flexyBayes model}
 \usage{
 \method{plot}{flexybayes}(
   x,
@@ -26,20 +26,37 @@
 \method{plot}{flexybayes_glm}(x, ...)
 }
 \arguments{
-\item{x}{A flexybayes object}
+\item{x}{A fitted \code{flexybayes} object of any backend. Aggregated,
+generalised-linear and direct-greta fits reach the same method
+through their own registrations.}
 
-\item{type}{Character: type of plot to produce.
-\itemize{
-\item \code{"diagnostics"}: trace plots + density (requires bayesplot)
-\item \code{"residuals"}: residuals vs fitted + QQ plot
-\item \code{"effects"}: forest plot of fixed effects with credible intervals
-\item \code{"variance"}: bar chart of variance components with credible intervals
-\item \code{"blups"}: caterpillar plot of BLUPs
-\item \code{"pp_check"}: posterior predictive check (observed vs replicated)
-}}
+\item{type}{A single string naming the display to draw. One of:
+\code{"diagnostics"}, trace plots and marginal densities per parameter
+(needs \pkg{bayesplot} and a sampled posterior); \code{"residuals"},
+residuals against fitted values beside a normal quantile-quantile
+plot; \code{"effects"}, a forest plot of the fixed effects with their
+credible intervals, available on every backend that supplies
+\code{\link[=coef]{coef()}} and \code{\link[=confint]{confint()}}; \code{"variance"}, a bar chart of the variance
+components with credible intervals; \code{"blups"}, a caterpillar plot of
+the random-effect predictions ordered by magnitude; and
+\code{"pp_check"}, a posterior predictive check overlaying replicated
+datasets on the observed response. Defaults to \code{"diagnostics"}.}
 
-\item{...}{Additional arguments passed to plotting functions}
+\item{...}{Further arguments passed to the underlying plotting call,
+for example \code{pars} to restrict which parameters a diagnostic display
+covers.}
+}
+\value{
+Invisibly, the object the underlying plotting call returns --
+a \pkg{ggplot2} object for the displays built with it, and \code{NULL}
+for those drawn on the base graphics device. Called for the plot it
+draws.
 }
 \description{
-Plot diagnostics for a flexybayes model
+Draws one of six standard displays for a fitted model, chosen by
+\code{type}. Every backend reaches the same method, and a display that needs
+a slot a given engine does not populate -- posterior draws on the
+deterministic INLA path, for instance -- prints a message naming what
+is missing and returns invisibly rather than erroring or drawing an
+empty panel.
 }

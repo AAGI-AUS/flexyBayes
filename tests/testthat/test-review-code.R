@@ -262,15 +262,16 @@ test_that("flexybayes(): explicit review_code = TRUE, backend = 'inla' refuses",
       review_code = TRUE,
       backend = "inla"
     ),
-    'supported with backend = "greta"',
+    'supported with backend = "brms"',
     fixed = TRUE
   )
 })
 
-# ADR 0031 Q1: review_code with backend = "auto" resolves to greta (the
-# code-producing engine) rather than refusing. Explicit backend = "inla"
-# still refuses (tests above/below).
-test_that("flexybayes(): review_code = TRUE, backend = 'auto' resolves to greta (ADR 0031 Q1)", {
+# ADR 0031 Q1 (updated 2026-07-24, greta quarantine): review_code with
+# backend = "auto" resolves to brms (the active code-producing engine) rather
+# than refusing. Explicit backend = "inla" still refuses (tests above/below).
+test_that("flexybayes(): review_code = TRUE, backend = 'auto' resolves to brms", {
+  skip_if_not_installed("brms")
   d <- mk_review_data()
   rev <- flexybayes(
     yield ~ env,
@@ -297,7 +298,7 @@ test_that("flexybayes(): option-driven review default, backend = 'inla' refuses"
       mcmc_verbose = FALSE,
       backend = "inla"
     ),
-    'supported with backend = "greta"',
+    'supported with backend = "brms"',
     fixed = TRUE
   )
 })

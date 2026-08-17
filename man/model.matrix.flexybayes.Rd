@@ -2,18 +2,30 @@
 % Please edit documentation in R/methods.R
 \name{model.matrix.flexybayes}
 \alias{model.matrix.flexybayes}
-\title{Extract model matrix}
+\title{Fixed-effect model matrix of a flexyBayes fit}
 \usage{
 \method{model.matrix}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A \code{flexybayes} fit carrying a fixed-effect formula and the
+data it was fitted to.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-The fixed effects model matrix
+A numeric matrix with one row per observation and one column
+per fixed-effect basis column, carrying the usual \code{assign} attribute.
 }
 \description{
-Extract model matrix
+Rebuilds the population-level design matrix from the formula and data
+the fit carries. Random-effect and residual-structure terms are not part
+of it: this is the basis the fixed-effect coefficients are expressed in.
+}
+\details{
+The formula and data are resolved from whichever slots the object holds.
+The greta-shaped and brms-shaped emits keep both under \verb{$glm}; an INLA
+fit keeps its data at \verb{$data} and recovers its fixed-effect formula
+through \code{\link[=formula.flexybayes_inla]{formula.flexybayes_inla()}}. An object supplying neither is
+refused by name, since \code{model.matrix()} on a \code{NULL} formula silently
+returns the intercept-only matrix of the calling frame's data.
 }

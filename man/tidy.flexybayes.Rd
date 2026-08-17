@@ -65,7 +65,7 @@ carries the posterior standard deviation of each term, again under the
 \examples{
 \dontshow{if (requireNamespace("generics", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 \dontrun{
-fit <- flexybayes(yield ~ env, data = dat, backend = "greta")
+fit <- flexybayes(yield ~ env, data = dat, backend = "brms")
 tidy(fit)
 tidy(fit, effects = "random")
 }

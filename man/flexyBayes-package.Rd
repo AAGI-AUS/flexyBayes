@@ -4,16 +4,20 @@
 \name{flexyBayes-package}
 \alias{flexyBayes}
 \alias{flexyBayes-package}
-\title{flexyBayes: Bayesian Mixed Models with ASReml Syntax via greta, INLA, brms}
+\title{flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms}
 \description{
 \code{flexyBayes} lets you fit Bayesian mixed models using the formula syntax
 you already know from ASReml or \code{lme4}/\code{brms}, dispatched through one of
-three inference engines: greta (Hamiltonian Monte Carlo via TensorFlow),
-INLA (integrated nested Laplace approximation, for the latent Gaussian
-model class), or brms (a Stan passthrough). All current exports are at the
-experimental \code{lifecycle} stage. The same fitted object supports
-\code{summary()}, \code{predict()}, \code{emmeans::emmeans()},
-\code{marginaleffects::predictions()}, and the \verb{bayesplot::*} family.
+two active inference engines: INLA (integrated nested Laplace
+approximation, over the latent Gaussian model class) or brms (a Stan
+passthrough, full Hamiltonian Monte Carlo). greta and gretaR are
+quarantined as fitting engines --- their emit code and registry
+descriptors are retained as re-entry candidates, \code{backend = "auto"}
+never selects them, and an explicit request refuses with
+\code{backend_quarantined}. All current exports are at the experimental
+\code{lifecycle} stage. The same fitted object supports \code{summary()},
+\code{predict()}, \code{emmeans::emmeans()}, \code{marginaleffects::predictions()}, and
+the \verb{bayesplot::*} family.
 }
 \details{
 The package's signature feature is \code{triangulate()}, a cross-engine
@@ -26,13 +30,14 @@ Two ingest paths share a single internal model representation
 (\code{fb_terms}):
 \itemize{
 \item \code{\link[=flexybayes]{flexybayes()}} — asreml-format entry: \code{fixed} / \code{random} / \code{residual}
-formulas, \code{known_matrices} for kinship / pedigree, \code{weights} for
-pre-aggregated observations.
+formulas and \code{known_matrices} for kinship / pedigree. Observation
+\code{weights} are parsed and then refused (\code{weights_not_supported}) until
+an active emitter consumes them.
 \item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} — the universal entry. Accepts an ASReml
 (\code{fixed} / \code{random} / \code{residual}) or brms-style (\code{y ~ x + (1 | g)})
-formula, or a native \code{greta::model()}, and any \code{backend}
-(\code{"greta"}, \code{"inla"}, \code{"brms"}, or \code{"auto"}).
-\item \code{\link[=fb_greta]{fb_greta()}} / \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} — single-engine pins.
+formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).
+\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} — single-engine pins. \code{\link[=fb_greta]{fb_greta()}} is
+retained and refuses.
 \item \code{\link[=fb_prior]{fb_prior()}} — penalised-complexity-canonical prior DSL.
 \item \code{\link[=triangulate]{triangulate()}} — cross-engine posterior comparison.
 }
@@ -40,14 +45,25 @@ formula, or a native \code{greta::model()}, and any \code{backend}
 
 \section{Vignettes}{
 
-Sixteen vignettes ship with the package, covering: getting started,
-asreml-shaped formulas reference, foundational regression,
-hierarchical models, structured covariance, priors and
-regularisation, multi-environment trials and genomics, downstream
-analysis, spatio-temporal models, cross-engine triangulation, LGM
-feasibility, backend internals, LGM feasibility and memory, choosing
-an engine (the universal entry and the engine pins), extending the
-backend registry, and big-data streaming (exact aggregation).
+Eleven vignettes ship with the package, covering: getting started,
+the formula surface (the asreml term catalogue together with
+structured covariance), foundational regression, hierarchical models,
+priors and regularisation, multi-environment trials and genomics,
+downstream analysis, spatio-temporal models, cross-engine
+triangulation, dispatch and refusals with the backend registry, and
+big-data streaming (exact aggregation). The dispatch-and-refusals
+page is the technical / internals reference; the rest target a
+general audience.
+}
+
+\section{Capability}{
+
+What each active engine fits, emits, or refuses by model class is
+generated from one R-level table and shown in \code{README.md} and
+\code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}. A request
+outside that set raises a typed refusal naming the nearest implemented
+alternative rather than fitting a neighbouring model under the
+requested model's name.
 }
 
 \section{References}{

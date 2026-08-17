@@ -35,6 +35,17 @@
 # both installed and usable. Use this everywhere a test fits through greta.
 skip_if_greta_backend_unusable <- function() {
   testthat::skip_if_not_installed("greta")
+  # greta is QUARANTINED as an active fitting engine (registry status,
+  # 2026-07-24 reshape R1): a test that reaches real greta *fitting* skips as
+  # a re-entry guard rather than failing. The descriptor + emit code are
+  # retained, so these tests run again if greta ever re-enters (repair +
+  # conform, §4.1).
+  if (isTRUE(tryCatch(
+    flexyBayes:::.backend_is_quarantined("greta"),
+    error = function(e) FALSE
+  ))) {
+    testthat::skip("greta backend quarantined (registry status)")
+  }
   # greta's Python / TensorFlow stack is intentionally absent on the CI matrix.
   # Skip on CI *before* the usability probe: on Windows, calling
   # `tensorflow::tf_version()` triggers reticulate's uv-based auto-provisioning

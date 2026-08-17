@@ -24,8 +24,8 @@
 # lives on the Stan unconstrained scale, and the parameter-name to
 # Stan-unconstrained-index mapping is version-fragile (transformed
 # parameters, declaration order); a wrong mapping would yield a wrong
-# log-density silently, so an honest abstain beats a plausible-but-wrong
-# producer (Independent Oracle Principle). INLA's posterior is a
+# log-density silently, so abstaining beats emitting a
+# plausible-but-wrong producer (Independent Oracle Principle). INLA's posterior is a
 # deterministic Laplace/grid approximation, not a sampling log-density at
 # arbitrary natural-scale points, so it abstains too. Both raise an
 # informative, classed condition rather than guessing.
@@ -60,8 +60,8 @@
 #'     `beta[1,1]`, `beta[2,1]`).}
 #'   \item{`log_normalizer`}{The additive correction that would normalise
 #'     the density, i.e. `-log Z`. For a posterior the marginal likelihood
-#'     is generally unknown, so this is `NA_real_` -- honest, and the
-#'     consumer reports a shifted (not absolute) divergence.}
+#'     is generally unknown, so this is `NA_real_` and the consumer
+#'     reports a shifted (not absolute) divergence.}
 #'   \item{`support_lower`, `support_upper`}{Length-`n_dim` numeric support
 #'     bounds taken from the model's parameter constraints (`NA` for an
 #'     unbounded coordinate). A variance / scale parameter is bounded below
@@ -79,7 +79,7 @@
 #' **INLA** backends abstain with an informative condition -- brms's
 #' log-density lives on the Stan unconstrained scale with a version-fragile
 #' name mapping, and INLA's posterior is a deterministic approximation, not
-#' a sampling log-density; an honest abstain is preferred to a
+#' a sampling log-density. Abstaining is preferred to emitting a
 #' plausible-but-wrong log-density.
 #'
 #' Acyclic note. A consumer such as proxymix uses this callable without
@@ -119,6 +119,13 @@
 #' ## Compress with proxymix (in a separate integration harness):
 #' ## proxymix::from_fb_posterior(producer, N = 2)
 #' }
+#' @section Lifecycle:
+#' Superseded while greta is quarantined. greta was the only backend that
+#' produced a real C4 log-density; both active engines abstain with the
+#' classed condition `fb_c4_unavailable`, for the reasons given above.
+#' The generic and its methods are retained so a consumer can dispatch on
+#' the abstention rather than discovering the gap by a missing method.
+#'
 #' @export
 fb_log_posterior <- function(fit, ...) {
   UseMethod("fb_log_posterior")
@@ -152,9 +159,11 @@ fb_log_posterior.flexybayes_brms <- function(fit, ...) {
       "this version. brms's log-density (rstan::log_prob) is defined on ",
       "the Stan unconstrained scale, and the mapping from flexyBayes ",
       "parameter names to Stan unconstrained indices is version-fragile ",
-      "(transformed parameters, declaration order). An honest abstain is ",
-      "preferred to a plausible-but-wrong log-density. Refit the model ",
-      "via fb_greta() to obtain a C4 producer."
+      "(transformed parameters, declaration order). Abstaining is ",
+      "preferred to emitting a plausible-but-wrong log-density. No ",
+      "active backend produces a C4 log-density: greta was the producer ",
+      "and is quarantined (see NEWS.md), so this abstention stands until ",
+      "greta re-enters or a Stan-side mapping is verified."
     )
   )
 }
@@ -168,8 +177,9 @@ fb_log_posterior.flexybayes_inla <- function(fit, ...) {
       "C4 log-density producer not available for the INLA backend. INLA's ",
       "posterior is a deterministic Laplace / grid approximation, not a ",
       "sampling log-density evaluable at arbitrary natural-scale points, ",
-      "so there is no faithful unnormalised log-posterior to emit. Refit ",
-      "the model via fb_greta() to obtain a C4 producer."
+      "so there is no faithful unnormalised log-posterior to emit. No ",
+      "active backend produces one: greta was the producer and is ",
+      "quarantined (see NEWS.md)."
     )
   )
 }
@@ -196,14 +206,12 @@ fb_log_posterior.flexybayes_inla <- function(fit, ...) {
 #' @rdname fb_log_posterior
 #' @export
 fb_log_posterior.flexybayes <- function(fit, ...) {
-  if (!requireNamespace("greta", quietly = TRUE)) {
-    stop(
-      "Package 'greta' is required to build a C4 log-density producer ",
-      "from a greta-backed flexyBayes fit. Install with:\n",
-      "  install.packages('greta')",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "greta",
+    "Package 'greta' is required to build a C4 log-density producer ",
+    "from a greta-backed flexyBayes fit. Install with:\n",
+    "  install.packages('greta')"
+  )
 
   greta_slot <- fit$greta
   if (is.null(greta_slot) || is.null(greta_slot$model)) {

@@ -2,18 +2,38 @@
 % Please edit documentation in R/methods.R
 \name{logLik.flexybayes}
 \alias{logLik.flexybayes}
-\title{Log-likelihood (approximate)}
+\title{Plug-in conditional log-likelihood of a flexyBayes fit}
 \usage{
 \method{logLik}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A \code{flexybayes} fit carrying a response vector, fitted
+values, and a recorded response family.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-logLik object
+A \code{logLik} object: the scalar log-likelihood with \code{df} and
+\code{nobs} attributes taken from the fit's recorded model information.
 }
 \description{
-Log-likelihood (approximate)
+Evaluates the conditional log-likelihood at the posterior-mean fitted
+values -- a plug-in quantity, not a posterior summary, and not the
+marginal likelihood. It exists so \code{AIC()}-style comparisons of two fits
+from the same engine have something to read.
+}
+\details{
+The method computes what the object carries and refuses by name when it
+carries too little. Three requirements are checked before any arithmetic
+runs: the response vector in \verb{$glm$y}, the fitted values from
+\code{\link[=fitted]{fitted()}}, and a recorded family. A Gaussian fit additionally sharpens
+its residual scale from the posterior draws when they are present, and
+otherwise falls back to the residual root-mean-square. Families outside
+the Gaussian, binomial and Poisson set have no plug-in form here and are
+refused rather than reported as \code{NA}, because a silent \code{NA} propagates
+into \code{anova()} and \code{AIC()} as though the comparison had been made.
+
+INLA fits reach \code{\link[=logLik.flexybayes_inla]{logLik.flexybayes_inla()}} instead, which states that
+INLA reports a marginal log-likelihood and returns \code{NA} with that
+message.
 }

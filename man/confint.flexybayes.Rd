@@ -2,23 +2,37 @@
 % Please edit documentation in R/methods.R
 \name{confint.flexybayes}
 \alias{confint.flexybayes}
-\title{Credible intervals for fixed effects}
+\title{Credible intervals for the fixed effects of a flexyBayes fit}
 \usage{
 \method{confint}{flexybayes}(object, parm = NULL, level = 0.95, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A \code{flexybayes} fit carrying a \verb{$greta$draws} posterior
+slot.}
 
-\item{parm}{Parameter names (NULL for all fixed effects)}
+\item{parm}{Character vector of parameter names to return, or \code{NULL}
+(the default) for every fixed effect.}
 
-\item{level}{Credible level (default 0.95)}
+\item{level}{Credible level for the interval, as a proportion. The
+default \code{0.95} returns the 2.5th and 97.5th posterior percentiles.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-Matrix with lower and upper credible bounds
+A matrix with one row per fixed effect and two columns holding
+the lower and upper credible bounds, named for the percentiles used.
 }
 \description{
-Returns posterior quantile-based credible intervals, not
-frequentist confidence intervals.
+Returns posterior quantile-based credible intervals, not frequentist
+confidence intervals: the bounds are empirical quantiles of the
+fixed-effect posterior draws the fit carries.
+}
+\details{
+This method reads the draws slot written by the greta-shaped emits
+(\code{fit$greta$draws}). A fit from an engine that stores its posterior in
+another shape reaches its own method -- \code{\link[=confint.flexybayes_inla]{confint.flexybayes_inla()}} for
+INLA, \code{\link[=confint.flexybayes_brms]{confint.flexybayes_brms()}} for brms. An object that carries
+neither is refused by name rather than returned empty, because an empty
+interval matrix reads as "no fixed effects" and not as "this fit cannot
+answer the question".
 }

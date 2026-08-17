@@ -7,12 +7,13 @@
 \method{print}{fb_engine}(x, ...)
 }
 \arguments{
-\item{x}{An \code{fb_engine} object.}
+\item{x}{An \code{fb_engine} object as returned by \code{\link[=fb_engine]{fb_engine()}}.}
 
-\item{...}{Unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-\code{x}, invisibly.
+Invisibly, \code{x} unchanged. Called for the one-line engine
+description it prints.
 }
 \description{
 Print an \code{fb_engine} specification

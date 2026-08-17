@@ -1,8 +1,10 @@
 ---
-title: "Tutorial 03: Foundational regression: linear models, random effects, and mgcv smooths"
+title: "Tutorial 03: Foundational regression: linear models, random effects, and penalised splines"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
@@ -22,7 +24,8 @@ knitr::opts_chunk$set(
   dpi       = 150
 )
 options(flexyBayes.silence_default_prior_note = TRUE)
-greta_ok    <- requireNamespace("greta",   quietly = TRUE)
+inla_ok     <- requireNamespace("INLA",    quietly = TRUE)
+brms_ok     <- requireNamespace("brms",    quietly = TRUE)
 mgcv_ok     <- requireNamespace("mgcv",    quietly = TRUE)
 agridat_ok  <- requireNamespace("agridat", quietly = TRUE)
 ggplot2_ok  <- requireNamespace("ggplot2", quietly = TRUE)
@@ -34,22 +37,22 @@ set.seed(900)
 Linear regression is the simplest case `flexyBayes` handles, and
 every richer model in the package is a regression model with extra
 structure. Starting here makes three things explicit before the
-hierarchical, structured-covariance, and spatio-temporal vignettes
+hierarchical, formula-surface, and spatio-temporal vignettes
 build on them.
 
 1. The *fixed-effect* layer of every subsequent model is a regression
    model on its own.
 2. Adding a *random effect* (one variance component on top of the
-   regression) takes us into the mixed-model regime — illustrated in
+   regression) takes us into the mixed-model regime -- illustrated in
    §5 below with `sleepstudy`.
-3. Smooth terms (`s()` from `mgcv`) sit naturally inside the
-   mixed-model framework; §6 shows the simplest case.
+3. Smooth terms (`spl()`) sit naturally inside the mixed-model
+   framework; §6 shows the simplest case.
 
 Throughout this tutorial we use the asreml-style API:
 
-* `fixed` — the response and the (fixed) regression formula.
-* `random` — random effects (`~ subject`, `~ s(time)`, `~ block`).
-* `residual`  — residual covariance (default `~ units`, i.e. iid).
+* `fixed` -- the response and the (fixed) regression formula.
+* `random` -- random effects (`~ subject`, `~ spl(time)`, `~ block`).
+* `residual`  -- residual covariance (default `~ units`, i.e. iid).
 
 `fb_brms()` is the Stan (brms) engine pin; with a brms-shaped
 formula it covers the random-intercept subset of the term-type
@@ -60,7 +63,7 @@ surface, and is introduced in the *getting started* and
 
 `datasets::PlantGrowth` records the dried weight of plants under
 three treatment conditions: control, treatment 1, treatment 2. The
-natural model is a one-way ANOVA — fixed effect for the three-level
+natural model is a one-way ANOVA -- fixed effect for the three-level
 factor.
 
 ```{r plantgrowth-data}
@@ -69,10 +72,10 @@ data(PlantGrowth)
 str(PlantGrowth)
 ```
 
-```{r plantgrowth-fit-greta, eval = greta_ok}
+```{r plantgrowth-fit, eval = inla_ok || brms_ok}
 fit_g <- flexybayes(
   fixed     = weight ~ group, data = PlantGrowth,
-  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE
+  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_g)
 ```
@@ -89,7 +92,7 @@ summary(lm(weight ~ group, data = PlantGrowth))
 ```
 
 The frequentist least-squares estimates and the Bayesian posterior
-means agree to about the second decimal — exactly as expected for a
+means agree to about the second decimal -- exactly as expected for a
 linear model with weakly informative priors and a moderate sample
 size.
 
@@ -105,17 +108,17 @@ data(fisher.barley, package = "agridat")
 str(fisher.barley)
 ```
 
-```{r barley-fit, eval = greta_ok && agridat_ok}
+```{r barley-fit, eval = (inla_ok || brms_ok) && agridat_ok}
 fit_barley <- flexybayes(
   fixed     = yield ~ gen + env, data = fisher.barley,
-  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE
+  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_barley)
 ```
 
 The two factor blocks are reported relative to the (alphabetically
 first) baseline level of each. To get *marginal means* per genotype
-and per environment, use `emmeans` — see Tutorial 08 (downstream
+and per environment, use `emmeans` -- see Tutorial 08 (downstream
 analysis).
 
 A standard exploratory plot of the cell means:
@@ -138,20 +141,20 @@ ggplot(fisher.barley,
 
 `lme4::sleepstudy` records reaction time under sleep restriction
 across 18 subjects and 10 days. Ignoring the subject grouping for
-now — a *pooled* regression of reaction on days:
+now -- a *pooled* regression of reaction on days:
 
-```{r pooled-sleep-fit, eval = greta_ok}
+```{r pooled-sleep-fit, eval = inla_ok || brms_ok}
 data(sleepstudy, package = "lme4")
 fit_pool <- flexybayes(
   fixed     = Reaction ~ Days, data = sleepstudy,
-  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE
+  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_pool)
 ```
 
 The slope on `Days` is the average per-day increase in reaction
 time. The residual standard deviation absorbs *both* within-subject
-and between-subject variation, which is wasteful — different
+and between-subject variation, which is wasteful -- different
 subjects have different baseline reaction times, and a pooled
 regression spends one big residual on what is structurally two
 separate sources of variation.
@@ -162,21 +165,28 @@ The minimal upgrade from §4: keep the same fixed slope on `Days` but
 let each subject have its own baseline reaction time. In ASReml
 syntax, this is one extra random term:
 
-```{r random-intercept-fit, eval = greta_ok}
+```{r random-intercept-fit, eval = brms_ok}
 fit_re <- flexybayes(
   fixed     = Reaction ~ Days, data = sleepstudy,
   random    = ~ Subject,
-  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE
+  backend   = "brms",
+  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_re)
 ```
+
+> **`backend = "brms"` pinned deliberately.** INLA's default prior on
+> this particular model (`sleepstudy`'s `Subject` random intercept)
+> has a known instability -- the variance component can collapse to
+> numerically zero, run to run. brms does not share the failure mode.
+> Tutorial 04 (hierarchical models) discusses this further.
 
 Two things change relative to the pooled fit in §4.
 
 * A second variance component appears: the standard deviation of the
   `Subject`-level random intercepts. Under the default this is
-  given a bounded uniform prior — `sd(Subject) ~ uniform(0, 5*sd(y))`
-  — a weakly-informative choice for this moderate group count (for
+  given a bounded uniform prior -- `sd(Subject) ~ uniform(0, 5*sd(y))`
+  -- a weakly-informative choice for this moderate group count (for
   very small `J`, Gelman (2006) recommends a half-Cauchy instead).
 * The residual standard deviation drops, because between-subject
   variance is no longer absorbed into it.
@@ -189,16 +199,16 @@ The `Reaction ~ Days + (1 | Subject)` formulation in `lme4` /
 This is the smallest mixed-model regression, and the structural
 template every subsequent vignette builds on.
 
-# 6. Smooth terms via `mgcv::s()`
+# 6. Smooth terms via `spl()`
 
 A penalised spline lets us add a smooth, non-linear effect of a
 continuous predictor without committing to a specific functional
-form. In `mgcv` the smooth specifier is `s(...)`; `flexyBayes`
-ingests it directly via `mgcv::smoothCon()`. Under the hood the
-basis is a random effect with a smoothness-penalising covariance,
-so `s(x)` lives in the `random` argument.
+form. `flexyBayes`'s native ASReml-style spline term,
+`spl(x, type = "ps", df = m)`, builds a penalised B-spline basis and
+fits it as a random effect with a smoothness-penalising covariance
+-- so `spl(x, ...)` lives in the `random` formula, not `fixed`.
 
-We illustrate with a synthetic sinusoid plus noise — a clean test
+We illustrate with a synthetic sinusoid plus noise -- a clean test
 of how well a flexible smoother recovers the underlying signal.
 
 ```{r smooth-sim}
@@ -208,24 +218,51 @@ y  <- sin(x) + rnorm(n, 0, 0.3)
 sim_dat <- data.frame(y = y, x = x)
 ```
 
-```{r smooth-fit, eval = greta_ok && mgcv_ok}
+```{r smooth-fit, eval = inla_ok || brms_ok}
 fit_smooth <- flexybayes(
   fixed     = y ~ 1,
-  random    = ~ s(x),
+  random    = ~ spl(x, type = "ps", df = 10),
   data      = sim_dat,
-  n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE
+  n_samples = 2000, warmup = 3000, chains = 4,
+  verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_smooth)
 ```
 
-The fixed block has only an intercept; the random block names the
-mgcv smooth. The residual sigma block reports the noise standard
-deviation; in our simulation we set it to 0.3 and the posterior
-should bracket this value.
+The fixed block has only an intercept and the random block names the
+spline. Read the hyperparameter block carefully: INLA parameterises a
+Gaussian variance component by its **precision**, the reciprocal of the
+variance, so the numbers above are not standard deviations. The residual
+standard deviation is $\sigma = \tau^{-1/2}$, and because that map is
+monotone decreasing the interval flips end for end -- the lower bound on
+$\sigma$ comes from the *upper* bound on $\tau$.
+
+The simulation used a noise standard deviation of 0.3, so this is a
+recovery check with a known answer, and the vignette should perform it
+rather than assert it:
+
+```{r smooth-sigma, eval = inla_ok || brms_ok}
+hyp <- fit_smooth$inla$summary.hyperpar
+prec_row <- hyp["Precision for the Gaussian observations", ]
+
+sigma_est <- c(
+  `2.5%` = 1 / sqrt(prec_row[["0.975quant"]]),
+  median = 1 / sqrt(prec_row[["0.5quant"]]),
+  `97.5%` = 1 / sqrt(prec_row[["0.025quant"]])
+)
+round(sigma_est, 4)
+
+# The simulation used sigma = 0.3. Does the interval cover it?
+0.3 > sigma_est[["2.5%"]] && 0.3 < sigma_est[["97.5%"]]
+```
+
+The same conversion applies to the spline's own precision: a large
+precision for `x` is a *small* smoothing variance, which is a stiffer
+curve, not a wigglier one.
 
 A fitted-curve overlay:
 
-```{r smooth-overlay, eval = greta_ok && mgcv_ok && ggplot2_ok, fig.height = 3.5}
+```{r smooth-overlay, eval = (inla_ok || brms_ok) && ggplot2_ok, fig.height = 3.5}
 sim_dat$fitted <- as.numeric(fitted(fit_smooth))
 sim_dat <- sim_dat[order(sim_dat$x), ]
 ggplot(sim_dat, aes(x = x, y = y)) +
@@ -234,64 +271,55 @@ ggplot(sim_dat, aes(x = x, y = y)) +
   geom_function(fun = sin, colour = "steelblue", linewidth = 0.6,
                 linetype = "dashed") +
   theme_minimal(base_size = 12) +
-  labs(title = "mgcv s(x) fitted (firebrick) versus truth (blue dashed)",
+  labs(title = "spl(x) fitted (firebrick) versus truth (blue dashed)",
        x = NULL, y = "y")
 ```
 
 The fitted curve traces the underlying sinusoid; the residual is
-unstructured noise. Choosing the basis dimension `k` is a trade-off
-— too few and the curve cannot bend enough; too many and the
-penalty must do more work to avoid overfitting. The default `k = 10`
-is a sensible starting point; pass `s(x, k = 15)` to widen.
+unstructured noise. Choosing the basis dimension `df` is a trade-off
+-- too few and the curve cannot bend enough; too many and the
+penalty must do more work to avoid overfitting. `df = 10` is a
+sensible starting point; pass `df = 15` to widen.
 
 ## 6.1 Predicting on new `x` values
 
 `predict(fit, newdata = ...)` on a smooth fit re-evaluates the
-spline basis on the new `x` positions via `mgcv::PredictMat()` on
-the retained basis object. The basis-coefficient vector comes from
-the posterior-mean of `s_x_raw * sigma_s_x`. The next chunk
-overlays the `flexyBayes` prediction against the `mgcv::predict.gam()`
-reference on a fresh grid that includes a 10% extrapolation margin
+spline basis on the new `x` positions rather than reusing the
+training-data basis, so it extrapolates the fitted curve correctly
 beyond the training range.
 
-```{r smooth-predict-newdata}
-greta_mgcv_ggplot_ok <- isTRUE(greta_ok) && isTRUE(mgcv_ok) &&
-                        isTRUE(ggplot2_ok)
-```
-
-```{r smooth-predict, fig.height = 3.5}
-if (greta_mgcv_ggplot_ok) {
+```{r smooth-predict, eval = inla_ok || brms_ok, fig.height = 3.5}
 newx <- data.frame(
   x = seq(min(sim_dat$x) * 0.9, max(sim_dat$x) * 1.1,
           length.out = 50L)
 )
-newx$flexyBayes <- predict(fit_smooth, newdata = newx)
-ref <- mgcv::gam(y ~ s(x), data = sim_dat)
-newx$mgcv <- as.numeric(predict(ref, newdata = newx))
-ggplot(newx, aes(x = x)) +
-  geom_line(aes(y = flexyBayes), colour = "firebrick",
-            linewidth = 1) +
-  geom_line(aes(y = mgcv), colour = "steelblue", linetype = "dashed",
-            linewidth = 0.7) +
+newx$fitted <- predict(fit_smooth, newdata = newx)
+```
+
+```{r smooth-predict-plot, eval = (inla_ok || brms_ok) && ggplot2_ok, fig.height = 3.5}
+ggplot(newx, aes(x = x, y = fitted)) +
+  geom_line(colour = "firebrick", linewidth = 1) +
   geom_point(data = sim_dat, aes(x = x, y = y), alpha = 0.4,
              inherit.aes = FALSE) +
   theme_minimal(base_size = 12) +
-  labs(title = "predict(newdata) -- flexyBayes (firebrick) vs mgcv reference (blue dashed)",
+  labs(title = "predict(newdata) on a 10% extrapolation margin",
        x = NULL, y = "y")
-}
 ```
 
-The two curves agree on the training range and bend together on the
-extrapolation margin. Before this fix the `flexyBayes` curve was
-silently wrong outside the training range — `stats::model.matrix()`
-cannot re-evaluate the spline basis on new `x` values, so the
-prediction inadvertently used the *training* basis tied to the
-training-data quantile structure.
+The fitted curve stays sensible on the extrapolation margin either
+side of the training range, tracking the penalty rather than
+diverging.
 
-The legacy ASReml-style spline term `spl(x, type = "ps", df = m)`
-remains supported for backward compatibility with prior code; `s()`
-is the recommended path going forward. Tensor-product smooths
-`te()`, `ti()`, and `t2()` are deferred to a future release.
+> **`mgcv::s()` syntax is parsed but not fitted.** The vignette title
+> named mgcv smooths until 0.9.0, which promised a capability no active
+> engine has. `flexyBayes` parses the `mgcv` smooth specifier `s(x)` as
+> an alternative spelling of the same idea
+> (basis via `mgcv::smoothCon()`, ingested as a `smooth_mgcv` random
+> term). That specific ingestion path is not yet representable by
+> either active engine (INLA or brms) -- it was greta-only, and greta
+> has been withdrawn as a fitting engine (see `NEWS.md`). Use `spl()`
+> until `smooth_mgcv` is re-routed. Tensor-product smooths `te()`,
+> `ti()`, and `t2()` remain deferred to a future release regardless.
 
 # 7. Pitfalls
 
@@ -299,11 +327,12 @@ is the recommended path going forward. Tensor-product smooths
 are reported as deviations from the alphabetical-first level. Set
 `contrasts(...)` explicitly if you need a different baseline.
 
-**`s()` and `spl()` are *random* terms.** A common mistake is to
-write `fixed = y ~ x + s(x)`. That fails — smooths belong in the
+**`spl()` and `s()` are *random* terms.** A common mistake is to
+write `fixed = y ~ x + spl(x)`. That fails -- smooths belong in the
 `random` formula. The recommended pattern is
-`fixed = y ~ 1, random = ~ s(x)` for a smooth-only model, or
-`fixed = y ~ z, random = ~ s(x)` for a partially linear model.
+`fixed = y ~ 1, random = ~ spl(x, type = "ps", df = m)` for a
+smooth-only model, or `fixed = y ~ z, random = ~ spl(x, ...)` for a
+partially linear model.
 
 **`predict()` on factor newdata.** When predicting at unseen factor
 levels, R will throw an error or produce an `NA`. Pre-process
@@ -311,17 +340,17 @@ levels, R will throw an error or produce an `NA`. Pre-process
 
 **Smooth prediction at new x's.**
 `predict.flexybayes(fit, newdata = ...)` correctly re-evaluates the
-spline basis on the new `x` positions via `mgcv::PredictMat()` on
-the retained basis object. See section 6.1 above for the overlay
-against the `mgcv::predict.gam()` reference.
+spline basis on the new `x` positions rather than reusing the
+training basis. See section 6.1 above for the extrapolation-margin
+demonstration.
 
 # 8. Active prompts
 
 1. Refit `PlantGrowth` with the contrast set to `contr.sum`. How do
    the fixed-effect coefficients change? How does the intercept
    change?
-2. Vary `k` in `s(x, k = ...)` from 5 to 30 on the synthetic
-   sinusoid. At what `k` does the penalty start to bite?
+2. Vary `df` in `spl(x, type = "ps", df = ...)` from 5 to 30 on the
+   synthetic sinusoid. At what `df` does the penalty start to bite?
 3. Add a random effect on a subject identifier in your own data and
    compare the residual sigma to the pooled-regression residual
    sigma. By how much does the residual shrink?
@@ -335,13 +364,13 @@ sessionInfo()
 # References
 
 Eilers, P. H. C., & Marx, B. D. (1996). Flexible smoothing with
-B-splines and penalties. *Statistical Science*, 11(2), 89–121.
+B-splines and penalties. *Statistical Science*, 11(2), 89--121.
 
 Fisher, R. A. (1935). *The design of experiments*. Edinburgh:
 Oliver & Boyd.
 
 Gelman, A. (2006). Prior distributions for variance parameters in
-hierarchical models. *Bayesian Analysis*, 1(3), 515–534.
+hierarchical models. *Bayesian Analysis*, 1(3), 515--534.
 
 Wood, S. N. (2017). *Generalized additive models: An introduction
 with R* (2nd ed.). Chapman & Hall / CRC.

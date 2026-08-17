@@ -42,12 +42,10 @@
 #' a$rank
 #' @export
 fb_approx <- function(scheme, ...) {
-  if (!is.character(scheme) || length(scheme) != 1L || !nzchar(scheme)) {
-    stop(
-      "fb_approx(): `scheme` must be a non-empty single string.",
-      call. = FALSE
-    )
-  }
+  .check_string_scalar(
+    scheme,
+    "fb_approx(): `scheme` must be a non-empty single string."
+  )
 
   # Validate against the locked registry; an unknown scheme is a
   # catchable structured refusal naming the supported vocabulary.
@@ -85,8 +83,9 @@ fb_approx <- function(scheme, ...) {
 
 #' Test whether an object is an `fb_approx` specification
 #'
-#' @param x An object.
-#' @return `TRUE` if `x` is an `fb_approx` object.
+#' @param x Any R object. The test is a class check, not a structural
+#'   one.
+#' @returns `TRUE` if `x` is an `fb_approx` object, `FALSE` otherwise.
 #' @export
 is_fb_approx <- function(x) inherits(x, "fb_approx")
 
@@ -112,9 +111,10 @@ is_fb_approx <- function(x) inherits(x, "fb_approx")
 
 #' Print an `fb_approx` specification
 #'
-#' @param x An `fb_approx` object.
-#' @param ... Unused.
-#' @return `x`, invisibly.
+#' @param x An `fb_approx` object as returned by [fb_approx()].
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the one-line
+#'   specification it prints.
 #' @export
 print.fb_approx <- function(x, ...) {
   kw <- x[setdiff(names(x), "scheme")]

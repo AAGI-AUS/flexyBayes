@@ -7,7 +7,8 @@
 gretaR_status()
 }
 \value{
-A list with components:
+A list reporting the state of the dormant gretaR slot.
+
 \describe{
 \item{\code{activated}}{Logical: \code{TRUE} if
 \code{options(flexyBayes.gretaR_activated)} is set AND a future

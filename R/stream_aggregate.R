@@ -74,8 +74,10 @@
 #'   column, or `NULL` for Bernoulli (one trial per row).
 #' @param exposure For `family = "poisson"`, the name of the exposure /
 #'   offset column, or `NULL` for unit exposure.
-#' @param backend The estimation backend, `"inla"` (default) or
-#'   `"greta"`.
+#' @param backend The estimation backend. `"inla"` is the default and the
+#'   only active choice: INLA is the one engine with an aggregated emit.
+#'   `"greta"` is still recognised so that passing it refuses by name
+#'   (`backend_quarantined`) rather than failing on argument matching.
 #' @param chunk_rows The number of rows to read per chunk. Larger chunks
 #'   read faster but use more peak memory; the default 5e6 keeps peak
 #'   memory modest while amortising read overhead.
@@ -120,14 +122,31 @@ flexybayes_stream <- function(
   family = "gaussian",
   trials = NULL,
   exposure = NULL,
-  backend = c("inla", "greta"),
+  backend = "inla",
   chunk_rows = 5e6,
   prior = NULL,
   fit = TRUE,
   verbose = TRUE,
   ...
 ) {
-  backend <- match.arg(backend)
+  # "greta" stays in the recognised vocabulary so a caller who passes it
+  # gets the quarantine refusal by name rather than match.arg's "should be
+  # one of" -- but it is no longer an active choice and no longer the
+  # fallback default. INLA is the only engine with an aggregated emit.
+  backend <- match.arg(backend, c("inla", "greta"))
+  if (identical(backend, "greta")) {
+    stop(.fb_refusal_condition(
+      reason_code = "backend_quarantined",
+      message = paste0(
+        "flexybayes_stream(backend = \"greta\") is quarantined: greta is ",
+        "retained as a re-entry candidate, not an active fitting engine. ",
+        "INLA is the only backend with an aggregated emit, and it is the ",
+        "default -- drop the argument, or pass backend = \"inla\"."
+      ),
+      family_class = "flexybayes_backend_quarantined_refusal",
+      backend = "greta"
+    ))
+  }
   the_call <- match.call()
   .check_stream_family(family)
   .check_stream_chunk_rows(chunk_rows)
@@ -276,16 +295,48 @@ flexybayes_stream <- function(
   )
 }
 
+# .fb_checked_row_count() --- an integer row count, or a refusal.
+#
+# Four call sites recorded a row count as as.integer(n_rows). Past
+# 2^31 - 1 that returns NA with a coercion warning, and the NA then flows
+# into the aggregation plan's compression ratio and the fitted object's
+# recorded N, so a five-billion-row source would have produced a plan with
+# no row count rather than an error. The multi-file shard path already
+# keeps its total as a double for exactly this reason
+# (.fb_stream_source_fst_dir); these sites refuse instead, because they
+# read one file or one in-memory frame and R cannot index past the
+# integer limit there anyway.
+.fb_checked_row_count <- function(n_rows, context) {
+  if (length(n_rows) != 1L || is.na(n_rows)) {
+    return(NA_integer_)
+  }
+  if (n_rows > .Machine$integer.max) {
+    stop(.fb_refusal_condition(
+      reason_code = "row_count_exceeds_integer",
+      message = paste0(
+        context, " reports ", format(n_rows, scientific = FALSE),
+        " rows, past R's integer limit of ",
+        format(.Machine$integer.max, scientific = FALSE),
+        ". A count that large silently becomes NA when recorded, so the ",
+        "plan and the fitted object would carry no row count at all. ",
+        "Partition the source into multiple .fst files and pass the ",
+        "directory: the sharded reader keeps its total as a double and ",
+        "has no such ceiling."
+      ),
+      n_rows = n_rows
+    ))
+  }
+  as.integer(n_rows)
+}
+
 #' @noRd
 #' @keywords internal
 .fb_stream_source_fst <- function(path, chunk_rows) {
-  if (!requireNamespace("fst", quietly = TRUE)) {
-    stop(
-      "Reading an .fst source requires the 'fst' package. Install ",
-      "with install.packages('fst').",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "fst",
+    "Reading an .fst source requires the 'fst' package. Install ",
+    "with install.packages('fst')."
+  )
   proxy <- fst::fst(path)
   n_rows <- nrow(proxy)
   cols <- names(proxy)
@@ -305,7 +356,7 @@ flexybayes_stream <- function(
   }
   list(
     kind = "fst",
-    n_rows = as.integer(n_rows),
+    n_rows = .fb_checked_row_count(n_rows, "This .fst source"),
     n_chunks = n_chunks,
     columns = cols,
     read = read,
@@ -317,9 +368,10 @@ flexybayes_stream <- function(
 #' @noRd
 #' @keywords internal
 .fb_stream_source_fst_multi <- function(paths, chunk_rows) {
-  if (!requireNamespace("fst", quietly = TRUE)) {
-    stop("Reading .fst shards requires the 'fst' package.", call. = FALSE)
-  }
+  .check_installed(
+    "fst",
+    "Reading .fst shards requires the 'fst' package."
+  )
   # A partitioned dataset: each shard is read in row-range chunks, and a
   # single chunk plan walks (shard, from, to) triples across all shards
   # in order. Peak memory stays bounded by one chunk regardless of the
@@ -400,7 +452,7 @@ flexybayes_stream <- function(
   }
   list(
     kind = "delim",
-    n_rows = as.integer(n_rows),
+    n_rows = .fb_checked_row_count(n_rows, "This delimited source"),
     n_chunks = n_chunks,
     columns = header,
     read = read,
@@ -427,7 +479,7 @@ flexybayes_stream <- function(
   head <- function(n) df[seq_len(as.integer(min(n, n_rows))), , drop = FALSE]
   list(
     kind = "memory",
-    n_rows = as.integer(n_rows),
+    n_rows = .fb_checked_row_count(n_rows, "This in-memory source"),
     n_chunks = n_chunks,
     columns = names(df),
     read = read,

@@ -199,8 +199,8 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
 # (covered by test-random-slopes-uncor.R). The correlated form
 # (x | g) continues to refuse, but with the new structured
 # `flexybayes_correlated_slope_unsupported` condition carrying
-# precise slots (deferral_target = "v0.3"; workaround = "(x || g)";
-# grouping_factor; slope_variable).
+# precise slots (deferral_target; workaround, which names the concrete
+# uncorrelated spelling for this model; grouping_factor; slope_variable).
 
 test_that("fb_brms() refuses correlated random slopes (x | g) with ADR 0020 structured condition", {
   d <- mk_brms_gaussian_data()
@@ -210,13 +210,13 @@ test_that("fb_brms() refuses correlated random slopes (x | g) with ADR 0020 stru
   )
   expect_s3_class(err, "flexybayes_correlated_slope_unsupported")
   expect_identical(err$deferral_target, "a future release")
-  expect_identical(err$workaround, "(x || g)")
+  expect_identical(err$workaround, "(x || g1)")
   expect_identical(err$grouping_factor, "g1")
   expect_identical(err$slope_variable, "x")
   msg <- conditionMessage(err)
   expect_true(grepl("Correlated random slopes", msg))
   expect_true(grepl("future release", msg))
-  expect_true(grepl("\\(x \\|\\| g\\)", msg))
+  expect_true(grepl("(x || g1)", msg, fixed = TRUE))
 })
 
 

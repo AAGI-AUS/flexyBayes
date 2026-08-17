@@ -21,41 +21,22 @@
   # roxygen emits the `S3method()` entries directly and no runtime
   # registerS3method() shim is needed. See R/tidiers.R.
 
-  # Register greta S3 methods inside flexyBayes's namespace so the
-  # `.emit_gaussian_aggregated_greta()` path can call into
-  # greta from within a package-namespace context. Without this,
-  # greta's internal `check_dims` -> `as.greta_array(...)` dispatch
-  # routes greta_array operands to `as.greta_array.matrix` instead
-  # of `as.greta_array.greta_array`, producing a spurious
-  # missing/infinite-values error on otherwise-valid greta_arrays.
-  if (requireNamespace("greta", quietly = TRUE)) {
-    tryCatch(
-      {
-        greta_ns <- asNamespace("greta")
-        flx_ns <- asNamespace(pkgname)
-        for (cls in c(
-          "greta_array",
-          "matrix",
-          "numeric",
-          "logical",
-          "integer",
-          "data.frame",
-          "array"
-        )) {
-          m_name <- paste0("as.greta_array.", cls)
-          if (exists(m_name, envir = greta_ns, inherits = FALSE)) {
-            registerS3method(
-              "as.greta_array",
-              cls,
-              get(m_name, envir = greta_ns, inherits = FALSE),
-              envir = flx_ns
-            )
-          }
-        }
-      },
-      error = function(e) NULL
-    )
+  # Borrow greta's as.greta_array methods into this namespace, for the
+  # reasons set out at .register_greta_shim() below. Two registration
+  # points, because loadedness alone is order-dependent:
+  # isNamespaceLoaded() answers for the instant .onLoad() runs, and a
+  # user who loads greta afterwards -- the usual order, since flexyBayes
+  # attaches first -- would never get the shim. The hook covers that
+  # direction, the direct call covers greta already being loaded, and
+  # registerS3method() is idempotent so a session hitting both is fine.
+  if (isNamespaceLoaded("greta")) {
+    .register_greta_shim(pkgname)
   }
+  setHook(
+    packageEvent("greta", "onLoad"),
+    function(...) .register_greta_shim(pkgname),
+    action = "append"
+  )
 
   # Initialise the emit-once message latches into their fresh state.
   # The store lives in R/emit_state.R inside a package-private env so
@@ -112,6 +93,11 @@
   # 0.9.0 design-fidelity: refuse a structured dsum() inner rather than
   # silently reducing it to a per-region heteroscedastic variance.
   .populate_refusal_registry_v0900()
+
+  # 0.9.0 fidelity of names: the separable AR1 respelling, the closed
+  # parser vocabulary, the typed brms term refusal, and the numeric-in-a-
+  # random-interaction guard.
+  .populate_refusal_registry_v0900_names()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
@@ -175,6 +161,63 @@
 # (non-clobbering) and a second call adds nothing (idempotent). Factored
 # out of .onLoad() so the contract is unit-testable
 # (test-onload-options.R).
+# Borrow greta's own as.greta_array methods into the flexyBayes namespace.
+#
+# The aggregated-greta emit calls into greta from a package-namespace
+# context, where greta's internal check_dims() -> as.greta_array() dispatch
+# routes a greta_array operand to as.greta_array.matrix rather than to
+# as.greta_array.greta_array, and reports a spurious missing/infinite-values
+# error on a valid array. Registering greta's methods locally fixes the
+# dispatch.
+#
+# The guard on the call sites is loadedness, never requireNamespace():
+# requireNamespace("greta") LOADS greta, and with it reticulate, tensorflow
+# and the Python bridge, on every library(flexyBayes) -- paying that cost,
+# and putting greta in every user's sessionInfo(), for a path dispatch
+# cannot reach while greta is quarantined. Registering only for a user who
+# has greta loaded keeps the shim available for the re-entry candidate
+# without pulling the stack in.
+#
+# Idempotent, and silent on any failure: an absent or restructured greta
+# is not a reason for library(flexyBayes) to fail.
+.register_greta_shim <- function(pkgname = "flexyBayes") {
+  # asNamespace() loads the namespace when it is not already loaded, so
+  # this guard is what keeps the helper from doing the very thing the
+  # registration policy forbids. It holds for the hook route too: an
+  # onLoad user hook fires after loadNamespace() has registered the
+  # namespace, so greta is loaded by the time the hook runs.
+  if (!isNamespaceLoaded("greta")) {
+    return(invisible(NULL))
+  }
+  tryCatch(
+    {
+      greta_ns <- asNamespace("greta")
+      flx_ns <- asNamespace(pkgname)
+      for (cls in c(
+        "greta_array",
+        "matrix",
+        "numeric",
+        "logical",
+        "integer",
+        "data.frame",
+        "array"
+      )) {
+        m_name <- paste0("as.greta_array.", cls)
+        if (exists(m_name, envir = greta_ns, inherits = FALSE)) {
+          registerS3method(
+            "as.greta_array",
+            cls,
+            get(m_name, envir = greta_ns, inherits = FALSE),
+            envir = flx_ns
+          )
+        }
+      }
+    },
+    error = function(e) NULL
+  )
+  invisible(NULL)
+}
+
 .register_marginaleffects_classes <- function(
   classes = c("flexybayes", "flexybayes_inla")
 ) {
@@ -189,7 +232,7 @@
   packageStartupMessage(
     "flexyBayes ",
     utils::packageVersion(pkgname),
-    " -- multi-backend Bayesian mixed models (greta / INLA / brms)",
+    " -- multi-backend Bayesian mixed models (INLA / brms)",
     " with cross-engine triangulation\n",
     "  Development release: all exports experimental; not on CRAN. ",
     "See system.file(\"KNOWN_ISSUES.md\", package = \"flexyBayes\")."
@@ -197,16 +240,14 @@
 
   # Backend-readiness note: only when no inference engine is available, so the
   # message is actionable rather than noisy on a normally-configured machine.
-  have_engine <- requireNamespace("greta", quietly = TRUE) ||
-    requireNamespace("INLA", quietly = TRUE) ||
+  # greta is excluded from this check: it is registered but quarantined
+  # (lifecycle state, not an installation gap), so its presence does not
+  # make an engine available.
+  have_engine <- requireNamespace("INLA", quietly = TRUE) ||
     requireNamespace("brms", quietly = TRUE)
   if (!have_engine) {
     packageStartupMessage(
       "  Note: no inference backend is installed. Install at least one of:\n",
-      "    install.packages('greta',\n",
-      "      repos = c('https://greta-dev.r-universe.dev', ",
-      "getOption('repos')))\n",
-      "      ; greta::install_greta_deps()\n",
       "    install.packages('INLA', repos = c(getOption('repos'),\n",
       "      INLA = 'https://inla.r-inla-download.org/R/stable'))\n",
       "    install.packages('brms')"

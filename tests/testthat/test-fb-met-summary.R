@@ -88,6 +88,7 @@ test_that("fb_met_summary() on a real factor-analytic fit tracks genotype means"
   data(yan.winterwheat, package = "agridat")
   d <- yan.winterwheat
 
+  skip_if_greta_backend_unusable() # greta FA fit quarantined -- re-entry guard
   fit <- flexybayes(
     yield ~ env, random = ~ fa(env, 2):gen, data = d,
     backend = "greta", n_samples = 500L, warmup = 500L, chains = 2L,

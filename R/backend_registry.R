@@ -30,7 +30,8 @@
 # fallback policy (INLA Laplace fast-path; brms/Stan compile-latency
 # opt-out from auto; greta universal HMC fallback) is genuine policy, not
 # mechanical iteration, so dispatch keeps it as code rather than deriving
-# it. Consequence (the honest extensibility claim): a new same-paradigm
+# it. Consequence, and the limit of the extensibility claim: a new
+# same-paradigm
 # formula engine is added by registration plus an emit hookup; a new
 # inference paradigm additionally needs an orchestration step.
 #
@@ -39,22 +40,27 @@
 # backend axis stays consistent (greta / inla / brms are all front-ends)
 # and gretaR is a natural front-end sibling; the Stan/HMC sampler is
 # recorded as the paradigm attribute (paradigm = "hmc_nuts") so
-# triangulate() / the backend-independence registry grade pairs honestly.
+# triangulate() / the backend-independence registry grade pairs on what
+# the engines actually share.
 # `rename_to` is therefore NA for every backend.
 #
 # Internal -- not exported.
 
 # --- closed status vocabulary ------------------------------------- #
 
-# A backend entry is one of three lifecycle states. `active` backends are
+# A backend entry is one of these lifecycle states. `active` backends are
 # reachable today; `dormant` backends have a provisioned but inactive
-# slot (gretaR -- see R/gretaR_slot.R) and refuse at dispatch until
-# activated; `reserved` is documentation-only and not registered here
-# (NIMBLE is the reserved next slot; it has no slot yet, so
-# registering it would be a stub -- it is named in this comment
-# instead). The vocabulary is closed; a new state requires a
-# deliberate amendment.
-.BACKEND_STATUS_VOCABULARY <- c("active", "dormant")
+# slot and refuse at dispatch until activated; `quarantined` backends were
+# active and have been deliberately withdrawn as fitting engines (greta /
+# gretaR, 2026-07-24 reshape R1) -- their descriptor + emit code are
+# RETAINED as a re-entry candidate but dispatch refuses them and `auto`
+# never selects them, and re-entry is repair + conform to the backend
+# conformance battery, never a bare re-add (§4.1). `reserved` is
+# documentation-only and not registered here (NIMBLE is the reserved next
+# slot; it has no slot yet, so registering it would be a stub -- it is
+# named in this comment instead). The vocabulary is closed; a new state
+# requires a deliberate amendment (this file adds `quarantined`, 2026-07-24).
+.BACKEND_STATUS_VOCABULARY <- c("active", "dormant", "quarantined")
 
 # The grammars a backend can ingest-and-fit. A formula model (asreml or
 # brms/lme4 dialect) lowers to the shared fb_terms IR and can target any
@@ -230,14 +236,28 @@
   out
 }
 
+# .backend_is_quarantined() --- TRUE iff `name` is a registered backend
+# whose lifecycle status is `quarantined` (a deliberately-withdrawn fitting
+# engine; dispatch refuses it and `auto` never selects it -- §4.1).
+# Consulted by dispatch (the explicit-request refusal) and the test
+# skip-guards (a greta-fitting test skips as a re-entry guard, not fails).
+.backend_is_quarantined <- function(name) {
+  e <- .lookup_backend(name)
+  !is.null(e) && identical(e$status, "quarantined")
+}
+
 # .auto_default_backend_names() --- registered backends flagged for
-# auto's default candidate set (any status; dormant ones are filtered by
-# availability at dispatch). Mirrors the current dispatch candidate list.
+# auto's default candidate set AND currently `active`. A non-active
+# (dormant / quarantined) backend can never be an auto candidate, so the
+# invariant "auto never selects a quarantined engine" is structural here,
+# not merely a consequence of each descriptor's default_in_auto flag.
 .auto_default_backend_names <- function() {
   out <- character(0)
   for (nm in .registered_backend_names()) {
     e <- .lookup_backend(nm)
-    if (isTRUE(e$default_in_auto)) out <- c(out, nm)
+    if (isTRUE(e$default_in_auto) && identical(e$status, "active")) {
+      out <- c(out, nm)
+    }
   }
   sort(out)
 }
@@ -294,10 +314,40 @@
   "dense", "chol", "precision", "pedigree_sparse_precision"
 )
 
+# The residual-term types .fb_to_brms_formula() actually lowers:
+#
+#   units      the iid residual, which brms carries implicitly as the family
+#              scale parameter (sigma).
+#   at_units   a heterogeneous residual sectioned by a factor -- ASReml's
+#              dsum(~ units | f) and the at(f):units spelling -- lowered to
+#              distributional regression on sigma, `sigma ~ 0 + f`. Validated
+#              against ASReml's dsum on the same data to within 4.8% on the
+#              per-level variances (posterior mean against REML), largest on
+#              the smallest of them.
+#
+# Every structured residual form -- ar1, separable ar1_spatial, and any
+# future correlated residual -- has no emit path at all: the reconstructed
+# brms formula rebuilds the fixed and random blocks and would drop the
+# residual block silently. Naming the supported set here (rather than the
+# unsupported one) keeps a newly parsed residual type refused by default
+# instead of silently dropped.
+.BRMS_RESIDUAL_TYPE_ALLOWLIST <- c("units", "at_units")
+
 .capability_brms <- function(fb) {
   rt <- fb$random_terms %||% list()
   for (t in rt) {
     ty <- t$type %||% ""
+    # A random-side AR1 field -- ar1(t) or the separable ar1(row):ar1(col)
+    # -- is a Kronecker autoregressive precision that only the INLA emit
+    # builds. Naming it here rather than leaving it to the generic
+    # structured-covariance code matters on the auto path: without this
+    # branch the separable form was invisible to the predicate (only the
+    # 1-D `ar1` is in .STRUCTURED_COV_TYPES) and auto would route a failed
+    # INLA spatial fit to brms, which reconstructs the fixed and random
+    # blocks and would drop the field.
+    if (ty %in% c("ar1", "ar1_spatial")) {
+      return("stan_cannot_represent_ar1_field")
+    }
     if (!ty %in% .STRUCTURED_COV_TYPES) {
       next
     }
@@ -311,6 +361,16 @@
   }
   if (length(.collect_approx(rt)) > 0L) {
     return("stan_cannot_represent_low_rank_approx")
+  }
+  for (t in fb$residual_terms %||% list()) {
+    ty <- t$type %||% ""
+    if (ty %in% .BRMS_RESIDUAL_TYPE_ALLOWLIST) {
+      next
+    }
+    if (ty %in% c("ar1", "ar1_spatial")) {
+      return("stan_cannot_represent_ar1_residual")
+    }
+    return("stan_cannot_represent_structured_residual")
   }
   TRUE
 }
@@ -379,14 +439,17 @@
 # fast-path promise). Dispatch reads this set via
 # .available_backend_names() / .auto_default_backend_names().
 .populate_backend_registry_v050 <- function() {
+  # greta: QUARANTINED 2026-07-24 (reshape R1). Descriptor + emit code are
+  # RETAINED as a re-entry candidate; dispatch refuses it and `auto` never
+  # selects it. Re-entry is repair + conform (§4.1), never a bare re-add.
   .register_backend(
     name = "greta",
-    status = "active",
+    status = "quarantined",
     engine = "emit_greta",
     grammars = c("asreml", "brms", "greta"),
     paradigm = "hmc_nuts",
     available_pkg = "greta",
-    default_in_auto = TRUE,
+    default_in_auto = FALSE,
     capability_predicate = .capability_greta
   )
   .register_backend(
@@ -409,17 +472,17 @@
     default_in_auto = FALSE,
     capability_predicate = .capability_brms
   )
+  # gretaR: QUARANTINED 2026-07-24 (reshape R1). Registered `active` with a
+  # runtime option-gate before the reshape; now a retained re-entry
+  # descriptor like greta -- dispatch refuses it, `auto` never selects it.
   .register_backend(
     name = "gretaR",
-    status = "active",
+    status = "quarantined",
     engine = "emit_gretaR",
     grammars = c("asreml", "brms", "greta"),
     paradigm = "hmc_nuts",
     available_pkg = "gretaR",
-    default_in_auto = TRUE, # an auto CANDIDATE; actual auto-selection
-    # stays gated on options(flexyBayes.gretaR_
-    # activated) + the lgm flag (both dormant by
-    # default), so auto still picks greta/INLA
+    default_in_auto = FALSE,
     capability_predicate = .capability_gretaR,
     registered_in_adr = "0013/0031"
   )

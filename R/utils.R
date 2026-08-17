@@ -42,13 +42,118 @@
   deparse(expr[[idx[[1L]]]])
 }
 
+# Normalise the `family` argument to the character spelling the rest of
+# the package works in.
+#
+# `flexybayes()` documents `family` as a string, but `stats::binomial()`
+# and friends are what an R user reaches for first, and the roxygen
+# imports name them. Until 0.9.0 a family object reached `tolower()` and
+# the scalar `if` below it, and the user saw the raw base-R error "the
+# condition has length > 1" -- untyped, and about the wrong thing.
+#
+# A family object carries both halves of the specification, so its
+# `$link` is honoured. That is faithful rather than convenient:
+# `Gamma()` names the inverse link, not the log link `family = "gamma"`
+# defaults to, and reading it as anything else would fit a model the
+# call did not ask for. Supplying `link =` as well is refused rather
+# than resolved, because either resolution silently discards half of
+# what the call said.
+.normalise_family_argument <- function(family, link) {
+  # A generator passed unevaluated (`family = binomial`) is the other
+  # idiom base R accepts; evaluate it and carry on with the object.
+  if (is.function(family)) {
+    family <- tryCatch(family(), error = function(e) e)
+    if (inherits(family, "error")) {
+      stop(.fb_refusal_condition(
+        reason_code = "family_argument_not_recognised",
+        message = paste0(
+          "`family` was a function that did not evaluate to a family ",
+          "object: ",
+          conditionMessage(family),
+          ". Pass a family name as a string (for example ",
+          "family = \"binomial\"), or a `stats` family object such as ",
+          "binomial()."
+        ),
+        family_class = "flexybayes_family_argument_refusal"
+      ))
+    }
+  }
+
+  if (inherits(family, "family")) {
+    fam <- family$family
+    lnk <- family$link
+    if (
+      !is.character(fam) ||
+        length(fam) != 1L ||
+        !is.character(lnk) ||
+        length(lnk) != 1L
+    ) {
+      stop(.fb_refusal_condition(
+        reason_code = "family_argument_not_recognised",
+        message = paste0(
+          "`family` carries the class \"family\" but not a usable ",
+          "$family / $link pair, so the model it names cannot be read. ",
+          "Pass a family name as a string (for example ",
+          "family = \"binomial\"), or a well-formed `stats` family ",
+          "object such as binomial()."
+        ),
+        family_class = "flexybayes_family_argument_refusal"
+      ))
+    }
+    if (!is.null(link) && !identical(tolower(link), tolower(lnk))) {
+      stop(.fb_refusal_condition(
+        reason_code = "family_argument_not_recognised",
+        message = paste0(
+          "`family = ",
+          fam,
+          "(link = \"",
+          lnk,
+          "\")` and `link = \"",
+          link,
+          "\"` name different links. flexyBayes refuses rather than ",
+          "choosing one: drop `link =`, or pass the family as a string ",
+          "(family = \"",
+          tolower(fam),
+          "\", link = \"",
+          link,
+          "\")."
+        ),
+        family_class = "flexybayes_family_argument_refusal"
+      ))
+    }
+    return(list(family = fam, link = lnk))
+  }
+
+  if (!is.character(family) || length(family) != 1L || !nzchar(family)) {
+    stop(.fb_refusal_condition(
+      reason_code = "family_argument_not_recognised",
+      message = paste0(
+        "`family` must be a single family name or a `stats` family ",
+        "object; got an object of class ",
+        paste(class(family), collapse = "/"),
+        " of length ",
+        length(family),
+        ". Pass, for example, family = \"binomial\" or ",
+        "family = binomial()."
+      ),
+      family_class = "flexybayes_family_argument_refusal"
+    ))
+  }
+
+  list(family = family, link = link)
+}
+
 # Resolve family and link function
 #
-# @param family Character: gaussian, binomial, poisson, negative_binomial,
-#   gamma, beta
+# @param family Character family name, or a `stats` family object such
+#   as `binomial()`; a family object supplies its own link.
 # @param link Character or NULL: override default link
 # @return List with family and link
 .resolve_family <- function(family, link) {
+  normalised <- .normalise_family_argument(family, link)
+  family <- normalised$family
+  link <- normalised$link
+
   defaults <- list(
     gaussian = "identity",
     binomial = "logit",

@@ -1,16 +1,35 @@
 # Plot methods for flexyBayes
 
-#' Plot diagnostics for a flexybayes model
+#' Plot diagnostics for a flexyBayes model
 #'
-#' @param x A flexybayes object
-#' @param type Character: type of plot to produce.
-#'   - `"diagnostics"`: trace plots + density (requires bayesplot)
-#'   - `"residuals"`: residuals vs fitted + QQ plot
-#'   - `"effects"`: forest plot of fixed effects with credible intervals
-#'   - `"variance"`: bar chart of variance components with credible intervals
-#'   - `"blups"`: caterpillar plot of BLUPs
-#'   - `"pp_check"`: posterior predictive check (observed vs replicated)
-#' @param ... Additional arguments passed to plotting functions
+#' Draws one of six standard displays for a fitted model, chosen by
+#' `type`. Every backend reaches the same method, and a display that needs
+#' a slot a given engine does not populate -- posterior draws on the
+#' deterministic INLA path, for instance -- prints a message naming what
+#' is missing and returns invisibly rather than erroring or drawing an
+#' empty panel.
+#'
+#' @param x A fitted `flexybayes` object of any backend. Aggregated,
+#'   generalised-linear and direct-greta fits reach the same method
+#'   through their own registrations.
+#' @param type A single string naming the display to draw. One of:
+#'   `"diagnostics"`, trace plots and marginal densities per parameter
+#'   (needs \pkg{bayesplot} and a sampled posterior); `"residuals"`,
+#'   residuals against fitted values beside a normal quantile-quantile
+#'   plot; `"effects"`, a forest plot of the fixed effects with their
+#'   credible intervals, available on every backend that supplies
+#'   [coef()] and [confint()]; `"variance"`, a bar chart of the variance
+#'   components with credible intervals; `"blups"`, a caterpillar plot of
+#'   the random-effect predictions ordered by magnitude; and
+#'   `"pp_check"`, a posterior predictive check overlaying replicated
+#'   datasets on the observed response. Defaults to `"diagnostics"`.
+#' @param ... Further arguments passed to the underlying plotting call,
+#'   for example `pars` to restrict which parameters a diagnostic display
+#'   covers.
+#' @returns Invisibly, the object the underlying plotting call returns --
+#'   a \pkg{ggplot2} object for the displays built with it, and `NULL`
+#'   for those drawn on the base graphics device. Called for the plot it
+#'   draws.
 #' @export
 plot.flexybayes <- function(
   x,
@@ -37,13 +56,15 @@ plot.flexybayes <- function(
   )
 }
 
-# Backend fit objects are sibling classes rather than subclasses of
-# "flexybayes", so the plot method must be registered for each one. The
-# shared body above is backend-aware: types that read a slot a given
-# backend does not populate (for example MCMC draws on an INLA fit)
-# degrade to an informative message via .plot_unavailable() instead of
-# erroring. "effects" works on every backend that exposes coef() and
-# confint().
+# Registered for each fit class rather than relying on inheritance. The
+# brms and INLA fits do share the "flexybayes" parent as of 0.9.0, so the
+# parent registration would reach them, but the aggregated, glm and
+# direct-greta classes carry their own dispatch order and an explicit
+# registration keeps the set visible in one place. The shared body above
+# is backend-aware: a display that reads a slot a given backend does not
+# populate (MCMC draws on an INLA fit, for instance) degrades to an
+# informative message via .plot_unavailable() instead of erroring.
+# "effects" works on every backend that exposes coef() and confint().
 
 #' @rdname plot.flexybayes
 #' @export

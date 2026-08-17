@@ -67,6 +67,14 @@
     }
     return("exact (block-diagonal)")
   }
+  # The bare label is easy to over-read as "the posterior is exact".
+  # It means the EMIT carries no structural approximation; the
+  # inference regime is the Engine: line printed beside it. Say so on
+  # the label itself rather than relying on the one vignette that
+  # defines the split.
+  if (identical(exact, "exact")) {
+    return("exact (model, not inference)")
+  }
   exact
 }
 

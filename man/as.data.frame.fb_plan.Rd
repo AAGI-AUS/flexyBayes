@@ -7,13 +7,17 @@
 \method{as.data.frame}{fb_plan}(x, row.names = NULL, optional = FALSE, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_plan>} object.}
+\item{x}{An \verb{<fb_plan>} object as returned by \code{fb_plan()}.}
 
-\item{row.names}{unused.}
+\item{row.names}{Ignored. Present for compatibility with the generic.}
 
-\item{optional}{unused.}
+\item{optional}{Ignored. Present for compatibility with the generic.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
+}
+\value{
+A one-row data.frame whose columns follow the internal
+\code{.FB_PLAN_DF_COLS} order, with one column per recorded plan field.
 }
 \description{
 Stable column ordering by the internal vector \code{.FB_PLAN_DF_COLS};

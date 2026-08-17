@@ -52,8 +52,11 @@
 #' file header. Calls outside the supported set raise a structured
 #' error with the supported list.
 #'
-#' @param ... one or more two-sided formulas of the form
-#'   `target ~ distribution(args)`. Examples:
+#' @param ... One or more two-sided formulas of the form
+#'   `target ~ distribution(args)`, one per parameter being given a
+#'   prior.
+#'
+#'   Examples:
 #'
 #'   * `sigma ~ pc(upper = 2, prob = 0.05)`
 #'   * `sd(group = "subject") ~ half_normal(scale = 1)`
@@ -71,8 +74,9 @@
 #' Structured-covariance terms (`us`, `fa`, `ar1`, `vm`, `ped`) on greta
 #' fall back to the legacy scale prior.
 #'
-#' @return an `fb_prior` object (S3, inherits from list) with
-#'   `$specs` carrying the parsed `target` / `spec` pairs.
+#' @returns An `fb_prior` object, an S3 class inheriting from list,
+#'   whose `$specs` element carries the parsed `target` and `spec`
+#'   pairs.
 #'
 #' @examples
 #' p <- fb_prior(
@@ -492,6 +496,17 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   obj
 }
 
+# The multiplier that turns the response SD into the uniform default's
+# upper bound on the identity scale: U = .FB_UNIFORM_SD_MULTIPLIER * sd(y).
+# It is named because a second file depends on the *relationship* and not
+# just the number: with a heterogeneous residual the scalar sigma prior is
+# retargeted onto the log-sigma coefficients
+# (.brms_retarget_sigma_for_heterogeneous_residual() in R/priors_to_brms.R),
+# which recovers sd(y) by dividing U by this multiplier. Written out twice,
+# the two constants drifted apart, and the retarget inherited the superseded
+# PC default's 2.5 while the uniform default had moved to 5.
+.FB_UNIFORM_SD_MULTIPLIER <- 5
+
 # Pick a sensible upper bound U for the uniform-on-SD default per
 # (family, link). Returns (scale, basis):
 # - Gaussian / identity link: U = 5 * sd(y); basis = "identity_sd_uniform"
@@ -551,7 +566,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   if (!is.finite(sdv) || sdv <= 0) {
     sdv <- 1.0
   }
-  list(scale = 5 * sdv, basis = "identity_sd_uniform")
+  list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
 }
 
 # Construct the v0.1 default uniform prior fb_prior() for a model.
@@ -567,12 +582,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # scaled-random-effect interpretation that codegen .code_random's
 # vm / ped branches use (u_<tag> = L_G %*% (z * sigma_<tag>); the
 # Cholesky absorbs G's scale and sigma is purely the residual-scale
-# multiplier). The remaining structured forms (at, us, fa, ar1)
-# still fall through to the legacy lognormal pending later v0.2.x
-# patches (each has a different natural scale -- per-level SDs for
-# at, full Cholesky for us, SD+correlation for ar1/fa -- and a
-# uniform default per form requires methodological judgement that
-# is being deferred).
+# multiplier). At 0.9.0 the nested interaction intercept, the
+# heterogeneous-variance diag / idh / at group and the unstructured us
+# group joined them -- see .fb_default_prior_targets() for which term
+# types reach the default and which are left to the engine.
 #
 # `vm_ped_groups` is a character vector of `term$var` strings (one
 # per vm / ped random term) and is keyed identically to `random_groups`
@@ -623,6 +636,152 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     attr(obj, "fb_prior_default_vm_ped_groups") <- unique(vm_ped_groups)
   }
   obj
+}
+
+# .fb_default_prior_targets() --- which random terms the shared default
+# reaches, and which are left to whatever the engine does on its own.
+#
+# One walk over the IR's random terms, consumed twice: flexybayes() reads
+# `$shared` / `$vm_ped` to build the default uniform-on-SD prior, and the
+# model fingerprint (R/model_fingerprint.R) reads `$engine` to record the
+# parameters that carry no prior this package chose. Both consumers must
+# agree about which is which -- a term whose prior is the shared default in
+# one place and an engine default in the other is exactly the silent
+# mismatch triangulate()'s matched-prior gate exists to catch, so the two
+# views are derived here rather than written out twice.
+#
+# `$shared` and `$vm_ped` are group names in the key the prior DSL uses
+# (`sd(group = <name>)`); `$engine` is a data.frame of *canonical parameter
+# names* (the brms-shaped names triangulate() compares on) with the reason
+# each is left alone.
+#
+# The uncorrelated-slope form contributes two entries, the intercept
+# variance under the grouping factor's own name and the slope variance
+# under the synthesised `<slope_var>_<group>` key that
+# .priors_to_brms_specs() unwraps back into brms's (class = "sd",
+# coef = <slope_var>, group = <group>) row.
+.fb_default_prior_targets <- function(fb) {
+  shared <- character(0)
+  vm_ped <- character(0)
+  eng_param <- character(0)
+  eng_reason <- character(0)
+
+  add_engine <- function(param, reason) {
+    eng_param <<- c(eng_param, param)
+    eng_reason <<- c(eng_reason, reason)
+  }
+
+  for (t in fb$random_terms %||% list()) {
+    ttype <- t$type %||% "<unknown>"
+
+    if (ttype %in% c("simple", "ide", "id")) {
+      if (!is.null(t$var) && nzchar(t$var)) {
+        shared <- c(shared, t$var)
+      }
+      next
+    }
+
+    if (identical(ttype, "simple_slope_uncor")) {
+      if (isTRUE(t$with_intercept) && !is.null(t$var) && nzchar(t$var)) {
+        shared <- c(shared, t$var)
+      }
+      if (!is.null(t$slope_var) && nzchar(t$slope_var)) {
+        shared <- c(shared, paste0(t$slope_var, "_", t$var))
+      }
+      next
+    }
+
+    if (ttype %in% c("vm", "ped")) {
+      if (!is.null(t$var) && nzchar(t$var)) {
+        vm_ped <- c(vm_ped, t$var)
+      }
+      next
+    }
+
+    # Interaction random intercept, A:B. brms groups by the interaction
+    # itself, so the group name is the colon-joined pair and one SD carries
+    # the whole term.
+    if (identical(ttype, "nested")) {
+      grp <- paste0(t$outer, ":", t$inner)
+      shared <- c(shared, grp)
+      next
+    }
+
+    # diag(f):g / idh(f):g / at(f):g -- one free SD per level of the outer
+    # factor, all of them in brms's `sd` class for the inner group, so a
+    # single group-keyed spec covers every level.
+    if (identical(ttype, "at_simple")) {
+      if (!is.null(t$inner) && nzchar(t$inner)) {
+        shared <- c(shared, t$inner)
+      }
+      next
+    }
+
+    # us(f):g -- the same per-level SDs, plus a correlation block. The SDs
+    # take the shared default; the correlations keep brms's own LKJ, which
+    # has no counterpart in the prior DSL and no INLA analogue.
+    if (identical(ttype, "us_gxe")) {
+      if (!is.null(t$inner) && nzchar(t$inner)) {
+        shared <- c(shared, t$inner)
+        add_engine(
+          paste0("cor_", t$inner),
+          paste0(
+            "us(", t$outer, "):", t$inner, " level correlations keep brms's ",
+            "default LKJ prior; flexyBayes sets no correlation prior"
+          )
+        )
+      }
+      next
+    }
+
+    # Everything below is outside the walker. Recording the parameter is
+    # the point: an unrecorded prior and a matched one are indistinguishable
+    # downstream, and the comparison then runs on terms the two engines were
+    # never asked the same question about.
+    if (identical(ttype, "combo")) {
+      add_engine(
+        paste0("sd_", paste(as.character(t$vars), collapse = ":")),
+        "multi-way random interaction is outside the default-prior walker"
+      )
+      next
+    }
+
+    if (ttype %in% c("ar1", "ar1_spatial")) {
+      add_engine(
+        "sd_spatial",
+        "AR1 latent field keeps INLA's own default hyperprior"
+      )
+      add_engine(
+        "rho_row",
+        "AR1 latent field keeps INLA's own default hyperprior"
+      )
+      if (identical(ttype, "ar1_spatial")) {
+        add_engine(
+          "rho_col",
+          "AR1 latent field keeps INLA's own default hyperprior"
+        )
+      }
+      next
+    }
+
+    lbl <- t$var %||% t$label %||% ttype
+    add_engine(
+      paste0("sd_", lbl),
+      paste0(
+        "random term type \"", ttype, "\" is outside the default-prior walker"
+      )
+    )
+  }
+
+  list(
+    shared = unique(shared),
+    vm_ped = unique(vm_ped),
+    engine = data.frame(
+      parameter = eng_param,
+      reason = eng_reason,
+      stringsAsFactors = FALSE
+    )
+  )
 }
 
 # One-time announcement of the v0.1.x default change (the uniform
@@ -725,9 +884,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
 #' Print method for fb_prior
 #'
-#' @param x   an `fb_prior` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `fb_prior` object as returned by [fb_prior()].
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the specification list
+#'   it prints.
 #' @keywords internal
 #' @export
 print.fb_prior <- function(x, ...) {

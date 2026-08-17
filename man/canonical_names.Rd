@@ -30,7 +30,8 @@ element.}
 \item{...}{Additional arguments (ignored by current methods).}
 }
 \value{
-A list with components:
+A list holding the canonical-name map and its provenance.
+
 \describe{
 \item{\code{map}}{Named character vector keyed by backend-native
 parameter name with canonical name as the value.}

@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{A \code{flexybayes_inla} fit.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 A \code{formula}.

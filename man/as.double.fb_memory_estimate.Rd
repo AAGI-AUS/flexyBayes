@@ -7,12 +7,14 @@
 \method{as.double}{fb_memory_estimate}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_memory_estimate>} carrier.}
+\item{x}{An \verb{<fb_memory_estimate>} carrier holding the per-term
+breakdown and its \code{total}.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-numeric(1L) total bytes.
+A numeric scalar, the estimated total in bytes, or \code{NA_real_}
+when the carrier holds no total.
 }
 \description{
 Returns \code{x$total} (bytes, after the INLA overhead multiplier).

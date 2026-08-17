@@ -62,12 +62,10 @@
 #' e$toolchain_status
 #' @export
 fb_engine <- function(name, opts = list(), ...) {
-  if (!is.character(name) || length(name) != 1L || !nzchar(name)) {
-    stop(
-      "fb_engine(): `name` must be a non-empty single string.",
-      call. = FALSE
-    )
-  }
+  .check_string_scalar(
+    name,
+    "fb_engine(): `name` must be a non-empty single string."
+  )
   if (!name %in% names(.fb_engine_paradigm)) {
     stop(
       "fb_engine(): unknown engine '",
@@ -127,16 +125,18 @@ fb_engine <- function(name, opts = list(), ...) {
 
 #' Test whether an object is an `fb_engine` specification
 #'
-#' @param x An object.
-#' @return `TRUE` if `x` is an `fb_engine` object.
+#' @param x Any R object. The test is a class check, not a structural
+#'   one.
+#' @returns `TRUE` if `x` is an `fb_engine` object, `FALSE` otherwise.
 #' @export
 is_fb_engine <- function(x) inherits(x, "fb_engine")
 
 #' Print an `fb_engine` specification
 #'
-#' @param x An `fb_engine` object.
-#' @param ... Unused.
-#' @return `x`, invisibly.
+#' @param x An `fb_engine` object as returned by [fb_engine()].
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the one-line engine
+#'   description it prints.
 #' @export
 print.fb_engine <- function(x, ...) {
   cat(

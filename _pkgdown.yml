@@ -11,8 +11,9 @@ home:
   title: flexyBayes — Flexible Bayesian mixed models with ASReml and brms-style syntax
   description: >
     Specify mixed models using ASReml-style or brms-style formula syntax,
-    estimate them via greta, INLA, or brms (Stan), and triangulate posterior
-    agreement across engines as a robustness signal.
+    estimate them via INLA or brms (Stan), and compare the same model
+    across engines with triangulate(), a diagnostic on a gated overlap
+    rather than a validation contract.
 
 navbar:
   structure:
@@ -28,7 +29,7 @@ navbar:
         - text: "Foundations"
         - text: 01 — Getting started
           href: articles/flexyBayes-01-getting-started.html
-        - text: 02 — asreml-shaped formulas
+        - text: 02 — The formula surface
           href: articles/flexyBayes-02-asreml-formulas.html
         - text: 03 — Foundational regression
           href: articles/flexyBayes-03-regression.html
@@ -36,8 +37,6 @@ navbar:
         - text: "Core mixed-model concepts"
         - text: 04 — Hierarchical models
           href: articles/flexyBayes-04-hierarchical.html
-        - text: 05 — Structured covariance
-          href: articles/flexyBayes-05-structured-covariance.html
         - text: 06 — Priors and regularisation
           href: articles/flexyBayes-06-priors.html
         - text: "---"
@@ -52,15 +51,9 @@ navbar:
         - text: "Advanced & internals"
         - text: 10 — Cross-engine triangulation
           href: articles/flexyBayes-10-triangulation.html
-        - text: 11 — LGM feasibility filter
-          href: articles/flexyBayes-11-lgm-feasibility.html
-        - text: 12 — Backend internals
-          href: articles/flexyBayes-12-backend-internals.html
-        - text: 14 — Choosing an engine
-          href: articles/flexyBayes-14-engine-selection.html
-        - text: 15 — Extending with a backend
-          href: articles/flexyBayes-15-extending-backends.html
-        - text: 16 — Big data — streaming aggregation
+        - text: 11 — Dispatch, refusals, and the backend registry
+          href: articles/flexyBayes-11-dispatch-and-refusals.html
+        - text: 16 — Streaming exact aggregation
           href: articles/flexyBayes-16-big-data-streaming.html
 
 reference:
@@ -214,7 +207,6 @@ articles:
   - title: Core mixed-model concepts
     contents:
       - flexyBayes-04-hierarchical
-      - flexyBayes-05-structured-covariance
       - flexyBayes-06-priors
   - title: Applied workflows
     contents:
@@ -224,9 +216,5 @@ articles:
   - title: Advanced and internals
     contents:
       - flexyBayes-10-triangulation
-      - flexyBayes-11-lgm-feasibility
-      - flexyBayes-12-backend-internals
-      - flexyBayes-13-lgm-feasibility-memory
-      - flexyBayes-14-engine-selection
-      - flexyBayes-15-extending-backends
+      - flexyBayes-11-dispatch-and-refusals
       - flexyBayes-16-big-data-streaming

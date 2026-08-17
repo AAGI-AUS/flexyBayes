@@ -72,20 +72,16 @@
   memory_ceiling_gb = NULL,
   known_matrices = NULL
 ) {
-  if (!inherits(fb_ir, "fb_terms")) {
-    stop(
-      ".fb_preflight() requires an `<fb_terms>` IR; got: ",
-      paste(class(fb_ir), collapse = "/"),
-      call. = FALSE
-    )
-  }
-  if (!inherits(fb_dataset, "fb_dataset")) {
-    stop(
-      ".fb_preflight() requires an `<fb_dataset>` wrapper; got: ",
-      paste(class(fb_dataset), collapse = "/"),
-      call. = FALSE
-    )
-  }
+  .check_fb_terms(
+    fb_ir,
+    ".fb_preflight() requires an `<fb_terms>` IR; got: ",
+    paste(class(fb_ir), collapse = "/")
+  )
+  .check_fb_dataset(
+    fb_dataset,
+    ".fb_preflight() requires an `<fb_dataset>` wrapper; got: ",
+    paste(class(fb_dataset), collapse = "/")
+  )
 
   ceiling_bytes <- .fb_resolve_ceiling(memory_ceiling_gb)
   family_ok <- .fb_preflight_family_in_scope(fb_ir)
@@ -126,7 +122,7 @@
 
   # Unknown-representation gate. Any per-term entry flagged as
   # unknown_representation = TRUE forces a refusal
-  # regardless of byte estimate: an honest ceiling check cannot be made
+  # regardless of byte estimate: a ceiling check cannot be made
   # on a term whose design shape we did not characterise. This refusal
   # is preferred over the byte-ceiling refusal -- a known-too-large
   # design is informative, but an unknown design is the safety-critical
@@ -611,7 +607,7 @@
   # sized here rather than escalated to representation_unknown. This lets
   # an explicit greta request preflight-clear (the greta emit handles the
   # gather); an inla/auto request is still refused downstream by the LGM
-  # gate (random_term_type_inla), so the honest INLA boundary is intact.
+  # gate (random_term_type_inla), so the INLA boundary is intact.
   if (rtype %in% c("nested", "combo")) {
     kk <- if (!is.na(k)) {
       k
@@ -1038,9 +1034,11 @@
 #' On refusal the binding term + numeric ceiling appear below the
 #' per-term table.
 #'
-#' @param x   an `<fb_preflight>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `<fb_preflight>` object, as built by the design-memory
+#'   preflight.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the per-term table it
+#'   prints.
 #' @keywords internal
 #' @export
 print.fb_preflight <- function(x, ...) {
@@ -1098,9 +1096,11 @@ print.fb_preflight <- function(x, ...) {
 #' Three-line diagnostic: reason code, binding term + its byte
 #' estimate, and the active ceiling with the suggested override.
 #'
-#' @param x   an `<fb_preflight_refusal>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `<fb_preflight_refusal>` object, carrying the reason
+#'   code and the binding term.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the three diagnostic
+#'   lines it prints.
 #' @keywords internal
 #' @export
 print.fb_preflight_refusal <- function(x, ...) {
@@ -1144,9 +1144,9 @@ print.fb_preflight_refusal <- function(x, ...) {
   } else if (identical(x$reason_code, "memory_feasibility_inla_per_term")) {
     cat(
       "  remedy:         INLA's per-term memory model exceeds the\n",
-      "                  active ceiling. Route via backend = \"greta\"\n",
-      "                  for the indexed representation, or reduce\n",
-      "                  the structured-cov term cardinality.\n",
+      "                  active ceiling. Route via backend = \"brms\"\n",
+      "                  (backend = \"auto\" does so on its own), or\n",
+      "                  reduce the structured-cov term cardinality.\n",
       sep = ""
     )
   }
@@ -1417,9 +1417,11 @@ print.fb_preflight_refusal <- function(x, ...) {
 #' base-R `as.numeric` is `.Primitive("as.double")`, so dispatch
 #' fires on `as.double`, not on `as.numeric`.
 #'
-#' @param x   an `<fb_memory_estimate>` carrier.
-#' @param ... unused.
-#' @return numeric(1L) total bytes.
+#' @param x   An `<fb_memory_estimate>` carrier holding the per-term
+#'   breakdown and its `total`.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns A numeric scalar, the estimated total in bytes, or `NA_real_`
+#'   when the carrier holds no total.
 #' @keywords internal
 #' @export
 as.double.fb_memory_estimate <- function(x, ...) {
@@ -1434,9 +1436,10 @@ as.double.fb_memory_estimate <- function(x, ...) {
 #'
 #' Renders the per-term INLA memory breakdown introduced at v0.3.10.
 #'
-#' @param x   an `<fb_memory_estimate>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `<fb_memory_estimate>` object holding the per-term INLA
+#'   memory breakdown.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the breakdown it prints.
 #' @keywords internal
 #' @export
 print.fb_memory_estimate <- function(x, ...) {

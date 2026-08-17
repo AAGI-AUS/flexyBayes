@@ -7,15 +7,18 @@
 \method{summary}{flexybayes_aggregated}(object, ...)
 }
 \arguments{
-\item{object}{a \verb{<flexybayes_aggregated>} object.}
+\item{object}{A \verb{<flexybayes_aggregated>} object, as returned by a fit
+run on the aggregated representation.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns the posterior summary list.
+Invisibly, a list holding the posterior summary tables the
+method printed, so a caller can use the numbers without re-parsing
+the output.
 }
 \description{
 Posterior summary read off the aggregated INLA fit's
-\code{summary.fixed} + \code{summary.hyperpar} slots. Shows the
-compression line when N/K >= 2.
+\code{summary.fixed} + \code{summary.hyperpar} slots. The header names the
+fit's own family. Shows the compression line when N/K >= 2.
 }

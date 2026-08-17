@@ -127,6 +127,11 @@
   # Store posterior vcov matrix
   attr(glm_obj, "posterior_vcov") <- beta_vcov
 
+  # Fixed-effect draws, for exact posterior summaries. NULL when the fit
+  # produced no recoverable fixed-effect columns; summary() and confint()
+  # fall back to a normal approximation and say so.
+  attr(glm_obj, "posterior_draws") <- coef_info$draws
+
   class(glm_obj) <- c("flexybayes_glm", "glm", "lm")
   glm_obj
 }
@@ -229,8 +234,15 @@
   # Rename to interpretable names
   names(beta_hat) <- coef_names[seq_along(avail)]
   rownames(beta_vcov) <- colnames(beta_vcov) <- coef_names[seq_along(avail)]
+  colnames(draws_fixed) <- coef_names[seq_along(avail)]
 
-  list(coefficients = beta_hat, vcov = beta_vcov)
+  # The draws travel with the summary statistics so that summary() and
+  # confint() can report posterior quantities exactly -- a quantile
+  # interval rather than a normal approximation to one, and a
+  # probability of direction counted from the draws rather than inferred
+  # from a mean and an SD. Both previously reported the approximation
+  # under the exact quantity's name.
+  list(coefficients = beta_hat, vcov = beta_vcov, draws = draws_fixed)
 }
 
 # Compute fitted values from posterior mean of mu_i_atg

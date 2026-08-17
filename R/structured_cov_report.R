@@ -54,9 +54,7 @@
 #'
 #' @export
 fb_structured_cov <- function(fit) {
-  if (!inherits(fit, "flexybayes")) {
-    stop("`fit` must be a flexybayes object.", call. = FALSE)
-  }
+  .check_flexybayes_fit(fit, "`fit` must be a flexybayes object.")
   rt <- fit$extras$parse_info$random %||% list()
   fa_terms <- Filter(function(t) identical(t$type %||% "", "fa_gxe"), rt)
   other_struct <- Filter(

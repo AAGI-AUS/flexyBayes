@@ -38,14 +38,14 @@ test_that(".fb_brms_data2() materialises each carrier to the relationship covari
   expect_equal(unname(d2p$Qp), G, tolerance = 1e-8, ignore_attr = TRUE)
 })
 
-test_that(".fb_brms_covname() refuses the greta/INLA-only carriers on brms", {
+test_that(".fb_brms_covname() refuses the INLA-only carriers on brms", {
   expect_error(
     flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "blocks")),
-    "greta / INLA-only"
+    "INLA-only"
   )
   expect_error(
     flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "low_rank")),
-    "greta / INLA-only"
+    "INLA-only"
   )
   expect_equal(flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "dense")), "Gmat")
 })
@@ -102,6 +102,7 @@ test_that("genomic_summary() refuses a non-flexybayes object", {
 # ---------------------------------------------------------------- #
 
 test_that("GBLUP recovers heritability and breeding values across three engines", {
+  skip_if_greta_backend_unusable() # greta arm quarantined -- re-entry guard
   skip_on_cran()
   skip_if_not_installed("greta")
   skip_if_not_installed("brms")

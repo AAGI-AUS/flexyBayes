@@ -24,6 +24,8 @@ emit_greta <- function(
   n_samples = 1000,
   warmup = 500,
   chains = 4,
+  seed = NULL,
+  control = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
   verbose = TRUE,
@@ -37,9 +39,17 @@ emit_greta <- function(
   link = NULL,
   data_name = NA_character_
 ) {
-  if (!is_fb_terms(fb)) {
-    stop("`fb` must be an fb_terms object (see fb_from_asreml).", call. = FALSE)
-  }
+  .check_fb_terms(
+    fb,
+    "`fb` must be an fb_terms object (see fb_from_asreml)."
+  )
+
+  # Threaded from the public entry point for signature uniformity with
+  # emit_brms() / emit_inla(). They are Stan settings; the greta emit
+  # samples through TensorFlow and consumes neither, so it says so rather
+  # than accepting a seed it will not honour. greta is quarantined as a
+  # fitting engine, so this path is not reachable through dispatch.
+  .note_sampler_args_ignored("greta", seed = seed, control = control)
 
   # ---------------------------------------------------------------- #
   # Unwrap the IR back into the shape the existing helpers expect.   #

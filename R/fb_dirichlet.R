@@ -162,6 +162,34 @@ fb_dirichlet <- function(
   verbose = FALSE
 ) {
   method <- match.arg(method)
+
+  # The greta quarantine is a statement about what fits models in this
+  # package, and it has to hold at every fitting entry point or it is not a
+  # statement at all. This one bypassed the backend registry entirely and
+  # called greta directly, so `backend = "greta"` refused while
+  # `fb_dirichlet(method = "greta")` quietly fitted -- and initialised
+  # TensorFlow doing it.
+  #
+  # Refused rather than deprecated, to match every other route: the same
+  # reason code, the same message shape. The maximum-likelihood method is
+  # unaffected and remains the default. The greta implementation is retained
+  # in the source, like the other quarantined emitters, so re-entry is repair
+  # and conformance rather than a rewrite.
+  if (identical(method, "greta") && .backend_is_quarantined("greta")) {
+    stop(.fb_refusal_condition(
+      reason_code = "backend_quarantined",
+      message = paste0(
+        "fb_dirichlet(method = \"greta\") is quarantined: greta is retained ",
+        "as a re-entry candidate, not an active fitting engine, and that ",
+        "applies to every fitting entry point in the package rather than to ",
+        "the mixed-model backends alone. Use method = \"ml\" (the default) ",
+        "for the maximum-likelihood fit."
+      ),
+      family_class = "flexybayes_backend_quarantined_refusal",
+      backend = "greta"
+    ))
+  }
+
   x <- .check_composition(x, eps)
   labels <- colnames(x)
 
@@ -240,15 +268,13 @@ fb_dirichlet <- function(
   chains,
   verbose
 ) {
-  if (!requireNamespace("greta", quietly = TRUE)) {
-    stop(
-      "fb_dirichlet(method = \"greta\") needs the greta package. Install it ",
-      "with install.packages(\"greta\", repos = c(\"https://greta-dev.r-univ",
-      "erse.dev\", getOption(\"repos\"))) and run greta::install_greta_deps",
-      "(), or use method = \"ml\".",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "greta",
+    "fb_dirichlet(method = \"greta\") needs the greta package. Install it ",
+    "with install.packages(\"greta\", repos = c(\"https://greta-dev.r-univ",
+    "erse.dev\", getOption(\"repos\"))) and run greta::install_greta_deps",
+    "(), or use method = \"ml\"."
+  )
 
   draws <- .dirichlet_greta_sample(x, n_samples, warmup, chains, verbose)
   probs <- c((1 - conf_level) / 2, 1 - (1 - conf_level) / 2)

@@ -95,7 +95,8 @@
 
   h2_draws <- var_g_draws / (var_g_draws + var_e_draws)
   # A draw with sigma_g^2 = sigma_e^2 = 0 is degenerate (0/0); treat its
-  # heritability as NA rather than NaN so the summary is honest.
+  # heritability as NA rather than NaN, so the summary reports the
+  # quantity as undefined rather than as a number.
   h2_draws[!is.finite(h2_draws)] <- NA_real_
 
   out <- list(
@@ -228,7 +229,7 @@ print.fb_genomic_summary <- function(x, ...) {
 #' \dontrun{
 #' fit <- flexybayes(
 #'   yield ~ 1, random = ~ vm(geno, Gmat), data = met,
-#'   known_matrices = list(Gmat = G), backend = "greta"
+#'   known_matrices = list(Gmat = G), backend = "brms"
 #' )
 #' gs <- genomic_summary(fit)
 #' gs$heritability

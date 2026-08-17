@@ -1,0 +1,311 @@
+{
+  "schema": "rpkg-audit-v1",
+  "package": "flexyBayes",
+  "version": "0.9.0",
+  "tier": "public",
+  "collect": "full",
+  "generated_on": "2026-08-17",
+  "root_sha": "v0.9.0",
+  "archetype": "A1",
+  "counts": {
+    "blocker": 0,
+    "should_fix": 5,
+    "nice_to_have": 15
+  },
+  "gates": {
+    "F16_hygiene": "fail",
+    "F17_conformance": "na",
+    "F19_live_tests": "pass",
+    "rcmdcheck": "pass",
+    "_note": "F10-F15/F18 are release / clean-room / external-fact gates not evaluated in a standard audit pass."
+  },
+  "hygiene": {
+    "score": 0.8571,
+    "passes": 6,
+    "fails": 1,
+    "graded": true,
+    "na": false,
+    "escalation": false
+  },
+  "live_tests": {
+    "status": "pass",
+    "pass": 3238,
+    "fail": 0,
+    "skip": 199,
+    "skip_on_cran_sites": 94,
+    "reason": null
+  },
+  "conformance": {
+    "evidence_json": null,
+    "source": null,
+    "status": "absent",
+    "findings": null,
+    "api_surface_covered": null
+  },
+  "findings": [
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-tidy-hub.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-gretaR-slot.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-inla-verification-simple-slope-uncor.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "4 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-validation-lmer.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-emit-smooth-low-rank.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-fb-plan.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "2 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-known-covariance-inputs.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "2 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-emit-gaussian-aggregated.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "2 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-factor-continuous-inla-verification.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "2 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-tooling-skip-ledger.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "Trivial assertion detected.",
+      "location": "tests/testthat/test-tooling-skip-ledger.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "6 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-backend-conformance-open-oracle.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-emit-inla.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "6 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-backend-conformance.R",
+      "redacted": false
+    },
+    {
+      "id": "Tests",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Tests",
+      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
+      "location": "tests/testthat/test-fb-preflight-stress.R",
+      "redacted": false
+    },
+    {
+      "id": "Security",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "category": "Security",
+      "title": "Audit shell calls for user-input injection risk.",
+      "location": "tests/testthat/test-fb-preflight-stress.R",
+      "redacted": false
+    },
+    {
+      "id": "Security",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "category": "Security",
+      "title": "Audit shell calls for user-input injection risk.",
+      "location": "R/emit_gretaR.R",
+      "redacted": false
+    },
+    {
+      "id": "Security",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "category": "Security",
+      "title": "Audit shell calls for user-input injection risk.",
+      "location": "R/fb_preflight.R",
+      "redacted": false
+    },
+    {
+      "id": "Security",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "category": "Security",
+      "title": "Avoid eval(parse()); it is hard to secure and test.",
+      "location": "R/emit_greta.R",
+      "redacted": false
+    },
+    {
+      "id": "Build-check",
+      "severity": "nice_to_have",
+      "status": "FAIL",
+      "category": "Build-check",
+      "title": "R CMD check NOTE (env): * checking CRAN incoming feasibility ... [3s/32s] NOTE Maintainer: \u2018Max Moldovan <max.moldovan@adelaide.edu.au>\u2019 New submission Suggests or Enhances not in main",
+      "location": "/var/folders/l4/dcx9vkrx2bj0w0kxfvlyrc7r0000gp/T/rpkg_audit_17f285_g/flexyBayes.Rcheck/00check.log",
+      "redacted": false
+    }
+  ],
+  "rubric_findings": [
+    {
+      "id": "E1",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E1 Public API budget: 170 exported (cap 30 for A1)",
+      "location": "NAMESPACE",
+      "redacted": false
+    },
+    {
+      "id": "E2",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E2 File length cap (\u2264600 lines per R/*.R): over-budget: R/lgm_gate.R=1237, R/flexybayes.R=849, R/fb_plan.R=960, R/refusal_taxonomy.R=1891, R/stream_aggregate.R=1023",
+      "location": "R/",
+      "redacted": false
+    },
+    {
+      "id": "E3",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E3 File naming (no utils.R / helpers.R / zz*.R / etc.): hits: utils.R",
+      "location": "R/",
+      "redacted": false
+    },
+    {
+      "id": "E5",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E5 Dependency budget (Imports): 12 Imports (cap 8 for A1)",
+      "location": "DESCRIPTION",
+      "redacted": false
+    },
+    {
+      "id": "E6",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E6 Suggested-package guards: unguarded: estimability \u2014 central requireNamespace(<var>) dispatcher present; confirm it covers these",
+      "location": "R/ vs DESCRIPTION:Suggests",
+      "redacted": false
+    },
+    {
+      "id": "E7",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E7 Roxygen completeness: 53/76 non-dispatch exports with missing tags; e.g. R/flexybayes.R: @family/@seealso",
+      "location": "R/ (70 S3-dispatch / S7 exports exempt)",
+      "redacted": false
+    },
+    {
+      "id": "E9",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E9 Error-message style: humane=299 (cli/rlang=0, stop(call.=FALSE)=299), bare stop()=121, ratio=0.71 (target \u22650.80)",
+      "location": "R/",
+      "redacted": false
+    },
+    {
+      "id": "E10",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "elegance",
+      "title": "E10 No decorative comments: 3 hits; first: R/gretaR_slot.R:135",
+      "location": "R/, tests/, vignettes/",
+      "redacted": false
+    },
+    {
+      "id": "E19",
+      "severity": "should_fix",
+      "status": "FAIL",
+      "rubric": "hygiene",
+      "title": "E19 Human-pass evidence: no De-Vibe / human-pass record (critical_review_*.md / de_vibe*.md / report/internal/ / NEWS / recipe 40)",
+      "location": "flexyBayes",
+      "redacted": false
+    }
+  ],
+  "rubric": "hygiene"
+}

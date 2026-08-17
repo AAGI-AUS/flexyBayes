@@ -48,15 +48,24 @@ emit_count_aggregated <- function(
   backend <- match.arg(backend)
   fam <- fb$family
 
-  if (!inherits(fb, "fb_terms")) {
-    stop("emit_count_aggregated() requires an <fb_terms> IR.", call. = FALSE)
+  if (identical(backend, "greta") && .backend_is_quarantined("greta")) {
+    stop(.fb_refusal_condition(
+      reason_code = "backend_quarantined",
+      message = paste0(
+        "backend = \"greta\" is quarantined: retained as a re-entry ",
+        "candidate, not an active fitting engine. Use backend = ",
+        "\"inla\" (re-entry is repair + conform, section 4.1)."
+      ),
+      family_class = "flexybayes_backend_quarantined_refusal",
+      backend = "greta"
+    ))
   }
-  if (!inherits(fb_aggregated, "fb_aggregated")) {
-    stop(
-      "emit_count_aggregated() requires an <fb_aggregated> object.",
-      call. = FALSE
-    )
-  }
+
+  .check_fb_terms(fb, "emit_count_aggregated() requires an <fb_terms> IR.")
+  .check_fb_aggregated(
+    fb_aggregated,
+    "emit_count_aggregated() requires an <fb_aggregated> object."
+  )
   if (!fam %in% c("binomial", "poisson")) {
     stop(
       "emit_count_aggregated(): family must be binomial or poisson; ",
@@ -116,13 +125,11 @@ emit_count_aggregated <- function(
 # INLA path                                                         #
 # ---------------------------------------------------------------- #
 .emit_count_aggregated_inla <- function(fb, fb_aggregated, ri_plan, verbose) {
-  if (!requireNamespace("INLA", quietly = TRUE)) {
-    stop(
-      "Package 'INLA' is required for the INLA-backed aggregated ",
-      "count emit. Install from https://inla.r-inla-download.org/.",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "INLA",
+    "Package 'INLA' is required for the INLA-backed aggregated ",
+    "count emit. Install from https://inla.r-inla-download.org/."
+  )
 
   fam <- fb$family
   agg <- as.data.frame(fb_aggregated$sufficient_stats)
@@ -253,13 +260,11 @@ emit_count_aggregated <- function(
   verbose,
   mcmc_verbose
 ) {
-  if (!requireNamespace("greta", quietly = TRUE)) {
-    stop(
-      "Package 'greta' is required for the greta-backed aggregated ",
-      "count emit.",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "greta",
+    "Package 'greta' is required for the greta-backed aggregated ",
+    "count emit."
+  )
 
   fam <- fb$family
   cell_design <- fb_aggregated$cell_design
@@ -497,6 +502,12 @@ emit_count_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
+      # Built from the PRE-aggregation data on purpose: cell-level
+      # sufficient statistics are a computational route to the same
+      # likelihood, not a different model, so an aggregated fit and a
+      # per-row fit of the same model read as comparable to
+      # triangulate(). See R/model_fingerprint.R.
+      fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
       parse_info = list(
         fixed = list(
           response = fb$response,

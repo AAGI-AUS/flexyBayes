@@ -43,7 +43,7 @@ monitored).
 \dontrun{
 fit <- flexybayes(
   yield ~ 1, random = ~ vm(geno, Gmat), data = met,
-  known_matrices = list(Gmat = G), backend = "greta"
+  known_matrices = list(Gmat = G), backend = "brms"
 )
 gs <- genomic_summary(fit)
 gs$heritability

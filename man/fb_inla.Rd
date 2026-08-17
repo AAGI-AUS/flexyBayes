@@ -26,10 +26,12 @@ not, the shared \code{lgm_gate()} raises a structured refusal naming the
 offending term, exactly as \code{flexybayes(backend = "inla")} does.
 }
 \details{
-Sampling-control arguments (\code{n_samples}, \code{warmup}, \code{chains},
-\code{mcmc_verbose}) are accepted for call-compatibility with the other
-engine pins but are inert under INLA's deterministic Laplace
-approximation.
+Sampling-control arguments (\code{n_samples}, \code{warmup}, \code{chains}, \code{seed},
+\code{control}, \code{mcmc_verbose}) are accepted for call-compatibility with the
+other engine pins but are inert under INLA's deterministic Laplace
+approximation. \code{seed} and \code{control} say so when supplied: the fit is
+repeatable without a seed, because nothing in the approximation is
+drawn.
 }
 \examples{
 df <- data.frame(

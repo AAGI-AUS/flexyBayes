@@ -2,18 +2,22 @@
 % Please edit documentation in R/methods.R
 \name{nobs.flexybayes}
 \alias{nobs.flexybayes}
-\title{Number of observations}
+\title{Number of observations a flexyBayes fit was fitted to}
 \usage{
 \method{nobs}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A \code{flexybayes} fit of any engine.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-Integer
+A single integer, the number of observations in the fitted
+data.
 }
 \description{
-Number of observations
+Reads the observation count recorded at emit time, so the answer is the
+number of rows the engine actually saw. On a fit whose missing responses
+were augmented rather than dropped, that count includes the augmented
+design cells.
 }

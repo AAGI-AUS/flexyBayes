@@ -63,15 +63,13 @@
     ))
   }
 
-  if (!inherits(prior, "fb_prior")) {
-    stop(
-      "`.priors_to_brms()` expects an `fb_prior` object or NULL ",
-      "(legacy bridge). Got: ",
-      paste(class(prior), collapse = "/"),
-      ".",
-      call. = FALSE
-    )
-  }
+  .check_fb_prior(
+    prior,
+    "`.priors_to_brms()` expects an `fb_prior` object or NULL ",
+    "(legacy bridge). Got: ",
+    paste(class(prior), collapse = "/"),
+    "."
+  )
 
   # Build a lookup of (slope_var, grouping_factor) pairs for
   # every simple_slope_uncor random term in the IR. The flexyBayes
@@ -547,7 +545,79 @@
     prior_fixed_sd = prior_fixed_sd,
     prior_vc_sd = prior_vc_sd
   )
+  specs <- .brms_retarget_sigma_for_heterogeneous_residual(specs, fb)
   .brms_specs_to_object(specs)
+}
+
+# .brms_retarget_sigma_for_heterogeneous_residual() --- move the residual
+# prior onto the parameters that actually exist when sigma is modelled.
+#
+# With a heterogeneous residual the emit becomes `sigma ~ 0 + f`, and the
+# scalar `sigma` parameter ceases to exist -- it is replaced by one
+# coefficient per level, on the LOG scale. A prior aimed at the scalar then
+# matches nothing, and brms refuses outright:
+#   "The following priors do not correspond to any model parameter:
+#    <lower=0,upper=11.4> sigma ~ uniform(0, 11.4)"
+# which is how this was found. The precedent for the fix is already in this
+# file: sigma specs are dropped for families that carry no sigma, for exactly
+# the same reason.
+#
+# THE REPLACEMENT IS A CHOICE, AND IT IS ANNOUNCED. The default uniform(0, U)
+# on the residual SD has no exact counterpart on a log-scale linear predictor,
+# so it cannot be carried across unchanged; any prior here is a new decision
+# rather than a translation. brms's own default for these coefficients is
+# flat, which is not a decision this package is willing to make silently
+# either. So the scale that produced U is reused -- the uniform default sets
+# U = .FB_UNIFORM_SD_MULTIPLIER * sd(y) on the identity scale, hence
+# sd(y) = U / .FB_UNIFORM_SD_MULTIPLIER -- and each log-sigma coefficient gets
+# normal(log(sd(y)), 1): a prior whose median residual SD is sd(y) and whose
+# 95% range spans roughly a factor of seven either side. Weakly informative,
+# on the data's own scale, and stated in the prior note rather than inferred
+# from behaviour.
+#
+# The divisor was written here as a literal 2.5 until 0.9.0, which was the
+# superseded PC default's multiplier rather than the uniform default's 5. The
+# location it produced was log(2 * sd(y)), so the prior's median residual SD
+# was twice the data SD instead of the sd(y) this paragraph claims. Reading
+# the multiplier off the constant that sets U keeps the inversion exact and
+# the two files from drifting again.
+#
+# On a user-supplied prior the inversion is a heuristic rather than an
+# identity: `upper` is whatever numeric the sigma spec ends with, and only a
+# uniform(0, U) built by the default machinery is guaranteed to stand in the
+# documented relation to sd(y).
+.brms_retarget_sigma_for_heterogeneous_residual <- function(specs, fb) {
+  het <- Filter(function(t) identical(t$type %||% "", "at_units"),
+                fb$residual_terms %||% list())
+  if (length(het) == 0L || length(specs) == 0L) {
+    return(specs)
+  }
+
+  # Recover the residual scale from whichever sigma spec was built, so this
+  # tracks the default-prior machinery instead of re-deriving it.
+  upper <- NA_real_
+  for (s in specs) {
+    if (identical(s$class %||% "", "sigma")) {
+      m <- regmatches(s$string, regexpr("[0-9.eE+-]+\\)$", s$string))
+      if (length(m) == 1L) {
+        upper <- suppressWarnings(as.numeric(sub("\\)$", "", m)))
+      }
+    }
+  }
+  specs <- Filter(function(s) !identical(s$class %||% "", "sigma"), specs)
+
+  loc <- if (is.finite(upper) && upper > 0) {
+    log(upper / .FB_UNIFORM_SD_MULTIPLIER)
+  } else {
+    0
+  }
+  c(specs, list(list(
+    string = sprintf("normal(%.6g, 1)", loc),
+    class = "b",
+    coef = NA_character_,
+    group = NA_character_,
+    dpar = "sigma"
+  )))
 }
 
 # Stack the spec list into a single brms prior object. Each spec
@@ -558,14 +628,12 @@
   if (length(specs) == 0L) {
     return(NULL)
   }
-  if (!requireNamespace("brms", quietly = TRUE)) {
-    stop(
-      "Package 'brms' is required to compile flexyBayes priors ",
-      "into a brms prior object. Install via ",
-      "install.packages('brms').",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "brms",
+    "Package 'brms' is required to compile flexyBayes priors ",
+    "into a brms prior object. Install via ",
+    "install.packages('brms')."
+  )
 
   rows <- lapply(specs, function(s) {
     args <- list(prior = s$string, class = s$class)
@@ -575,6 +643,13 @@
     }
     if (!is.na(s$group %||% NA_character_) && nzchar(s$group)) {
       args$group <- s$group
+    }
+    # `dpar` targets a distributional parameter's own linear predictor --
+    # class "b" with dpar "sigma" is the coefficient block created by
+    # `sigma ~ 0 + f`, which is a different parameter from the scalar
+    # class "sigma". Without this the row would land on the wrong block.
+    if (!is.na(s$dpar %||% NA_character_) && nzchar(s$dpar)) {
+      args$dpar <- s$dpar
     }
     # brms refuses `Prior argument 'coef' may not be
     # specified when using boundaries` -- when a coef-keyed sd row

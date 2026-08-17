@@ -19,17 +19,23 @@ fb_as_draws_simple(fit, ...)
 \method{fb_as_draws_simple}{default}(fit, ...)
 }
 \arguments{
-\item{fit}{a model fit object.}
+\item{fit}{A model fit object carrying a posterior, dispatched on by
+the methods listed above.}
 
-\item{...}{method-specific arguments (e.g., \code{n_samples} for INLA).}
+\item{...}{Method-specific arguments, such as \code{n_samples} for the
+INLA method.}
 }
 \value{
-a named list of numeric vectors.
+A named list of numeric vectors, one element per parameter,
+each element holding that parameter's posterior draws.
 }
 \description{
 S3 generic used by \code{triangulate()} to extract a named list of
-numeric posterior-draw vectors from each fit. Methods exist for
-the \code{flexybayes} (greta backend) and \code{flexybayes_inla} (INLA
-backend) classes; user-defined methods can extend the generic.
+numeric posterior-draw vectors from each fit. The methods that reach
+an active engine are \code{flexybayes_brms} and \code{flexybayes_inla}; the
+\code{flexybayes} and \code{flexybayes_gretaR} methods read the greta-shaped
+draws slot and are retained for objects lifted in by
+\code{\link[=fb_from_greta]{fb_from_greta()}}, since greta is quarantined as a fitting engine.
+User-defined methods can extend the generic.
 }
 \keyword{internal}

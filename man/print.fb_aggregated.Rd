@@ -7,12 +7,14 @@
 \method{print}{fb_aggregated}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_aggregated>} object.}
+\item{x}{An \verb{<fb_aggregated>} object, the sufficient-statistics
+carrier the aggregation layer builds.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the compression and
+cell-key lines it prints.
 }
 \description{
 Diagnostic print of the sufficient-statistics aggregation:

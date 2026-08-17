@@ -1,13 +1,17 @@
-#' flexyBayes: Bayesian Mixed Models with ASReml Syntax via greta, INLA, brms
+#' flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms
 #'
 #' `flexyBayes` lets you fit Bayesian mixed models using the formula syntax
 #' you already know from ASReml or `lme4`/`brms`, dispatched through one of
-#' three inference engines: greta (Hamiltonian Monte Carlo via TensorFlow),
-#' INLA (integrated nested Laplace approximation, for the latent Gaussian
-#' model class), or brms (a Stan passthrough). All current exports are at the
-#' experimental `lifecycle` stage. The same fitted object supports
-#' `summary()`, `predict()`, `emmeans::emmeans()`,
-#' `marginaleffects::predictions()`, and the `bayesplot::*` family.
+#' two active inference engines: INLA (integrated nested Laplace
+#' approximation, over the latent Gaussian model class) or brms (a Stan
+#' passthrough, full Hamiltonian Monte Carlo). greta and gretaR are
+#' quarantined as fitting engines --- their emit code and registry
+#' descriptors are retained as re-entry candidates, `backend = "auto"`
+#' never selects them, and an explicit request refuses with
+#' `backend_quarantined`. All current exports are at the experimental
+#' `lifecycle` stage. The same fitted object supports `summary()`,
+#' `predict()`, `emmeans::emmeans()`, `marginaleffects::predictions()`, and
+#' the `bayesplot::*` family.
 #'
 #' The package's signature feature is `triangulate()`, a cross-engine
 #' posterior comparison that quantifies disagreement between two fits of
@@ -18,25 +22,35 @@
 #' (`fb_terms`):
 #'
 #' * [flexybayes()] — asreml-format entry: `fixed` / `random` / `residual`
-#'   formulas, `known_matrices` for kinship / pedigree, `weights` for
-#'   pre-aggregated observations.
+#'   formulas and `known_matrices` for kinship / pedigree. Observation
+#'   `weights` are parsed and then refused (`weights_not_supported`) until
+#'   an active emitter consumes them.
 #' * [fb()] / [flexybayes()] — the universal entry. Accepts an ASReml
 #'   (`fixed` / `random` / `residual`) or brms-style (`y ~ x + (1 | g)`)
-#'   formula, or a native `greta::model()`, and any `backend`
-#'   (`"greta"`, `"inla"`, `"brms"`, or `"auto"`).
-#' * [fb_greta()] / [fb_inla()] / [fb_brms()] — single-engine pins.
+#'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).
+#' * [fb_inla()] / [fb_brms()] — single-engine pins. [fb_greta()] is
+#'   retained and refuses.
 #' * [fb_prior()] — penalised-complexity-canonical prior DSL.
 #' * [triangulate()] — cross-engine posterior comparison.
 #'
 #' @section Vignettes:
-#' Sixteen vignettes ship with the package, covering: getting started,
-#' asreml-shaped formulas reference, foundational regression,
-#' hierarchical models, structured covariance, priors and
-#' regularisation, multi-environment trials and genomics, downstream
-#' analysis, spatio-temporal models, cross-engine triangulation, LGM
-#' feasibility, backend internals, LGM feasibility and memory, choosing
-#' an engine (the universal entry and the engine pins), extending the
-#' backend registry, and big-data streaming (exact aggregation).
+#' Eleven vignettes ship with the package, covering: getting started,
+#' the formula surface (the asreml term catalogue together with
+#' structured covariance), foundational regression, hierarchical models,
+#' priors and regularisation, multi-environment trials and genomics,
+#' downstream analysis, spatio-temporal models, cross-engine
+#' triangulation, dispatch and refusals with the backend registry, and
+#' big-data streaming (exact aggregation). The dispatch-and-refusals
+#' page is the technical / internals reference; the rest target a
+#' general audience.
+#'
+#' @section Capability:
+#' What each active engine fits, emits, or refuses by model class is
+#' generated from one R-level table and shown in `README.md` and
+#' `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`. A request
+#' outside that set raises a typed refusal naming the nearest implemented
+#' alternative rather than fitting a neighbouring model under the
+#' requested model's name.
 #'
 #' @section References:
 #' Simpson, D., Rue, H., Riebler, A., Martins, T. G., & Sørbye, S. H.

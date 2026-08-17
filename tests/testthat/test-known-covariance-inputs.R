@@ -455,6 +455,7 @@ test_that("blocks path: valid 2+3 partition validates and falls through Phase A 
 }
 
 test_that("codegen: dense vm path keeps the pre-Stage-5A t(chol()) expression", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   dat <- .fixture_data_for_vm()
   G_mat <- diag(6) + 0.1
   code <- flexybayes(
@@ -470,6 +471,7 @@ test_that("codegen: dense vm path keeps the pre-Stage-5A t(chol()) expression", 
 })
 
 test_that("codegen: chol path emits as.matrix(L), no t(chol()) wrap", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   dat <- .fixture_data_for_vm()
   G <- diag(6) + 0.1
   L <- t(chol(G))
@@ -486,6 +488,7 @@ test_that("codegen: chol path emits as.matrix(L), no t(chol()) wrap", {
 })
 
 test_that("codegen: precision path emits solve(chol(Q)) square root", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   skip_if_not_installed("Matrix")
   dat <- .fixture_data_for_vm()
   G <- diag(6) + 0.1
@@ -506,6 +509,7 @@ test_that("codegen: precision path emits solve(chol(Q)) square root", {
 })
 
 test_that("codegen: ped use_sparse_precision = TRUE emits solve(chol(Q)) square root", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   skip_if_not_installed("Matrix")
   dat <- data.frame(
     animal = factor(rep(seq_len(6L), length.out = 60L)),

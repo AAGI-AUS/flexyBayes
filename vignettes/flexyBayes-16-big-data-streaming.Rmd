@@ -1,33 +1,39 @@
 ---
-title: "Big data: streaming exact aggregation to a billion rows"
+title: "Streaming exact aggregation: fitting a model without holding the data"
 vignette: >
-  %\VignetteIndexEntry{Big data: streaming exact aggregation to a billion rows}
+  %\VignetteIndexEntry{Streaming exact aggregation: fitting a model without holding the data}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
   %\usepackage[utf8]{inputenc}
 output:
-  rmarkdown::html_vignette
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
 ---
 
-```{r setup, include = FALSE, purl = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment  = "#>",
-  eval     = FALSE,
-  purl     = FALSE
-)
-library(flexyBayes)
-```
 
-A collaborator shares a dataset with hundreds of millions to a billion
-rows, already written to disk in an efficient columnar format -- a
-multi-season multi-environment trial, a genomic panel, a sensor archive.
-You want to fit a Bayesian mixed model, but the data will not fit in
-memory, and pushing every row through a sampler would be hopeless. This
-vignette shows how `flexybayes_stream()` fits such a model exactly, with
-memory that does not grow with the row count. Fitting code is shown for
-reference -- set `eval = TRUE` locally with the relevant backends
-installed to run it.
+
+A collaborator shares a dataset with hundreds of millions of rows,
+already written to disk in an efficient columnar format -- a multi-season
+multi-environment trial, a genomic panel, a sensor archive. You want to
+fit a Bayesian mixed model, but the data will not fit in memory, and
+pushing every row through a sampler would be hopeless. This vignette
+shows how `flexybayes_stream()` fits such a model exactly, with memory
+that does not grow with the row count.
+
+**The envelope, stated once.** What the method delivers is exact
+cell-likelihood aggregation for iid exponential-family models with a
+small cell count, read from partitioned `.fst`, and fitted on INLA.
+Every one of those conditions is load-bearing: outside them the package
+refuses by name rather than approximating. The section *When aggregation
+does not apply* says which structures fall outside and why.
+
+The idea runs end to end on a few thousand rows here -- the section *A
+worked example small enough to run* does exactly that, and it is the one
+section whose code executes when this vignette is built. The
+large-scale figures further down are recorded from an external benchmark
+run: the code that produced them is shown but not executed, since it
+reads tens of gigabytes.
 
 ## The idea: aggregate exactly, then fit
 
@@ -58,11 +64,15 @@ distinct cells $K$, not the number of rows $N$.
 
 The realistic delivery format is a columnar file on disk.
 `flexybayes_stream()` reads it in row-range chunks, accumulates the
-sufficient statistics, and fits the $K$-cell model through INLA (or
-greta). Peak memory is one chunk plus the small cell accumulator, never
-the full table.
+sufficient statistics, and fits the $K$-cell model through INLA --
+the only active fitting engine for the aggregated path (`backend =
+"greta"` is accepted at the argument level but refuses with a
+structured `backend_quarantined` message; greta has been withdrawn
+as a fitting engine, see `NEWS.md`). Peak memory is one chunk plus
+the small cell accumulator, never the full table.
 
-```{r fst, purl = FALSE}
+
+``` r
 library(fst)
 
 # A dataset already on disk (here written for illustration).
@@ -84,7 +94,8 @@ For a dataset shared as several partitioned shards -- the usual shape for
 genuinely large data -- pass the vector of shard paths and they are
 streamed in turn with the same bounded footprint.
 
-```{r shards, purl = FALSE}
+
+``` r
 shards <- sort(list.files("trial_parts", pattern = "\\.fst$",
                           full.names = TRUE))
 fit <- flexybayes_stream(
@@ -97,7 +108,8 @@ Binomial and poisson models fit the same way. A 0/1 response is treated
 as Bernoulli (one trial per row). For poisson, name an exposure column
 with `exposure =` if the data carries one.
 
-```{r families, purl = FALSE}
+
+``` r
 fit_bin <- flexybayes_stream(
   infected ~ region, random = ~ paddock,
   source = "survey.fst", family = "binomial", backend = "inla"
@@ -112,7 +124,8 @@ fit_pois <- flexybayes_stream(
 To inspect the compression a design will achieve before committing to a
 fit, pass `fit = FALSE` and the function returns the aggregation summary.
 
-```{r inspect, purl = FALSE}
+
+``` r
 agg <- flexybayes_stream(
   yield ~ environment, random = ~ genotype,
   source = path, fit = FALSE
@@ -120,25 +133,88 @@ agg <- flexybayes_stream(
 agg          # prints N, K, and the compression ratio
 ```
 
-## The in-memory entry aggregates too
+## A worked example small enough to run
 
-When the data does fit in memory, the ordinary entry
-`flexybayes()` reaches the same exact aggregation through
-`aggregate = "auto"` (the default) on `backend = "inla"`, for the
-gaussian, binomial, and poisson families. The two routes return the same
-posterior.
+The exactness claim is checkable on data that fits in memory, and this
+section checks it. When the data does fit, the ordinary entry
+`flexybayes()` reaches the same aggregation through `aggregate = "auto"`
+(the default) on `backend = "inla"`, for the gaussian, binomial, and
+poisson families. Fitting the same data both ways should return the same
+posterior, not a similar one.
 
-```{r inmemory, purl = FALSE}
-fit_a <- flexybayes(yield ~ environment, random = ~ genotype,
-                    data = trial_df, backend = "inla")   # auto-aggregates
-fit_b <- flexybayes(yield ~ environment, random = ~ genotype,
-                    data = trial_df, backend = "inla",
-                    aggregate = FALSE)                   # per row
+
+``` r
+set.seed(20260815L)
+n_env <- 6L
+n_gen <- 40L
+n_rep <- 3L
+
+trial_df <- expand.grid(
+  rep = seq_len(n_rep),
+  genotype = factor(seq_len(n_gen)),
+  environment = factor(paste0("E", seq_len(n_env)))
+)
+g_eff <- rnorm(n_gen, sd = 0.7)
+trial_df$yield <- 5 +
+  as.numeric(trial_df$environment) * 0.4 +
+  g_eff[as.integer(trial_df$genotype)] +
+  rnorm(nrow(trial_df), sd = 0.5)
+
+nrow(trial_df)                                             # rows
+#> [1] 720
+nlevels(trial_df$environment) * nlevels(trial_df$genotype) # cells K
+#> [1] 240
 ```
+
+Seven hundred and twenty rows across 240 design cells: a compression of
+three, which is nothing at this size, and that is the point -- the two
+routes must agree where both are cheap before the claim is worth
+anything where only one is possible.
+
+
+``` r
+fit_agg <- flexybayes(
+  yield ~ environment, random = ~ genotype,
+  data = trial_df, backend = "inla", verbose = FALSE
+)                                            # auto-aggregates
+
+fit_row <- flexybayes(
+  yield ~ environment, random = ~ genotype,
+  data = trial_df, backend = "inla", aggregate = FALSE,
+  verbose = FALSE
+)                                            # per row
+```
+
+
+``` r
+round(cbind(
+  aggregated = coef(fit_agg),
+  per_row = coef(fit_row),
+  difference = coef(fit_agg) - coef(fit_row)
+), 6)
+#>               aggregated  per_row difference
+#> (Intercept)     5.275970 5.275971          0
+#> environmentE2   0.416732 0.416732          0
+#> environmentE3   0.747117 0.747117          0
+#> environmentE4   1.157252 1.157252          0
+#> environmentE5   1.502889 1.502888          0
+#> environmentE6   1.942981 1.942981          0
+```
+
+The fixed-effect posterior means agree. That is the aggregation identity
+rather than a tolerance being met: the aggregated likelihood is the
+per-row likelihood rewritten, so the same approximation applied to both
+returns the same answer. Scaling the row count changes how long the
+accumulation takes and nothing about the model.
 
 ## What it costs: per-row versus aggregated
 
-The table below compares the two paths at sample sizes where both are
+**External benchmark.** The two tables in this section and the next were
+measured outside the package on a 32 GB machine. They are not produced
+when this vignette is built and nothing here re-runs them; they are
+recorded so the cost story is a measurement rather than an assertion.
+
+The first table compares the two paths at sample sizes where both are
 feasible, on a 6-environment by 60-genotype design (360 cells) with a
 gaussian random intercept and the INLA backend. Memory is the operating
 system peak resident size of a fresh process.
@@ -160,9 +236,13 @@ million rows) in about three seconds.
 
 ## How far it scales
 
-The next table streams a partitioned `.fst` dataset on a 6-environment by
-200-genotype design (1200 cells). The dataset is written as
-50-million-row shards and streamed in five-million-row chunks.
+**External benchmark, as above.** The next table streams a partitioned
+`.fst` dataset on a 6-environment by 200-genotype design (1200 cells).
+The dataset is written as 50-million-row shards and streamed in
+five-million-row chunks. Note the shape of the source: partitioned
+`.fst` is the configuration these numbers describe, and it is the one
+the envelope names. A single file past `2^31 - 1` rows refuses rather
+than streaming, because its row count cannot be recorded as an integer.
 
 | N             |    K | wall (s) | peak (MB) | on disk (GB) | intercept |
 |---------------|-----:|---------:|----------:|-------------:|----------:|

@@ -73,16 +73,25 @@ emit_gaussian_aggregated <- function(
 ) {
   backend <- match.arg(backend)
 
-  if (!inherits(fb, "fb_terms")) {
-    stop("emit_gaussian_aggregated() requires an <fb_terms> IR.", call. = FALSE)
+  if (identical(backend, "greta") && .backend_is_quarantined("greta")) {
+    stop(.fb_refusal_condition(
+      reason_code = "backend_quarantined",
+      message = paste0(
+        "backend = \"greta\" is quarantined: retained as a re-entry ",
+        "candidate, not an active fitting engine. Use backend = ",
+        "\"inla\" (re-entry is repair + conform, section 4.1)."
+      ),
+      family_class = "flexybayes_backend_quarantined_refusal",
+      backend = "greta"
+    ))
   }
-  if (!inherits(fb_aggregated, "fb_aggregated")) {
-    stop(
-      "emit_gaussian_aggregated() requires an <fb_aggregated> ",
-      "from .fb_aggregate_gaussian().",
-      call. = FALSE
-    )
-  }
+
+  .check_fb_terms(fb, "emit_gaussian_aggregated() requires an <fb_terms> IR.")
+  .check_fb_aggregated(
+    fb_aggregated,
+    "emit_gaussian_aggregated() requires an <fb_aggregated> ",
+    "from .fb_aggregate_gaussian()."
+  )
 
   # Defensive scope re-check (the caller -- .dispatch_backend() --
   # already gates on <fb_aggregation_plan>$eligible, but the emit
@@ -141,7 +150,7 @@ emit_gaussian_aggregated <- function(
   if (return_code) {
     # The aggregated emit at v0.3.2 does NOT yet expose review_code =
     # TRUE for the aggregated path; the per-row review path remains the
-    # documented v0.2 surface. Honest refusal:
+    # documented v0.2 surface. Refused by name:
     stop(
       "emit_gaussian_aggregated(): return_code = TRUE is not yet ",
       "supported on the aggregated path (deferred to a follow-on ",
@@ -349,14 +358,12 @@ emit_gaussian_aggregated <- function(
   verbose,
   mcmc_verbose
 ) {
-  if (!requireNamespace("greta", quietly = TRUE)) {
-    stop(
-      "Package 'greta' is required for the greta-backed aggregated ",
-      "emit. Install with install.packages('greta'); ",
-      "greta::install_greta_deps().",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "greta",
+    "Package 'greta' is required for the greta-backed aggregated ",
+    "emit. Install with install.packages('greta'); ",
+    "greta::install_greta_deps()."
+  )
 
   cell_design <- fb_aggregated$cell_design
   agg <- fb_aggregated$sufficient_stats
@@ -543,22 +550,20 @@ emit_gaussian_aggregated <- function(
   residual_plan,
   verbose
 ) {
-  if (!requireNamespace("INLA", quietly = TRUE)) {
-    stop(
-      "Package 'INLA' is required for the INLA-backed aggregated ",
-      "emit. Install from https://inla.r-inla-download.org/.",
-      call. = FALSE
-    )
-  }
+  .check_installed(
+    "INLA",
+    "Package 'INLA' is required for the INLA-backed aggregated ",
+    "emit. Install from https://inla.r-inla-download.org/."
+  )
 
   if (identical(residual_plan$kind, "at_units")) {
     stop(
       "emit_gaussian_aggregated() INLA: heterogeneous residual ",
       "at_units on INLA requires the multi-likelihood INLA stack ",
-      "API (deferred). Pass backend = \"greta\" with ",
-      "aggregate = TRUE for the heterogeneous-residual path, or ",
-      "backend = \"inla\" with aggregate = FALSE for the per-row ",
-      "INLA path.",
+      "API (deferred). The aggregated heterogeneous-residual path was ",
+      "greta-only and greta is quarantined, so pass aggregate = FALSE ",
+      "for the per-row path -- on INLA, or on brms, which represents ",
+      "the sectioned residual as a distributional predictor.",
       call. = FALSE
     )
   }
@@ -787,6 +792,11 @@ emit_gaussian_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
+      # Built from the PRE-aggregation data on purpose. Aggregation is a
+      # computational route to the same likelihood, not a different model,
+      # so an aggregated fit and a per-row fit of the same model must read
+      # as comparable to triangulate(). See R/model_fingerprint.R.
+      fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
       parse_info = list(
         # Mirror emit_greta()'s fixed-info shape so confint /
         # summary / methods.R downstream consumers see the same

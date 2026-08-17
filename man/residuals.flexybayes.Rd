@@ -7,12 +7,15 @@
 \method{residuals}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-Numeric vector of residuals (observed - fitted)
+A numeric vector of response residuals, the observed value
+minus the posterior-mean fitted value, one per row of the fitted
+data. A row whose response was missing and carried as latent has no
+observed value and returns \code{NA}.
 }
 \description{
 Extract residuals

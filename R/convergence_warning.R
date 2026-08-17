@@ -60,32 +60,64 @@
     parts <- c(parts, sprintf("min effective sample size %.0f", min_ess))
   }
 
-  # Factor-analytic / unstructured loadings are identified only up to
-  # rotation and sign, so their per-entry Rhat is meaningless and inflates
-  # this count. Point the user at the identified-quantity diagnostic.
+  # Two structured-term notes, and they are different diagnoses.
+  #
+  # A factor-analytic term's raw loadings are identified only up to
+  # rotation and sign, so their per-entry Rhat is meaningless and
+  # inflates this count -- fb_structured_cov() reconstructs the
+  # identified covariance and is the right place to look.
+  #
+  # An unstructured term is NOT that case, and saying so was worse than
+  # saying nothing. brms parameterises us(f):g by standard deviations
+  # and a Cholesky correlation factor, which is identified; the note
+  # invited a user to dismiss a real mixing failure as a labelling
+  # artefact, and pointed at a function that abstains for us() terms.
+  # What actually fails is the split between the covariance diagonal and
+  # the residual, and it fails when there is one observation per cell:
+  # measured on agridat::yan.winterwheat (18 genotypes x 9 environments,
+  # one plot per cell) the 45 covariance parameters converge while
+  # `sigma` reaches Rhat 1.13 with a bulk effective size of 36, and
+  # doubling the budget makes it worse rather than better.
   rt <- fit$extras$parse_info$random %||% list()
-  has_struct <- any(vapply(
-    rt,
-    function(t) (t$type %||% "") %in% c("fa_gxe", "us_gxe"),
-    logical(1)
-  ))
-  struct_note <- if (has_struct) {
-    paste0(
-      " Note: this model has a factor-analytic / unstructured term whose ",
-      "raw loadings are non-identified (rotation/sign), so their Rhat is ",
-      "expected to be high; consult fb_structured_cov() for the Rhat of ",
-      "the identified covariance."
+  has_type <- function(types) {
+    any(vapply(rt, function(t) (t$type %||% "") %in% types, logical(1)))
+  }
+  struct_note <- ""
+  if (has_type("fa_gxe")) {
+    struct_note <- paste0(
+      struct_note,
+      " Note: this model has a factor-analytic term whose raw loadings ",
+      "are non-identified (rotation/sign), so their Rhat is expected to ",
+      "be high; consult fb_structured_cov() for the Rhat of the ",
+      "identified covariance."
     )
-  } else {
-    ""
+  }
+  if (has_type("us_gxe")) {
+    struct_note <- paste0(
+      struct_note,
+      " Note: this model has an unstructured us() term. With one ",
+      "observation per cell of the outer factor the residual variance ",
+      "is confounded with the diagonal of that covariance, and the ",
+      "sampler walks the ridge between them -- divergences and a low ",
+      "effective size on `sigma` are the usual symptom, and more ",
+      "iterations do not fix it. Check which parameters are failing in ",
+      "summary(): if they are `sigma` and `lp__` rather than the ",
+      "covariance entries, the remedy is replication within cell or an ",
+      "informative prior on the residual, not a longer chain. Raising ",
+      "`control = list(adapt_delta = 0.95)` will lower the divergence ",
+      "count on this model without identifying the split, so it hides ",
+      "the symptom rather than treating it."
+    )
   }
 
   warning(
     "flexyBayes: the sampler may not have converged -- ",
     paste(parts, collapse = "; "),
     ". Treat the posterior with caution: increase `warmup` / ",
-    "`n_samples`, simplify the model, or supply a more informative ",
-    "prior. Inspect the full diagnostics with summary().",
+    "`n_samples`, raise `control = list(adapt_delta = 0.95)` where the ",
+    "run reported divergent transitions, simplify the model, or supply ",
+    "a more informative prior. Inspect the full diagnostics with ",
+    "summary().",
     struct_note,
     " Silence this warning via ",
     "options(flexyBayes.silence_convergence_warning = TRUE).",

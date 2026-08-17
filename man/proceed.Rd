@@ -10,14 +10,14 @@ proceed(x, ...)
 \method{proceed}{flexybayes_review}(x, ...)
 }
 \arguments{
-\item{x}{a \verb{<flexybayes_review>} object.}
+\item{x}{A \verb{<flexybayes_review>} object holding the deferred fit.}
 
-\item{...}{reserved for future deferred-execution classes
-(e.g., deferred triangulation).}
+\item{...}{Reserved for future deferred-execution classes, such as a
+deferred triangulation.}
 }
 \value{
-the fit object the originating call would have
-returned (class \code{flexybayes}).
+The fit object the originating call would have returned, of
+class \code{flexybayes}. A second call returns the cached fit.
 }
 \description{
 Generic for the inspect-then-fit pattern. The

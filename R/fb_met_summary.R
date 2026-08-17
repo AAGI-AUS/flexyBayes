@@ -60,6 +60,15 @@
 #' head(ms$op[order(-ms$op$mean), ]) # best genotypes on average
 #' ms$env_cor # environment crossover structure
 #' }
+#' @section Lifecycle:
+#' Superseded while greta is quarantined. The breeder summaries are
+#' computed from realised factor-analytic effects, and no active engine
+#' emits an `fa(env, k):gen` term, so on a brms or INLA fit the function
+#' abstains by name (`met_summary_not_available`). What an active engine
+#' does report for a multi-environment trial is the variance components,
+#' through [summary()], and on brms the genotype-by-environment
+#' covariance of a `diag()` or `us()` term through `brms::VarCorr()`.
+#'
 #' @export
 fb_met_summary <- function(
   fit,
@@ -67,36 +76,47 @@ fb_met_summary <- function(
   environment_levels = NULL
 ) {
   if (inherits(fit, c("flexybayes_inla", "flexybayes_brms"))) {
-    stop(
-      "fb_met_summary() needs a greta factor-analytic fit; the supplied fit ",
-      "uses the ", if (inherits(fit, "flexybayes_inla")) "INLA" else "brms",
-      " backend. ",
-      "Breeder summaries are computed from the realised factor-analytic ",
-      "effects, which fit on the greta backend; the INLA / brms MET path ",
-      "reports variance components via summary() / fb_structured_cov(). ",
-      "Refit fa(env, k):gen with backend = \"greta\" for fb_met_summary().",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "met_summary_not_available",
+      message = paste0(
+        "fb_met_summary() needs a greta factor-analytic fit; the supplied ",
+        "fit uses the ",
+        if (inherits(fit, "flexybayes_inla")) "INLA" else "brms",
+        " backend. Breeder summaries are computed from the realised ",
+        "factor-analytic effects, which fit on the greta backend. greta ",
+        "has been withdrawn as a fitting engine (see NEWS.md), so no ",
+        "active backend currently produces the fa(env, k):gen fit ",
+        "fb_met_summary() needs. What an active engine does report for a ",
+        "multi-environment trial is the variance components and, on brms, ",
+        "the genotype-by-environment covariance itself: read summary() ",
+        "for the components, and brms::VarCorr() on fit$brms for the ",
+        "covariance of a diag() or us() term."
+      ),
+      backend = if (inherits(fit, "flexybayes_inla")) "inla" else "brms"
+    ))
   }
-  if (!inherits(fit, "flexybayes")) {
-    stop("`fit` must be a flexybayes (greta) object.", call. = FALSE)
-  }
+  .check_flexybayes_fit(fit, "`fit` must be a flexybayes (greta) object.")
   rt <- fit$extras$parse_info$random %||% list()
   fa_terms <- Filter(function(t) identical(t$type %||% "", "fa_gxe"), rt)
   if (!length(fa_terms)) {
-    stop(
-      "fb_met_summary(): this fit carries no factor-analytic fa() G x E ",
-      "term; nothing to summarise. Fit, e.g., random = ~ fa(env, 2):gen.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "met_summary_not_available",
+      message = paste0(
+        "fb_met_summary(): this fit carries no factor-analytic fa() G x E ",
+        "term; nothing to summarise. Fit, e.g., ",
+        "random = ~ fa(env, 2):gen."
+      )
+    ))
   }
   draws <- tryCatch(fit$greta$draws, error = function(e) NULL)
   if (is.null(draws)) {
-    stop(
-      "fb_met_summary() requires the greta posterior draws; this fit does ",
-      "not carry them (the factor-analytic term is greta-only).",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "met_summary_not_available",
+      message = paste0(
+        "fb_met_summary() requires the greta posterior draws; this fit ",
+        "does not carry them (the factor-analytic term is greta-only)."
+      )
+    ))
   }
 
   term <- fa_terms[[1L]]

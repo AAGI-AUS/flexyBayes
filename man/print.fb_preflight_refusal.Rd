@@ -7,12 +7,14 @@
 \method{print}{fb_preflight_refusal}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_preflight_refusal>} object.}
+\item{x}{An \verb{<fb_preflight_refusal>} object, carrying the reason
+code and the binding term.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the three diagnostic
+lines it prints.
 }
 \description{
 Three-line diagnostic: reason code, binding term + its byte

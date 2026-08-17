@@ -9,7 +9,7 @@
 \arguments{
 \item{object}{A \code{flexybayes_brms} object.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \description{
 Delegates to \code{brms::log_lik()} then sums pointwise log-likelihood

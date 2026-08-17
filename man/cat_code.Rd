@@ -10,15 +10,18 @@ cat_code(x, ...)
 \method{cat_code}{flexybayes_review}(x, file = stdout(), ...)
 }
 \arguments{
-\item{x}{a \verb{<flexybayes_review>} object.}
+\item{x}{A \verb{<flexybayes_review>} object carrying the generated
+backend code.}
 
-\item{...}{method-specific arguments. The \code{flexybayes_review}
-method accepts \code{file} (connection; default \code{stdout()}).}
+\item{...}{Method-specific arguments. The \code{flexybayes_review} method
+accepts \code{file}, a connection defaulting to \code{stdout()}.}
 
-\item{file}{connection to write to (default \code{stdout()}).}
+\item{file}{A connection to write the code to, defaulting to
+\code{stdout()}.}
 }
 \value{
-invisibly returns the code string.
+Invisibly, the code as a character vector. Called for the
+code it writes to \code{file}.
 }
 \description{
 Writes the backend code carried by a \verb{<flexybayes_review>}

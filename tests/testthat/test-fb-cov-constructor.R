@@ -265,6 +265,7 @@ test_that("vm() cov = fb_cov(type = 'low_rank') without scheme refuses at parse"
 # ---------------------------------------------------------------- #
 
 test_that("codegen: cov = fb_cov(L, type = 'chol') emits the same square root as chol = L", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   dat <- .fb_cov_fixture_data()
   G <- diag(6) + 0.1
   L <- t(chol(G))
@@ -282,6 +283,7 @@ test_that("codegen: cov = fb_cov(L, type = 'chol') emits the same square root as
 })
 
 test_that("codegen: cov = fb_cov(Q, type = 'precision') emits solve(chol(Q))", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   skip_if_not_installed("Matrix")
   dat <- .fb_cov_fixture_data()
   Q <- solve(diag(6) + 0.1)
@@ -301,6 +303,7 @@ test_that("codegen: cov = fb_cov(Q, type = 'precision') emits solve(chol(Q))", {
 })
 
 test_that("codegen: cov = fb_cov(G, type = 'dense') keeps the t(chol()) wrap", {
+  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
   dat <- .fb_cov_fixture_data()
   G <- diag(6) + 0.1
   code_new <- flexybayes(

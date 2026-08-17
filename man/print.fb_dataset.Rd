@@ -7,12 +7,14 @@
 \method{print}{fb_dataset}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_dataset>} object.}
+\item{x}{An \verb{<fb_dataset>} object, the wrapper the preflight layer
+carries in place of the raw data.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the header and the
+per-column rows it prints.
 }
 \description{
 Diagnostic print: one-line header from \code{\link[=format.fb_dataset]{format.fb_dataset()}},

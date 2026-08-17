@@ -87,11 +87,27 @@
 #' @export
 fb_backend_status <- function(deep = TRUE) {
   greta_inst <- requireNamespace("greta", quietly = TRUE)
-  greta_use <- if (greta_inst) .greta_backend_usable(deep = deep) else FALSE
+  # greta was QUARANTINED 2026-07-24 (reshape R1): not an active fitting
+  # engine, so it is never "usable" for fitting regardless of the Python / TF
+  # stack. The descriptor + emit code are retained for re-entry.
+  greta_quar <- .backend_is_quarantined("greta")
+  greta_use <- if (greta_quar) {
+    FALSE
+  } else if (greta_inst) {
+    .greta_backend_usable(deep = deep)
+  } else {
+    FALSE
+  }
   inla_inst <- requireNamespace("INLA", quietly = TRUE)
   brms_inst <- requireNamespace("brms", quietly = TRUE)
 
-  note_greta <- if (!greta_inst) {
+  note_greta <- if (greta_quar) {
+    paste0(
+      "quarantined: retained for reading historical fits and the legacy ",
+      "greta import grammar; not an active fitting engine (re-entry is ",
+      "repair + conform). Active backends: INLA + brms."
+    )
+  } else if (!greta_inst) {
     paste0(
       "not installed: install.packages('greta', repos = ",
       "c('https://greta-dev.r-universe.dev', getOption('repos')))"

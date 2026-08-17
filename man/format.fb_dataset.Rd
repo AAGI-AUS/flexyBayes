@@ -7,12 +7,14 @@
 \method{format}{fb_dataset}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_dataset>} object.}
+\item{x}{An \verb{<fb_dataset>} object, the wrapper the preflight layer
+carries in place of the raw data.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-a length-1 character string.
+A length-one character string summarising the wrapped
+dataset.
 }
 \description{
 One-line summary of the internal dataset wrapper used by the

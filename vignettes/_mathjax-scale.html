@@ -1,0 +1,25 @@
+<!-- Shared MathJax sizing for every vignette in this package.
+
+     rmarkdown::html_vignette loads MathJax v2 (TeX-AMS-MML_HTMLorMML)
+     dynamically at the foot of the page. v2's TeX web fonts render
+     noticeably larger than the vignette body font, so inline math like
+     \widehat{R} > 1.01 towers over the sentence it sits in. This config
+     block runs BEFORE the loader (in_header vs the foot-of-page script),
+     which is the supported v2 way to set the output scale once.
+
+     scale: 90 with matchFontHeight brings the math x-height to the body
+     text across the HTML-CSS, CommonHTML and SVG output paths. If a page
+     ever looks off again, tune the one number here -- never per-page.
+
+     Referenced from every vignette's YAML as
+       includes:
+         in_header: _mathjax-scale.html
+     and tests/testthat/test-vignette-math-include.R fails if a vignette
+     (or its .orig source) drops the reference. -->
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  "HTML-CSS": { scale: 90, matchFontHeight: true },
+  CommonHTML:  { scale: 90, matchFontHeight: true },
+  SVG:         { scale: 90 }
+});
+</script>

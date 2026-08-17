@@ -40,23 +40,19 @@
 
 
 .fb_aggregation_plan <- function(fb_ir, fb_dataset) {
-  if (!inherits(fb_ir, "fb_terms")) {
-    stop(
-      ".fb_aggregation_plan() requires an `<fb_terms>` IR; got: ",
-      paste(class(fb_ir), collapse = "/"),
-      call. = FALSE
-    )
-  }
-  if (!inherits(fb_dataset, "fb_dataset")) {
-    stop(
-      ".fb_aggregation_plan() requires an `<fb_dataset>` ",
-      "wrapper; got: ",
-      paste(class(fb_dataset), collapse = "/"),
-      call. = FALSE
-    )
-  }
+  .check_fb_terms(
+    fb_ir,
+    ".fb_aggregation_plan() requires an `<fb_terms>` IR; got: ",
+    paste(class(fb_ir), collapse = "/")
+  )
+  .check_fb_dataset(
+    fb_dataset,
+    ".fb_aggregation_plan() requires an `<fb_dataset>` ",
+    "wrapper; got: ",
+    paste(class(fb_dataset), collapse = "/")
+  )
 
-  N <- as.integer(fb_dataset$n_rows)
+  N <- .fb_checked_row_count(fb_dataset$n_rows, "This dataset")
   reason_codes <- character(0L)
 
   # ---- Family / link scope check ---- #
@@ -84,6 +80,19 @@
   }
 
   # ---- Fixed-effect term scope ---- #
+  #
+  # The cell key is the set of VARIABLES the cell-constant predictors
+  # need, not the list of terms that need them. `y ~ a * b` produces
+  # three terms -- `a`, `b` and `a:b` -- over two variables, and the
+  # runtime aggregator (.fb_stream_key_cols()) has always keyed on the
+  # union. The planner multiplied the term-level counts instead, so the
+  # same replicated 4-by-4 factorial that compresses 320 rows to 16
+  # cells was estimated at 4 * 4 * 16 = 256 and refused as
+  # `compression_unproductive` -- the plan disagreed with the emitter
+  # about the very quantity the decision turns on.
+  #
+  # `cell_key_contribs` therefore accumulates one entry per distinct
+  # variable, and K_est is the product over that set.
   any_data_dependent_cell <- FALSE
   cell_key_contribs <- list()
 
@@ -112,22 +121,19 @@
       # plan as data-dependent.
       any_data_dependent_cell <- TRUE
     } else if (ttype %in% c("factor", "categorical")) {
-      lbl <- .agg_plan_label(t, ttype, "fixed")
-      L <- .agg_plan_factor_level_count(t, fb_dataset)
-      cell_key_contribs[[length(cell_key_contribs) + 1L]] <-
-        list(label = lbl, vars = as.character(t$var), K = L)
-    } else if (identical(ttype, "factor_interaction")) {
-      lbl <- .agg_plan_label(t, ttype, "fixed")
-      Ls <- vapply(
-        t$vars,
-        function(v) {
-          .fb_dataset_levels(fb_dataset, as.character(v))
-        },
-        numeric(1L)
+      cell_key_contribs <- .agg_plan_add_var(
+        cell_key_contribs,
+        as.character(t$var),
+        .agg_plan_factor_level_count(t, fb_dataset)
       )
-      L <- if (anyNA(Ls)) NA_integer_ else as.integer(prod(Ls))
-      cell_key_contribs[[length(cell_key_contribs) + 1L]] <-
-        list(label = lbl, vars = as.character(t$vars), K = L)
+    } else if (identical(ttype, "factor_interaction")) {
+      for (v in as.character(t$vars)) {
+        cell_key_contribs <- .agg_plan_add_var(
+          cell_key_contribs,
+          v,
+          .fb_dataset_levels(fb_dataset, v)
+        )
+      }
     } else if (identical(ttype, "factor_numeric_interaction")) {
       # Mixed factor:numeric -- the numeric component breaks the
       # cell-constant linear predictor (the indexed slope still
@@ -150,10 +156,16 @@
   for (t in fb_ir$random_terms) {
     rtype <- if (!is.null(t$type)) t$type else "simple"
     if (identical(rtype, "simple")) {
-      lbl <- .agg_plan_label(t, rtype, "random")
-      L <- .agg_plan_factor_level_count(t, fb_dataset)
-      cell_key_contribs[[length(cell_key_contribs) + 1L]] <-
-        list(label = lbl, vars = as.character(t$var), K = L)
+      grp <- if (is.null(t$var)) {
+        .agg_plan_label(t, rtype, "random")
+      } else {
+        as.character(t$var)
+      }
+      cell_key_contribs <- .agg_plan_add_var(
+        cell_key_contribs,
+        grp,
+        .agg_plan_factor_level_count(t, fb_dataset)
+      )
     } else if (rtype %in% c("smooth_mgcv", "smooth", "s", "t2", "spline")) {
       reason_codes <- c(reason_codes, "smooth_term_not_aggregatable")
     } else if (rtype %in% c("simple_slope_uncor", "slope", "random_slope")) {
@@ -163,6 +175,24 @@
       # the latent block is non-cell-constant; aggregation closure
       # does not hold.
       reason_codes <- c(reason_codes, "structured_random_not_aggregatable")
+    }
+  }
+
+  # ---- Residual-term scope ---- #
+  # Only the plain `units` residual is cell-constant, so only `units` is
+  # aggregatable. An AR1 / separable AR1xAR1 residual is reinterpreted on
+  # INLA as a per-observation latent field, and a sectioned
+  # `dsum(~ units | f)` residual carries one variance per level of `f`;
+  # neither is constant within a predictor cell, and no aggregated emitter
+  # represents either. The check names what IS representable rather than
+  # enumerating what is not, so a residual class added later is refused
+  # here until an aggregated emitter for it exists -- the earlier
+  # enumeration silently let `at_units` through, and the plan surface then
+  # advertised an aggregated INLA route for a model the INLA gate refuses.
+  for (t in fb_ir$residual_terms) {
+    rtype <- if (!is.null(t$type)) t$type else "units"
+    if (!identical(rtype, "units")) {
+      reason_codes <- c(reason_codes, "structured_residual_not_aggregatable")
     }
   }
 
@@ -191,11 +221,11 @@
     ))
   }
 
-  # All cell-key contributions are factor-shaped. K_est = product of
-  # level counts. If any level count is unresolvable from the dataset
-  # wrapper's dictionaries (e.g. a metadata-only dataset that did not
-  # carry dictionaries for all factors), flag the plan as
-  # data-dependent.
+  # All cell-key contributions are factor-shaped. K_est = product of the
+  # level counts over the DISTINCT key variables. If any level count is
+  # unresolvable from the dataset wrapper's dictionaries (e.g. a
+  # metadata-only dataset that did not carry dictionaries for all
+  # factors), flag the plan as data-dependent.
   Ks <- vapply(cell_key_contribs, function(c) c$K, numeric(1L))
   if (anyNA(Ks)) {
     return(.new_fb_aggregation_plan(
@@ -211,6 +241,33 @@
 
   K_est <- as.integer(prod(Ks))
   compression_est <- as.numeric(K_est) / as.numeric(N)
+
+  # ---- Engine limit: interaction design columns ---- #
+  # Both aggregated emitters pre-expand the fixed effects to a
+  # model matrix and then name its columns in the INLA formula. An
+  # interaction column is named `a2:b2`, and INLA does not resolve a
+  # column whose name contains a colon even when the formula backticks
+  # it -- a live probe on a replicated 4-by-4 binomial factorial fails
+  # inside INLA with `object 'aa2:bb2' not found` on both the binomial
+  # and the Poisson emit. Renaming the columns would put a synthesised
+  # token into `summary.fixed`, `marginals.fixed` and the latent field
+  # that `.inla_fixef_draws()` matches on, so the aggregated route
+  # refuses and the per-row route -- which uses INLA's native `a:b`
+  # notation on the raw columns and fits -- takes the model.
+  #
+  # K_est is reported anyway: it is the compression the model would
+  # have had, and it is what makes the refusal legible.
+  if (.agg_plan_has_factor_interaction(fb_ir)) {
+    return(.new_fb_aggregation_plan(
+      eligible = FALSE,
+      reason_codes = "aggregated_interaction_column_not_representable",
+      cell_key_terms = cell_key_contribs,
+      requires_materialisation = FALSE,
+      K_est = K_est,
+      N = N,
+      compression_est = compression_est
+    ))
+  }
 
   productive <- compression_est <= .FB_AGGREGATION_PRODUCTIVITY_THRESHOLD
 
@@ -233,6 +290,68 @@
 # ---------------------------------------------------------------- #
 # Helpers                                                           #
 # ---------------------------------------------------------------- #
+
+# One sentence of context for the reason codes whose name alone does not
+# tell a user what to do about them. Returns "" for the rest, so the
+# refusal message reads the same as before where nothing is to be added.
+.agg_refusal_note <- function(reason_codes) {
+  if (
+    "aggregated_interaction_column_not_representable" %in% reason_codes
+  ) {
+    return(paste0(
+      " The aggregated emit expands the fixed effects to a model matrix",
+      " and names its columns in the INLA formula, and INLA cannot",
+      " reference a column whose name contains a colon, which is how an",
+      " interaction column is named. The per-row route uses INLA's own",
+      " `a:b` notation and fits this model."
+    ))
+  }
+  ""
+}
+
+# TRUE when the fixed effects contain a factor-by-factor interaction, so
+# the aggregated design matrix would carry a column whose name holds a
+# colon. See the call site for why that is fatal on the INLA emit.
+.agg_plan_has_factor_interaction <- function(fb_ir) {
+  any(vapply(
+    fb_ir$fixed_terms,
+    function(t) identical(t$type %||% "expression", "factor_interaction"),
+    logical(1L)
+  ))
+}
+
+# Record one variable's contribution to the joint cell key, keeping the
+# list one-entry-per-variable.
+#
+# A variable named by more than one term (`a` as a main effect and again
+# inside `a:b`, or a group factor that is also a fixed effect) enters the
+# key once. Where the two sightings disagree on the level count -- a
+# term slot carrying `var_n` against a dataset dictionary, say -- the
+# first is kept and the second is a no-op, except that a resolvable count
+# replaces an unresolvable one so an NA from a partial dictionary does
+# not poison a count another term already knew.
+.agg_plan_add_var <- function(contribs, var, count) {
+  var <- as.character(var)
+  count <- if (is.null(count) || is.na(count)) {
+    NA_integer_
+  } else {
+    as.integer(count)
+  }
+  for (i in seq_along(contribs)) {
+    if (identical(contribs[[i]]$label, var)) {
+      if (is.na(contribs[[i]]$K) && !is.na(count)) {
+        contribs[[i]]$K <- count
+      }
+      return(contribs)
+    }
+  }
+  contribs[[length(contribs) + 1L]] <- list(
+    label = var,
+    vars = var,
+    K = count
+  )
+  contribs
+}
 
 # Build a human-readable label for an IR term suitable for the plan's
 # cell_key_terms list. Mirrors the .preflight_term_label() conventions.
@@ -302,9 +421,11 @@
 #' eligibility, reason codes, cell-key contributions, estimated cell
 #' count, and the compression ratio.
 #'
-#' @param x   an `<fb_aggregation_plan>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `<fb_aggregation_plan>` object, the model-level plan the
+#'   aggregation layer builds.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the eligibility and
+#'   cell-count lines it prints.
 #' @keywords internal
 #' @export
 print.fb_aggregation_plan <- function(x, ...) {

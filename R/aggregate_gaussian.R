@@ -59,21 +59,17 @@
 #   - any smooth fixed-effect term
 #   - any random slope (correlated or uncorrelated)
 .fb_aggregate_gaussian <- function(fb_ir, fb_dataset) {
-  if (!inherits(fb_ir, "fb_terms")) {
-    stop(
-      ".fb_aggregate_gaussian() requires an `<fb_terms>` IR; got: ",
-      paste(class(fb_ir), collapse = "/"),
-      call. = FALSE
-    )
-  }
-  if (!inherits(fb_dataset, "fb_dataset")) {
-    stop(
-      ".fb_aggregate_gaussian() requires an `<fb_dataset>` ",
-      "wrapper; got: ",
-      paste(class(fb_dataset), collapse = "/"),
-      call. = FALSE
-    )
-  }
+  .check_fb_terms(
+    fb_ir,
+    ".fb_aggregate_gaussian() requires an `<fb_terms>` IR; got: ",
+    paste(class(fb_ir), collapse = "/")
+  )
+  .check_fb_dataset(
+    fb_dataset,
+    ".fb_aggregate_gaussian() requires an `<fb_dataset>` ",
+    "wrapper; got: ",
+    paste(class(fb_dataset), collapse = "/")
+  )
   if (.fb_dataset_is_metadata(fb_dataset)) {
     stop(
       ".fb_aggregate_gaussian() requires a data-backed dataset; ",
@@ -180,7 +176,7 @@
       fixed_cols = fixed_cols,
       random_cols = random_cols,
       K = K,
-      N = as.integer(N),
+      N = .fb_checked_row_count(N, "This dataset"),
       compression = as.numeric(K) / as.numeric(N),
       response = response
     ),
@@ -376,9 +372,11 @@
 #' compression ratio, cell count, total N, and the per-cell key
 #' columns.
 #'
-#' @param x   an `<fb_aggregated>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `<fb_aggregated>` object, the sufficient-statistics
+#'   carrier the aggregation layer builds.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the compression and
+#'   cell-key lines it prints.
 #' @keywords internal
 #' @export
 print.fb_aggregated <- function(x, ...) {

@@ -222,8 +222,9 @@ fb_cov <- function(M, type = "dense", levels = NULL, scheme = NULL, ...) {
 
 #' Test whether an object is an `fb_cov` carrier
 #'
-#' @param x An object.
-#' @return `TRUE` if `x` is an `fb_cov` object.
+#' @param x Any R object. The test is a class check, not a structural
+#'   one.
+#' @returns `TRUE` if `x` is an `fb_cov` object, `FALSE` otherwise.
 #' @export
 is_fb_cov <- function(x) inherits(x, "fb_cov")
 
@@ -288,9 +289,10 @@ is_fb_cov <- function(x) inherits(x, "fb_cov")
 
 #' Print an `fb_cov` carrier
 #'
-#' @param x An `fb_cov` object.
-#' @param ... Unused.
-#' @return `x`, invisibly.
+#' @param x An `fb_cov` object as returned by [fb_cov()].
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the one-line carrier
+#'   description it prints.
 #' @export
 print.fb_cov <- function(x, ...) {
   cat("<fb_cov> type = \"", x$type, "\"", sep = "")

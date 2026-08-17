@@ -7,12 +7,15 @@
 \method{formula}{flexybayes}(x, ...)
 }
 \arguments{
-\item{x}{A flexybayes object}
+\item{x}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-The fixed formula
+The fixed-effect (population-level) formula as a \code{formula}
+object. Random-effect and residual-structure terms are not part of
+it: read them from the fit's \code{fb_terms} intermediate representation,
+or from \code{\link[=fb_plan]{fb_plan()}} before fitting.
 }
 \description{
 Extract model formula

@@ -31,8 +31,8 @@ block below is updated alongside each release.
 |---|---|---|
 | Primary maintainer | Max Moldovan | Adelaide University; contact via package author email. |
 | Bus factor | Pending AAGI-AUS collective decision | Will be set jointly with D5 / D8 / D10. |
-| Weekly maintenance hours | Pending AAGI-AUS collective decision | Honest median across recent quarters will be reported once measured. |
-| Issue response SLA | Pending AAGI-AUS collective decision | No SLA committed under the current development release (`0.8.3`). |
+| Weekly maintenance hours | Pending AAGI-AUS collective decision | The median across recent quarters will be reported once measured. |
+| Issue response SLA | Pending AAGI-AUS collective decision | No SLA committed on the `0.9.0` development line. |
 | Critical security SLA | 7 days | See [`SECURITY.md`](SECURITY.md). |
 | Abandonment protocol | Pending AAGI-AUS collective decision; default fallback = AAGI-AUS institutional handover | Concrete handover / archive plan ratified with D5 / D8. |
 
@@ -43,13 +43,13 @@ instead of three. The minimum:
 
 1. A small `data.frame` we can copy-paste.
 2. The exact `flexybayes()` / `fb()` call.
-3. The full output of `sessionInfo()` — especially the greta /
-   TensorFlow / INLA versions.
+3. The full output of `sessionInfo()` — especially the INLA and brms /
+   Stan versions.
 4. The error / unexpected output, copied verbatim.
 
 For runtime issues, please run with `verbose = TRUE` and include the
-emitted greta code (or, for `backend = "inla"`, the printed INLA
-formula).
+emitted backend code (the Stan program for `backend = "brms"`, the
+printed INLA formula for `backend = "inla"`).
 
 ## What we cannot help with
 
@@ -58,5 +58,6 @@ formula).
   implements — see VSNi support.
 - INLA model-tuning beyond the `lgm_gate()` / `priors_to_inla()`
   surface — see [r-inla.org](https://www.r-inla.org/).
-- greta's own Python / TensorFlow installation — see
-  [greta-dev/greta](https://github.com/greta-dev/greta).
+- Stan toolchain installation for the brms backend — see
+  [mc-stan.org](https://mc-stan.org/) and the `rstan` getting-started
+  guide.

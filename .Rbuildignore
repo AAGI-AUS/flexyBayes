@@ -53,3 +53,16 @@ Rplots\.pdf$
 ^paper$
 ^paper/.*$
 ^tests/testthat/_problems$
+# Working notes that land at the package root: audit and review reports,
+# capability summaries, fix specs. They are legitimate artefacts and must
+# not ship in the tarball -- an unignored one raises a "Non-standard
+# file/directory found at top level" NOTE. Matched on the report-type
+# infix rather than on a shouting-case filename pattern, which would also
+# have caught NEWS.md and README.md and dropped them from the build.
+^.*_AUDIT_.*\.md$
+^.*_REVIEW_.*\.md$
+^.*_SUMMARY_.*\.md$
+^.*_FIX_SPEC_.*\.md$
+^validation$
+^review$
+^inst/extdata/inla-verification/

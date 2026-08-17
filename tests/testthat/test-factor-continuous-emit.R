@@ -365,11 +365,12 @@ test_that("canonical_names() resolves slope_<f>_<x>[<level>] family", {
 # ---------------------------------------------------------------- #
 #
 # ADR 0017 (gate-truth = emit-truth): the fixed-term allowlist gains
-# `factor_numeric_interaction` so the gate accepts; the post-fit
+# `factor_numeric_interaction` so the gate accepts structurally; the
 # §3.4 verification check (.lgm_check_factor_numeric_interaction_inla_verified)
-# is the term-class-specific INLA conditional. When the verification
-# artefact is absent the gate refuses INLA dispatch with the
-# documented deferral message.
+# is the term-class-specific INLA conditional, and since 0.9.0 it refuses
+# on every host -- its three-arbitrator criterion named greta, which is
+# quarantined. The host-independence of that refusal is the subject of
+# test-inla-verification-artefact-policy.R.
 
 test_that("lgm_gate accepts factor_numeric_interaction structurally", {
   fb <- flexyBayes:::new_fb_terms(
@@ -402,15 +403,13 @@ test_that("lgm_gate accepts factor_numeric_interaction structurally", {
   # Structural fixed-term allowlist accepts the new class.
   r7 <- flexyBayes:::.lgm_check_fixed_term_inla_support(fb)
   expect_true(r7$pass)
-  # §3.4 verification check refuses when artefact is absent on this
-  # host (the default in CI / fresh checkouts).
+  # §3.4 verification check refuses on every host, whatever is on disk.
+  withr::local_options(
+    list(flexyBayes.dev_inla_verification_artefacts = NULL)
+  )
   r10 <- flexyBayes:::.lgm_check_factor_numeric_interaction_inla_verified(fb)
-  if (!flexyBayes:::.factor_numeric_interaction_inla_verified()) {
-    expect_false(r10$pass)
-    expect_match(r10$reason, "INLA mapping deferred")
-  } else {
-    expect_true(r10$pass)
-  }
+  expect_false(r10$pass)
+  expect_match(r10$reason, "is not admitted")
 })
 
 # ---------------------------------------------------------------- #

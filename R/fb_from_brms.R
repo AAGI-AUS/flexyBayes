@@ -107,13 +107,11 @@ fb_from_brms <- function(
   ...
 ) {
   if (inherits(formula, "brmsformula")) {
-    if (!requireNamespace("brms", quietly = TRUE)) {
-      stop(
-        "Package 'brms' is required to ingest brmsformula objects. ",
-        "Install via: install.packages(\"brms\")",
-        call. = FALSE
-      )
-    }
+    .check_installed(
+      "brms",
+      "Package 'brms' is required to ingest brmsformula objects. ",
+      "Install via: install.packages(\"brms\")"
+    )
     formula <- formula$formula
   }
   if (!inherits(formula, "formula")) {
@@ -165,7 +163,7 @@ fb_from_brms <- function(
     fb$data_summary$n <- as.integer(carry_n_rows)
     # Strip per-term cached level counts -- preflight reads from
     # <fb_dataset>$dictionaries when var_n is NA. This keeps the
-    # IR honest about not knowing the true group sizes.
+    # IR explicit about not knowing the true group sizes.
     for (i in seq_along(fb$random_terms)) {
       fb$random_terms[[i]]$var_n <- NA_integer_
       fb$random_terms[[i]]$var_levels <- NULL
@@ -677,21 +675,27 @@ fb_from_brms <- function(
   grouping_factor,
   slope_variable
 ) {
+  uncorrelated <- paste0("(", slope_variable, " || ", grouping_factor, ")")
   msg <- paste0(
     "Correlated random slopes (x | g) are not yet supported.\n",
-    "Uncorrelated random slopes (x || g) are supported -- they fit the\n",
-    "marginal slope and intercept variances independently and are equivalent\n",
-    "to the correlated form when the correlation is small.\n\n",
-    "If your model needs the correlation parameter, defer to a\n",
-    "future release (structured-covariance representation).\n\n",
-    "Workaround: re-fit as (x || g) if the correlation is not of inferential\n",
-    "interest, or use backend = \"greta\" via fb_brms() with a hand-rolled\n",
-    "covariance prior.\n\n",
-    "Got: (",
-    slope_variable,
-    " | ",
-    grouping_factor,
-    ")"
+    "Got: (", slope_variable, " | ", grouping_factor, ")\n\n",
+    "Fit ", uncorrelated, " instead. That is the uncorrelated random\n",
+    "intercept and slope: a per-", grouping_factor, " intercept deviation\n",
+    "and a per-", grouping_factor, " slope on ", slope_variable,
+    ", each with its own\n",
+    "variance and no correlation parameter between them. It emits on brms\n",
+    "and is the right model whenever the intercept-slope correlation is not\n",
+    "itself of inferential interest.\n\n",
+    "Do NOT reach for the asreml crossing ~ ", grouping_factor, " + ",
+    grouping_factor, ":", slope_variable, ".\n",
+    "With a numeric ", slope_variable,
+    " that is one independent deviation per\n",
+    grouping_factor, "-by-", slope_variable,
+    " cell, not a per-", grouping_factor, " slope -- a\n",
+    "different model with a different parameter count.\n\n",
+    "If the correlation parameter itself is needed, it is deferred to a\n",
+    "future release (structured-covariance representation). No active\n",
+    "backend represents the correlated form today."
   )
   cond <- structure(
     class = c("flexybayes_correlated_slope_unsupported", "error", "condition"),
@@ -701,7 +705,7 @@ fb_from_brms <- function(
       grouping_factor = grouping_factor,
       slope_variable = slope_variable,
       deferral_target = "a future release",
-      workaround = "(x || g)"
+      workaround = uncorrelated
     )
   )
   stop(cond)

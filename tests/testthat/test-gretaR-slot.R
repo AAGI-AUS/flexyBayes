@@ -115,19 +115,13 @@ test_that("lgm_gate() appends the gretaR slot dormancy flag to LGM-compatible IR
 # (4) flexybayes(backend = 'gretaR') -> standard match.arg error   #
 # ---------------------------------------------------------------- #
 
-test_that("flexybayes() accepts backend = 'gretaR' (activated); refuses cleanly when gretaR is unavailable", {
-  # Activated: "gretaR" is now in the backend match.arg set, so the call is NOT
-  # rejected at the argument layer. When gretaR itself is unavailable (no
-  # source home and no installed gretaR at the version floor) the gretaR
-  # backend raises its OWN structured refusal -- not a match.arg error.
-  skip_if(
-    nzchar(getOption("flexyBayes.gretaR_home", "")) ||
-      (nzchar(system.file(package = "gretaR")) &&
-        utils::packageVersion("gretaR") >= flexyBayes:::.GRETAR_VERSION_FLOOR),
-    "gretaR is available -- this test exercises the unavailable path"
-  )
-  old <- options(flexyBayes.gretaR_home = "")
-  on.exit(options(old), add = TRUE)
+test_that("flexybayes() accepts backend = 'gretaR' at the argument layer; refuses via quarantine", {
+  # Activated: "gretaR" is in the backend match.arg set, so the call is NOT
+  # rejected at the argument layer. Reshape R1 (section 4.1) quarantined
+  # gretaR as a fitting engine regardless of local availability, so the
+  # backend now raises the structured backend_quarantined refusal -- not the
+  # pre-quarantine availability refusal (gretaR_below_version_floor /
+  # gretaR_not_installed), whether or not gretaR is actually installed.
   d <- mk_lgm_data()
   err <- tryCatch(
     flexybayes(y ~ x, random = ~g, data = d, backend = "gretaR"),
@@ -136,11 +130,8 @@ test_that("flexybayes() accepts backend = 'gretaR' (activated); refuses cleanly 
   expect_s3_class(err, "condition")
   # NOT a match.arg rejection
   expect_false(grepl("should be one of", conditionMessage(err)))
-  # IS a structured gretaR availability refusal
-  expect_true(any(grepl(
-    "gretaR_below_version_floor|gretaR_not_installed",
-    class(err)
-  )))
+  # IS the structured quarantine refusal
+  expect_true(any(grepl("backend_quarantined", class(err))))
 })
 
 

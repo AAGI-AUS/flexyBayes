@@ -7,12 +7,13 @@
 \method{print}{fb_memory_estimate}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_memory_estimate>} object.}
+\item{x}{An \verb{<fb_memory_estimate>} object holding the per-term INLA
+memory breakdown.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the breakdown it prints.
 }
 \description{
 Renders the per-term INLA memory breakdown introduced at v0.3.10.

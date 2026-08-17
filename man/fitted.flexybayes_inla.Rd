@@ -9,7 +9,7 @@
 \arguments{
 \item{object}{A \code{flexybayes_inla} fit.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
 A numeric vector of posterior-mean fitted values, one per

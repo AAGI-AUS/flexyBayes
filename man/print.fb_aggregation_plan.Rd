@@ -7,12 +7,14 @@
 \method{print}{fb_aggregation_plan}(x, ...)
 }
 \arguments{
-\item{x}{an \verb{<fb_aggregation_plan>} object.}
+\item{x}{An \verb{<fb_aggregation_plan>} object, the model-level plan the
+aggregation layer builds.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the eligibility and
+cell-count lines it prints.
 }
 \description{
 Diagnostic print of the model-level aggregation plan:

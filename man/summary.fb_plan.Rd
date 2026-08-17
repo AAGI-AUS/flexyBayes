@@ -7,9 +7,13 @@
 \method{summary}{fb_plan}(object, ...)
 }
 \arguments{
-\item{object}{an \verb{<fb_plan>} object.}
+\item{object}{An \verb{<fb_plan>} object as returned by \code{fb_plan()}.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
+}
+\value{
+Invisibly, \code{object} unchanged. Called for the preflight and
+representation tables it prints.
 }
 \description{
 Summarise an \verb{<fb_plan>} --- verbose form

@@ -7,6 +7,15 @@
 # proof of the activated backend.
 
 .gretaR_resolvable <- function() {
+  # gretaR was QUARANTINED 2026-07-24 (reshape R1): treat it as unresolvable so
+  # the gretaR backend tests skip as re-entry guards rather than hitting the
+  # quarantine refusal.
+  if (isTRUE(tryCatch(
+    flexyBayes:::.backend_is_quarantined("gretaR"),
+    error = function(e) FALSE
+  ))) {
+    return(FALSE)
+  }
   if (nzchar(getOption("flexyBayes.gretaR_home", ""))) {
     return(TRUE)
   }

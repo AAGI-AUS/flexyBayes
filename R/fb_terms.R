@@ -256,9 +256,11 @@ fb_source <- function(x) x$source
 #' development and inside the `flexybayes()` / `fb()` flow to inspect
 #' the parsed model object before backend dispatch.
 #'
-#' @param x   an `fb_terms` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `fb_terms` object, the parsed intermediate
+#'   representation of a model.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the term listing it
+#'   prints.
 #' @keywords internal
 #' @export
 print.fb_terms <- function(x, ...) {
@@ -313,9 +315,11 @@ print.fb_terms <- function(x, ...) {
 #' default print/format machinery for compact display in lists and
 #' `data.frame` columns.
 #'
-#' @param x   an `fb_terms` object.
-#' @param ... unused.
-#' @return character(1).
+#' @param x   An `fb_terms` object, the parsed intermediate
+#'   representation of a model.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns A length-one character string naming the ingest grammar, the
+#'   response, and the fixed and random term counts.
 #' @keywords internal
 #' @export
 format.fb_terms <- function(x, ...) {

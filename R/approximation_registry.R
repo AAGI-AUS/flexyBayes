@@ -78,13 +78,11 @@
   fallback_hint,
   registered_in_adr
 ) {
-  if (!is.character(scheme) || length(scheme) != 1L || !nzchar(scheme)) {
-    stop(
-      ".register_approximation(): `scheme` must be a non-empty ",
-      "single string.",
-      call. = FALSE
-    )
-  }
+  .check_string_scalar(
+    scheme,
+    ".register_approximation(): `scheme` must be a non-empty ",
+    "single string."
+  )
   if (!is.list(bias_bound)) {
     stop(
       ".register_approximation(): `bias_bound` must be a list.",
@@ -161,13 +159,11 @@
 # validate_approximation.default() surfaces as
 # `approximation_scheme_unknown` once the export lands.
 .lookup_approximation <- function(scheme) {
-  if (!is.character(scheme) || length(scheme) != 1L || !nzchar(scheme)) {
-    stop(
-      ".lookup_approximation(): `scheme` must be a non-empty ",
-      "single string.",
-      call. = FALSE
-    )
-  }
+  .check_string_scalar(
+    scheme,
+    ".lookup_approximation(): `scheme` must be a non-empty ",
+    "single string."
+  )
   if (!exists(scheme, envir = .approximation_registry, inherits = FALSE)) {
     known <- sort(ls(envir = .approximation_registry, all.names = FALSE))
     stop(

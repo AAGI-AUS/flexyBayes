@@ -37,6 +37,8 @@ emit_inla <- function(
   fb,
   data,
   known_matrices = list(),
+  seed = NULL,
+  control = NULL,
   verbose = TRUE,
   return_code = FALSE,
   the_call = NULL,
@@ -48,21 +50,24 @@ emit_inla <- function(
   data_name = NA_character_,
   ...
 ) {
-  if (!is_fb_terms(fb)) {
-    stop("`fb` must be an fb_terms object.", call. = FALSE)
-  }
+  .check_fb_terms(fb, "`fb` must be an fb_terms object.")
 
-  if (!requireNamespace("INLA", quietly = TRUE)) {
-    stop(
-      "Package 'INLA' is required for backend = \"inla\". ",
-      "Install via:\n",
-      "  install.packages('INLA',\n",
-      "    repos = c(CRAN = 'https://cran.r-project.org',\n",
-      "             INLA = 'https://inla.r-inla-download.org/R/stable'),\n",
-      "    dep = TRUE)",
-      call. = FALSE
-    )
-  }
+  # `seed` and `control` are Stan sampler settings threaded through from
+  # the public entry point. INLA's nested Laplace approximation has no
+  # random stream and no adaptation phase to tune, so both are genuine
+  # no-ops here. Saying so once beats letting a user believe a fit was
+  # pinned by a seed that never reached an engine.
+  .note_sampler_args_ignored("INLA", seed = seed, control = control)
+
+  .check_installed(
+    "INLA",
+    "Package 'INLA' is required for backend = \"inla\". ",
+    "Install via:\n",
+    "  install.packages('INLA',\n",
+    "    repos = c(CRAN = 'https://cran.r-project.org',\n",
+    "             INLA = 'https://inla.r-inla-download.org/R/stable'),\n",
+    "    dep = TRUE)"
+  )
 
   # INLA verification gate. simple_slope_uncor
   # passes lgm_gate (the allowlist includes it) so dispatch routes
@@ -71,7 +76,7 @@ emit_inla <- function(
   # passed and the artefact at
   # inst/extdata/inla-verification/simple_slope_uncor.rds records
   # pass = TRUE. Until then, refuse explicitly with a deferral
-  # message naming the workaround (backend = "greta"). This is the
+  # message naming the workaround (backend = "brms"). This is the
   # "no silent translation of an unverified mapping" policy.
   if (.has_simple_slope_uncor(fb)) {
     .check_inla_verification_simple_slope_uncor()
@@ -257,6 +262,62 @@ emit_inla <- function(
     }
   }
 
+  # AR1 / separable AR1xAR1 spatial latent-field index columns. INLA's ar1
+  # model + grouped-AR1 need consecutive-integer indices; build <var>_id for
+  # the 1D term and <row>_id / <col>_id for the separable term.
+  #
+  # 0.9.0: the field is read from the random terms only. It used to be read
+  # from the residual terms as well, reinterpreting an ASReml residual as a
+  # latent field plus the Gaussian observation nugget -- four parameters
+  # under a three-parameter name. The residual spelling now refuses at
+  # dispatch and the field is written where it belongs.
+  #
+  # The field is faithful only with one observation per grid node: with a
+  # gap or a replicate the latent index no longer matches the design, so the
+  # instance is validated here (the class is admitted by the gate) and an
+  # incomplete or replicated grid refuses rather than being approximated.
+  for (term in fb$random_terms) {
+    ttype <- term$type %||% ""
+    if (!ttype %in% c("ar1", "ar1_spatial")) {
+      next
+    }
+    idx_vars <- if (identical(ttype, "ar1")) {
+      term$var
+    } else {
+      c(term$row_var, term$col_var)
+    }
+    for (v in idx_vars) {
+      data_inla[[paste0(v, "_id")]] <- as.integer(factor(data[[v]]))
+    }
+    if (identical(ttype, "ar1_spatial")) {
+      n_row <- length(unique(data[[term$row_var]]))
+      n_col <- length(unique(data[[term$col_var]]))
+      combos <- interaction(
+        data[[term$row_var]], data[[term$col_var]],
+        drop = TRUE
+      )
+      one_obs_per_node <- nrow(data) == n_row * n_col &&
+        !any(duplicated(combos))
+      if (!one_obs_per_node) {
+        stop(.fb_refusal_condition(
+          reason_code = "ar1_spatial_requires_complete_grid",
+          message = paste0(
+            .ar1_term_spelling(term), " on INLA is ",
+            "emitted as a separable autoregressive latent field over the ",
+            n_row, " x ", n_col, " grid, faithful only with one observation ",
+            "per (", term$row_var, ", ", term$col_var, ") node. The data ",
+            "have ", nrow(data), " rows for ", n_row * n_col, " nodes ",
+            "(incomplete or replicated grid), so the field's latent index ",
+            "would not correspond to the design. Keep the unobserved nodes ",
+            "as design cells with na_action = \"augment\" (the default), ",
+            "supply one observation per node, or aggregate to node means."
+          ),
+          family_class = "flexybayes_ar1_spatial_refusal"
+        ))
+      }
+    }
+  }
+
   # Formula build runs here (post data_inla setup) so blocks-format
   # vm/ped terms can resolve their K-count from known_matrices.
   inla_form <- .build_inla_formula(
@@ -366,10 +427,21 @@ emit_inla <- function(
         ),
         run_time = elapsed,
         the_call = the_call,
-        formula = inla_form
+        formula = inla_form,
+        # What has to match before this fit can be compared with another
+        # engine's -- the same slot, built by the same function, as the
+        # brms emit fills. See R/model_fingerprint.R.
+        fingerprint = .fb_model_fingerprint(fb, data)
       )
     ),
-    class = c("flexybayes_inla", "list")
+    # The INLA fit wears the shared `flexybayes` parent, as the brms fit
+    # does. Before 0.9.0 it did not, which split the class graph in two and
+    # forced a parallel S3 method for every generic. The parent is safe only
+    # because the five parent methods with no INLA sibling
+    # (confint, model.matrix, update, anova, logLik) now resolve their inputs
+    # from the slots an object actually carries and refuse by name when it
+    # carries none -- see R/methods.R.
+    class = c("flexybayes_inla", "flexybayes", "list")
   )
 }
 
@@ -544,6 +616,11 @@ emit_inla <- function(
       rhs_terms <- c(rhs_terms, contrib)
       next
     }
+    # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
+    if (term$type %in% c("ar1", "ar1_spatial")) {
+      rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
+      next
+    }
     key <- switch(
       term$type,
       "simple" = ,
@@ -585,7 +662,11 @@ emit_inla <- function(
     rhs_terms <- c(rhs_terms, contrib)
   }
 
-  # Heterogeneous residual / structured residual
+  # Residual terms. INLA folds the residual variance into the likelihood, so
+  # the only residual form that reaches here is the homogeneous one, which
+  # contributes nothing to the formula. The separable autoregressive
+  # residual used to be reinterpreted here as a latent field; it now refuses
+  # at dispatch and the field is written on the random side.
   for (term in fb$residual_terms) {
     if (term$type != "units") {
       # Internal contract-violation assertion. See the
@@ -625,6 +706,43 @@ emit_inla <- function(
     body <- paste0(body, ", param = c(", paste(param, collapse = ", "), ")")
   }
   paste0("hyper = list(prec = list(", body, "))")
+}
+
+# The spelling a user wrote for an AR1 field term, rebuilt from the IR so a
+# refusal quotes the formula back rather than a canonical form the user never
+# typed. ar1(env):geno and ar1(row):ar1(col) parse to the same IR type and
+# differ only in `col_ar1`, so the second dimension is quoted plain when it
+# carries no correlation of its own.
+.ar1_term_spelling <- function(term) {
+  if (identical(term$type, "ar1")) {
+    return(paste0("ar1(", term$var, ")"))
+  }
+  inner <- if (isTRUE(term$col_ar1)) {
+    paste0("ar1(", term$col_var, ")")
+  } else {
+    term$col_var
+  }
+  paste0("ar1(", term$row_var, "):", inner)
+}
+
+# WP16: build the INLA f() latent-field term for an AR1 / separable
+# AR1xAR1 spatial term. A 1D ar1(t) maps to f(<t>_id, model = "ar1"); a
+# separable ar1(row):ar1(col) maps to INLA's grouped-AR1 idiom --
+# f(<row>_id, model = "ar1", group = <col>_id,
+#   control.group = list(model = "ar1" | "iid")) -- whose precision is the
+# Kronecker AR1(row) (x) AR1(col) (col_ar1 = FALSE gives AR1 x iid). The
+# idiom's faithfulness was validated against a hand-built AR1(x)AR1 GLS/REML
+# oracle (rebuild/wp16_inla_spatial_oracle.R). The <..>_id integer index
+# columns are pre-built in emit_inla()'s data_inla setup.
+.inla_ar1_field_term <- function(term) {
+  if (identical(term$type, "ar1")) {
+    return(paste0("f(", term$var, "_id, model = \"ar1\")"))
+  }
+  col_model <- if (isTRUE(term$col_ar1)) "ar1" else "iid"
+  paste0(
+    "f(", term$row_var, "_id, model = \"ar1\", group = ",
+    term$col_var, "_id, control.group = list(model = \"", col_model, "\"))"
+  )
 }
 
 # Build the control.family list passed to INLA::inla(). When the
@@ -738,25 +856,33 @@ emit_inla <- function(
   FALSE
 }
 
-# Consult the three-arbitrator verification artefact for the
-# (x || g) INLA mapping. The artefact is an .rds at
-# inst/extdata/inla-verification/simple_slope_uncor.rds carrying at
-# minimum a `pass` slot (logical). If the file does not exist, or
-# pass = FALSE, refuse the fit with a deferral message naming
-# backend = "greta" as the workaround. The refusal raises a structured
-# condition of class flexybayes_inla_simple_slope_uncor_deferred so
-# downstream tooling can pattern-match.
+# Refuse the (x || g) INLA mapping, which is deferred on every host.
+#
+# The three-arbitrator verification named greta as one arbitrator and
+# greta is quarantined, so the criterion cannot be re-run as designed.
+# The artefact at inst/extdata/inla-verification/simple_slope_uncor.rds
+# survives as a developer rehearsal hook: it is excluded from the build
+# and is consulted only when a developer sets
+# options(flexyBayes.dev_inla_verification_artefacts = TRUE) by hand, so
+# shipped behaviour is the same whether or not a host carries one.
+#
+# The refusal names backend = "brms" as the workaround (auto already
+# falls back to it) and raises a structured condition of class
+# flexybayes_inla_simple_slope_uncor_deferred so downstream tooling can
+# pattern-match.
 .check_inla_verification_simple_slope_uncor <- function() {
-  artefact_path <- system.file(
-    "extdata",
-    "inla-verification",
-    "simple_slope_uncor.rds",
-    package = "flexyBayes"
-  )
   pass <- FALSE
-  if (nzchar(artefact_path) && file.exists(artefact_path)) {
-    art <- tryCatch(readRDS(artefact_path), error = function(e) NULL)
-    if (is.list(art) && isTRUE(art$pass)) pass <- TRUE
+  if (.fb_dev_verification_artefacts_enabled()) {
+    artefact_path <- system.file(
+      "extdata",
+      "inla-verification",
+      "simple_slope_uncor.rds",
+      package = "flexyBayes"
+    )
+    if (nzchar(artefact_path) && file.exists(artefact_path)) {
+      art <- tryCatch(readRDS(artefact_path), error = function(e) NULL)
+      if (is.list(art) && isTRUE(art$pass)) pass <- TRUE
+    }
   }
   if (isTRUE(pass)) {
     return(invisible(TRUE))
@@ -769,18 +895,23 @@ emit_inla <- function(
     "only when the\nthree-arbitrator verification test (INLA vs ",
     "greta vs lme4 on a simple fixture\nat J = 20 groups) passes ",
     "within the Wasserstein-1 \u2264 0.20 * tau_true\n",
-    "tolerance on both sd_<g> and sd_<x>_<g>. The verification ",
-    "artefact at\n",
-    "inst/extdata/inla-verification/simple_slope_uncor.rds is ",
-    "either absent\n",
-    "or records pass = FALSE for the current install.\n\n",
-    "Workaround: re-route to the greta backend, which fits the ",
-    "(x || g) form\n",
+    "tolerance on both sd_<g> and sd_<x>_<g>. greta served as one of\n",
+    "the three arbitrators and has since been withdrawn as a fitting ",
+    "engine\n",
+    "(see NEWS.md), so this INLA-native mapping stays deferred until ",
+    "the\n",
+    "verification is re-designed around active backends. The refusal ",
+    "is\n",
+    "host-independent -- no on-disk artefact lifts it.\n\n",
+    "Workaround: fit via brms instead, which already represents ",
+    "(x || g)\n",
     "natively. For example:\n",
     "  fit <- flexybayes(y ~ x + (x || g), data = d, ",
-    "backend = \"greta\")\n",
-    "  fit <- fb_brms   (y ~ x + (x || g), data = d, ",
-    "backend = \"greta\")\n\n",
+    "backend = \"brms\")\n",
+    "  fit <- fb_brms   (y ~ x + (x || g), data = d)\n\n",
+    "backend = \"auto\" already does this for you: an INLA-eligible ",
+    "model\n",
+    "that hits this deferral falls back to brms automatically.\n\n",
     "This refusal is mandatory: no silent translation of an ",
     "unverified mapping ships."
   )
@@ -794,11 +925,169 @@ emit_inla <- function(
       message = msg,
       call = NULL,
       deferral_target = "a future release",
-      workaround = "backend = \"greta\""
+      workaround = "backend = \"brms\""
     )
   )
   stop(cond)
 }
+
+# ---------------------------------------------------------------- #
+# Separable AR1 field: the four parameters, named                  #
+# ---------------------------------------------------------------- #
+#
+# INLA reports an autoregressive field on the precision scale and names its
+# correlations after the integer index column the emit built, so the raw
+# hyperparameter table reads `Precision for row_id`, `Rho for row_id`,
+# `GroupRho for row_id` -- three lines that do not say which correlation
+# runs along rows, which along columns, or which variance belongs to the
+# field rather than to the observation nugget.
+#
+# All four are the model. The whole difference between what flexyBayes fits
+# (a latent field plus an independent nugget) and ASReml's separable
+# residual (one correlated residual, no nugget) is the fourth parameter, so
+# a spatial fit prints all four under names that carry their meaning. A user
+# who acts on the correlations can then see what they are acting on.
+
+# The autoregressive field terms carried by a fitted IR.
+.inla_spatial_field_terms <- function(object) {
+  Filter(
+    function(t) (t$type %||% "") %in% c("ar1", "ar1_spatial"),
+    object$fb$random_terms %||% list()
+  )
+}
+
+# One labelled row per field parameter, on the correlation and standard-
+# deviation scales.
+#
+# The point estimate is the posterior MEDIAN, not the mean, because the
+# standard deviations are read off INLA's precision marginals and only a
+# monotone summary survives the 1 / sqrt() transform exactly. The interval
+# is INLA's own 2.5% / 97.5% quantiles, transformed (and reversed, since
+# 1 / sqrt() is decreasing). Nothing here is a re-estimate.
+.inla_spatial_hyper_table <- function(object) {
+  field_terms <- .inla_spatial_field_terms(object)
+  if (length(field_terms) == 0L) {
+    return(NULL)
+  }
+  hp <- object$inla$summary.hyperpar
+  if (is.null(hp) || nrow(hp) == 0L) {
+    return(NULL)
+  }
+  need <- c("0.5quant", "0.025quant", "0.975quant")
+  if (!all(need %in% colnames(hp))) {
+    return(NULL)
+  }
+
+  as_corr <- function(row_name, label) {
+    i <- match(row_name, rownames(hp))
+    if (is.na(i)) {
+      return(NULL)
+    }
+    data.frame(
+      parameter = label,
+      median = hp[i, "0.5quant"],
+      lower = hp[i, "0.025quant"],
+      upper = hp[i, "0.975quant"],
+      stringsAsFactors = FALSE
+    )
+  }
+  as_sd <- function(row_name, label) {
+    i <- match(row_name, rownames(hp))
+    if (is.na(i)) {
+      return(NULL)
+    }
+    data.frame(
+      parameter = label,
+      median = 1 / sqrt(hp[i, "0.5quant"]),
+      lower = 1 / sqrt(hp[i, "0.975quant"]),
+      upper = 1 / sqrt(hp[i, "0.025quant"]),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  out <- list()
+  for (term in field_terms) {
+    if (identical(term$type, "ar1")) {
+      idx <- paste0(term$var, "_id")
+      out <- c(out, list(
+        as_corr(
+          paste0("Rho for ", idx),
+          paste0("correlation along ", term$var, " (rho)")
+        ),
+        as_sd(
+          paste0("Precision for ", idx),
+          "field SD (sigma_field)"
+        )
+      ))
+    } else {
+      idx <- paste0(term$row_var, "_id")
+      out <- c(out, list(
+        as_corr(
+          paste0("Rho for ", idx),
+          paste0("correlation along ", term$row_var, " (rho_",
+                 term$row_var, ")")
+        ),
+        as_corr(
+          paste0("GroupRho for ", idx),
+          paste0("correlation along ", term$col_var, " (rho_",
+                 term$col_var, ")")
+        ),
+        as_sd(
+          paste0("Precision for ", idx),
+          "field SD (sigma_field)"
+        )
+      ))
+    }
+  }
+  out <- c(out, list(as_sd(
+    "Precision for the Gaussian observations",
+    "nugget SD (sigma_e)"
+  )))
+  out <- Filter(Negate(is.null), out)
+  if (length(out) == 0L) {
+    return(NULL)
+  }
+  tab <- do.call(rbind, out)
+  rownames(tab) <- NULL
+  tab
+}
+
+# Render the field block. Shared by print() and summary() so the two cannot
+# drift apart.
+.print_inla_spatial_hypers <- function(object) {
+  tab <- .inla_spatial_hyper_table(object)
+  if (is.null(tab)) {
+    return(invisible(NULL))
+  }
+  separable <- any(vapply(
+    .inla_spatial_field_terms(object),
+    function(t) identical(t$type, "ar1_spatial"),
+    logical(1L)
+  ))
+  cat(
+    "\n", if (separable) "Separable AR1 field" else "AR1 field",
+    " (posterior median, 95% interval):\n",
+    sep = ""
+  )
+  body <- data.frame(
+    parameter = tab$parameter,
+    median = round(tab$median, 4),
+    `2.5%` = round(tab$lower, 4),
+    `97.5%` = round(tab$upper, 4),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  print(body, row.names = FALSE)
+  cat(
+    "  The field and the nugget are separate parameters: this is a ",
+    "latent\n  autoregressive field plus independent observation noise, ",
+    "not ASReml's\n  nugget-free separable residual. Variances are the ",
+    "squares of the SDs.\n",
+    sep = ""
+  )
+  invisible(tab)
+}
+
 
 # ---------------------------------------------------------------- #
 # Print + summary methods for the flexybayes_inla wrapper          #
@@ -809,9 +1098,10 @@ emit_inla <- function(
 #' Internal S3 method. Brief one-screen summary of an INLA fit
 #' produced via `fb(... backend = "inla")` or `emit_inla()`.
 #'
-#' @param x   a `flexybayes_inla` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   A `flexybayes_inla` object, the fit an INLA run returns.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the one-screen summary
+#'   it prints.
 #' @keywords internal
 #' @export
 print.flexybayes_inla <- function(x, ...) {
@@ -836,6 +1126,7 @@ print.flexybayes_inla <- function(x, ...) {
     "\n",
     sep = ""
   )
+  .print_inla_spatial_hypers(x)
   cat(strrep("-", 55), "\n")
   cat("  $inla -- raw INLA fit (use INLA's summary, plot, etc.)\n")
   cat("  $fb   -- the fb_terms IR used for dispatch\n")
@@ -845,11 +1136,17 @@ print.flexybayes_inla <- function(x, ...) {
 #' Summary method for flexybayes_inla
 #'
 #' Returns the fixed / random / hyperpar posterior summary tables
-#' produced by INLA. Internal S3 method.
+#' produced by INLA. A fit carrying an autoregressive latent field also
+#' gets a `spatial_field` element: the field's own parameters on the
+#' correlation and standard-deviation scales, which is the form a reader
+#' needs and INLA's precision-scale hyperparameter table is not.
+#' Internal S3 method.
 #'
-#' @param object a `flexybayes_inla` object.
-#' @param ... unused.
-#' @return invisibly returns the summary list.
+#' @param object A `flexybayes_inla` object, the fit an INLA run
+#'   returns.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, the summary list, carrying a `spatial_field` data
+#'   frame when the model holds an AR1 field.
 #' @keywords internal
 #' @export
 summary.flexybayes_inla <- function(object, ...) {
@@ -873,6 +1170,7 @@ summary.flexybayes_inla <- function(object, ...) {
   } else {
     cat("  (none)\n")
   }
+  .print_inla_spatial_hypers(object)
   cat("\nRandom effects:\n")
   if (length(object$extras$summary$random) > 0L) {
     cat(
@@ -885,5 +1183,10 @@ summary.flexybayes_inla <- function(object, ...) {
     cat("  (none)\n")
   }
   cat(strrep("-", 60), "\n")
-  invisible(object$extras$summary)
+  out <- object$extras$summary
+  field <- .inla_spatial_hyper_table(object)
+  if (!is.null(field)) {
+    out$spatial_field <- field
+  }
+  invisible(out)
 }

@@ -173,9 +173,11 @@
 #' One-line summary of the internal dataset wrapper used by the
 #' preflight layer.
 #'
-#' @param x   an `<fb_dataset>` object.
-#' @param ... unused.
-#' @return a length-1 character string.
+#' @param x   An `<fb_dataset>` object, the wrapper the preflight layer
+#'   carries in place of the raw data.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns A length-one character string summarising the wrapped
+#'   dataset.
 #' @keywords internal
 #' @export
 format.fb_dataset <- function(x, ...) {
@@ -199,9 +201,11 @@ format.fb_dataset <- function(x, ...) {
 #' Diagnostic print: one-line header from [format.fb_dataset()],
 #' then a per-column types row and a per-dictionary level-count row.
 #'
-#' @param x   an `<fb_dataset>` object.
-#' @param ... unused.
-#' @return invisibly returns `x`.
+#' @param x   An `<fb_dataset>` object, the wrapper the preflight layer
+#'   carries in place of the raw data.
+#' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the header and the
+#'   per-column rows it prints.
 #' @keywords internal
 #' @export
 print.fb_dataset <- function(x, ...) {

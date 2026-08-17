@@ -268,7 +268,20 @@ test_that(".lgm_check_random_term_inla_support() refuses vm (GBLUP / kinship)", 
   expect_identical(r$rule_id, "random_term_type_inla")
   expect_match(r$reason, "\"vm\"")
   expect_match(r$reason, "variance-matrix")
-  expect_match(r$reason, "backend = \"greta\"")
+  # What the OTHER engine does is asked, not assumed. brms lowers a
+  # dense-carrier vm() to (1 | gr(g, cov = K)), so the refusal has to say
+  # so: it read "no other active backend represents it either" until the
+  # 0.9.0 fidelity pass, which was false for every term brms had learned
+  # to emit -- vm, us(f):g, and every nested random effect.
+  expect_match(r$reason, "brms does represent this model", fixed = TRUE)
+})
+
+test_that(".lgm_check_random_term_inla_support() says so when brms cannot", {
+  fb <- mk_fb(random_terms = list(list(type = "fa", var = "env", k = 2L)))
+  r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
+  expect_false(r$pass)
+  expect_match(r$reason, "brms cannot represent it either", fixed = TRUE)
+  expect_match(r$reason, "withdrawn")
 })
 
 test_that(".lgm_check_random_term_inla_support() refuses ped (pedigree)", {
@@ -307,13 +320,21 @@ test_that(".lgm_check_random_term_inla_support() refuses fa (factor-analytic)", 
   expect_match(r$reason, "factor-analytic")
 })
 
-test_that(".lgm_check_random_term_inla_support() refuses ar1 (autoregressive)", {
+test_that(".lgm_check_random_term_inla_support() accepts ar1 (WP16 spatial field)", {
+  # WP16 (2026-07-25): AR1 (1D) and separable AR1xAR1 spatial latent fields
+  # are emitted on INLA (grouped-AR1 idiom); emit_inla() validates the
+  # one-observation-per-node grid condition, so the gate accepts the class.
   fb <- mk_fb(random_terms = list(list(type = "ar1", var = "time")))
   r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
-  expect_false(r$pass)
-  expect_identical(r$rule_id, "random_term_type_inla")
-  expect_match(r$reason, "\"ar1\"")
-  expect_match(r$reason, "autoregressive lag-1")
+  expect_true(r$pass)
+})
+
+test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial (WP16)", {
+  fb <- mk_fb(random_terms = list(list(
+    type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
+  )))
+  r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
+  expect_true(r$pass)
 })
 
 # Residual negative case: at_units triggers residual_term_type_inla.
@@ -464,4 +485,79 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
   expect_true(any(grepl("\\[latent_class\\]", text)))
   expect_true(any(grepl("Re-route", text)))
   expect_true(any(grepl("Override", text)))
+})
+
+# ---------------------------------------------------------------- #
+# The gate's refusals carry a class (A5.5)                         #
+# ---------------------------------------------------------------- #
+#
+# lgm_gate() returns an <lgm_refusal> value, and under an explicit
+# backend = "inla" request dispatch turned it into a bare stop(). That
+# left one refusal in the package a caller could not catch by name while
+# every other refusal carried flexybayes_refusal_<code>. The value is
+# unchanged -- rule ids, check-list and print method all stand -- and the
+# throw site now wraps it in the shared condition hierarchy.
+
+test_that("an explicit inla request refused by the gate raises a typed condition", {
+  d <- data.frame(
+    y = stats::rnorm(40L),
+    x = stats::rnorm(40L),
+    env = factor(rep(letters[1:4], each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 4L))
+  )
+
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      fixed = y ~ x,
+      random = ~ us(env):gen,
+      data = d,
+      backend = "inla",
+      verbose = FALSE
+    )),
+    condition = function(e) e
+  )
+
+  expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
+  expect_s3_class(err, "flexybayes_refusal")
+  expect_s3_class(err, "error")
+
+  # Every existing gate message survives verbatim inside the condition.
+  expect_match(conditionMessage(err), "backend = \"inla\" refused by lgm_gate")
+  expect_match(conditionMessage(err), "flexyBayes: INLA backend refused")
+  expect_match(conditionMessage(err), "Re-route")
+  expect_match(conditionMessage(err), "Override")
+
+  # The check-list object itself rides on the condition, so a caller can
+  # read the rules rather than parse the printed text.
+  expect_s3_class(err$lgm_refusal, "lgm_refusal")
+  expect_true(err$lgm_refusal$n_failures >= 1L)
+  expect_identical(err$rule_id, err$lgm_refusal$primary_rule)
+})
+
+test_that("a second gate-refusal route is typed and names its own rule", {
+  # A heterogeneous residual fails a different rule from an unstructured
+  # random term, and reaches the same site through the fb_inla() engine
+  # pin rather than through backend = "inla".
+  d <- data.frame(
+    y = stats::rnorm(40L),
+    x = stats::rnorm(40L),
+    site = factor(rep(letters[1:4], each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 4L))
+  )
+
+  err <- tryCatch(
+    suppressMessages(fb_inla(
+      fixed = y ~ x,
+      random = ~gen,
+      residual = ~ dsum(~ units | site),
+      data = d,
+      verbose = FALSE
+    )),
+    condition = function(e) e
+  )
+
+  expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
+  expect_identical(err$rule_id, "residual_term_type_inla")
+  # The per-rule class lets one rule be caught without catching the rest.
+  expect_s3_class(err, "flexybayes_lgm_residual_term_type_inla")
 })

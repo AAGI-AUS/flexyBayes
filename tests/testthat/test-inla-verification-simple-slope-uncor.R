@@ -24,7 +24,16 @@
 # v0.2.6 ship state. The verification artefact is NOT generated at
 # ship time; the artefact is generated only by an explicit local
 # rehearsal (this test file). For the v0.2.6 release the INLA
-# mapping refuses; (x || g) fits via greta or brms.
+# mapping refuses; (x || g) fits via brms (backend = "auto" already
+# falls back there automatically).
+#
+# A2 quarantine (2026-07-25): greta is withdrawn as a fitting
+# engine, so the three-arbitrator rehearsal below (test 2) can no
+# longer run -- skip_if_three_arbitrators_unavailable() correctly
+# skips it via skip_if_greta_backend_unusable(). The rehearsal design
+# stays on file for when the arbitrator set is revisited (e.g. a
+# two-arbitrator INLA-vs-lme4 criterion, or a re-admitted engine);
+# it is not run or removed as part of the quarantine.
 #
 # This test file is skipped via skip_if_not_installed("INLA");
 # acceptance is structural (the file exists, the test runs the
@@ -90,7 +99,7 @@ test_that("emit_inla() consults the verification artefact for (x || g) admission
     )
     expect_s3_class(err, "flexybayes_inla_simple_slope_uncor_deferred")
     expect_identical(err$deferral_target, "a future release")
-    expect_identical(err$workaround, "backend = \"greta\"")
+    expect_identical(err$workaround, "backend = \"brms\"")
   } else {
     art <- readRDS(artefact_path)
     if (isTRUE(art$pass)) {
@@ -183,10 +192,10 @@ test_that("INLA + greta + lme4 three-arbitrator agreement on (x || g) (rehearsal
 
 
 # ---------------------------------------------------------------- #
-# (3) Refusal message names lme4 + greta workaround                  #
+# (3) Refusal message names the brms workaround                     #
 # ---------------------------------------------------------------- #
 
-test_that("INLA verification refusal points users to greta as the workaround", {
+test_that("INLA verification refusal points users to brms as the workaround", {
   err <- tryCatch(
     flexyBayes:::.check_inla_verification_simple_slope_uncor(),
     error = function(e) e
@@ -200,7 +209,7 @@ test_that("INLA verification refusal points users to greta as the workaround", {
     )
   }
   msg <- conditionMessage(err)
-  expect_true(grepl("backend = \"greta\"", msg, fixed = TRUE))
+  expect_true(grepl("backend = \"brms\"", msg, fixed = TRUE))
   expect_true(grepl("three-arbitrator verification test", msg, fixed = TRUE))
   expect_true(grepl("future release", msg))
 })

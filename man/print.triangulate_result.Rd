@@ -7,12 +7,14 @@
 \method{print}{triangulate_result}(x, ...)
 }
 \arguments{
-\item{x}{a \code{triangulate_result} object.}
+\item{x}{A \code{triangulate_result} object as returned by
+\code{\link[=triangulate]{triangulate()}}.}
 
-\item{...}{unused.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-invisibly returns \code{x}.
+Invisibly, \code{x} unchanged. Called for the header and metrics
+table it prints.
 }
 \description{
 Internal S3 method. Brief summary header followed by the per-

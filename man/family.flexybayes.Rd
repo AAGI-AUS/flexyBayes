@@ -7,12 +7,15 @@
 \method{family}{flexybayes}(object, ...)
 }
 \arguments{
-\item{object}{A flexybayes object}
+\item{object}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Additional arguments (ignored)}
+\item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-A family object
+The response family the model was fitted under, as the
+\code{family} object the fit recorded at emit time -- so it names the
+family and link the engine actually used, not the string the caller
+passed.
 }
 \description{
 Extract model family

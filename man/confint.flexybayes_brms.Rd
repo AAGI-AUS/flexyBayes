@@ -13,12 +13,12 @@
 
 \item{level}{Credible level (default 0.95).}
 
-\item{...}{Ignored.}
+\item{...}{Ignored. Present for compatibility with the generic.}
 }
 \description{
 Uses the brms posterior draws directly (the parent
 \code{confint.flexybayes} reads \verb{$greta$draws}, which is \code{NULL} on
 the brms-passthrough path). Returns quantile-based credible
-bounds over the b_\if{html}{\out{<term>}} rows; row names are stripped of the
+bounds over the \verb{b_<term>} rows; row names are stripped of the
 brms \code{b_} prefix to align with \code{coef()}.
 }

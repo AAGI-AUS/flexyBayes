@@ -82,13 +82,11 @@
   registered_in_adr,
   since_version
 ) {
-  if (!is.character(name) || length(name) != 1L || !nzchar(name)) {
-    stop(
-      ".register_representation(): `name` must be a non-empty ",
-      "single string.",
-      call. = FALSE
-    )
-  }
+  .check_string_scalar(
+    name,
+    ".register_representation(): `name` must be a non-empty ",
+    "single string."
+  )
   if (!is.character(description) || length(description) != 1L) {
     stop(
       ".register_representation(): `description` must be a single ",
@@ -169,13 +167,11 @@
 # than silently propagating an unknown class through preflight /
 # planning / display.
 .lookup_representation <- function(name) {
-  if (!is.character(name) || length(name) != 1L || !nzchar(name)) {
-    stop(
-      ".lookup_representation(): `name` must be a non-empty ",
-      "single string.",
-      call. = FALSE
-    )
-  }
+  .check_string_scalar(
+    name,
+    ".lookup_representation(): `name` must be a non-empty ",
+    "single string."
+  )
   if (!exists(name, envir = .representation_registry, inherits = FALSE)) {
     stop(
       ".lookup_representation(): '",
