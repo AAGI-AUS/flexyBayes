@@ -26,34 +26,34 @@ the same model on the same data.
 }
 \section{Entry points}{
 
-Two ingest paths share a single internal model representation
+The entry points share a single internal model representation
 (\code{fb_terms}):
 \itemize{
-\item \code{\link[=flexybayes]{flexybayes()}} — asreml-format entry: \code{fixed} / \code{random} / \code{residual}
+\item \code{\link[=flexybayes]{flexybayes()}} -- ASReml-format entry: \code{fixed} / \code{random} / \code{residual}
 formulas and \code{known_matrices} for kinship / pedigree. Observation
 \code{weights} are parsed and then refused (\code{weights_not_supported}) until
 an active emitter consumes them.
-\item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} — the universal entry. Accepts an ASReml
+\item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} -- the universal entry. Accepts an ASReml
 (\code{fixed} / \code{random} / \code{residual}) or brms-style (\code{y ~ x + (1 | g)})
 formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).
-\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} — single-engine pins. \code{\link[=fb_greta]{fb_greta()}} is
+\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} -- single-engine pins. \code{\link[=fb_greta]{fb_greta()}} is
 retained and refuses.
-\item \code{\link[=fb_prior]{fb_prior()}} — penalised-complexity-canonical prior DSL.
-\item \code{\link[=triangulate]{triangulate()}} — cross-engine posterior comparison.
+\item \code{\link[=fb_prior]{fb_prior()}} -- penalised-complexity-canonical prior DSL.
+\item \code{\link[=triangulate]{triangulate()}} -- cross-engine posterior comparison.
 }
 }
 
 \section{Vignettes}{
 
-Eleven vignettes ship with the package, covering: getting started,
-the formula surface (the asreml term catalogue together with
-structured covariance), foundational regression, hierarchical models,
-priors and regularisation, multi-environment trials and genomics,
-downstream analysis, spatio-temporal models, cross-engine
-triangulation, dispatch and refusals with the backend registry, and
-big-data streaming (exact aggregation). The dispatch-and-refusals
-page is the technical / internals reference; the rest target a
-general audience.
+Twelve vignettes ship with the package, covering: arriving from an
+ASReml call, getting started, the formula surface (the asreml term
+catalogue together with structured covariance), foundational
+regression, hierarchical models, priors and regularisation,
+multi-environment trials and genomics, downstream analysis,
+spatio-temporal models, cross-engine triangulation, dispatch and
+refusals with the backend registry, and big-data streaming (exact
+aggregation). The dispatch-and-refusals page is the technical /
+internals reference; the rest target a general audience.
 }
 
 \section{Capability}{
@@ -71,12 +71,12 @@ requested model's name.
 Simpson, D., Rue, H., Riebler, A., Martins, T. G., & Sørbye, S. H.
 (2017). Penalising model component complexity: A principled,
 practical approach to constructing priors. \emph{Statistical Science},
-32(1), 1–28.
+32(1), 1--28.
 
 Rue, H., Martino, S., & Chopin, N. (2009). Approximate Bayesian
 inference for latent Gaussian models by using integrated nested
 Laplace approximations. \emph{Journal of the Royal Statistical Society:
-Series B}, 71(2), 319–392.
+Series B}, 71(2), 319--392.
 
 Gelman, A., Vehtari, A., Simpson, D., Margossian, C. C., Carpenter,
 B., Yao, Y., Kennedy, L., Gabry, J., Bürkner, P.-C., & Modrák, M.

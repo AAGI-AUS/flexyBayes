@@ -44,9 +44,9 @@ set.seed(500)
 
 When you fit the same model to the same data on two engines -- say
 Hamiltonian Monte Carlo (HMC) via `brms` (Stan), and integrated
-nested Laplace approximation (INLA; Rue, Martino, & Chopin, 2009) via
-R-INLA -- you are running two structurally different approximations
-to the same posterior. Each makes a different bet.
+nested Laplace approximation (INLA) via R-INLA (Rue, Martino, &
+Chopin, 2009) -- you are running two structurally different
+approximations to the same posterior. Each makes a different bet.
 
 - **Stan's NUTS**, the no-U-turn HMC sampler that `brms` drives,
   converges to the true posterior asymptotically but introduces
@@ -98,7 +98,7 @@ It is a triangulation prompt -- one or more of:
    about *which* part of the misspecification dominates.
 2. The engines disagree because the posterior violates one engine's
    structural assumption (Gaussian-conditional latent field for
-   INLA; absence of severe geometry pathology for HMC).
+   INLA, and the absence of severe geometry pathology for HMC).
 3. One engine has not converged (low ESS, $\widehat{R} > 1.01$,
    divergences, or Pareto-$\hat{k} > 0.7$).
 4. The user has implemented two subtly different priors or link
@@ -128,15 +128,15 @@ cross-checks:
   numerical regime). Agreement catches numerical and prior-translation
   bugs.
 - **specification** -- the same likelihood through different
-  parameterisations. No current backend pair exercises this axis alone;
-  it is reserved for future within-backend reparameterisation checks.
+  parameterisations. No current backend pair exercises this axis alone.
+  It is reserved for future within-backend reparameterisation checks.
 
 A brms-versus-INLA comparison is labelled `algorithmic +
 implementation` (the engines differ on both paradigm and code base), so
 a small Wasserstein-1 distance there is a stronger convergence statement
 than the same distance between two HMC engines. The print method
-colour-grades the label by methodological strength on a colour terminal;
-the labels are plain text everywhere else.
+colour-grades the label by methodological strength on a colour terminal,
+and the labels are plain text everywhere else.
 
 # 3. The common disagreement patterns
 
@@ -148,13 +148,13 @@ pattern nobody here can reach is a distraction rather than a diagnostic.
 
 | # | Cause | Symptom | First diagnostic |
 |---|---|---|---|
-| 1 | **Heavy-tailed likelihood** (Student-t, Cauchy, robust REs) | INLA posterior tighter; brms posterior wider, more skewed; means similar, *quantiles diverge* | tail-quantile differences; PPC on `min`, `max`, kurtosis |
-| 2 | **Variance components near zero** (boundary), or -- on some models -- an outright INLA collapse to a numerically-degenerate estimate | INLA over- or under-estimates small variances, or lands orders of magnitude off; brms posterior L-shaped near the boundary but not degenerate | 5 % quantile of $\sigma$; an implausibly extreme `sd_ratio`; non-centred reparameterisation; `inla.hyperpar()` post-correction |
-| 3 | **Hyperparameter prior mismatch** (PC vs half-normal vs uniform) | tail-disagreement on $\sigma$ propagating to fixed-effect SEs | refit with *identical* priors on both sides; check which components the matched-prior gate excluded |
-| 4 | **Non-LGM structure** (mixtures, ZI with REs on the zero-prob, hurdle with shared REs) | ZI-logit and shared-RE marginals diverge sharply; INLA `cpo$failure > 0` | INLA's `cpo$failure`; PPC on zero counts; SBC |
-| 5 | **Sparse data regimes** (low $n$, high collinearity, rare events) | skewness, multimodality in brms; INLA gives a unimodal Gaussian-like marginal | density-overlay plot; Wasserstein-1; tail-ESS in brms |
-| 6 | **Strongly correlated hyperparameters** | wrong correlation structure in $\boldsymbol{\theta}$; downstream latent shifts | pairs plots across engines; INLA `int.strategy` sensitivity |
-| 7 | **Funnel-shape hierarchy** (Neal, 2003) | brms divergences > 0; INLA confident but wrong on group-level posterior SDs | brms divergences; non-centred parameterisation; SBC on $\tau$ |
+| 1 | **Heavy-tailed likelihood** (Student-t, Cauchy, robust REs) | INLA posterior tighter, brms posterior wider and more skewed, means similar but *quantiles diverge* | tail-quantile differences, and a PPC on `min`, `max`, kurtosis |
+| 2 | **Variance components near zero** (boundary), or -- on some models -- an outright INLA collapse to a numerically-degenerate estimate | INLA over- or under-estimates small variances, or lands orders of magnitude off, while the brms posterior is L-shaped near the boundary but not degenerate | 5 % quantile of $\sigma$, an implausibly extreme `sd_ratio`, non-centred reparameterisation, `inla.hyperpar()` post-correction |
+| 3 | **Hyperparameter prior mismatch** (PC vs half-normal vs uniform) | tail-disagreement on $\sigma$ propagating to fixed-effect SEs | refit with *identical* priors on both sides, then check which components the matched-prior gate excluded |
+| 4 | **Non-LGM structure** (mixtures, ZI with REs on the zero-prob, hurdle with shared REs) | ZI-logit and shared-RE marginals diverge sharply, and INLA reports `cpo$failure > 0` | INLA's `cpo$failure`, a PPC on zero counts, SBC |
+| 5 | **Sparse data regimes** (low $n$, high collinearity, rare events) | skewness and multimodality in brms, while INLA gives a unimodal Gaussian-like marginal | density-overlay plot, Wasserstein-1, tail-ESS in brms |
+| 6 | **Strongly correlated hyperparameters** | wrong correlation structure in $\boldsymbol{\theta}$, with downstream latent shifts | pairs plots across engines, INLA `int.strategy` sensitivity |
+| 7 | **Funnel-shape hierarchy** (Neal, 2003) | brms divergences > 0, and INLA confident but wrong on group-level posterior SDs | brms divergences, non-centred parameterisation, SBC on $\tau$ |
 
 # 4. The five-step protocol
 
@@ -166,13 +166,13 @@ Fit on engine A and engine B with identical priors, link function, and
 design matrix. `flexyBayes::triangulate()` computes, per scalar
 parameter:
 
-- mean shift in posterior-SD units;
-- 1D empirical Wasserstein-1 distance, also in posterior-SD units;
-- ratio of posterior SDs;
+- mean shift in posterior-SD units.
+- 1D empirical Wasserstein-1 distance, also in posterior-SD units.
+- ratio of posterior SDs, `source_a` over `source_b`.
 - tail-quantile differences (2.5 % and 97.5 %).
 
 A parameter is called **discordant** when |mean shift| > 0.1 SD *or*
-Wasserstein-1 > 0.1 SD *or* the SD ratio falls outside [0.9, 1.1]; the
+Wasserstein-1 > 0.1 SD *or* the SD ratio falls outside [0.9, 1.1]. The
 reference scale is the wider of the two posteriors. The overall status
 is `discordant` if any compared parameter is, `concordant` if none is,
 and `inconclusive` if a gate stopped the comparison.
@@ -187,7 +187,7 @@ as $n^{-1/2}$. On the INLA side, where draws come from
 `inla.posterior.sample()` at `n_samples`, two 1,000-draw samples of the
 same group-level SD sit about 0.06 SD apart by sampling alone -- more
 than half the threshold. Raise `n_samples` and re-run before reading a
-borderline flag as a finding; a flag that does not move is a difference
+borderline flag as a finding. A flag that does not move is a difference
 in the posteriors rather than in the draws.
 
 *Identical* is checked, not assumed. Each fit carries a fingerprint --
@@ -201,7 +201,7 @@ different models is a different operation.
 The prior half of that check has teeth beyond the obvious. A variance
 component is compared only when *both* fits record the same prior for
 it. The shared uniform-on-SD default reaches simple, nested, `diag`,
-`us` and `vm`/`ped` group terms; it does not reach an unstructured
+`us` and `vm`/`ped` group terms. It does not reach an unstructured
 correlation block or an AR1 latent field, where each engine keeps its
 own hyperprior. Those components come back as `not_compared` with the
 reason, which is more useful than a number that would have been
@@ -210,7 +210,7 @@ comparing two different questions.
 ## Step 2 -- Verify each engine's own diagnostics first
 
 **HMC.** $\widehat{R}_{\text{rank}} \leq 1.01$, ESS$_{\text{bulk}} \geq
-400$, zero divergences (Vehtari et al., 2021); Pareto-$\hat{k} < 0.7$
+400$, zero divergences (Vehtari et al., 2021), and Pareto-$\hat{k} < 0.7$
 for anything downstream of `loo` (Vehtari et al., 2024).
 
 **INLA.** `mode$mode.status == 0` and a finite marginal likelihood --
@@ -226,7 +226,7 @@ and no parameter verdicts at all.
 
 ## Step 3 -- Classify the disagreement
 
-Map each flagged parameter to one of the eight rows in §3. In applied
+Map each flagged parameter to one of the seven rows in §3. In applied
 work, the two most common patterns are *heavy-tailed likelihood*
 (when one observation drags HMC tails wider than INLA's mode-anchored
 Laplace can capture) and *non-LGM structure* (when the user has
@@ -236,16 +236,16 @@ models with small group counts.
 
 ## Step 4 -- Run targeted SBC and PPC
 
-**Simulation-based calibration (SBC; Talts, Betancourt, Simpson,
-Vehtari, & Gelman, 2018; ECDF-graphical refinement Säilynoja, Bürkner,
-& Vehtari, 2022)** on the parameters that disagree. Budget: 50 to 100
-replications. SBC tells you whether *either* engine is calibrated for
+**Simulation-based calibration (SBC)** (Talts, Betancourt, Simpson,
+Vehtari, & Gelman, 2018, with the ECDF-graphical refinement of
+Säilynoja, Bürkner, & Vehtari, 2022) on the parameters that disagree.
+Budget: 50 to 100 replications. SBC tells you whether *either* engine is calibrated for
 this model--data, independent of cross-engine agreement. The package
 ships no SBC harness, so this step is one you write and run yourself:
 draw parameters from the prior, simulate data from them, refit, and
 rank each true value within its own posterior draws.
 
-**Posterior-predictive checks (PPC; Gelman, Meng, & Stern, 1996)** on
+**Posterior-predictive checks (PPC)** (Gelman, Meng, & Stern, 1996) on
 the data features the disagreement implicates -- tail statistics for
 likelihood-tail disagreements, group-level summaries for hierarchical
 disagreements, zero counts for ZI/hurdle.
@@ -258,7 +258,7 @@ disagreements, zero counts for ZI/hurdle.
   reading its point estimate against the posterior median rather than
   the mean. `flexyBayes` has no third fitting engine to call on.
 - (b) If SBC fails for one engine on this model--data, that engine is
-  mis-calibrated *for this problem*; trust the other and report it.
+  mis-calibrated *for this problem*. Trust the other and report it.
 - (c) If neither engine passes SBC, the model is mis-specified --
   expand it (heavier-tailed likelihood, non-centred parameterisation,
   hierarchical hyperprior reform).
@@ -384,7 +384,7 @@ are for.
 The group-level SD is the usual flashpoint either way, whether because a
 heavy-tailed observation distorts the likelihood or because INLA's
 Laplace approximation of a small-group variance is itself unreliable
-(it may shrink the component, or with very few groups vary across runs);
+(it may shrink the component, or with very few groups vary across runs).
 §3 classifies the patterns and the response to each.
 
 Engine *agreement* does not mean the *model* is right: the
@@ -399,14 +399,14 @@ about whether the model deserved to be fitted.
 User-supplied `name_map` and `transform_b` still take precedence
 over the registry, so a custom alignment (e.g., for an unmapped
 hyperparameter, or to override the SD canonical form) remains
-available; see `?canonical_names` for the per-fit map view and
+available. See `?canonical_names` for the per-fit map view and
 `?triangulate` for the precedence contract.
 
 ## 5.2 Visualise the comparison
 
 ```{r tri-density, eval = both_ok, fig.height = 3.5}
 # Overlay marginals via posterior::draws_array. INLA posterior sampling
-# may be unavailable in CRAN's vignette re-render — wrap defensively.
+# may be unavailable in CRAN's vignette re-render -- wrap defensively.
 if (requireNamespace("bayesplot", quietly = TRUE)) {
   ok <- tryCatch({
     da <- flexyBayes::fb_as_draws_simple(fit_brms)
@@ -427,7 +427,8 @@ if (requireNamespace("bayesplot", quietly = TRUE)) {
 ```
 
 The overlay either confirms the numbers from the table (densities
-nearly identical → trust either engine) or shows a visible shift,
+nearly identical, so no engine-specific
+approximation failure is large enough to separate them) or shows a visible shift,
 shape difference, or tail asymmetry that will be classifiable by §3.
 
 ## 5.3 Posterior-predictive check on the right tail
@@ -580,9 +581,14 @@ magnitude below anything a reaction-time study could produce.
 
 The damage does not stay in that row. Between-subject variation has to
 go somewhere, so the residual SD absorbs it and comes back well above
-the brms value, and the fixed effects inherit the wrong uncertainty:
-the intercept's posterior SD is inflated and the `Days` slope's is
-shrunk. A single number was wrong and four rows report it.
+the brms value, and the fixed effects inherit the wrong uncertainty.
+Read the `sd_ratio` column as `source_a` over `source_b`, which is brms
+over INLA here, so a value above one means the INLA posterior is the
+narrower of the two. With the between-subject term at zero the 180
+observations enter as if they were independent, and INLA's intercept SD
+comes back too small, at a ratio of 1.63. The inflated residual runs the
+other way on the slope, widening `Days` to a ratio of 0.65. A single
+number was wrong and four rows report it.
 
 This is what the protocol is for.
 
@@ -626,8 +632,8 @@ same question.
    an apparent agreement would have been an artefact of two different
    questions.
 5. **Triangulate with SBC and PPC, not just a second engine.** A second
-   engine tests whether the two approximations agree; SBC tells you
-   whether *either* is calibrated for this problem; PPC tells you
+   engine tests whether the two approximations agree. SBC tells you
+   whether *either* is calibrated for this problem. PPC tells you
    whether the model itself fits. `flexyBayes` runs none of these for
    you, and a `concordant` status says nothing about calibration.
 6. **Document the resolution explicitly.** When you trust one
@@ -642,7 +648,7 @@ same question.
    Wasserstein-1 distances should collapse toward zero and the
    PPC distribution should bracket the observed maximum.
 2. Vary `sigma_g` between 0.05 and 1.0. As `sigma_g` approaches
-   zero the boundary problem (pattern 2 in §3) appears; observe
+   zero the boundary problem (pattern 2 in §3) appears. Observe
    how the posterior on `sigma_group` behaves on each engine and
    how `triangulate()` reports it.
 3. Replace the Poisson likelihood with negative-binomial (set

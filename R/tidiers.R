@@ -132,7 +132,10 @@ tidy.flexybayes <- function(
 # components live on `fit$extras$variance_comps`, already summarised to
 # component / estimate / sd / q2.5 / q97.5 by the backend post-fit code.
 .tidy_random_flexybayes <- function(x, conf.int) {
-  vc <- x$extras$variance_comps
+  # Read through the shared normaliser rather than off the raw field: an
+  # aggregated emit writes a list of posterior means under that name, and
+  # `nrow()` of a list is NULL.
+  vc <- .fb_variance_comps(x)
   if (is.null(vc) || nrow(vc) == 0L) {
     return(.empty_tidy(conf.int))
   }
@@ -168,25 +171,52 @@ tidy.flexybayes <- function(
 #' a one-off message notes this when a different level is requested rather
 #' than silently ignoring it.
 #'
+#' The `effects` argument is the same one [tidy.flexybayes()] carries, and
+#' means the same thing on both: `"fixed"` returns the population-level
+#' coefficients, `"random"` the variance-component summary. Before 0.9.1
+#' this method had no such argument, so `effects = "random"` on an INLA fit
+#' was absorbed by `...` and the FIXED-effect table came back under a call
+#' that asked for variance components -- a wrong answer with no error. An
+#' unrecognised value now stops.
+#'
 #' @param x A `flexybayes_inla` fit.
 #' @param conf.int Logical. Whether to attach the credible-interval columns.
 #'   Defaults to `TRUE`.
 #' @param conf.level Numeric in `(0, 1)`. Accepted for generic compatibility;
 #'   INLA reports the 95% marginal bounds, so a non-0.95 request is noted.
+#' @param effects Character. Which effects to return: `"fixed"` for the
+#'   population-level coefficients or `"random"` for the variance-component
+#'   summary. Defaults to `"fixed"`.
 #' @param ... Currently unused; present for generic compatibility.
 #'
-#' @returns A `data.frame` with one row per fixed-effect term and the columns
+#' @returns A `data.frame` with one row per term and the columns
 #'   `term`, `estimate`, `std.error`, and (when `conf.int = TRUE`)
-#'   `conf.low` / `conf.high`.
+#'   `conf.low` / `conf.high`. The rows are the fixed-effect terms under
+#'   `effects = "fixed"` and the variance components under
+#'   `effects = "random"`.
 #'
 #' @seealso [tidy.flexybayes()]
 #' @examplesIf requireNamespace("INLA", quietly = TRUE)
 #' \dontrun{
 #' fit <- flexybayes(yield ~ env, data = dat, backend = "inla")
 #' tidy(fit)
+#' tidy(fit, effects = "random")
 #' }
 #' @export
-tidy.flexybayes_inla <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
+tidy.flexybayes_inla <- function(
+  x,
+  conf.int = TRUE,
+  conf.level = 0.95,
+  effects = c("fixed", "random"),
+  ...
+) {
+  effects <- match.arg(effects)
+  if (identical(effects, "random")) {
+    # One builder for both engines, so the two tidiers cannot report
+    # different column sets or different numbers for one quantity.
+    return(.tidy_random_flexybayes(x, conf.int))
+  }
+
   sf <- x$inla$summary.fixed
   if (is.null(sf) || nrow(sf) == 0L) {
     return(.empty_tidy(conf.int))

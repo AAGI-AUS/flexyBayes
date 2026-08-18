@@ -37,7 +37,10 @@ emit_greta <- function(
   residual = NULL,
   family = NULL,
   link = NULL,
-  data_name = NA_character_
+  data_name = NA_character_,
+  na_action = NULL,
+  requested_backend = NULL,
+  requested_aggregate = NULL
 ) {
   .check_fb_terms(
     fb,
@@ -281,7 +284,17 @@ emit_greta <- function(
         warmup = warmup,
         chains = chains,
         prior_fixed_sd = prior_fixed_sd,
-        prior_vc_sd = prior_vc_sd
+        prior_vc_sd = prior_vc_sd,
+        # The missing-response policy the call requested, as the native
+        # word. Recorded on every engine so a re-fit repeats it.
+        na_action = na_action,
+        # The engine and the representation the call ASKED for, and the
+        # reporting it ran under. Recorded here for signature uniformity
+        # with the active emits -- greta is quarantined, so nothing
+        # currently re-fits through this path.
+        backend = requested_backend,
+        aggregate = requested_aggregate,
+        verbose = verbose
       ),
       run_time = elapsed,
       model_info = list(

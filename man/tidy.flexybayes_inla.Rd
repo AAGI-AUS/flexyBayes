@@ -4,7 +4,13 @@
 \alias{tidy.flexybayes_inla}
 \title{Tidy a per-row INLA fit into a one-row-per-term data frame}
 \usage{
-\method{tidy}{flexybayes_inla}(x, conf.int = TRUE, conf.level = 0.95, ...)
+\method{tidy}{flexybayes_inla}(
+  x,
+  conf.int = TRUE,
+  conf.level = 0.95,
+  effects = c("fixed", "random"),
+  ...
+)
 }
 \arguments{
 \item{x}{A \code{flexybayes_inla} fit.}
@@ -15,12 +21,18 @@ Defaults to \code{TRUE}.}
 \item{conf.level}{Numeric in \verb{(0, 1)}. Accepted for generic compatibility;
 INLA reports the 95\% marginal bounds, so a non-0.95 request is noted.}
 
+\item{effects}{Character. Which effects to return: \code{"fixed"} for the
+population-level coefficients or \code{"random"} for the variance-component
+summary. Defaults to \code{"fixed"}.}
+
 \item{...}{Currently unused; present for generic compatibility.}
 }
 \value{
-A \code{data.frame} with one row per fixed-effect term and the columns
+A \code{data.frame} with one row per term and the columns
 \code{term}, \code{estimate}, \code{std.error}, and (when \code{conf.int = TRUE})
-\code{conf.low} / \code{conf.high}.
+\code{conf.low} / \code{conf.high}. The rows are the fixed-effect terms under
+\code{effects = "fixed"} and the variance components under
+\code{effects = "random"}.
 }
 \description{
 The INLA backend returns a \code{flexybayes_inla} object whose internal
@@ -37,12 +49,21 @@ INLA has already integrated, the \code{conf.level} argument is accepted for
 generic compatibility but only the 95\% bounds INLA reports are returned;
 a one-off message notes this when a different level is requested rather
 than silently ignoring it.
+
+The \code{effects} argument is the same one \code{\link[=tidy.flexybayes]{tidy.flexybayes()}} carries, and
+means the same thing on both: \code{"fixed"} returns the population-level
+coefficients, \code{"random"} the variance-component summary. Before 0.9.1
+this method had no such argument, so \code{effects = "random"} on an INLA fit
+was absorbed by \code{...} and the FIXED-effect table came back under a call
+that asked for variance components -- a wrong answer with no error. An
+unrecognised value now stops.
 }
 \examples{
 \dontshow{if (requireNamespace("INLA", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 \dontrun{
 fit <- flexybayes(yield ~ env, data = dat, backend = "inla")
 tidy(fit)
+tidy(fit, effects = "random")
 }
 \dontshow{\}) # examplesIf}
 }

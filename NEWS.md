@@ -1,3 +1,348 @@
+# flexyBayes 0.9.1
+
+Work aimed at the reader who arrives from ASReml with last season's
+`asreml()` call in hand, and who should be able to read the answer
+without opening `$inla` or `$brms`.
+
+## New features
+
+* **`summary()` returns one object on every engine and every
+  representation.** The two active engines used to return two
+  incomparable things -- INLA's own four-slot list of its tables, brms's
+  `brmssummary` -- and a fit run on the aggregated representation
+  returned a third, its own list of the aggregated posterior's raw
+  pieces. None of the three carried a variance-component table, so
+  `summary(fit)$varcomp`, which is the first subset an ASReml user
+  types, was `NULL` on every fit. It is now a data frame of `component`,
+  `estimate`, `std.error`, `conf.low`, `conf.high`, `prior`, `note`,
+  alongside `$fixed`, `$converge`, `$n_design`, `$n_observed` and the
+  rest of an eleven-slot `summary.flexybayes` object, with a twelfth
+  `$spatial_field` on a fit carrying an autoregressive latent field.
+  Posterior mean is not a REML component.
+
+* **The aggregated representation answers the same questions as the
+  per-row one.** Aggregation is the default route for an ordinary
+  Gaussian call with a random term, so the missing variance-component
+  table was the ordinary case rather than a corner of it. An aggregated
+  fit now returns the same object, with the components rebuilt from the
+  engine's own posterior -- on the INLA route through the same precision
+  marginal the per-row route uses, not a reciprocal square root of a
+  tabulated mean. The printed banner names the representation
+  (`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`)
+  where a per-row fit names its engine, and the row-to-cell compression
+  appears both on the header and in the `$model` slot. `plot(fit, type =
+  "variance")` reads the same table and stopped erroring on an
+  aggregated fit with it. The raw aggregated pieces the old summary
+  returned -- `beta_means`, `beta_vcov`, `sigma_means`, `tau_means` --
+  are unchanged at `fit$extras$summary`.
+
+* **No convergence claim is made where no check ran.** The aggregated
+  route records no numerical confirm, and the summary reported it as a
+  failed one, because an absent record and a failed check tested the
+  same. The line is now omitted where nothing was checked, and the
+  `$converge$numerical_confirm` slot is `NA` rather than `FALSE`.
+
+* **The variance components carry the prior each one ran under.** The
+  `prior` column is a projection of `prior_summary()`, so the two
+  surfaces cannot disagree about which prior reached the engine.
+
+* **INLA's components reach the standard-deviation scale through the
+  precision marginal** -- `inla.tmarginal()` then `inla.emarginal()` and
+  `inla.qmarginal()` -- rather than by transforming a tabulated point
+  estimate. The transform is nonlinear and decreasing, so the two
+  answers differ, and they differ most where the posterior is widest.
+
+* **`nobs(fit, type = "observed")`** reports how many responses were
+  actually observed, next to `nobs(fit)`, which stays the design row
+  count the engine saw. On an augmented fit those are different numbers
+  and both are now visible.
+
+* **`na_action` accepts the policy an ASReml user already writes**:
+  `asreml::na.method(y = , x = )`, or the bare `list(y = , x = )` for
+  readers without an asreml licence, alongside the native strings.
+  Detection is by shape, never by class. The covariate half becomes
+  settable in ASReml's own words: `x = "fail"` (the default, as in
+  ASReml) refuses; `x = "omit"` drops the affected rows with a warning
+  naming the count and the columns; `x = "include"`, which in ASReml
+  means treating a missing covariate as zero, is refused by name.
+
+* **`coef(fit, what = )` reaches the random effects and the unobserved
+  cells**, and `ranef(fit)` is the same table under the name an
+  `nlme` or `lme4` reader types. `what = "random"` returns one data
+  frame per grouping factor with `group`, `level`, `estimate`,
+  `std.error`, `conf.low` and `conf.high`, `what = "missing"` returns
+  the unobserved design cells, and `what = "all"` returns all three.
+  The default is the historical named numeric vector of fixed effects,
+  byte for byte, so every existing caller keeps working. Where `nlme`
+  or `lme4` is attached in the same session, `flexyBayes::ranef(fit)`
+  is the collision-proof spelling.
+
+* **`predict(fit, classify = )`** builds ASReml's marginal-means table
+  on top of the existing `emmeans` seam, with a `level` argument
+  defaulting to 0.95. It carries means and credible intervals and says
+  so on the table. There is no pairwise standard-error block. On an
+  INLA fit the interval comes from the Gaussian approximation of the
+  fixed effects, and the banner states that rather than leaving it to
+  be assumed. Without `emmeans` installed the argument refuses by name
+  (`classify_requires_emmeans`) instead of failing inside a namespace
+  call.
+
+* **`fb_complete_grid()`** reinstates design cells that are absent from
+  the data frame altogether, returning the crossing of the index
+  variables with the response `NA` on every cell it added. It shares
+  one implementation with the completion that `na_action = "augment"`
+  performs, so the helper and the fit cannot drift apart. A design
+  factor that varies across the trial refuses rather than being
+  invented, and `unused_level =` opens that door explicitly, warning
+  with every column it fills. That is ASReml's nin89 LANCER coding
+  turned into a decision with a name on it.
+
+* **`plot(fit, type = "variogram")`** draws the empirical residual
+  semivariance over the design array, computed on the observed rows,
+  because a residual is `NA` on an augmented row by construction. A fit
+  with no design index refuses by name
+  (`variogram_requires_design_index`). Nothing is fitted to the
+  surface, so there is no fitted-variogram overlay to over-read.
+
+* **The Bayesian door.** The same fit object now answers to the
+  generics a Bayesian reaches for. `posterior::as_draws_df()`,
+  `as_draws()` and `as_draws_matrix()` return canonical parameter names
+  with the variance components on the standard-deviation scale, the
+  same names `triangulate()` compares, on either engine. `loo()` passes
+  through to `brms::loo()` on a sampled fit. `pp_check()` passes
+  through to `brms::pp_check()` on a sampled fit, replicated datasets
+  and all. On a Laplace fit each refuses by name and the message reads
+  the fit rather than a memory of it, naming the WAIC and DIC that fit
+  does carry and where they live. `prior_summary()` and
+  `summary(fit)$converge` complete the door, and neither idiom is a
+  wrapper around the other.
+
+* **A term written on both the fixed and the random side is refused by
+  name.** `flexybayes(yield ~ Variety, random = ~ Block + Variety)` is
+  aliased with itself: the fixed part already estimates one mean per
+  level, so the random copy's deviations are held up by their prior
+  alone and the variance component reported for them reads that prior
+  rather than the data. ASReml accepts the spelling and fits it, so a
+  translated script arrives carrying it, and every engine here answered
+  it badly in a different way -- an intermittently singular marginal
+  solve on INLA, an empty variance-component table, and at benchmark
+  scale two segmentation faults in the engine subprocess followed by an
+  error with no reason code. The new `term_in_fixed_and_random` refusal
+  fires at plan time on every engine and in `fb_plan()`, names the term,
+  and gives both repairs: drop it from `random` for population-level
+  means, or drop it from the fixed part for shrunk level effects.
+
+* **The autoregressive field says so when it does not identify.** On an
+  incomplete grid the latent field can collapse to a boundary -- field
+  standard deviation at a floor, both correlations spanning almost the
+  whole of `[-1, 1]`, its variance absorbed into the nugget -- while the
+  convergence block reports a converged mode and a passing numerical
+  confirm, because the optimiser did converge, to a solution with no
+  field in it. A fit in that state now raises a warning naming the
+  parameters that lost their identification and the three routes out
+  (complete the grid, read the model on brms as well, or give the field
+  an informative prior), and `summary(fit)$varcomp` carries `collapsed`
+  in the `note` cell of the `sd_spatial` row. The warning is scoped to
+  the field: a grouping factor whose variance component collapses is a
+  different fact and keeps its quieter cell. Silence with
+  `options(flexyBayes.silence_spatial_collapse_warning = TRUE)`.
+  `inst/KNOWN_ISSUES.md` carries the measured behaviour.
+
+* **The sectioned residual reaches the object, not only the printout.**
+  `summary(fit)$varcomp` on a `dsum(~ units | f)` fit returned the
+  grouping factors and no residual at all, while `print(summary(fit))`
+  rendered a full per-level block -- so the entire point of fitting
+  `dsum()` was readable and not subsettable, and reaching it meant
+  opening `$brms` and transforming `b_sigma_*` draws by hand. The table
+  now carries one `sigma_<level>` row per level of the sectioning
+  factor, on the standard-deviation scale, taken from the same builder
+  the printed block reads, with the `prior` cell naming the retargeted
+  prior that actually reached the sampler.
+
+* **`predict(classify = )` for a random-effects grouping factor refuses
+  by name.** Asking a multi-environment fit for genotype means is the
+  first thing a breeder does after fitting. The reference grid is built
+  from the population-level design, so a factor entering only as a
+  grouping term is not in it and the call died inside `emmeans` with
+  "No variable named Geno in the reference grid" -- a third-party
+  message with no reason code and no route onward. The new
+  `classify_random_factor_not_supported` refusal names the factor and
+  points at `coef(fit, what = "random")` and `ranef(fit)`, which carry
+  the level effects with their intervals. Population-level marginal
+  means for a random factor are planned.
+
+## Breaking changes
+
+* **`plot(fit, type = "pp_check")` no longer draws an
+  observed-versus-fitted panel on a fit that carries no predictive
+  draws.** That panel was never a posterior predictive check, and the
+  documentation claimed it was. It is removed rather than retitled, and
+  both entry points now raise a catchable refusal
+  (`pp_check_requires_predictive_draws`) naming the diagnostics the fit
+  does answer, `plot(fit, type = "residuals")` and, where there is a
+  design index, `plot(fit, type = "variogram")`. On a brms-engine fit
+  the same type now runs a real posterior predictive check through
+  `brms::pp_check()`. A script that called it on an INLA fit for the
+  picture will need one of the named alternatives.
+
+## Minor improvements and fixes
+
+* **A sectioned-residual fit answers the mean-model accessors.** A
+  `dsum()` residual makes the emitted model distributional, and two
+  readers were working on the wrong object: the formula reader indexed
+  the resulting `brmsformula` by position, which reaches its parameter
+  slots rather than its formula, and the coefficient reader swept every
+  `b_` column, which collects the log-sigma coefficients alongside the
+  mean effects. The result was `coef(fit)` reporting `sigma_EnvE1` as
+  though it were an effect on the response, a fixed-effect design matrix
+  that could not be reconciled with it, `$glm$y` and `$glm$residuals`
+  all-`NA`, and `predict(fit, classify = )` failing in the estimability
+  seam even for a plain fixed factor. All four are fixed at the two
+  readers, so `coef()`, `vcov()`, `confint()` and the marginal-means
+  table now describe the same parameter set.
+
+* **An ordinary aggregated fit no longer reports a prior nobody
+  supplied.** The `prior_parametrization` label was set by a class test
+  on the recorded prior, which was right while the only `fb_prior` on a
+  fit was one the caller wrote. The auto-default became an `fb_prior`
+  object, so the commonest fit the package produces printed `custom
+  (explicit prior supplied; see prior_summary())`. The label is now
+  routed off the default-basis attribute `prior_summary()` reads, and
+  there are three values rather than two: `per_row_equivalent` for the
+  legacy scalar bridge, whose matched-prior guarantee is what that word
+  claims; `package_default` for the automatic bounded uniform on the
+  standard-deviation scale, which claims no such equivalence on the
+  aggregated route; and `custom` for a prior from the caller.
+
+* **`tidy(fit, effects = "random")` answers on an INLA fit.**
+  `tidy.flexybayes_inla()` had no `effects` argument, so the request was
+  absorbed by `...` and the fixed-effect table came back under a call
+  that asked for variance components -- a wrong answer rather than an
+  error, on the package's default engine. Both tidiers now take the same
+  argument, route `"random"` through one builder, and stop on an
+  unrecognised value. The shared builder reads through the normaliser
+  the summary uses, so the request also works on an aggregated fit,
+  where the raw field is a list and `nrow()` of it is `NULL`.
+
+* **The two counts named `K` say which is which.** A fit reports the
+  planner's cell count -- the product of the declared factor levels, the
+  complete grid -- in `backend_decision(fit)$reason`, and the realised
+  count of cell keys the data contains in the print and summary
+  compression lines. On an incomplete grid these differ, and both
+  printed as a bare `K`. The planner's figure is now labelled
+  `K = <n> (estimated)`, in the routing reason and in the `fb_plan()`
+  print; the realised count is unqualified.
+
+* **The three prints share one header** and name the engine for what it
+  did. An INLA fit no longer reports `MCMC : n chain(s) x n samples`
+  over a deterministic Laplace approximation that ran no chains. The
+  model line is derived from the model representation, so it describes
+  the model that was written rather than the program that was emitted.
+
+* **`update()` works on an INLA fit.** The INLA emit recorded six of the
+  arguments a re-fit needs against brms's fifteen, and that gap -- not
+  anything about the engine -- was the whole of the
+  `update_call_not_reconstructable` refusal. Both engines now also record
+  the requested `na_action`.
+
+* **`update()` works on the aggregated routes too.** The Gaussian and
+  count streaming-aggregation emits recorded eleven of the sixteen
+  fields, so an ordinary Gaussian call with a random term, which routes
+  there by default, refused a re-fit. All four emits now record the same
+  names in the same order. `na_action` travels with the re-fit
+  rather than being re-defaulted, so an augmented fit re-fits as an
+  augmented fit. A fit made before this release still refuses cleanly on
+  the shorter record, which is the intended behaviour and not a case to
+  special-case into a silent default.
+
+* **A re-fit runs under the prior the fit ran under.** The auto-default
+  bounded uniform on the standard-deviation scale fires only when a call
+  supplies neither a `prior` nor a `prior_vc_sd`, and `update()` re-issued
+  the recorded `prior_vc_sd`, so the default never fired on a re-fit and
+  the model fell through to the engine's own hyperprior. An identity
+  `update()` -- nothing changed -- could halve a reported variance
+  component and report `engine default` where the first fit reported the
+  resolved uniform. `update()` now resolves the prior from the fit's own
+  record, on every engine, and **a policy re-fires while a bespoke prior
+  carries**. The auto-default is a policy -- one bounded uniform per
+  variance component, with the bound read off the data -- so a re-fit
+  passes neither `prior` nor either scalar and lets the default rebuild
+  itself over the *updated* model. On an identity re-fit the same data
+  give the same bound, so nothing moves. On `update(fit, random = ~ g +
+  h)` the added term gets the same uniform as its siblings instead of
+  falling to the engine while they keep theirs. A user-supplied
+  `fb_prior()` is carried verbatim, and a term it never named still
+  follows the engine's own hyperprior, exactly as on the first fit. A
+  `prior` or a `prior_vc_sd` written in the `update()` call still
+  outranks the record, and only one of the two forms is passed.
+
+* **A variance component the package priored nothing for says so.** A
+  partial `fb_prior()` -- one naming `sigma` but not a random term the
+  model has -- left that component's `prior` cell blank in
+  `summary(fit)$varcomp`, where the two words `engine default` belong.
+  Reachable on a first fit, not only through `update()`.
+
+* **A re-fit comes back on the engine and in the representation the fit
+  ran on.** `backend` and `aggregate` were absent from the record, so a
+  re-fit took the formal defaults for both: an identity `update()` of a
+  Stan fit returned an aggregated INLA fit -- a different inference engine
+  and a different representation, under the same name and with nothing
+  said -- and a re-fit of a per-row fit could come back aggregated. Both
+  now travel with the record, and what
+  is recorded is the value the call asked for rather than the engine it
+  resolved to: a fit made under `backend = "auto"` records `"auto"` and a
+  re-fit routes again from there, because the recorded value is a policy
+  and a re-fit whose model has changed has to be free to route the changed
+  model. Both join the fields a re-fit requires, so a fit made before this
+  release refuses cleanly rather than re-fitting elsewhere. An override in
+  the `update()` call still wins. `verbose` is recorded alongside them and
+  deliberately not carried -- `update()` reproduces the model and the
+  policy behind it, not the display settings of the session that first ran
+  it, and `update(fit, verbose = FALSE)` quietens a re-fit on the spot.
+
+* **An auto fallback no longer forwards sampler settings that are not
+  there.** An INLA fit records no `n_samples`, `warmup` or `chains` --
+  the nested Laplace approximation runs none -- so an auto re-fit whose
+  INLA attempt failed reached brms with all three absent, and brms
+  refused the `iter` it builds from them (`Cannot coerce 'iter' to a
+  single numeric value`). The user read a brms argument error where an
+  INLA failure had happened. Absent sampler settings are now omitted and
+  the receiving engine applies its own defaults.
+
+* **A variance component priored through the legacy scalar bridge names
+  that prior.** The cell read `engine default` on every row of such a
+  fit, which on the Stan route is false -- the bridge writes
+  `lognormal(0, prior_vc_sd)` onto the residual scale and onto every
+  named group. `engine default` is now reserved for a component genuinely
+  left to the engine, which on the INLA route is what the bridge leaves
+  behind and where the words still belong.
+
+* **`plot()`'s default type follows the engine, and the default draws on
+  a brms fit.** The predicate deciding whether a fit carried draws read
+  a greta-only slot, so a brms fit fell through to a message saying it
+  had no draws to plot, and the diagnostics path had no brms branch
+  underneath to reach anyway. The default is now `"residuals"` where the
+  fit carries no sampler draws and `"diagnostics"` where it does, and
+  the brms branch forwards to brms's own trace and density panels. Every
+  explicit `type =` behaves as it did.
+
+* **`na_action = "fail"` records itself.** With no missing response it
+  used to fall through into the augment branch, completing the design
+  grid and writing `augment` into the fit's record.
+
+* **`missing_fraction` is present on every missingness path**, not only
+  under `augment`, and means the same thing on each: the fraction of the
+  fitted rows carrying no observed response.
+
+* **The refusal messages for missing plots are rewritten** in the
+  reader's language, each naming what ASReml does in the same situation
+  and what to type instead.
+
+* Effective sample size is recorded for the tails as well as the bulk of
+  each marginal, and reported by `summary()`. A fit can mix well in the
+  middle of a marginal and badly at the 2.5% bound, which is the number
+  a credible interval is read off.
+
 # flexyBayes 0.9.0
 
 A stable release of the supported capability set, ready for testing --
@@ -1099,9 +1444,8 @@ emit path, and an INLA-led multi-environment-trial vignette.
 > section — the ensemble-source data contract, simulator-derived priors, the
 > surrogate emulators and predictive checks, and the dormant fourth-opinion slot
 > — were subsequently extracted to the companion package **flexyBayesOrchestra**
-> (see the lean-core split under "(development version)" above). They are no
-> longer part of the `flexyBayes` exported surface; the entries below record the
-> 0.7.0 history.
+> (see the lean-core split under 0.8.0 below). They are no longer part of the
+> `flexyBayes` exported surface; the entries below record the 0.7.0 history.
 
 This release reconciles three parallel development streams onto the engine, data,
 and surrogate axes: gretaR activated as a fourth inference engine (the engine

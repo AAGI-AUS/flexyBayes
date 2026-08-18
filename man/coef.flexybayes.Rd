@@ -2,20 +2,48 @@
 % Please edit documentation in R/methods.R
 \name{coef.flexybayes}
 \alias{coef.flexybayes}
-\title{Extract fixed effect coefficients}
+\title{Extract coefficients from a flexyBayes fit}
 \usage{
-\method{coef}{flexybayes}(object, ...)
+\method{coef}{flexybayes}(object, what = c("fixed", "random", "missing", "all"), ...)
 }
 \arguments{
 \item{object}{A fitted \code{flexybayes} object of any backend.}
 
+\item{what}{Which part of the fit to return. \code{"fixed"} (the default)
+is the fixed-effect posterior means. \code{"random"} is one data frame
+per grouping factor, with the columns \code{group}, \code{level}, \code{estimate},
+\code{std.error}, \code{conf.low} and \code{conf.high}; a grouping factor carrying
+more than one effect names the effect in \code{level}. \code{"missing"} is
+the table of unobserved design cells, in the columns \code{row},
+\code{estimate}, \code{std.error}, \code{conf.low}, \code{conf.high} plus any design
+index variables the fit recorded. \code{"all"} is the named list of all
+three.}
+
 \item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-A named numeric vector of the fixed effects' posterior means,
-on the treatment-contrast basis, named for the design-matrix
-columns. Empty when the model carries no fixed effects.
+For \code{what = "fixed"}, a named numeric vector of the fixed
+effects' posterior means on the treatment-contrast basis, named for
+the design-matrix columns, empty when the model carries no fixed
+effects. For \code{"random"}, a named list of data frames, empty when the
+model carries no random terms. For \code{"missing"}, a data frame with
+zero rows when every response was observed. For \code{"all"}, a list with
+the elements \code{fixed}, \code{random} and \code{missing}.
 }
 \description{
-Extract fixed effect coefficients
+Returns the fixed effects by default, and the random-effect
+predictions or the unobserved design cells on request. An ASReml user
+reaches for \code{coef(fit)$random}; the equivalent here is
+\code{coef(fit, what = "random")}, which is what \code{\link[=ranef]{ranef()}} calls.
+}
+\details{
+The default is the historical return -- a named numeric vector of the
+fixed effects -- so every caller that treats \code{coef(fit)} as a numeric
+vector keeps working, including the \pkg{emmeans} and
+\pkg{marginaleffects} seams, \code{\link[=predict]{predict()}}, \code{\link[=vcov]{vcov()}} and the tidiers.
+}
+\seealso{
+\code{\link[=ranef]{ranef()}} for the random-effect table on its own,
+\code{\link[=summary.flexybayes]{summary.flexybayes()}} whose \code{random} and \code{missing} slots are the
+same two objects, and \code{\link[=nobs]{nobs()}} for the design and observed counts.
 }

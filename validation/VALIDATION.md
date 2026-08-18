@@ -1,8 +1,8 @@
 # flexyBayes validation record
 
-- package version: **0.9.0**
-- commit: release tree tagged `v0.9.0` (squash of the 0.9.x development line; the granular audit trail is in the project ledger)
-- generated: 2026-08-17
+- package version: **0.9.1**
+- commit: release tree tagged `v0.9.1` (squash of the 0.9.1 development line; the granular audit trail is in the project ledger)
+- generated: 2026-08-18
 - archetype: A1 (statistical-method) · audit schema `rpkg-audit-v1`
 
 Assembled by `validation/assemble_report.py` from the artefacts listed at the foot. Re-run any gate and regenerate; nothing here is hand-entered.
@@ -12,7 +12,7 @@ Assembled by `validation/assemble_report.py` from the artefacts listed at the fo
 | Gate | What it checks | Result | Detail |
 | --- | --- | --- | --- |
 | R CMD check --as-cran | built tarball, CRAN profile | PASS | `pass` |
-| F19 live tests | devtools::test() actually run | PASS | 3238 pass / 0 fail / 199 skip |
+| F19 live tests | devtools::test() actually run | PASS | 4298 pass / 0 fail / 199 skip |
 | F16 vibe hygiene | E13-E20 detector suite | FAIL | score 0.8571 -- 6 pass / 1 fail (all should_fix, no blocker) |
 | F17 conformance | pkg-validation conformance evidence | na | absent |
 | Audit blockers | I1-I14 + coherence C1-C3 | PASS | 0 blocker / 5 should-fix / 15 nice-to-have |
@@ -27,11 +27,11 @@ None of these is a release blocker; all are graded `should_fix` or lower, and th
 
 | Detector | Result | Evidence |
 | --- | --- | --- |
-| E13 Comment-paraphrase ratio | PASS | 22/907 paraphrasing; e.g. emit_count_aggregated.R:509, plot.R:257, plot.R:290 |
-| E14 Validation-scattering index | PASS | delegated 0.80 (131/163 delegated+duplicated) ≥ floor 0.75 for A1; 229 single-use self-validation guard(s) exempt |
-| E15 Roxygen sentence completeness | PASS | 497/497 full sentences |
-| E16 LLM-filler density | PASS | 0 fillers / 85338 words = 0.0/1k |
-| E17 Banner coverage | PASS | 52/73 long units bannered |
+| E13 Comment-paraphrase ratio | PASS | 23/1038 paraphrasing; e.g. emit_count_aggregated.R:532, plot.R:335, plot.R:379 |
+| E14 Validation-scattering index | PASS | delegated 0.80 (138/172 delegated+duplicated) ≥ floor 0.75 for A1; 237 single-use self-validation guard(s) exempt |
+| E15 Roxygen sentence completeness | PASS | 539/539 full sentences |
+| E16 LLM-filler density | PASS | 0 fillers / 101975 words = 0.0/1k |
+| E17 Banner coverage | PASS | 57/79 long units bannered |
 | E18 Error-message actionability | PASS | 54/54 actionable |
 | E19 Human-pass evidence | FAIL | no De-Vibe / human-pass record (critical_review_*.md / de_vibe*.md / report/internal/ / NEWS / recipe 40) |
 | E20 Conformance coverage of generated surfaces | N/A | no evidence.json (no pkg-validation conformance study; looked under manifest, package-root, and sibling report/) |
@@ -44,7 +44,7 @@ None of these is a release blocker; all are graded `should_fix` or lower, and th
 
 The rung is capped by the vibe-hygiene floor, not by correctness: audit blockers are 0 and every numerical gate below passes. Raising it needs a De-Vibe pass (recipe 40), and E19 in particular asks for a human review record, which is not something this report can supply for itself.
 
-**E19 candidates, pending ratification.** Two external review passes over the 0.9.0 development line exist in the project's private review archive: a structured review briefing and an independent adversarial release review whose findings were verified and closed before this release. Their conclusions and the decisions they forced are recorded in the project decision ledger (cairn `2026-08-17-release-nine-review-record`). They are recorded as candidates only: the detector stays FAIL until a maintainer ratifies a review as the human pass, and nothing in this file should be read as a completed human pass.
+**E19 candidates, pending ratification.** Three external review passes over the 0.9.x development line exist in the project's private review archive: a structured review briefing, an independent adversarial release review, and an ASReml-practitioner usability review whose recommendations became the 0.9.1 accessor surface. Their conclusions and the decisions they forced are recorded in the project decision ledger (cairns `2026-08-17-release-nine-review-record` and `2026-08-18-ux-arc-accessor-surface-two-doors`). They are recorded as candidates only: the detector stays FAIL until a maintainer ratifies a review as the human pass, and nothing in this file should be read as a completed human pass.
 
 ## Numerical validation, against independent oracles
 

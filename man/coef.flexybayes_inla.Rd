@@ -2,21 +2,33 @@
 % Please edit documentation in R/methods_inla.R
 \name{coef.flexybayes_inla}
 \alias{coef.flexybayes_inla}
-\title{Fixed-effect coefficients of a per-row INLA fit}
+\title{Coefficients of a per-row INLA fit}
 \usage{
-\method{coef}{flexybayes_inla}(object, ...)
+\method{coef}{flexybayes_inla}(object, what = c("fixed", "random", "missing", "all"), ...)
 }
 \arguments{
 \item{object}{A \code{flexybayes_inla} fit.}
 
+\item{what}{Which part of the fit to return: \code{"fixed"} (the default),
+\code{"random"}, \code{"missing"} or \code{"all"}. See \code{\link[=coef.flexybayes]{coef.flexybayes()}} for the
+shape of each.}
+
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-Named numeric vector of fixed-effect posterior means.
+For the default \code{what = "fixed"}, a named numeric vector of
+fixed-effect posterior means; otherwise as documented for
+\code{\link[=coef.flexybayes]{coef.flexybayes()}}.
 }
 \description{
 Posterior means of the fixed effects, read from the INLA fit's
 \code{summary.fixed} slot (treatment-contrast basis). These are the
 coefficients consumed by \code{\link[emmeans:emmeans]{emmeans::emmeans()}} and
 \code{\link[marginaleffects:predictions]{marginaleffects::predictions()}} via the flexyBayes support methods.
+}
+\details{
+An INLA fit carries no \verb{$glm} slot, so the fixed vector is read here
+rather than inherited; every other value of \code{what} is resolved by the
+shared body \code{\link[=coef.flexybayes]{coef.flexybayes()}} uses, so the two engines answer the
+same question the same way.
 }

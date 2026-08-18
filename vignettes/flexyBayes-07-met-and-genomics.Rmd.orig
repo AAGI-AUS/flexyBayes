@@ -45,7 +45,7 @@ each.
 2. **Genomic selection.** Modern breeding programmes have genome-wide
    markers on every candidate genotype, even those untested in the
    field. Predicting the field performance of an *unphenotyped*
-   candidate from its markers is *genomic prediction*; selecting
+   candidate from its markers is *genomic prediction*, and selecting
    candidates by predicted performance is *genomic selection*
    (Meuwissen, Hayes, & Goddard, 2001).
 
@@ -91,9 +91,9 @@ choice.
 spectrum:
 
 - **diagonal**, `diag(county):gen` -- one genotype variance per
-  location, no correlation between locations. Six parameters here;
+  location, no correlation between locations. Six parameters here.
 - **factor-analytic**, `fa(county, k):gen` -- a rank-$k$ approximation
-  of the full covariance, the standard breeder's model for *stability*;
+  of the full covariance, the standard breeder's model for *stability*.
 - **unstructured**, `us(county):gen` -- the full $6 \times 6$
   covariance, 21 free entries.
 
@@ -128,7 +128,7 @@ Three blocks in that output carry the model.
 The **variance components** give the genotype main-effect variance and
 one genotype variance per location -- the diagonal interaction. A
 location whose genotype variance is large is one where varieties
-separate; a location where it is small is one where they do not, and
+separate, while a location where it is small is one where they do not, and
 where trial resource is arguably wasted.
 
 The **residual block** gives one error variance per location, on the
@@ -139,7 +139,7 @@ standard deviation and squares from there to a variance. The block does
 that arithmetic on the draws.
 
 The **convergence lines** are the ones to read first. At this budget
-the fit is clean; at a shorter one it would not be, and the numbers
+the fit is clean. At a shorter one it would not be, and the numbers
 above it would be a sketch rather than an estimate.
 
 ```{r met-varcomp, eval = brms_ok && agridat_ok}
@@ -357,7 +357,7 @@ denominator. Neither number means anything quoted without its basis.
 If a pedigree is available but no markers, the pedigree-derived
 numerator relationship matrix $\mathbf{A}$ takes the role of
 $\mathbf{G}$. The `ped()` term is the spelling that declares that
-provenance; the model it emits is the same known-covariance random
+provenance. The model it emits is the same known-covariance random
 effect that `vm()` emits, and either accepts either matrix.
 
 ```{r pedigree-fit, eval = brms_ok}
@@ -372,12 +372,12 @@ fit_ped <- flexybayes(
 fit_ped$extras$variance_comps
 ```
 
-GBLUP and pedigree BLUP are structurally identical; only the
+GBLUP and pedigree BLUP are structurally identical, and only the
 relationship matrix changes. $\mathbf{A}$ carries *expected* relatedness
 from the pedigree, $\mathbf{G}$ the *realised* relatedness from markers,
 and the difference between them is Mendelian sampling -- which is why
 GBLUP separates full sibs and pedigree BLUP cannot. When both are
-available, the genomic-pedigree blend (the $\mathbf{H}$ matrix;
+available, the genomic-pedigree blend (the $\mathbf{H}$ matrix of
 Christensen & Lund, 2010) is on the roadmap.
 
 # 6. Genomic prediction accuracy
@@ -476,7 +476,7 @@ through `spl()` on the INLA backend to capture a non-linear response.
 
 **Genotype-environment covariance is not a genotype variance.** The
 factor-analytic model puts structure on $\mathrm{Var}(g_{ij})$ across
-environments; it does not introduce a separate $\sigma_g^2$
+environments. It does not introduce a separate $\sigma_g^2$
 hyperparameter. That is why a factor-analytic fit reports loading
 variances rather than one genotype variance.
 

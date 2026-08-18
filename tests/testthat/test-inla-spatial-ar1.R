@@ -267,7 +267,13 @@ test_that("auto routes a designed spatial trial to INLA", {
   skip_on_cran()
   skip_on_ci()
   skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  # The subject is where the model is routed, not whether the field
+  # identifies -- and on this 6 x 5 grid it does not, which the fit now
+  # says out loud. Silenced so the routing assertion is the only signal.
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
   set.seed(5L)
   d <- .spatial_sim(6L, 5L, 0.7, 0.4, 1, 0.5)
   fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,

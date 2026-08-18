@@ -11,9 +11,13 @@
 
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
+\value{
+Invisibly, \code{x} unchanged. Called for the description it
+prints.
+}
 \description{
-Mirrors \code{print.flexybayes} (call info + run time + diagnostics)
-with a brms-specific footer (the live \code{brmsfit} lives at
-\verb{$brms}; the GLM shim at \verb{$glm}; \verb{$extras} carries the same
+Opens with the header every engine's print shares, then adds the
+sampler diagnostics and a brms-specific footer (the live \code{brmsfit}
+lives at \verb{$brms}; the GLM shim at \verb{$glm}; \verb{$extras} carries the same
 diagnostics as the greta path).
 }

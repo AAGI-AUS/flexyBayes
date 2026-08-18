@@ -14,6 +14,8 @@
   output_file = NULL,
   format = c("auto", "csv", "rds", "fst"),
   interop = FALSE,
+  classify = NULL,
+  level = 0.95,
   ...
 )
 }
@@ -73,8 +75,7 @@ resolves to: \code{"csv"} when \code{interop = TRUE}; \code{"fst"} when
 \code{nrow(newdata) >= 1e6} and \code{fst} is installed; \code{"rds"}
 otherwise. \code{"fst"} requested without \code{fst} installed raises a
 structured refusal naming the install command. The fst path
-is 30--40x faster than rds at N >= 1e6 per the
-Stage-3B-shape benchmark (\code{benchmark_results/fst_stage3b_2026-05-23}).}
+is substantially faster than rds at large N.}
 
 \item{interop}{Logical. When \code{TRUE}, the format-resolution rule
 under \code{format = "auto"} prefers \code{"csv"} (universally readable)
@@ -82,13 +83,44 @@ over rds / fst (R-only / fst-only). Useful for handing the
 prediction grid to a non-R consumer. Default \code{FALSE}. Only
 consulted when \code{output_file} is supplied and \code{format = "auto"}.}
 
+\item{classify}{The factors to break a marginal-means table down by,
+as ASReml spells it: a character value (\code{"Variety"},
+\code{"Variety:env"}) or a one-sided formula (\code{~ Variety}). \code{NULL} (the
+default) leaves every other argument doing exactly what it did
+before. See Details for how the two prediction paths differ.}
+
+\item{level}{Credible level for the classify table's interval, as a
+proportion. Default \code{0.95}. Ignored when \code{classify} is \code{NULL}.}
+
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-If \code{output_file} is supplied: invisibly returns the path
-that was written to. Otherwise: if \code{se.fit = FALSE}, a numeric
-vector. If \code{se.fit = TRUE}, a list with \code{fit} and \code{se.fit}.
+If \code{classify} is supplied: a data frame of class
+\code{fb_predict_classify} with the classify factors plus \code{estimate},
+\code{std.error}, \code{conf.low} and \code{conf.high}. If \code{output_file} is
+supplied: invisibly returns the path that was written to.
+Otherwise: if \code{se.fit = FALSE}, a numeric vector. If
+\code{se.fit = TRUE}, a list with \code{fit} and \code{se.fit}.
 }
 \description{
 Predict from a flexybayes model
+}
+\details{
+There are two prediction paths and they answer different questions.
+
+\code{newdata} predicts the rows the caller hands over, which is where an
+untested genotype belongs:
+\code{predict(fit, newdata = new_geno, allow_new_levels = "sample")}.
+
+\code{classify} averages the fitted model over the levels it was fitted to
+and returns the means table -- ASReml's \code{predict(..., classify = )}.
+It builds that table through \pkg{emmeans}, so \code{newdata} has nothing
+to contribute and is ignored with a warning if both are supplied.
+There is no \code{sed} argument and no pairwise block: the table carries
+marginal means and their credible intervals, and the print says so.
+
+On an INLA fit the standard errors and bounds are computed from a
+Monte-Carlo estimate of the joint fixed-effect posterior covariance
+(see \code{\link[=vcov.flexybayes_inla]{vcov.flexybayes_inla()}}), so they move a little between calls
+on the same fit. The point estimates do not.
 }

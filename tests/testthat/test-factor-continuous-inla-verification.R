@@ -17,6 +17,41 @@
 # of INLA / greta / lme4 are unavailable -- the verification
 # artefact is host-local and the gate refuses cleanly without it.
 
+# Where the host-local verification artefact may be written. An installed
+# library and the R CMD check directory are both out of bounds -- CRAN
+# policy allows a package's tests the session temporary directory and
+# nothing else -- so the source tree is used only when the suite is
+# actually running from it, which is what a real DESCRIPTION and inst/
+# two levels up mean. Every other host writes under tempdir(), so the
+# developer rehearsal hook still works for the length of the session and
+# leaves nothing behind after it.
+.fnia_artefact_dir <- function() {
+  if (
+    file.exists(file.path("..", "..", "DESCRIPTION")) &&
+      dir.exists(file.path("..", "..", "inst"))
+  ) {
+    return(file.path("..", "..", "inst", "extdata", "inla-verification"))
+  }
+  file.path(tempdir(), "flexybayes-inla-verification")
+}
+
+# Where to read it back from. Reading an installed copy is fine, so that
+# is tried first; otherwise the artefact is wherever this session wrote
+# it.
+.fnia_artefact_path <- function() {
+  installed <- system.file(
+    "extdata",
+    "inla-verification",
+    "factor_numeric_interaction.rds",
+    package = "flexyBayes",
+    mustWork = FALSE
+  )
+  if (nzchar(installed)) {
+    return(installed)
+  }
+  file.path(.fnia_artefact_dir(), "factor_numeric_interaction.rds")
+}
+
 test_that("INLA mapping for factor_numeric_interaction passes 3-arbitrator gate", {
   testthat::skip_on_cran()
   skip_if_not_installed("INLA")
@@ -152,17 +187,7 @@ test_that("INLA mapping for factor_numeric_interaction passes 3-arbitrator gate"
   # reads. On verification failure we still write the artefact with
   # pass = FALSE so the failure mode is auditable; the gate refuses
   # either way.
-  art_dir <- system.file(
-    "extdata",
-    "inla-verification",
-    package = "flexyBayes",
-    mustWork = FALSE
-  )
-  if (!nzchar(art_dir)) {
-    # Package not installed; the test harness is running via
-    # devtools::test() -- write into the source-tree inst/.
-    art_dir <- file.path("..", "..", "inst", "extdata", "inla-verification")
-  }
+  art_dir <- .fnia_artefact_dir()
   dir.create(art_dir, recursive = TRUE, showWarnings = FALSE)
   artefact <- list(
     timestamp = Sys.time(),
@@ -200,16 +225,7 @@ test_that("INLA mapping for factor_numeric_interaction passes 3-arbitrator gate"
 # reproducibility policy lives.
 
 test_that("the artefact lifts the gate only under the developer option", {
-  art_dir <- system.file(
-    "extdata",
-    "inla-verification",
-    package = "flexyBayes",
-    mustWork = FALSE
-  )
-  if (!nzchar(art_dir)) {
-    art_dir <- file.path("..", "..", "inst", "extdata", "inla-verification")
-  }
-  art_path <- file.path(art_dir, "factor_numeric_interaction.rds")
+  art_path <- .fnia_artefact_path()
   if (!file.exists(art_path)) {
     testthat::skip("verification artefact not yet produced on this host")
   }

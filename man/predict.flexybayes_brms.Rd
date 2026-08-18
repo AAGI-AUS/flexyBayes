@@ -11,6 +11,8 @@
   re_formula = NULL,
   se.fit = FALSE,
   summary = TRUE,
+  classify = NULL,
+  level = 0.95,
   ...
 )
 }
@@ -32,6 +34,15 @@ all random effects, \code{NA} excludes them (population-level).}
 \item{summary}{Logical: if \code{TRUE} (default), summarise across
 draws to a numeric vector; if \code{FALSE}, return the
 \verb{draws x rows} posterior matrix.}
+
+\item{classify}{The factors to break a marginal-means table down by:
+a character value (\code{"Variety"}, \code{"Variety:env"}) or a one-sided
+formula (\code{~ Variety}). \code{NULL} (the default) is the historical
+behaviour. See \code{\link[=predict.flexybayes]{predict.flexybayes()}} for how the two prediction
+paths differ.}
+
+\item{level}{Credible level for the classify table's interval, as a
+proportion. Default \code{0.95}.}
 
 \item{...}{Forwarded to \code{brms::posterior_epred()} /
 \code{brms::posterior_linpred()}.}

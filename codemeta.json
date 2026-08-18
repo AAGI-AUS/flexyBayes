@@ -7,7 +7,7 @@
   "codeRepository": "https://github.com/AAGI-AUS/flexyBayes",
   "issueTracker": "https://github.com/AAGI-AUS/flexyBayes/issues",
   "license": "https://spdx.org/licenses/MIT",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",

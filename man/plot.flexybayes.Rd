@@ -9,11 +9,7 @@
 \alias{plot.flexybayes_glm}
 \title{Plot diagnostics for a flexyBayes model}
 \usage{
-\method{plot}{flexybayes}(
-  x,
-  type = c("diagnostics", "residuals", "effects", "variance", "blups", "pp_check"),
-  ...
-)
+\method{plot}{flexybayes}(x, type = NULL, ...)
 
 \method{plot}{flexybayes_inla}(x, ...)
 
@@ -32,31 +28,49 @@ through their own registrations.}
 
 \item{type}{A single string naming the display to draw. One of:
 \code{"diagnostics"}, trace plots and marginal densities per parameter
-(needs \pkg{bayesplot} and a sampled posterior); \code{"residuals"},
-residuals against fitted values beside a normal quantile-quantile
-plot; \code{"effects"}, a forest plot of the fixed effects with their
-credible intervals, available on every backend that supplies
-\code{\link[=coef]{coef()}} and \code{\link[=confint]{confint()}}; \code{"variance"}, a bar chart of the variance
-components with credible intervals; \code{"blups"}, a caterpillar plot of
-the random-effect predictions ordered by magnitude; and
-\code{"pp_check"}, a posterior predictive check overlaying replicated
-datasets on the observed response. Defaults to \code{"diagnostics"}.}
+(needs a sampled posterior); \code{"residuals"}, residuals against
+fitted values beside a normal quantile-quantile plot; \code{"effects"}, a
+forest plot of the fixed effects with their credible intervals,
+available on every backend that supplies \code{\link[=coef]{coef()}} and \code{\link[=confint]{confint()}};
+\code{"variance"}, a bar chart of the variance components with credible
+intervals; \code{"blups"}, a caterpillar plot of the random-effect
+predictions ordered by magnitude; \code{"pp_check"}, a posterior
+predictive check overlaying replicated datasets on the observed
+response, which needs predictive draws and so refuses by name on a
+fit that carries none (see \code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}}); and
+\code{"variogram"}, the empirical semivariance of the residuals over the
+design index. \code{NULL} (the default) resolves to \code{"diagnostics"} on a
+sampled fit and \code{"residuals"} otherwise.}
 
 \item{...}{Further arguments passed to the underlying plotting call,
-for example \code{pars} to restrict which parameters a diagnostic display
-covers.}
+for example \code{variable} to restrict which parameters a diagnostic
+display covers, or \code{type} and \code{ndraws} for \code{"pp_check"}.}
 }
 \value{
 Invisibly, the object the underlying plotting call returns --
-a \pkg{ggplot2} object for the displays built with it, and \code{NULL}
-for those drawn on the base graphics device. Called for the plot it
-draws.
+a \pkg{ggplot2} object for the displays built with it, the
+semivariance table for \code{"variogram"}, and \code{NULL} for those drawn on
+the base graphics device. Called for the plot it draws.
 }
 \description{
-Draws one of six standard displays for a fitted model, chosen by
+Draws one of seven standard displays for a fitted model, chosen by
 \code{type}. Every backend reaches the same method, and a display that needs
 a slot a given engine does not populate -- posterior draws on the
 deterministic INLA path, for instance -- prints a message naming what
 is missing and returns invisibly rather than erroring or drawing an
-empty panel.
+empty panel. The one exception is \code{"pp_check"}, which raises the
+refusal \code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}} raises, so a caller can catch it by
+class.
+}
+\details{
+The default display depends on what the fit carries. A sampled
+posterior gets \code{"diagnostics"}, because the first question about a
+sampler is whether it converged. A deterministic approximation has no
+chains to trace, so an INLA fit gets \code{"residuals"} instead of a
+message declining to draw the display it was asked for.
+}
+\seealso{
+\code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}} for the posterior predictive check
+\code{type = "pp_check"} draws, and the refusal it raises where a fit has
+no predictive draws.
 }

@@ -43,10 +43,13 @@ transforms apply.}
 \item{\code{unmapped}}{Character vector of backend-native names
 not in the map (when \code{drop = FALSE}).}
 \item{\code{prior_parametrization}}{Character, present only on
-aggregated-gaussian fits: \code{"per_row_equivalent"} when the
-default precision prior is in force (the aggregated posterior
-then matches the per-row posterior to numerical precision) or
-\code{"custom"} when an explicit prior was supplied (see the
+aggregated fits, naming which prior the fit ran under.
+\code{"per_row_equivalent"} is the legacy scalar bridge, whose
+precision prior makes the aggregated posterior match the
+per-row posterior to numerical precision.
+\code{"package_default"} is the automatic bounded-uniform-on-SD
+prior, which claims no such equivalence on this route.
+\code{"custom"} is an explicit prior from the caller (see the
 "Matched priors" note on \code{\link[=triangulate]{triangulate()}}).}
 }
 }

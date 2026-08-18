@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 04: Hierarchical models: random effects and GLMMs"
-date: "2026-08-16"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -24,7 +24,7 @@ matters:
 
 1. **Correctly sized standard errors.** Treating clustered
    observations as independent shrinks standard errors and inflates
-   Type I error.
+   the Type I error rate.
 2. **Borrowing of strength.** A random effect lets each cluster
    "borrow" information from the others through the shared variance
    parameter -- *partial pooling*. This is the source of the
@@ -67,28 +67,38 @@ fit_ri <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_ri)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : Reaction ~ Days + (1 | Subject) 
-#>   Family : gaussian / identity 
-#>   N = 180 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days + (1 | Subject) 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 5000)
+#>   Runtime  : 18.7 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD     2.5%    97.5%
-#> (Intercept) 250.8424 10.3591 230.3852 270.7878
-#> Days         10.4691  0.8070   8.8579  12.0614
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 250.8424   10.3591 230.3852  270.7878
+#>         Days  10.4691    0.8070   8.8579   12.0614
 #> 
-#> -- Variance components  -------------------------------------- 
-#>    Component Estimate     SD    2.5%   97.5%
-#> 1 sd_Subject  39.8594 7.8662 27.3364 58.2728
-#> 2      sigma  31.2342 1.7391 28.0638 34.9047
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                         prior
+#>  sd_Subject  39.8594    7.8662  27.3364   58.2728 uniform(lower=0, upper=281.6)
+#>       sigma  31.2342    1.7391  28.0638   34.9047 uniform(lower=0, upper=281.6)
+#>  note
+#>      
+#>      
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.003 
-#>   ESS  range: 1099 - 9124 
-#>   Run time  : 18.8 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.003
+#>   Min ESS (bulk): 1099
+#>   Min ESS (tail): 2248
+#>   Divergent transitions: 0
 ```
 
 > **Why `backend = "brms"` here, not the `"auto"` default.** INLA's
@@ -96,12 +106,12 @@ summary(fit_ri)
 > `sleepstudy`: the `Subject`-level variance component can collapse to
 > numerically zero, run to run, with no warning. brms (Stan HMC) does
 > not share the failure mode. This vignette pins brms for this one
-> teaching example; `"auto"` is fine for the other models below. If
+> teaching example. `"auto"` is fine for the other models below. If
 > you hit an implausibly extreme variance component from INLA on your
 > own data, cross-check with `backend = "brms"` before trusting it.
 
 The `Subject`-level standard deviation summarises between-subject
-variation in baseline reaction time; the residual standard deviation
+variation in baseline reaction time, and the residual standard deviation
 summarises within-subject variation. The intraclass correlation
 coefficient (ICC) is
 
@@ -170,7 +180,7 @@ this section.
 
 The brms-style grammar takes the lme4 / brms double-pipe notation
 `(x || g)` for an *uncorrelated* random intercept and slope. Each level
-of the grouping factor carries an independent intercept deviation AND
+of the grouping factor carries an independent intercept deviation *and*
 an independent slope deviation, each drawn from its own univariate
 normal with no correlation parameter shared between them. This matches
 the lme4 / brms semantics where `(Days || Subject)` expands to
@@ -190,29 +200,40 @@ fit_ris_uncor <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_ris_uncor)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : Reaction ~ Days + (Days || Subject) 
-#>   Family : gaussian / identity 
-#>   N = 180 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days + (Days || Subject) 
+#>   Model    : G: simple_slope_uncor; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 5000)
+#>   Runtime  : 20.1 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD     2.5%    97.5%
-#> (Intercept) 251.1441  7.3216 236.5595 265.4461
-#> Days         10.4850  1.6960   7.0296  13.8282
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 251.1441    7.3216 236.5595  265.4461
+#>         Days  10.4850    1.6960   7.0296   13.8282
 #> 
-#> -- Variance components  -------------------------------------- 
-#>          Component Estimate     SD    2.5%   97.5%
-#> 1       sd_Subject  27.0042 6.5497 16.5388 41.7473
-#> 2 sd_Subject__Days   6.5245 1.4577  4.2336  9.9033
-#> 3            sigma  25.8426 1.5302 23.0076 28.9623
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>         component estimate std.error conf.low conf.high
+#>        sd_Subject  27.0042    6.5497  16.5388   41.7473
+#>  sd_Subject__Days   6.5245    1.4577   4.2336    9.9033
+#>             sigma  25.8426    1.5302  23.0076   28.9623
+#>                          prior note
+#>  uniform(lower=0, upper=281.6)     
+#>                 engine default     
+#>  uniform(lower=0, upper=281.6)     
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.001 
-#>   ESS  range: 1716 - 9755 
-#>   Run time  : 19.4 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.001
+#>   Min ESS (bulk): 1716
+#>   Min ESS (tail): 3068
+#>   Divergent transitions: 0
 ```
 
 ## 3b. The refused form: `(Days | Subject)`
@@ -313,7 +334,8 @@ flexybayes(fixed = y ~ 1, random = ~ class + class:student, data = ...)
 ```
 
 Both patterns generalise to deeper hierarchies. The agronomic
-illustration is in the *MET and genomic selection* vignette.
+illustration is in the *multi-environment trials and genomic selection*
+vignette.
 
 # 5. The Poisson GLMM: `MASS::epil`
 
@@ -348,28 +370,40 @@ fit_pois <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_pois)
-#> Bayesian mixed model summary  [flexyBayes / aggregated-gaussian]
-#> ================================================================= 
-#>   family:     poisson / log 
-#>   N = 236 , K = 59 
-#>   backend:    inla 
-#>   exactness:  aggregated_exact 
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#> Bayesian mixed model summary  [flexyBayes / aggregated-poisson]
+#> ============================================================== 
+#>   Fixed    : y ~ trt + (1 | subject) 
+#>   Model    : G: subject iid; R: units 
 #>   aggregation: N = 236 rows -> K = 59 cells (ratio 4:1)
+#>   Family   : poisson / log 
+#>   Representation: aggregated_exact (compression 4:1)
+#>   Engine:         INLA Laplace
+#>   N        : 236 design rows, 236 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.2 sec
 #> 
-#> -- Fixed effects (posterior)  ----------------------------------- 
-#>              Estimate Post.SD
-#> (Intercept)    1.7708  0.1904
-#> trtprogabide  -0.2926  0.2642
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>          term estimate std.error conf.low conf.high
+#>   (Intercept)   1.7708    0.1904   1.3943    2.1439
+#>  trtprogabide  -0.2926    0.2642  -0.8149    0.2252
 #> 
-#> -- Variance components  ---------------------------------------- 
-#>   tau_1  (random SD): 0.9624
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                     prior
+#>  sd_subject   0.9782    0.1035   0.7984    1.2042 uniform(lower=0, upper=3)
+#>  note
+#>      
 #> 
-#>   Run time: 3.03 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -267.809
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 8.05e-08
 ```
 
 The intercept (on the log scale) is the baseline log-rate of
-seizures; the `trt` coefficient is the log rate-ratio for
+seizures, and the `trt` coefficient is the log rate-ratio for
 progabide versus placebo. Exponentiating gives the rate-ratio,
 computed from the posterior draws:
 
@@ -379,7 +413,7 @@ draws <- flexyBayes::fb_as_draws_simple(fit_pois)
 rr <- exp(draws[["trtprogabide:1"]])
 c(mean = mean(rr), q025 = quantile(rr, 0.025), q975 = quantile(rr, 0.975))
 #>       mean  q025.2.5% q975.97.5% 
-#>  0.7697132  0.4367607  1.2670535
+#>  0.7756896  0.4531430  1.2516633
 ```
 
 ## 5.1 Cross-checking the fit against a second engine
@@ -418,8 +452,8 @@ triangulate(fit_pois, fit_pois_brms)
 #> 
 #> Metrics (per common parameter):
 #>          param  mean_a  mean_b mean_shift_sd sd_ratio  w1_sd    verdict
-#> 1  (Intercept)  1.7680  1.7728        0.0255   1.0100 0.0307 concordant
-#> 2 trtprogabide -0.2949 -0.2948        0.0002   0.9824 0.0288 concordant
+#> 1  (Intercept)  1.7801  1.7728        0.0387   0.9853 0.0425 concordant
+#> 2 trtprogabide -0.3038 -0.2948        0.0334   0.9564 0.0422 concordant
 #> 3   sd_subject  0.9741  0.9801        0.0570   0.9399 0.1658 discordant
 ```
 
@@ -432,7 +466,7 @@ approximation is distorting them.
 
 `sd_subject` is flagged, and it is worth seeing why on the first
 triangulation you read. Its posterior mean and SD agree between the
-engines to a few per cent; what breaches the threshold is the
+engines to a few per cent. What breaches the threshold is the
 Wasserstein-1 distance, which compares the whole marginal rather than
 its first two moments. The two distributions have the same centre and
 spread and a different shape -- the ordinary signature of a Laplace
@@ -459,34 +493,50 @@ fit_nb <- flexybayes(
   y ~ trt + (1 | subject), data = epil,
   family = "negative_binomial",
   n_samples = 2000, warmup = 5000, chains = 4,
+  seed = 20260817,
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_nb)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : y ~ trt + (1 | subject) 
-#>   Family : negative_binomial / log 
-#>   N = 236 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : y ~ trt + (1 | subject) 
+#>   Model    : G: subject iid; R: units 
+#>   Family   : negative_binomial / log 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 236 design rows, 236 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 5000)
+#>   Runtime  : 19.2 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>              Estimate Post.SD    2.5%  97.5%
-#> (Intercept)    1.8004  0.1936  1.4185 2.1717
-#> trtprogabide  -0.3103  0.2697 -0.8410 0.2181
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>          term estimate std.error conf.low conf.high
+#>   (Intercept)   1.7860    0.1926   1.4198    2.1730
+#>  trtprogabide  -0.2913    0.2647  -0.8199    0.2339
 #> 
-#> -- Variance components  -------------------------------------- 
-#>    Component Estimate     SD   2.5%  97.5%
-#> 1 sd_subject   0.9593 0.1082 0.7733 1.1916
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                     prior
+#>  sd_subject   0.9586    0.1032   0.7758    1.1777 uniform(lower=0, upper=3)
+#>  note
+#>      
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.007 
-#>   ESS  range: 836 - 5699 
-#>   Run time  : 19.1 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.007
+#>   Min ESS (bulk): 875
+#>   Min ESS (tail): 1615
+#>   Divergent transitions: 0
 ```
 
 The negative-binomial absorbs overdispersion that the Poisson
 likelihood cannot.
+
+The `seed` above is not decoration. This posterior is multimodal at this
+sampler budget -- some seeds settle on a second mode whose intercept
+runs off to absurd magnitudes and whose largest R-hat is near 1.6 -- and
+the seed pins the run this page reports. Read the convergence block of
+your own run before you read its estimates.
 
 # 6. The binomial GLMM: `lme4::cbpp`
 
@@ -522,30 +572,40 @@ fit_bin <- flexybayes(
   verbose = FALSE
 )
 summary(fit_bin)
-#> Bayesian mixed model summary  [flexyBayes / aggregated-gaussian]
-#> ================================================================= 
-#>   family:     binomial / logit 
-#>   N = 842 , K = 56 
-#>   backend:    inla 
-#>   exactness:  aggregated_exact 
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#> Bayesian mixed model summary  [flexyBayes / aggregated-binomial]
+#> ============================================================== 
+#>   Fixed    : y ~ period + (1 | herd) 
+#>   Model    : G: herd iid; R: units 
 #>   aggregation: N = 842 rows -> K = 56 cells (ratio 15:1)
+#>   Family   : binomial / logit 
+#>   Representation: aggregated_exact (compression 15:1)
+#>   Engine:         INLA Laplace
+#>   N        : 842 design rows, 842 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2 sec
 #> 
-#> -- Fixed effects (posterior)  ----------------------------------- 
-#>             Estimate Post.SD
-#> (Intercept)  -1.4186  0.2616
-#> period2      -1.0002  0.3059
-#> period3      -1.1430  0.3258
-#> period4      -1.6259  0.4267
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)  -1.4186    0.2616  -1.9552   -0.9186
+#>      period2  -1.0002    0.3059  -1.5993   -0.3996
+#>      period3  -1.1430    0.3258  -1.7814   -0.5035
+#>      period4  -1.6259    0.4267  -2.4622   -0.7886
 #> 
-#> -- Variance components  ---------------------------------------- 
-#>   tau_1  (random SD): 0.6634
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                     prior note
+#>    sd_herd   0.7596    0.2263   0.3988     1.291 uniform(lower=0, upper=5)     
 #> 
-#>   Run time: 2.5 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -108.222
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 2.89e-07
 ```
 
 The intercept (on the logit scale) is the baseline log-odds of
-infection; the `period` coefficients describe how those log-odds
+infection, and the `period` coefficients describe how those log-odds
 change across the four observation periods. The `herd` random
 effect captures unobserved herd-level differences in baseline risk.
 
@@ -589,8 +649,8 @@ to assess sensitivity.
 **Overdispersion in count data.** A Poisson GLMM that fails the
 posterior-predictive check on `var(y)` versus `mean(y)` is signalling
 overdispersion -- refit with `family = "negative_binomial"`. This is the most
-common cause of cross-engine disagreement on count GLMMs (pattern 1
-in the triangulation vignette).
+common cause of cross-engine disagreement on count GLMMs, a pattern the
+*cross-engine triangulation* vignette works through.
 
 # 9. Active prompts
 
@@ -601,8 +661,8 @@ in the triangulation vignette).
    Use `triangulate()` to compare the variance-component posteriors
    of each family against a second engine.
 3. On `cbpp_expanded`, fit the model with random `herd` versus
-   random `herd:period`. Which fits best by PSIS-LOO (manual; see
-   the *downstream analysis* vignette)?
+   random `herd:period`. Which fits best by PSIS-LOO, built by hand as
+   the *downstream analysis* vignette shows?
 
 # 10. Session information
 

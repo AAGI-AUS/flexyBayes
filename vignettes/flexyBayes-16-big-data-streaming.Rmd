@@ -67,7 +67,7 @@ The realistic delivery format is a columnar file on disk.
 sufficient statistics, and fits the $K$-cell model through INLA --
 the only active fitting engine for the aggregated path (`backend =
 "greta"` is accepted at the argument level but refuses with a
-structured `backend_quarantined` message; greta has been withdrawn
+structured `backend_quarantined` message, because greta has been withdrawn
 as a fitting engine, see `NEWS.md`). Peak memory is one chunk plus
 the small cell accumulator, never the full table.
 
@@ -211,7 +211,7 @@ accumulation takes and nothing about the model.
 
 **External benchmark.** The two tables in this section and the next were
 measured outside the package on a 32 GB machine. They are not produced
-when this vignette is built and nothing here re-runs them; they are
+when this vignette is built and nothing here re-runs them. They are
 recorded so the cost story is a measurement rather than an assertion.
 
 The first table compares the two paths at sample sizes where both are

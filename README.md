@@ -2,37 +2,36 @@
 
 Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax
 
-Licence: MIT. Version 0.9.0 is a stable release of the supported
-capability set, ready for testing -- marked as a pre-release while the
-first collaborator round completes.
+Licence: MIT. Version 0.9.1 is a stable release of the supported
+capability set.
 
 `flexyBayes` is a multi-backend Bayesian mixed-model framework. It
 routes one model specification to INLA (integrated nested Laplace
 approximation) or brms (Stan passthrough), refuses by name what neither
 engine can represent, and reports how far the two posteriors sit apart
-when the same model is fitted on both — a diagnostic, `triangulate()`,
+when the same model is fitted on both -- a diagnostic, `triangulate()`,
 not a proof of correctness. The parser, the intermediate representation
 and the prior interlingua are shared, so agreement between the engines
 is evidence about the samplers, not about the model.
 
 > **Development release.** All exports are at the experimental
 > `lifecycle` stage and the API may change within the 0.x series. Not on CRAN.
-> **greta and gretaR are quarantined as fitting engines** — the active
-> backends are brms and INLA; `backend = "greta"` / `"gretaR"` refuse with a
+> **greta and gretaR are quarantined as fitting engines** -- the active
+> backends are brms and INLA. `backend = "greta"` / `"gretaR"` refuse with a
 > structured reason rather than fitting. See `NEWS.md` for the reshape and
 > `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the current
 > per-backend capability boundaries before relying on results.
 
 ## Which entry point do I use?
 
-| If you have… | Use | Notes |
+| If you have ... | Use | Notes |
 |---|---|---|
 | ASReml syntax (`fixed` / `random` / `residual`) | `fb()` / `flexybayes()` | Variance-component / agricultural workflows. |
-| brms or lme4 syntax (`y ~ x + (1 \| g)`) | `fb()` / `flexybayes()` | The grammar is detected from the call; `syntax =` forces it. |
-| To force one engine | `fb_inla()` / `fb_brms()` | Single-engine pins; a conflicting `backend` is refused. |
+| brms or lme4 syntax (`y ~ x + (1 \| g)`) | `fb()` / `flexybayes()` | The grammar is detected from the call, and `syntax =` forces it. |
+| To force one engine | `fb_inla()` / `fb_brms()` | Single-engine pins. A conflicting `backend` is refused. |
 | Two fits you want to compare across engines | `triangulate()` | Auto-resolves canonical parameter names. |
 
-`fb()` is the short alias for `flexybayes()`; either name is the
+`fb()` is the short alias for `flexybayes()`, and either name is the
 universal entry that spans every backend.
 
 ## Which backend will I get?
@@ -48,12 +47,12 @@ The universal entry reaches any active backend: name one with
 `backend =`, or let `backend = "auto"` choose. Each `fb_<engine>()` pin
 fits exactly one engine and refuses a conflicting `backend`.
 `backend = "auto"` runs the LGM feasibility gate and routes to INLA on
-acceptance, otherwise to brms; there is no silent fallback to a
+acceptance, otherwise to brms. There is no silent fallback to a
 quarantined engine, and a model neither can represent refuses with
 `auto_no_active_route` rather than fitting something else. Reach Stan
 explicitly with `fb_brms()` or `fb(..., backend = "brms")`.
 `backend = "greta"` / `fb_greta()` accept the request and then refuse
-with a structured `backend_quarantined` reason — see *Backend support*
+with a structured `backend_quarantined` reason -- see *Backend support*
 below.
 
 ## Backend support
@@ -64,14 +63,14 @@ burden and in what they offer.
 
 | Backend | On CRAN? | Install burden | Inference | In flexyBayes |
 |---|---|---|---|---|
-| INLA | No (own repository) | Moderate — binary, no compiler | Approximate (nested Laplace) | Supported |
-| brms (Stan) | Yes | Heavy — first-call Stan compile (~30–60 s) | MCMC (sampling error only) | Supported |
-| greta | No (greta-dev R-universe) | Heavy — Python + TensorFlow stack | MCMC (sampling error only) | Quarantined — refuses to fit |
-| gretaR | No (opt-in) | Heavy — torch | MCMC (out-of-process NUTS) | Quarantined — refuses to fit |
+| INLA | No (own repository) | Moderate -- binary, no compiler | Approximate (nested Laplace) | Supported |
+| brms (Stan) | Yes | Heavy -- first-call Stan compile (~30--60 s) | MCMC (sampling error only) | Supported |
+| greta | No (greta-dev R-universe) | Heavy -- Python + TensorFlow stack | MCMC (sampling error only) | Quarantined -- refuses to fit |
+| gretaR | No (opt-in) | Heavy -- torch | MCMC (out-of-process NUTS) | Quarantined -- refuses to fit |
 
-All exports are at the **experimental** `lifecycle` stage; see
+All exports are at the **experimental** `lifecycle` stage. See
 `API_STABILITY.md` in the source repository for what that guarantees. The
-fastest way to explore the package without any backend is the planner; for a
+fastest way to explore the package without any backend is the planner. For a
 worked fit with production sampling settings and its diagnostics reported in
 full, follow the *getting started* vignette.
 
@@ -79,7 +78,7 @@ full, follow the *getting started* vignette.
 
 What each active engine does, by model class. The table below is generated
 from a single R-level source and every verdict in it is re-derived from the
-gate and emit code by `tests/testthat/test-capability-matrix.R`; editing it
+gate and emit code by `tests/testthat/test-capability-matrix.R`. Editing it
 by hand fails that test. `fits` means the structure emits and a test
 exercises it -- it does not promise that every fit converges at small
 budgets, which is model-specific and always reported, so treat a high R-hat
@@ -89,7 +88,7 @@ this release (see the callout above) and are therefore not columns.
 <!-- capability-matrix:begin -->
 | Model class | Spelling | INLA | brms | Notes |
 |---|---|:-:|:-:|---|
-| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class; both engines emit it and `triangulate()` compares them. |
+| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
 | Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The INLA mapping named greta as one of its three verification arbitrators, so it stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
@@ -102,7 +101,7 @@ this release (see the callout above) and are therefore not columns.
 | Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | refuses | fits | The emit carries both the group-level term and the `sigma` predictor, and a live fit samples cleanly on simulated multi-environment data. `auto` reaches brms for this class. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
-| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers; brms additionally takes dense and Cholesky. |
+| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget -- four hyperparameters, one observation per grid node. This is not ASReml's three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
 | Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA's second-order random walk. brms has no lowering for the smooth basis. |
 | Observation weights | `weights = w` | refuses | refuses | Parsed and recorded, consumed by no active emitter. A non-constant vector refuses rather than returning the unweighted posterior. |
@@ -116,9 +115,9 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 > **MET capability, stated currently.** A multi-environment-trial model fits
 > on brms, and its pieces are checked against ASReml: nested
 > genotype-by-environment random effects recover every variance component
-> against the REML reference on `agridat::besag.met`; `diag()` / `idh()` /
+> against the REML reference on `agridat::besag.met`. `diag()` / `idh()` /
 > `at()` and `us()` genotype variances emit and are validated on the
-> parameter count before the values; the heteroscedastic residual
+> parameter count before the values, and the heteroscedastic residual
 > `dsum(~ units | env)` returns per-site posterior-mean variances of
 > 0.1146 / 1.1516 / 4.6981 where ASReml gives 0.1093 / 1.1248 / 4.6079 --
 > within 4.8%, largest on the smallest variance. The *combination* now fits
@@ -139,21 +138,21 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 
 **Breeder MET summaries.** `fb_met_summary()` (overall performance, stability,
 GxE BLUPs, factor loadings, environment genetic correlations) requires a
-**greta** factor-analytic (`fa(env, k):gen`) fit — it is computed from the
+**greta** factor-analytic (`fa(env, k):gen`) fit -- it is computed from the
 identified *realised* effects, which fit on greta. greta is quarantined, so
-no active backend currently produces this fit; on an INLA or brms fit it
-refuses with a pointer to the right path; the scalable INLA MET route gives
+no active backend currently produces this fit. On an INLA or brms fit it
+refuses with a pointer to the right path, and the scalable INLA MET route gives
 variance components via `summary()` / `fb_structured_cov()`.
 
 ## Installation
 
 ```r
-# INLA (approximate-inference backend) — not on CRAN
+# INLA (approximate-inference backend) -- not on CRAN
 install.packages("INLA",
   repos = c(getOption("repos"),
             INLA = "https://inla.r-inla-download.org/R/stable"))
 
-# brms (Stan passthrough) — on CRAN
+# brms (Stan passthrough) -- on CRAN
 install.packages("brms")
 
 # flexyBayes itself (not yet on CRAN) -- install from the repository:
@@ -191,7 +190,7 @@ plan
 ```
 
 To fit, install at least one backend (see *Backend support* above). The
-following uses production sampling settings; the *getting started* vignette
+following uses production sampling settings. The *getting started* vignette
 walks through the same fit with its convergence diagnostics.
 
 ```r
@@ -225,8 +224,8 @@ fit_inla <- flexybayes(Reaction ~ Days, random = ~ Subject,
 triangulate(fit_brms, fit_inla)
 ```
 
-The result carries an overall `status` — `concordant`, `discordant` or
-`inconclusive` — and a per-parameter table: each fit's posterior mean and
+The result carries an overall `status` -- `concordant`, `discordant` or
+`inconclusive` -- and a per-parameter table: each fit's posterior mean and
 SD, the mean shift and Wasserstein-1 distance in posterior-SD units, the
 SD ratio, and a per-parameter verdict.
 
@@ -236,7 +235,7 @@ Three gates run before any of those numbers is reported.
   answered: canonical formula triple, family and link, data dimensions,
   column names and content digest, and the recorded prior per variance
   component. Two fits that disagree are refused by name
-  (`triangulate_incomparable_fits`); there is no override argument.
+  (`triangulate_incomparable_fits`). There is no override argument.
 - **Diagnostics.** A fit that failed its own convergence checks makes the
   status `inconclusive` and yields no parameter verdicts. Disagreement
   between an unconverged fit and a converged one is not a finding.
@@ -264,23 +263,64 @@ certified.
 `canonical_names()` does the work of aligning backend-native parameter
 names (brms's `sd_g__Intercept`, INLA's `Precision for g` on the
 precision scale) to a single canonical name with the correct scale
-transform — no `name_map` argument needed in standard cases.
+transform -- no `name_map` argument needed in standard cases.
 
 ## Companion accessors
 
 | Accessor | Returns |
 |---|---|
 | `backend_decision(fit)` | The captured dispatch trace: backend, path, `lgm_gate` checks, reason. |
-| `prior_summary(fit)` | The resolved prior — auto-default (weakly-informative bounded uniform on SD; half-Cauchy advised for small group counts), user-supplied `fb_prior()`, or legacy scalar bridge. |
+| `prior_summary(fit)` | The resolved prior -- auto-default (weakly-informative bounded uniform on SD, with half-Cauchy advised for small group counts), user-supplied `fb_prior()`, or legacy scalar bridge. |
 | `canonical_names(fit)` | The backend-native ↔ canonical-name table with per-row scale transforms. |
-| `review_code = TRUE` on `flexybayes()` / `fb_brms()` | Inspect-before-fit workflow; `cat_code(rev)` prints the generated backend code; `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. |
+| `review_code = TRUE` on `flexybayes()` / `fb_brms()` | Inspect-before-fit workflow. `cat_code(rev)` prints the generated backend code, and `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. |
+
+## ASReml-hands accessors
+
+If you arrive with an `asreml()` call in hand, the *From an ASReml call*
+vignette translates one line by line, then the six commands typed after
+it. These are the accessors it uses. They are views over an ordinary
+Bayesian fit -- the estimator is named on every table, because a
+posterior mean is not a REML component.
+
+| You type | You get |
+|---|---|
+| `summary(fit)` | One eleven-slot object on every engine: `$fixed`, `$varcomp`, `$random`, `$missing`, `$converge`, `$n_design`, `$n_observed`, `$na_action`, `$model`, `$engine`, `$call`. A fit carrying an autoregressive latent field adds `$spatial_field`. |
+| `summary(fit)$varcomp` | Variance components on the standard-deviation scale with a credible interval, the prior each component ran under, and a note column for boundary collapse. |
+| `coef(fit, what = "random")` / `ranef(fit)` | Random-effect predictions, one data frame per grouping factor. `what = "missing"` returns the unobserved design cells, `what = "all"` returns all three tables. |
+| `predict(fit, classify = "Variety", level = 0.95)` | The marginal-means table, built on `emmeans`. Means and credible intervals only -- no pairwise standard-error block. |
+| `nobs(fit, type = "observed")` | Observed responses, beside `nobs(fit)`, which stays the design row count the engine saw. |
+| `na_action = list(y = "include", x = "fail")` | ASReml's `na.method()` vocabulary, detected by shape. An `asreml::na.method()` object is accepted directly, with no asreml dependency. |
+| `fb_complete_grid(data, ~ row * col, response = "yield")` | Absent design cells reinstated with an `NA` response. A varying design factor refuses unless `unused_level =` names the level to write. |
+| `plot(fit, type = "variogram")` | The empirical residual semivariance over the design array, computed on the observed rows. |
+| `update(fit, random = ~ Block + Variety)` | A re-fit on either engine, carrying every recorded argument forward, `na_action` and the resolved prior included. |
+
+There is no `wald()` method, no pairwise standard-error table, and no
+covariate zero-fill. Each is a deliberate absence rather than a gap, and
+the vignette says why.
+
+### Two doors, one object
+
+The same fit answers to the generics a Bayesian reaches for. Neither
+idiom is a wrapper around the other.
+
+| ASReml hands | Bayesian hands |
+|---|---|
+| `summary(fit)$varcomp` | `posterior::as_draws_df(fit)` |
+| `coef(fit, what = "random")`, `ranef(fit)` | `posterior::as_draws()`, `posterior::as_draws_matrix()`, `fb_as_draws_simple(fit)` |
+| `predict(fit, classify = "Variety")` | `emmeans` or `marginaleffects` on the same fit |
+| `plot(fit, type = "variogram")` | `pp_check(fit)`, `plot(fit, type = "diagnostics")` |
+| `summary(fit)$converge` | The same slot, reporting the engine's own diagnostics |
+| No ASReml counterpart | `prior_summary(fit)`, `loo(fit)`, `triangulate(fit_a, fit_b)` |
+
+`loo()` and `pp_check()` pass through to brms on a sampled fit and refuse
+by name on a Laplace fit, naming the WAIC and DIC that fit does carry.
 
 ## Output structure
 
 Every fit carries three top-level slots:
 
 ```r
-fit$glm         # GLM-compatible shim — works with summary(), emmeans,
+fit$glm         # GLM-compatible shim -- works with summary(), emmeans,
                 # marginaleffects, effectsize, broom
 
 fit$inla        # native INLA output (when backend = "inla")
@@ -333,10 +373,11 @@ family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |
 
 ## Vignettes
 
-Eleven vignettes ship with the package:
+Twelve vignettes ship with the package:
 
 | # | Vignette |
 |---|---|
+| 00 | From an ASReml call |
 | 01 | Getting started |
 | 02 | The formula surface: asreml-shaped terms and structured covariance |
 | 03 | Foundational regression |
@@ -349,7 +390,7 @@ Eleven vignettes ship with the package:
 | 11 | Dispatch, refusals, and the backend registry |
 | 16 | Streaming exact aggregation |
 
-Vignette 11 is the technical/internals reference; the rest target a
+Vignette 11 is the technical/internals reference, and the rest target a
 general audience. The numbering keeps gaps at 05 and 12--15, and the
 gaps record merges rather than missing pages. Vignettes 12--14 were
 folded into 11 when greta's quarantine collapsed several
@@ -359,15 +400,15 @@ dispatch-internals topics into one. The structured-covariance vignette
 carries the whole dispatch-and-registry story. The retained numbers keep
 the shipped filenames stable across the merges.
 
-Heavy MCMC vignettes use a `.Rmd.orig` precompile pattern; the `.Rmd`
+Heavy MCMC vignettes use a `.Rmd.orig` precompile pattern. The `.Rmd`
 that ships in the package tarball is the pre-evaluated static output.
-Browse them with `browseVignettes("flexyBayes")` **after a full install** —
+Browse them with `browseVignettes("flexyBayes")` **after a full install** --
 `R CMD build` then `R CMD INSTALL` the tarball, or
 `devtools::install(build_vignettes = TRUE)`. A plain `install_github()` or
 source-directory install does **not** build the vignettes into `inst/doc`.
 
 Some vignettes fit at small sampling budgets for speed and say so where it
-matters; each flags any diagnostic that falls short of production
+matters, and each flags any diagnostic that falls short of production
 convergence thresholds rather than presenting it as a clean result. For a
 convergence-clean workflow see the *getting started* and *cross-engine
 triangulation* vignettes.
@@ -404,16 +445,16 @@ surface (the ASReml / brms parsers, the intermediate representation,
 `lgm_gate()`, the dispatch policy table, the refusal registry, the prior DSL,
 and the `triangulate()` metrics). greta and gretaR are quarantined as fitting
 engines (see *Backend support*), so the greta-specific tests skip cleanly on
-every run — CI or local, greta installed or not — via
+every run -- CI or local, greta installed or not -- via
 `skip_if_greta_backend_unusable()`, which checks the backend registry's
 lifecycle state rather than package availability. They stay on file to run
-again once greta is re-admitted (repair + conform, not a bare re-add; see
+again once greta is re-admitted (repair + conform, not a bare re-add -- see
 `NEWS.md`). Run the full suite locally with `devtools::test()`.
 
 ## Known limitations
 
 flexyBayes refuses what it cannot yet fit rather than fitting it
-silently. The current release does not cover the following; each is a
+silently. The current release does not cover the following. Each is a
 roadmap deferral, and a request that needs one is met with a
 structured refusal naming the gap, not a quiet wrong answer.
 
@@ -448,8 +489,12 @@ structured refusal naming the gap, not a quiet wrong answer.
   Survival / time-to-event families are refused at the family gate.
   A NIMBLE backend covering these is on the roadmap with no fixed
   release target.
-- **Missing data**: flexyBayes does not impute covariates -- a missing
-  *predictor* is refused under every `na_action`. A missing *response* is
+- **Missing data**: flexyBayes does not impute covariates. A missing
+  *predictor* is refused by default, as it is in ASReml
+  (`na.method(x = "fail")`). Setting `na_action = list(y = "include", x = "omit")`
+  drops the affected rows with a warning naming the count and the columns,
+  and ASReml's third setting -- treat the missing covariate as zero -- is
+  refused by name rather than reproduced. A missing *response* is
   retained by default (`na_action = "augment"`), carried as a latent
   quantity the engine marginalises, so the design index set a structured
   covariance is built over survives a lost plot. That preserves the

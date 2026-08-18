@@ -36,7 +36,7 @@ components below.
 \item{\code{kind}}{One of \code{"fb_prior"}, \code{"legacy_scalar"},
 \code{"no_prior_recorded"}.}
 \item{\code{backend}}{The backend the fit ran on:
-\code{"greta"}, \code{"inla"}, or \code{"greta-direct"}.}
+\code{"inla"}, \code{"brms"}, \code{"greta"}, or \code{"greta-direct"}.}
 \item{\code{fb_prior}}{The \code{fb_prior} object (when
 \code{kind == "fb_prior"}).}
 \item{\code{default_origin}}{\code{"auto"} when the prior was

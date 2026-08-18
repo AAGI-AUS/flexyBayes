@@ -23,8 +23,8 @@ overlap), \code{n_sig_a} / \code{n_sig_b} / \code{n_sig_common}, \code{top_k_ove
 }
 \description{
 Compare two GWAS results -- typically a flexyBayes \code{\link[=fb_gwas]{fb_gwas()}} scan
-against a field-standard scan (GEMMA / rrBLUP, supplied through the
-koine oracle) -- by the agreement that matters for a scan: do the same
+against a field-standard scan (GEMMA or rrBLUP, supplied as a lens)
+-- by the agreement that matters for a scan: do the same
 loci come up? Reports the Jaccard overlap of the genome-wide-significant
 marker sets, the overlap among the top markers, the correlation of the
 marker effects on the markers in common, and each scan's genomic-control

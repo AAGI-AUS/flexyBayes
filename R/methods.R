@@ -2,9 +2,16 @@
 
 #' Print a compact description of a flexyBayes fit
 #'
-#' Reports the call the fit came from, the engine that ran it, the model
-#' dimensions, and the headline posterior quantities. Use [summary()] for
-#' the full coefficient and variance-component tables.
+#' Reports the call the fit came from, the model the representation
+#' describes, the engine that ran it, the design and observation counts,
+#' and the headline posterior quantities. Use [summary()] for the full
+#' coefficient and variance-component tables.
+#'
+#' The header is shared with [print.flexybayes_inla()] and the brms
+#' print, so the three cannot disagree about what the fit is. Sampler
+#' lines print only on an engine that sampled: a nested Laplace
+#' approximation has no chains and no warmup, and reporting them over one
+#' tells a reader the fit is stochastic when it is not.
 #'
 #' @param x A fitted `flexybayes` object of any backend.
 #' @param ... Ignored, present for compatibility with the generic.
@@ -12,38 +19,12 @@
 #'   prints.
 #' @export
 print.flexybayes <- function(x, ...) {
-  ci <- x$extras$call_info
   mi <- x$extras$model_info
 
-  cat("Bayesian mixed model  [flexyBayes]\n")
-  cat(strrep("-", 55), "\n")
-
-  cat("  Fixed  :", deparse(ci$fixed), "\n")
-  if (!is.null(ci$random)) {
-    cat("  Random :", deparse(ci$random), "\n")
-  }
-  if (!is.null(ci$residual) && !identical(deparse(ci$residual), "~units")) {
-    cat("  Residual :", deparse(ci$residual), "\n")
-  }
-  cat("  Family :", mi$family, "(", mi$link, "link )\n")
-
-  nch <- ci$chains
-  ns <- ci$n_samples
-  cat(
-    "  MCMC   :",
-    nch,
-    "chain(s) x",
-    ns,
-    "samples",
-    "(warmup =",
-    ci$warmup,
-    ") --",
-    round(x$extras$run_time, 1),
-    "sec\n"
-  )
+  .fb_print_header(x, "Bayesian mixed model", "-")
 
   cat(
-    "  Params :",
+    "  Params   :",
     mi$n_params,
     "monitored;",
     mi$n_fixed,
@@ -51,18 +32,6 @@ print.flexybayes <- function(x, ...) {
     mi$n_random,
     "random terms\n"
   )
-
-  # The truth-display surface (v0.3.8): "Representation:" and
-  # "Engine:" as two adjacent lines. Replaces the single-line
-  # "Exact.: <exactness>" rendering that conflated the representation
-  # regime (exact vs aggregated_exact) with the inference engine
-  # (greta MCMC vs INLA Laplace etc.). Older fits without $exactness
-  # fall through silently.
-  if (!is.null(x$exactness)) {
-    bd <- x$extras$backend_decision
-    cat("  Representation: ", .repr_label_for_fit(x, bd), "\n", sep = "")
-    cat("  Engine:         ", .engine_label_for_fit(x, bd), "\n", sep = "")
-  }
 
   # Quick convergence
   if (!is.null(x$extras$convergence$gelman)) {
@@ -143,136 +112,137 @@ print.flexybayes <- function(x, ...) {
 
 #' Summarise a flexyBayes fit
 #'
-#' Prints the fixed-effect posterior summaries, the variance components,
-#' and the sampler or approximation diagnostics the backend recorded. On a
+#' Prints the fixed-effect posterior summaries, the variance components
+#' with the prior each one carried, the engine's own convergence
+#' diagnostics, and whatever engine-native panels the fit earns. On a
 #' brms fit with a sectioned residual it additionally prints the residual
 #' variance and standard deviation for each level of the sectioning
 #' factor, computed from the draws rather than by transforming a
 #' posterior mean.
 #'
+#' The returned object is the same eleven-slot
+#' `summary.flexybayes` object on every active engine, so
+#' `summary(fit)$varcomp` answers whichever engine ran the fit. Before
+#' 0.9.1 the two engines returned two incomparable objects -- INLA's
+#' four-slot list and brms's `brmssummary` -- and neither carried a
+#' variance-component table at all.
+#'
+#' A fit whose model carries an autoregressive latent field gains one
+#' further slot, `spatial_field`, which is the field's own parameters on
+#' the correlation and standard-deviation scales. It is the one
+#' engine-native slot the object carries, it is present only where the
+#' model has a field, and the eleven above it are on every fit.
+#'
 #' @param object A fitted `flexybayes` object of any backend.
 #' @param ... Ignored, present for compatibility with the generic.
-#' @returns Invisibly, a list holding the posterior summary tables the
-#'   method printed, so a caller can use the numbers without re-parsing
-#'   the output.
+#' @returns Invisibly, an object of class
+#'   `c("summary.flexybayes", "list")` carrying the slots below. Printed
+#'   as a side effect.
+#'
+#'   \describe{
+#'     \item{`fixed`}{Data frame: `term`, `estimate`, `std.error`,
+#'       `conf.low`, `conf.high`. Posterior mean, posterior standard
+#'       deviation and a credible interval, not a sampling-theory
+#'       estimate and its confidence interval.}
+#'     \item{`varcomp`}{Data frame: `component`, `estimate`,
+#'       `std.error`, `conf.low`, `conf.high`, `prior`, `note`. One row
+#'       per variance component (and per correlation on a fit carrying a
+#'       latent field), on the standard-deviation scale, under the
+#'       canonical component name. `prior` is a projection of
+#'       [prior_summary()]. `note` is `"collapsed"` when the component's
+#'       97.5% quantile sits below 1% of the posterior-median residual
+#'       standard deviation -- a display heuristic for a posterior piled
+#'       against zero, not a test.}
+#'     \item{`random`}{Named list, one data frame per grouping factor,
+#'       with the columns `group`, `level`, `estimate`, `std.error`,
+#'       `conf.low`, `conf.high`. Empty when the model carries no random
+#'       terms. The same object [ranef()] returns.}
+#'     \item{`missing`}{Data frame of the unobserved design cells --
+#'       ASReml's `mv` factor -- with the columns `row`, `estimate`,
+#'       `std.error`, `conf.low`, `conf.high`, followed by any design
+#'       index variables the fit recorded. `row` indexes the data the
+#'       engine was handed. The posterior is the engine's own: INLA's
+#'       fitted-value marginal at that row, brms's sampled `mi()`
+#'       response. Zero rows -- never `NULL` -- when every response was
+#'       observed. The same table [coef()] returns for
+#'       `what = "missing"`.}
+#'     \item{`converge`}{List, in the engine's own terms: R-hat,
+#'       effective sample sizes and divergent transitions where a sampler
+#'       ran; mode status, marginal likelihood and the largest
+#'       Kullback-Leibler divergence where INLA's Laplace approximation
+#'       did. No R-hat is invented for an approximation that has none.}
+#'     \item{`n_design`}{Rows the engine was handed.}
+#'     \item{`n_observed`}{How many of those carried an observed
+#'       response.}
+#'     \item{`na_action`}{The missing-response record the fit carries, or
+#'       `NULL` on a fit assembled without that layer.}
+#'     \item{`model`}{One-line description of the random and residual
+#'       structure, derived from the model representation rather than
+#'       from any engine's emitted formula.}
+#'     \item{`engine`}{`"inla"` or `"brms"`.}
+#'     \item{`call`}{The recorded call.}
+#'     \item{`spatial_field`}{**Present only on a fit carrying an
+#'       autoregressive latent field**, and absent -- not `NULL`-valued
+#'       -- otherwise. A data frame of `parameter`, `median`, `lower`,
+#'       `upper`: the field's correlation and standard-deviation
+#'       parameters and the nugget standard deviation, on the scale a
+#'       reader thinks in rather than INLA's precision scale. The point
+#'       estimate is the posterior median, because the standard
+#'       deviations are read off precision marginals and only a monotone
+#'       summary survives the reciprocal square root exactly. The same
+#'       table the printed field panel renders, unrounded.}
+#'   }
+#' @seealso [prior_summary()] for the full resolved prior, and
+#'   [nobs()] for the design and observed counts on their own.
 #' @export
 summary.flexybayes <- function(object, ...) {
-  ci <- object$extras$call_info
-  mi <- object$extras$model_info
+  out <- .fb_summary_object(object)
+  print(out)
+  invisible(out)
+}
 
-  cat("Bayesian mixed model summary  [flexyBayes]\n")
-  cat(strrep("=", 60), "\n")
-  cat("  Fixed  :", deparse(ci$fixed), "\n")
-  if (!is.null(ci$random)) {
-    cat("  Random :", deparse(ci$random), "\n")
+# .agg_prior_parametrization() --- which prior an aggregated fit ran
+# under, as one token.
+#
+# The predicate used to be `inherits(fb$priors, "fb_prior")` alone, which
+# was right while the only fb_prior on a fit was one the user wrote. Since
+# the auto-default became an fb_prior object, that test says "custom" on
+# an ordinary call nobody passed a prior to -- so the commonest fit in the
+# package printed "explicit prior supplied" about a package default.
+#
+# The discriminator is the one prior_summary() already uses to report
+# `default_origin`: the auto-default carries `fb_prior_default_basis`,
+# recording which scale basis built it, and a hand-written fb_prior()
+# does not. Reading the same attribute keeps the two surfaces from
+# disagreeing about the same object.
+#
+# Three tokens, because there are three cases and only two of them used
+# to be distinguishable:
+#   "package_default"    the auto-default bounded-uniform-on-SD prior
+#   "custom"             an explicit fb_prior() from the caller
+#   "per_row_equivalent" the legacy scalar bridge (and no recorded prior)
+#
+# @noRd
+# @keywords internal
+.agg_prior_parametrization <- function(priors) {
+  if (!inherits(priors, "fb_prior")) {
+    return("per_row_equivalent")
   }
-  cat("  Family :", mi$family, "/", mi$link, "\n")
-  cat(
-    "  N =",
-    mi$n_obs,
-    ", chains =",
-    ci$chains,
-    ", samples =",
-    ci$n_samples,
-    "\n"
-  )
-
-  # Representation:/Engine: two-line truth display (v0.3.8),
-  # replacing the single-line "Exact.:". The conditional
-  # compression-ratio line avoids misleading claims on small or
-  # non-aggregable data by only showing the ratio when N/K >= 2.
-  if (!is.null(object$exactness)) {
-    bd <- object$extras$backend_decision
-    cat("  Representation: ", .repr_label_for_fit(object, bd), "\n", sep = "")
-    cat("  Engine:         ", .engine_label_for_fit(object, bd), "\n", sep = "")
+  if (!is.null(attr(priors, "fb_prior_default_basis"))) {
+    return("package_default")
   }
-  am <- object$extras$aggregation_meta
-  if (
-    identical(object$exactness, "aggregated_exact") &&
-      !is.null(am) &&
-      am$N / am$K >= 2
-  ) {
-    cat(sprintf(
-      "  Agg.   : N = %s rows -> K = %s cells (ratio %.0f:1)\n",
-      format(am$N, big.mark = " ", scientific = FALSE),
-      format(am$K, big.mark = " ", scientific = FALSE),
-      am$N / am$K
-    ))
-  }
-  cat("\n")
-
-  # Fixed effects
-  cat("-- Fixed effects (posterior) ", strrep("-", 33), "\n")
-  beta <- coef(object)
-  if (length(beta) > 0) {
-    ci_mat <- confint(object)
-    fx_df <- data.frame(
-      Estimate = beta,
-      Post.SD = sqrt(diag(vcov(object))),
-      `2.5%` = ci_mat[, 1],
-      `97.5%` = ci_mat[, 2],
-      check.names = FALSE
-    )
-    print(round(fx_df, 4))
-  } else {
-    cat("  (none)\n")
-  }
-
-  # Variance components
-  cat("\n-- Variance components ", strrep("-", 38), "\n")
-  vc <- object$extras$variance_comps
-  if (!is.null(vc) && nrow(vc) > 0) {
-    print(data.frame(
-      Component = vc$component,
-      Estimate = round(vc$estimate, 4),
-      SD = round(vc$sd, 4),
-      `2.5%` = round(vc$q2.5, 4),
-      `97.5%` = round(vc$q97.5, 4),
-      check.names = FALSE,
-      row.names = NULL
-    ))
-  } else {
-    cat("  (none available)\n")
-  }
-
-  # A sectioned residual has no scalar sigma for the table above to
-  # report, so the per-level variances are printed in their own block
-  # (a no-op on every other fit). See R/emit_brms.R.
-  .print_brms_residual_by_level(object)
-
-  # Convergence
-  cat("\n-- Convergence ", strrep("-", 45), "\n")
-  conv <- object$extras$convergence
-  if (!is.null(conv$gelman)) {
-    rhat <- conv$gelman$psrf[, "Point est."]
-    cat(
-      "  Rhat range:",
-      round(min(rhat, na.rm = TRUE), 3),
-      "-",
-      round(max(rhat, na.rm = TRUE), 3),
-      "\n"
-    )
-  }
-  if (!is.null(conv$n_eff)) {
-    cat(
-      "  ESS  range:",
-      round(min(conv$n_eff, na.rm = TRUE), 0),
-      "-",
-      round(max(conv$n_eff, na.rm = TRUE), 0),
-      "\n"
-    )
-  }
-  cat("  Run time  :", round(object$extras$run_time, 1), "sec\n")
-
-  invisible(object$extras$summary)
+  "custom"
 }
 
 # Human-readable label for the aggregated-fit prior parametrization,
 # shared by the aggregated print + summary methods. The
 # "per_row_equivalent" case reassures the user that the matched-prior
 # guarantee holds (aggregated posterior == per-row posterior under the
-# default prior); the "custom" case flags that an explicit prior was
-# supplied and points at prior_summary().
+# default prior); "package_default" names the prior the package injected
+# without claiming that equivalence, which is not established for the
+# bounded-uniform default on the aggregated route; the "custom" case
+# flags that an explicit prior was supplied and points at
+# prior_summary().
 .agg_fit_label <- function(mi) {
   # The aggregated header hard-coded "aggregated-gaussian" on every
   # aggregated fit, including the binomial and Poisson emits the count
@@ -291,6 +261,9 @@ summary.flexybayes <- function(object, ...) {
     per_row_equivalent = paste0(
       "per-row-equivalent (default prior; ",
       "aggregated posterior matches per-row)"
+    ),
+    package_default = paste0(
+      "package default (bounded uniform on SD; see prior_summary())"
     ),
     custom = "custom (explicit prior supplied; see prior_summary())",
     pp
@@ -358,86 +331,126 @@ print.flexybayes_aggregated <- function(x, ...) {
 }
 
 
-#' Summarise a flexybayes_aggregated object
+#' Summarise a fit run on the aggregated representation
 #'
-#' Posterior summary read off the aggregated INLA fit's
-#' `summary.fixed` + `summary.hyperpar` slots. The header names the
-#' fit's own family. Shows the compression line when N/K >= 2.
+#' Returns the same eleven-slot `summary.flexybayes` object every other
+#' engine returns, so `summary(fit)$varcomp` answers on an aggregated fit
+#' as it does on a per-row one. Aggregation is the default route for an
+#' ordinary Gaussian call with a random term, so until 0.9.1 that slot
+#' was `NULL` on the commonest fit the package produces: this method
+#' returned its own list of the aggregated posterior's raw pieces and
+#' carried no variance-component table at all.
+#'
+#' Two things are aggregated-specific and both appear in the printed
+#' header rather than as extra slots. The banner names the representation
+#' (`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`)
+#' where a per-row fit names its engine, and the `aggregation` line gives
+#' the row-to-cell compression the fit ran under. The `model` slot
+#' carries the same compression in its text, because a reader comparing
+#' the fixed-effect tables of an aggregated and a per-row fit otherwise
+#' has nothing on the object saying the two were computed over different
+#' numbers of rows.
+#'
+#' The variance components come from the engine's own posterior. On the
+#' INLA route that is the hyperparameter marginal transformed to the
+#' standard-deviation scale, the same construction the per-row route
+#' uses, and not the reciprocal square root of a tabulated precision
+#' mean. A route that recorded posterior means alone reports the means
+#' with the three interval columns `NA` and the row's `note` cell
+#' reading `"no interval recorded"`.
+#'
+#' The raw aggregated pieces this method used to return -- `beta_means`,
+#' `beta_vcov`, `sigma_means`, `tau_means` -- are unchanged at
+#' `fit$extras$summary`.
 #'
 #' @param object A `<flexybayes_aggregated>` object, as returned by a fit
 #'   run on the aggregated representation.
 #' @param ...    Ignored. Present for compatibility with the generic.
-#' @returns Invisibly, a list holding the posterior summary tables the
-#'   method printed, so a caller can use the numbers without re-parsing
-#'   the output.
+#' @returns Invisibly, an object of class
+#'   `c("summary.flexybayes", "list")` with the slots documented at
+#'   [summary.flexybayes()]. Printed as a side effect.
+#' @seealso [summary.flexybayes()] for the slot-by-slot contract, and
+#'   [print.flexybayes_aggregated()] for the one-screen fit description.
 #' @export
 summary.flexybayes_aggregated <- function(object, ...) {
-  mi <- object$extras$model_info
-  am <- object$extras$aggregation_meta
-  bd <- object$extras$backend_decision
-  ps <- object$extras$summary
-
-  cat(sprintf(
-    "Bayesian mixed model summary  [flexyBayes / %s]\n",
-    .agg_fit_label(mi)
-  ))
-  cat(strrep("=", 65), "\n")
-  cat("  family:    ", mi$family, "/", mi$link, "\n")
-  cat("  N =", mi$n_obs, ", K =", mi$n_cells, "\n")
-  cat("  backend:   ", bd$backend, "\n")
-  cat("  exactness: ", object$exactness, "\n")
-  if (!is.null(am$prior_parametrization)) {
-    cat("  priors:    ", .agg_prior_label(am$prior_parametrization), "\n")
-  }
-  if (!is.null(am) && am$N / am$K >= 2) {
-    cat(sprintf(
-      "  aggregation: N = %s rows -> K = %s cells (ratio %.0f:1)\n",
-      format(am$N, big.mark = " ", scientific = FALSE),
-      format(am$K, big.mark = " ", scientific = FALSE),
-      am$N / am$K
-    ))
-  }
-  cat("\n")
-
-  cat("-- Fixed effects (posterior) ", strrep("-", 35), "\n")
-  beta <- ps$beta_means
-  if (length(beta) > 0L) {
-    sds <- sqrt(diag(ps$beta_vcov))
-    fx_df <- data.frame(
-      Estimate = round(beta, 4),
-      Post.SD = round(sds, 4),
-      row.names = names(beta)
-    )
-    print(fx_df)
-  } else {
-    cat("  (none)\n")
-  }
-
-  cat("\n-- Variance components ", strrep("-", 40), "\n")
-  vc <- list(sigma = ps$sigma_means, tau = ps$tau_means)
-  if (length(vc$sigma)) {
-    cat(sprintf("  sigma (residual SD): %.4f\n", vc$sigma))
-  }
-  if (length(vc$tau)) {
-    for (i in seq_along(vc$tau)) {
-      cat(sprintf("  tau_%d  (random SD): %.4f\n", i, vc$tau[i]))
-    }
-  }
-
-  cat("\n  Run time:", round(object$extras$run_time, 2), "sec\n")
-  invisible(ps)
+  out <- .fb_summary_object(object)
+  print(out)
+  invisible(out)
 }
 
 
-#' Extract fixed effect coefficients
+#' Extract coefficients from a flexyBayes fit
+#'
+#' Returns the fixed effects by default, and the random-effect
+#' predictions or the unobserved design cells on request. An ASReml user
+#' reaches for `coef(fit)$random`; the equivalent here is
+#' `coef(fit, what = "random")`, which is what [ranef()] calls.
+#'
+#' The default is the historical return -- a named numeric vector of the
+#' fixed effects -- so every caller that treats `coef(fit)` as a numeric
+#' vector keeps working, including the \pkg{emmeans} and
+#' \pkg{marginaleffects} seams, [predict()], [vcov()] and the tidiers.
+#'
+#' @param object A fitted `flexybayes` object of any backend.
+#' @param what Which part of the fit to return. `"fixed"` (the default)
+#'   is the fixed-effect posterior means. `"random"` is one data frame
+#'   per grouping factor, with the columns `group`, `level`, `estimate`,
+#'   `std.error`, `conf.low` and `conf.high`; a grouping factor carrying
+#'   more than one effect names the effect in `level`. `"missing"` is
+#'   the table of unobserved design cells, in the columns `row`,
+#'   `estimate`, `std.error`, `conf.low`, `conf.high` plus any design
+#'   index variables the fit recorded. `"all"` is the named list of all
+#'   three.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns For `what = "fixed"`, a named numeric vector of the fixed
+#'   effects' posterior means on the treatment-contrast basis, named for
+#'   the design-matrix columns, empty when the model carries no fixed
+#'   effects. For `"random"`, a named list of data frames, empty when the
+#'   model carries no random terms. For `"missing"`, a data frame with
+#'   zero rows when every response was observed. For `"all"`, a list with
+#'   the elements `fixed`, `random` and `missing`.
+#' @seealso [ranef()] for the random-effect table on its own,
+#'   [summary.flexybayes()] whose `random` and `missing` slots are the
+#'   same two objects, and [nobs()] for the design and observed counts.
+#' @export
+coef.flexybayes <- function(
+  object,
+  what = c("fixed", "random", "missing", "all"),
+  ...
+) {
+  .fb_coef_what(object, match.arg(what), object$glm$coefficients)
+}
+
+#' Random-effect predictions from a flexyBayes fit
+#'
+#' The random-effect table, one data frame per grouping factor, in the
+#' same columns on every engine: `group`, `level`, `estimate`,
+#' `std.error`, `conf.low`, `conf.high`. Identical to
+#' `coef(object, what = "random")`, and present under this name because
+#' it is the name the mixed-model ecosystem uses.
+#'
+#' The method is registered on both this package's own `ranef()` generic
+#' and on \pkg{nlme}'s, which is the generic \pkg{lme4} and \pkg{brms}
+#' re-export. Attaching any of those masks the local generic, and the
+#' registration on nlme's is what keeps a bare `ranef(fit)` dispatching
+#' there. In a session where the masking is ambiguous, call
+#' `flexyBayes::ranef(fit)`.
+#'
 #' @param object A fitted `flexybayes` object of any backend.
 #' @param ... Ignored, present for compatibility with the generic.
-#' @returns A named numeric vector of the fixed effects' posterior means,
-#'   on the treatment-contrast basis, named for the design-matrix
-#'   columns. Empty when the model carries no fixed effects.
+#' @returns A named list of data frames, one per grouping factor. Empty
+#'   when the model carries no random terms.
+#' @seealso [coef.flexybayes()], which this delegates to.
 #' @export
-coef.flexybayes <- function(object, ...) {
-  object$glm$coefficients
+ranef <- function(object, ...) {
+  UseMethod("ranef")
+}
+
+#' @rdname ranef
+#' @export
+#' @exportS3Method nlme::ranef
+ranef.flexybayes <- function(object, ...) {
+  coef(object, what = "random")
 }
 
 #' Extract variance-covariance matrix of fixed effects
@@ -645,16 +658,44 @@ residuals.flexybayes <- function(object, ...) {
 #'   `nrow(newdata) >= 1e6` and `fst` is installed; `"rds"`
 #'   otherwise. `"fst"` requested without `fst` installed raises a
 #'   structured refusal naming the install command. The fst path
-#'   is 30--40x faster than rds at N >= 1e6 per the
-#'   Stage-3B-shape benchmark (`benchmark_results/fst_stage3b_2026-05-23`).
+#'   is substantially faster than rds at large N.
 #' @param interop Logical. When `TRUE`, the format-resolution rule
 #'   under `format = "auto"` prefers `"csv"` (universally readable)
 #'   over rds / fst (R-only / fst-only). Useful for handing the
 #'   prediction grid to a non-R consumer. Default `FALSE`. Only
 #'   consulted when `output_file` is supplied and `format = "auto"`.
-#' @return If `output_file` is supplied: invisibly returns the path
-#'   that was written to. Otherwise: if `se.fit = FALSE`, a numeric
-#'   vector. If `se.fit = TRUE`, a list with `fit` and `se.fit`.
+#' @param classify The factors to break a marginal-means table down by,
+#'   as ASReml spells it: a character value (`"Variety"`,
+#'   `"Variety:env"`) or a one-sided formula (`~ Variety`). `NULL` (the
+#'   default) leaves every other argument doing exactly what it did
+#'   before. See Details for how the two prediction paths differ.
+#' @param level Credible level for the classify table's interval, as a
+#'   proportion. Default `0.95`. Ignored when `classify` is `NULL`.
+#' @return If `classify` is supplied: a data frame of class
+#'   `fb_predict_classify` with the classify factors plus `estimate`,
+#'   `std.error`, `conf.low` and `conf.high`. If `output_file` is
+#'   supplied: invisibly returns the path that was written to.
+#'   Otherwise: if `se.fit = FALSE`, a numeric vector. If
+#'   `se.fit = TRUE`, a list with `fit` and `se.fit`.
+#'
+#' @details
+#' There are two prediction paths and they answer different questions.
+#'
+#' `newdata` predicts the rows the caller hands over, which is where an
+#' untested genotype belongs:
+#' `predict(fit, newdata = new_geno, allow_new_levels = "sample")`.
+#'
+#' `classify` averages the fitted model over the levels it was fitted to
+#' and returns the means table -- ASReml's `predict(..., classify = )`.
+#' It builds that table through \pkg{emmeans}, so `newdata` has nothing
+#' to contribute and is ignored with a warning if both are supplied.
+#' There is no `sed` argument and no pairwise block: the table carries
+#' marginal means and their credible intervals, and the print says so.
+#'
+#' On an INLA fit the standard errors and bounds are computed from a
+#' Monte-Carlo estimate of the joint fixed-effect posterior covariance
+#' (see [vcov.flexybayes_inla()]), so they move a little between calls
+#' on the same fit. The point estimates do not.
 #' @export
 predict.flexybayes <- function(
   object,
@@ -666,11 +707,20 @@ predict.flexybayes <- function(
   output_file = NULL,
   format = c("auto", "csv", "rds", "fst"),
   interop = FALSE,
+  classify = NULL,
+  level = 0.95,
   ...
 ) {
   type <- match.arg(type)
   allow_new_levels <- match.arg(allow_new_levels)
   format <- match.arg(format)
+
+  # The classify table is a different question from the newdata one and
+  # routes before any of the newdata machinery.
+  if (!is.null(classify)) {
+    .fb_classify_newdata_note(newdata)
+    return(.fb_predict_classify(object, classify, level))
+  }
 
   if (is.null(newdata)) {
     if (!is.null(output_file)) {
@@ -1037,18 +1087,54 @@ logLik.flexybayes <- function(object, ...) {
 
 #' Number of observations a flexyBayes fit was fitted to
 #'
-#' Reads the observation count recorded at emit time, so the answer is the
-#' number of rows the engine actually saw. On a fit whose missing responses
-#' were augmented rather than dropped, that count includes the augmented
-#' design cells.
+#' A fit whose missing responses were augmented rather than dropped was
+#' handed more rows than it has observations: the design cell of a lost
+#' plot is still a row, carried as a latent quantity so the index set a
+#' structured covariance is built over survives. The two counts are
+#' therefore different numbers and the argument says which one is wanted.
+#'
+#' `type = "design"` (the default, and the historical behaviour) is the
+#' number of rows the engine saw. `type = "observed"` is how many of
+#' those carried an observed response, read from the record the
+#' missing-response layer left on the fit.
 #'
 #' @param object A `flexybayes` fit of any engine.
+#' @param type Which count to return: `"design"` (default) or
+#'   `"observed"`.
 #' @param ... Ignored, present for compatibility with the generic.
-#' @returns A single integer, the number of observations in the fitted
-#'   data.
+#' @returns A single integer.
+#' @seealso [summary.flexybayes()], whose `n_design` and `n_observed`
+#'   slots are the same two numbers.
 #' @export
-nobs.flexybayes <- function(object, ...) {
-  object$extras$model_info$n_obs
+nobs.flexybayes <- function(object, type = c("design", "observed"), ...) {
+  type <- match.arg(type)
+  n_design <- object$extras$model_info$n_obs
+  if (identical(type, "design")) {
+    return(n_design)
+  }
+
+  rec <- object$extras$na_action
+  if (!is.null(rec$n_observed)) {
+    return(rec$n_observed)
+  }
+
+  # No record: a fit built by calling an emit directly. Count the
+  # observed responses from the data the fit carries rather than
+  # returning the design count under the other name.
+  dat <- object$glm$data %||% object$data
+  resp <- .fb_fit_ir(object)$response %||%
+    object$extras$parse_info$fixed$response
+  if (!is.null(dat) && !is.null(resp) && resp %in% names(dat)) {
+    return(sum(!is.na(dat[[resp]])))
+  }
+  warning(
+    "nobs(type = \"observed\") cannot tell how many responses were ",
+    "observed for this fit: it carries neither a missing-response record ",
+    "nor recoverable data, so the count is NA rather than the design ",
+    "count under another name.",
+    call. = FALSE
+  )
+  NA_integer_
 }
 
 #' Extract model family
@@ -1124,11 +1210,102 @@ model.matrix.flexybayes <- function(object, ...) {
 #'
 #' The record has to be complete for this to be safe. An argument the fit
 #' did not record would be re-supplied as its default, so a re-fit could
-#' quietly drop a relationship matrix or a prior scale and return a
-#' different model under the same name. When any of the thirteen recorded
-#' arguments is absent, the method refuses and names what is missing rather
-#' than re-fitting a model the user did not ask for. INLA fits currently
-#' record six of the thirteen and therefore refuse.
+#' quietly drop a relationship matrix, a prior scale, or a missing-response
+#' policy, and return a different model under the same name. When any
+#' recorded argument is absent, the method refuses and names what is
+#' missing rather than re-fitting a model the user did not ask for. A fit
+#' produced before its engine recorded the full set therefore refuses,
+#' which is the intended behaviour: there is no pre-0.9.1 object to
+#' special-case into a silent default.
+#'
+#' @section The prior a re-fit runs under:
+#'
+#' A re-fit uses the prior the original fit resolved to, taken from the
+#' record on the fit itself rather than re-derived from the arguments.
+#' This matters because the auto-default bounded uniform on the
+#' standard-deviation scale fires only when the call supplies neither a
+#' `prior` nor a `prior_vc_sd`, and a re-fit that re-issues the recorded
+#' `prior_vc_sd` supplies one by construction. Before 0.9.1 the
+#' auto-default therefore never fired on a re-fit: an identity `update()`
+#' fell through to the engine's own hyperprior and could report a
+#' variance component half the size of the one it re-fitted, with nothing
+#' on the object to say so.
+#'
+#' Precedence, in order:
+#'
+#' \itemize{
+#'   \item A `prior` in `...` is used as given. The recorded prior is not
+#'     re-issued alongside it.
+#'   \item A `prior_vc_sd` in `...` is used as given, and the recorded
+#'     prior is *not* re-issued -- the two forms describe the same
+#'     variance-component scale, and passing both would let the recorded
+#'     prior silently override the scalar the caller just wrote.
+#'   \item Otherwise the fit's own resolved prior decides, and *how* it
+#'     decides depends on where that prior came from -- see below.
+#'   \item A fit carrying the legacy scalar bridge, or no prior record at
+#'     all, re-fits on the recorded scalars exactly as it did before.
+#' }
+#'
+#' \strong{A policy re-fires; a bespoke prior carries.} The two things
+#' `$extras$fb_terms$priors` can hold are not the same kind of thing, and
+#' a re-fit treats them differently.
+#'
+#' \itemize{
+#'   \item \strong{The auto-default} bounded uniform is the output of a
+#'     policy -- one bounded uniform per variance component the model
+#'     has, with the bound read off the data -- rather than a statement
+#'     about particular terms. A re-fit passes neither `prior` nor either
+#'     scalar, so the policy runs again over the *updated* model and
+#'     data. On an identity `update()` the same data rebuild the same
+#'     bound, so nothing moves. On `update(fit, random = ~ g + h)` the
+#'     added term gets the same bounded uniform as its siblings.
+#'   \item \strong{A user-supplied `fb_prior()`} is a statement about the
+#'     terms it names, and is carried verbatim. A term the user did not
+#'     name -- including one an override has just added -- keeps
+#'     following the engine's own hyperprior, exactly as it did on the
+#'     first fit. `prior_fixed_sd` and `prior_vc_sd` are re-issued
+#'     alongside it, so a route that reads them for the terms the prior
+#'     object does not name keeps the values the original ran under.
+#' }
+#'
+#' The asymmetry is deliberate. Re-applying a policy's old output to a new
+#' model leaves a mixed state -- the original terms priored, the added one
+#' falling to the engine while its siblings keep the uniform -- which is
+#' not what either the policy or the user asked for. Re-deciding a
+#' *user's* explicit prior, on the other hand, would put words in their
+#' mouth. Read [prior_summary()] on the re-fit to see what it ran under,
+#' and [summary.flexybayes()]'s `varcomp` table to see it per component.
+#'
+#' @section The engine and representation a re-fit runs on:
+#'
+#' `backend` and `aggregate` are re-issued from the record alongside
+#' everything else. Before 0.9.1 neither was recorded, so a re-fit took
+#' the formal defaults: an identity `update()` of a Stan fit came back as
+#' an aggregated INLA fit -- a different inference engine and a different
+#' representation, under the same name and with nothing said.
+#'
+#' What is recorded is the value the *call* asked for, not the engine the
+#' call resolved to. A fit made under `backend = "auto"` records `"auto"`,
+#' and a re-fit routes again from there. A fit that named `"brms"` records
+#' `"brms"` and comes back on Stan. The distinction is deliberate: the
+#' recorded value is the user's policy, and a re-fit whose model has
+#' changed -- `update(fit, random = ~ g + h)` -- has to be free to route
+#' the changed model rather than be pinned to the engine that suited the
+#' old one. `aggregate` behaves the same way. A recorded `"auto"` lets the
+#' aggregation gate re-decide, a recorded `FALSE` keeps the re-fit
+#' per-row.
+#'
+#' An override in `...` wins, as for every other recorded argument, so
+#' `update(fit, backend = "brms")` moves the re-fit to Stan.
+#'
+#' What `update()` reproduces is the model and the policy behind it, not
+#' the display settings of the session that first ran it. `verbose` is
+#' recorded on the fit for completeness and is deliberately *not*
+#' re-issued. A re-fit follows the current call's display default, and
+#' `update(fit, verbose = FALSE)` quietens one on the spot. The
+#' distinction is in what the argument can get wrong. A silently switched
+#' engine is a different answer under the same name. A banner printed
+#' where the first fit printed none is a banner.
 #'
 #' @param object A `flexybayes` fit carrying a complete argument record in
 #'   `$extras$call_info`.
@@ -1136,13 +1313,16 @@ model.matrix.flexybayes <- function(object, ...) {
 #'   `n_samples = 2000L` or a replacement `data` frame.
 #' @returns A new fitted `flexybayes` object of the same engine as the
 #'   original, unless an override routes it elsewhere.
+#' @seealso [prior_summary()] for the resolved prior a fit carries, and
+#'   [summary.flexybayes()], whose `varcomp` table names the prior each
+#'   component ran under.
 #' @export
 update.flexybayes <- function(object, ...) {
   cl <- object$extras$call_info
   required <- c(
     "fixed", "random", "residual", "family", "link", "known_matrices",
     "weights", "n_samples", "warmup", "chains", "prior_fixed_sd",
-    "prior_vc_sd"
+    "prior_vc_sd", "na_action", "backend", "aggregate"
   )
   missing_fields <- setdiff(required, names(cl))
   dat <- object$glm$data %||% object$data
@@ -1183,8 +1363,96 @@ update.flexybayes <- function(object, ...) {
     seed = cl$seed,
     control = cl$control,
     prior_fixed_sd = cl$prior_fixed_sd,
-    prior_vc_sd = cl$prior_vc_sd
+    prior_vc_sd = cl$prior_vc_sd,
+    # An `omit` fit re-fits as `omit`. The default happens to be the same
+    # word today, but a re-fit that quietly reverted to augmentation would
+    # be computed on a different set of rows from the one it was named
+    # after.
+    na_action = cl$na_action,
+    # The engine and the representation the original call asked for,
+    # re-issued as the request rather than as the engine the request
+    # resolved to -- see the Rd section.
+    #
+    # `verbose` is recorded next to these two and is deliberately NOT
+    # re-issued. What update() reproduces is the model and the policy
+    # behind it, not the display settings of the session that first ran
+    # it: a re-fit on another engine, or in another representation, is a
+    # different answer under the same name, while a re-fit that prints
+    # its banner when the original did not is a re-fit that printed a
+    # banner. The record keeps `verbose` because completeness there costs
+    # nothing, and a re-fit follows the current call's display default.
+    backend = cl$backend,
+    aggregate = cl$aggregate
   )
+
+  # ---- The prior the fit ran under, not the one its arguments imply ----
+  #
+  # flexybayes() decides whether the auto-default bounded uniform on the
+  # SD scale fires from argument missingness:
+  #
+  #   default_prior_active <- is.null(prior) && missing(prior_vc_sd)
+  #
+  # and the block above re-issues `prior_vc_sd` from the record, so
+  # `missing()` is FALSE on every re-fit and the gate never opens. The
+  # re-fit then fell through to the legacy scalar bridge and let the
+  # engine choose its own hyperprior -- an identity update() moved
+  # sd_Block from 2.278 to 1.144 on a per-row INLA fit, from 1.558 to
+  # 0.980 on the aggregated Gaussian route, and the same way on brms,
+  # with $varcomp$prior changing from the resolved uniform to
+  # "engine default" and nothing else saying so.
+  #
+  # Argument missingness is the wrong thing to re-derive the answer from,
+  # because the fit already carries the answer: fb_terms$priors holds
+  # whatever the original resolved to.
+  #
+  # WHAT IS CARRIED DEPENDS ON WHERE THE PRIOR CAME FROM, and the two
+  # cases are not the same kind of thing.
+  #
+  # A resolved prior carries `fb_prior_default_basis` when the
+  # auto-default built it -- the same attribute prior_summary() reads to
+  # report `default_origin = "auto"`, and .fb_prior_record() to decide
+  # `shared_default`. That object is not a choice the user made about
+  # these terms. It is the output of a POLICY: a bounded uniform on the
+  # SD scale, one per variance component the model has, with the bound
+  # read off the data. Carrying the object re-applies yesterday's output
+  # to today's model, and a model that gained a term gets a mixed state
+  # -- the original terms priored, the new one falling to the engine
+  # while its siblings keep the uniform. So the policy is re-fired
+  # instead: neither `prior` nor either scalar is passed, `missing()`
+  # holds on the gate above, and flexybayes() rebuilds the default over
+  # the UPDATED model and data. On an identity re-fit the same data
+  # rebuild the same bound, so this is indistinguishable from carrying
+  # the object.
+  #
+  # A user-supplied fb_prior() is the opposite: a bespoke statement about
+  # named terms, which is carried verbatim. A term the user did not name
+  # keeps following the engine's own hyperprior, exactly as it did on the
+  # first fit. The asymmetry is documented in the Rd.
+  #
+  # Dropping the scalars alongside the object is safe on both live
+  # engines. INLA never reads `prior_fixed_sd`, and brms reads it only on
+  # the legacy bridge, which by construction is not this branch. The
+  # greta variants of the aggregated emits do read it, and greta is
+  # quarantined.
+  #
+  # A caller who writes a prior of their own outranks the record. Both
+  # spellings are honoured, and only one of them is passed: re-issuing
+  # the recorded prior next to a caller's `prior_vc_sd` would let the
+  # record win over the scalar just written, which is the same silent
+  # substitution in the other direction.
+  recorded_prior <- object$extras$fb_terms$priors
+  caller_priced <- any(c("prior", "prior_vc_sd") %in% names(dots))
+  if (inherits(recorded_prior, "fb_prior") && !caller_priced) {
+    from_auto_default <- !is.null(
+      attr(recorded_prior, "fb_prior_default_basis")
+    )
+    if (from_auto_default) {
+      args$prior_fixed_sd <- NULL
+      args$prior_vc_sd <- NULL
+    } else {
+      args$prior <- recorded_prior
+    }
+  }
 
   # Override with user-supplied arguments
   for (nm in names(dots)) {

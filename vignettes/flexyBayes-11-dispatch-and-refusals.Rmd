@@ -1,6 +1,6 @@
 ---
 title: "Understanding dispatch and refusals"
-date: "2026-08-16"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -81,13 +81,13 @@ The fields you read most often:
   `"continuous"`, `"simple"`, `"fa_gxe"`), the variables it touches,
   and any term-specific parameters.
 - `$capabilities` -- a character vector populated by `lgm_gate()`
-  during dispatch; `"lgm_compatible"` means the model passed the
+  during dispatch. `"lgm_compatible"` means the model passed the
   structural checks in Section 5.
-- `$source` -- `"asreml"` or `"brms"`, the ingest path; surfaces in
+- `$source` -- `"asreml"` or `"brms"`, the ingest path, which surfaces in
   `triangulate()` reports.
 
 `fb_from_asreml()` walks the fixed/random/residual formulas of an
-asreml-format call; `fb_from_brms()` walks a single brms-style
+asreml-format call, and `fb_from_brms()` walks a single brms-style
 formula via `brms::brmsterms()` when `brms` is loaded, otherwise
 parsing a minimum subset directly. Both produce the same `fb_terms`
 class, which is why the rest of the pipeline never needs to know
@@ -224,12 +224,12 @@ suggestion, and an override path.
 | # | Check | What it inspects |
 |---|---|---|
 | 1 | `family_allowlist` | the response family must appear in INLA's likelihood roster |
-| 2 | `predictor_linearity` | no `nl = TRUE` term; the linear predictor is linear in the latent field |
+| 2 | `predictor_linearity` | no `nl = TRUE` term, and the linear predictor is linear in the latent field |
 | 3 | `distributional_regression` | no auxiliary parameter (sigma, phi, nu, zi, hu) carries a non-intercept right-hand side |
 | 4 | `re_gaussian_prior` | every random-effect prior has a Gaussian / multivariate normal / Gauss-Markov-random-field family |
-| 5 | `latent_class` | no `mixture`, `hmm`, or `multistate` term; no `family = "mixture(...)"` |
+| 5 | `latent_class` | no `mixture`, `hmm`, or `multistate` term, and no `family = "mixture(...)"` |
 | 6 | `hyperparam_budget` | the total number of hyperparameters is at most 15 (hard) -- soft warning at 10 |
-| 7 | `numerical_confirm` (post-fit) | INLA's `mode$mode.status == 0`; `mlik` finite; no hyperparameters on the boundary |
+| 7 | `numerical_confirm` (post-fit) | INLA's `mode$mode.status == 0`, a finite `mlik`, and no hyperparameters on the boundary |
 
 Checks 1-6 fire structurally, without running INLA, on the `fb_terms`
 IR. Check 7 lives inside `emit_inla()` and is non-overridable: a
@@ -411,14 +411,14 @@ the projection, not just a total.
 | Representation | Bytes per term | Notes |
 |---|---|---|
 | `indexed_random_intercept` | `8 K + 4 N` | K-vector of latent u's + integer index column |
-| `indexed_structured_known` (precision) | `nnz(Q) * 16` | Sparse-matrix bytes-per-non-zero (Lindgren et al., 2011); falls back to `K * 16` without `known_matrices` |
-| `block_diagonal` | `sum_k n_k^2 * 8` | Block-diagonal V across K independent blocks; falls back to `K^2 * 8` worst case |
+| `indexed_structured_known` (precision) | `nnz(Q) * 16` | Sparse-matrix bytes-per-non-zero (Lindgren et al., 2011), falling back to `K * 16` without `known_matrices` |
+| `block_diagonal` | `sum_k n_k^2 * 8` | Block-diagonal V across K independent blocks, falling back to `K^2 * 8` worst case |
 | `dense_baseline` | (in `design_memory_bytes`) | Dense N x p fixed-effect basis |
 
 The grand total is multiplied by an overhead factor (default 2.0,
 configurable via `flexyBayes.preflight_inla_overhead_factor`) that
 absorbs INLA's internal stage-2 allocations. `fb_plan()` and
-`flexybayes(plan = TRUE)` surface the breakdown; the underlying data
+`flexybayes(plan = TRUE)` surface the breakdown, and the underlying data
 sits on `plan$preflight$memory_estimate`.
 
 When the total exceeds the active ceiling, `lgm_gate()` refuses with
@@ -452,10 +452,10 @@ refuse at the routing layer until validated through
 `fb_terms$capabilities` is a character vector that flows through
 dispatch as a structured trail of evidence:
 
-- `"lgm_compatible"` -- passed all six structural checks;
-- soft warnings (`"lgm_warning:hyperparam_budget:soft"`);
+- `"lgm_compatible"` -- passed all six structural checks.
+- soft warnings (`"lgm_warning:hyperparam_budget:soft"`).
 - override audit (`"lgm_force_bypassed:family_allowlist"`,
-  `"lgm_force_reason:..."`);
+  `"lgm_force_reason:..."`).
 - `"gretaR_slot_dormant"` -- every LGM-compatible IR carries this
   informational flag (Section 10).
 
@@ -477,8 +477,8 @@ fit_i$inla$.args$formula
 
 For a brms-routed fit, the equivalent is the Stan code, available via
 `return_code = TRUE` on the fitting call. Reading it once removes
-much of the magic between the formula you wrote and the model that
-actually got fit.
+much of the magic between the formula you wrote and the model that was
+actually fitted.
 
 # 9. The backend registry
 
@@ -494,7 +494,7 @@ backend names, what grammars each can ingest, which inference paradigm
 each uses, which R package makes each usable, whether each is in the
 `auto` candidate set, which models each can represent, and its
 *lifecycle state* (`active` / `dormant` / `quarantined`). Dispatch
-*consumes* these facts; it does not restate them.
+*consumes* these facts. It does not restate them.
 
 The roster below is read out of the live registry at build time, so
 what you see is what the installed package holds rather than a list
@@ -599,7 +599,7 @@ registered, structured refusal. The refusal registry holds the closed
 vocabulary of reason-codes, and every user-facing refusal is drawn from
 it, so a refusal can always be matched on its code rather than parsed
 from free text. The chunk below is shown without being run because the
-table is long; set `eval = TRUE` locally to read it:
+table is long. Set `eval = TRUE` locally to read it:
 
 
 ``` r
@@ -642,7 +642,7 @@ ir <- fb_from_greta(
 name `flexyBayes` uses elsewhere (`(Intercept)`, `Days`, `sigma`,
 `sd_<group>`, ...), which is what lets `triangulate()` compare it
 against an INLA or brms fit without a user-supplied `name_map`. This
-path reads existing draws; it does not fit new models -- `greta::mcmc()`
+path reads existing draws. It does not fit new models -- `greta::mcmc()`
 itself is quarantined (`native_greta_fit_quarantined`).
 
 ## 10.2 The gretaR slot
@@ -670,7 +670,7 @@ five-step recipe:
 1. **Implement `emit_<backend>()`** taking an `fb_terms` IR plus the
    user-facing arguments, returning a fitted-model object.
 2. **Register the backend** in the `match.arg(backend, ...)` set on
-   the universal entries; add an engine pin (`fb_<backend>()`).
+   the universal entries, and add an engine pin (`fb_<backend>()`).
 3. **Decide the gating policy** -- does the new backend require
    `lgm_compatible`? Add the check at the entry of `emit_<backend>`.
 4. **Implement `fb_as_draws_simple()`** for the fitted-model class,
@@ -706,7 +706,7 @@ slot in Section 10.2 is exactly that construction.
 
 **`flexyBayes:::` is internal API.** The `:::` accessor reaches
 non-exported functions. They are stable across patch releases but not
-across major releases; pin your package version if you build on them
+across major releases. Pin your package version if you build on them
 for production code.
 
 **The IR is not a long-term commitment.** Subsequent releases may add
@@ -717,7 +717,7 @@ numerical-confirm gate (check 7). A failed numerical check halts the
 call -- your fit object is not silently corrupted.
 
 **Reading `"lgm_compatible"` as "the model is correct".** The flag
-means only that INLA's structural assumptions are not violated; it
+means only that INLA's structural assumptions are not violated. It
 says nothing about whether the model fits the data or the priors are
 appropriate. The *priors and regularisation* and *cross-engine
 triangulation* vignettes cover those orthogonal concerns.
@@ -760,41 +760,47 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] flexyBayes_0.9.0
+#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.0
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
-#>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
-#>  [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
-#> [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
-#> [13] StanHeaders_2.32.10    agridat_1.26           processx_3.9.0        
-#> [16] survival_3.8-3         magrittr_2.0.5         posterior_1.7.0       
-#> [19] compiler_4.5.2         rlang_1.2.0            tools_4.5.2           
-#> [22] data.table_1.18.2.1    knitr_1.51             bridgesampling_1.2-1  
-#> [25] curl_7.0.0             pkgbuild_1.4.8         classInt_0.4-11       
-#> [28] plyr_1.8.9             RColorBrewer_1.1-3     multcomp_1.4-29       
-#> [31] abind_1.4-8            KernSmooth_2.23-26     withr_3.0.2           
-#> [34] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
-#> [37] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
-#> [40] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
-#> [43] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
-#> [46] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
-#> [49] generics_0.1.4         otel_0.2.0             RcppParallel_5.1.11-2 
-#> [52] reshape2_1.4.5         DBI_1.3.0              proxy_0.4-29          
-#> [55] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
-#> [58] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
-#> [61] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
-#> [64] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
-#> [67] jsonlite_2.0.0         callr_3.7.6            listenv_0.10.1        
-#> [70] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
-#> [73] codetools_0.2-20       distributional_0.7.0   stringi_1.8.7         
-#> [76] gtable_0.3.6           QuickJSR_1.9.0         tibble_3.3.1          
-#> [79] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
-#> [82] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
-#> [85] backports_1.5.1        rstantools_2.6.0       class_7.3-23          
-#> [88] MatrixModels_0.5-4     Rcpp_1.1.1-1.1         coda_0.19-4.1         
-#> [91] gridExtra_2.3          nlme_3.1-168           checkmate_2.3.4       
-#> [94] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
+#>   [1] Rdpack_2.6.6           DBI_1.3.0              mnormt_2.1.2          
+#>   [4] gridExtra_2.3          inline_0.3.21          sandwich_3.1-1        
+#>   [7] rlang_1.2.0            magrittr_2.0.5         multcomp_1.4-29       
+#>  [10] otel_0.2.0             ggridges_0.5.7         matrixStats_1.5.0     
+#>  [13] e1071_1.7-17           compiler_4.5.2         mgcv_1.9-3            
+#>  [16] loo_2.9.0              callr_3.7.6            vctrs_0.7.3           
+#>  [19] reshape2_1.4.5         stringr_1.6.0          pkgconfig_2.0.3       
+#>  [22] backports_1.5.1        labeling_0.4.3         effectsize_1.0.2      
+#>  [25] nloptr_2.2.1           MatrixModels_0.5-4     INLA_25.10.19         
+#>  [28] xfun_0.57              jsonlite_2.0.0         parallel_4.5.2        
+#>  [31] R6_2.6.1               stringi_1.8.7          RColorBrewer_1.1-3    
+#>  [34] StanHeaders_2.32.10    parallelly_1.47.0      boot_1.3-32           
+#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.1-1.1        
+#>  [40] rstan_2.32.7           knitr_1.51             zoo_1.8-15            
+#>  [43] parameters_0.28.3      Matrix_1.7-4           splines_4.5.2         
+#>  [46] tidyselect_1.2.1       dichromat_2.0-0.1      abind_1.4-8           
+#>  [49] agridat_1.26           codetools_0.2-20       curl_7.0.0            
+#>  [52] processx_3.9.0         listenv_0.10.1         pkgbuild_1.4.8        
+#>  [55] lattice_0.22-7         tibble_3.3.1           plyr_1.8.9            
+#>  [58] withr_3.0.2            bridgesampling_1.2-1   bayestestR_0.17.0     
+#>  [61] S7_0.2.2               posterior_1.7.0        coda_0.19-4.1         
+#>  [64] evaluate_1.0.5         marginaleffects_0.32.0 future_1.70.0         
+#>  [67] survival_3.8-3         sf_1.1-0               units_1.0-1           
+#>  [70] proxy_0.4-29           RcppParallel_5.1.11-2  pillar_1.11.1         
+#>  [73] tensorA_0.36.2.1       KernSmooth_2.23-26     checkmate_2.3.4       
+#>  [76] stats4_4.5.2           reformulas_0.4.4       insight_1.4.6         
+#>  [79] sn_2.1.3               distributional_0.7.0   generics_0.1.4        
+#>  [82] rstantools_2.6.0       scales_1.4.0           minqa_1.2.8           
+#>  [85] globals_0.19.1         xtable_1.8-8           class_7.3-23          
+#>  [88] glue_1.8.1             tools_4.5.2            data.table_1.18.2.1   
+#>  [91] lme4_2.0-1             mvtnorm_1.3-6          grid_4.5.2            
+#>  [94] rbibutils_2.4.1        QuickJSR_1.9.0         datawizard_1.3.0      
+#>  [97] colorspace_2.1-2       nlme_3.1-168           cli_3.6.6             
+#> [100] viridisLite_0.4.3      fmesher_0.7.0          Brobdingnag_1.2-9     
+#> [103] dplyr_1.2.1            V8_8.0.1               gtable_0.3.6          
+#> [106] digest_0.6.39          classInt_0.4-11        TH.data_1.1-5         
+#> [109] brms_2.23.0            farver_2.1.2           lifecycle_1.0.5       
+#> [112] MASS_7.3-65
 ```
 
 # References

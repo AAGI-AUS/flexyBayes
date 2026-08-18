@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 03: Foundational regression: linear models, random effects, and penalised splines"
-date: "2026-08-15"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -20,7 +20,7 @@ vignette: >
 Linear regression is the simplest case `flexyBayes` handles, and
 every richer model in the package is a regression model with extra
 structure. Starting here makes three things explicit before the
-hierarchical, formula-surface, and spatio-temporal vignettes
+*hierarchical models*, *formula surface*, and *spatio-temporal* vignettes
 build on them.
 
 1. The *fixed-effect* layer of every subsequent model is a regression
@@ -29,7 +29,7 @@ build on them.
    regression) takes us into the mixed-model regime -- illustrated in
    §5 below with `sleepstudy`.
 3. Smooth terms (`spl()`) sit naturally inside the mixed-model
-   framework; §6 shows the simplest case.
+   framework, and §6 shows the simplest case.
 
 Throughout this tutorial we use the asreml-style API:
 
@@ -37,7 +37,7 @@ Throughout this tutorial we use the asreml-style API:
 * `random` -- random effects (`~ subject`, `~ spl(time)`, `~ block`).
 * `residual`  -- residual covariance (default `~ units`, i.e. iid).
 
-`fb_brms()` is the Stan (brms) engine pin; with a brms-shaped
+`fb_brms()` is the Stan (brms) engine pin. With a brms-shaped
 formula it covers the random-intercept subset of the term-type
 surface, and is introduced in the *getting started* and
 *hierarchical models* vignettes.
@@ -67,24 +67,36 @@ fit_g <- flexybayes(
 )
 summary(fit_g)
 #> Bayesian mixed model summary  [flexyBayes / aggregated-gaussian]
-#> ================================================================= 
-#>   family:     gaussian / identity 
-#>   N = 30 , K = 3 
-#>   backend:    inla 
-#>   exactness:  aggregated_exact 
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#> ============================================================== 
+#>   Fixed    : weight ~ group 
+#>   Model    : G: none; R: units 
 #>   aggregation: N = 30 rows -> K = 3 cells (ratio 10:1)
+#>   Family   : gaussian / identity 
+#>   Representation: aggregated_exact (compression 10:1)
+#>   Engine:         INLA Laplace
+#>   N        : 30 design rows, 30 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.2 sec
 #> 
-#> -- Fixed effects (posterior)  ----------------------------------- 
-#>             Estimate Post.SD
-#> (Intercept)    5.032  0.1959
-#> grouptrt1     -0.371  0.2770
-#> grouptrt2      0.494  0.2770
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)    5.032    0.1959   4.6452    5.4188
+#>    grouptrt1   -0.371    0.2770  -0.9180    0.1760
+#>    grouptrt2    0.494    0.2770  -0.0530    1.0410
 #> 
-#> -- Variance components  ---------------------------------------- 
-#>   sigma (residual SD): 0.6016
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                         prior
+#>      sigma   0.6175     0.084   0.4791    0.8083 uniform(lower=0, upper=3.506)
+#>  note
+#>      
 #> 
-#>   Run time: 2.02 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -8.781
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 3.86e-08
 ```
 
 The fixed-effect block reports the baseline (control) mean as the
@@ -149,37 +161,49 @@ fit_barley <- flexybayes(
 )
 summary(fit_barley)
 #> Bayesian mixed model summary  [flexyBayes / aggregated-gaussian]
-#> ================================================================= 
-#>   family:     gaussian / identity 
-#>   N = 60 , K = 30 
-#>   backend:    inla 
-#>   exactness:  aggregated_exact 
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#> ============================================================== 
+#>   Fixed    : yield ~ gen + env 
+#>   Model    : G: none; R: units 
 #>   aggregation: N = 60 rows -> K = 30 cells (ratio 2:1)
+#>   Family   : gaussian / identity 
+#>   Representation: aggregated_exact (compression 2:1)
+#>   Engine:         INLA Laplace
+#>   N        : 60 design rows, 60 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 1.8 sec
 #> 
-#> -- Fixed effects (posterior)  ----------------------------------- 
-#>                   Estimate Post.SD
-#> (Intercept)       101.6944  7.1445
-#> genPeatland         7.0749  7.3498
-#> genSvansota        -4.0035  7.3484
-#> genTrebi           22.2803  7.3525
-#> genVelvet           3.8137  7.3493
-#> envDuluth         -23.8372  7.9304
-#> envGrandRapids    -26.0385  7.9311
-#> envMorris          -2.1424  7.9247
-#> envUniversityFarm -14.1339  7.9275
-#> envWaseca          27.5273  7.9214
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>               term estimate std.error conf.low conf.high
+#>        (Intercept) 101.6928    7.1572  87.5994  115.7510
+#>        genPeatland   7.0710    7.3636  -7.4618   21.5109
+#>        genSvansota  -4.0060    7.3623 -18.5202   10.4473
+#>           genTrebi  22.2746    7.3664   7.7144   36.6979
+#>          genVelvet   3.8102    7.3632 -10.7170   18.2540
+#>          envDuluth -23.8293    7.9449 -39.3642   -8.1097
+#>     envGrandRapids -26.0303    7.9457 -41.5629  -10.3055
+#>          envMorris  -2.1376    7.9392 -17.6976   13.5343
+#>  envUniversityFarm -14.1274    7.9420 -29.6728    1.5702
+#>          envWaseca  27.5279    7.9359  11.9246   43.1436
 #> 
-#> -- Variance components  ---------------------------------------- 
-#>   sigma (residual SD): 18.6453
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                         prior
+#>      sigma  18.9144    1.8783  15.6662    23.027 uniform(lower=0, upper=137.7)
+#>  note
+#>      
 #> 
-#>   Run time: 1.74 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -125.774
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 2.11e-08
 ```
 
 The two factor blocks are reported relative to the (alphabetically
 first) baseline level of each. To get *marginal means* per genotype
-and per environment, use `emmeans` -- see Tutorial 08 (downstream
-analysis).
+and per environment, use `emmeans` -- see the *downstream analysis*
+vignette.
 
 A standard exploratory plot of the cell means:
 
@@ -214,22 +238,42 @@ fit_pool <- flexybayes(
   n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_pool)
-#> Bayesian fit summary  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------------ 
-#> Fixed effects:
-#>                 mean     sd 0.025quant 0.5quant 0.975quant     mode kld
-#> (Intercept) 251.4786 6.6693   238.3864 251.4782   264.5731 251.4782   0
-#> Days         10.4510 1.2490     7.9987  10.4510    12.9027  10.4510   0
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days 
+#>   Model    : G: none; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.8 sec
 #> 
-#> Hyperparameters:
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 251.4783    6.6565 238.4114  264.5475
+#>         Days  10.4510    1.2466   8.0034   12.8981
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                         prior
+#>      sigma  48.0752    2.5648  43.3334   53.3689 uniform(lower=0, upper=281.6)
+#>  note
+#>      
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
 #>                                          mean sd 0.025quant 0.5quant 0.975quant
 #> Precision for the Gaussian observations 4e-04  0      4e-04    4e-04      5e-04
 #>                                          mode
 #> Precision for the Gaussian observations 4e-04
 #> 
-#> Random effects:
-#>   (none)
-#> ------------------------------------------------------------
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -954.575
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 2.59e-09
+#>   Numerical confirm: PASS
 ```
 
 The slope on `Days` is the average per-day increase in reaction
@@ -254,36 +298,46 @@ fit_re <- flexybayes(
   n_samples = 2000, warmup = 3000, chains = 4, verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_re)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : Reaction ~ Days 
-#>   Random : ~Subject 
-#>   Family : gaussian / identity 
-#>   N = 180 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days 
+#>   Random   : ~Subject 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 3000)
+#>   Runtime  : 18.6 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD     2.5%    97.5%
-#> (Intercept) 251.2921 10.3765 230.0620 271.8134
-#> Days         10.4676  0.8193   8.8441  12.0919
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 251.1189   10.3804 230.9727  272.4185
+#>         Days  10.4715    0.7953   8.8768   12.0252
 #> 
-#> -- Variance components  -------------------------------------- 
-#>    Component Estimate     SD    2.5%   97.5%
-#> 1 sd_Subject  40.3913 8.2402 27.3919 59.6139
-#> 2      sigma  31.2041 1.7674 27.9967 34.8615
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                         prior
+#>  sd_Subject  40.5211    8.3673  27.7156   60.3144 uniform(lower=0, upper=281.6)
+#>       sigma  31.2557    1.7590  28.0594   34.9644 uniform(lower=0, upper=281.6)
+#>  note
+#>      
+#>      
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.007 
-#>   ESS  range: 1094 - 7840 
-#>   Run time  : 17.6 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.004
+#>   Min ESS (bulk): 1090
+#>   Min ESS (tail): 1839
+#>   Divergent transitions: 0
 ```
 
 > **`backend = "brms"` pinned deliberately.** INLA's default prior on
 > this particular model (`sleepstudy`'s `Subject` random intercept)
 > has a known instability -- the variance component can collapse to
 > numerically zero, run to run. brms does not share the failure mode.
-> Tutorial 04 (hierarchical models) discusses this further.
+> The *hierarchical models* vignette discusses this further.
 
 Two things change relative to the pooled fit in §4.
 
@@ -296,9 +350,9 @@ Two things change relative to the pooled fit in §4.
   variance is no longer absorbed into it.
 
 The `Reaction ~ Days + (1 | Subject)` formulation in `lme4` /
-`brms` is a notational shortcut for exactly this model. Tutorial 04
-(hierarchical models) extends this by adding random *slopes* on
-`Days` per subject; structurally that is just one more random term.
+`brms` is a notational shortcut for exactly this model. The *hierarchical
+models* vignette extends this by adding random *slopes* on
+`Days` per subject, which structurally is just one more random term.
 
 This is the smallest mixed-model regression, and the structural
 template every subsequent vignette builds on.
@@ -333,13 +387,32 @@ fit_smooth <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_smooth)
-#> Bayesian fit summary  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------------ 
-#> Fixed effects:
-#>               mean    sd 0.025quant 0.5quant 0.975quant   mode kld
-#> (Intercept) 0.3327 0.038     0.2581   0.3327     0.4074 0.3327   0
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : y ~ 1 
+#>   Random   : ~spl(x, type = "ps", df = 10) 
+#>   Model    : G: spline in x; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 80 design rows, 80 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.2 sec
 #> 
-#> Hyperparameters:
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)   0.3327     0.038   0.2581    0.4074
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                        prior
+#>      sigma   0.3388    0.0298   0.2849    0.4019 uniform(lower=0, upper=3.45)
+#>       sd_x   0.8523    0.2383   0.4910    1.4210               engine default
+#>  note
+#>      
+#>      
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
 #>                                           mean     sd 0.025quant 0.5quant
 #> Precision for the Gaussian observations 8.9121 1.5691     6.1827   8.7904
 #> Precision for x                         1.7103 0.9657     0.4952   1.4971
@@ -347,9 +420,13 @@ summary(fit_smooth)
 #> Precision for the Gaussian observations    12.3399 8.5738
 #> Precision for x                             4.1668 1.1267
 #> 
-#> Random effects:
-#>   groups: x
-#> ------------------------------------------------------------
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -375.275
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 1.15e-07
+#>   Numerical confirm: PASS
 ```
 
 The fixed block has only an intercept and the random block names the
@@ -405,11 +482,11 @@ ggplot(sim_dat, aes(x = x, y = y)) +
 
 ![plot of chunk smooth-overlay](flexyBayes-03-regression-figs/smooth-overlay-1.png)
 
-The fitted curve traces the underlying sinusoid; the residual is
+The fitted curve traces the underlying sinusoid, and the residual is
 unstructured noise. Choosing the basis dimension `df` is a trade-off
--- too few and the curve cannot bend enough; too many and the
+-- too few and the curve cannot bend enough, too many and the
 penalty must do more work to avoid overfitting. `df = 10` is a
-sensible starting point; pass `df = 15` to widen.
+sensible starting point. Pass `df = 15` to widen.
 
 ## 6.1 Predicting on new `x` values
 
@@ -472,10 +549,10 @@ partially linear model.
 levels, R will throw an error or produce an `NA`. Pre-process
 `newdata` to set factor levels explicitly.
 
-**Smooth prediction at new x's.**
+**Smooth prediction at new `x` values.**
 `predict.flexybayes(fit, newdata = ...)` correctly re-evaluates the
 spline basis on the new `x` positions rather than reusing the
-training basis. See section 6.1 above for the extrapolation-margin
+training basis. See Section 6.1 above for the extrapolation-margin
 demonstration.
 
 # 8. Active prompts

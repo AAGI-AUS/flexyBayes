@@ -58,12 +58,18 @@
 #'   backend; [fb_greta()] / [fb_inla()] for the other engine pins;
 #'   [fb_from_brms()] for building a brms-grammar IR.
 #' @examples
+#' # Held back from the default example run because the brms route compiles
+#' # a Stan program before it samples, and the compile alone takes far
+#' # longer than an example should. The sampler settings are the smallest
+#' # that reach an effective sample size the fit does not warn about, and
+#' # the seed makes that reproducible. On a single chain they cost about
+#' # half a second next to the compile.
 #' \donttest{
 #' if (requireNamespace("brms", quietly = TRUE) &&
 #'     requireNamespace("lme4", quietly = TRUE)) {
 #'   data(sleepstudy, package = "lme4")
 #'   fit <- fb_brms(Reaction ~ Days + (1 | Subject), data = sleepstudy,
-#'                  chains = 1)
+#'                  chains = 1, n_samples = 4000, warmup = 1000, seed = 1)
 #'   coef(fit)
 #' }
 #' }

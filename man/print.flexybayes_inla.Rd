@@ -16,7 +16,15 @@ Invisibly, \code{x} unchanged. Called for the one-screen summary
 it prints.
 }
 \description{
-Internal S3 method. Brief one-screen summary of an INLA fit
+Internal S3 method. Brief one-screen description of an INLA fit
 produced via \verb{fb(... backend = "inla")} or \code{emit_inla()}.
+}
+\details{
+Opens with the header every engine's print shares, so the three prints
+cannot disagree about what the fit is or how many rows it saw, then
+adds what belongs to this engine alone: the formula as it reached
+\code{INLA::inla()}, the post-fit numerical-confirm verdict, and -- on a fit
+carrying a latent autoregressive field -- the field's own parameters
+on the correlation and standard-deviation scales.
 }
 \keyword{internal}

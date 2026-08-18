@@ -334,3 +334,358 @@ test_that("the high-missingness warning fires once and is silenceable", {
   withr::local_options(flexyBayes.silence_high_missingness_warning = TRUE)
   expect_warning(.apply_augment(d), NA)
 })
+
+
+# =============================================================================
+# The record the layer leaves behind (0.9.1)
+#
+# One builder writes the record on all three response policies, so the
+# fields cannot differ between branches. Two numbers carry one name each
+# across the record, summary(fit) and nobs(type = ): `n_design` is how
+# many rows the engine was handed and `n_observed` how many of those
+# carried an observed response. `missing_fraction` is derived from the
+# pair on every path, which is what makes it comparable between them.
+# =============================================================================
+
+test_that("the record carries the same fields on every response policy", {
+  g <- .grid_sim(4L, 3L)
+  ir <- flexyBayes:::new_fb_terms(
+    response = "y", family = "gaussian", link = "identity",
+    fixed_terms = list(), random_terms = list(),
+    residual_terms = list(list(type = "units")), source = "asreml"
+  )
+  fields <- c(
+    "na_action", "na_covariate", "n_missing_response", "n_cells_completed",
+    "design_index_vars", "n_design", "n_observed",
+    "n_covariate_rows_dropped", "missing_fraction"
+  )
+  for (act in c("augment", "omit", "fail")) {
+    meta <- flexyBayes:::.fb_apply_na_action(ir, g, act)$meta
+    expect_identical(names(meta), fields, label = act)
+    expect_identical(meta$na_action, act, label = act)
+  }
+})
+
+test_that("n_design and n_observed count the augmented design", {
+  g <- .grid_sim(4L, 3L)
+  g$y[c(2L, 5L)] <- NA
+  ir <- flexyBayes:::new_fb_terms(
+    response = "y", family = "gaussian", link = "identity",
+    fixed_terms = list(),
+    random_terms = list(list(
+      type = "ar1_spatial", row_var = "row", col_var = "col"
+    )),
+    residual_terms = list(list(type = "units")), source = "asreml"
+  )
+
+  # Two lost yields on a complete grid: the design keeps all 12 cells,
+  # ten of which were observed.
+  meta <- flexyBayes:::.fb_apply_na_action(ir, g, "augment")$meta
+  expect_equal(meta$n_design, 12L)
+  expect_equal(meta$n_observed, 10L)
+  expect_equal(meta$missing_fraction, 2 / 12, tolerance = 1e-12)
+
+  # A cell absent from the data frame entirely is reinstated, so it
+  # counts in the design and not in the observations.
+  meta2 <- flexyBayes:::.fb_apply_na_action(ir, g[-1L, ], "augment")$meta
+  expect_equal(meta2$n_cells_completed, 1L)
+  expect_equal(meta2$n_design, 12L)
+  expect_equal(meta2$n_observed, 9L)
+})
+
+test_that("missing_fraction is present and zero on the omit path", {
+  # It used to be absent there, so a consumer expecting the five
+  # documented fields on every path got NULL on one of them.
+  g <- .grid_sim(4L, 3L)
+  g$y[c(2L, 5L)] <- NA
+  ir <- flexyBayes:::new_fb_terms(
+    response = "y", family = "gaussian", link = "identity",
+    fixed_terms = list(), random_terms = list(),
+    residual_terms = list(list(type = "units")), source = "asreml"
+  )
+  meta <- flexyBayes:::.fb_apply_na_action(ir, g, "omit")$meta
+  expect_false(is.null(meta$missing_fraction))
+  expect_equal(meta$missing_fraction, 0)
+  expect_equal(meta$n_missing_response, 2L)
+  expect_equal(meta$n_design, 10L)
+  expect_equal(meta$n_observed, 10L)
+})
+
+test_that("fail leaves the design grid alone", {
+  # `fail` refuses a missing response. Completing the grid would create
+  # the missing responses it exists to refuse, so it does not run.
+  g <- .grid_sim(4L, 3L)
+  ir <- flexyBayes:::new_fb_terms(
+    response = "y", family = "gaussian", link = "identity",
+    fixed_terms = list(),
+    random_terms = list(list(
+      type = "ar1_spatial", row_var = "row", col_var = "col"
+    )),
+    residual_terms = list(list(type = "units")), source = "asreml"
+  )
+  res <- flexyBayes:::.fb_apply_na_action(ir, g[-1L, ], "fail")
+  expect_equal(nrow(res$data), nrow(g) - 1L)
+  expect_identical(res$meta$na_action, "fail")
+  expect_equal(res$meta$n_cells_completed, 0L)
+})
+
+test_that("the fit records the requested policy in its call record", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  g$y[c(5L, 19L)] <- NA
+  fit <- suppressMessages(flexybayes(
+    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
+    backend = "inla", na_action = "augment", verbose = FALSE
+  ))
+  expect_identical(fit$extras$call_info$na_action, "augment")
+  expect_equal(fit$extras$na_action$n_design, nrow(g))
+  expect_equal(fit$extras$na_action$n_observed, nrow(g) - 2L)
+})
+
+test_that("an asreml na.method() value fits the same model as the string", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  g$y[c(5L, 19L)] <- NA
+  as_list <- suppressMessages(flexybayes(
+    y ~ 1, random = ~ ar1(row):ar1(col), data = g, backend = "inla",
+    na_action = .asreml_na_method_recorded("explicit"), verbose = FALSE
+  ))
+  expect_identical(as_list$extras$na_action$na_action, "augment")
+  expect_identical(as_list$extras$call_info$na_action, "augment")
+  expect_equal(stats::nobs(as_list), nrow(g))
+})
+
+
+# =============================================================================
+# The recorded call (0.9.1)
+#
+# update() rebuilds the original call from `$extras$call_info`, and
+# refuses when the record is short, because a re-fit that substituted a
+# default for something the user set would return a different model under
+# the same name. The INLA emit recorded six of the fifteen arguments brms
+# records, and that gap -- nothing about the engine -- was the whole of
+# the refusal.
+# =============================================================================
+
+test_that("an INLA fit records the same call fields a brms fit does", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  fit <- suppressMessages(flexybayes(
+    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
+    backend = "inla", verbose = FALSE
+  ))
+
+  expected <- c(
+    "fixed", "random", "residual", "data_name", "family", "link",
+    "known_matrices", "weights", "n_samples", "warmup", "chains",
+    "seed", "control", "prior_fixed_sd", "prior_vc_sd", "na_action",
+    "backend", "aggregate", "verbose"
+  )
+  expect_identical(names(fit$extras$call_info), expected)
+
+  # The sampler settings are recorded as what INLA used, which is
+  # nothing: a nested Laplace approximation runs no chains and discards
+  # no warmup, so recording the numbers the call happened to carry would
+  # put a sampler on the record of a fit that never ran one.
+  expect_null(fit$extras$call_info$n_samples)
+  expect_null(fit$extras$call_info$warmup)
+  expect_null(fit$extras$call_info$chains)
+  expect_identical(fit$extras$call_info$prior_fixed_sd, 100)
+})
+
+test_that("update() re-fits an INLA model rather than refusing it", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  fit <- suppressMessages(flexybayes(
+    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
+    backend = "inla", verbose = FALSE
+  ))
+  refit <- suppressMessages(stats::update(fit, random = ~ ar1(row):ar1(col)))
+  expect_s3_class(refit, "flexybayes_inla")
+  expect_identical(refit$extras$call_info$na_action, "augment")
+})
+
+
+# =============================================================================
+# What the refusals say (0.9.1)
+#
+# Each of the three messages a user meets on a trial with lost plots now
+# names what ASReml does in the same situation, and what to type instead.
+# A refusal that only says no leaves the reader to guess whether the
+# package is stricter than ASReml or simply less capable.
+# =============================================================================
+
+test_that("the broken-grid refusal cites ASReml and names the remedy", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  g$y[c(5L, 19L)] <- NA
+
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ 1, random = ~ ar1(row):ar1(col), data = g,
+      backend = "inla", na_action = "omit", verbose = FALSE
+    )),
+    condition = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_ar1_spatial_refusal")
+  msg <- conditionMessage(err)
+
+  # It counts what is actually there rather than describing the class of
+  # problem in the abstract.
+  expect_match(msg, "rows for the", fixed = TRUE)
+  expect_match(msg, "nodes", fixed = TRUE)
+  # It says ASReml refuses the same data for the same reason, so a
+  # reader does not read this as flexyBayes being the weaker tool.
+  expect_match(msg, "ASReml", fixed = TRUE)
+  expect_match(msg, "residual = ~ ar1:ar1", fixed = TRUE)
+  # And it names a remedy the reader can type.
+  expect_match(msg, "na_action = \"augment\"", fixed = TRUE)
+  expect_match(msg, "field-book rows", fixed = TRUE)
+})
+
+test_that("the undeterminable-cell refusal names LANCER and the field book", {
+  g <- .grid_sim(4L, 3L)
+  g$geno <- factor(rep(letters[1:4], length.out = nrow(g)))
+  ir <- flexyBayes:::new_fb_terms(
+    response = "y", family = "gaussian", link = "identity",
+    fixed_terms = list(),
+    random_terms = list(
+      list(type = "simple", var = "geno"),
+      list(type = "ar1_spatial", row_var = "row", col_var = "col")
+    ),
+    residual_terms = list(list(type = "units")),
+    source = "asreml"
+  )
+  err <- tryCatch(
+    flexyBayes:::.fb_apply_na_action(ir, g[-2L, ], "augment"),
+    condition = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_augment_cell_not_determinable")
+  msg <- conditionMessage(err)
+  expect_match(msg, "geno", fixed = TRUE)
+  expect_match(msg, "LANCER", fixed = TRUE)
+  expect_match(msg, "nin89", fixed = TRUE)
+  expect_match(msg, "field-book rows", fixed = TRUE)
+  expect_match(msg, "na_action = \"omit\"", fixed = TRUE)
+})
+
+
+# ---------------------------------------------------------------- #
+# 7. The unobserved cells reach an accessor (WP-E2)                 #
+# ---------------------------------------------------------------- #
+
+test_that("summary()$missing names the lost plots on an INLA field fit", {
+  # ASReml's `mv` factor. The engine already computes a posterior for each
+  # unobserved cell -- INLA treats an NA response as a latent prediction
+  # target -- so the test is that the accessor reports what the fit holds,
+  # at the right rows, on the right scale.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  lost <- c(5L, 19L)
+  g$y[lost] <- NA
+  fit <- suppressMessages(flexybayes(
+    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
+    backend = "inla", na_action = "augment", verbose = FALSE
+  ))
+
+  captured <- utils::capture.output(s <- summary(fit))
+  mv <- s$missing
+  expect_s3_class(mv, "data.frame")
+  expect_identical(
+    names(mv)[1:5],
+    c("row", "estimate", "std.error", "conf.low", "conf.high")
+  )
+  expect_identical(nrow(mv), 2L)
+  expect_identical(
+    nrow(mv),
+    as.integer(stats::nobs(fit) - stats::nobs(fit, type = "observed"))
+  )
+  expect_identical(mv$row, lost)
+  expect_true(all(is.finite(mv$estimate)))
+  expect_true(all(mv$std.error > 0))
+  expect_true(all(mv$conf.low <= mv$conf.high))
+
+  # The design index the covariance is built over is carried alongside, so
+  # a reader can see which plot each row is.
+  expect_true(all(c("row.index", "col") %in% names(mv)))
+  expect_identical(as.character(mv$row.index), as.character(g$row[lost]))
+  expect_identical(as.character(mv$col), as.character(g$col[lost]))
+
+  # One construction behind both accessors.
+  expect_identical(stats::coef(fit, what = "missing"), mv)
+
+  # And the values are INLA's own fitted-value marginals, read from the
+  # full table rather than the head() copy on $extras.
+  expect_equal(
+    mv$estimate,
+    as.numeric(fit$inla$summary.fitted.values[["mean"]][lost]),
+    tolerance = 1e-12
+  )
+})
+
+test_that("a complete grid reports a typed zero-row missing table", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  g <- .grid_sim()
+  fit <- suppressMessages(flexybayes(
+    y ~ 1, random = ~ ar1(row):ar1(col), data = g,
+    backend = "inla", na_action = "augment", verbose = FALSE
+  ))
+  mv <- stats::coef(fit, what = "missing")
+  expect_s3_class(mv, "data.frame")
+  expect_identical(nrow(mv), 0L)
+  expect_identical(
+    names(mv),
+    c("row", "estimate", "std.error", "conf.low", "conf.high")
+  )
+})
+
+test_that("a non-identity link withholds the table and says why", {
+  # INLA computes a fitted value for an NA response on the identity link
+  # unless control.predictor names another, so on a Poisson fit those rows
+  # would be on the linear-predictor scale while the rows around them are
+  # on the response scale. The table is withheld rather than mixed, and
+  # the reason is not left to be discovered.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  local_clean_emit_state()
+
+  set.seed(707L)
+  d <- data.frame(
+    g = factor(rep(letters[1:6], each = 8L)),
+    x = stats::rnorm(48L)
+  )
+  d$y <- stats::rpois(48L, exp(0.6 + 0.3 * d$x))
+  d$y[c(2L, 17L)] <- NA
+  fit <- suppressMessages(suppressWarnings(flexybayes(
+    y ~ x, random = ~g, data = d, family = "poisson",
+    backend = "inla", na_action = "augment", verbose = FALSE
+  )))
+
+  expect_warning(
+    mv <- stats::coef(fit, what = "missing"),
+    "linear-predictor scale"
+  )
+  expect_identical(nrow(mv), 0L)
+  # The count is still reachable, which is the point of saying so.
+  expect_equal(
+    stats::nobs(fit) - stats::nobs(fit, type = "observed"),
+    2
+  )
+  # Once per session, not once per call.
+  expect_no_warning(stats::coef(fit, what = "missing"))
+})

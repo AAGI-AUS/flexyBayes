@@ -52,7 +52,7 @@ narrow, and inferences look more confident than the data warrant.
 written as **random** terms:
 
 - **first-order autoregressive** (`random = ~ ar1(t)`) on a regular
-  ordered factor, for time, columns, or rows;
+  ordered factor, for time, columns, or rows.
 - **separable two-dimensional autoregressive**
   (`random = ~ ar1(row):ar1(col)`) on a regular field grid. This is
   the field-plus-nugget model, not Gilmour, Cullis and Verbyla's
@@ -83,10 +83,9 @@ plots.
 > correlation, a field SD and a nugget SD. It contains Gilmour's model
 > as the nugget goes to zero, and on data with real plot-to-plot noise
 > the two return different correlations, because a nugget-free model
-> must absorb independent noise into the correlated structure. On a
-> 14 x 12 grid with true correlations 0.6 and 0.3 and a nugget worth 22%
-> of the total variance, ASReml returns 0.513 and 0.150 where flexyBayes
-> returns 0.588 and 0.202.
+> must absorb independent noise into the correlated structure and is
+> pulled towards zero by it. The gap grows with the share of the total
+> variance the nugget holds.
 >
 > Neither is wrong. They are different models, and the choice matters if
 > you act on the correlations -- how much spatial trend to remove,
@@ -107,7 +106,7 @@ more powerful for irregular geographies and is on the roadmap.
 
 `agridat::stroup.nin` is the canonical Nebraska wheat trial (Stroup,
 2002): 56 genotypes laid out on an 11-row by 22-column field, replicated
-three times, with some plots never harvested. The classic mixed-model
+four times, with some plots never harvested. The classic mixed-model
 analysis is
 
 $$
@@ -261,7 +260,7 @@ data.frame(
 
 Each simulated value sits inside its interval. The row correlation is
 pulled a little toward zero, which is what INLA's default hyperprior
-does on a single realisation of a field this size; the two variance
+does on a single realisation of a field this size. The two variance
 components separate cleanly here because the nugget is half the
 field SD. They
 separate less well as the nugget shrinks, and that is a property of the
@@ -297,7 +296,7 @@ a more flexible spatial covariance.
 The `sleepstudy` data are inherently longitudinal: ten consecutive days
 of measurement on each of eighteen subjects, a complete panel. The
 *hierarchical models* vignette analysed it with a random subject
-intercept; here we add an AR1 field over days, grouped independently by
+intercept. Here we add an AR1 field over days, grouped independently by
 subject, to ask whether within-subject errors on adjacent days are
 correlated once the intercept is accounted for.
 
@@ -327,9 +326,13 @@ is a tiny fraction of the nugget SD, so the autoregressive component
 carries almost none of the variation: the random subject intercept has
 already absorbed the within-subject dependence, and the day-to-day
 correlation is being reported for a component that is doing no work. A
-high correlation on a field with no amplitude describes the shape of
-something that is not there. This is the practical reason all the field
-parameters are printed together rather than the correlations alone --
+correlation on a field with no amplitude describes the shape of
+something that is not there, and it is not stable either -- successive
+builds of this page, on the same data and the same code, have printed
+that number as high as +1.0 and as low as -0.6, because there is
+nothing in the likelihood to pin it. Whatever it reads on your own run,
+read the amplitude above it first. This is the practical reason all the
+field parameters are printed together rather than the correlations alone --
 under the residual spelling this vignette used to carry, the amplitude
 was not on the page at all.
 
@@ -349,10 +352,10 @@ flexybayes(
 )
 ```
 
-The penalised splines on row and column capture the global gradient; the
-AR1 field captures local short-range correlation. This composite is the
+The penalised splines on row and column capture the global gradient, and
+the AR1 field captures local short-range correlation. This composite is the
 agronomy-textbook decomposition (Gilmour, Cullis, & Verbyla, 1997) --
-with the caveat of Section 1: what is fitted here is the field-plus-
+with the qualification of Section 1: what is fitted here is the field-plus-
 nugget version of it.
 
 # 5. Limitations of the current spatial coverage
@@ -361,13 +364,13 @@ nugget version of it.
 INLA under a complete-grid condition (Section 6). It does *not* cover:
 
 - **ASReml's nugget-free separable residual** -- refused by name
-  (Section 2.1), not approximated;
+  (Section 2.1), not approximated.
 - **irregular geography** -- the SPDE / Matern approach (Lindgren, Rue,
-  & Lindstrom, 2011) is on the roadmap;
+  & Lindstrom, 2011) is on the roadmap.
 - **areal data** -- the BYM2 model (Riebler, Sorbye, Simpson, & Rue,
-  2016) is on the roadmap;
+  2016) is on the roadmap.
 - **continuous-time temporal correlation** -- the Ornstein-Uhlenbeck and
-  continuous-AR processes are on the roadmap;
+  continuous-AR processes are on the roadmap.
 - **spatio-temporal interaction** -- separable space-time covariance is
   on the roadmap.
 
@@ -380,13 +383,13 @@ refusals* vignette describes how a third-party fit can plug into
 
 **Row and column must be factors.** `flexyBayes` reads `ar1(row)` as
 "AR1 correlation on the levels of `row` in their factor order". Numeric
-`row` is coerced; if your row labels are not in field order when
+`row` is coerced. If your row labels are not in field order when
 factor-coerced, the AR1 correlation will be wrong. Set the factor levels
 explicitly: `factor(row, levels = sort(unique(row)))`.
 
 **The field is not a substitute for design.** A poorly designed trial
 cannot be rescued by spatial-error modelling. A randomised block design
-is still essential; the field captures *what remains* after design
+is still essential, and the field captures *what remains* after design
 accounts for the planned variation.
 
 **Identifiability with too few rows or columns.** A 4-row by 3-column
@@ -404,7 +407,7 @@ any grid that is not a perfect rectangle raises a structured refusal
 The default `na_action = "augment"` is what makes a real field trial
 fittable anyway: it retains the unharvested nodes as design cells with a
 latent response (Section 2.2). Under `backend = "inla"` the refusal
-surfaces directly; under `backend = "auto"` it becomes an
+surfaces directly. Under `backend = "auto"` it becomes an
 `auto_no_active_route` refusal, because the only other active engine is
 brms and brms has no lowering for a Kronecker autoregressive precision.
 
@@ -430,7 +433,7 @@ temporal AR1 fit, drop the pin and move the term to the random side.
    intercept was holding?
 4. Drop 5% of nodes at random from the simulated grid in Section 2.3 and
    refit with `na_action = "omit"` and then with the default `"augment"`.
-   Confirm the first refuses; compare the second's four recovered
+   Confirm the first refuses, then compare the second's four recovered
    parameters with the complete-grid fit. How much does the gap cost you?
 
 # 8. Session information
@@ -452,12 +455,12 @@ experiments. *Journal of Agricultural, Biological, and Environmental
 Statistics*, 2(3), 269-293. (The nugget-free separable residual, which
 is refused here by name -- see Section 1.)
 
-Lindgren, F., Rue, H., & Lindstrom, J. (2011). An explicit link
+Lindgren, F., Rue, H., & Lindström, J. (2011). An explicit link
 between Gaussian fields and Gaussian Markov random fields: The
 stochastic partial differential equation approach. *Journal of the
 Royal Statistical Society: Series B*, 73(4), 423-498.
 
-Riebler, A., Sorbye, S. H., Simpson, D., & Rue, H. (2016). An
+Riebler, A., Sørbye, S. H., Simpson, D., & Rue, H. (2016). An
 intuitive Bayesian spatial model for disease mapping that accounts
 for scaling. *Statistical Methods in Medical Research*, 25(4),
 1145-1165.

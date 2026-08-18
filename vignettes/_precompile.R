@@ -73,6 +73,24 @@ if (length(orig_files) == 0L) {
 # same vignette. Tokens that match no vignette raise; the empty
 # filter (no --only flag) keeps the full set.
 .cli_args <- commandArgs(trailingOnly = TRUE)
+
+# The knit runs against the INSTALLED flexyBayes, not this tree. A bake
+# after source edits without a reinstall ships stale output that reads
+# as fresh -- it happened twice in the v0.9.1 documentation pass (the
+# tree had moved, the installed build had not, and only a diff caught
+# it). The build stamp of the installed package is printed here so the
+# operator can refuse a stale bake; reinstall from a tarball built OFF
+# the working tree (never from a cloud-synced source directory) before
+# any bake that follows a source change.
+.installed_stamp <- utils::packageDescription("flexyBayes")[["Packaged"]]
+cat(sprintf(
+  paste0(
+    "[precompile] knitting against the INSTALLED flexyBayes ",
+    "(Packaged: %s).\n[precompile] If R/ has changed since that ",
+    "install, STOP and reinstall first -- the bake would be stale.\n"
+  ),
+  if (is.null(.installed_stamp)) "unknown" else .installed_stamp
+))
 .only_idx <- which(.cli_args == "--only")
 if (length(.only_idx) == 1L && .only_idx < length(.cli_args)) {
   tokens <- strsplit(.cli_args[.only_idx + 1L], ",", fixed = TRUE)[[1L]]
@@ -125,6 +143,46 @@ cat(sprintf(
   vignettes_dir
 ))
 
+# Chunk errors are failures, not output.
+#
+# `knitr::knit()` defaults to `error = TRUE`, which renders an error into
+# the document and carries on. The v0.9.1 documentation pass reported
+# "10 OK, 0 FAILED" on a batch in which one chunk had printed
+# `Error in round(): non-numeric argument to mathematical function` into
+# the page, and the only thing that caught it was reading the diff. An
+# undeclared error now aborts that vignette's knit and reaches the
+# FAILED path below. A chunk that declares `error = TRUE` in its own
+# header still renders its error, which is what the refusal pages want.
+knitr::opts_chunk$set(error = FALSE)
+
+# .chunk_error_lines() --- error output the knit put in the page.
+#
+# The backstop to the option above, for the shapes it cannot reach: a
+# chunk that declares `error = TRUE` and errors somewhere its author did
+# not intend. Two things are not errors and are excluded:
+#
+#   * a line that appears verbatim in the .Rmd.orig -- prose passes
+#     through the knit unchanged, and two shipped pages write a `#>
+#     Error:` line by hand inside a plain fenced block to show a refusal
+#     without paying for the fit that raises it;
+#   * every hit in a source that declares `error = TRUE` on a chunk of
+#     its own, because that page's subject is the refusals themselves.
+#
+# The exclusions are deliberately coarse. This is the second gate, and
+# the first one is the option above.
+.chunk_error_lines <- function(baked, source_file) {
+  if (!file.exists(baked)) {
+    return(character())
+  }
+  src <- readLines(source_file, warn = FALSE)
+  if (any(grepl("error\\s*=\\s*TRUE", src))) {
+    return(character())
+  }
+  out <- readLines(baked, warn = FALSE)
+  hits <- out[grepl("^#>\\s*Error|Error in ", out)]
+  setdiff(hits, src)
+}
+
 # Knit each .Rmd.orig in its own working directory so figure paths
 # stay relative to vignettes/.
 old_wd <- getwd()
@@ -161,16 +219,33 @@ for (f in basename(orig_files)) {
   if (identical(unclass(result), "error")) {
     n_fail <- n_fail + 1L
     failures <- c(failures, f)
-  } else {
-    n_ok <- n_ok + 1L
-    # Fix the units: difftime picks its own (secs / mins / hours), so a
-    # bare as.numeric() reported a 1.3-minute knit as "1.3 s".
-    cat(sprintf(
-      "[precompile] OK %s (%.1f s)\n",
-      out,
-      as.numeric(dt, units = "secs")
-    ))
+    next
   }
+
+  bad <- .chunk_error_lines(out, f)
+  if (length(bad) > 0L) {
+    n_fail <- n_fail + 1L
+    failures <- c(failures, f)
+    cat(sprintf(
+      "[precompile] FAILED on %s: %d chunk-error line(s) in %s\n",
+      f,
+      length(bad),
+      out
+    ))
+    for (b in utils::head(bad, 5L)) {
+      cat(sprintf("             %s\n", b))
+    }
+    next
+  }
+
+  n_ok <- n_ok + 1L
+  # Fix the units: difftime picks its own (secs / mins / hours), so a
+  # bare as.numeric() reported a 1.3-minute knit as "1.3 s".
+  cat(sprintf(
+    "[precompile] OK %s (%.1f s)\n",
+    out,
+    as.numeric(dt, units = "secs")
+  ))
 }
 
 cat(sprintf(

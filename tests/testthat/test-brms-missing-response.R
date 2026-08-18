@@ -49,6 +49,58 @@ test_that("brms samples a missing Gaussian response rather than dropping it", {
   expect_equal(stats::nobs(fit$brms), nrow(d))
 })
 
+test_that("the sampled missing responses reach summary(fit)$missing", {
+  # The device is only half-delivered if the fit carries the posterior and
+  # no accessor reports it. One row per design cell that lost its response,
+  # which is exactly the gap between the two observation counts.
+  skip_if_not_installed("brms")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .brms_miss_data("gaussian")
+  fit <- suppressMessages(suppressWarnings(flexybayes(
+    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
+    backend = "brms", na_action = "augment",
+    n_samples = 200, warmup = 200, chains = 2,
+    verbose = FALSE, mcmc_verbose = FALSE
+  )))
+
+  captured <- utils::capture.output(s <- summary(fit))
+  mv <- s$missing
+  expect_s3_class(mv, "data.frame")
+  expect_identical(
+    names(mv),
+    c("row", "estimate", "std.error", "conf.low", "conf.high")
+  )
+  expect_identical(
+    nrow(mv),
+    stats::nobs(fit) - stats::nobs(fit, type = "observed")
+  )
+  # The rows named are the rows whose response was missing, and the
+  # accessor and the summary slot are one construction.
+  expect_identical(sort(mv$row), sort(which(is.na(d$y))))
+  expect_identical(stats::coef(fit, what = "missing"), mv)
+  expect_true(all(is.finite(mv$estimate)))
+  expect_true(all(mv$std.error > 0))
+  expect_true(all(mv$conf.low <= mv$conf.high))
+})
+
+test_that("a complete brms fit reports a typed zero-row missing table", {
+  skip_if_not_installed("brms")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .brms_miss_data("gaussian", n_missing = 0L)
+  fit <- suppressMessages(suppressWarnings(flexybayes(
+    fixed = y ~ 1, random = ~ blk, residual = ~ units, data = d,
+    backend = "brms", na_action = "augment",
+    n_samples = 200, warmup = 200, chains = 2,
+    verbose = FALSE, mcmc_verbose = FALSE
+  )))
+  mv <- stats::coef(fit, what = "missing")
+  expect_s3_class(mv, "data.frame")
+  expect_identical(nrow(mv), 0L)
+  expect_true(is.integer(mv$row))
+})
+
 test_that("the emitted brms formula marks the response as partially missing", {
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)

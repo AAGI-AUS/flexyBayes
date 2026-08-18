@@ -110,11 +110,11 @@ is one correlated residual with no independent plot error -- three
 parameters, nested inside this one as the nugget goes to zero. On data
 with real plot-to-plot noise the two return different correlations,
 because a nugget-free model must absorb independent noise into the
-correlated structure. On a 14 x 12 grid with true correlations 0.6 and
-0.3 and a nugget worth 22\% of the total variance, ASReml returns 0.513
-and 0.150 where flexyBayes returns 0.588 and 0.202. Neither is wrong;
-they are different models, and writing the field on the random side is
-what keeps them distinguishable by name.}
+correlated structure and is pulled towards zero by it. The gap grows
+with the share of the total variance the nugget holds, and it falls on
+the correlations a reader acts on. Neither model is wrong. They are
+different models, and writing the field on the random side is what
+keeps them distinguishable by name.}
 
 \item{residual}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
 (iid residuals). \code{~ dsum(~ units | env)}, and the equivalent
@@ -169,24 +169,45 @@ the intended one, and will be implemented alongside the other
 weight semantics (frequency, likelihood-power, trials, exposure),
 which are different models and cannot share one argument silently.}
 
-\item{na_action}{How to treat observations whose response is missing.
-\code{"augment"} (default) retains them, carrying the missing response as
-a latent quantity the engine marginalises, and completes the design
-grid where the absent cells are determinable. This is ASReml's
-\code{na.method(y = "include")} behaviour, and it matters whenever the
-model carries a covariance indexed by the design: deleting the row
-of a lost plot changes the index set a separable AR1 field is
-built over, so the fitted model is no longer the model that was
-written down. \code{"omit"} drops the rows (complete-case); a structured
-covariance over the resulting broken grid then refuses downstream.
-\code{"fail"} refuses if any response is missing.
+\item{na_action}{How to treat observations whose response is missing,
+and -- through the list form below -- observations whose predictors
+are missing.
+
+\code{"augment"} (default) retains missing-response rows, carrying the
+missing response as a latent quantity the engine marginalises, and
+completes the design grid where the absent cells are determinable.
+This is ASReml's \code{na.method(y = "include")} behaviour, and it
+matters whenever the model carries a covariance indexed by the
+design: deleting the row of a lost plot changes the index set a
+separable AR1 field is built over, so the fitted model is no longer
+the model that was written down. \code{"omit"} drops the rows
+(complete-case); a structured covariance over the resulting broken
+grid then refuses downstream. \code{"fail"} refuses if any response is
+missing, and leaves the design grid alone.
+
+The argument also accepts the object an ASReml user already writes,
+\code{asreml::na.method(y = , x = )}, and the bare list of the same shape
+for readers without an asreml licence:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{flexybayes(..., na_action = list(y = "include", x = "fail"))
+}\if{html}{\out{</div>}}
+
+The response words map \code{include} to \code{"augment"}, \code{omit} to
+\code{"omit"}, \code{fail} to \code{"fail"}. The covariate words are ASReml's own:
+\code{x = "fail"} (the default, and ASReml's) refuses a missing
+predictor; \code{x = "omit"} drops the affected rows with a warning
+naming the count and the columns; \code{x = "include"} -- ASReml's
+zero-fill (Reference Manual 4.2, section 3.11) -- is refused by
+name, because a zero is a value the plot did not have. A value
+arriving as an unreduced \code{na.method()} default vector is read as
+its first element, which is the policy ASReml itself would use.
 
 Under ignorability the posterior for the model parameters is the
-same either way -- augmentation preserves the representation, not
-information. Where missingness depends on the unobserved response
-itself, both are biased and neither this argument nor any diagnostic
-here will tell you so. Missing \emph{covariates} are refused under every
-setting.}
+same whether a missing response is augmented or omitted --
+augmentation preserves the representation, not information. Where
+missingness depends on the unobserved response itself, both are
+biased and neither this argument nor any diagnostic here will tell
+you so.}
 
 \item{n_samples}{Integer: number of posterior samples per chain.}
 
@@ -219,7 +240,7 @@ PC-canonical hybrid DSL (preferred). When supplied it overrides
 \item{prior_fixed_sd}{Numeric: SD for fixed-effect normal priors,
 applied uniformly to the intercept, factor contrasts, continuous
 slopes, factor x continuous interactions, and \code{I()}-expression
-terms. Default \code{100} — weakly informative on the natural response
+terms. Default \code{100} -- weakly informative on the natural response
 scale for the vast majority of agricultural / clinical responses
 (covers responses with central tendency up to several hundred
 without crushing the posterior toward zero), while still

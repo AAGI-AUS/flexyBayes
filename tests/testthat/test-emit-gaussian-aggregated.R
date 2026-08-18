@@ -125,6 +125,24 @@ test_that("(e) backend_decision reason carries N, K, ratio", {
   expect_true(grepl("N = \\d+", reason))
   expect_true(grepl("K = \\d+", reason))
   expect_true(grepl("ratio = \\d+\\.\\d+:1", reason))
+
+  # `K` is said twice on one fit and used to mean two things: the
+  # planner's product of declared factor levels (the complete grid) here,
+  # and the realised count of cell-key combinations the data contains in
+  # the print and summary compression lines. On an incomplete grid they
+  # differ -- 135 against 133 on the case that surfaced this -- and both
+  # printed as a bare `K`. The estimate now says that it is one.
+  expect_true(grepl("K = \\d+ \\(estimated\\)", reason))
+  # The realised count carries no such qualifier, and is what the
+  # compression line reports.
+  agg_k <- fit$extras$aggregation_meta$K
+  printed <- utils::capture.output(print(fit))
+  expect_true(any(grepl(
+    paste0("K = ", format(agg_k, big.mark = " ", scientific = FALSE)),
+    printed,
+    fixed = TRUE
+  )))
+  expect_false(any(grepl("(estimated)", printed, fixed = TRUE)))
 })
 
 
@@ -563,7 +581,10 @@ test_that("flexybayes_aggregated on greta has no flexybayes_inla label", {
 test_that("aggregation_meta carries prior_parametrization, surfaced by canonical_names", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  # Default prior -> per-row-equivalent (the matched-prior guarantee).
+  # The legacy scalar bridge -> per-row-equivalent (the matched-prior
+  # guarantee). `prior_vc_sd = 1` is what selects that route, and it is
+  # the only route this test used to exercise -- which is how the
+  # auto-default's mislabel went unseen.
   fit_def <- suppressMessages(fb(
     y ~ f1 + f2 + (1 | g),
     data = dat,
@@ -581,6 +602,31 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
     canonical_names(fit_def)$prior_parametrization,
     "per_row_equivalent"
   )
+  # No prior argument at all -> the package's own default. Since the
+  # auto-default became an fb_prior object, a class test alone called
+  # this "custom (explicit prior supplied)" -- on the commonest fit the
+  # package produces, with no prior supplied by anyone. The label is
+  # routed off the default-basis attribute prior_summary() reads.
+  fit_auto <- suppressMessages(fb(
+    y ~ f1 + f2 + (1 | g),
+    data = dat,
+    backend = "inla",
+    aggregate = "auto",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  ))
+  expect_identical(
+    fit_auto$extras$aggregation_meta$prior_parametrization,
+    "package_default"
+  )
+  expect_identical(
+    canonical_names(fit_auto)$prior_parametrization,
+    "package_default"
+  )
+  expect_identical(prior_summary(fit_auto)$default_origin, "auto")
+  auto_out <- utils::capture.output(print(fit_auto))
+  expect_true(any(grepl("package default", auto_out, fixed = TRUE)))
+  expect_false(any(grepl("explicit prior supplied", auto_out, fixed = TRUE)))
   # Explicit prior -> custom (equivalence against a default-prior per-row
   # fit no longer holds; flagged so the user does not misread agreement).
   fit_cus <- suppressMessages(fb(
@@ -600,6 +646,9 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
     canonical_names(fit_cus)$prior_parametrization,
     "custom"
   )
+  expect_identical(prior_summary(fit_cus)$default_origin, "user")
+  cus_out <- utils::capture.output(print(fit_cus))
+  expect_true(any(grepl("explicit prior supplied", cus_out, fixed = TRUE)))
   # The label reaches the user-facing print surface.
   out <- utils::capture.output(print(fit_def))
   expect_true(any(grepl("per-row-equivalent", out)))
@@ -729,9 +778,12 @@ test_that("(d) greta aggregated posterior recovers truth (MC tol)", {
   expect_identical(backend_decision(fit)$backend, "greta")
   expect_identical(backend_decision(fit)$path, "aggregated_gaussian")
 
-  beta_post <- summary(fit)$beta_means
-  sigma_post <- as.numeric(summary(fit)$sigma_means)
-  tau_post <- as.numeric(summary(fit)$tau_means)
+  # The raw aggregated posterior pieces, read off the record rather than
+  # off summary(): summary() returns the unified `summary.flexybayes`
+  # object on every route, and these three are the emit's own names.
+  beta_post <- fit$extras$summary$beta_means
+  sigma_post <- as.numeric(fit$extras$summary$sigma_means)
+  tau_post <- as.numeric(fit$extras$summary$tau_means)
 
   expect_true(
     all(abs(beta_post - beta_true) <= 0.10),

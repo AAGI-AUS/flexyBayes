@@ -151,3 +151,52 @@
   }
   invisible(TRUE)
 }
+
+
+#' Is the posterior package available?
+#'
+#' A named predicate rather than an inline [requireNamespace()] call, so
+#' the guard that consults it can be reached from a test without
+#' uninstalling the package. Same shape as `.fb_emmeans_available()` on
+#' the classify path.
+#'
+#' @returns `TRUE` when \pkg{posterior} can be loaded, `FALSE` otherwise.
+#'
+#' @noRd
+#' @keywords internal
+.fb_posterior_available <- function() {
+  requireNamespace("posterior", quietly = TRUE)
+}
+
+
+#' Is the brms package available?
+#'
+#' The companion predicate for the two door methods that delegate to
+#' \pkg{brms} on a brms-engine fit: `loo()` and `pp_check()`. A fit
+#' carrying a `brmsfit` normally travels with the package that built it,
+#' but a saved fit read back on a machine without \pkg{brms} reaches the
+#' delegation with nothing to delegate to.
+#'
+#' @returns `TRUE` when \pkg{brms} can be loaded, `FALSE` otherwise.
+#'
+#' @noRd
+#' @keywords internal
+.fb_brms_available <- function() {
+  requireNamespace("brms", quietly = TRUE)
+}
+
+
+#' Is the bayesplot package available?
+#'
+#' The third of the door's package predicates. `pp_check()` builds its
+#' display with \pkg{bayesplot}, and the guard is reached through
+#' `plot(fit, type = "pp_check")`, which does not load the generic's home
+#' package on the way in.
+#'
+#' @returns `TRUE` when \pkg{bayesplot} can be loaded, `FALSE` otherwise.
+#'
+#' @noRd
+#' @keywords internal
+.fb_bayesplot_available <- function() {
+  requireNamespace("bayesplot", quietly = TRUE)
+}

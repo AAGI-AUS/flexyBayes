@@ -38,12 +38,155 @@
 # and deleting are both biased, and equally so; the layer does not
 # detect this and cannot.
 #
-# Missing COVARIATES are refused throughout. ASReml drops or zero-fills
-# them; a zero-filled covariate is a fabricated observation, so this is
-# a deliberate departure and a stricter one.
+# Missing COVARIATES have their own policy, written the way ASReml
+# writes it (`na.method(x = )`). The default refuses: ASReml's own
+# default is `x = "fail"`, and its alternative -- zero-filling the
+# missing predictor (Manual section 3.11) -- fabricates an observation,
+# so that setting is refused by name rather than reproduced. `x = "omit"`
+# drops the affected rows and says how many and which columns.
 
 # .fb_na_action_choices() --- the closed vocabulary.
 .fb_na_action_choices <- function() c("augment", "omit", "fail")
+
+# .fb_na_covariate_choices() --- the closed vocabulary for the covariate
+# half of the policy, in ASReml's spelling (there is no flexyBayes-native
+# spelling: the argument exists to accept the one users already write).
+.fb_na_covariate_choices <- function() c("fail", "omit", "include")
+
+
+# ------------------------------------------------------------------ #
+# Accepting the policy an ASReml user already writes                   #
+# ------------------------------------------------------------------ #
+#
+# ASReml states the same two decisions through one object,
+# `na.method(y = , x = )`: what to do with a missing RESPONSE and what to
+# do with a missing COVARIATE. flexyBayes accepts that object, the bare
+# list a reader without an asreml licence can write by hand, and its own
+# native strings, and reduces all three to one internal policy.
+#
+# Two recorded properties of `asreml::na.method()` drive the reduction
+# (asreml 4.2.0.392, recorded 2026-08-17; fixture in
+# tests/testthat/helper-asreml-shapes.R):
+#
+#   1. The value is a PLAIN list -- class() is "list", the only attribute
+#      is `names`. There is no class to dispatch on, so detection is by
+#      shape: a list whose names are drawn from `x` / `y` and nothing
+#      else.
+#
+#   2. An unsupplied argument is NOT reduced to its default scalar. The
+#      whole default vector comes back, so `na.method(y = "include")`
+#      carries `x = c("fail", "include", "omit")`. The effective policy
+#      is the first element, as `match.arg()` would take it. Reading the
+#      slot as a scalar silently mis-reads a partially specified call.
+
+# .fb_na_method_y_vocabulary() --- ASReml's response-side words and the
+# flexyBayes word each one means. The native spellings map to themselves
+# so a normalised policy can be normalised again without changing.
+.fb_na_method_y_vocabulary <- function() {
+  c(
+    include = "augment",
+    omit = "omit",
+    fail = "fail",
+    augment = "augment"
+  )
+}
+
+# .fb_match_na_slot() --- reduce one slot of an incoming policy to a
+# single word of a closed vocabulary.
+#
+# `value` is whatever arrived in the slot: a scalar, or the whole default
+# vector of an unsupplied `na.method()` argument (property 2 above). The
+# first element is the effective policy either way. An unrecognised word
+# is named rather than silently defaulted.
+.fb_match_na_slot <- function(value, choices, slot) {
+  if (is.null(value) || length(value) == 0L) {
+    return(choices[[1L]])
+  }
+  if (!is.character(value)) {
+    stop(
+      "`na_action`: the `", slot, "` slot must be a character value, not ",
+      "an object of class <", paste(class(value), collapse = ", "), ">.",
+      call. = FALSE
+    )
+  }
+  word <- value[[1L]]
+  if (!word %in% choices) {
+    stop(
+      "`na_action`: \"", word, "\" is not a recognised `", slot,
+      "` policy. Use one of ", paste0("\"", choices, "\"", collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  word
+}
+
+# .fb_is_na_method_shape() --- the shape test, and only the shape test.
+#
+# True for `asreml::na.method(...)` output and for the hand-written list
+# that stands in for it. Never `inherits()` and never `class()`: the
+# recorded value carries no class of its own, so there is nothing to
+# match on.
+.fb_is_na_method_shape <- function(v) {
+  if (!is.list(v) || length(v) == 0L) {
+    return(FALSE)
+  }
+  nms <- names(v)
+  if (is.null(nms) || any(!nzchar(nms))) {
+    return(FALSE)
+  }
+  all(nms %in% c("x", "y")) && any(c("x", "y") %in% nms)
+}
+
+# .fb_normalise_na_action() --- one internal policy from any accepted
+# spelling.
+#
+# Returns `list(y = <"augment"|"omit"|"fail">, x = <"fail"|"omit"|
+# "include">)`. Idempotent: a policy that has already been normalised
+# passes through unchanged, which is what lets flexybayes() normalise
+# once for the record and hand the same value on to be applied.
+#
+# A slot the caller left out takes ASReml's own default for it --
+# `y = "include"` (so `"augment"`, which is also the flexyBayes default)
+# and `x = "fail"`.
+.fb_normalise_na_action <- function(na_action) {
+  if (.fb_is_na_method_shape(na_action)) {
+    y_word <- .fb_match_na_slot(
+      na_action$y,
+      names(.fb_na_method_y_vocabulary()),
+      "y"
+    )
+    return(list(
+      y = unname(.fb_na_method_y_vocabulary()[[y_word]]),
+      x = .fb_match_na_slot(
+        na_action$x,
+        .fb_na_covariate_choices(),
+        "x"
+      )
+    ))
+  }
+
+  if (is.list(na_action)) {
+    stop(
+      "`na_action` was given as a list, but its names are ",
+      if (is.null(names(na_action))) {
+        "absent"
+      } else {
+        paste0("`", paste(names(na_action), collapse = "`, `"), "`")
+      },
+      ". A policy list is the shape asreml::na.method() returns: named ",
+      "`y` (the response policy) and optionally `x` (the covariate ",
+      "policy), for example list(y = \"include\", x = \"fail\").",
+      call. = FALSE
+    )
+  }
+
+  list(
+    y = match.arg(na_action, .fb_na_action_choices()),
+    x = .fb_na_covariate_choices()[[1L]]
+  )
+}
+
 
 # .fb_response_missing() --- index of rows whose response is NA.
 .fb_response_missing <- function(fb, data) {
@@ -113,75 +256,36 @@
 # so a lost yield is a row present with an NA, which needs no invention.
 # A cell absent from the data frame entirely is a cell whose design
 # assignment nobody recorded.
+#
+# The completion itself is `.fb_grid_complete()` in R/fb_complete_grid.R,
+# which the exported `fb_complete_grid()` also runs. One implementation,
+# two entry points, so the helper a user calls by hand and the automatic
+# path a default fit takes cannot complete the same trial two different
+# ways. What differs here is the candidate set -- only the columns the
+# model refers to matter to a fit, where the standalone helper has no IR
+# and considers every column -- and the remedy the refusal names.
+#
+# Constant columns keep their single value; everything else the model
+# does not refer to is carried from row 1 and never read.
 .fb_complete_design_grid <- function(fb, data, index_vars) {
-  if (length(index_vars) == 0L) {
-    return(list(data = data, added = 0L))
-  }
-  if (!all(index_vars %in% names(data))) {
-    return(list(data = data, added = 0L))
-  }
-
-  levs <- lapply(index_vars, function(v) {
-    x <- data[[v]]
-    if (is.factor(x)) levels(x) else sort(unique(x))
-  })
-  names(levs) <- index_vars
-  full <- expand.grid(levs, stringsAsFactors = FALSE, KEEP.OUT.ATTRS = FALSE)
-
-  key <- function(df) {
-    do.call(paste, c(lapply(index_vars, function(v) as.character(df[[v]])),
-                     list(sep = "\r")))
-  }
-  have <- key(data)
-  want <- key(full)
-  absent <- which(!want %in% have)
-  if (length(absent) == 0L) {
-    return(list(data = data, added = 0L))
-  }
-
-  # Which columns would have to be invented for the absent rows?
-  needed <- setdiff(intersect(.fb_model_vars(fb), names(data)), index_vars)
-  undetermined <- needed[vapply(
-    needed,
-    function(v) length(unique(data[[v]][!is.na(data[[v]])])) > 1L,
-    logical(1)
-  )]
-  if (length(undetermined) > 0L) {
-    stop(.fb_refusal_condition(
-      reason_code = "augment_cell_not_determinable",
-      message = paste0(
-        "na_action = \"augment\" cannot complete the design grid: ",
-        length(absent), " cell(s) of the ",
-        paste(index_vars, collapse = " x "),
-        " grid are absent from the data, and the model also depends on ",
-        paste(undetermined, collapse = ", "),
-        ", whose value at those cells is not recorded anywhere. ",
-        "Inventing it would fabricate an observation. Supply the absent ",
-        "cells as rows with the design columns filled in and the ",
-        "response set to NA -- which is how a field book records a lost ",
-        "plot -- or use na_action = \"omit\" to analyse the observed ",
-        "cells only."
-      ),
-      family_class = "flexybayes_augment_cell_not_determinable"
-    ))
-  }
-
-  add <- data[rep(1L, length(absent)), , drop = FALSE]
-  rownames(add) <- NULL
-  for (v in index_vars) {
-    val <- full[[v]][absent]
-    add[[v]] <- if (is.factor(data[[v]])) {
-      factor(as.character(val), levels = levels(data[[v]]))
-    } else {
-      val
-    }
-  }
-  add[[fb$response]] <- NA
-  # Constant columns keep their single value; everything else the model
-  # does not refer to is carried from row 1 and never read.
-  out <- rbind(data, add)
-  rownames(out) <- NULL
-  list(data = out, added = length(absent))
+  out <- .fb_grid_complete(
+    data = data,
+    index_vars = index_vars,
+    response = fb$response,
+    candidate_vars = .fb_model_vars(fb),
+    unused_level = NULL,
+    remedy = paste0(
+      "Supply the field-book rows instead -- one row per sown plot, with ",
+      "the design columns filled in and the response set to NA, which is ",
+      "how a field book already records a lost plot -- or pad the array ",
+      "yourself with ",
+      "fb_complete_grid(data, ~ row * col, response, ",
+      "unused_level = \"UNSOWN\"), which names the level the empty cells ",
+      "carry; or use na_action = \"omit\" to analyse the observed cells ",
+      "only."
+    )
+  )
+  list(data = out$data, added = out$added)
 }
 
 # .fb_apply_na_action() --- the entry point, called from flexybayes()
@@ -193,77 +297,201 @@
 # that happened to survive -- a distinction the fit object could not
 # previously express.
 .fb_apply_na_action <- function(fb, data, na_action) {
-  na_action <- match.arg(na_action, .fb_na_action_choices())
+  policy <- .fb_normalise_na_action(na_action)
+
+  # ---- Covariates first -------------------------------------------------
+  # The response policy is about which design cells the engine is handed.
+  # The covariate policy is about which rows exist at all, so it settles
+  # before the design is counted or completed.
+  cov_step <- .fb_apply_covariate_policy(fb, data, policy$x)
+  data <- cov_step$data
+
   miss <- .fb_response_missing(fb, data)
 
-  # A missing covariate is refused under every na_action. There is no
-  # ignorability argument that makes a fabricated predictor safe, and
-  # the device does not extend to one.
-  cov_vars <- setdiff(intersect(.fb_model_vars(fb), names(data)), fb$response)
-  bad_cov <- cov_vars[vapply(
-    cov_vars, function(v) anyNA(data[[v]]), logical(1)
-  )]
-  if (length(bad_cov) > 0L) {
-    stop(.fb_refusal_condition(
-      reason_code = "missing_covariate_not_supported",
-      message = paste0(
-        "Missing values in the covariate(s) ",
-        paste(bad_cov, collapse = ", "),
-        ". The missing-response device does not extend to predictors: ",
-        "a filled-in covariate is a fabricated observation, not a ",
-        "marginalised latent quantity. Supply the values, or drop the ",
-        "affected rows deliberately before fitting."
-      ),
-      family_class = "flexybayes_missing_covariate_not_supported"
+  if (identical(policy$y, "fail")) {
+    if (length(miss) > 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "missing_response_refused",
+        message = paste0(
+          length(miss), " observation(s) have a missing response and ",
+          "na_action = \"fail\". Use na_action = \"augment\" to carry ",
+          "them as latent quantities and keep the design intact, or ",
+          "na_action = \"omit\" to analyse the observed cells only."
+        ),
+        family_class = "flexybayes_missing_response_refused"
+      ))
+    }
+    # Nothing missing, so nothing to do. The grid is deliberately NOT
+    # completed here: completing it would introduce the missing responses
+    # this setting exists to refuse. Before 0.9.1 control fell through
+    # into the augment branch, which completed the grid and recorded the
+    # run as `augment` -- so the record did not echo the argument.
+    return(list(
+      data = data,
+      meta = .fb_na_action_meta(
+        policy = policy,
+        n_missing_response = 0L,
+        n_cells_completed = 0L,
+        design_index_vars = character(0),
+        n_design = nrow(data),
+        n_unobserved = 0L,
+        n_covariate_rows_dropped = cov_step$n_dropped
+      )
     ))
   }
 
-  if (identical(na_action, "fail") && length(miss) > 0L) {
-    stop(.fb_refusal_condition(
-      reason_code = "missing_response_refused",
-      message = paste0(
-        length(miss), " observation(s) have a missing response and ",
-        "na_action = \"fail\". Use na_action = \"augment\" to carry ",
-        "them as latent quantities and keep the design intact, or ",
-        "na_action = \"omit\" to analyse the observed cells only."
-      ),
-      family_class = "flexybayes_missing_response_refused"
-    ))
-  }
-
-  if (identical(na_action, "omit")) {
+  if (identical(policy$y, "omit")) {
     if (length(miss) > 0L) {
       data <- data[-miss, , drop = FALSE]
       rownames(data) <- NULL
     }
     return(list(
       data = data,
-      meta = list(
-        na_action = "omit", n_missing_response = length(miss),
-        n_cells_completed = 0L, design_index_vars = character(0)
+      meta = .fb_na_action_meta(
+        policy = policy,
+        n_missing_response = length(miss),
+        n_cells_completed = 0L,
+        design_index_vars = character(0),
+        n_design = nrow(data),
+        n_unobserved = 0L,
+        n_covariate_rows_dropped = cov_step$n_dropped
       )
     ))
   }
 
-  # augment
+  # ---- augment ----------------------------------------------------------
   index_vars <- .fb_design_index_vars(fb)
   completed <- .fb_complete_design_grid(fb, data, index_vars)
   n_unobserved <- length(miss) + completed$added
   .fb_warn_high_missingness(n_unobserved, nrow(completed$data))
   list(
     data = completed$data,
-    meta = list(
-      na_action = "augment",
+    meta = .fb_na_action_meta(
+      policy = policy,
       n_missing_response = length(miss),
       n_cells_completed = completed$added,
       design_index_vars = index_vars,
-      missing_fraction = if (nrow(completed$data) > 0L) {
-        n_unobserved / nrow(completed$data)
-      } else {
-        NA_real_
-      }
+      n_design = nrow(completed$data),
+      n_unobserved = n_unobserved,
+      n_covariate_rows_dropped = cov_step$n_dropped
     )
   )
+}
+
+# .fb_na_action_meta() --- the record that travels into the fit.
+#
+# One builder for all three response policies so the fields cannot drift
+# apart between branches, which is how `missing_fraction` came to exist
+# on the augment path alone.
+#
+# `n_design` is the number of rows handed to the engine and `n_observed`
+# the number of those rows carrying an observed response, so
+# `missing_fraction` reads the same way on every path: the fraction of
+# the FITTED rows that carry no observed response. On `omit` and `fail`
+# that is zero by construction -- how many rows were dropped or would
+# have been is `n_missing_response`, which is a different number and has
+# its own field.
+.fb_na_action_meta <- function(
+  policy,
+  n_missing_response,
+  n_cells_completed,
+  design_index_vars,
+  n_design,
+  n_unobserved,
+  n_covariate_rows_dropped
+) {
+  list(
+    na_action = policy$y,
+    na_covariate = policy$x,
+    n_missing_response = as.integer(n_missing_response),
+    n_cells_completed = as.integer(n_cells_completed),
+    design_index_vars = design_index_vars,
+    n_design = as.integer(n_design),
+    n_observed = as.integer(n_design - n_unobserved),
+    n_covariate_rows_dropped = as.integer(n_covariate_rows_dropped),
+    missing_fraction = if (n_design > 0L) {
+      n_unobserved / n_design
+    } else {
+      NA_real_
+    }
+  )
+}
+
+# .fb_apply_covariate_policy() --- the covariate half of na.method().
+#
+# Returns list(data = <possibly reduced>, n_dropped = <int>). Called
+# before anything looks at the response, because two of the three
+# policies decide whether a row is in the analysis at all.
+#
+# The default (`x = "fail"`) is ASReml's own default, and it is the
+# setting that refuses. `x = "include"` is the one ASReml behaviour this
+# package will not reproduce.
+.fb_apply_covariate_policy <- function(fb, data, x_policy) {
+  cov_vars <- setdiff(intersect(.fb_model_vars(fb), names(data)), fb$response)
+  bad_cov <- cov_vars[vapply(
+    cov_vars, function(v) anyNA(data[[v]]), logical(1)
+  )]
+  if (length(bad_cov) == 0L) {
+    return(list(data = data, n_dropped = 0L))
+  }
+
+  named <- paste(bad_cov, collapse = ", ")
+
+  if (identical(x_policy, "fail")) {
+    stop(.fb_refusal_condition(
+      reason_code = "missing_covariate_not_supported",
+      message = paste0(
+        "The predictor(s) ", named, " have missing values, and the ",
+        "covariate policy is `fail` -- which is also what ASReml does by ",
+        "default (na.method(x = \"fail\")). A missing predictor is not a ",
+        "missing observation: the response device carries an unobserved ",
+        "yield as a latent quantity the engine integrates out, and there ",
+        "is no equivalent for a predictor whose value was never ",
+        "recorded. Supply the values, drop the affected rows yourself, ",
+        "or say so in the call with ",
+        "na_action = list(y = \"include\", x = \"omit\"), which drops ",
+        "them and reports how many."
+      ),
+      family_class = "flexybayes_missing_covariate_not_supported"
+    ))
+  }
+
+  if (identical(x_policy, "include")) {
+    stop(.fb_refusal_condition(
+      reason_code = "covariate_zero_fill_not_supported",
+      message = paste0(
+        "The predictor(s) ", named, " have missing values and the ",
+        "covariate policy is `include`. ASReml treats a missing covariate ",
+        "as zero under that setting (ASReml-R Reference Manual 4.2, ",
+        "section 3.11). A zero is a value the plot did not have: the fit ",
+        "would report a coefficient estimated partly from observations ",
+        "nobody made, and nothing downstream would say so. Supply the ",
+        "values, or pass ",
+        "na_action = list(y = \"include\", x = \"omit\") to drop the ",
+        "affected rows and see the count."
+      ),
+      family_class = "flexybayes_covariate_zero_fill_not_supported"
+    ))
+  }
+
+  # x = "omit": drop the affected rows, and say what went.
+  drop_rows <- Reduce(
+    `|`,
+    lapply(bad_cov, function(v) is.na(data[[v]])),
+    init = rep(FALSE, nrow(data))
+  )
+  n_dropped <- sum(drop_rows)
+  warning(
+    "flexyBayes: dropped ", n_dropped, " row(s) of ", nrow(data),
+    " whose predictor value was missing in ", named,
+    " (na_action covariate policy x = \"omit\"). Deletion is a ",
+    "complete-case analysis of the remaining rows; a covariance indexed ",
+    "by the design is built over the reduced index set.",
+    call. = FALSE
+  )
+  data <- data[!drop_rows, , drop = FALSE]
+  rownames(data) <- NULL
+  list(data = data, n_dropped = as.integer(n_dropped))
 }
 
 

@@ -18,31 +18,31 @@
 #' the same model on the same data.
 #'
 #' @section Entry points:
-#' Two ingest paths share a single internal model representation
+#' The entry points share a single internal model representation
 #' (`fb_terms`):
 #'
-#' * [flexybayes()] — asreml-format entry: `fixed` / `random` / `residual`
+#' * [flexybayes()] -- ASReml-format entry: `fixed` / `random` / `residual`
 #'   formulas and `known_matrices` for kinship / pedigree. Observation
 #'   `weights` are parsed and then refused (`weights_not_supported`) until
 #'   an active emitter consumes them.
-#' * [fb()] / [flexybayes()] — the universal entry. Accepts an ASReml
+#' * [fb()] / [flexybayes()] -- the universal entry. Accepts an ASReml
 #'   (`fixed` / `random` / `residual`) or brms-style (`y ~ x + (1 | g)`)
 #'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).
-#' * [fb_inla()] / [fb_brms()] — single-engine pins. [fb_greta()] is
+#' * [fb_inla()] / [fb_brms()] -- single-engine pins. [fb_greta()] is
 #'   retained and refuses.
-#' * [fb_prior()] — penalised-complexity-canonical prior DSL.
-#' * [triangulate()] — cross-engine posterior comparison.
+#' * [fb_prior()] -- penalised-complexity-canonical prior DSL.
+#' * [triangulate()] -- cross-engine posterior comparison.
 #'
 #' @section Vignettes:
-#' Eleven vignettes ship with the package, covering: getting started,
-#' the formula surface (the asreml term catalogue together with
-#' structured covariance), foundational regression, hierarchical models,
-#' priors and regularisation, multi-environment trials and genomics,
-#' downstream analysis, spatio-temporal models, cross-engine
-#' triangulation, dispatch and refusals with the backend registry, and
-#' big-data streaming (exact aggregation). The dispatch-and-refusals
-#' page is the technical / internals reference; the rest target a
-#' general audience.
+#' Twelve vignettes ship with the package, covering: arriving from an
+#' ASReml call, getting started, the formula surface (the asreml term
+#' catalogue together with structured covariance), foundational
+#' regression, hierarchical models, priors and regularisation,
+#' multi-environment trials and genomics, downstream analysis,
+#' spatio-temporal models, cross-engine triangulation, dispatch and
+#' refusals with the backend registry, and big-data streaming (exact
+#' aggregation). The dispatch-and-refusals page is the technical /
+#' internals reference; the rest target a general audience.
 #'
 #' @section Capability:
 #' What each active engine fits, emits, or refuses by model class is
@@ -56,12 +56,12 @@
 #' Simpson, D., Rue, H., Riebler, A., Martins, T. G., & Sørbye, S. H.
 #' (2017). Penalising model component complexity: A principled,
 #' practical approach to constructing priors. *Statistical Science*,
-#' 32(1), 1–28.
+#' 32(1), 1--28.
 #'
 #' Rue, H., Martino, S., & Chopin, N. (2009). Approximate Bayesian
 #' inference for latent Gaussian models by using integrated nested
 #' Laplace approximations. *Journal of the Royal Statistical Society:
-#' Series B*, 71(2), 319–392.
+#' Series B*, 71(2), 319--392.
 #'
 #' Gelman, A., Vehtari, A., Simpson, D., Margossian, C. C., Carpenter,
 #' B., Yao, Y., Kennedy, L., Gabry, J., Bürkner, P.-C., & Modrák, M.

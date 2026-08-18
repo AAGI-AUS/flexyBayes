@@ -16,7 +16,15 @@ Invisibly, \code{x} unchanged. Called for the description it
 prints.
 }
 \description{
-Reports the call the fit came from, the engine that ran it, the model
-dimensions, and the headline posterior quantities. Use \code{\link[=summary]{summary()}} for
-the full coefficient and variance-component tables.
+Reports the call the fit came from, the model the representation
+describes, the engine that ran it, the design and observation counts,
+and the headline posterior quantities. Use \code{\link[=summary]{summary()}} for the full
+coefficient and variance-component tables.
+}
+\details{
+The header is shared with \code{\link[=print.flexybayes_inla]{print.flexybayes_inla()}} and the brms
+print, so the three cannot disagree about what the fit is. Sampler
+lines print only on an engine that sampled: a nested Laplace
+approximation has no chains and no warmup, and reporting them over one
+tells a reader the fit is stochastic when it is not.
 }

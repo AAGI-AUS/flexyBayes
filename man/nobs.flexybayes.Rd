@@ -4,20 +4,33 @@
 \alias{nobs.flexybayes}
 \title{Number of observations a flexyBayes fit was fitted to}
 \usage{
-\method{nobs}{flexybayes}(object, ...)
+\method{nobs}{flexybayes}(object, type = c("design", "observed"), ...)
 }
 \arguments{
 \item{object}{A \code{flexybayes} fit of any engine.}
 
+\item{type}{Which count to return: \code{"design"} (default) or
+\code{"observed"}.}
+
 \item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-A single integer, the number of observations in the fitted
-data.
+A single integer.
 }
 \description{
-Reads the observation count recorded at emit time, so the answer is the
-number of rows the engine actually saw. On a fit whose missing responses
-were augmented rather than dropped, that count includes the augmented
-design cells.
+A fit whose missing responses were augmented rather than dropped was
+handed more rows than it has observations: the design cell of a lost
+plot is still a row, carried as a latent quantity so the index set a
+structured covariance is built over survives. The two counts are
+therefore different numbers and the argument says which one is wanted.
+}
+\details{
+\code{type = "design"} (the default, and the historical behaviour) is the
+number of rows the engine saw. \code{type = "observed"} is how many of
+those carried an observed response, read from the record the
+missing-response layer left on the fit.
+}
+\seealso{
+\code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \code{n_design} and \code{n_observed}
+slots are the same two numbers.
 }

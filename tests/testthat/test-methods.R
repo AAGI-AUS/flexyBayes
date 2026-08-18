@@ -300,11 +300,19 @@ test_that("plot.flexybayes runs without error for blups", {
   expect_no_error(plot(fit, type = "blups"))
 })
 
-test_that("plot.flexybayes runs without error for pp_check", {
+test_that("plot.flexybayes refuses pp_check on a fit with no replicates", {
+  # Until 0.9.1 this drew an observed-versus-fitted panel on any fit
+  # carrying a response and a fitted vector, under a name that promises
+  # replicated datasets. The mock carries both and no predictive draws,
+  # so it now refuses by name -- catchable, and pointing at the residual
+  # displays it can draw.
   fit <- make_mock_flexybayes()
   grDevices::pdf(file = NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
-  expect_no_error(plot(fit, type = "pp_check"))
+  expect_error(
+    plot(fit, type = "pp_check"),
+    class = "flexybayes_refusal_pp_check_requires_predictive_draws"
+  )
 })
 
 test_that("summary.flexybayes_glm prints Bayesian summary", {

@@ -76,14 +76,14 @@ fit
 > be numerically unstable. brms does not share that failure mode.
 
 `fit` is of class `flexybayes`. Its `summary()` method gives the
-posterior digest; its `coef()` method returns the posterior means of
-the fixed effects; its `predict()` method computes posterior
+posterior digest, its `coef()` method returns the posterior means of
+the fixed effects, and its `predict()` method computes posterior
 predictions on a `newdata` of your choice.
 
 > **A note on the diagnostics.** This is a production-budget fit
 > (warmup 5000, four chains). The fixed effects -- which the
-> `emmeans` and `marginaleffects` analyses below rely on -- mix well;
-> the Subject variance component mixes more slowly, so its worst
+> `emmeans` and `marginaleffects` analyses below rely on -- mix well.
+> The Subject variance component mixes more slowly, so its worst
 > $\widehat{R}$ can sit a little above the strict 1.01 target. The
 > downstream summaries below are functions of the fixed-effect
 > posterior and are unaffected.
@@ -107,7 +107,7 @@ The resulting credible interval on each marginal mean is therefore a
 **Gaussian approximation** to the true posterior of the linear
 combination. For well-behaved fits the approximation is excellent
 (linear combinations of approximately-jointly-Gaussian posteriors are
-themselves approximately Gaussian); for skewed posteriors -- small
+themselves approximately Gaussian). For skewed posteriors -- small
 group counts, boundary problems -- it can understate the tail.
 
 A typical first call estimates the predicted reaction time at three
@@ -144,9 +144,9 @@ sapply(c(0, 5, 9), function(d) {
 `marginaleffects` (Arel-Bundock, 2024) provides three closely-related
 summaries.
 
-- `predictions()` evaluates the *response* on a grid of predictors;
+- `predictions()` evaluates the *response* on a grid of predictors.
 - `comparisons()` evaluates *differences in predictions* across
-  user-specified contrasts;
+  user-specified contrasts.
 - `slopes()` evaluates *partial derivatives* of predictions with
   respect to a continuous predictor.
 
@@ -187,7 +187,7 @@ For full posterior propagation through complex counterfactuals -- where
 the entire posterior -- the manual draws-based route stays useful.
 
 `marginaleffects` and `emmeans` overlap in scope. The rule of thumb:
-`emmeans` for grouped means and pairwise contrasts on factors;
+`emmeans` for grouped means and pairwise contrasts on factors, and
 `marginaleffects` for derivative-based summaries and complex
 counterfactuals.
 
@@ -222,7 +222,7 @@ for what to do.
 
 # 6. `loo` -- predictive performance and model comparison
 
-`loo::loo()` (Vehtari, Gelman, & Gabry, 2017; Vehtari, Simpson,
+`loo::loo()` (Vehtari, Gelman, & Gabry, 2017, and Vehtari, Simpson,
 Gelman, Yao, & Gabry, 2024) computes *Pareto-smoothed importance-
 sampling leave-one-out cross-validation* (PSIS-LOO), an estimator of
 out-of-sample predictive log-density. Each observation receives a
@@ -231,7 +231,7 @@ overly-influential observation that the importance-sampling
 approximation cannot trust.
 
 A canonical `loo` integration requires a `log_lik` method that
-returns the pointwise log-likelihood draws array (S × N for S
+returns the pointwise log-likelihood draws array ($S \times N$ for $S$
 posterior draws and N observations). `flexyBayes` ships
 `logLik.flexybayes()` (a single-scalar plug-in method) and does not
 ship `log_lik.flexybayes()` (the pointwise draws-array method that
@@ -338,7 +338,7 @@ work. Removing it would visibly change the posterior.
 
 In practice:
 
-- Plot $\hat{k}$ values; expect the right tail to thin quickly.
+- Plot the $\hat{k}$ values and expect the right tail to thin quickly.
 - For each $\hat{k} > 0.7$ observation, ask: is this observation a
   leverage point we should investigate, an outlier we should refit
   with a robust likelihood, or a routine high-information

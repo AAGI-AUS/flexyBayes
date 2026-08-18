@@ -31,11 +31,10 @@ Compare two genomic analyses -- heritability, variance components, and
 genomic estimated breeding values -- on a common footing. Each argument
 is either a flexyBayes GBLUP / pedigree fit (greta, INLA, or brms) or a
 generic \emph{genomic lens} (\code{list(h2, var_g, var_e, gebv, label)}), the form
-a field-standard oracle such as sommer's REML supplies. Cross-engine use
-checks that the Bayesian backends agree; the lens form lets the koine
-fourth opinion (REML / established tools) cross-check the Bayesian
-answer -- the orchestra's signature value in a field with decades of
-established methods.
+a field-standard REML implementation such as sommer supplies.
+Cross-engine use checks that the Bayesian backends agree. The lens form
+lets an established REML tool cross-check the Bayesian answer, which is
+what matters in a field with decades of established methods.
 }
 \details{
 Like \code{\link[=triangulate]{triangulate()}}, this measures inter-lens \emph{agreement}, not

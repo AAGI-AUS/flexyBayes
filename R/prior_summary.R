@@ -48,7 +48,7 @@
 #'     \item{`kind`}{One of `"fb_prior"`, `"legacy_scalar"`,
 #'       `"no_prior_recorded"`.}
 #'     \item{`backend`}{The backend the fit ran on:
-#'       `"greta"`, `"inla"`, or `"greta-direct"`.}
+#'       `"inla"`, `"brms"`, `"greta"`, or `"greta-direct"`.}
 #'     \item{`fb_prior`}{The `fb_prior` object (when
 #'       `kind == "fb_prior"`).}
 #'     \item{`default_origin`}{`"auto"` when the prior was

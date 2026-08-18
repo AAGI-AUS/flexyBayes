@@ -668,8 +668,67 @@
       ))
     }
   }
+
+  # A term written on both sides of the model is not an unrepresentable
+  # structure -- every engine will attempt it -- but it is the same class
+  # of fact: a model shape named at the gate rather than discovered
+  # downstream. Sharing the guard keeps one call site for both.
+  .refuse_term_in_fixed_and_random(fb)
+
   invisible(NULL)
 }
+
+# .refuse_term_in_fixed_and_random() --- the aliasing guard.
+#
+# A factor written on both the fixed and the random side is confounded
+# with itself. The fixed part already spends one parameter per level, so
+# the random copy's deviations carry no information the fixed means have
+# not already taken: they are identified by their prior, and the variance
+# component reported for them reads that prior rather than the data.
+#
+# It is refused rather than warned about because no practitioner intends
+# it and every engine answers it badly in a different way. On INLA the
+# marginal solve goes intermittently singular -- measured as an
+# empty variance-component table on 4 of 8 small-n runs, and as two
+# `Segmentation fault: 11` lines from the inla.run child followed by an
+# untyped error at benchmark scale. brms completes, and returns a
+# posterior whose two term sets are estimating one quantity between them.
+# ASReml accepts the spelling and fits it, so a translated script arrives
+# here unchanged and deserves to be told why.
+#
+# Scope is deliberately the plain aliased pair: a factor MAIN EFFECT on
+# the fixed side against an intercept-only random main effect on the same
+# variable (`f`, or `id(f)` / `ide(f)`). A random slope over a fixed
+# grouping factor -- `y ~ g + (x || g)` -- is a model a user does mean,
+# and an interaction such as `random = ~ f:b` is not aliased with the
+# main effect at all, so neither fires.
+.refuse_term_in_fixed_and_random <- function(fb) {
+  fixed_factors <- unlist(lapply(
+    fb$fixed_terms %||% list(),
+    function(t) if (identical(t$type %||% "", "factor")) t$var else NULL
+  ))
+  if (length(fixed_factors) == 0L) {
+    return(invisible(NULL))
+  }
+
+  random_mains <- unlist(lapply(
+    fb$random_terms %||% list(),
+    function(t) {
+      if ((t$type %||% "") %in% c("simple", "ide")) t$var else NULL
+    }
+  ))
+  clash <- intersect(as.character(fixed_factors), as.character(random_mains))
+  if (length(clash) == 0L) {
+    return(invisible(NULL))
+  }
+
+  entry <- .lookup_refusal("term_in_fixed_and_random")
+  stop(.fb_refusal_condition(
+    reason_code = "term_in_fixed_and_random",
+    message = sprintf(entry$message_template, clash[[1L]])
+  ))
+}
+
 
 # The D-A refusal text for a residual-side AR1 spelling. Kept beside the
 # guard so the three- against four-parameter statement lives in one place.
@@ -758,7 +817,8 @@
   data_name,
   aggregate = "auto",
   seed = NULL,
-  control = NULL
+  control = NULL,
+  na_action = NULL
 ) {
   aggregate <- .normalise_aggregate(aggregate)
 
@@ -893,9 +953,13 @@
       data = data,
       backend = backend,
       aggregate = aggregate,
+      known_matrices = known_matrices,
+      weights = weights,
       n_samples = n_samples,
       warmup = warmup,
       chains = chains,
+      seed = seed,
+      control = control,
       prior_fixed_sd = prior_fixed_sd,
       prior_vc_sd = prior_vc_sd,
       verbose = verbose,
@@ -906,7 +970,8 @@
       residual = residual,
       family = family,
       link = link,
-      data_name = data_name
+      data_name = data_name,
+      na_action = na_action
     )
     if (!is.null(agg_fit)) {
       if (!is.null(agg_fit$extras) && !is.null(fb_dataset_meta_for_fit)) {
@@ -1006,7 +1071,10 @@
       residual = residual,
       family = family,
       link = link,
-      data_name = data_name
+      data_name = data_name,
+      na_action = na_action,
+      requested_backend = backend,
+      requested_aggregate = aggregate
     )
     if (return_code) {
       return(fit)
@@ -1244,8 +1312,14 @@
             fb = gated,
             data = data,
             known_matrices = known_matrices,
+            weights = weights,
+            n_samples = n_samples,
+            warmup = warmup,
+            chains = chains,
             seed = seed,
             control = control,
+            prior_fixed_sd = prior_fixed_sd,
+            prior_vc_sd = prior_vc_sd,
             verbose = verbose,
             return_code = return_code,
             the_call = the_call,
@@ -1254,7 +1328,10 @@
             residual = residual,
             family = family,
             link = link,
-            data_name = data_name
+            data_name = data_name,
+            na_action = na_action,
+            requested_backend = backend,
+            requested_aggregate = aggregate
           ),
           error = function(e) {
             if (identical(backend, "auto")) {
@@ -1404,30 +1481,65 @@
     ))
   }
 
-  # Emit entry-point resolved through the registry `engine` field
-  # rather than a hard-coded symbol.
-  fit <- .backend_emit_fn(fit_backend)(
-    fb = fb,
-    data = data,
-    known_matrices = known_matrices,
-    weights = weights,
+  # Sampler settings the call does not carry are omitted here rather than
+  # forwarded as NULL. Every route reaching this point is a fallback --
+  # the gate refused, INLA is absent, or INLA failed numerically -- and a
+  # re-fit of an INLA fit arrives with `n_samples`, `warmup` and `chains`
+  # all NULL, because the nested Laplace approximation runs none of them
+  # and the INLA record says so. brms builds `iter` by adding two of them
+  # and refuses the result outright ("Cannot coerce 'iter' to a single
+  # numeric value"), so the user saw a brms argument error where an INLA
+  # failure had happened. An absent argument means "use the default"
+  # everywhere else in this package, and dropping it here is how the
+  # receiving emit gets to apply its own.
+  sampler_args <- list(
     n_samples = n_samples,
     warmup = warmup,
-    chains = chains,
-    seed = seed,
-    control = control,
-    prior_fixed_sd = prior_fixed_sd,
-    prior_vc_sd = prior_vc_sd,
-    verbose = verbose,
-    mcmc_verbose = mcmc_verbose,
-    return_code = return_code,
-    the_call = the_call,
-    fixed = fixed,
-    random = random,
-    residual = residual,
-    family = family,
-    link = link,
-    data_name = data_name
+    chains = chains
+  )
+  sampler_args <- sampler_args[
+    !vapply(sampler_args, is.null, logical(1L))
+  ]
+
+  # Emit entry-point resolved through the registry `engine` field
+  # rather than a hard-coded symbol.
+  #
+  # `quote = TRUE` is load-bearing, not decoration. do.call() otherwise
+  # re-evaluates every argument it is handed, and four of these are
+  # language objects: `the_call` is a call, so evaluating it would RUN
+  # the user's flexybayes() call a second time, and `fixed` / `random` /
+  # `residual` are formulas, which would come out re-created against this
+  # frame rather than the caller's -- a silent change of the environment
+  # model.frame() later resolves the data in.
+  fit <- do.call(
+    .backend_emit_fn(fit_backend),
+    c(
+      list(
+        fb = fb,
+        data = data,
+        known_matrices = known_matrices,
+        weights = weights,
+        seed = seed,
+        control = control,
+        prior_fixed_sd = prior_fixed_sd,
+        prior_vc_sd = prior_vc_sd,
+        verbose = verbose,
+        mcmc_verbose = mcmc_verbose,
+        return_code = return_code,
+        the_call = the_call,
+        fixed = fixed,
+        random = random,
+        residual = residual,
+        family = family,
+        link = link,
+        data_name = data_name,
+        na_action = na_action,
+        requested_backend = backend,
+        requested_aggregate = aggregate
+      ),
+      sampler_args
+    ),
+    quote = TRUE
   )
 
   if (!isTRUE(return_code) && !is.null(fit$extras)) {
@@ -1501,7 +1613,12 @@
   residual,
   family,
   link,
-  data_name
+  data_name,
+  known_matrices = NULL,
+  weights = NULL,
+  seed = NULL,
+  control = NULL,
+  na_action = NULL
 ) {
   # A missing response has no sufficient statistic to contribute, and the
   # aggregated emit compresses rows into per-cell means and counts without
@@ -1652,9 +1769,13 @@
       fb_aggregated = fb_aggregated,
       data = data,
       backend = eff_backend,
+      known_matrices = known_matrices,
+      weights = weights,
       n_samples = n_samples,
       warmup = warmup,
       chains = chains,
+      seed = seed,
+      control = control,
       prior_fixed_sd = prior_fixed_sd,
       prior_vc_sd = prior_vc_sd,
       verbose = verbose,
@@ -1666,7 +1787,10 @@
       residual = residual,
       family = family,
       link = link,
-      data_name = data_name
+      data_name = data_name,
+      na_action = na_action,
+      requested_backend = backend,
+      requested_aggregate = aggregate
     )
   } else {
     # Exact aggregation for the count families requires unit-trial
@@ -1699,9 +1823,13 @@
       fb_aggregated = fb_aggregated,
       data = data,
       backend = eff_backend,
+      known_matrices = known_matrices,
+      weights = weights,
       n_samples = n_samples,
       warmup = warmup,
       chains = chains,
+      seed = seed,
+      control = control,
       prior_fixed_sd = prior_fixed_sd,
       prior_vc_sd = prior_vc_sd,
       verbose = verbose,
@@ -1712,7 +1840,10 @@
       residual = residual,
       family = family,
       link = link,
-      data_name = data_name
+      data_name = data_name,
+      na_action = na_action,
+      requested_backend = backend,
+      requested_aggregate = aggregate
     )
   }
 
@@ -1734,11 +1865,20 @@
         "aggregated_count"
       },
       gate_checks = NULL,
+      # `K` is said twice on one fit and used to mean two things. This is
+      # the PLANNER's cell count -- the product of the declared factor
+      # level counts, i.e. the complete grid -- and it is what made the
+      # route eligible. The print and summary compression lines report
+      # the REALISED count, `nrow()` of the cell-key combinations the
+      # data actually contains, which is smaller whenever a grid cell
+      # carries no rows. Both were labelled plain `K`, so a user reading
+      # 135 here and 133 there had nothing to tell them why. The estimate
+      # says it is one.
       reason = sprintf(
-        "aggregation plan eligible (N = %d, K = %d, ratio = %.2f:1)",
+        "aggregation plan eligible (N = %d, K = %d (estimated), %s)",
         plan$N,
         plan$K_est,
-        plan$N / plan$K_est
+        sprintf("ratio = %.2f:1", plan$N / plan$K_est)
       ),
       preflight_summary = NULL,
       representation_plan = NULL,

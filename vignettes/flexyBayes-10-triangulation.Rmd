@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 10: Cross-engine triangulation: when Bayesian engines disagree"
-date: "2026-08-15"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -29,9 +29,9 @@ vignette: >
 
 When you fit the same model to the same data on two engines -- say
 Hamiltonian Monte Carlo (HMC) via `brms` (Stan), and integrated
-nested Laplace approximation (INLA; Rue, Martino, & Chopin, 2009) via
-R-INLA -- you are running two structurally different approximations
-to the same posterior. Each makes a different bet.
+nested Laplace approximation (INLA) via R-INLA (Rue, Martino, &
+Chopin, 2009) -- you are running two structurally different
+approximations to the same posterior. Each makes a different bet.
 
 - **Stan's NUTS**, the no-U-turn HMC sampler that `brms` drives,
   converges to the true posterior asymptotically but introduces
@@ -83,7 +83,7 @@ It is a triangulation prompt -- one or more of:
    about *which* part of the misspecification dominates.
 2. The engines disagree because the posterior violates one engine's
    structural assumption (Gaussian-conditional latent field for
-   INLA; absence of severe geometry pathology for HMC).
+   INLA, and the absence of severe geometry pathology for HMC).
 3. One engine has not converged (low ESS, $\widehat{R} > 1.01$,
    divergences, or Pareto-$\hat{k} > 0.7$).
 4. The user has implemented two subtly different priors or link
@@ -113,15 +113,15 @@ cross-checks:
   numerical regime). Agreement catches numerical and prior-translation
   bugs.
 - **specification** -- the same likelihood through different
-  parameterisations. No current backend pair exercises this axis alone;
-  it is reserved for future within-backend reparameterisation checks.
+  parameterisations. No current backend pair exercises this axis alone.
+  It is reserved for future within-backend reparameterisation checks.
 
 A brms-versus-INLA comparison is labelled `algorithmic +
 implementation` (the engines differ on both paradigm and code base), so
 a small Wasserstein-1 distance there is a stronger convergence statement
 than the same distance between two HMC engines. The print method
-colour-grades the label by methodological strength on a colour terminal;
-the labels are plain text everywhere else.
+colour-grades the label by methodological strength on a colour terminal,
+and the labels are plain text everywhere else.
 
 # 3. The common disagreement patterns
 
@@ -133,13 +133,13 @@ pattern nobody here can reach is a distraction rather than a diagnostic.
 
 | # | Cause | Symptom | First diagnostic |
 |---|---|---|---|
-| 1 | **Heavy-tailed likelihood** (Student-t, Cauchy, robust REs) | INLA posterior tighter; brms posterior wider, more skewed; means similar, *quantiles diverge* | tail-quantile differences; PPC on `min`, `max`, kurtosis |
-| 2 | **Variance components near zero** (boundary), or -- on some models -- an outright INLA collapse to a numerically-degenerate estimate | INLA over- or under-estimates small variances, or lands orders of magnitude off; brms posterior L-shaped near the boundary but not degenerate | 5 % quantile of $\sigma$; an implausibly extreme `sd_ratio`; non-centred reparameterisation; `inla.hyperpar()` post-correction |
-| 3 | **Hyperparameter prior mismatch** (PC vs half-normal vs uniform) | tail-disagreement on $\sigma$ propagating to fixed-effect SEs | refit with *identical* priors on both sides; check which components the matched-prior gate excluded |
-| 4 | **Non-LGM structure** (mixtures, ZI with REs on the zero-prob, hurdle with shared REs) | ZI-logit and shared-RE marginals diverge sharply; INLA `cpo$failure > 0` | INLA's `cpo$failure`; PPC on zero counts; SBC |
-| 5 | **Sparse data regimes** (low $n$, high collinearity, rare events) | skewness, multimodality in brms; INLA gives a unimodal Gaussian-like marginal | density-overlay plot; Wasserstein-1; tail-ESS in brms |
-| 6 | **Strongly correlated hyperparameters** | wrong correlation structure in $\boldsymbol{\theta}$; downstream latent shifts | pairs plots across engines; INLA `int.strategy` sensitivity |
-| 7 | **Funnel-shape hierarchy** (Neal, 2003) | brms divergences > 0; INLA confident but wrong on group-level posterior SDs | brms divergences; non-centred parameterisation; SBC on $\tau$ |
+| 1 | **Heavy-tailed likelihood** (Student-t, Cauchy, robust REs) | INLA posterior tighter, brms posterior wider and more skewed, means similar but *quantiles diverge* | tail-quantile differences, and a PPC on `min`, `max`, kurtosis |
+| 2 | **Variance components near zero** (boundary), or -- on some models -- an outright INLA collapse to a numerically-degenerate estimate | INLA over- or under-estimates small variances, or lands orders of magnitude off, while the brms posterior is L-shaped near the boundary but not degenerate | 5 % quantile of $\sigma$, an implausibly extreme `sd_ratio`, non-centred reparameterisation, `inla.hyperpar()` post-correction |
+| 3 | **Hyperparameter prior mismatch** (PC vs half-normal vs uniform) | tail-disagreement on $\sigma$ propagating to fixed-effect SEs | refit with *identical* priors on both sides, then check which components the matched-prior gate excluded |
+| 4 | **Non-LGM structure** (mixtures, ZI with REs on the zero-prob, hurdle with shared REs) | ZI-logit and shared-RE marginals diverge sharply, and INLA reports `cpo$failure > 0` | INLA's `cpo$failure`, a PPC on zero counts, SBC |
+| 5 | **Sparse data regimes** (low $n$, high collinearity, rare events) | skewness and multimodality in brms, while INLA gives a unimodal Gaussian-like marginal | density-overlay plot, Wasserstein-1, tail-ESS in brms |
+| 6 | **Strongly correlated hyperparameters** | wrong correlation structure in $\boldsymbol{\theta}$, with downstream latent shifts | pairs plots across engines, INLA `int.strategy` sensitivity |
+| 7 | **Funnel-shape hierarchy** (Neal, 2003) | brms divergences > 0, and INLA confident but wrong on group-level posterior SDs | brms divergences, non-centred parameterisation, SBC on $\tau$ |
 
 # 4. The five-step protocol
 
@@ -151,13 +151,13 @@ Fit on engine A and engine B with identical priors, link function, and
 design matrix. `flexyBayes::triangulate()` computes, per scalar
 parameter:
 
-- mean shift in posterior-SD units;
-- 1D empirical Wasserstein-1 distance, also in posterior-SD units;
-- ratio of posterior SDs;
+- mean shift in posterior-SD units.
+- 1D empirical Wasserstein-1 distance, also in posterior-SD units.
+- ratio of posterior SDs, `source_a` over `source_b`.
 - tail-quantile differences (2.5 % and 97.5 %).
 
 A parameter is called **discordant** when |mean shift| > 0.1 SD *or*
-Wasserstein-1 > 0.1 SD *or* the SD ratio falls outside [0.9, 1.1]; the
+Wasserstein-1 > 0.1 SD *or* the SD ratio falls outside [0.9, 1.1]. The
 reference scale is the wider of the two posteriors. The overall status
 is `discordant` if any compared parameter is, `concordant` if none is,
 and `inconclusive` if a gate stopped the comparison.
@@ -172,7 +172,7 @@ as $n^{-1/2}$. On the INLA side, where draws come from
 `inla.posterior.sample()` at `n_samples`, two 1,000-draw samples of the
 same group-level SD sit about 0.06 SD apart by sampling alone -- more
 than half the threshold. Raise `n_samples` and re-run before reading a
-borderline flag as a finding; a flag that does not move is a difference
+borderline flag as a finding. A flag that does not move is a difference
 in the posteriors rather than in the draws.
 
 *Identical* is checked, not assumed. Each fit carries a fingerprint --
@@ -186,7 +186,7 @@ different models is a different operation.
 The prior half of that check has teeth beyond the obvious. A variance
 component is compared only when *both* fits record the same prior for
 it. The shared uniform-on-SD default reaches simple, nested, `diag`,
-`us` and `vm`/`ped` group terms; it does not reach an unstructured
+`us` and `vm`/`ped` group terms. It does not reach an unstructured
 correlation block or an AR1 latent field, where each engine keeps its
 own hyperprior. Those components come back as `not_compared` with the
 reason, which is more useful than a number that would have been
@@ -195,7 +195,7 @@ comparing two different questions.
 ## Step 2 -- Verify each engine's own diagnostics first
 
 **HMC.** $\widehat{R}_{\text{rank}} \leq 1.01$, ESS$_{\text{bulk}} \geq
-400$, zero divergences (Vehtari et al., 2021); Pareto-$\hat{k} < 0.7$
+400$, zero divergences (Vehtari et al., 2021), and Pareto-$\hat{k} < 0.7$
 for anything downstream of `loo` (Vehtari et al., 2024).
 
 **INLA.** `mode$mode.status == 0` and a finite marginal likelihood --
@@ -211,7 +211,7 @@ and no parameter verdicts at all.
 
 ## Step 3 -- Classify the disagreement
 
-Map each flagged parameter to one of the eight rows in §3. In applied
+Map each flagged parameter to one of the seven rows in §3. In applied
 work, the two most common patterns are *heavy-tailed likelihood*
 (when one observation drags HMC tails wider than INLA's mode-anchored
 Laplace can capture) and *non-LGM structure* (when the user has
@@ -221,16 +221,16 @@ models with small group counts.
 
 ## Step 4 -- Run targeted SBC and PPC
 
-**Simulation-based calibration (SBC; Talts, Betancourt, Simpson,
-Vehtari, & Gelman, 2018; ECDF-graphical refinement Säilynoja, Bürkner,
-& Vehtari, 2022)** on the parameters that disagree. Budget: 50 to 100
-replications. SBC tells you whether *either* engine is calibrated for
+**Simulation-based calibration (SBC)** (Talts, Betancourt, Simpson,
+Vehtari, & Gelman, 2018, with the ECDF-graphical refinement of
+Säilynoja, Bürkner, & Vehtari, 2022) on the parameters that disagree.
+Budget: 50 to 100 replications. SBC tells you whether *either* engine is calibrated for
 this model--data, independent of cross-engine agreement. The package
 ships no SBC harness, so this step is one you write and run yourself:
 draw parameters from the prior, simulate data from them, refit, and
 rank each true value within its own posterior draws.
 
-**Posterior-predictive checks (PPC; Gelman, Meng, & Stern, 1996)** on
+**Posterior-predictive checks (PPC)** (Gelman, Meng, & Stern, 1996) on
 the data features the disagreement implicates -- tail statistics for
 likelihood-tail disagreements, group-level summaries for hierarchical
 disagreements, zero counts for ZI/hurdle.
@@ -243,7 +243,7 @@ disagreements, zero counts for ZI/hurdle.
   reading its point estimate against the posterior median rather than
   the mean. `flexyBayes` has no third fitting engine to call on.
 - (b) If SBC fails for one engine on this model--data, that engine is
-  mis-calibrated *for this problem*; trust the other and report it.
+  mis-calibrated *for this problem*. Trust the other and report it.
 - (c) If neither engine passes SBC, the model is mis-specified --
   expand it (heavier-tailed likelihood, non-centred parameterisation,
   hierarchical hyperprior reform).
@@ -309,27 +309,34 @@ fit_brms <- fb_brms(
   mcmc_verbose = FALSE
 )
 summary(fit_brms)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : y ~ x + (1 | group) 
-#>   Family : poisson / log 
-#>   N = 240 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : y ~ x + (1 | group) 
+#>   Model    : G: group iid; R: units 
+#>   Family   : poisson / log 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 240 design rows, 240 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 5000)
+#>   Runtime  : 18.7 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD   2.5%  97.5%
-#> (Intercept)   0.5852  0.1301 0.3224 0.8344
-#> x             0.4180  0.0446 0.3317 0.5052
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)   0.5852    0.1301   0.3224    0.8344
+#>            x   0.4180    0.0446   0.3317    0.5052
 #> 
-#> -- Variance components  -------------------------------------- 
-#>   Component Estimate     SD  2.5%  97.5%
-#> 1  sd_group   0.6526 0.0932 0.497 0.8573
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                  prior note
+#>   sd_group   0.6526    0.0932    0.497    0.8573 pc(prob=0.05, upper=1)     
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.001 
-#>   ESS  range: 1629 - 13779 
-#>   Run time  : 19.3 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.001
+#>   Min ESS (bulk): 1629
+#>   Min ESS (tail): 3214
+#>   Divergent transitions: 0
 ```
 
 
@@ -342,20 +349,38 @@ fit_inla <- fb_inla(
   verbose = FALSE
 )
 summary(fit_inla)
-#> Bayesian fit summary  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------------ 
-#> Fixed effects:
-#>               mean     sd 0.025quant 0.5quant 0.975quant   mode kld
-#> (Intercept) 0.5881 0.1305     0.3270   0.5895     0.8416 0.5895   0
-#> x           0.4189 0.0441     0.3324   0.4189     0.5053 0.4189   0
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : y ~ x + (1 | group) 
+#>   Model    : G: group iid; R: units 
+#>   Family   : poisson / log 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 240 design rows, 240 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2 sec
 #> 
-#> Hyperparameters:
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)   0.5881    0.1305   0.3270    0.8416
+#>            x   0.4189    0.0441   0.3324    0.5053
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                  prior note
+#>   sd_group   0.6517    0.0952   0.4922    0.8653 pc(prob=0.05, upper=1)     
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
 #>                       mean    sd 0.025quant 0.5quant 0.975quant   mode
 #> Precision for group 2.5035 0.718     1.3366   2.4234     4.1306 2.2663
 #> 
-#> Random effects:
-#>   groups: group
-#> ------------------------------------------------------------
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -766.43
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 5.49e-08
+#>   Numerical confirm: PASS
 ```
 
 ## 5.1 Triangulate and quantify
@@ -396,8 +421,8 @@ if (!is.null(tri)) tri
 #> 
 #> Metrics (per common parameter):
 #>         param mean_a mean_b mean_shift_sd sd_ratio  w1_sd    verdict
-#> 1 (Intercept) 0.5852 0.5807        0.0330   0.9578 0.0383 concordant
-#> 2           x 0.4180 0.4183        0.0063   0.9496 0.0413 concordant
+#> 1 (Intercept) 0.5852 0.5886        0.0253   0.9784 0.0467 concordant
+#> 2           x 0.4180 0.4195        0.0333   0.9779 0.0356 concordant
 #> 3    sd_group 0.6526 0.6528        0.0019   0.9881 0.1575 discordant
 ```
 
@@ -432,7 +457,7 @@ are for.
 The group-level SD is the usual flashpoint either way, whether because a
 heavy-tailed observation distorts the likelihood or because INLA's
 Laplace approximation of a small-group variance is itself unreliable
-(it may shrink the component, or with very few groups vary across runs);
+(it may shrink the component, or with very few groups vary across runs).
 §3 classifies the patterns and the response to each.
 
 Engine *agreement* does not mean the *model* is right: the
@@ -447,7 +472,7 @@ about whether the model deserved to be fitted.
 User-supplied `name_map` and `transform_b` still take precedence
 over the registry, so a custom alignment (e.g., for an unmapped
 hyperparameter, or to override the SD canonical form) remains
-available; see `?canonical_names` for the per-fit map view and
+available. See `?canonical_names` for the per-fit map view and
 `?triangulate` for the precedence contract.
 
 ## 5.2 Visualise the comparison
@@ -455,7 +480,7 @@ available; see `?canonical_names` for the per-fit map view and
 
 ``` r
 # Overlay marginals via posterior::draws_array. INLA posterior sampling
-# may be unavailable in CRAN's vignette re-render — wrap defensively.
+# may be unavailable in CRAN's vignette re-render -- wrap defensively.
 if (requireNamespace("bayesplot", quietly = TRUE)) {
   ok <- tryCatch({
     da <- flexyBayes::fb_as_draws_simple(fit_brms)
@@ -476,7 +501,8 @@ if (requireNamespace("bayesplot", quietly = TRUE)) {
 ```
 
 The overlay either confirms the numbers from the table (densities
-nearly identical → trust either engine) or shows a visible shift,
+nearly identical, so no engine-specific
+approximation failure is large enough to separate them) or shows a visible shift,
 shape difference, or tail asymmetry that will be classifiable by §3.
 
 ## 5.3 Posterior-predictive check on the right tail
@@ -621,7 +647,7 @@ sd_brms
 #> 2      sigma 31.25928 1.762590 28.00741 34.91937
 c(inla_sd_Subject = sd_inla)
 #> inla_sd_Subject 
-#>    0.0002080616
+#>    1.758824e-06
 ```
 
 
@@ -637,10 +663,10 @@ tri_ss <- tryCatch(
 if (!is.null(tri_ss)) tri_ss
 #> <triangulate_result>
 #>   status:   discordant
-#>     - (Intercept): Wasserstein-1 0.25 SD; SD ratio 1.52
-#>     - Days: Wasserstein-1 0.31 SD; SD ratio 0.61
-#>     - sd_Subject: mean shift 4.90 SD; Wasserstein-1 4.88 SD; SD ratio 201172.96
-#>     - sigma: mean shift 7.20 SD; Wasserstein-1 7.19 SD; SD ratio 0.76
+#>     - (Intercept): Wasserstein-1 0.29 SD; SD ratio 1.63
+#>     - Days: Wasserstein-1 0.27 SD; SD ratio 0.65
+#>     - sd_Subject: mean shift 4.90 SD; Wasserstein-1 4.88 SD; SD ratio 21849746.41
+#>     - sigma: mean shift 6.84 SD; Wasserstein-1 6.84 SD; SD ratio 0.74
 #>   source_a: brms
 #>   source_b: inla
 #>   independence: algorithmic + implementation
@@ -653,11 +679,11 @@ if (!is.null(tri_ss)) tri_ss
 #>       (data_independence = undeclared)
 #> 
 #> Metrics (per common parameter):
-#>         param   mean_a   mean_b mean_shift_sd    sd_ratio  w1_sd    verdict
-#> 1 (Intercept) 251.4187 251.2319        0.0178      1.5162 0.2456 discordant
-#> 2        Days  10.4686  10.5049        0.0284      0.6141 0.3067 discordant
-#> 3  sd_Subject  40.3762   0.0002        4.8955 201172.9594 4.8835 discordant
-#> 4       sigma  31.2593  48.0412        7.1972      0.7559 7.1870 discordant
+#>         param   mean_a   mean_b mean_shift_sd     sd_ratio  w1_sd    verdict
+#> 1 (Intercept) 251.4187 251.3297        0.0085 1.631200e+00 0.2885 discordant
+#> 2        Days  10.4686  10.4465        0.0184 6.546000e-01 0.2676 discordant
+#> 3  sd_Subject  40.3762   0.0000        4.8955 2.184975e+07 4.8835 discordant
+#> 4       sigma  31.2593  47.6291        6.8407 7.366000e-01 6.8438 discordant
 ```
 
 Read the status line first, then the `sd_Subject` row. On this dataset
@@ -668,9 +694,14 @@ magnitude below anything a reaction-time study could produce.
 
 The damage does not stay in that row. Between-subject variation has to
 go somewhere, so the residual SD absorbs it and comes back well above
-the brms value, and the fixed effects inherit the wrong uncertainty:
-the intercept's posterior SD is inflated and the `Days` slope's is
-shrunk. A single number was wrong and four rows report it.
+the brms value, and the fixed effects inherit the wrong uncertainty.
+Read the `sd_ratio` column as `source_a` over `source_b`, which is brms
+over INLA here, so a value above one means the INLA posterior is the
+narrower of the two. With the between-subject term at zero the 180
+observations enter as if they were independent, and INLA's intercept SD
+comes back too small, at a ratio of 1.63. The inflated residual runs the
+other way on the slope, widening `Days` to a ratio of 0.65. A single
+number was wrong and four rows report it.
 
 This is what the protocol is for.
 
@@ -714,8 +745,8 @@ same question.
    an apparent agreement would have been an artefact of two different
    questions.
 5. **Triangulate with SBC and PPC, not just a second engine.** A second
-   engine tests whether the two approximations agree; SBC tells you
-   whether *either* is calibrated for this problem; PPC tells you
+   engine tests whether the two approximations agree. SBC tells you
+   whether *either* is calibrated for this problem. PPC tells you
    whether the model itself fits. `flexyBayes` runs none of these for
    you, and a `concordant` status says nothing about calibration.
 6. **Document the resolution explicitly.** When you trust one
@@ -730,7 +761,7 @@ same question.
    Wasserstein-1 distances should collapse toward zero and the
    PPC distribution should bracket the observed maximum.
 2. Vary `sigma_g` between 0.05 and 1.0. As `sigma_g` approaches
-   zero the boundary problem (pattern 2 in §3) appears; observe
+   zero the boundary problem (pattern 2 in §3) appears. Observe
    how the posterior on `sigma_group` behaves on each engine and
    how `triangulate()` reports it.
 3. Replace the Poisson likelihood with negative-binomial (set
@@ -759,42 +790,47 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] flexyBayes_0.9.0
+#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.0
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
-#>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
-#>  [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
-#> [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
-#> [13] StanHeaders_2.32.10    survival_3.8-3         processx_3.9.0        
-#> [16] magrittr_2.0.5         posterior_1.7.0        compiler_4.5.2        
-#> [19] rlang_1.2.0            tools_4.5.2            data.table_1.18.2.1   
-#> [22] sn_2.1.3               knitr_1.51             bridgesampling_1.2-1  
-#> [25] mnormt_2.1.2           pkgbuild_1.4.8         classInt_0.4-11       
-#> [28] curl_7.0.0             plyr_1.8.9             RColorBrewer_1.1-3    
-#> [31] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
-#> [34] numDeriv_2016.8-1.1    withr_3.0.2            grid_4.5.2            
-#> [37] stats4_4.5.2           xtable_1.8-8           e1071_1.7-17          
-#> [40] colorspace_2.1-2       future_1.70.0          inline_0.3.21         
-#> [43] ggplot2_4.0.3          ggridges_0.5.7         globals_0.19.1        
-#> [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
-#> [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
-#> [52] generics_0.1.4         otel_0.2.0             RcppParallel_5.1.11-2 
-#> [55] reshape2_1.4.5         DBI_1.3.0              proxy_0.4-29          
-#> [58] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
-#> [61] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
-#> [64] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
-#> [67] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
-#> [70] jsonlite_2.0.0         callr_3.7.6            listenv_0.10.1        
-#> [73] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
-#> [76] codetools_0.2-20       distributional_0.7.0   stringi_1.8.7         
-#> [79] gtable_0.3.6           QuickJSR_1.9.0         tibble_3.3.1          
-#> [82] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
-#> [85] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
-#> [88] backports_1.5.1        MatrixModels_0.5-4     rstantools_2.6.0      
-#> [91] class_7.3-23           Rcpp_1.1.1-1.1         coda_0.19-4.1         
-#> [94] gridExtra_2.3          nlme_3.1-168           checkmate_2.3.4       
-#> [97] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
+#>   [1] Rdpack_2.6.6           DBI_1.3.0              mnormt_2.1.2          
+#>   [4] gridExtra_2.3          inline_0.3.21          sandwich_3.1-1        
+#>   [7] rlang_1.2.0            magrittr_2.0.5         multcomp_1.4-29       
+#>  [10] otel_0.2.0             ggridges_0.5.7         matrixStats_1.5.0     
+#>  [13] e1071_1.7-17           compiler_4.5.2         mgcv_1.9-3            
+#>  [16] loo_2.9.0              callr_3.7.6            vctrs_0.7.3           
+#>  [19] reshape2_1.4.5         stringr_1.6.0          pkgconfig_2.0.3       
+#>  [22] backports_1.5.1        labeling_0.4.3         effectsize_1.0.2      
+#>  [25] nloptr_2.2.1           MatrixModels_0.5-4     INLA_25.10.19         
+#>  [28] xfun_0.57              jsonlite_2.0.0         parallel_4.5.2        
+#>  [31] R6_2.6.1               stringi_1.8.7          RColorBrewer_1.1-3    
+#>  [34] StanHeaders_2.32.10    parallelly_1.47.0      boot_1.3-32           
+#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.1-1.1        
+#>  [40] rstan_2.32.7           knitr_1.51             zoo_1.8-15            
+#>  [43] parameters_0.28.3      Matrix_1.7-4           splines_4.5.2         
+#>  [46] tidyselect_1.2.1       dichromat_2.0-0.1      abind_1.4-8           
+#>  [49] agridat_1.26           codetools_0.2-20       curl_7.0.0            
+#>  [52] processx_3.9.0         listenv_0.10.1         pkgbuild_1.4.8        
+#>  [55] lattice_0.22-7         tibble_3.3.1           plyr_1.8.9            
+#>  [58] withr_3.0.2            bridgesampling_1.2-1   bayestestR_0.17.0     
+#>  [61] S7_0.2.2               posterior_1.7.0        coda_0.19-4.1         
+#>  [64] evaluate_1.0.5         marginaleffects_0.32.0 future_1.70.0         
+#>  [67] survival_3.8-3         sf_1.1-0               units_1.0-1           
+#>  [70] proxy_0.4-29           RcppParallel_5.1.11-2  pillar_1.11.1         
+#>  [73] tensorA_0.36.2.1       KernSmooth_2.23-26     checkmate_2.3.4       
+#>  [76] stats4_4.5.2           reformulas_0.4.4       insight_1.4.6         
+#>  [79] sn_2.1.3               distributional_0.7.0   generics_0.1.4        
+#>  [82] rstantools_2.6.0       scales_1.4.0           minqa_1.2.8           
+#>  [85] globals_0.19.1         xtable_1.8-8           class_7.3-23          
+#>  [88] glue_1.8.1             tools_4.5.2            data.table_1.18.2.1   
+#>  [91] lme4_2.0-1             mvtnorm_1.3-6          grid_4.5.2            
+#>  [94] rbibutils_2.4.1        QuickJSR_1.9.0         datawizard_1.3.0      
+#>  [97] colorspace_2.1-2       nlme_3.1-168           cli_3.6.6             
+#> [100] viridisLite_0.4.3      fmesher_0.7.0          Brobdingnag_1.2-9     
+#> [103] dplyr_1.2.1            V8_8.0.1               gtable_0.3.6          
+#> [106] digest_0.6.39          classInt_0.4-11        TH.data_1.1-5         
+#> [109] brms_2.23.0            farver_2.1.2           lifecycle_1.0.5       
+#> [112] MASS_7.3-65
 ```
 
 # References

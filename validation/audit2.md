@@ -2,12 +2,12 @@
 
 ## Package
 - Package: flexyBayes
-- Version: 0.9.0
+- Version: 0.9.1
 - License: MIT + file LICENSE
 
 ## R CMD check --as-cran
 - Status: **Verified-Pass**
-- Log: `/var/folders/l4/dcx9vkrx2bj0w0kxfvlyrc7r0000gp/T/rpkg_audit_17f285_g/flexyBayes.Rcheck/00check.log`
+- Log: `/var/folders/l4/dcx9vkrx2bj0w0kxfvlyrc7r0000gp/T/rpkg_audit_2eozaup8/flexyBayes.Rcheck/00check.log`
 - ERRORs: 0 · WARNINGs: 0 · NOTEs: 1
 
 ## Blocker (0)
@@ -35,7 +35,7 @@
 - **Tests** `tests/testthat/test-emit-inla.R`: 1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
 - **Tests** `tests/testthat/test-backend-conformance.R`: 6 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
 - **Tests** `tests/testthat/test-fb-preflight-stress.R`: 1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
-- **Build-check** `/var/folders/l4/dcx9vkrx2bj0w0kxfvlyrc7r0000gp/T/rpkg_audit_17f285_g/flexyBayes.Rcheck/00check.log`: R CMD check NOTE (env): * checking CRAN incoming feasibility ... [3s/32s] NOTE Maintainer: ‘Max Moldovan <max.moldovan@adelaide.edu.au>’ New submission Suggests or Enhances not in main
+- **Build-check** `/var/folders/l4/dcx9vkrx2bj0w0kxfvlyrc7r0000gp/T/rpkg_audit_2eozaup8/flexyBayes.Rcheck/00check.log`: R CMD check NOTE (env): * checking CRAN incoming feasibility ... [3s/33s] NOTE Maintainer: ‘Max Moldovan <max.moldovan@adelaide.edu.au>’ New submission Suggests or Enhances not in main
 
 ## Human Review Questions
 - What existing package or workflow does this improve on?
@@ -46,17 +46,17 @@
 
 ## Live test suite — Verified-Pass
 
-- live devtools::test() green: 3238 PASS / 199 SKIP / 0 FAIL. 94 skip_on_cran() site(s) — a cached --as-cran log would hide these.
+- live devtools::test() green: 4298 PASS / 199 SKIP / 0 FAIL. 243 skip_on_cran() site(s) — a cached --as-cran log would hide these.
 
 ## Vibe Hygiene Model (E13–E20, v1.0.0) — flexyBayes
 
 | Row | Status | Severity | Evidence | Note |
 |---|---|---|---|---|
-| E13 Comment-paraphrase ratio | **PASS** | should_fix | R source | 22/907 paraphrasing; e.g. emit_count_aggregated.R:509, plot.R:257, plot.R:290 |
-| E14 Validation-scattering index | **PASS** | should_fix | R source | delegated 0.80 (131/163 delegated+duplicated) ≥ floor 0.75 for A1; 229 single-use self-validation guard(s) exempt |
-| E15 Roxygen sentence completeness | **PASS** | should_fix | R source | 497/497 full sentences |
-| E16 LLM-filler density | **PASS** | should_fix | R source | 0 fillers / 85338 words = 0.0/1k |
-| E17 Banner coverage | **PASS** | should_fix | R source | 52/73 long units bannered |
+| E13 Comment-paraphrase ratio | **PASS** | should_fix | R source | 23/1038 paraphrasing; e.g. emit_count_aggregated.R:532, plot.R:335, plot.R:379 |
+| E14 Validation-scattering index | **PASS** | should_fix | R source | delegated 0.80 (138/172 delegated+duplicated) ≥ floor 0.75 for A1; 237 single-use self-validation guard(s) exempt |
+| E15 Roxygen sentence completeness | **PASS** | should_fix | R source | 539/539 full sentences |
+| E16 LLM-filler density | **PASS** | should_fix | R source | 0 fillers / 101975 words = 0.0/1k |
+| E17 Banner coverage | **PASS** | should_fix | R source | 57/79 long units bannered |
 | E18 Error-message actionability | **PASS** | should_fix | R source | 54/54 actionable |
 | E19 Human-pass evidence | **FAIL** | should_fix | flexyBayes | no De-Vibe / human-pass record (critical_review_*.md / de_vibe*.md / report/internal/ / NEWS / recipe 40) |
 | E20 Conformance coverage of generated surfaces | **N/A** | should_fix | flexyBayes | no evidence.json (no pkg-validation conformance study; looked under manifest, package-root, and sibling report/) |

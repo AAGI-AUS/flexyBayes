@@ -2,48 +2,56 @@
 
 #' Plot diagnostics for a flexyBayes model
 #'
-#' Draws one of six standard displays for a fitted model, chosen by
+#' Draws one of seven standard displays for a fitted model, chosen by
 #' `type`. Every backend reaches the same method, and a display that needs
 #' a slot a given engine does not populate -- posterior draws on the
 #' deterministic INLA path, for instance -- prints a message naming what
 #' is missing and returns invisibly rather than erroring or drawing an
-#' empty panel.
+#' empty panel. The one exception is `"pp_check"`, which raises the
+#' refusal [pp_check.flexybayes()] raises, so a caller can catch it by
+#' class.
+#'
+#' The default display depends on what the fit carries. A sampled
+#' posterior gets `"diagnostics"`, because the first question about a
+#' sampler is whether it converged. A deterministic approximation has no
+#' chains to trace, so an INLA fit gets `"residuals"` instead of a
+#' message declining to draw the display it was asked for.
 #'
 #' @param x A fitted `flexybayes` object of any backend. Aggregated,
 #'   generalised-linear and direct-greta fits reach the same method
 #'   through their own registrations.
 #' @param type A single string naming the display to draw. One of:
 #'   `"diagnostics"`, trace plots and marginal densities per parameter
-#'   (needs \pkg{bayesplot} and a sampled posterior); `"residuals"`,
-#'   residuals against fitted values beside a normal quantile-quantile
-#'   plot; `"effects"`, a forest plot of the fixed effects with their
-#'   credible intervals, available on every backend that supplies
-#'   [coef()] and [confint()]; `"variance"`, a bar chart of the variance
-#'   components with credible intervals; `"blups"`, a caterpillar plot of
-#'   the random-effect predictions ordered by magnitude; and
-#'   `"pp_check"`, a posterior predictive check overlaying replicated
-#'   datasets on the observed response. Defaults to `"diagnostics"`.
+#'   (needs a sampled posterior); `"residuals"`, residuals against
+#'   fitted values beside a normal quantile-quantile plot; `"effects"`, a
+#'   forest plot of the fixed effects with their credible intervals,
+#'   available on every backend that supplies [coef()] and [confint()];
+#'   `"variance"`, a bar chart of the variance components with credible
+#'   intervals; `"blups"`, a caterpillar plot of the random-effect
+#'   predictions ordered by magnitude; `"pp_check"`, a posterior
+#'   predictive check overlaying replicated datasets on the observed
+#'   response, which needs predictive draws and so refuses by name on a
+#'   fit that carries none (see [pp_check.flexybayes()]); and
+#'   `"variogram"`, the empirical semivariance of the residuals over the
+#'   design index. `NULL` (the default) resolves to `"diagnostics"` on a
+#'   sampled fit and `"residuals"` otherwise.
 #' @param ... Further arguments passed to the underlying plotting call,
-#'   for example `pars` to restrict which parameters a diagnostic display
-#'   covers.
+#'   for example `variable` to restrict which parameters a diagnostic
+#'   display covers, or `type` and `ndraws` for `"pp_check"`.
 #' @returns Invisibly, the object the underlying plotting call returns --
-#'   a \pkg{ggplot2} object for the displays built with it, and `NULL`
-#'   for those drawn on the base graphics device. Called for the plot it
-#'   draws.
+#'   a \pkg{ggplot2} object for the displays built with it, the
+#'   semivariance table for `"variogram"`, and `NULL` for those drawn on
+#'   the base graphics device. Called for the plot it draws.
+#' @seealso [pp_check.flexybayes()] for the posterior predictive check
+#'   `type = "pp_check"` draws, and the refusal it raises where a fit has
+#'   no predictive draws.
 #' @export
-plot.flexybayes <- function(
-  x,
-  type = c(
-    "diagnostics",
-    "residuals",
-    "effects",
-    "variance",
-    "blups",
-    "pp_check"
-  ),
-  ...
-) {
-  type <- match.arg(type)
+plot.flexybayes <- function(x, type = NULL, ...) {
+  type <- if (is.null(type)) {
+    .fb_default_plot_type(x)
+  } else {
+    match.arg(type, .FB_PLOT_TYPES)
+  }
 
   switch(
     type,
@@ -52,8 +60,48 @@ plot.flexybayes <- function(
     "effects" = .plot_effects(x, ...),
     "variance" = .plot_variance(x, ...),
     "blups" = .plot_blups(x, ...),
-    "pp_check" = .plot_pp_check(x, ...)
+    "pp_check" = .plot_pp_check(x, ...),
+    "variogram" = .plot_variogram(x, ...)
   )
+}
+
+# The closed vocabulary of displays.
+.FB_PLOT_TYPES <- c(
+  "diagnostics",
+  "residuals",
+  "effects",
+  "variance",
+  "blups",
+  "pp_check",
+  "variogram"
+)
+
+# .fb_has_sampler_draws() --- did an engine draw samples for this fit?
+#
+# Written fresh rather than lifted from .plot_diagnostics(), which tested
+# `x$greta$draws` alone: that slot is NULL on a brms fit, so plot() on
+# one declined to draw its diagnostics and named brms as a supported
+# backend in the same sentence. A brms fit keeps its draws inside the
+# brmsfit at `$brms`, and a nested Laplace approximation has none at all.
+#
+# @noRd
+# @keywords internal
+.fb_has_sampler_draws <- function(x) {
+  if (!is.null(x$greta$draws)) {
+    return(TRUE)
+  }
+  inherits(x$brms, "brmsfit")
+}
+
+# .fb_default_plot_type() --- the display a fit earns by what it holds.
+#
+# @noRd
+# @keywords internal
+.fb_default_plot_type <- function(x) {
+  if (.fb_has_sampler_draws(x)) {
+    return("diagnostics")
+  }
+  "residuals"
 }
 
 # Registered for each fit class rather than relying on inheritance. The
@@ -99,12 +147,42 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 
 # MCMC diagnostics: trace + density
 .plot_diagnostics <- function(x, ...) {
-  if (is.null(x$greta$draws)) {
+  if (!.fb_has_sampler_draws(x)) {
     return(.plot_unavailable(
       "diagnostics",
-      "trace / density plots require MCMC draws (greta or brms backend)."
+      paste0(
+        "trace and density plots describe a sampler, and this fit carries ",
+        "no sampler draws. A nested Laplace approximation reports mode ",
+        "status and a Kullback-Leibler divergence instead -- see ",
+        "summary(fit)$converge -- and plot(fit) defaults to the residual ",
+        "panels on such a fit."
+      )
     ))
   }
+
+  # A brms fit keeps its draws inside the brmsfit, and brms draws its own
+  # panels from them. Forwarding is what makes plot(brms_fit) show the
+  # trace and density it always claimed to.
+  if (is.null(x$greta$draws)) {
+    if (!requireNamespace("brms", quietly = TRUE)) {
+      return(.plot_unavailable(
+        "diagnostics",
+        "the fit's draws live in a brmsfit and brms is not installed."
+      ))
+    }
+    dots <- list(...)
+    if (is.null(dots$combo)) {
+      dots$combo <- c("dens", "trace")
+    }
+    if (is.null(dots$ask)) {
+      dots$ask <- FALSE
+    }
+    return(invisible(do.call(
+      graphics::plot,
+      c(list(x = x$brms), dots)
+    )))
+  }
+
   if (requireNamespace("bayesplot", quietly = TRUE)) {
     draws <- x$greta$draws
     p1 <- bayesplot::mcmc_trace(draws, ...)
@@ -256,7 +334,10 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 
 # Variance components plot
 .plot_variance <- function(x, ...) {
-  vc <- x$extras$variance_comps
+  # Through the shared reader, because the aggregated emits record the
+  # field as a list of posterior means rather than the five-column table
+  # this panel needs, and `nrow()` of that list is NULL.
+  vc <- .fb_variance_comps(x)
   if (is.null(vc) || nrow(vc) == 0) {
     message("No variance components to plot.")
     return(invisible(NULL))
@@ -268,7 +349,15 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   old_par <- par(mar = c(4, max(nchar(vc$component)) * 0.5 + 2, 2, 1))
   on.exit(par(old_par))
 
-  xlim <- c(0, max(vc$q97.5, na.rm = TRUE) * 1.1)
+  # The estimates join the upper bounds in the range so a table that
+  # carries no intervals still gets an axis, rather than -Inf.
+  x_upper <- suppressWarnings(
+    max(c(vc$q97.5, vc$estimate), na.rm = TRUE)
+  )
+  if (!is.finite(x_upper) || x_upper <= 0) {
+    x_upper <- 1
+  }
+  xlim <- c(0, x_upper * 1.1)
 
   plot(
     vc$estimate,
@@ -320,60 +409,247 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   invisible(NULL)
 }
 
-# Posterior predictive check
+# Posterior predictive check.
+#
+# The display this type names is a check of the model against its own
+# replicated data, and it is drawn wherever the fit carries predictive
+# draws to replicate from -- which is the brms engine. The seam is
+# pp_check.flexybayes() (R/pp_check_support.R), so the plot() entry
+# point and the bayesplot generic cannot disagree about what a check
+# is, and a fit with no predictive draws refuses by name here too.
+#
+# Before 0.9.1 this drew observed values against fitted values, plus a
+# density of the fitted values labelled Posterior Predictive, on every
+# backend that carried a response and a fitted vector. No replicated
+# dataset was ever involved. The panel is gone rather than retitled:
+# what it showed, residuals against fitted values, is
+# plot(fit, type = "residuals").
 .plot_pp_check <- function(x, ...) {
-  y <- x$glm$y
-  fitted_vals <- tryCatch(stats::fitted(x), error = function(e) NULL)
+  p <- .fb_pp_check_impl(x, ...)
+  print(p)
+  invisible(p)
+}
 
-  if (is.null(y) || is.null(fitted_vals) || length(fitted_vals) == 0L) {
-    return(.plot_unavailable(
-      "pp_check",
-      "observed response and fitted values are not available for this backend."
+
+# ---------------------------------------------------------------- #
+# The empirical residual variogram                                  #
+# ---------------------------------------------------------------- #
+#
+# The display a field trialist reaches for after fitting a spatial
+# model: how the residual semivariance behaves with separation along the
+# design index. It is an EMPIRICAL variogram of the residuals -- no
+# fitted variogram is overlaid and none is claimed, so a flat surface
+# here says the fitted structure absorbed what was there and nothing
+# stronger.
+#
+# Observed rows only. A row carried as a latent design cell has no
+# observed response and therefore no residual, and pairing an NA into a
+# squared difference would silently drop whole lags rather than one
+# pair. The subtitle prints both counts so the reader can see how much
+# of the array the picture rests on.
+
+# .fb_variogram_index() --- the design index a fit is built over.
+#
+# @noRd
+# @keywords internal
+.fb_variogram_index <- function(x) {
+  vars <- x$extras$na_action$design_index_vars %||% character(0)
+  if (length(vars) == 0L) {
+    vars <- .fb_design_index_vars(.fb_fit_ir(x) %||% list())
+  }
+  unique(vars[!is.na(vars) & nzchar(vars)])
+}
+
+# .fb_variogram_position() --- one index column as an ordinal position.
+#
+# A design index is a lattice: what a lag counts is steps along the
+# array, not the distance between two label strings. A factor is coded
+# by its sorted level order, a numeric column is taken at face value.
+#
+# @noRd
+# @keywords internal
+.fb_variogram_position <- function(v) {
+  if (is.numeric(v)) {
+    return(as.numeric(v))
+  }
+  as.numeric(factor(as.character(v), levels = sort(unique(as.character(v)))))
+}
+
+# .fb_variogram_table() --- semivariance by lag.
+#
+# gamma(h) = mean over pairs at separation h of half the squared
+# residual difference. Returned as a data frame so a caller can read the
+# numbers the picture is drawn from.
+#
+# @noRd
+# @keywords internal
+.fb_variogram_table <- function(resid, positions, index_vars) {
+  n <- length(resid)
+  diffs <- outer(resid, resid, "-")
+  half_sq <- (diffs^2) / 2
+  lags <- lapply(positions, function(p) abs(outer(p, p, "-")))
+
+  upper <- upper.tri(half_sq)
+  key <- do.call(
+    paste,
+    c(lapply(lags, function(m) round(m[upper], 6L)), list(sep = "\r"))
+  )
+  gamma <- tapply(half_sq[upper], key, mean)
+  count <- tapply(half_sq[upper], key, length)
+
+  parts <- strsplit(names(gamma), "\r", fixed = TRUE)
+  out <- as.data.frame(
+    lapply(seq_along(index_vars), function(k) {
+      as.numeric(vapply(parts, function(p) p[[k]], character(1L)))
+    }),
+    stringsAsFactors = FALSE
+  )
+  names(out) <- paste0("lag_", index_vars)
+  out$semivariance <- as.numeric(gamma)
+  out$n_pairs <- as.integer(count)
+  out <- out[do.call(order, out[paste0("lag_", index_vars)]), , drop = FALSE]
+  rownames(out) <- NULL
+  attr(out, "n_observed") <- n
+  out
+}
+
+# .fb_variogram_draw() --- the picture, on the base device this file uses.
+#
+# The bottom margin is five lines, not the four this file's other panels
+# use, because `sub =` is drawn at line `par("mgp")[1] + 1` of the bottom
+# margin -- line 4 with the default mgp -- and a four-line margin does not
+# reach it. The counts were computed, carried on the returned table, and
+# drawn outside the device, so the caption never appeared for a reader.
+#
+# @noRd
+# @keywords internal
+.fb_variogram_draw <- function(tab, index_vars, n_observed, n_design) {
+  title <- "Empirical residual variogram"
+  subtitle <- sprintf(
+    "%d observed / %d design rows", n_observed, n_design
+  )
+  # Carried on the returned table as well as printed, so the two cannot
+  # be checked separately and drift.
+  attr(tab, "title") <- title
+  attr(tab, "subtitle") <- subtitle
+  attr(tab, "n_design") <- as.integer(n_design)
+  lag_cols <- paste0("lag_", index_vars)
+
+  if (length(index_vars) == 1L) {
+    old_par <- graphics::par(mar = c(5, 4, 3, 1))
+    on.exit(graphics::par(old_par))
+    plot(
+      tab[[lag_cols[[1L]]]],
+      tab$semivariance,
+      type = "b",
+      pch = 16,
+      xlab = paste0("lag (", index_vars[[1L]], ")"),
+      ylab = "Semivariance",
+      main = title,
+      sub = subtitle
+    )
+    return(invisible(tab))
+  }
+
+  # Two or more index variables: the first two carry the surface, which
+  # is the row x column array a field trial is laid out on.
+  ux <- sort(unique(tab[[lag_cols[[1L]]]]))
+  uy <- sort(unique(tab[[lag_cols[[2L]]]]))
+  z <- matrix(NA_real_, nrow = length(ux), ncol = length(uy))
+  z[cbind(
+    match(tab[[lag_cols[[1L]]]], ux),
+    match(tab[[lag_cols[[2L]]]], uy)
+  )] <- tab$semivariance
+
+  old_par <- graphics::par(mar = c(5, 4, 3, 1))
+  on.exit(graphics::par(old_par))
+  # The palette is graphics::image()'s own sequential default, which
+  # keeps grDevices off the Imports list for one call.
+  graphics::image(
+    x = ux,
+    y = uy,
+    z = z,
+    xlab = paste0("lag (", index_vars[[1L]], ")"),
+    ylab = paste0("lag (", index_vars[[2L]], ")"),
+    main = title,
+    sub = subtitle
+  )
+  ok <- is.finite(z)
+  if (sum(ok) > 3L && diff(range(z[ok])) > 0) {
+    graphics::contour(x = ux, y = uy, z = z, add = TRUE, col = "#00000060")
+  }
+  invisible(tab)
+}
+
+# .plot_variogram() --- the type = "variogram" entry point.
+#
+# @noRd
+# @keywords internal
+.FB_VARIOGRAM_MAX_OBS <- 4000L
+
+.plot_variogram <- function(x, ...) {
+  index_vars <- .fb_variogram_index(x)
+  dat <- .fb_fit_data(x)
+
+  if (length(index_vars) == 0L || is.null(dat) ||
+    !all(index_vars %in% names(dat))) {
+    stop(.fb_refusal_condition(
+      reason_code = "variogram_requires_design_index",
+      message = paste0(
+        "plot(type = \"variogram\") needs a design index to measure ",
+        "separation along, and this fit carries none",
+        if (length(index_vars) > 0L) {
+          paste0(
+            " (the recorded index ", paste(index_vars, collapse = ", "),
+            " is not a column of the fitted data)"
+          )
+        } else {
+          ": its terms name no row or column array"
+        },
+        ". A residual variogram is a picture of how far apart two plots ",
+        "are, so a model with no such array has no lag to plot against. ",
+        "Fit a spatial term -- random = ~ ar1(row):ar1(col) -- or use ",
+        "plot(fit, type = \"residuals\") for the fitted-value diagnostics."
+      ),
+      family_class = "flexybayes_variogram_requires_design_index"
     ))
   }
 
-  if (any(is.na(fitted_vals))) {
-    message(
-      "Cannot produce posterior predictive check: fitted values contain NA."
-    )
-    return(invisible(NULL))
+  resid_all <- tryCatch(stats::residuals(x), error = function(e) NULL)
+  if (is.null(resid_all) || length(resid_all) != nrow(dat)) {
+    return(.plot_unavailable(
+      "variogram",
+      "residuals are not available for this backend."
+    ))
   }
 
-  old_par <- par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
-  on.exit(par(old_par))
+  # Observed rows only: an augmented design cell has no observed response
+  # and so no residual.
+  keep <- which(!is.na(resid_all))
+  if (length(keep) < 3L) {
+    return(.plot_unavailable(
+      "variogram",
+      paste0(
+        "only ", length(keep), " row(s) carry an observed residual, which ",
+        "is too few to form a semivariance."
+      )
+    ))
+  }
+  if (length(keep) > .FB_VARIOGRAM_MAX_OBS) {
+    return(.plot_unavailable(
+      "variogram",
+      paste0(
+        length(keep), " observed rows would need ",
+        format(length(keep)^2, big.mark = " ", scientific = FALSE),
+        " pairwise separations to be held at once. Plot a subset of the ",
+        "array, or read the fitted correlations from summary(fit)$varcomp."
+      )
+    ))
+  }
 
-  # 1. Observed vs predicted
-  lims <- range(c(y, fitted_vals))
-  plot(
-    fitted_vals,
-    y,
-    pch = 16,
-    col = "#00000060",
-    xlab = "Predicted",
-    ylab = "Observed",
-    main = "Observed vs Predicted",
-    xlim = lims,
-    ylim = lims
-  )
-  abline(0, 1, col = "red", lty = 2)
-
-  # 2. Density overlay
-  plot(
-    density(y),
-    main = "Posterior Predictive",
-    xlab = "Value",
-    col = "black",
-    lwd = 2
-  )
-  lines(density(fitted_vals), col = "blue", lwd = 2, lty = 2)
-  legend(
-    "topright",
-    c("Observed", "Predicted"),
-    col = c("black", "blue"),
-    lty = c(1, 2),
-    lwd = 2,
-    bty = "n"
-  )
-
-  invisible(NULL)
+  positions <- lapply(index_vars, function(v) {
+    .fb_variogram_position(dat[[v]][keep])
+  })
+  tab <- .fb_variogram_table(resid_all[keep], positions, index_vars)
+  .fb_variogram_draw(tab, index_vars, length(keep), nrow(dat))
 }

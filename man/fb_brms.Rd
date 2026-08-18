@@ -38,12 +38,18 @@ offending construct. Re-fit with \code{\link[=fb_greta]{fb_greta()}} (full MCMC)
 model is latent-Gaussian feasible, \code{\link[=fb_inla]{fb_inla()}}.
 }
 \examples{
+# Held back from the default example run because the brms route compiles
+# a Stan program before it samples, and the compile alone takes far
+# longer than an example should. The sampler settings are the smallest
+# that reach an effective sample size the fit does not warn about, and
+# the seed makes that reproducible. On a single chain they cost about
+# half a second next to the compile.
 \donttest{
 if (requireNamespace("brms", quietly = TRUE) &&
     requireNamespace("lme4", quietly = TRUE)) {
   data(sleepstudy, package = "lme4")
   fit <- fb_brms(Reaction ~ Days + (1 | Subject), data = sleepstudy,
-                 chains = 1)
+                 chains = 1, n_samples = 4000, warmup = 1000, seed = 1)
   coef(fit)
 }
 }

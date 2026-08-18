@@ -64,6 +64,9 @@ emit_brms <- function(
   family = NULL,
   link = NULL,
   data_name = NA_character_,
+  na_action = NULL,
+  requested_backend = NULL,
+  requested_aggregate = NULL,
   ...
 ) {
   .check_fb_terms(fb, "`fb` must be an fb_terms object.")
@@ -276,7 +279,27 @@ emit_brms <- function(
         seed = seed,
         control = control,
         prior_fixed_sd = prior_fixed_sd,
-        prior_vc_sd = prior_vc_sd
+        prior_vc_sd = prior_vc_sd,
+        # The missing-response policy the call requested, as the native
+        # word. An `omit` fit that came back as an `augment` re-fit would
+        # be a different model under the same name, so the policy belongs
+        # in the call record and not only in the na_action summary.
+        na_action = na_action,
+        # The engine, the representation and the reporting the call
+        # ASKED for -- not the ones it resolved to. update() re-issues
+        # each of them, and with all three absent an identity update()
+        # of a Stan fit came back as an aggregated INLA fit: a different
+        # inference engine and a different object shape, under the same
+        # name and with nothing said.
+        #
+        # `backend` is recorded as the request ("auto") rather than the
+        # engine the request landed on, because the recorded value is a
+        # policy: a re-fit whose model has changed must be free to route
+        # again, while a fit that named its engine must come back on
+        # that engine.
+        backend = requested_backend,
+        aggregate = requested_aggregate,
+        verbose = verbose
       ),
       run_time = elapsed,
       # What has to match before this fit can be compared with another
@@ -944,6 +967,49 @@ emit_brms <- function(
 # GLM shim + convergence + variance components                       #
 # ---------------------------------------------------------------- #
 
+# .brms_dpar_names() --- the distributional parameters this fit models
+# with their own linear predictor.
+#
+# A sectioned residual emits `sigma ~ 0 + f`, which brms records under
+# `$formula$pforms`. Empty on every ordinary fit.
+#
+# @noRd
+# @keywords internal
+.brms_dpar_names <- function(brmsfit) {
+  nm <- names(brmsfit$formula$pforms %||% list())
+  if (is.null(nm)) {
+    return(character(0L))
+  }
+  nm[nzchar(nm)]
+}
+
+# .brms_mean_b_cols() --- the population-level columns of the MEAN model.
+#
+# brms writes every linear-predictor coefficient with a `b_` prefix, and
+# a distributional parameter's coefficients as `b_<dpar>_<term>`. Sweeping
+# `^b_` therefore collects the log-sigma coefficients of a sectioned
+# residual alongside the mean effects, which is how `coef()` came to
+# report `sigma_EnvE1` as if it were a fixed effect on the response, and
+# how the fixed-effect design matrix (6 columns) came to be reconciled
+# against a 12-element coefficient basis -- the failure a caller met as an
+# estimability error from `predict(classify = )` on any sectioned-residual
+# fit, including for a plain fixed factor.
+#
+# @noRd
+# @keywords internal
+.brms_mean_b_cols <- function(cn, dpars) {
+  b_cols <- cn[grepl("^b_", cn)]
+  if (length(dpars) == 0L || length(b_cols) == 0L) {
+    return(b_cols)
+  }
+  prefixes <- paste0("b_", dpars, "_")
+  keep <- !Reduce(
+    `|`,
+    lapply(prefixes, function(p) startsWith(b_cols, p))
+  )
+  b_cols[keep]
+}
+
 # Build a $glm shim that satisfies coef / vcov / fitted / residuals /
 # family / formula / model.matrix on the brms path. Coefficient
 # names follow the canonical (brms-stripped) convention: b_<term>
@@ -952,7 +1018,7 @@ emit_brms <- function(
 .brms_glm_shim <- function(brmsfit, draws_mat, data, family, formula_used) {
   cn <- colnames(draws_mat)
 
-  b_cols <- cn[grepl("^b_", cn)]
+  b_cols <- .brms_mean_b_cols(cn, .brms_dpar_names(brmsfit))
   canon_names <- vapply(
     b_cols,
     function(nm) {
@@ -998,7 +1064,7 @@ emit_brms <- function(
     ]),
     error = function(e) fitted_vals
   )
-  response_col <- all.vars(formula_used[[2L]])[1L]
+  response_col <- all.vars(.brms_main_formula(formula_used)[[2L]])[1L]
   y_vec <- if (!is.null(response_col) && response_col %in% names(data)) {
     as.numeric(data[[response_col]])
   } else {
@@ -1026,9 +1092,33 @@ emit_brms <- function(
   glm_obj
 }
 
+# .brms_main_formula() --- the mean-model formula, whatever wrapper it
+# arrived in.
+#
+# A sectioned residual makes the emitted model distributional, and the
+# object handed down the chain is then a `brmsformula` rather than a
+# plain one. Indexing a `brmsformula` by position does not reach the
+# formula: `form[[2L]]` and `form[[3L]]` return its `pforms` and `pfix`
+# slots, both of which are lists. Every positional reader below therefore
+# has to unwrap first, or it silently works on the wrong object -- which
+# is what left `glm$formula` carrying its random-effect bars, `glm$y` and
+# `glm$residuals` all-NA, and `predict(classify = )` dying inside the
+# estimability seam with "Perhaps a 'data' or 'params' argument is
+# needed" on every sectioned-residual fit.
+#
+# @noRd
+# @keywords internal
+.brms_main_formula <- function(form) {
+  if (inherits(form, "brmsformula") && !is.null(form$formula)) {
+    return(form$formula)
+  }
+  form
+}
+
 # Drop the random-effect terms from a brms formula so the parent
 # model.matrix / predict path can use a plain fixed-effect formula.
 .brms_fixed_only_formula <- function(form) {
+  form <- .brms_main_formula(form)
   rhs <- form[[3L]]
   no_re <- .strip_re_terms(rhs)
   if (is.null(no_re)) {
@@ -1076,11 +1166,16 @@ emit_brms <- function(
     return(list(gelman = NULL, n_eff = NULL))
   }
 
+  # Tail ESS is recorded alongside bulk because they answer different
+  # questions: bulk covers the centre of the marginal, tail the quantiles
+  # a credible interval is read off. A fit can mix well in the middle and
+  # badly at the 2.5% bound, which is precisely the number a user quotes.
   summ <- tryCatch(
     posterior::summarise_draws(
       posterior::as_draws_array(brmsfit),
       "rhat",
-      "ess_bulk"
+      "ess_bulk",
+      "ess_tail"
     ),
     error = function(e) NULL
   )
@@ -1112,6 +1207,7 @@ emit_brms <- function(
   list(
     gelman = list(psrf = psrf),
     n_eff = stats::setNames(summ$ess_bulk, summ$variable),
+    n_eff_tail = stats::setNames(summ$ess_tail, summ$variable),
     n_divergent = n_div
   )
 }
@@ -1143,7 +1239,21 @@ emit_brms <- function(
       q97.5 = qs[2L]
     )
   })
-  do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
+  out <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
+
+  # Posterior medians travel as an attribute rather than a sixth column:
+  # the five column names are a broom contract (R/tidiers.R). The
+  # boundary-collapse display flag in summary() reads them, and computes
+  # them from the same draws the row itself was summarised from.
+  attr(out, "posterior_median") <- stats::setNames(
+    vapply(
+      vc_cols,
+      function(nm) stats::median(draws_mat[, nm], na.rm = TRUE),
+      numeric(1L)
+    ),
+    vapply(vc_cols, .brms_vc_canonical_name, character(1L))
+  )
+  out
 }
 
 # brms VC names: sd_<group>__Intercept -> sd_<group>; sigma stays.
@@ -1250,6 +1360,11 @@ emit_brms <- function(
       sd = s[[1L]],
       sd_lower = s[[2L]],
       sd_upper = s[[3L]],
+      # The posterior spread of the SD itself, so the same rows can be
+      # carried into summary()$varcomp, whose `std.error` column every
+      # other variance component fills. The printed block does not show
+      # it -- it selects its columns by name.
+      sd_se = stats::sd(exp(b), na.rm = TRUE),
       stringsAsFactors = FALSE
     )
   })
@@ -1301,43 +1416,23 @@ emit_brms <- function(
 
 #' Print method for the brms-passthrough flexybayes subclass
 #'
-#' Mirrors `print.flexybayes` (call info + run time + diagnostics)
-#' with a brms-specific footer (the live `brmsfit` lives at
-#' `$brms`; the GLM shim at `$glm`; `$extras` carries the same
+#' Opens with the header every engine's print shares, then adds the
+#' sampler diagnostics and a brms-specific footer (the live `brmsfit`
+#' lives at `$brms`; the GLM shim at `$glm`; `$extras` carries the same
 #' diagnostics as the greta path).
 #'
 #' @param x A `flexybayes_brms` object.
 #' @param ... Ignored. Present for compatibility with the generic.
+#' @returns Invisibly, `x` unchanged. Called for the description it
+#'   prints.
 #' @export
 print.flexybayes_brms <- function(x, ...) {
-  ci <- x$extras$call_info
   mi <- x$extras$model_info
 
-  cat("Bayesian mixed model  [flexyBayes / brms passthrough]\n")
-  cat(strrep("-", 55), "\n")
-  cat("  Fixed  :", deparse(ci$fixed), "\n")
-  if (!is.null(ci$random)) {
-    cat("  Random :", deparse(ci$random), "\n")
-  }
-  cat("  Family :", mi$family, "(", mi$link, "link )\n")
-
-  nch <- ci$chains
-  ns <- ci$n_samples
-  cat(
-    "  MCMC   :",
-    nch,
-    "chain(s) x",
-    ns,
-    "samples",
-    "(warmup =",
-    ci$warmup,
-    ") --",
-    round(x$extras$run_time, 1),
-    "sec (Stan via brms)\n"
-  )
+  .fb_print_header(x, "Bayesian mixed model", "-")
 
   cat(
-    "  Params :",
+    "  Params   :",
     mi$n_params,
     "monitored;",
     mi$n_fixed,
@@ -1396,7 +1491,9 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
   )
   draws <- as.matrix(posterior::as_draws_matrix(object$brms))
   cn <- colnames(draws)
-  b_cols <- cn[grepl("^b_", cn)]
+  # Mean-model coefficients only, so this table and coef() / vcov()
+  # describe the same parameter set on a distributional fit.
+  b_cols <- .brms_mean_b_cols(cn, .brms_dpar_names(object$brms))
   if (length(b_cols) == 0L) {
     return(matrix(numeric(0), 0L, 2L))
   }
@@ -1456,6 +1553,13 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #' @param summary Logical: if `TRUE` (default), summarise across
 #'   draws to a numeric vector; if `FALSE`, return the
 #'   `draws x rows` posterior matrix.
+#' @param classify The factors to break a marginal-means table down by:
+#'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
+#'   formula (`~ Variety`). `NULL` (the default) is the historical
+#'   behaviour. See [predict.flexybayes()] for how the two prediction
+#'   paths differ.
+#' @param level Credible level for the classify table's interval, as a
+#'   proportion. Default `0.95`.
 #' @param ... Forwarded to `brms::posterior_epred()` /
 #'   `brms::posterior_linpred()`.
 #' @export
@@ -1466,9 +1570,15 @@ predict.flexybayes_brms <- function(
   re_formula = NULL,
   se.fit = FALSE,
   summary = TRUE,
+  classify = NULL,
+  level = 0.95,
   ...
 ) {
   type <- match.arg(type)
+  if (!is.null(classify)) {
+    .fb_classify_newdata_note(newdata)
+    return(.fb_predict_classify(object, classify, level))
+  }
   if (is.null(object$brms)) {
     stop(
       "Cannot predict from a flexybayes_brms object with an ",

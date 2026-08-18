@@ -43,8 +43,8 @@
       spelling = "`random = ~ g` / `(1 | g)`",
       inla = "fits",
       brms = "fits",
-      note = "The certified overlap class; both engines emit it and
-        `triangulate()` compares them.",
+      note = "The certified overlap class, which both engines emit and
+        `triangulate()` compares.",
       anchor = "test-backend-conformance.R"
     ),
     list(
@@ -176,7 +176,7 @@
       inla = "fits",
       brms = "fits",
       note = "INLA takes the sparse-precision, pedigree-precision and
-        block carriers; brms additionally takes dense and Cholesky.",
+        block carriers, and brms additionally takes dense and Cholesky.",
       anchor = "test-known-covariance-inputs.R"
     ),
     list(

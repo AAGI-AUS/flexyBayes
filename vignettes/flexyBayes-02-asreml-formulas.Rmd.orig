@@ -36,7 +36,7 @@ set.seed(1100)
 > it reaches an engine. The fits use small sampling budgets so the document
 > builds quickly, and several printed diagnostics therefore do **not** meet
 > the package's own convergence thresholds
-> ($\widehat{R} \le 1.01$, ESS $\ge 400$); some model classes also mix poorly on
+> ($\widehat{R} \le 1.01$, ESS $\ge 400$). Some model classes also mix poorly on
 > their backend at any budget. Read the posterior summaries here as
 > illustrations of the output *shape*, not as inferential results. For a
 > convergence-clean worked fit and the trustworthy-fit workflow, see the
@@ -68,8 +68,12 @@ The companion `fb_brms()` entry -- covered in the *getting started*,
 covers a subset of these term types via brms-style notation. For the
 full surface, asreml-shaped formulas are the reference path.
 
+Readers coming from ASReml may want the *From an ASReml call* vignette
+first. It translates one field-trial call and the accessors read after
+it, where this page catalogues the whole term surface.
+
 > **`flexyBayes` does not depend on the proprietary `asreml` package.**
-> The DSL borrows ASReml's notation; the inference engine is brms
+> The DSL borrows ASReml's notation, and the inference engine is brms
 > (Stan / Hamiltonian Monte Carlo) or INLA (Laplace approximation),
 > chosen automatically for the model you write. ASReml syntax is
 > referenced as a vocabulary, not invoked as a dependency.
@@ -83,11 +87,11 @@ matrices.
 > exists to show that a term type parses, dispatches to a faithful
 > active engine, and returns the expected structure -- not to produce
 > publication-grade inference. `backend = "auto"` resolves most terms
-> here to INLA (fast, deterministic) or brms (Stan HMC); at these
+> here to INLA (fast, deterministic) or brms (Stan HMC). At these
 > modest MCMC budgets the brms-routed fits print convergence
 > diagnostics that should not be over-read as inference. The *getting
 > started* vignette shows production budgets and how to read
-> $\widehat{R}$ and ESS; the *hierarchical models* and *cross-engine
+> $\widehat{R}$ and ESS. The *hierarchical models* and *cross-engine
 > triangulation* vignettes develop inference quality. Section 6 carries a
 > status column for the structured genotype-by-environment terms:
 > `diag()`, `us()` and `ar1()` fit, `fa()` and `corh()` are refused by
@@ -109,14 +113,14 @@ The `fixed` formula is a standard R model formula. Every term that
 
 | Term | Semantics |
 |---|---|
-| `factor` | factor main effect; one level absorbed into the intercept |
-| `continuous` | continuous covariate; linear coefficient |
+| `factor` | factor main effect, with one level absorbed into the intercept |
+| `continuous` | continuous covariate, entering as a linear coefficient |
 | `factor:factor` | two-factor interaction (factor_interaction internally) |
 | `factor:continuous` | factor-continuous interaction (separate slopes) |
 | `I(x^2)` | arbitrary I-quoted expression in the predictors |
 
 Two factor-interaction patterns, `*` and `:`, follow R's standard
-semantics: `A * B` expands to `A + B + A:B`; `A:B` is the interaction
+semantics: `A * B` expands to `A + B + A:B`, and `A:B` is the interaction
 alone.
 
 ```{r fixed-factor, eval = inla_ok || brms_ok}
@@ -158,7 +162,7 @@ fit_rand
 
 The random block reports the genotype-level standard deviation. The
 companion *hierarchical models* vignette covers the scientific
-interpretation; this vignette is about what each spelling means.
+interpretation. This vignette is about what each spelling means.
 
 # 4. Random-effect interactions and design components
 
@@ -192,13 +196,16 @@ fit_nested <- flexybayes(
 fit_nested
 ```
 
-## 4.1 Design variance components (a deliberate non-convergence demonstration)
+## 4.1 Design variance components (a deliberate identification demonstration)
 
-The fit printed in this section is shown for its convergence badge, not for
-its estimates. `met_example` has three replicates, which is too few to
-estimate a variance from, and the badge says so: the printed
-$\widehat{R}$ of 1.241 carries the `[!]` marker and the minimum ESS is 13.
-Nothing in the numbers below should be quoted as inference.
+The fit printed in this section is shown for what its diagnostics do,
+not for its estimates. `met_example` has three replicates, which is too
+few to estimate a variance from, and a barely-identified variance is
+exactly where a sampler's own diagnostics stop being stable: successive
+builds of this page, on the same data at the same budget, have printed
+$\widehat{R}$ anywhere from 1.005 to 1.241 and a minimum ESS from 13 to
+995. Read the badge your own run prints, and quote none of the numbers
+below as inference.
 
 A *design* variance component is the same construction applied to the
 factors that describe the trial layout: replicates,
@@ -218,16 +225,16 @@ fit_design
 
 The variance-component block reports separate variances for `rep`,
 `rep:block`, and `geno`. Each variance is a contribution to total
-variance; the proportions tell you which design layer accounts for
+variance, and the proportions tell you which design layer accounts for
 the most variation.
 
-Read the convergence lines on that fit before the estimates. On
-`met_example` the design layers do not converge at any budget this
-vignette would build with, and the printed $\widehat{R}$ and ESS say
-so: `rep` has three levels, which is too few to estimate a variance
-from. That is a property of the design, not of the grammar -- the same
-`rep + rep:block` construction on a trial with enough replicates
-behaves like any other random effect.
+Read the convergence lines on that fit before the estimates. `rep` has
+three levels on `met_example`, and a variance estimated from three
+levels is barely identified, so this fit's own $\widehat{R}$ and ESS
+move a long way between runs at this budget -- read the lines printed by
+your run rather than the ones printed here. That is a property of the
+design, not of the grammar: the same `rep + rep:block` construction on a
+trial with enough replicates behaves like any other random effect.
 
 In field experiments -- incomplete blocks, alpha designs, row-column
 designs -- the design variance component is what keeps the standard
@@ -267,9 +274,9 @@ flexybayes(
 
 ## 5.1 Carriers: dense, Cholesky, precision, pedigree opt-in
 
-The `vm()` and `ped()` special-terms accept the covariance carrier
-in multiple representations. The dense $V$ form is the default;
-three additional formats let the caller skip a redundant
+The `vm()` and `ped()` special terms accept the covariance carrier
+in multiple representations. The dense $V$ form is the default.
+Three additional formats let the caller skip a redundant
 factorisation, route through INLA's sparse-precision interface, or
 declare a sparse pedigree precision directly. The choice changes the
 computational path, not the model.
@@ -282,7 +289,7 @@ names an entry in `known_matrices`, resolved at fit time.
 
 **Dense $V$ (default).** Pass a covariance matrix directly.
 `flexyBayes` computes its Cholesky factor at fit time. The bare
-`vm(geno, Gmat)` form used above is the dense default;
+`vm(geno, Gmat)` form used above is the dense default, and
 `fb_cov(Gmat, type = "dense")` is the explicit equivalent:
 
 ```{r vm-dense, eval = inla_ok || brms_ok}
@@ -308,7 +315,7 @@ flexybayes(
 )
 ```
 
-The chol input must be square and lower-triangular; the validator
+The chol input must be square and lower-triangular. The validator
 refuses on an upper-triangular or non-square input.
 
 **Sparse precision matrix.** Many sources of structured covariance
@@ -319,7 +326,7 @@ even when the covariance itself is dense. Passing the sparse
 precision directly avoids dense intermediates, and routes through
 INLA's user-defined precision interface `f(<var>_id, model =
 "generic0", Cmatrix = Q)` (Rue & Held 2005, *Gaussian Markov Random
-Fields*; Lindgren et al. 2011):
+Fields*, and Lindgren et al. 2011):
 
 ```{r vm-precision, eval = inla_ok}
 Q <- solve(G_mat)   # or build sparse Q directly via ICAR / BYM2
@@ -333,7 +340,7 @@ fit_prec
 
 The sparse path is the recommended route for large spatial / genomic
 problems where the dense covariance would not fit in memory. The
-validator checks symmetry and positive-definiteness; refusals name
+validator checks symmetry and positive-definiteness, and refusals name
 the failure mode (`precision_not_symmetric`,
 `precision_not_positive_definite`).
 
@@ -355,7 +362,7 @@ flexybayes(
 ```
 
 `flexyBayes` does not depend on `pedigreemm` or any pedigree-graph
-library; the user constructs $A^{-1}$ and passes it. The level
+library. The user constructs $A^{-1}$ and passes it. The level
 ordering of the grouping factor must match the row/column order of
 the supplied precision matrix.
 
@@ -366,7 +373,7 @@ exclusive within a carrier. The bare dense form `vm(geno, Gmat)`
 remains available as the default when no `cov =` is supplied.
 
 **Backend mapping.** With `backend = "auto"`, dispatch routes
-precision-type vm/ped to INLA (preferred for sparsity); chol- and
+precision-type vm/ped to INLA (preferred for sparsity), and chol- and
 dense-type vm/ped to brms.
 
 ## 5.2 Known covariance alongside design components
@@ -386,17 +393,17 @@ flexybayes(
 
 > **Where genotype-by-environment covariance stands.** The diagonal
 > family (`diag(env):geno`, and its `idh()` / `at()` spellings) and the
-> unstructured `us(env):geno` fit on brms; INLA refuses both by name.
+> unstructured `us(env):geno` fit on brms. INLA refuses both by name.
 > The factor-analytic `fa(env, k):geno` parses for the formula
 > catalogue and no active engine emits it. The rest of this section
 > gives the whole family with the refusal you get where there is no
-> route, and the identification caveat that matters more than the
+> route, and the identification limit that matters more than the
 > syntax.
 
 Six term types *parse* structured covariance among random-effect
 levels, typically genotype-by-environment in agricultural settings --
 the standard multi-environment-trial parameterisations (Smith, Cullis,
-& Thompson, 2001). Four of them fit today; the status column says
+& Thompson, 2001). Four of them fit today, and the status column says
 which:
 
 | Term | Semantics | Status |
@@ -429,7 +436,7 @@ It mixes acceptably here, on four environments with three replicates
 per cell. The structure gets hard fast, and the reason is
 identification rather than budget.
 
-**The identification caveat matters more than the syntax.** An
+**Identification matters more than the syntax here.** An
 unstructured `us(env):geno` estimates $n$ standard deviations and
 $n(n-1)/2$ correlations alongside a residual variance. With one
 observation per genotype-environment cell -- the usual shape of a
@@ -672,7 +679,7 @@ coefficient on log sigma. Squaring it, or comparing it with an ASReml
 **Boundary on a heterogeneous-residual fit.** When one environment is
 much less variable than the others, the corresponding residual posterior
 can pile up near zero. The default uniform-on-SD prior does not push it
-away; a long-tailed prior (lognormal) on the residual would, and the
+away. A long-tailed prior (lognormal) on the residual would, and the
 posterior would then say more about the prior than about the data.
 
 **Convergence on small datasets with rich covariances.** A design with
@@ -708,7 +715,7 @@ than trusting an unidentified posterior.
 Every model above is specified in the asreml grammar
 (`fixed` / `random`). The same models can equally be written in the
 lme4 / brms idiom, with the random structure carried in `(1 | g)`
-blocks; the universal entry accepts either grammar and auto-detects
+blocks. The universal entry accepts either grammar and auto-detects
 which one you used:
 
 ```{r fb-brms-shape, eval = inla_ok || brms_ok}
@@ -744,18 +751,18 @@ multivariate or hurdle / mixture families, and LHS addition forms
 (`y | trials(n) ~ ...`) -- raise a structured refusal at ingest that
 names both the offending construct and the closest supported
 alternative. An *uncorrelated* random slope, `(x || g)`, is inside the
-corpus and is the spelling to reach for; the correlated `(x | g)` refuses
+corpus and is the spelling to reach for. The correlated `(x | g)` refuses
 and says so. Do not translate a slope into the asreml crossing
 `random = ~ g + g:x` with numeric `x`: that is one independent deviation
 per cell rather than a per-group slope, and flexyBayes refuses the
-spelling rather than choosing between the two readings. The *dispatch and
-refusals* and *cross-engine triangulation* vignettes catalogue the
+spelling rather than choosing between the two readings. The *understanding
+dispatch and refusals* and *cross-engine triangulation* vignettes catalogue the
 principled boundaries.
 
 Backend choice is orthogonal to grammar. The universal entries
 `flexybayes()` / `fb()` take a `backend = c("auto", "inla", "brms")`
-argument (see the *hierarchical models* vignette for the dispatch flow);
-the engine pins `fb_inla()` and `fb_brms()` fix the backend instead.
+argument (see the *hierarchical models* vignette for the dispatch flow).
+The engine pins `fb_inla()` and `fb_brms()` fix the backend instead.
 `backend = "greta"` is still accepted as a value and raises a
 `backend_quarantined` refusal: greta is retained as a re-entry candidate,
 not an active engine. Either grammar reaches the same cross-engine

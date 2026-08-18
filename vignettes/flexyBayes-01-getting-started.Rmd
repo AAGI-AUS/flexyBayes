@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 01: Getting started with flexyBayes"
-date: "2026-08-16"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -25,8 +25,8 @@ summary uncomfortable.
 - **Small group counts.** When the number of clusters is modest
   (fewer than roughly thirty), the sampling distribution of the
   variance-component estimator has a long right tail. The Wald
-  interval is informative only near the centre, where the posterior
-  is approximately quadratic.
+  interval is informative only near the centre, where the restricted
+  log-likelihood is approximately quadratic.
 - **Boundary problems.** A maximum-likelihood variance estimate can
   land on zero. That is *uninformative*: the data may not have ruled
   out a small-but-nonzero variance, but the boundary collapses both
@@ -56,6 +56,11 @@ fitted object supports `summary()`, `predict()`,
 `emmeans::emmeans()`, `marginaleffects::predictions()`, and the
 `bayesplot::*` family.
 
+If you arrive from ASReml with last season's call in hand, the *From an
+ASReml call* vignette is the shorter door onto this material. It
+translates one real call line by line, then the six commands typed after
+it, and it sends you back here for the full Bayesian on-ramp.
+
 # 2. Installation
 
 `flexyBayes` requires R 4.1.0 or later. Inference happens through one of
@@ -78,17 +83,16 @@ Install both:
 # brms and its Stan backend
 install.packages("brms")
 
-# INLA — not on CRAN; from the INLA team's repository
+# INLA -- not on CRAN; from the INLA team's repository
 install.packages(
   "INLA",
   repos = c(getOption("repos"),
             INLA = "https://inla.r-inla-download.org/R/stable")
 )
 
-# flexyBayes itself
-install.packages("flexyBayes")
-# or, while on GitHub:
-# remotes::install_github("AAGI-AUS/flexyBayes")
+# flexyBayes itself -- not yet on CRAN, so install from the repository
+# install.packages("remotes")
+remotes::install_github("AAGI-AUS/flexyBayes")
 ```
 
 A handful of companion packages enrich the post-fit experience and are
@@ -108,19 +112,19 @@ covers everything else.
 > (TensorFlow-backed HMC). greta and gretaR have since been
 > withdrawn as fitting engines -- `backend = "greta"` now refuses with
 > a structured message rather than fitting. If you have older code
-> pinned to `fb_greta()` or `backend = "greta"`, drop the pin; `"auto"`
+> pinned to `fb_greta()` or `backend = "greta"`, drop the pin. `"auto"`
 > (or an explicit `"inla"` / `"brms"`) now covers the same ground on
 > the two active engines. See `NEWS.md` for the full rationale.
 
 # 3. The four-verb API
 
 `flexyBayes` exposes four user-facing entry points. Pick the verb
-that matches how the model is expressed; the choice of entry never
+that matches how the model is expressed. The choice of entry never
 implicitly changes the choice of backend.
 
 | Verb | When to use |
 |---|---|
-| `flexybayes()` / `fb()` | Principal / universal entry. Asreml-style (`fixed = ..., random = ~ g, residual = ~ ...`) or brms-style (`response ~ x + (1 \| g)`) formulas; auto-detects the grammar and takes a `backend` argument to choose the engine. The ASReml term vocabulary it *parses* is wider than the set either engine emits -- `fa()`, `corh()` and an AR1 residual parse and then refuse -- so consult the capability table before assuming a term fits. |
+| `flexybayes()` / `fb()` | Principal / universal entry. ASReml-style (`fixed = ..., random = ~ g, residual = ~ ...`) or brms-style (`response ~ x + (1 \| g)`) formulas. It auto-detects the grammar and takes a `backend` argument to choose the engine. The ASReml term vocabulary it *parses* is wider than the set either engine emits -- `fa()`, `corh()` and an AR1 residual parse and then refuse -- so consult the capability table before assuming a term fits. |
 | `fb_inla()` / `fb_brms()` | Engine pins: fix the backend to INLA (Laplace) or Stan (brms). Each accepts the same two formula grammars. `fb_greta()` still exists but refuses -- greta is quarantined (see Section 2). |
 | `triangulate()` | Cross-engine posterior comparison. Takes two fits from different backends and reports per-parameter agreement metrics. |
 
@@ -128,7 +132,7 @@ The universal entries `flexybayes()` / `fb()` take a `backend`
 argument: `"auto"` (the default -- gate-driven routing: INLA when the
 model is LGM-eligible, brms otherwise, and a typed refusal when
 neither can represent the model -- never a silent fallback to a
-quarantined engine), `"inla"` (explicit LGM fast path; refuses
+quarantined engine), `"inla"` (explicit LGM fast path, refusing
 non-LGM models with a structured message), and `"brms"` (Stan). The
 engine pins `fb_inla()` / `fb_brms()` fix the backend instead of
 taking the argument. The dispatch trace is available post-fit via
@@ -173,12 +177,18 @@ fit_brms <- fb_brms(
   mcmc_verbose = FALSE
 )
 fit_brms
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : Reaction ~ Days + (1 | Subject) 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 4 chain(s) x 2000 samples (warmup = 2000 ) -- 17.3 sec (Stan via brms)
-#>   Params : 25 monitored; 2 fixed, 1 random terms
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : Reaction ~ Days + (1 | Subject) 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 2000)
+#>   Runtime  : 18.3 sec
+#>   Params   : 25 monitored; 2 fixed, 1 random terms
 #>   Max Rhat: 1.002  [OK] 
 #>   Min ESS: 1154 
 #> ------------------------------------------------------- 
@@ -222,12 +232,18 @@ fit_slope <- fb_brms(
   mcmc_verbose = FALSE
 )
 fit_slope
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : Reaction ~ Days + (Days || Subject) 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 4 chain(s) x 1000 samples (warmup = 1000 ) -- 17 sec (Stan via brms)
-#>   Params : 44 monitored; 2 fixed, 1 random terms
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : Reaction ~ Days + (Days || Subject) 
+#>   Model    : G: simple_slope_uncor; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 1000 samples (warmup 1000)
+#>   Runtime  : 18.2 sec
+#>   Params   : 44 monitored; 2 fixed, 1 random terms
 #>   Max Rhat: 1.004  [OK] 
 #>   Min ESS: 984 
 #> ------------------------------------------------------- 
@@ -280,33 +296,43 @@ intercept.
 # 5. What is inside a fit?
 
 `fit_brms` is an object of class `flexybayes`. The default print method
-is concise; `summary()` gives the full posterior digest:
+is concise. `summary()` gives the full posterior digest:
 
 
 ``` r
 summary(fit_brms)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : Reaction ~ Days + (1 | Subject) 
-#>   Family : gaussian / identity 
-#>   N = 180 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days + (1 | Subject) 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 2000)
+#>   Runtime  : 18.3 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD    2.5%    97.5%
-#> (Intercept) 251.4187 10.4912 230.674 272.5085
-#> Days         10.4686  0.7852   8.893  11.9674
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 251.4187   10.4912  230.674  272.5085
+#>         Days  10.4686    0.7852    8.893   11.9674
 #> 
-#> -- Variance components  -------------------------------------- 
-#>    Component Estimate     SD    2.5%   97.5%
-#> 1 sd_Subject  40.3762 8.2476 27.4740 59.4381
-#> 2      sigma  31.2593 1.7626 28.0074 34.9194
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                         prior
+#>  sd_Subject  40.3762    8.2476  27.4740   59.4381 uniform(lower=0, upper=281.6)
+#>       sigma  31.2593    1.7626  28.0074   34.9194 uniform(lower=0, upper=281.6)
+#>  note
+#>      
+#>      
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.002 
-#>   ESS  range: 1154 - 8391 
-#>   Run time  : 17.3 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.002
+#>   Min ESS (bulk): 1154
+#>   Min ESS (tail): 1740
+#>   Divergent transitions: 0
 ```
 
 The output is laid out in three blocks.
@@ -353,7 +379,7 @@ scale**, $\sigma \sim \mathrm{Uniform}(0, U)$, with a family-aware
 upper bound (Gelman, 2006). The announcement names $U$, the scale
 basis, and the override knobs, and fires once per session. Passing
 `prior_vc_sd = m` opts back into the legacy
-$\sigma \sim \mathrm{Lognormal}(0, m)$ default; passing a structured
+$\sigma \sim \mathrm{Lognormal}(0, m)$ default. Passing a structured
 `prior = fb_prior(...)` overrides both. The *priors and
 regularisation* vignette articulates the choice in detail and shows
 how to set priors deliberately.
@@ -370,7 +396,7 @@ coefficients, via `b("name") ~ normal(...)` in `fb_prior()`.
 
 # 6. The same model on a second engine
 
-`fit_brms` is a Markov chain Monte Carlo (MCMC) fit; INLA runs a
+`fit_brms` is a Markov chain Monte Carlo (MCMC) fit. INLA runs a
 fundamentally different algorithm -- a Laplace approximation over a
 small set of hyperparameters -- and finishes almost instantly:
 
@@ -382,41 +408,64 @@ fit_inla <- fb_inla(
   verbose = FALSE
 )
 summary(fit_inla)
-#> Bayesian fit summary  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------------ 
-#> Fixed effects:
-#>                 mean     sd 0.025quant 0.5quant 0.975quant     mode kld
-#> (Intercept) 251.4787 6.6752   238.3770 251.4784   264.5824 251.4784   0
-#> Days         10.4509 1.2501     7.9969  10.4510    12.9045  10.4510   0
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days + (1 | Subject) 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.3 sec
 #> 
-#> Hyperparameters:
-#>                                                 mean          sd   0.025quant
-#> Precision for the Gaussian observations 4.000000e-04           0 4.000000e-04
-#> Precision for Subject                   1.068371e+11 65449887843 3.619491e+10
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 251.4788    6.6778 238.3721  264.5874
+#>         Days  10.4509    1.2506   7.9960   12.9054
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                         prior
+#>       sigma  47.2127    2.3738  42.6304   51.9342 uniform(lower=0, upper=281.6)
+#>  sd_Subject   0.0001    0.0000   0.0000    0.0001 uniform(lower=0, upper=281.6)
+#>       note
+#>           
+#>  collapsed
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
+#>                                                 mean       sd   0.025quant
+#> Precision for the Gaussian observations 5.000000e-04        0 4.000000e-04
+#> Precision for Subject                   2.447146e+08 75937039 1.462065e+08
 #>                                             0.5quant   0.975quant         mode
-#> Precision for the Gaussian observations 4.000000e-04 5.000000e-04 4.000000e-04
-#> Precision for Subject                   8.999207e+10 2.804887e+11 6.568275e+10
+#> Precision for the Gaussian observations 4.000000e-04 6.000000e-04 4.000000e-04
+#> Precision for Subject                   2.292315e+08 4.380195e+08 1.950392e+08
 #> 
-#> Random effects:
-#>   groups: Subject
-#> ------------------------------------------------------------
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -972.039
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 6.66e-07
+#>   Numerical confirm: PASS
 ```
 
 
 ``` r
 hp <- fit_inla$inla$summary.hyperpar
 1 / sqrt(hp["Precision for Subject", "mean"])
-#> [1] 3.059419e-06
+#> [1] 6.39249e-05
 ```
 
-> **Read that number before going further.** On this dataset, INLA's
-> default prior on the `Subject`-level variance frequently drives it
-> to a numerically-collapsed near-zero value -- not a modest
-> shrinkage, a genuine degeneracy (`sigma` many orders of magnitude
-> below anything physically plausible). This is a known instability
-> specific to this model on this dataset, not a general property of
-> INLA. It is shown deliberately, not patched away, because it is
-> exactly the failure mode the next paragraph exists to catch.
+> **Read that number before going further.** On this dataset the
+> `Subject`-level standard deviation collapses to a numerically
+> near-zero value under the package's auto-default prior, the bounded
+> uniform on the SD scale named in the `prior` column above -- not a
+> modest shrinkage, a genuine degeneracy (`sd_Subject` many orders of
+> magnitude below anything physically plausible). This is a known
+> instability specific to this model on this dataset, not a general
+> property of INLA. It is shown deliberately, not patched away, because
+> it is exactly the failure mode the next paragraph exists to catch.
 >
 > The collapsed value does not reproduce either. Repeated runs of this
 > same call return `Precision for Subject` many orders of magnitude
@@ -424,9 +473,10 @@ hp <- fit_inla$inla$summary.hyperpar
 > sits, and the fixed effects move in the last decimals with it. A
 > `seed` cannot help: the Laplace approximation draws no random
 > numbers, so the movement is in the optimiser's landing point rather
-> than in a sampler. The brms block above is seeded and reproduces
-> exactly. Treat instability across re-runs of a *deterministic* engine
-> as the same signal as a failed convergence diagnostic on a sampler.
+> than in a sampler. The brms block above is seeded and reproduces on
+> the same machine and toolchain. Treat instability across re-runs of a
+> *deterministic* engine as the same signal as a failed convergence
+> diagnostic on a sampler.
 
 Both engines were given the same model. Stan's Hamiltonian Monte Carlo
 and INLA's Laplace approximation are two routes to the posterior of
@@ -436,7 +486,7 @@ apart are they?* That is the question `triangulate()` answers. The canonical
 parameter-name registry reconciles each engine's internal names -- brms's
 `b_Intercept`, `b_Days`, `sd_Subject__Intercept`, `sigma`, and INLA's
 `(Intercept)`, `Days`, `Precision for Subject`,
-`Precision for the Gaussian observations` -- automatically; no
+`Precision for the Gaussian observations` -- automatically, so no
 `name_map` is needed for the common cases.
 
 
@@ -455,10 +505,10 @@ tri <- tryCatch(
 if (!is.null(tri)) tri
 #> <triangulate_result>
 #>   status:   discordant
-#>     - (Intercept): Wasserstein-1 0.28 SD; SD ratio 1.61
-#>     - Days: Wasserstein-1 0.28 SD; SD ratio 0.64
-#>     - sd_Subject: mean shift 4.90 SD; Wasserstein-1 4.88 SD; SD ratio 7939986.96
-#>     - sigma: mean shift 6.57 SD; Wasserstein-1 6.58 SD; SD ratio 0.68
+#>     - (Intercept): Wasserstein-1 0.27 SD; SD ratio 1.58
+#>     - Days: Wasserstein-1 0.29 SD; SD ratio 0.63
+#>     - sd_Subject: mean shift 4.90 SD; Wasserstein-1 4.88 SD; SD ratio 544972.08
+#>     - sigma: mean shift 6.69 SD; Wasserstein-1 6.68 SD; SD ratio 0.70
 #>   source_a: brms
 #>   source_b: inla
 #>   independence: algorithmic + implementation
@@ -471,11 +521,11 @@ if (!is.null(tri)) tri
 #>       (data_independence = undeclared)
 #> 
 #> Metrics (per common parameter):
-#>         param   mean_a   mean_b mean_shift_sd     sd_ratio  w1_sd    verdict
-#> 1 (Intercept) 251.4187 251.6611        0.0231       1.6076 0.2832 discordant
-#> 2        Days  10.4686  10.4205        0.0390       0.6352 0.2825 discordant
-#> 3  sd_Subject  40.3762   0.0000        4.8955 7939986.9583 4.8835 discordant
-#> 4       sigma  31.2593  48.2860        6.5732       0.6804 6.5754 discordant
+#>         param   mean_a   mean_b mean_shift_sd    sd_ratio  w1_sd    verdict
+#> 1 (Intercept) 251.4187 251.6097        0.0182      1.5804 0.2731 discordant
+#> 2        Days  10.4686  10.4268        0.0335      0.6301 0.2930 discordant
+#> 3  sd_Subject  40.3762   0.0001        4.8955 544972.0759 4.8835 discordant
+#> 4       sigma  31.2593  48.0991        6.6859      0.6998 6.6811 discordant
 ```
 
 The output opens with an overall status -- `concordant`, `discordant` or
@@ -575,7 +625,7 @@ which gate checks were evaluated, and the reason. On a Gaussian
 random-intercept model the gate accepts and (when INLA is installed)
 the auto path lands on INLA -- which is exactly the fit whose
 Subject-level variance collapsed above. `"auto"` optimises for speed
-first; pin `backend = "brms"` explicitly whenever a small-group
+first. Pin `backend = "brms"` explicitly whenever a small-group
 variance component is itself the quantity you care about.
 
 # 7. Where to next?
@@ -585,7 +635,7 @@ suggested reading order:
 
 | Vignette | What it covers |
 |---|---|
-| Foundational regression | one- and two-way fixed effects; univariate smooths; comparison with `lm()` |
+| Foundational regression | one- and two-way fixed effects, univariate smooths, comparison with `lm()` |
 | Hierarchical models | random intercepts, nested and crossed effects, the two random-slope spellings, Poisson and binomial generalised linear mixed models (GLMMs) |
 | The formula surface | the term-type catalogue -- what parses, what emits, what refuses -- and the structured-covariance machinery: `diag`, `us`, per-level residual variances, known-covariance carriers |
 | Priors and regularisation | the `fb_prior()` DSL, the uniform-on-SD default, the fixed-effect default, prior-predictive checks |
@@ -603,7 +653,7 @@ database can be corrupted when a package is overwritten under a live
 session. Restart R first.
 
 **Convergence is not correctness.** A passing $\widehat{R}$ tells you
-that the chains explored the same posterior; it does not tell you
+that the chains explored the same posterior. It does not tell you
 whether that posterior is the right one for the problem. Posterior-
 predictive checks (Gelman, Meng, & Stern, 1996) and the cross-engine
 triangulation vignette address that distinction.
@@ -618,8 +668,8 @@ use that prior.
 **INLA's scope is narrower than brms's, and each has terms the other
 refuses.** Random slopes, interaction random effects, heterogeneous
 genotype variances and heterogeneous residuals are outside what the
-INLA emit represents, and `lgm_gate()` refuses them structurally;
-`"auto"` routes those models to brms. The traffic runs the other way
+INLA emit represents, and `lgm_gate()` refuses them structurally,
+so `"auto"` routes those models to brms. The traffic runs the other way
 too -- the separable AR1 spatial field and the P-spline emit on INLA
 and refuse on brms. Neither engine covers the whole ASReml term
 vocabulary, and a term outside both refuses rather than being
@@ -683,13 +733,13 @@ sessionInfo()
 #> [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
 #> [16] magrittr_2.0.5         posterior_1.7.0        compiler_4.5.2        
 #> [19] rlang_1.2.0            tools_4.5.2            data.table_1.18.2.1   
-#> [22] sn_2.1.3               knitr_1.51             bridgesampling_1.2-1  
-#> [25] mnormt_2.1.2           pkgbuild_1.4.8         classInt_0.4-11       
-#> [28] curl_7.0.0             plyr_1.8.9             RColorBrewer_1.1-3    
+#> [22] knitr_1.51             sn_2.1.3               bridgesampling_1.2-1  
+#> [25] curl_7.0.0             pkgbuild_1.4.8         classInt_0.4-11       
+#> [28] mnormt_2.1.2           plyr_1.8.9             RColorBrewer_1.1-3    
 #> [31] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
-#> [34] numDeriv_2016.8-1.1    withr_3.0.2            grid_4.5.2            
-#> [37] stats4_4.5.2           colorspace_2.1-2       xtable_1.8-8          
-#> [40] e1071_1.7-17           future_1.70.0          inline_0.3.21         
+#> [34] withr_3.0.2            numDeriv_2016.8-1.1    grid_4.5.2            
+#> [37] stats4_4.5.2           colorspace_2.1-2       inline_0.3.21         
+#> [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
 #> [43] ggplot2_4.0.3          globals_0.19.1         emmeans_2.0.2         
 #> [46] scales_1.4.0           MASS_7.3-65            dichromat_2.0-0.1     
 #> [49] cli_3.6.6              mvtnorm_1.3-6          generics_0.1.4        
@@ -705,8 +755,8 @@ sessionInfo()
 #> [79] QuickJSR_1.9.0         tibble_3.3.1           pillar_1.11.1         
 #> [82] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
 #> [85] evaluate_1.0.5         lattice_0.22-7         backports_1.5.1       
-#> [88] MatrixModels_0.5-4     rstantools_2.6.0       class_7.3-23          
-#> [91] Rcpp_1.1.1-1.1         coda_0.19-4.1          gridExtra_2.3         
+#> [88] rstantools_2.6.0       class_7.3-23           MatrixModels_0.5-4    
+#> [91] Rcpp_1.1.1-1.1         gridExtra_2.3          coda_0.19-4.1         
 #> [94] nlme_3.1-168           checkmate_2.3.4        xfun_0.57             
 #> [97] zoo_1.8-15             pkgconfig_2.0.3
 ```

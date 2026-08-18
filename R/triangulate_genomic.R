@@ -109,11 +109,10 @@
 #' genomic estimated breeding values -- on a common footing. Each argument
 #' is either a flexyBayes GBLUP / pedigree fit (greta, INLA, or brms) or a
 #' generic *genomic lens* (`list(h2, var_g, var_e, gebv, label)`), the form
-#' a field-standard oracle such as sommer's REML supplies. Cross-engine use
-#' checks that the Bayesian backends agree; the lens form lets the koine
-#' fourth opinion (REML / established tools) cross-check the Bayesian
-#' answer -- the orchestra's signature value in a field with decades of
-#' established methods.
+#' a field-standard REML implementation such as sommer supplies.
+#' Cross-engine use checks that the Bayesian backends agree. The lens form
+#' lets an established REML tool cross-check the Bayesian answer, which is
+#' what matters in a field with decades of established methods.
 #'
 #' Like [triangulate()], this measures inter-lens *agreement*, not
 #' correspondence: two lenses fit to the same data share any fabricated
@@ -258,8 +257,8 @@ print.triangulate_genomic_result <- function(x, ...) {
 #' Triangulate two genome-wide association scans
 #'
 #' Compare two GWAS results -- typically a flexyBayes [fb_gwas()] scan
-#' against a field-standard scan (GEMMA / rrBLUP, supplied through the
-#' koine oracle) -- by the agreement that matters for a scan: do the same
+#' against a field-standard scan (GEMMA or rrBLUP, supplied as a lens)
+#' -- by the agreement that matters for a scan: do the same
 #' loci come up? Reports the Jaccard overlap of the genome-wide-significant
 #' marker sets, the overlap among the top markers, the correlation of the
 #' marker effects on the markers in common, and each scan's genomic-control

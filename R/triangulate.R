@@ -140,11 +140,13 @@
 #' posteriors being compared are only directly comparable when the two
 #' fits share priors. The aggregated path combines the cell-mean
 #' likelihood with a precision prior carrying a closed-form correction
-#' that absorbs the within-cell sum-of-squares; under the *default*
+#' that absorbs the within-cell sum-of-squares. Under the *legacy scalar*
 #' prior this recovers the per-row posterior to numerical precision, so
 #' the aggregated fit is tagged `prior_parametrization =
 #' "per_row_equivalent"` (visible in the aggregated `print()` / `summary()`
-#' and in [canonical_names()]). When an explicit prior is supplied the
+#' and in [canonical_names()]). Under the package's own auto-default it
+#' is tagged `"package_default"`, which names the prior without claiming
+#' that equivalence. When an explicit prior is supplied the
 #' fit is tagged `"custom"`: the equivalence against a *default-prior*
 #' per-row fit no longer holds, and on the aggregated INLA path the
 #' observation-precision prior is not plumbed through, so a custom

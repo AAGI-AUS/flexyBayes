@@ -27,6 +27,8 @@ navbar:
       text: Tutorials
       menu:
         - text: "Foundations"
+        - text: 00 — From an ASReml call
+          href: articles/flexyBayes-00-from-asreml.html
         - text: 01 — Getting started
           href: articles/flexyBayes-01-getting-started.html
         - text: 02 — The formula surface
@@ -201,6 +203,7 @@ articles:
   - title: Foundations
     navbar: ~
     contents:
+      - flexyBayes-00-from-asreml
       - flexyBayes-01-getting-started
       - flexyBayes-02-asreml-formulas
       - flexyBayes-03-regression

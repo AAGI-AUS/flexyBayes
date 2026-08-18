@@ -12,7 +12,7 @@ The thing to know before relying on flexyBayes for a multi-environment trial:
 residual -- fits on brms, and the evidence behind that row is small-scale.**
 The combination generates both blocks in the emitted Stan program and samples
 cleanly on simulated data (the live test) with the pieces corroborated on
-`agridat::besag.met`; INLA refuses both halves structurally, and a national
+`agridat::besag.met`. INLA refuses both halves structurally, and a national
 trial series has not been run. The detail is below, so the scale question can
 be answered collectively rather than rediscovered.
 
@@ -28,7 +28,7 @@ which had drifted from the emit layer in four places.
 <!-- capability-matrix:begin -->
 | Model class | Spelling | INLA | brms | Notes |
 |---|---|:-:|:-:|---|
-| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class; both engines emit it and `triangulate()` compares them. |
+| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
 | Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The INLA mapping named greta as one of its three verification arbitrators, so it stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
@@ -41,7 +41,7 @@ which had drifted from the emit layer in four places.
 | Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | refuses | fits | The emit carries both the group-level term and the `sigma` predictor, and a live fit samples cleanly on simulated multi-environment data. `auto` reaches brms for this class. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
-| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers; brms additionally takes dense and Cholesky. |
+| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget -- four hyperparameters, one observation per grid node. This is not ASReml's three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
 | Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA's second-order random walk. brms has no lowering for the smooth basis. |
 | Observation weights | `weights = w` | refuses | refuses | Parsed and recorded, consumed by no active emitter. A non-constant vector refuses rather than returning the unweighted posterior. |
@@ -70,7 +70,7 @@ Where each stands today:
   an ASReml oracle. The interaction random effects emit as `(1 | a:b)` and
   recover every variance component against the ASReml / lme4 REML reference
   on `agridat::besag.met`. The heteroscedastic residual lowers to
-  distributional regression on log sigma, `sigma ~ 0 + f`; fitted through
+  distributional regression on log sigma, `sigma ~ 0 + f`, and fitted through
   `flexybayes()` on 360 simulated plots its per-site posterior-mean
   variances are 0.1146 / 1.1516 / 4.6981 against ASReml's
   0.1093 / 1.1248 / 4.6079, within 4.8% and largest on the smallest of the
@@ -134,14 +134,64 @@ Each is reproducible on this release. Priority is for the MET use case.
    never labelled with a synthesised token. *Restores compression on the
    replicated factorial where it is most useful.*
 5. **Aggregated-binomial input.** No clean `cbind(success, failure)` or
-   `trials =` on the main fit entry; the streaming path has `trials` but the
+   `trials =` on the main fit entry. The streaming path has `trials` but the
    modelling entry does not. Today the only working form is Bernoulli long
    expansion. *Usability.*
 6. **Observation weights.** Parsed, recorded, and consumed by no emitter. The
-   refusal is correct; the fix is an inverse-variance Gaussian emit checked
+   refusal is correct, and the fix is an inverse-variance Gaussian emit checked
    against an analytic oracle, with the other weight senses (frequency,
    likelihood-power, trials, exposure) kept distinct rather than folded into
    one argument.
+7. **A bounded uniform prior whose upper bound cuts into the posterior can
+   crash the INLA binary.** *Symptom*: the `inla` subprocess exits with a
+   segmentation fault, INLA retries once with improved initial values and
+   the retry crashes too, and `backend = "inla"` then raises `INLA fit
+   failed: The inla-program exited with an error`. The R session itself is
+   unaffected -- the crash is inside the subprocess, not in R -- so the
+   failure arrives as an ordinary error and nothing is lost. *Trigger*: a
+   `fb_prior()` bounded uniform on the standard-deviation scale whose upper
+   bound sits inside the region the data support. Reproduced on a 72-row
+   randomised block model whose `sd_Block` posterior mean is 2.28 with a
+   97.5% bound of 6.35, priored `sd(group = "Block") ~ uniform(0, 3)`.
+   *Workaround*: widen the bound -- `uniform(0, 10)` fits the same model
+   cleanly -- or use a prior with no upper bound at all, such as
+   `sd(group = "Block") ~ half_normal(scale = 3)`, which expresses the same
+   scale belief without a hard edge. The package's own auto-default is a
+   bounded uniform, so a user narrowing that bound is an ordinary path into
+   this rather than an exotic one. On `backend = "auto"` the crash is not
+   surfaced as a refusal: dispatch falls back to brms and the user reads a
+   Stan fit where an INLA failure happened. *The crash is upstream. What is
+   ours to fix is the silence around it.*
+8. **The autoregressive field can lose its signal on an incomplete grid.**
+   *Symptom*: the field standard deviation runs to a floor near 0.01, both
+   correlations sit at approximately zero with credible intervals spanning
+   almost the whole of `[-1, 1]`, and the variance the field should have
+   carried is absorbed into the nugget, which rises correspondingly. The
+   fit is then an independent-errors model wearing a spatial model's
+   name. *Trigger*: unobserved plots. On one 12 by 10 grid with 12 of 120
+   responses missing under the default `augment` policy, ten different
+   hole patterns were fitted and five lost the field while five returned
+   ordinary correlations -- the same data, the same model, the same
+   settings, differing only in which plots were missing. Repeating a
+   single fit three times on one unchanged data frame reproduced the same
+   answer on some patterns and moved between a collapsed and a recovered
+   field on others, so the outcome is not always a function of the input
+   alone. *What the fit says about it*: nothing, before this release. The
+   convergence block reported a converged mode and a passing numerical
+   confirm throughout, and the augmentation record reported that it had
+   completed the design; the credible intervals were the only tell. A fit
+   whose field does not identify now raises a warning naming the
+   parameters that lost their identification, and
+   `summary(fit)$varcomp` carries `collapsed` in the `note` cell of the
+   `sd_spatial` row. *Workaround*: complete the grid, either by supplying
+   the field-book rows for every sown plot with the response set to `NA`
+   or by padding the array with `fb_complete_grid()`; fit the same model
+   on the brms engine for a second reading; or give the field an
+   informative prior with `fb_prior()` rather than leaving it to run to a
+   boundary. *What is still open* is the underlying identification, not
+   the reporting of it: a hyperparameterisation or a default field prior
+   under which an incomplete grid does not put the solution at a boundary
+   in the first place.
 
 ## Closed since the previous revision
 
@@ -166,18 +216,18 @@ know it went away. Each was re-checked live against this tree.
   the INLA *binary* prints harmless hardware-probe lines (for example
   `/bin/kstat: No such file or directory`) to the console during a fit. This
   is the INLA subprocess, not flexyBayes, and is below the level R can
-  capture; it is cosmetic and does not affect results. Not reproducible on
+  capture, and it is cosmetic and does not affect results. Not reproducible on
   every platform.
 - **greta readiness probe noise.** `fb_backend_status()` captures the Python /
   TensorFlow discovery output, and `fb_backend_status(deep = FALSE)` skips
   that probe entirely (a fast, non-invasive check). On a misconfigured Python
   stack a *subprocess* launcher may still write to the OS console below the
-  level R can capture; `deep = FALSE` avoids triggering it. greta is
+  level R can capture, and `deep = FALSE` avoids triggering it. greta is
   quarantined as a fitting engine, so this affects the status report only.
 
 ## How to help
 
-- Pick an issue above; 1 and 5 are the highest-value and lowest-risk. The IR /
+- Pick an issue above. Items 1 and 5 are the highest-value and lowest-risk. The IR /
   gate / emit / refusal architecture is already in place -- these are new
   emit branches, reason codes and verification runs, not new subsystems.
 - A fix is "done" only when `summary()`, `prior_summary()`,

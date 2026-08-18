@@ -9,24 +9,36 @@
   newdata = NULL,
   type = c("response", "link"),
   se.fit = FALSE,
+  classify = NULL,
+  level = 0.95,
   ...
 )
 }
 \arguments{
 \item{object}{A \code{flexybayes_inla} fit.}
 
-\item{newdata}{Optional data frame; defaults to the fit data.}
+\item{newdata}{Optional data frame; defaults to the fit data. Ignored,
+with a warning, when \code{classify} is supplied.}
 
 \item{type}{\code{"response"} or \code{"link"}.}
 
 \item{se.fit}{Logical: also return delta-method standard errors from
 the fixed-effect covariance.}
 
+\item{classify}{The factors to break a marginal-means table down by:
+a character value (\code{"Variety"}, \code{"Variety:env"}) or a one-sided
+formula (\code{~ Variety}). \code{NULL} (the default) is the historical
+behaviour.}
+
+\item{level}{Credible level for the classify table's interval, as a
+proportion. Default \code{0.95}.}
+
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-A numeric vector of predictions, or a list \code{fit} / \code{se.fit}
-when \code{se.fit = TRUE}.
+With \code{classify}, a data frame of class \code{fb_predict_classify}.
+Otherwise a numeric vector of predictions, or a list \code{fit} /
+\code{se.fit} when \code{se.fit = TRUE}.
 }
 \description{
 Fixed-effect (population-level) predictions: the linear predictor is
@@ -34,4 +46,11 @@ Fixed-effect (population-level) predictions: the linear predictor is
 On the identity link the response- and link-scale predictions
 coincide. This is the prediction surface \pkg{marginaleffects} uses
 for average predictions and slopes.
+}
+\details{
+The \code{classify} path is the same one \code{\link[=predict.flexybayes]{predict.flexybayes()}} takes: a
+marginal-means table built through the emmeans seam, whose interval on
+this engine comes from the Gaussian approximation of the joint
+fixed-effect posterior rather than from INLA's own marginals. The
+printed table names that.
 }

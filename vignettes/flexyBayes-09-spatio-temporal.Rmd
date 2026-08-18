@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 09: Spatio-temporal models: AR1, spatial, temporal"
-date: "2026-08-16"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -36,7 +36,7 @@ narrow, and inferences look more confident than the data warrant.
 written as **random** terms:
 
 - **first-order autoregressive** (`random = ~ ar1(t)`) on a regular
-  ordered factor, for time, columns, or rows;
+  ordered factor, for time, columns, or rows.
 - **separable two-dimensional autoregressive**
   (`random = ~ ar1(row):ar1(col)`) on a regular field grid. This is
   the field-plus-nugget model, not Gilmour, Cullis and Verbyla's
@@ -67,10 +67,9 @@ plots.
 > correlation, a field SD and a nugget SD. It contains Gilmour's model
 > as the nugget goes to zero, and on data with real plot-to-plot noise
 > the two return different correlations, because a nugget-free model
-> must absorb independent noise into the correlated structure. On a
-> 14 x 12 grid with true correlations 0.6 and 0.3 and a nugget worth 22%
-> of the total variance, ASReml returns 0.513 and 0.150 where flexyBayes
-> returns 0.588 and 0.202.
+> must absorb independent noise into the correlated structure and is
+> pulled towards zero by it. The gap grows with the share of the total
+> variance the nugget holds.
 >
 > Neither is wrong. They are different models, and the choice matters if
 > you act on the correlations -- how much spatial trend to remove,
@@ -91,7 +90,7 @@ more powerful for irregular geographies and is on the roadmap.
 
 `agridat::stroup.nin` is the canonical Nebraska wheat trial (Stroup,
 2002): 56 genotypes laid out on an 11-row by 22-column field, replicated
-three times, with some plots never harvested. The classic mixed-model
+four times, with some plots never harvested. The classic mixed-model
 analysis is
 
 $$
@@ -173,7 +172,7 @@ dropped <- tryCatch(
   error = function(e) e
 )
 cat("Refused:", conditionMessage(dropped), "\n")
-#> Refused: ar1(row):ar1(col) on INLA is emitted as a separable autoregressive latent field over the 11 x 22 grid, faithful only with one observation per (row, col) node. The data have 224 rows for 242 nodes (incomplete or replicated grid), so the field's latent index would not correspond to the design. Keep the unobserved nodes as design cells with na_action = "augment" (the default), supply one observation per node, or aggregate to node means.
+#> Refused: The data carry 224 rows for the 11 x 22 (row, col) array, which has 242 nodes. ar1(row):ar1(col) is fitted as a separable autoregressive field indexed by that array, so each combination of the two factors has to identify exactly one unit -- the same requirement ASReml states for `residual = ~ ar1:ar1`, and the same reason it refuses a trial with plots deleted. Keep the unobserved plots as design cells with na_action = "augment" (the default), which is ASReml's na.method(y = "include"); supply the field-book rows for any plot absent from the data, with the design columns filled in and the response set to NA, or pad the array with fb_complete_grid(); or aggregate replicates to node means.
 ```
 
 The default, `na_action = "augment"`, keeps those rows and carries the
@@ -198,15 +197,20 @@ fit_sn$extras$na_action[c("na_action", "n_missing_response")]
 #> $n_missing_response
 #> [1] 18
 fit_sn
-#> Bayesian fit  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------- 
-#>   formula: yield_z ~ 1 + f(row_id, model = "ar1", group = col_id, control.group = list(model = "ar1"))
-#>   family:  gaussian
-#>   n_obs:   242
-#>   fixed:   1
-#>   random:  1
-#>   hyper:   4
-#>   runtime: 2.49 sec
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield_z ~ 1 
+#>   Random   : ~ar1(row):ar1(col) 
+#>   Model    : G: ar1(row):ar1(col) field + nugget (4 parameters); R: units 
+#>              this is not ASReml residual = ~ ar1:ar1 (3 parameters)
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 242 design rows, 224 observed responses
+#>   na_action: augment; 18 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.7 sec
+#>   INLA formula: yield_z ~ 1 + f(row_id, model = "ar1", group = col_id, control.group = list(model = "ar1"))
+#>   Params   : 1 fixed, 1 random, 4 hyperparameter(s)
 #>   numerical confirm: PASS
 #> 
 #> Separable AR1 field (posterior median, 95% interval):
@@ -218,7 +222,8 @@ fit_sn
 #>   The field and the nugget are separate parameters: this is a latent
 #>   autoregressive field plus independent observation noise, not ASReml's
 #>   nugget-free separable residual. Variances are the squares of the SDs.
-#> ------------------------------------------------------- 
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
 #>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
 #>   $fb   -- the fb_terms IR used for dispatch
 ```
@@ -279,15 +284,15 @@ data.frame(
   upper     = round(recovered$upper, 3)
 )
 #>                         parameter simulated recovered lower upper
-#> 1 correlation along row (rho_row)       0.7     0.652 0.479 0.772
+#> 1 correlation along row (rho_row)       0.7     0.652 0.478 0.773
 #> 2 correlation along col (rho_col)       0.5     0.501 0.314 0.647
-#> 3          field SD (sigma_field)       1.0     1.001 0.847 1.193
-#> 4             nugget SD (sigma_e)       0.5     0.461 0.323 0.634
+#> 3          field SD (sigma_field)       1.0     1.001 0.846 1.192
+#> 4             nugget SD (sigma_e)       0.5     0.461 0.323 0.633
 ```
 
 Each simulated value sits inside its interval. The row correlation is
 pulled a little toward zero, which is what INLA's default hyperprior
-does on a single realisation of a field this size; the two variance
+does on a single realisation of a field this size. The two variance
 components separate cleanly here because the nugget is half the
 field SD. They
 separate less well as the nugget shrinks, and that is a property of the
@@ -326,7 +331,7 @@ a more flexible spatial covariance.
 The `sleepstudy` data are inherently longitudinal: ten consecutive days
 of measurement on each of eighteen subjects, a complete panel. The
 *hierarchical models* vignette analysed it with a random subject
-intercept; here we add an AR1 field over days, grouped independently by
+intercept. Here we add an AR1 field over days, grouped independently by
 subject, to ask whether within-subject errors on adjacent days are
 correlated once the intercept is accounted for.
 
@@ -356,26 +361,32 @@ fit_temporal <- flexybayes(
   verbose = FALSE
 )
 fit_temporal
-#> Bayesian fit  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------- 
-#>   formula: Reaction ~ 1 + Days + f(Subject, model = "iid", hyper = list(prec = list(prior = "expression: U=281.6437856261758; lb=-2*log(U); ld=-log(U)-log(2)-theta/2; return( theta<lb ? -1.0e10 : ld );"))) +     f(Days_f_id, model = "ar1", group = Subject_id, control.group = list(model = "iid"))
-#>   family:  gaussian
-#>   n_obs:   180
-#>   fixed:   2
-#>   random:  2
-#>   hyper:   4
-#>   runtime: 2.62 sec
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : Reaction ~ Days 
+#>   Random   : ~Subject + ar1(Days_f):Subject 
+#>   Model    : G: Subject iid; ar1(Days_f):ar1(Subject) field + nugget (4 parameters); R: units 
+#>              this is not ASReml residual = ~ ar1:ar1 (3 parameters)
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.7 sec
+#>   INLA formula: Reaction ~ 1 + Days + f(Subject, model = "iid", <prior: uniform-SD(0, 281.6)>) + f(Days_f_id, model = "ar1", group = Subject_id, control.group = list(model = "iid"))
+#>   Params   : 2 fixed, 2 random, 4 hyperparameter(s)
 #>   numerical confirm: PASS
 #> 
 #> Separable AR1 field (posterior median, 95% interval):
 #>                              parameter  median    2.5%   97.5%
-#>  correlation along Days_f (rho_Days_f)  0.9995  0.9992  0.9996
-#>                 field SD (sigma_field)  0.0059  0.0048  0.0073
-#>                    nugget SD (sigma_e) 48.4352 44.1197 53.1035
+#>  correlation along Days_f (rho_Days_f)  0.9666  0.9546  0.9779
+#>                 field SD (sigma_field)  0.0057  0.0046  0.0066
+#>                    nugget SD (sigma_e) 47.1446 43.2230 51.6585
 #>   The field and the nugget are separate parameters: this is a latent
 #>   autoregressive field plus independent observation noise, not ASReml's
 #>   nugget-free separable residual. Variances are the squares of the SDs.
-#> ------------------------------------------------------- 
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
 #>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
 #>   $fb   -- the fb_terms IR used for dispatch
 ```
@@ -385,9 +396,13 @@ is a tiny fraction of the nugget SD, so the autoregressive component
 carries almost none of the variation: the random subject intercept has
 already absorbed the within-subject dependence, and the day-to-day
 correlation is being reported for a component that is doing no work. A
-high correlation on a field with no amplitude describes the shape of
-something that is not there. This is the practical reason all the field
-parameters are printed together rather than the correlations alone --
+correlation on a field with no amplitude describes the shape of
+something that is not there, and it is not stable either -- successive
+builds of this page, on the same data and the same code, have printed
+that number as high as +1.0 and as low as -0.6, because there is
+nothing in the likelihood to pin it. Whatever it reads on your own run,
+read the amplitude above it first. This is the practical reason all the
+field parameters are printed together rather than the correlations alone --
 under the residual spelling this vignette used to carry, the amplitude
 was not on the page at all.
 
@@ -407,10 +422,10 @@ flexybayes(
 )
 ```
 
-The penalised splines on row and column capture the global gradient; the
-AR1 field captures local short-range correlation. This composite is the
+The penalised splines on row and column capture the global gradient, and
+the AR1 field captures local short-range correlation. This composite is the
 agronomy-textbook decomposition (Gilmour, Cullis, & Verbyla, 1997) --
-with the caveat of Section 1: what is fitted here is the field-plus-
+with the qualification of Section 1: what is fitted here is the field-plus-
 nugget version of it.
 
 # 5. Limitations of the current spatial coverage
@@ -419,13 +434,13 @@ nugget version of it.
 INLA under a complete-grid condition (Section 6). It does *not* cover:
 
 - **ASReml's nugget-free separable residual** -- refused by name
-  (Section 2.1), not approximated;
+  (Section 2.1), not approximated.
 - **irregular geography** -- the SPDE / Matern approach (Lindgren, Rue,
-  & Lindstrom, 2011) is on the roadmap;
+  & Lindstrom, 2011) is on the roadmap.
 - **areal data** -- the BYM2 model (Riebler, Sorbye, Simpson, & Rue,
-  2016) is on the roadmap;
+  2016) is on the roadmap.
 - **continuous-time temporal correlation** -- the Ornstein-Uhlenbeck and
-  continuous-AR processes are on the roadmap;
+  continuous-AR processes are on the roadmap.
 - **spatio-temporal interaction** -- separable space-time covariance is
   on the roadmap.
 
@@ -438,13 +453,13 @@ refusals* vignette describes how a third-party fit can plug into
 
 **Row and column must be factors.** `flexyBayes` reads `ar1(row)` as
 "AR1 correlation on the levels of `row` in their factor order". Numeric
-`row` is coerced; if your row labels are not in field order when
+`row` is coerced. If your row labels are not in field order when
 factor-coerced, the AR1 correlation will be wrong. Set the factor levels
 explicitly: `factor(row, levels = sort(unique(row)))`.
 
 **The field is not a substitute for design.** A poorly designed trial
 cannot be rescued by spatial-error modelling. A randomised block design
-is still essential; the field captures *what remains* after design
+is still essential, and the field captures *what remains* after design
 accounts for the planned variation.
 
 **Identifiability with too few rows or columns.** A 4-row by 3-column
@@ -462,7 +477,7 @@ any grid that is not a perfect rectangle raises a structured refusal
 The default `na_action = "augment"` is what makes a real field trial
 fittable anyway: it retains the unharvested nodes as design cells with a
 latent response (Section 2.2). Under `backend = "inla"` the refusal
-surfaces directly; under `backend = "auto"` it becomes an
+surfaces directly. Under `backend = "auto"` it becomes an
 `auto_no_active_route` refusal, because the only other active engine is
 brms and brms has no lowering for a Kronecker autoregressive precision.
 
@@ -488,7 +503,7 @@ temporal AR1 fit, drop the pin and move the term to the random side.
    intercept was holding?
 4. Drop 5% of nodes at random from the simulated grid in Section 2.3 and
    refit with `na_action = "omit"` and then with the default `"augment"`.
-   Confirm the first refuses; compare the second's four recovered
+   Confirm the first refuses, then compare the second's four recovered
    parameters with the complete-grid fit. How much does the gap cost you?
 
 # 8. Session information
@@ -517,39 +532,33 @@ sessionInfo()
 #> [1] ggplot2_4.0.3    flexyBayes_0.9.0
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
-#>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
-#>  [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
-#> [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
-#> [13] StanHeaders_2.32.10    agridat_1.26           processx_3.9.0        
-#> [16] survival_3.8-3         magrittr_2.0.5         posterior_1.7.0       
-#> [19] compiler_4.5.2         rlang_1.2.0            tools_4.5.2           
-#> [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
-#> [25] labeling_0.4.3         bridgesampling_1.2-1   mnormt_2.1.2          
-#> [28] pkgbuild_1.4.8         classInt_0.4-11        curl_7.0.0            
-#> [31] plyr_1.8.9             RColorBrewer_1.1-3     multcomp_1.4-29       
-#> [34] abind_1.4-8            KernSmooth_2.23-26     numDeriv_2016.8-1.1   
-#> [37] withr_3.0.2            grid_4.5.2             stats4_4.5.2          
-#> [40] colorspace_2.1-2       xtable_1.8-8           e1071_1.7-17          
-#> [43] future_1.70.0          inline_0.3.21          globals_0.19.1        
-#> [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
-#> [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
-#> [52] generics_0.1.4         otel_0.2.0             RcppParallel_5.1.11-2 
-#> [55] reshape2_1.4.5         DBI_1.3.0              proxy_0.4-29          
-#> [58] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
-#> [61] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
-#> [64] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
-#> [67] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
-#> [70] jsonlite_2.0.0         callr_3.7.6            listenv_0.10.1        
-#> [73] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
-#> [76] codetools_0.2-20       distributional_0.7.0   stringi_1.8.7         
-#> [79] gtable_0.3.6           QuickJSR_1.9.0         tibble_3.3.1          
-#> [82] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
-#> [85] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
-#> [88] backports_1.5.1        MatrixModels_0.5-4     rstantools_2.6.0      
-#> [91] class_7.3-23           Rcpp_1.1.1-1.1         coda_0.19-4.1         
-#> [94] gridExtra_2.3          nlme_3.1-168           checkmate_2.3.4       
-#> [97] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
+#>  [1] gtable_0.3.6           tensorA_0.36.2.1       xfun_0.57             
+#>  [4] lattice_0.22-7         vctrs_0.7.3            tools_4.5.2           
+#>  [7] generics_0.1.4         sandwich_3.1-1         parallel_4.5.2        
+#> [10] tibble_3.3.1           proxy_0.4-29           pkgconfig_2.0.3       
+#> [13] brms_2.23.0            Matrix_1.7-4           KernSmooth_2.23-26    
+#> [16] data.table_1.18.2.1    checkmate_2.3.4        RColorBrewer_1.1-3    
+#> [19] S7_0.2.2               distributional_0.7.0   RcppParallel_5.1.11-2 
+#> [22] lifecycle_1.0.5        compiler_4.5.2         farver_2.1.2          
+#> [25] stringr_1.6.0          fmesher_0.7.0          MatrixModels_0.5-4    
+#> [28] Brobdingnag_1.2-9      agridat_1.26           codetools_0.2-20      
+#> [31] marginaleffects_0.32.0 class_7.3-23           bayesplot_1.15.0      
+#> [34] pillar_1.11.1          MASS_7.3-65            classInt_0.4-11       
+#> [37] bridgesampling_1.2-1   abind_1.4-8            multcomp_1.4-29       
+#> [40] nlme_3.1-168           parallelly_1.47.0      posterior_1.7.0       
+#> [43] tidyselect_1.2.1       digest_0.6.39          mvtnorm_1.3-6         
+#> [46] stringi_1.8.7          future_1.70.0          sf_1.1-0              
+#> [49] dplyr_1.2.1            listenv_0.10.1         labeling_0.4.3        
+#> [52] splines_4.5.2          grid_4.5.2             cli_3.6.6             
+#> [55] magrittr_2.0.5         loo_2.9.0              survival_3.8-3        
+#> [58] dichromat_2.0-0.1      TH.data_1.1-5          e1071_1.7-17          
+#> [61] withr_3.0.2            scales_1.4.0           backports_1.5.1       
+#> [64] estimability_1.5.1     matrixStats_1.5.0      emmeans_2.0.2         
+#> [67] globals_0.19.1         otel_0.2.0             zoo_1.8-15            
+#> [70] coda_0.19-4.1          evaluate_1.0.5         knitr_1.51            
+#> [73] rstantools_2.6.0       rlang_1.2.0            Rcpp_1.1.1-1.1        
+#> [76] xtable_1.8-8           glue_1.8.1             INLA_25.10.19         
+#> [79] DBI_1.3.0              R6_2.6.1               units_1.0-1
 ```
 
 # References
@@ -565,12 +574,12 @@ experiments. *Journal of Agricultural, Biological, and Environmental
 Statistics*, 2(3), 269-293. (The nugget-free separable residual, which
 is refused here by name -- see Section 1.)
 
-Lindgren, F., Rue, H., & Lindstrom, J. (2011). An explicit link
+Lindgren, F., Rue, H., & Lindström, J. (2011). An explicit link
 between Gaussian fields and Gaussian Markov random fields: The
 stochastic partial differential equation approach. *Journal of the
 Royal Statistical Society: Series B*, 73(4), 423-498.
 
-Riebler, A., Sorbye, S. H., Simpson, D., & Rue, H. (2016). An
+Riebler, A., Sørbye, S. H., Simpson, D., & Rue, H. (2016). An
 intuitive Bayesian spatial model for disease mapping that accounts
 for scaling. *Statistical Methods in Medical Research*, 25(4),
 1145-1165.

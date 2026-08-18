@@ -238,3 +238,104 @@ test_that("a sectioned residual reports its per-level variances", {
     "Residual by level", utils::capture.output(print(plain)), fixed = TRUE
   )))
 })
+
+# =============================================================================
+# The per-level residual reaches the object, not only the printout.
+#
+# `print(summary(fit))` rendered a "Residual by level of `site`" block, and
+# `summary(fit)$varcomp` came back with the grouping factors and no residual
+# at all -- one row, `sd_gen`. There was no `$residual_by_level` slot, no
+# attribute carrying it, and no accessor in the namespace. The print method
+# recomputed the table from the draws each time and threw it away.
+#
+# The consequence sat squarely in the target use case: the exit gate asks
+# that a user work without opening `$brms`, and on this design the per-level
+# residual -- the entire point of fitting dsum() -- was reachable only by
+# opening `$brms` and transforming `b_sigma_*` draws by hand.
+# =============================================================================
+
+test_that("the per-level residuals are rows of summary(fit)$varcomp", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  skip_if_not_installed("rstan")
+  skip_if_not_installed("posterior")
+  d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
+  fit <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
+    backend = "brms", chains = 2L, n_samples = 400L, warmup = 400L
+  )))
+
+  vc <- summary(fit)$varcomp
+  # One row per level of the sectioning factor, plus the components the
+  # table always carried.
+  expect_identical(
+    vc$component,
+    c("sd_gen", paste0("sigma_", levels(d$site)))
+  )
+  expect_true(all(is.finite(vc$estimate)))
+  expect_true(all(is.finite(vc$std.error)))
+  expect_true(all(vc$conf.low < vc$estimate))
+  expect_true(all(vc$estimate < vc$conf.high))
+
+  # The table and the printed panel are two readings of one builder, so
+  # they cannot state different numbers for one fit.
+  tab <- flexyBayes:::.brms_residual_by_level_table(fit)
+  resid <- vc[startsWith(vc$component, "sigma_"), , drop = FALSE]
+  expect_equal(resid$estimate, tab$sd, tolerance = 1e-12)
+  expect_equal(resid$conf.low, tab$sd_lower, tolerance = 1e-12)
+  expect_equal(resid$conf.high, tab$sd_upper, tolerance = 1e-12)
+
+  # The prior cell names what reached the sampler. The declared uniform on
+  # the SD scale was retargeted onto the log-sigma coefficients at emit
+  # time, so a `sigma` spec would name a parameter this model does not
+  # have -- and "engine default" would claim the package set nothing.
+  expect_false(any(resid$prior == "engine default"))
+  expect_true(all(grepl("normal", resid$prior, fixed = TRUE)))
+
+  # A homogeneous fit gains no such rows.
+  plain <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ site, random = ~ gen, data = d,
+    backend = "brms", chains = 1L, n_samples = 200L, warmup = 200L
+  )))
+  expect_false(any(startsWith(summary(plain)$varcomp$component, "sigma_")))
+})
+
+test_that("a sectioned-residual fit answers the mean-model accessors", {
+  # The distributional coefficients used to be swept into the fixed-effect
+  # basis by a bare `^b_` match, which left coef() reporting `sigma_siteA`
+  # as if it were an effect on the response and made the fixed-effect
+  # design matrix irreconcilable with it -- so predict(classify = ) died
+  # in the estimability seam even for a plain fixed factor.
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  skip_if_not_installed("rstan")
+  skip_if_not_installed("emmeans")
+  d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
+  fit <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
+    backend = "brms", chains = 2L, n_samples = 400L, warmup = 400L
+  )))
+
+  # Mean-model coefficients only, on coef(), vcov() and confint() alike.
+  expect_false(any(startsWith(names(stats::coef(fit)), "sigma_")))
+  expect_identical(
+    rownames(stats::confint(fit)),
+    names(stats::coef(fit))
+  )
+  expect_identical(
+    nrow(stats::vcov(fit)),
+    length(stats::coef(fit))
+  )
+
+  # The response and residuals are recoverable, which they were not while
+  # the formula reader was indexing a brmsformula by position.
+  expect_false(all(is.na(fit$glm$y)))
+  expect_false(all(is.na(fit$glm$residuals)))
+
+  # And the marginal means the sectioning was never supposed to block.
+  out <- predict(fit, classify = "site")
+  expect_s3_class(out, "fb_predict_classify")
+  expect_identical(nrow(out), nlevels(d$site))
+  expect_true(all(is.finite(out$estimate)))
+  expect_true(all(out$std.error > 0))
+})

@@ -37,8 +37,14 @@ emit_inla <- function(
   fb,
   data,
   known_matrices = list(),
+  weights = NULL,
+  n_samples = NULL,
+  warmup = NULL,
+  chains = NULL,
   seed = NULL,
   control = NULL,
+  prior_fixed_sd = 100,
+  prior_vc_sd = 1,
   verbose = TRUE,
   return_code = FALSE,
   the_call = NULL,
@@ -48,6 +54,9 @@ emit_inla <- function(
   family = NULL,
   link = NULL,
   data_name = NA_character_,
+  na_action = NULL,
+  requested_backend = NULL,
+  requested_aggregate = NULL,
   ...
 ) {
   .check_fb_terms(fb, "`fb` must be an fb_terms object.")
@@ -299,18 +308,31 @@ emit_inla <- function(
       one_obs_per_node <- nrow(data) == n_row * n_col &&
         !any(duplicated(combos))
       if (!one_obs_per_node) {
+        n_nodes <- n_row * n_col
+        replicated <- any(duplicated(combos))
         stop(.fb_refusal_condition(
           reason_code = "ar1_spatial_requires_complete_grid",
           message = paste0(
-            .ar1_term_spelling(term), " on INLA is ",
-            "emitted as a separable autoregressive latent field over the ",
-            n_row, " x ", n_col, " grid, faithful only with one observation ",
-            "per (", term$row_var, ", ", term$col_var, ") node. The data ",
-            "have ", nrow(data), " rows for ", n_row * n_col, " nodes ",
-            "(incomplete or replicated grid), so the field's latent index ",
-            "would not correspond to the design. Keep the unobserved nodes ",
-            "as design cells with na_action = \"augment\" (the default), ",
-            "supply one observation per node, or aggregate to node means."
+            "The data carry ", nrow(data), " rows for the ", n_row,
+            " x ", n_col, " (", term$row_var, ", ", term$col_var, ") array, ",
+            "which has ", n_nodes, " nodes",
+            if (replicated) {
+              ", and some nodes hold more than one row"
+            } else {
+              ""
+            },
+            ". ", .ar1_term_spelling(term), " is fitted as a separable ",
+            "autoregressive field indexed by that array, so each ",
+            "combination of the two factors has to identify exactly one ",
+            "unit -- the same requirement ASReml states for ",
+            "`residual = ~ ar1:ar1`, and the same reason it refuses a ",
+            "trial with plots deleted. Keep the unobserved plots as ",
+            "design cells with na_action = \"augment\" (the default), ",
+            "which is ASReml's na.method(y = \"include\"); supply the ",
+            "field-book rows for any plot absent from the data, with the ",
+            "design columns filled in and the response set to NA, or pad ",
+            "the array with fb_complete_grid(); or aggregate replicates ",
+            "to node means."
           ),
           family_class = "flexybayes_ar1_spatial_refusal"
         ))
@@ -332,7 +354,7 @@ emit_inla <- function(
       "\n",
       sep = ""
     )
-    cat("  formula: ", deparse(inla_form), "\n", sep = "")
+    cat("  formula: ", .fb_display_inla_formula(inla_form), "\n", sep = "")
     cat("  family:  ", inla_family, "\n", sep = "")
     cat(paste(rep("-", 60), collapse = ""), "\n\n")
   }
@@ -371,7 +393,7 @@ emit_inla <- function(
   }
 
   # Wrap as a flexybayes_inla object
-  structure(
+  out <- structure(
     list(
       inla = fit,
       fb = fb,
@@ -404,13 +426,45 @@ emit_inla <- function(
           family = inla_family,
           link = fb$link
         ),
+        # The argument record update() rebuilds the call from. Before
+        # 0.9.1 this held six fields against brms's fifteen, and the
+        # difference -- not anything about the engine -- is why update()
+        # refused every INLA fit as `update_call_not_reconstructable`.
+        #
+        # `n_samples`, `warmup` and `chains` are recorded as what INLA
+        # actually used, which is nothing: the nested Laplace
+        # approximation has no chains to run and no warmup to discard, so
+        # the honest record is NULL rather than the sampler settings the
+        # call happened to carry. update() passes each recorded field
+        # straight back to flexybayes(), where a NULL sampler setting is
+        # a no-op on this engine.
         call_info = list(
           fixed = fixed,
           random = random,
           residual = residual,
           data_name = data_name,
           family = family,
-          link = link
+          link = link,
+          known_matrices = known_matrices,
+          weights = weights,
+          n_samples = NULL,
+          warmup = NULL,
+          chains = NULL,
+          seed = seed,
+          control = control,
+          prior_fixed_sd = prior_fixed_sd,
+          prior_vc_sd = prior_vc_sd,
+          na_action = na_action,
+          # The engine and the representation the call ASKED for, and the
+          # reporting it ran under. update() re-issues all three; without
+          # them an identity re-fit of a per-row fit came back aggregated,
+          # whose summary speaks a different dialect and carries no
+          # $varcomp. `backend` is the request ("auto"), not the engine
+          # the request landed on: it is a policy, and a re-fit of a
+          # changed model must be free to route again.
+          backend = requested_backend,
+          aggregate = requested_aggregate,
+          verbose = verbose
         ),
         # Thread the IR's smooth-objects slot through to the
         # extras so predict() on the INLA path can also use
@@ -443,6 +497,38 @@ emit_inla <- function(
     # carries none -- see R/methods.R.
     class = c("flexybayes_inla", "flexybayes", "list")
   )
+
+  # Variance components in the shape every other engine writes, so
+  # summary(fit)$varcomp, tidy(effects = "random") and the variance plot
+  # answer on INLA too. Built after the wrap because the canonical-name
+  # mapper reads the fitted object, not the raw INLA return.
+  #
+  # A summary table is a reading of the fit, not part of it, so a failure
+  # here must not destroy a posterior the engine computed successfully.
+  # It is surfaced as a warning naming the cause rather than swallowed:
+  # the fit comes back with an empty variance-component table and the
+  # user is told why.
+  out$extras$variance_comps <- tryCatch(
+    .inla_variance_comps(out),
+    error = function(e) {
+      warning(
+        "flexyBayes: the INLA fit succeeded but its variance-component ",
+        "table could not be built (", conditionMessage(e), "). ",
+        "summary(fit)$varcomp will be empty; the posterior itself is ",
+        "unaffected and INLA's own hyperparameter table is at ",
+        "fit$inla$summary.hyperpar.",
+        call. = FALSE
+      )
+      NULL
+    }
+  )
+
+  # A field that lost its identification is a fact about this fit that
+  # nothing else on the printed surface states. Raised after the
+  # variance-component table is built, because it is read off that table.
+  .fb_warn_spatial_field_collapsed(out)
+
+  out
 }
 
 # ---------------------------------------------------------------- #
@@ -708,6 +794,149 @@ emit_inla <- function(
   paste0("hyper = list(prec = list(", body, "))")
 }
 
+# ---------------------------------------------------------------- #
+# Displaying the emitted formula                                    #
+# ---------------------------------------------------------------- #
+#
+# A uniform-on-SD prior reaches INLA as a C expression evaluated per
+# hyperparameter -- roughly a hundred characters of `theta`, `-1.0e10`
+# and `return(...)` spliced into the formula. That is the right thing to
+# send the engine and the wrong thing to show a reader: it buries the
+# model in the encoding of one prior, and the two displays that print the
+# formula (the emit-time banner and print()) were unreadable on any fit
+# carrying a non-default variance prior.
+#
+# The compression is for those two displays only. `$extras$formula` and
+# the formula INLA itself holds keep every character, because they are
+# what the fit was actually run from.
+
+# .fb_signif_string() --- a number at display precision.
+#
+# @noRd
+# @keywords internal
+.fb_signif_string <- function(x, digits = 4L) {
+  format(signif(as.numeric(x), digits), trim = TRUE, scientific = FALSE)
+}
+
+# .fb_hyper_prior_tag() --- name the prior a hyper block encodes.
+#
+# Read off the block itself, which is the resolved prior rendered for the
+# engine: the uniform-on-SD and half-normal-on-SD expressions carry their
+# own bounds and scale, and a named INLA prior carries its name and
+# parameters. An encoding this does not recognise is tagged as an
+# expression rather than guessed at.
+#
+# @noRd
+# @keywords internal
+.fb_hyper_prior_tag <- function(body) {
+  num <- "([-+0-9.eE]+)"
+  m <- regmatches(
+    body,
+    regexec(paste0("expression: *L=", num, "; *U=", num), body)
+  )[[1L]]
+  if (length(m) == 3L) {
+    return(sprintf(
+      "<prior: uniform-SD(%s, %s)>",
+      .fb_signif_string(m[[2L]]), .fb_signif_string(m[[3L]])
+    ))
+  }
+  m <- regmatches(
+    body,
+    regexec(paste0("expression: *U=", num), body)
+  )[[1L]]
+  if (length(m) == 2L) {
+    return(sprintf("<prior: uniform-SD(0, %s)>", .fb_signif_string(m[[2L]])))
+  }
+  m <- regmatches(
+    body,
+    regexec(paste0("expression: *s=", num), body)
+  )[[1L]]
+  if (length(m) == 2L) {
+    return(sprintf(
+      "<prior: half-normal-SD(%s)>", .fb_signif_string(m[[2L]])
+    ))
+  }
+
+  nm <- regmatches(body, regexec("prior *= *\"([^\"]+)\"", body))[[1L]]
+  if (length(nm) == 2L && !startsWith(nm[[2L]], "expression:")) {
+    par <- regmatches(body, regexec("param *= *c\\(([^)]*)\\)", body))[[1L]]
+    if (length(par) == 2L) {
+      vals <- trimws(strsplit(par[[2L]], ",", fixed = TRUE)[[1L]])
+      vals <- vapply(vals, .fb_signif_string, character(1L), USE.NAMES = FALSE)
+      return(sprintf(
+        "<prior: %s(%s)>", nm[[2L]], paste(vals, collapse = ", ")
+      ))
+    }
+    return(sprintf("<prior: %s>", nm[[2L]]))
+  }
+  "<prior: expression>"
+}
+
+# .fb_compress_hyper_blobs() --- swap each hyper block for its tag.
+#
+# The blocks are found by scanning rather than by regular expression: a
+# prior expression contains its own parentheses and quotes, so a balanced
+# match has to know which of them are inside a string literal.
+#
+# @noRd
+# @keywords internal
+.fb_compress_hyper_blobs <- function(txt) {
+  marker <- "hyper = list("
+  repeat {
+    start <- regexpr(marker, txt, fixed = TRUE)
+    if (start < 0L) {
+      return(txt)
+    }
+    chars <- strsplit(txt, "", fixed = TRUE)[[1L]]
+    open_at <- start + nchar(marker) - 1L
+    depth <- 0L
+    in_string <- FALSE
+    end_at <- NA_integer_
+    for (i in seq(open_at, length(chars))) {
+      ch <- chars[[i]]
+      if (in_string) {
+        if (ch == "\"" && !identical(chars[[max(i - 1L, 1L)]], "\\")) {
+          in_string <- FALSE
+        }
+        next
+      }
+      if (ch == "\"") {
+        in_string <- TRUE
+      } else if (ch == "(") {
+        depth <- depth + 1L
+      } else if (ch == ")") {
+        depth <- depth - 1L
+        if (depth == 0L) {
+          end_at <- i
+          break
+        }
+      }
+    }
+    if (is.na(end_at)) {
+      return(txt)
+    }
+    body <- paste(chars[seq(open_at, end_at)], collapse = "")
+    txt <- paste0(
+      paste(chars[seq_len(start - 1L)], collapse = ""),
+      .fb_hyper_prior_tag(body),
+      paste(chars[seq(end_at + 1L, length(chars))], collapse = "")
+    )
+  }
+}
+
+# .fb_display_inla_formula() --- the formula as a reader should see it.
+#
+# @noRd
+# @keywords internal
+.fb_display_inla_formula <- function(form) {
+  if (is.null(form)) {
+    return("(none recorded)")
+  }
+  txt <- paste(deparse(form), collapse = " ")
+  txt <- gsub("[[:space:]]+", " ", txt)
+  .fb_compress_hyper_blobs(txt)
+}
+
 # The spelling a user wrote for an AR1 field term, rebuilt from the IR so a
 # refusal quotes the formula back rather than a canonical form the user never
 # typed. ar1(env):geno and ar1(row):ar1(col) parse to the same IR type and
@@ -948,6 +1177,305 @@ emit_inla <- function(
 # a spatial fit prints all four under names that carry their meaning. A user
 # who acts on the correlations can then see what they are acting on.
 
+# ---------------------------------------------------------------- #
+# Variance components, on the scale a reader thinks in               #
+# ---------------------------------------------------------------- #
+#
+# INLA reports its hyperparameters as PRECISIONS. A standard deviation is
+# 1 / sqrt(precision), a nonlinear and decreasing transform, so the
+# posterior mean of the SD is not 1 / sqrt() of the posterior mean
+# precision -- and the gap grows with the posterior spread, which is
+# exactly where a variance component matters. Every SD-scale row below is
+# therefore computed from the precision MARGINAL:
+#
+#   estimate   inla.emarginal(1 / sqrt(x), m)   -- posterior mean of the
+#                                                  SD, integrated over
+#                                                  the marginal
+#   std.error  sqrt(E[1/x] - E[1/sqrt(x)]^2)    -- posterior SD of the SD
+#   bounds     1 / sqrt(inla.qmarginal(1 - p))  -- the quantile identity
+#
+# The bounds use the identity rather than a numerically transformed
+# density because a strictly monotone transform carries quantiles
+# EXACTLY: the 2.5% quantile of the SD is 1 / sqrt() of the 97.5%
+# quantile of the precision, with the order reversed because the
+# transform is decreasing. This is not the forbidden operation, which is
+# transforming a posterior MEAN -- a mean is not equivariant under a
+# nonlinear transform and a quantile is. It is also the route the
+# spatial-field table has taken since 0.9.0.
+#
+# Building the transformed density with INLA::inla.tmarginal() and
+# reading quantiles off that was tried first and rejected on evidence:
+# it evaluates the transform at inla.qmarginal((1:2048)/2049, m), whose
+# extreme-left values fall slightly below the marginal's own support on a
+# wide-support precision marginal -- 17 non-positive precisions on an
+# ordinary random-intercept fit -- so 1 / sqrt() returns NaN and the call
+# errors out. Where it does succeed it agrees with the identity above to
+# about 1e-3 relative, being the interpolated answer to the exact one.
+#
+# Correlations (`Rho`, `GroupRho`) are not transformed: they are already
+# on their own scale.
+#
+# The table is written in the five-column shape the brms path writes
+# (component, estimate, sd, q2.5, q97.5) because broom's tidier reads
+# those names (R/tidiers.R). The canonical component names come from the
+# same registry mapper triangulate() and the draws accessors use, so one
+# component answers to one name everywhere.
+.inla_variance_comps <- function(object) {
+  empty <- data.frame(
+    component = character(0),
+    estimate = numeric(0),
+    sd = numeric(0),
+    q2.5 = numeric(0),
+    q97.5 = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  fit <- object$inla
+  hp <- fit$summary.hyperpar
+  if (is.null(hp) || nrow(hp) == 0L) {
+    return(empty)
+  }
+
+  mapper <- tryCatch(
+    .mapper_inla(object, object$fb),
+    error = function(e) list(map = character(0))
+  )
+  marginals <- fit$marginals.hyperpar %||% list()
+  need <- c("mean", "sd", "0.025quant", "0.975quant")
+  have_cols <- all(need %in% colnames(hp))
+
+  rows <- list()
+  medians <- numeric(0)
+  unavailable <- character(0)
+
+  for (nm in rownames(hp)) {
+    canonical <- unname(mapper$map[nm] %||% NA_character_)
+    if (is.na(canonical)) {
+      canonical <- nm
+    }
+    is_precision <- startsWith(nm, "Precision for ")
+
+    if (is_precision) {
+      m <- marginals[[nm]]
+      if (is.null(m)) {
+        # No marginal, no honest SD-scale summary. Transforming the
+        # tabulated point estimate would produce a number that looks
+        # computed and is not, so the row is dropped and named below.
+        unavailable <- c(unavailable, nm)
+        next
+      }
+      est <- INLA::inla.emarginal(function(x) 1 / sqrt(x), m)
+      second <- INLA::inla.emarginal(function(x) 1 / x, m)
+      sdv <- sqrt(max(second - est^2, 0))
+      # Reversed probabilities: 1 / sqrt() is decreasing, so the SD's
+      # lower bound is carried by the precision's upper quantile.
+      #
+      # Clamped to the marginal's own support. inla.qmarginal()
+      # interpolates the quantile function, and on a precision whose
+      # density is piled near zero the interpolation can return a value
+      # slightly outside the grid it was built from -- occasionally a
+      # negative precision, which has no square root. The clamp reads
+      # the bound off the edge of the support instead, which is the
+      # widest value the marginal actually carries; it never invents a
+      # bound the density does not reach.
+      support <- range(m[, 1L])
+      prec_q <- INLA::inla.qmarginal(c(0.975, 0.5, 0.025), m)
+      prec_q <- pmin(pmax(prec_q, support[[1L]]), support[[2L]])
+      if (
+        !all(is.finite(c(est, sdv, prec_q, support))) ||
+          any(prec_q <= 0)
+      ) {
+        unavailable <- c(unavailable, nm)
+        next
+      }
+      sd_q <- 1 / sqrt(prec_q)
+      rows[[length(rows) + 1L]] <- data.frame(
+        component = canonical,
+        estimate = est,
+        sd = sdv,
+        q2.5 = sd_q[[1L]],
+        q97.5 = sd_q[[3L]],
+        stringsAsFactors = FALSE
+      )
+      medians[[canonical]] <- sd_q[[2L]]
+      next
+    }
+
+    if (!have_cols) {
+      unavailable <- c(unavailable, nm)
+      next
+    }
+    rows[[length(rows) + 1L]] <- data.frame(
+      component = canonical,
+      estimate = hp[nm, "mean"],
+      sd = hp[nm, "sd"],
+      q2.5 = hp[nm, "0.025quant"],
+      q97.5 = hp[nm, "0.975quant"],
+      stringsAsFactors = FALSE
+    )
+    if ("0.5quant" %in% colnames(hp)) {
+      medians[[canonical]] <- hp[nm, "0.5quant"]
+    }
+  }
+
+  if (length(unavailable) > 0L) {
+    warning(
+      "flexyBayes: the hyperparameter(s) ",
+      paste(unavailable, collapse = ", "),
+      " carry no usable posterior marginal, so no variance-component row ",
+      "was written for them and summary() will not report them. The fit ",
+      "itself is unaffected. Check that control.compute = ",
+      "list(return.marginals = TRUE), which is the flexyBayes default, ",
+      "reached the engine.",
+      call. = FALSE
+    )
+  }
+  if (length(rows) == 0L) {
+    return(empty)
+  }
+
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  # Posterior medians travel as an attribute rather than a sixth column:
+  # the five column names are a broom contract. The boundary-collapse
+  # display flag in summary() reads them.
+  attr(out, "posterior_median") <- medians
+  out
+}
+
+
+# ---------------------------------------------------------------- #
+# The spatial-field collapse warning                                #
+# ---------------------------------------------------------------- #
+#
+# An autoregressive field fitted on an incomplete grid can lose its
+# signal entirely: the field standard deviation runs to a floor, both
+# correlations sit at approximately zero with credible intervals spanning
+# almost the whole of [-1, 1], and the variance the field should have
+# carried is absorbed into the nugget. The fit's own convergence block
+# reports a converged mode and a passing numerical confirm throughout,
+# and the augmentation record says it completed the design, so nothing on
+# the printed surface says the field was not identified. Measured on ten
+# hole patterns over one 12 x 10 grid at 10 per cent missingness, five
+# lost the field.
+#
+# The intervals are the only honest tell and they are easy to read past,
+# so the fit says it out loud instead.
+#
+# Scope is the FIELD, on purpose. A grouping factor whose variance
+# component collapses is a different fact about a different structure --
+# often the thing a hierarchical model is there to show -- and it keeps
+# the quieter `collapsed` cell in the variance-component table.
+
+# A field standard deviation whose upper credible bound sits below this
+# fraction of the nugget's posterior median carries no spatial signal at
+# the scale of the noise it sits beside. Looser than the display flag's
+# .FB_COLLAPSE_FRACTION because a collapsed field is compared against the
+# nugget that absorbed its variance, not against an independent residual.
+.FB_SPATIAL_COLLAPSE_FRACTION <- 0.05
+
+# A correlation whose credible interval reaches beyond +/- this value at
+# both ends spans nearly the whole parameter space: the data placed no
+# constraint on it at all.
+.FB_SPATIAL_RHO_UNIDENTIFIED <- 0.9
+
+# .fb_spatial_collapse_reasons() --- which field parameters lost their
+# identification, as a character vector of phrases. Empty when the field
+# is healthy or when the fit carries no field.
+#
+# Read off the canonical variance-component table rather than INLA's own
+# hyperparameter matrix, so the warning and the `collapsed` cell in
+# summary(fit)$varcomp are readings of one table.
+#
+# @noRd
+# @keywords internal
+.fb_spatial_collapse_reasons <- function(object) {
+  if (length(.inla_spatial_field_terms(object)) == 0L) {
+    return(character(0L))
+  }
+  vc <- object$extras$variance_comps
+  if (!is.data.frame(vc) || nrow(vc) == 0L) {
+    return(character(0L))
+  }
+  medians <- attr(vc, "posterior_median") %||% numeric(0)
+  cmp <- as.character(vc$component)
+  reasons <- character(0L)
+
+  i_field <- match("sd_spatial", cmp)
+  nugget <- if ("sigma" %in% names(medians)) medians[["sigma"]] else NA_real_
+  if (
+    !is.na(i_field) &&
+      is.numeric(nugget) &&
+      length(nugget) == 1L &&
+      is.finite(nugget) &&
+      nugget > 0 &&
+      is.finite(vc$q97.5[[i_field]]) &&
+      vc$q97.5[[i_field]] < .FB_SPATIAL_COLLAPSE_FRACTION * nugget
+  ) {
+    reasons <- c(reasons, sprintf(
+      paste0(
+        "the field standard deviation is at the boundary (upper credible ",
+        "bound %.4g against a nugget of %.4g)"
+      ),
+      vc$q97.5[[i_field]],
+      nugget
+    ))
+  }
+
+  rho_rows <- which(startsWith(cmp, "rho"))
+  for (i in rho_rows) {
+    lo <- vc$q2.5[[i]]
+    hi <- vc$q97.5[[i]]
+    if (
+      is.finite(lo) &&
+        is.finite(hi) &&
+        lo < -.FB_SPATIAL_RHO_UNIDENTIFIED &&
+        hi > .FB_SPATIAL_RHO_UNIDENTIFIED
+    ) {
+      reasons <- c(reasons, sprintf(
+        "%s is unidentified (interval [%.3f, %.3f])",
+        cmp[[i]],
+        lo,
+        hi
+      ))
+    }
+  }
+  reasons
+}
+
+# .fb_warn_spatial_field_collapsed() --- say it at fit time.
+#
+# @noRd
+# @keywords internal
+.fb_warn_spatial_field_collapsed <- function(object) {
+  if (isTRUE(getOption("flexyBayes.silence_spatial_collapse_warning", FALSE))) {
+    return(invisible(NULL))
+  }
+  reasons <- .fb_spatial_collapse_reasons(object)
+  if (length(reasons) == 0L) {
+    return(invisible(NULL))
+  }
+  warning(
+    "flexyBayes: the autoregressive field in this fit did not identify -- ",
+    paste(reasons, collapse = ", "),
+    ". The field carries no spatial signal and the fit is effectively an ",
+    "independent-errors model with the field's variance absorbed into the ",
+    "residual; the convergence block reports a converged mode regardless, ",
+    "because the optimiser did converge -- to a solution with no field in ",
+    "it. An incomplete grid raises the risk: in repeated runs over one ",
+    "12 x 10 field at 10 per cent missing responses, half the hole ",
+    "patterns lost the field and half did not, on the same data. Three ",
+    "routes: complete the grid, either by supplying the field-book rows ",
+    "for every sown plot with the response set to NA or by padding the ",
+    "array with fb_complete_grid(); fit the same model on the brms engine ",
+    "for a second reading; or give the field an informative prior with ",
+    "fb_prior() so it is not left to run to a boundary. Silence via ",
+    "options(flexyBayes.silence_spatial_collapse_warning = TRUE).",
+    call. = FALSE
+  )
+  invisible(NULL)
+}
+
+
 # The autoregressive field terms carried by a fitted IR.
 .inla_spatial_field_terms <- function(object) {
   Filter(
@@ -1052,6 +1580,26 @@ emit_inla <- function(
   tab
 }
 
+# INLA's own hyperparameter table, on the scale INLA reports it.
+#
+# The variance-component table above it is the same information on the
+# standard-deviation scale, which is the scale a reader thinks in. This
+# block stays because it is the engine's own answer, unmodified, and a
+# user checking flexyBayes against a plain INLA::inla() run needs
+# something to check against. A no-op on every other engine.
+.print_inla_hyperpar_table <- function(object) {
+  hp <- object$extras$summary$hyperpar
+  if (is.null(object$inla) || is.null(hp) || nrow(hp) == 0L) {
+    return(invisible(NULL))
+  }
+  cat(
+    "\n-- Hyperparameters (INLA, precision scale) ", strrep("-", 21), "\n",
+    sep = ""
+  )
+  print(round(hp, 4))
+  invisible(hp)
+}
+
 # Render the field block. Shared by print() and summary() so the two cannot
 # drift apart.
 .print_inla_spatial_hypers <- function(object) {
@@ -1095,8 +1643,15 @@ emit_inla <- function(
 
 #' Print method for flexybayes_inla
 #'
-#' Internal S3 method. Brief one-screen summary of an INLA fit
+#' Internal S3 method. Brief one-screen description of an INLA fit
 #' produced via `fb(... backend = "inla")` or `emit_inla()`.
+#'
+#' Opens with the header every engine's print shares, so the three prints
+#' cannot disagree about what the fit is or how many rows it saw, then
+#' adds what belongs to this engine alone: the formula as it reached
+#' `INLA::inla()`, the post-fit numerical-confirm verdict, and -- on a fit
+#' carrying a latent autoregressive field -- the field's own parameters
+#' on the correlation and standard-deviation scales.
 #'
 #' @param x   A `flexybayes_inla` object, the fit an INLA run returns.
 #' @param ... Ignored. Present for compatibility with the generic.
@@ -1106,15 +1661,19 @@ emit_inla <- function(
 #' @export
 print.flexybayes_inla <- function(x, ...) {
   mi <- x$extras$model_info
-  cat("Bayesian fit  [flexybayes_inla / INLA backend]\n")
-  cat(strrep("-", 55), "\n")
-  cat("  formula: ", deparse(x$extras$formula), "\n", sep = "")
-  cat("  family:  ", mi$family, "\n", sep = "")
-  cat("  n_obs:   ", mi$n_obs, "\n", sep = "")
-  cat("  fixed:   ", mi$n_fixed, "\n", sep = "")
-  cat("  random:  ", mi$n_random, "\n", sep = "")
-  cat("  hyper:   ", mi$n_hyper, "\n", sep = "")
-  cat("  runtime: ", round(x$extras$run_time, 2), " sec\n", sep = "")
+  .fb_print_header(x, "Bayesian mixed model", "-")
+  # The full formula, prior expressions and all, stays on the object at
+  # `$extras$formula`; what prints is the same formula with each prior
+  # block named rather than spelled out.
+  cat(
+    "  INLA formula: ", .fb_display_inla_formula(x$extras$formula), "\n",
+    sep = ""
+  )
+  cat(
+    "  Params   : ", mi$n_fixed, " fixed, ", mi$n_random, " random, ",
+    mi$n_hyper, " hyperparameter(s)\n",
+    sep = ""
+  )
   cat(
     "  numerical confirm: ",
     if (isTRUE(x$num_check$pass)) "PASS" else "FAIL",
@@ -1127,7 +1686,8 @@ print.flexybayes_inla <- function(x, ...) {
     sep = ""
   )
   .print_inla_spatial_hypers(x)
-  cat(strrep("-", 55), "\n")
+  cat(strrep("-", 62), "\n")
+  cat("  Object of class <flexybayes_inla>\n")
   cat("  $inla -- raw INLA fit (use INLA's summary, plot, etc.)\n")
   cat("  $fb   -- the fb_terms IR used for dispatch\n")
   invisible(x)
@@ -1135,58 +1695,29 @@ print.flexybayes_inla <- function(x, ...) {
 
 #' Summary method for flexybayes_inla
 #'
-#' Returns the fixed / random / hyperpar posterior summary tables
-#' produced by INLA. A fit carrying an autoregressive latent field also
-#' gets a `spatial_field` element: the field's own parameters on the
-#' correlation and standard-deviation scales, which is the form a reader
-#' needs and INLA's precision-scale hyperparameter table is not.
-#' Internal S3 method.
+#' Internal S3 method. Builds and prints the same `summary.flexybayes`
+#' object every active engine returns, so `summary(fit)$varcomp` answers
+#' on an INLA fit as it does on a brms one. Before 0.9.1 this method had
+#' its own dialect -- a bare four-slot list of INLA's own tables, not
+#' comparable with what the other engine returned and carrying no
+#' variance-component table at all.
+#'
+#' The variance components reach the standard-deviation scale through
+#' INLA's precision marginals rather than by transforming a tabulated
+#' point estimate; see `.inla_variance_comps()`. INLA's own
+#' precision-scale hyperparameter table still prints, unmodified,
+#' beneath them.
 #'
 #' @param object A `flexybayes_inla` object, the fit an INLA run
 #'   returns.
 #' @param ... Ignored. Present for compatibility with the generic.
-#' @returns Invisibly, the summary list, carrying a `spatial_field` data
-#'   frame when the model holds an AR1 field.
+#' @returns Invisibly, an object of class
+#'   `c("summary.flexybayes", "list")`. See [summary.flexybayes()] for
+#'   the slots.
 #' @keywords internal
 #' @export
 summary.flexybayes_inla <- function(object, ...) {
-  cat("Bayesian fit summary  [flexybayes_inla / INLA backend]\n")
-  cat(strrep("-", 60), "\n")
-  cat("Fixed effects:\n")
-  if (
-    !is.null(object$extras$summary$fixed) &&
-      nrow(object$extras$summary$fixed) > 0L
-  ) {
-    print(round(object$extras$summary$fixed, 4))
-  } else {
-    cat("  (none)\n")
-  }
-  cat("\nHyperparameters:\n")
-  if (
-    !is.null(object$extras$summary$hyperpar) &&
-      nrow(object$extras$summary$hyperpar) > 0L
-  ) {
-    print(round(object$extras$summary$hyperpar, 4))
-  } else {
-    cat("  (none)\n")
-  }
-  .print_inla_spatial_hypers(object)
-  cat("\nRandom effects:\n")
-  if (length(object$extras$summary$random) > 0L) {
-    cat(
-      "  groups: ",
-      paste(names(object$extras$summary$random), collapse = ", "),
-      "\n",
-      sep = ""
-    )
-  } else {
-    cat("  (none)\n")
-  }
-  cat(strrep("-", 60), "\n")
-  out <- object$extras$summary
-  field <- .inla_spatial_hyper_table(object)
-  if (!is.null(field)) {
-    out$spatial_field <- field
-  }
+  out <- .fb_summary_object(object)
+  print(out)
   invisible(out)
 }

@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 06: Default priors and the `fb_prior()` DSL"
-date: "2026-08-15"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -33,7 +33,7 @@ which a default does most of the work:
 - **Boundary problems.** When the variance is near zero, the
   posterior on $\sigma$ has most of its mass close to the boundary.
   A prior with a mode at zero (or, like a uniform, no preference at
-  all) reflects this; a prior with a mode away from zero
+  all) reflects this. A prior with a mode away from zero
   introduces an artefactual bump.
 
 `flexyBayes` ships a *bounded uniform* prior on the SD scale as
@@ -68,7 +68,7 @@ For very small $J$, see the half-Cauchy / half-normal override in
 This default applies on the simple / `id()` / `ide()` random branches
 and on the residual sigma. Structured-covariance branches
 (unstructured, factor-analytic, autoregressive, genomic kernels)
-keep the legacy lognormal default; broadening the uniform default to
+keep the legacy lognormal default. Broadening the uniform default to
 those branches is deferred to a subsequent release.
 
 To preserve the legacy lognormal default exactly, pass
@@ -93,23 +93,23 @@ rests on four pieces:
 2. **Literature anchoring.** Gelman et al. (2008, *Annals of Applied
    Statistics* 2(4):1360--1383) propose weakly-informative Cauchy(0,
    2.5) on standardised predictors as the regression-coefficient
-   default; on the natural scale, $\mathcal{N}(0, 100)$ is broader
+   default. On the natural scale, $\mathcal{N}(0, 100)$ is broader
    than that recommendation by design (we don't pre-standardise the
    predictors) but narrower than the diffuse $\mathcal{N}(0, 1000+)$
    that effectively returns maximum-likelihood point estimates with
    no regularisation.
 3. **Consequence on `sleepstudy`.** On `Reaction ~ Days` (intercept
    $\approx 250$ ms, slope $\approx 10$ ms / day), the posterior
-   recovers the REML point estimates to within one standard error;
-   the prior shrinks neither parameter perceptibly.
+   recovers the REML point estimates to within one standard error,
+   and the prior shrinks neither parameter perceptibly.
 4. **Sensitivity bracketing.** Halving `prior_fixed_sd` to 50
-   produces an indistinguishable posterior on `sleepstudy`; doubling
+   produces an indistinguishable posterior on `sleepstudy`, and doubling
    to 200 also does not move the posterior. Below ~20 the prior
    starts to bite on coefficients of order $\beta \sim 10$, which is
    the intended behaviour when the analyst chooses smaller values
    deliberately for shrinkage.
 
-Override globally with `prior_fixed_sd = ...`; override individual
+Override globally with `prior_fixed_sd = ...`, or individual
 coefficients with `b("name") ~ normal(mean, sd)` in `fb_prior()`.
 
 # 3. The `fb_prior()` DSL
@@ -185,7 +185,7 @@ sd_y <- sd(sleepstudy$Reaction)
 > a known instability -- the variance component can collapse to
 > numerically zero, and which run collapses is not reproducible even
 > at a fixed seed. Comparing *priors* needs a *reliable* engine
-> underneath; brms (Stan HMC) does not share the failure mode. The
+> underneath, and brms (Stan HMC) does not share the failure mode. The
 > *getting started* and *hierarchical models* vignettes discuss the
 > INLA instability itself.
 
@@ -230,7 +230,7 @@ fit_legacy <- flexybayes(
 )
 ```
 
-A simple posterior-mean comparison on the subject-level SD:
+A posterior-mean comparison on the subject-level SD:
 
 
 ``` r
@@ -243,13 +243,13 @@ rbind(default    = extract_sigma(fit_default),
       halfnormal = extract_sigma(fit_hn),
       legacy     = extract_sigma(fit_legacy))
 #>                mean q025.2.5% q975.97.5%
-#> default    40.68902  27.13632   58.18628
-#> halfnormal 16.90644  14.53982   19.50031
-#> legacy     34.48694  24.91319   48.66854
+#> default    39.91549  27.13793   57.92398
+#> halfnormal 16.97524  14.60043   19.76518
+#> legacy     34.32197  24.53421   47.69688
 ```
 
 The uniform default and the legacy lognormal land close together
-here; the half-normal(2.5) pulls the posterior mean noticeably lower
+here. The half-normal(2.5) pulls the posterior mean noticeably lower
 -- its thinner tails are more concentrated at this scale than either
 the uniform or the lognormal(0, 1) implies, and with eighteen
 subjects the data do not have enough leverage to pull free of that
@@ -297,10 +297,10 @@ prior, or rescale the response, before inferring anything.
 `fb_prior()` is the cross-engine *interlingua*: a single prior
 specification compiles to the parameterisation each backend
 expects. brms receives a direct Stan prior statement on the
-standard-deviation scale; INLA receives a `pc.prec` block tuned to
+standard-deviation scale, and INLA receives a `pc.prec` block tuned to
 match the same upper-tail statement (only a subset of prior families
 translate to each backend -- Section 3's family table applies
-per-backend, not universally; brms in particular does not yet
+per-backend, not universally, and brms in particular does not yet
 translate `half_cauchy` anywhere in the DSL -- `uniform`, `pc`, and
 `half_normal` are the supported SD-scale families on that path, and
 `normal` / `student_t` the supported fixed-effect families). The
@@ -344,7 +344,7 @@ fit_pc <- flexybayes(
 )
 extract_sigma(fit_pc)
 #>       mean  q025.2.5% q975.97.5% 
-#>   32.10579   23.60268   42.98765
+#>   31.80290   23.85584   43.00501
 ```
 
 The tighter PC prior pulls the posterior on $\sigma_{\mathrm{Subject}}$
@@ -361,7 +361,7 @@ falls outside the latent Gaussian model class -- INLA cannot fit it
 directly. brms and Stan can express a horseshoe hierarchy natively,
 so this is not blocked by the greta quarantine the way the
 genotype-by-environment structured-covariance family is (the
-genotype-by-environment section of the *formula surface* vignette) -- it is simply not wired into
+genotype-by-environment section of the *formula surface* vignette) -- it is not yet wired into
 `fb_prior()` yet.
 
 `fb_prior()` does not yet expose `horseshoe()` as a target. A future
@@ -375,7 +375,7 @@ realistic mixed-model applications.
 
 **Confusing prior on $\sigma$ with prior on $\sigma^2$ or precision.**
 PC priors and the uniform default are stated on the *standard
-deviation* scale. INLA's internal parameterisation is precision;
+deviation* scale. INLA's internal parameterisation is precision, and
 `priors_to_inla()` handles the change of variables, and the
 `fb_prior()` user does not need to think about it. If you write
 priors directly into `INLA::inla()`, *do* think about it.
@@ -388,7 +388,7 @@ you can defend: the largest plausible random-effect SD given
 everything you know about the problem.
 
 **Mistaking weak priors for "objective" priors.** All priors encode
-information; uniform and very wide priors encode the information
+information. Uniform and very wide priors encode the information
 that the parameter could be very large. That information sometimes
 matters more than expected -- the small-group-count case is the
 canonical example.
@@ -445,34 +445,35 @@ sessionInfo()
 #>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
 #>  [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
 #> [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
-#> [13] StanHeaders_2.32.10    survival_3.8-3         processx_3.9.0        
+#> [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
 #> [16] magrittr_2.0.5         posterior_1.7.0        compiler_4.5.2        
 #> [19] rlang_1.2.0            tools_4.5.2            data.table_1.18.2.1   
-#> [22] knitr_1.51             bridgesampling_1.2-1   pkgbuild_1.4.8        
-#> [25] classInt_0.4-11        curl_7.0.0             plyr_1.8.9            
-#> [28] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
-#> [31] KernSmooth_2.23-26     withr_3.0.2            grid_4.5.2            
-#> [34] stats4_4.5.2           xtable_1.8-8           e1071_1.7-17          
-#> [37] colorspace_2.1-2       future_1.70.0          inline_0.3.21         
-#> [40] ggplot2_4.0.3          globals_0.19.1         emmeans_2.0.2         
-#> [43] scales_1.4.0           MASS_7.3-65            dichromat_2.0-0.1     
-#> [46] cli_3.6.6              mvtnorm_1.3-6          generics_0.1.4        
-#> [49] otel_0.2.0             RcppParallel_5.1.11-2  reshape2_1.4.5        
-#> [52] DBI_1.3.0              proxy_0.4-29           rstan_2.32.7          
-#> [55] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
-#> [58] parallel_4.5.2         matrixStats_1.5.0      marginaleffects_0.32.0
-#> [61] brms_2.23.0            vctrs_0.7.3            V8_8.0.1              
-#> [64] Matrix_1.7-4           sandwich_3.1-1         jsonlite_2.0.0        
-#> [67] callr_3.7.6            listenv_0.10.1         units_1.0-1           
-#> [70] glue_1.8.1             parallelly_1.47.0      codetools_0.2-20      
-#> [73] distributional_0.7.0   stringi_1.8.7          gtable_0.3.6          
-#> [76] QuickJSR_1.9.0         tibble_3.3.1           pillar_1.11.1         
-#> [79] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
-#> [82] evaluate_1.0.5         lattice_0.22-7         backports_1.5.1       
-#> [85] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.1-1.1        
-#> [88] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
-#> [91] checkmate_2.3.4        xfun_0.57              zoo_1.8-15            
-#> [94] pkgconfig_2.0.3
+#> [22] knitr_1.51             sn_2.1.3               bridgesampling_1.2-1  
+#> [25] curl_7.0.0             pkgbuild_1.4.8         classInt_0.4-11       
+#> [28] mnormt_2.1.2           plyr_1.8.9             RColorBrewer_1.1-3    
+#> [31] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
+#> [34] withr_3.0.2            numDeriv_2016.8-1.1    grid_4.5.2            
+#> [37] stats4_4.5.2           colorspace_2.1-2       inline_0.3.21         
+#> [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
+#> [43] ggplot2_4.0.3          globals_0.19.1         emmeans_2.0.2         
+#> [46] scales_1.4.0           MASS_7.3-65            dichromat_2.0-0.1     
+#> [49] cli_3.6.6              mvtnorm_1.3-6          generics_0.1.4        
+#> [52] otel_0.2.0             RcppParallel_5.1.11-2  reshape2_1.4.5        
+#> [55] DBI_1.3.0              proxy_0.4-29           rstan_2.32.7          
+#> [58] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
+#> [61] parallel_4.5.2         matrixStats_1.5.0      marginaleffects_0.32.0
+#> [64] brms_2.23.0            vctrs_0.7.3            V8_8.0.1              
+#> [67] Matrix_1.7-4           sandwich_3.1-1         jsonlite_2.0.0        
+#> [70] callr_3.7.6            listenv_0.10.1         units_1.0-1           
+#> [73] glue_1.8.1             parallelly_1.47.0      codetools_0.2-20      
+#> [76] distributional_0.7.0   stringi_1.8.7          gtable_0.3.6          
+#> [79] QuickJSR_1.9.0         tibble_3.3.1           pillar_1.11.1         
+#> [82] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
+#> [85] evaluate_1.0.5         lattice_0.22-7         backports_1.5.1       
+#> [88] rstantools_2.6.0       class_7.3-23           MatrixModels_0.5-4    
+#> [91] Rcpp_1.1.1-1.1         gridExtra_2.3          coda_0.19-4.1         
+#> [94] nlme_3.1-168           checkmate_2.3.4        xfun_0.57             
+#> [97] zoo_1.8-15             pkgconfig_2.0.3
 ```
 
 # References

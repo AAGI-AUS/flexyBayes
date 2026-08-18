@@ -155,9 +155,12 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # dsum_structured_inner_unsupported is added (a structured dsum() inner
   # -- ar1/us/... -- is refused rather than silently reduced to a
   # per-region heteroscedastic variance) (= 55).
-  # At 0.9.1 the greta / gretaR quarantine adds three refusal codes
+  # At 0.9.0 the greta / gretaR quarantine adds three refusal codes
   # (backend_quarantined, native_greta_fit_quarantined, auto_no_active_route)
-  # (= 58), and WP16 adds ar1_spatial_requires_complete_grid (= 59).
+  # (= 58), and WP16 adds ar1_spatial_requires_complete_grid (= 59). All
+  # four shipped in the 0.9.0 tag and their `since_version` said 0.9.1,
+  # which named a release that did not exist -- corrected here and in the
+  # registry.
   # The residual-structure fidelity fix adds two: brms has no
   # residual-covariance lowering, so a structured residual reaching it must
   # refuse rather than emit a model without the term
@@ -210,7 +213,45 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # refuses rather than reaching base R's scalar `if` and erroring with
   # "the condition has length > 1" (family_argument_not_recognised)
   # (= 88).
-  expect_equal(length(entries), 88L)
+  # At 0.9.1 the covariate half of ASReml's na.method() becomes settable,
+  # and its `include` setting -- treat a missing covariate as zero
+  # (Reference Manual 4.2, section 3.11) -- is the one ASReml behaviour
+  # this package refuses rather than reproduces
+  # (covariate_zero_fill_not_supported) (= 89).
+  # The ASReml-shaped accessors add one suggested-package guard that
+  # refuses by name rather than through a bare requireNamespace() error
+  # (classify_requires_emmeans) (= 90), and one display refusal for the
+  # residual variogram, which has no lag to plot against on a model that
+  # names no design array (variogram_requires_design_index) (= 91).
+  # The Bayesian door adds one: loo() reads the log-likelihood of each
+  # observation at each posterior draw, which a nested Laplace
+  # approximation never computed, so the call refuses by name and points
+  # at the information criteria the fit does carry
+  # (loo_requires_sampler_draws) (= 92). It is registered as the sibling
+  # of fit_lacks_posterior_draws and the two descriptions name each
+  # other (AD-4). It adds a second: a posterior predictive check needs
+  # datasets replicated from the fitted model, and a fit whose engine
+  # returns none refuses rather than showing a different display under
+  # the check's name (pp_check_requires_predictive_draws) (= 93).
+  # The asreml head-to-head adds two. A factor written on both the fixed
+  # and the random side is aliased with itself, was accepted silently,
+  # and reached INLA as an intermittently singular marginal solve -- two
+  # engine segmentation faults and an untyped error at benchmark scale,
+  # the only untyped structural failure in that run
+  # (term_in_fixed_and_random) (= 94). And predict(classify = ) for a
+  # random-effects grouping factor -- what a breeder asks a MET fit for
+  # first -- died inside emmeans with a bare "No variable named Geno in
+  # the reference grid", so it refuses by name and points at the
+  # accessors that do carry the level effects
+  # (classify_random_factor_not_supported) (= 95).
+  expect_equal(length(entries), 95L)
+  expect_true("term_in_fixed_and_random" %in% entries)
+  expect_true("classify_random_factor_not_supported" %in% entries)
+  expect_true("loo_requires_sampler_draws" %in% entries)
+  expect_true("pp_check_requires_predictive_draws" %in% entries)
+  expect_true("covariate_zero_fill_not_supported" %in% entries)
+  expect_true("classify_requires_emmeans" %in% entries)
+  expect_true("variogram_requires_design_index" %in% entries)
   expect_true("family_argument_not_recognised" %in% entries)
   expect_true("row_count_exceeds_integer" %in% entries)
   expect_true("met_summary_not_available" %in% entries)

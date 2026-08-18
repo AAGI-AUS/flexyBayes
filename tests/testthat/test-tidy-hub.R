@@ -138,3 +138,95 @@ test_that("glance() / augment() on an INLA fit refuse with an informative error"
   expect_error(generics::glance(shell), "not available for INLA")
   expect_error(generics::augment(shell), "not available for INLA")
 })
+
+# ---------------------------------------------------------------- #
+# effects = "random" answers on both engines                        #
+# ---------------------------------------------------------------- #
+#
+# `tidy.flexybayes_inla()` had no `effects` argument, so the request was
+# absorbed by `...` and the FIXED-effect table came back under a call that
+# asked for variance components. Not an error -- a wrong answer, on the
+# engine that is the package's default route.
+
+test_that("tidy(effects = 'random') returns variance components on INLA", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+
+  set.seed(31L)
+  dat <- data.frame(
+    g = factor(rep(seq_len(8L), each = 10L)),
+    x = stats::rnorm(80L)
+  )
+  dat$y <- 2 + 0.5 * dat$x +
+    rep(stats::rnorm(8L, 0, 0.8), each = 10L) +
+    stats::rnorm(80L, 0, 0.5)
+  fit <- suppressMessages(flexybayes(
+    y ~ x,
+    random = ~g,
+    data = dat,
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE
+  ))
+
+  fixed <- tidy(fit)
+  random <- tidy(fit, effects = "random")
+
+  # Same columns on both requests, per the broom contract.
+  expect_true(all(.canonical_tidy_cols %in% names(random)))
+  # And genuinely different rows -- the defect was that they were equal.
+  expect_false(identical(fixed$term, random$term))
+  expect_true("sigma" %in% random$term)
+  expect_true("sd_g" %in% random$term)
+  expect_false(any(random$term %in% c("(Intercept)", "x")))
+  expect_true(all(is.finite(random$estimate)))
+
+  # The two engines answer the same question with the same shape.
+  expect_identical(names(tidy(fit, effects = "fixed")), names(fixed))
+})
+
+test_that("an unrecognised effects value stops rather than falling through", {
+  shell <- structure(
+    list(inla = list(summary.fixed = NULL)),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+  expect_error(tidy(shell, effects = "variance"), "arg")
+  expect_error(
+    generics::tidy(
+      structure(list(), class = c("flexybayes", "list")),
+      effects = "variance"
+    ),
+    "arg"
+  )
+})
+
+test_that("tidy(effects = 'random') works on an aggregated fit", {
+  # The aggregated emits write a list of posterior means under
+  # `variance_comps`, so `nrow()` of it is NULL and the raw read errored.
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+
+  set.seed(32L)
+  dat <- data.frame(
+    g = factor(rep(seq_len(10L), each = 50L)),
+    f1 = factor(rep(c("a", "b"), length.out = 500L))
+  )
+  dat$y <- stats::rnorm(500L)
+  fit <- suppressMessages(fb(
+    y ~ f1 + (1 | g),
+    data = dat,
+    backend = "inla",
+    aggregate = "auto",
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  ))
+  skip_if_not(inherits(fit, "flexybayes_aggregated"))
+
+  random <- tidy(fit, effects = "random")
+  expect_true(all(.canonical_tidy_cols %in% names(random)))
+  expect_gt(nrow(random), 0L)
+})

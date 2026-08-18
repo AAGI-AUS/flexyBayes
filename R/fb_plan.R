@@ -142,6 +142,13 @@ fb_plan <- function(
   the_call = NULL,
   data_name = NULL
 ) {
+  # ---- aliasing guard (before any planning work) ---------------- #
+  # A factor on both the fixed and the random side is refused at
+  # dispatch on every engine. Planning is the surface a user reaches to
+  # find that out before paying for a fit, so it refuses with the same
+  # code rather than reporting a route for a model no engine will take.
+  .refuse_term_in_fixed_and_random(fb)
+
   # ---- preflight (always; bypass dispatcher threshold) ---------- #
   pf_dataset <- .fb_dataset(data)
   preflight <- .fb_preflight(
@@ -739,8 +746,12 @@ print.fb_plan <- function(x, ...) {
   cat(
     "  Aggregation:             ",
     if (isTRUE(x$aggregation$eligible)) {
+      # The planner's cell count is the product of the declared factor
+      # level counts -- the complete grid. The fitted object reports the
+      # realised count, which is smaller wherever a grid cell carries no
+      # rows. Both used to print as a bare `K`.
       sprintf(
-        "eligible (K = %s, N:K = %.0f:1)",
+        "eligible (K = %s (estimated), N:K = %.0f:1)",
         format(x$aggregation$K, big.mark = " "),
         x$aggregation$ratio
       )

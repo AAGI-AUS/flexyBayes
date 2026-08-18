@@ -40,7 +40,7 @@ matters:
 
 1. **Correctly sized standard errors.** Treating clustered
    observations as independent shrinks standard errors and inflates
-   Type I error.
+   the Type I error rate.
 2. **Borrowing of strength.** A random effect lets each cluster
    "borrow" information from the others through the shared variance
    parameter -- *partial pooling*. This is the source of the
@@ -89,12 +89,12 @@ summary(fit_ri)
 > `sleepstudy`: the `Subject`-level variance component can collapse to
 > numerically zero, run to run, with no warning. brms (Stan HMC) does
 > not share the failure mode. This vignette pins brms for this one
-> teaching example; `"auto"` is fine for the other models below. If
+> teaching example. `"auto"` is fine for the other models below. If
 > you hit an implausibly extreme variance component from INLA on your
 > own data, cross-check with `backend = "brms"` before trusting it.
 
 The `Subject`-level standard deviation summarises between-subject
-variation in baseline reaction time; the residual standard deviation
+variation in baseline reaction time, and the residual standard deviation
 summarises within-subject variation. The intraclass correlation
 coefficient (ICC) is
 
@@ -135,7 +135,7 @@ this section.
 
 The brms-style grammar takes the lme4 / brms double-pipe notation
 `(x || g)` for an *uncorrelated* random intercept and slope. Each level
-of the grouping factor carries an independent intercept deviation AND
+of the grouping factor carries an independent intercept deviation *and*
 an independent slope deviation, each drawn from its own univariate
 normal with no correlation parameter shared between them. This matches
 the lme4 / brms semantics where `(Days || Subject)` expands to
@@ -232,7 +232,8 @@ flexybayes(fixed = y ~ 1, random = ~ class + class:student, data = ...)
 ```
 
 Both patterns generalise to deeper hierarchies. The agronomic
-illustration is in the *MET and genomic selection* vignette.
+illustration is in the *multi-environment trials and genomic selection*
+vignette.
 
 # 5. The Poisson GLMM: `MASS::epil`
 
@@ -258,7 +259,7 @@ summary(fit_pois)
 ```
 
 The intercept (on the log scale) is the baseline log-rate of
-seizures; the `trt` coefficient is the log rate-ratio for
+seizures, and the `trt` coefficient is the log rate-ratio for
 progabide versus placebo. Exponentiating gives the rate-ratio,
 computed from the posterior draws:
 
@@ -298,7 +299,7 @@ approximation is distorting them.
 
 `sd_subject` is flagged, and it is worth seeing why on the first
 triangulation you read. Its posterior mean and SD agree between the
-engines to a few per cent; what breaches the threshold is the
+engines to a few per cent. What breaches the threshold is the
 Wasserstein-1 distance, which compares the whole marginal rather than
 its first two moments. The two distributions have the same centre and
 spread and a different shape -- the ordinary signature of a Laplace
@@ -324,6 +325,7 @@ fit_nb <- flexybayes(
   y ~ trt + (1 | subject), data = epil,
   family = "negative_binomial",
   n_samples = 2000, warmup = 5000, chains = 4,
+  seed = 20260817,
   verbose = FALSE, mcmc_verbose = FALSE
 )
 summary(fit_nb)
@@ -331,6 +333,12 @@ summary(fit_nb)
 
 The negative-binomial absorbs overdispersion that the Poisson
 likelihood cannot.
+
+The `seed` above is not decoration. This posterior is multimodal at this
+sampler budget -- some seeds settle on a second mode whose intercept
+runs off to absurd magnitudes and whose largest R-hat is near 1.6 -- and
+the seed pins the run this page reports. Read the convergence block of
+your own run before you read its estimates.
 
 # 6. The binomial GLMM: `lme4::cbpp`
 
@@ -366,7 +374,7 @@ summary(fit_bin)
 ```
 
 The intercept (on the logit scale) is the baseline log-odds of
-infection; the `period` coefficients describe how those log-odds
+infection, and the `period` coefficients describe how those log-odds
 change across the four observation periods. The `herd` random
 effect captures unobserved herd-level differences in baseline risk.
 
@@ -410,8 +418,8 @@ to assess sensitivity.
 **Overdispersion in count data.** A Poisson GLMM that fails the
 posterior-predictive check on `var(y)` versus `mean(y)` is signalling
 overdispersion -- refit with `family = "negative_binomial"`. This is the most
-common cause of cross-engine disagreement on count GLMMs (pattern 1
-in the triangulation vignette).
+common cause of cross-engine disagreement on count GLMMs, a pattern the
+*cross-engine triangulation* vignette works through.
 
 # 9. Active prompts
 
@@ -422,8 +430,8 @@ in the triangulation vignette).
    Use `triangulate()` to compare the variance-component posteriors
    of each family against a second engine.
 3. On `cbpp_expanded`, fit the model with random `herd` versus
-   random `herd:period`. Which fits best by PSIS-LOO (manual; see
-   the *downstream analysis* vignette)?
+   random `herd:period`. Which fits best by PSIS-LOO, built by hand as
+   the *downstream analysis* vignette shows?
 
 # 10. Session information
 

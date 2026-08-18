@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 02: The formula surface: asreml-shaped terms and structured covariance"
-date: "2026-08-16"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -22,7 +22,7 @@ vignette: >
 > it reaches an engine. The fits use small sampling budgets so the document
 > builds quickly, and several printed diagnostics therefore do **not** meet
 > the package's own convergence thresholds
-> ($\widehat{R} \le 1.01$, ESS $\ge 400$); some model classes also mix poorly on
+> ($\widehat{R} \le 1.01$, ESS $\ge 400$). Some model classes also mix poorly on
 > their backend at any budget. Read the posterior summaries here as
 > illustrations of the output *shape*, not as inferential results. For a
 > convergence-clean worked fit and the trustworthy-fit workflow, see the
@@ -54,8 +54,12 @@ The companion `fb_brms()` entry -- covered in the *getting started*,
 covers a subset of these term types via brms-style notation. For the
 full surface, asreml-shaped formulas are the reference path.
 
+Readers coming from ASReml may want the *From an ASReml call* vignette
+first. It translates one field-trial call and the accessors read after
+it, where this page catalogues the whole term surface.
+
 > **`flexyBayes` does not depend on the proprietary `asreml` package.**
-> The DSL borrows ASReml's notation; the inference engine is brms
+> The DSL borrows ASReml's notation, and the inference engine is brms
 > (Stan / Hamiltonian Monte Carlo) or INLA (Laplace approximation),
 > chosen automatically for the model you write. ASReml syntax is
 > referenced as a vocabulary, not invoked as a dependency.
@@ -69,11 +73,11 @@ matrices.
 > exists to show that a term type parses, dispatches to a faithful
 > active engine, and returns the expected structure -- not to produce
 > publication-grade inference. `backend = "auto"` resolves most terms
-> here to INLA (fast, deterministic) or brms (Stan HMC); at these
+> here to INLA (fast, deterministic) or brms (Stan HMC). At these
 > modest MCMC budgets the brms-routed fits print convergence
 > diagnostics that should not be over-read as inference. The *getting
 > started* vignette shows production budgets and how to read
-> $\widehat{R}$ and ESS; the *hierarchical models* and *cross-engine
+> $\widehat{R}$ and ESS. The *hierarchical models* and *cross-engine
 > triangulation* vignettes develop inference quality. Section 6 carries a
 > status column for the structured genotype-by-environment terms:
 > `diag()`, `us()` and `ar1()` fit, `fa()` and `corh()` are refused by
@@ -108,14 +112,14 @@ The `fixed` formula is a standard R model formula. Every term that
 
 | Term | Semantics |
 |---|---|
-| `factor` | factor main effect; one level absorbed into the intercept |
-| `continuous` | continuous covariate; linear coefficient |
+| `factor` | factor main effect, with one level absorbed into the intercept |
+| `continuous` | continuous covariate, entering as a linear coefficient |
 | `factor:factor` | two-factor interaction (factor_interaction internally) |
 | `factor:continuous` | factor-continuous interaction (separate slopes) |
 | `I(x^2)` | arbitrary I-quoted expression in the predictors |
 
 Two factor-interaction patterns, `*` and `:`, follow R's standard
-semantics: `A * B` expands to `A + B + A:B`; `A:B` is the interaction
+semantics: `A * B` expands to `A + B + A:B`, and `A:B` is the interaction
 alone.
 
 
@@ -133,11 +137,11 @@ fit_fix
 #>   fixed:      2 
 #>   random:     0 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.75 sec
+#>   runtime:    2.05 sec
 #>   Representation: aggregated_exact (compression 30:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 4 cells (ratio 30:1)
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#>   priors:     package default (bounded uniform on SD; see prior_summary()) 
 #> ------------------------------------------------------------ 
 #>   $glm      -- per-row reconstructed fitted values + coef shim
 #>   $inla     -- raw aggregated INLA fit (use INLA's summary etc.)
@@ -151,17 +155,21 @@ fit_int <- flexybayes(
   n_samples = 1000, warmup = 2000, chains = 2, verbose = FALSE
 )
 fit_int
-#> Bayesian fit  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------- 
-#>   formula: yield ~ 1 + env + x_cov + I(x_cov^2)
-#>   family:  gaussian
-#>   n_obs:   120
-#>   fixed:   6
-#>   random:  0
-#>   hyper:   1
-#>   runtime: 2.03 sec
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env + x_cov + I(x_cov^2) 
+#>   Model    : G: none; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 1.9 sec
+#>   INLA formula: yield ~ 1 + env + x_cov + I(x_cov^2)
+#>   Params   : 6 fixed, 0 random, 1 hyperparameter(s)
 #>   numerical confirm: PASS
-#> ------------------------------------------------------- 
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
 #>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
 #>   $fb   -- the fb_terms IR used for dispatch
 ```
@@ -194,11 +202,11 @@ fit_rand
 #>   fixed:      2 
 #>   random:     1 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.42 sec
+#>   runtime:    2.03 sec
 #>   Representation: aggregated_exact (compression 3:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 40 cells (ratio 3:1)
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#>   priors:     package default (bounded uniform on SD; see prior_summary()) 
 #> ------------------------------------------------------------ 
 #>   $glm      -- per-row reconstructed fitted values + coef shim
 #>   $inla     -- raw aggregated INLA fit (use INLA's summary etc.)
@@ -207,7 +215,7 @@ fit_rand
 
 The random block reports the genotype-level standard deviation. The
 companion *hierarchical models* vignette covers the scientific
-interpretation; this vignette is about what each spelling means.
+interpretation. This vignette is about what each spelling means.
 
 # 4. Random-effect interactions and design components
 
@@ -240,28 +248,37 @@ fit_nested <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_nested
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : yield ~ env 
-#>   Random : ~geno + geno:env 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 4 chain(s) x 2000 samples (warmup = 2000 ) -- 21.2 sec (Stan via brms)
-#>   Params : 60 monitored; 4 fixed, 2 random terms
-#>   Max Rhat: 1.003  [OK] 
-#>   Min ESS: 1714 
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~geno + geno:env 
+#>   Model    : G: geno iid; env within geno; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 2000)
+#>   Runtime  : 22.7 sec
+#>   Params   : 60 monitored; 4 fixed, 2 random terms
+#>   Max Rhat: 1.002  [OK] 
+#>   Min ESS: 1694 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
 #>   $extras -- diagnostics, variance components, call info
 ```
 
-## 4.1 Design variance components (a deliberate non-convergence demonstration)
+## 4.1 Design variance components (a deliberate identification demonstration)
 
-The fit printed in this section is shown for its convergence badge, not for
-its estimates. `met_example` has three replicates, which is too few to
-estimate a variance from, and the badge says so: the printed
-$\widehat{R}$ of 1.241 carries the `[!]` marker and the minimum ESS is 13.
-Nothing in the numbers below should be quoted as inference.
+The fit printed in this section is shown for what its diagnostics do,
+not for its estimates. `met_example` has three replicates, which is too
+few to estimate a variance from, and a barely-identified variance is
+exactly where a sampler's own diagnostics stop being stable: successive
+builds of this page, on the same data at the same budget, have printed
+$\widehat{R}$ anywhere from 1.005 to 1.241 and a minimum ESS from 13 to
+995. Read the badge your own run prints, and quote none of the numbers
+below as inference.
 
 A *design* variance component is the same construction applied to the
 factors that describe the trial layout: replicates,
@@ -278,15 +295,21 @@ fit_design <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_design
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : yield ~ env 
-#>   Random : ~rep + rep:block + geno 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 4 chain(s) x 1000 samples (warmup = 2000 ) -- 17.6 sec (Stan via brms)
-#>   Params : 42 monitored; 4 fixed, 3 random terms
-#>   Max Rhat: 1.241  [!] 
-#>   Min ESS: 13 
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~rep + rep:block + geno 
+#>   Model    : G: rep iid; block within rep; geno iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 1000 samples (warmup 2000)
+#>   Runtime  : 18.8 sec
+#>   Params   : 42 monitored; 4 fixed, 3 random terms
+#>   Max Rhat: 1.008  [OK] 
+#>   Min ESS: 641 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -295,16 +318,16 @@ fit_design
 
 The variance-component block reports separate variances for `rep`,
 `rep:block`, and `geno`. Each variance is a contribution to total
-variance; the proportions tell you which design layer accounts for
+variance, and the proportions tell you which design layer accounts for
 the most variation.
 
-Read the convergence lines on that fit before the estimates. On
-`met_example` the design layers do not converge at any budget this
-vignette would build with, and the printed $\widehat{R}$ and ESS say
-so: `rep` has three levels, which is too few to estimate a variance
-from. That is a property of the design, not of the grammar -- the same
-`rep + rep:block` construction on a trial with enough replicates
-behaves like any other random effect.
+Read the convergence lines on that fit before the estimates. `rep` has
+three levels on `met_example`, and a variance estimated from three
+levels is barely identified, so this fit's own $\widehat{R}$ and ESS
+move a long way between runs at this budget -- read the lines printed by
+your run rather than the ones printed here. That is a property of the
+design, not of the grammar: the same `rep + rep:block` construction on a
+trial with enough replicates behaves like any other random effect.
 
 In field experiments -- incomplete blocks, alpha designs, row-column
 designs -- the design variance component is what keeps the standard
@@ -328,15 +351,21 @@ fit_vm <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_vm
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : yield ~ env 
-#>   Random : ~vm(geno, Gmat) 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 15.9 sec (Stan via brms)
-#>   Params : 19 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.006  [OK] 
-#>   Min ESS: 526 
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~vm(geno, Gmat) 
+#>   Model    : G: vm(geno) known covariance; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
+#>   Runtime  : 16.5 sec
+#>   Params   : 19 monitored; 4 fixed, 1 random terms
+#>   Max Rhat: 1.005  [OK] 
+#>   Min ESS: 443 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -358,9 +387,9 @@ flexybayes(
 
 ## 5.1 Carriers: dense, Cholesky, precision, pedigree opt-in
 
-The `vm()` and `ped()` special-terms accept the covariance carrier
-in multiple representations. The dense $V$ form is the default;
-three additional formats let the caller skip a redundant
+The `vm()` and `ped()` special terms accept the covariance carrier
+in multiple representations. The dense $V$ form is the default.
+Three additional formats let the caller skip a redundant
 factorisation, route through INLA's sparse-precision interface, or
 declare a sparse pedigree precision directly. The choice changes the
 computational path, not the model.
@@ -373,7 +402,7 @@ names an entry in `known_matrices`, resolved at fit time.
 
 **Dense $V$ (default).** Pass a covariance matrix directly.
 `flexyBayes` computes its Cholesky factor at fit time. The bare
-`vm(geno, Gmat)` form used above is the dense default;
+`vm(geno, Gmat)` form used above is the dense default, and
 `fb_cov(Gmat, type = "dense")` is the explicit equivalent:
 
 
@@ -385,15 +414,21 @@ fit_dense <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_dense
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : yield ~ env 
-#>   Random : ~vm(geno, cov = fb_cov(Gmat, type = "dense")) 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 15.7 sec (Stan via brms)
-#>   Params : 19 monitored; 4 fixed, 1 random terms
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~vm(geno, cov = fb_cov(Gmat, type = "dense")) 
+#>   Model    : G: vm(geno) known covariance; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
+#>   Runtime  : 16.2 sec
+#>   Params   : 19 monitored; 4 fixed, 1 random terms
 #>   Max Rhat: 1.006  [OK] 
-#>   Min ESS: 429 
+#>   Min ESS: 464 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -413,7 +448,7 @@ flexybayes(
 )
 ```
 
-The chol input must be square and lower-triangular; the validator
+The chol input must be square and lower-triangular. The validator
 refuses on an upper-triangular or non-square input.
 
 **Sparse precision matrix.** Many sources of structured covariance
@@ -424,7 +459,7 @@ even when the covariance itself is dense. Passing the sparse
 precision directly avoids dense intermediates, and routes through
 INLA's user-defined precision interface `f(<var>_id, model =
 "generic0", Cmatrix = Q)` (Rue & Held 2005, *Gaussian Markov Random
-Fields*; Lindgren et al. 2011):
+Fields*, and Lindgren et al. 2011):
 
 
 ``` r
@@ -435,24 +470,29 @@ fit_prec <- flexybayes(
   backend = "inla", verbose = FALSE
 )
 fit_prec
-#> Bayesian fit  [flexybayes_inla / INLA backend]
-#> ------------------------------------------------------- 
-#>   formula: yield ~ 1 + env + f(geno_id, model = "generic0", Cmatrix = Q,     hyper = list(prec = list(prior = "expression: U=15.98286933054222; lb=-2*log(U); ld=-log(U)-log(2)-theta/2; return( theta<lb ? -1.0e10 : ld );")))
-#>   family:  gaussian
-#>   n_obs:   120
-#>   fixed:   4
-#>   random:  1
-#>   hyper:   2
-#>   runtime: 2.98 sec
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~vm(geno, cov = fb_cov(Q, type = "precision")) 
+#>   Model    : G: vm(geno) known covariance; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.2 sec
+#>   INLA formula: yield ~ 1 + env + f(geno_id, model = "generic0", Cmatrix = Q, <prior: uniform-SD(0, 15.98)>)
+#>   Params   : 4 fixed, 1 random, 2 hyperparameter(s)
 #>   numerical confirm: PASS
-#> ------------------------------------------------------- 
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
 #>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
 #>   $fb   -- the fb_terms IR used for dispatch
 ```
 
 The sparse path is the recommended route for large spatial / genomic
 problems where the dense covariance would not fit in memory. The
-validator checks symmetry and positive-definiteness; refusals name
+validator checks symmetry and positive-definiteness, and refusals name
 the failure mode (`precision_not_symmetric`,
 `precision_not_positive_definite`).
 
@@ -474,7 +514,7 @@ flexybayes(
 ```
 
 `flexyBayes` does not depend on `pedigreemm` or any pedigree-graph
-library; the user constructs $A^{-1}$ and passes it. The level
+library. The user constructs $A^{-1}$ and passes it. The level
 ordering of the grouping factor must match the row/column order of
 the supplied precision matrix.
 
@@ -485,7 +525,7 @@ exclusive within a carrier. The bare dense form `vm(geno, Gmat)`
 remains available as the default when no `cov =` is supplied.
 
 **Backend mapping.** With `backend = "auto"`, dispatch routes
-precision-type vm/ped to INLA (preferred for sparsity); chol- and
+precision-type vm/ped to INLA (preferred for sparsity), and chol- and
 dense-type vm/ped to brms.
 
 ## 5.2 Known covariance alongside design components
@@ -505,17 +545,17 @@ flexybayes(
 
 > **Where genotype-by-environment covariance stands.** The diagonal
 > family (`diag(env):geno`, and its `idh()` / `at()` spellings) and the
-> unstructured `us(env):geno` fit on brms; INLA refuses both by name.
+> unstructured `us(env):geno` fit on brms. INLA refuses both by name.
 > The factor-analytic `fa(env, k):geno` parses for the formula
 > catalogue and no active engine emits it. The rest of this section
 > gives the whole family with the refusal you get where there is no
-> route, and the identification caveat that matters more than the
+> route, and the identification limit that matters more than the
 > syntax.
 
 Six term types *parse* structured covariance among random-effect
 levels, typically genotype-by-environment in agricultural settings --
 the standard multi-environment-trial parameterisations (Smith, Cullis,
-& Thompson, 2001). Four of them fit today; the status column says
+& Thompson, 2001). Four of them fit today, and the status column says
 which:
 
 | Term | Semantics | Status |
@@ -543,15 +583,21 @@ fit_us <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_us
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : yield ~ env 
-#>   Random : ~us(env):geno 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 20 sec (Stan via brms)
-#>   Params : 58 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.006  [OK] 
-#>   Min ESS: 350 
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~us(env):geno 
+#>   Model    : G: us(env):geno; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
+#>   Runtime  : 20.5 sec
+#>   Params   : 58 monitored; 4 fixed, 1 random terms
+#>   Max Rhat: 1.005  [OK] 
+#>   Min ESS: 416 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -562,7 +608,7 @@ It mixes acceptably here, on four environments with three replicates
 per cell. The structure gets hard fast, and the reason is
 identification rather than budget.
 
-**The identification caveat matters more than the syntax.** An
+**Identification matters more than the syntax here.** An
 unstructured `us(env):geno` estimates $n$ standard deviations and
 $n(n-1)/2$ correlations alongside a residual variance. With one
 observation per genotype-environment cell -- the usual shape of a
@@ -621,7 +667,7 @@ refused_ar1 <- tryCatch(
   error = function(e) e
 )
 cat("Refused:", conditionMessage(refused_ar1), "\n")
-#> Refused: ar1(env):geno on INLA is emitted as a separable autoregressive latent field over the 4 x 10 grid, faithful only with one observation per (env, geno) node. The data have 120 rows for 40 nodes (incomplete or replicated grid), so the field's latent index would not correspond to the design. Keep the unobserved nodes as design cells with na_action = "augment" (the default), supply one observation per node, or aggregate to node means.
+#> Refused: The data carry 120 rows for the 4 x 10 (env, geno) array, which has 40 nodes, and some nodes hold more than one row. ar1(env):geno is fitted as a separable autoregressive field indexed by that array, so each combination of the two factors has to identify exactly one unit -- the same requirement ASReml states for `residual = ~ ar1:ar1`, and the same reason it refuses a trial with plots deleted. Keep the unobserved plots as design cells with na_action = "augment" (the default), which is ASReml's na.method(y = "include"); supply the field-book rows for any plot absent from the data, with the design columns filled in and the response set to NA, or pad the array with fb_complete_grid(); or aggregate replicates to node means.
 ```
 
 The *spatio-temporal* vignette fits the same machinery on a field grid,
@@ -676,22 +722,29 @@ fit_het <- flexybayes(
   verbose = FALSE, mcmc_verbose = FALSE
 )
 fit_het
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : yield ~ env 
-#>   Random : ~geno 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 2 chain(s) x 1000 samples (warmup = 2000 ) -- 16.4 sec (Stan via brms)
-#>   Params : 22 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.007  [OK] 
-#>   Min ESS: 412 
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~geno 
+#>   Residual : ~at(env):units 
+#>   Model    : G: geno iid; R: units sectioned by env 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
+#>   Runtime  : 17.1 sec
+#>   Params   : 22 monitored; 4 fixed, 1 random terms
+#>   Max Rhat: 1.008  [OK] 
+#>   Min ESS: 387 
 #> 
 #> -- Residual by level of `env` (posterior median, 95% interval) --------
 #>  level variance  lower  upper     SD SD.lower SD.upper
-#>     E1   4.9233 2.7753 9.0735 2.2188   1.6659   3.0122
-#>     E2   4.8689 2.7480 9.2380 2.2066   1.6577   3.0394
-#>     E3   1.4132 0.7177 2.9037 1.1888   0.8471   1.7040
-#>     E4   2.5929 1.2491 5.0992 1.6102   1.1176   2.2581
+#>     E1   4.9104 2.6303 9.3632 2.2159   1.6218   3.0599
+#>     E2   4.9632 2.8393 9.7505 2.2278   1.6850   3.1226
+#>     E3   1.4262 0.7016 2.8613 1.1943   0.8376   1.6915
+#>     E4   2.5643 1.3178 4.9398 1.6014   1.1479   2.2226
 #>   Summarised from the draws of exp(2 * b_sigma_<level>); the fitted
 #>   coefficients are on log sigma, so neither they nor their posterior
 #>   means are variances. There is no scalar residual variance in this
@@ -724,45 +777,59 @@ variance components:
 
 ``` r
 summary(fit_het)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : yield ~ env 
-#>   Random : ~geno 
-#>   Family : gaussian / identity 
-#>   N = 120 , chains = 2 , samples = 1000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~geno 
+#>   Residual : ~at(env):units 
+#>   Model    : G: geno iid; R: units sectioned by env 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
+#>   Runtime  : 17.1 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD    2.5%   97.5%
-#> (Intercept)  47.9501  0.7108 46.5490 49.3386
-#> envE2         2.1083  0.5969  0.9467  3.2820
-#> envE3         3.4397  0.4876  2.5141  4.4339
-#> envE4         6.0114  0.5259  5.0077  7.0730
-#> sigma_envE1   0.8033  0.1544  0.5104  1.1027
-#> sigma_envE2   0.7971  0.1552  0.5054  1.1117
-#> sigma_envE3   0.1733  0.1811 -0.1659  0.5330
-#> sigma_envE4   0.4732  0.1788  0.1112  0.8145
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)  47.9084    0.6963  46.5475   49.2597
+#>        envE2   2.1122    0.5594   1.0764    3.2389
+#>        envE3   3.4380    0.4437   2.5559    4.2586
+#>        envE4   5.9982    0.4829   5.0329    6.8940
 #> 
-#> -- Variance components  -------------------------------------- 
-#>   Component Estimate     SD   2.5%  97.5%
-#> 1   sd_geno   1.7911 0.5938 0.9887 3.2146
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>  component estimate std.error conf.low conf.high                         prior
+#>    sd_geno   1.7804    0.5581   1.0153    3.2476 uniform(lower=0, upper=15.98)
+#>   sigma_E1   2.2159    0.3590   1.6218    3.0599              normal(1.162, 1)
+#>   sigma_E2   2.2278    0.3648   1.6850    3.1226              normal(1.162, 1)
+#>   sigma_E3   1.1943    0.2205   0.8376    1.6915              normal(1.162, 1)
+#>   sigma_E4   1.6014    0.2719   1.1479    2.2226              normal(1.162, 1)
+#>  note
+#>      
+#>      
+#>      
+#>      
+#>      
 #> 
 #> -- Residual by level of `env` (posterior median, 95% interval) --------
 #>  level variance  lower  upper     SD SD.lower SD.upper
-#>     E1   4.9233 2.7753 9.0735 2.2188   1.6659   3.0122
-#>     E2   4.8689 2.7480 9.2380 2.2066   1.6577   3.0394
-#>     E3   1.4132 0.7177 2.9037 1.1888   0.8471   1.7040
-#>     E4   2.5929 1.2491 5.0992 1.6102   1.1176   2.2581
+#>     E1   4.9104 2.6303 9.3632 2.2159   1.6218   3.0599
+#>     E2   4.9632 2.8393 9.7505 2.2278   1.6850   3.1226
+#>     E3   1.4262 0.7016 2.8613 1.1943   0.8376   1.6915
+#>     E4   2.5643 1.3178 4.9398 1.6014   1.1479   2.2226
 #>   Summarised from the draws of exp(2 * b_sigma_<level>); the fitted
 #>   coefficients are on log sigma, so neither they nor their posterior
 #>   means are variances. There is no scalar residual variance in this
 #>   model -- the sectioning replaces it.
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 0.999 - 1.007 
-#>   ESS  range: 412 - 1534 
-#>   Run time  : 16.4 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.008
+#>   Min ESS (bulk): 387
+#>   Min ESS (tail): 591
+#>   Divergent transitions: 0
 ```
 
 In field-trial data, ignoring residual heterogeneity biases the
@@ -874,7 +941,7 @@ coefficient on log sigma. Squaring it, or comparing it with an ASReml
 **Boundary on a heterogeneous-residual fit.** When one environment is
 much less variable than the others, the corresponding residual posterior
 can pile up near zero. The default uniform-on-SD prior does not push it
-away; a long-tailed prior (lognormal) on the residual would, and the
+away. A long-tailed prior (lognormal) on the residual would, and the
 posterior would then say more about the prior than about the data.
 
 **Convergence on small datasets with rich covariances.** A design with
@@ -910,7 +977,7 @@ than trusting an unidentified posterior.
 Every model above is specified in the asreml grammar
 (`fixed` / `random`). The same models can equally be written in the
 lme4 / brms idiom, with the random structure carried in `(1 | g)`
-blocks; the universal entry accepts either grammar and auto-detects
+blocks. The universal entry accepts either grammar and auto-detects
 which one you used:
 
 
@@ -934,11 +1001,11 @@ fit_b
 #>   fixed:      2 
 #>   random:     1 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.99 sec
+#>   runtime:    2.36 sec
 #>   Representation: aggregated_exact (compression 3:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 40 cells (ratio 3:1)
-#>   priors:     custom (explicit prior supplied; see prior_summary()) 
+#>   priors:     package default (bounded uniform on SD; see prior_summary()) 
 #> ------------------------------------------------------------ 
 #>   $glm      -- per-row reconstructed fitted values + coef shim
 #>   $inla     -- raw aggregated INLA fit (use INLA's summary etc.)
@@ -964,18 +1031,18 @@ multivariate or hurdle / mixture families, and LHS addition forms
 (`y | trials(n) ~ ...`) -- raise a structured refusal at ingest that
 names both the offending construct and the closest supported
 alternative. An *uncorrelated* random slope, `(x || g)`, is inside the
-corpus and is the spelling to reach for; the correlated `(x | g)` refuses
+corpus and is the spelling to reach for. The correlated `(x | g)` refuses
 and says so. Do not translate a slope into the asreml crossing
 `random = ~ g + g:x` with numeric `x`: that is one independent deviation
 per cell rather than a per-group slope, and flexyBayes refuses the
-spelling rather than choosing between the two readings. The *dispatch and
-refusals* and *cross-engine triangulation* vignettes catalogue the
+spelling rather than choosing between the two readings. The *understanding
+dispatch and refusals* and *cross-engine triangulation* vignettes catalogue the
 principled boundaries.
 
 Backend choice is orthogonal to grammar. The universal entries
 `flexybayes()` / `fb()` take a `backend = c("auto", "inla", "brms")`
-argument (see the *hierarchical models* vignette for the dispatch flow);
-the engine pins `fb_inla()` and `fb_brms()` fix the backend instead.
+argument (see the *hierarchical models* vignette for the dispatch flow).
+The engine pins `fb_inla()` and `fb_brms()` fix the backend instead.
 `backend = "greta"` is still accepted as a value and raises a
 `backend_quarantined` refusal: greta is retained as a re-entry candidate,
 not an active engine. Either grammar reaches the same cross-engine

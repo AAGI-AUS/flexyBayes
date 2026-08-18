@@ -1,6 +1,6 @@
 ---
 title: "Tutorial 08: Downstream analysis: emmeans, marginaleffects, bayesplot, loo"
-date: "2026-08-16"
+date: "2026-08-17"
 output:
   rmarkdown::html_vignette:
     includes:
@@ -50,12 +50,18 @@ fit <- flexybayes(
   mcmc_verbose = FALSE
 )
 fit
-#> Bayesian mixed model  [flexyBayes / brms passthrough]
-#> ------------------------------------------------------- 
-#>   Fixed  : Reaction ~ Days + (1 | Subject) 
-#>   Family : gaussian ( identity link )
-#>   MCMC   : 4 chain(s) x 2000 samples (warmup = 5000 ) -- 17.2 sec (Stan via brms)
-#>   Params : 25 monitored; 2 fixed, 1 random terms
+#> Bayesian mixed model  [flexyBayes / brms]
+#> -------------------------------------------------------------- 
+#>   Fixed    : Reaction ~ Days + (1 | Subject) 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 5000)
+#>   Runtime  : 18.1 sec
+#>   Params   : 25 monitored; 2 fixed, 1 random terms
 #>   Max Rhat: 1.003  [OK] 
 #>   Min ESS: 1099 
 #> ------------------------------------------------------- 
@@ -70,14 +76,14 @@ fit
 > be numerically unstable. brms does not share that failure mode.
 
 `fit` is of class `flexybayes`. Its `summary()` method gives the
-posterior digest; its `coef()` method returns the posterior means of
-the fixed effects; its `predict()` method computes posterior
+posterior digest, its `coef()` method returns the posterior means of
+the fixed effects, and its `predict()` method computes posterior
 predictions on a `newdata` of your choice.
 
 > **A note on the diagnostics.** This is a production-budget fit
 > (warmup 5000, four chains). The fixed effects -- which the
-> `emmeans` and `marginaleffects` analyses below rely on -- mix well;
-> the Subject variance component mixes more slowly, so its worst
+> `emmeans` and `marginaleffects` analyses below rely on -- mix well.
+> The Subject variance component mixes more slowly, so its worst
 > $\widehat{R}$ can sit a little above the strict 1.01 target. The
 > downstream summaries below are functions of the fixed-effect
 > posterior and are unaffected.
@@ -85,28 +91,38 @@ predictions on a `newdata` of your choice.
 
 ``` r
 summary(fit)
-#> Bayesian mixed model summary  [flexyBayes]
-#> ============================================================ 
-#>   Fixed  : Reaction ~ Days + (1 | Subject) 
-#>   Family : gaussian / identity 
-#>   N = 180 , chains = 4 , samples = 2000 
-#>   Representation: exact
+#> Bayesian mixed model summary  [flexyBayes / brms]
+#> ============================================================== 
+#>   Fixed    : Reaction ~ Days + (1 | Subject) 
+#>   Model    : G: Subject iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
 #>   Engine:         brms / Stan HMC
+#>   N        : 180 design rows, 180 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Sampler  : 4 chain(s) x 2000 samples (warmup 5000)
+#>   Runtime  : 18.1 sec
 #> 
-#> -- Fixed effects (posterior)  --------------------------------- 
-#>             Estimate Post.SD     2.5%    97.5%
-#> (Intercept) 250.8424 10.3591 230.3852 270.7878
-#> Days         10.4691  0.8070   8.8579  12.0614
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept) 250.8424   10.3591 230.3852  270.7878
+#>         Days  10.4691    0.8070   8.8579   12.0614
 #> 
-#> -- Variance components  -------------------------------------- 
-#>    Component Estimate     SD    2.5%   97.5%
-#> 1 sd_Subject  39.8594 7.8662 27.3364 58.2728
-#> 2      sigma  31.2342 1.7391 28.0638 34.9047
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                         prior
+#>  sd_Subject  39.8594    7.8662  27.3364   58.2728 uniform(lower=0, upper=281.6)
+#>       sigma  31.2342    1.7391  28.0638   34.9047 uniform(lower=0, upper=281.6)
+#>  note
+#>      
+#>      
 #> 
-#> -- Convergence  --------------------------------------------- 
-#>   Rhat range: 1 - 1.003 
-#>   ESS  range: 1099 - 9124 
-#>   Run time  : 17.2 sec
+#> -- Convergence -----------------------------------------------
+#>   Engine    : Stan HMC via brms
+#>   Max R-hat : 1.003
+#>   Min ESS (bulk): 1099
+#>   Min ESS (tail): 2248
+#>   Divergent transitions: 0
 coef(fit)
 #> (Intercept)        Days 
 #>    250.8424     10.4691
@@ -126,7 +142,7 @@ The resulting credible interval on each marginal mean is therefore a
 **Gaussian approximation** to the true posterior of the linear
 combination. For well-behaved fits the approximation is excellent
 (linear combinations of approximately-jointly-Gaussian posteriors are
-themselves approximately Gaussian); for skewed posteriors -- small
+themselves approximately Gaussian). For skewed posteriors -- small
 group counts, boundary problems -- it can understate the tail.
 
 A typical first call estimates the predicted reaction time at three
@@ -182,9 +198,9 @@ sapply(c(0, 5, 9), function(d) {
 `marginaleffects` (Arel-Bundock, 2024) provides three closely-related
 summaries.
 
-- `predictions()` evaluates the *response* on a grid of predictors;
+- `predictions()` evaluates the *response* on a grid of predictors.
 - `comparisons()` evaluates *differences in predictions* across
-  user-specified contrasts;
+  user-specified contrasts.
 - `slopes()` evaluates *partial derivatives* of predictions with
   respect to a continuous predictor.
 
@@ -232,7 +248,7 @@ For full posterior propagation through complex counterfactuals -- where
 the entire posterior -- the manual draws-based route stays useful.
 
 `marginaleffects` and `emmeans` overlap in scope. The rule of thumb:
-`emmeans` for grouped means and pairwise contrasts on factors;
+`emmeans` for grouped means and pairwise contrasts on factors, and
 `marginaleffects` for derivative-based summaries and complex
 counterfactuals.
 
@@ -273,7 +289,7 @@ for what to do.
 
 # 6. `loo` -- predictive performance and model comparison
 
-`loo::loo()` (Vehtari, Gelman, & Gabry, 2017; Vehtari, Simpson,
+`loo::loo()` (Vehtari, Gelman, & Gabry, 2017, and Vehtari, Simpson,
 Gelman, Yao, & Gabry, 2024) computes *Pareto-smoothed importance-
 sampling leave-one-out cross-validation* (PSIS-LOO), an estimator of
 out-of-sample predictive log-density. Each observation receives a
@@ -282,7 +298,7 @@ overly-influential observation that the importance-sampling
 approximation cannot trust.
 
 A canonical `loo` integration requires a `log_lik` method that
-returns the pointwise log-likelihood draws array (S × N for S
+returns the pointwise log-likelihood draws array ($S \times N$ for $S$
 posterior draws and N observations). `flexyBayes` ships
 `logLik.flexybayes()` (a single-scalar plug-in method) and does not
 ship `log_lik.flexybayes()` (the pointwise draws-array method that
@@ -428,7 +444,7 @@ work. Removing it would visibly change the posterior.
 
 In practice:
 
-- Plot $\hat{k}$ values; expect the right tail to thin quickly.
+- Plot the $\hat{k}$ values and expect the right tail to thin quickly.
 - For each $\hat{k} > 0.7$ observation, ask: is this observation a
   leverage point we should investigate, an outlier we should refit
   with a robust likelihood, or a routine high-information
@@ -510,46 +526,47 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] bayesplot_1.15.0 emmeans_2.0.2    flexyBayes_0.9.0
+#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.0
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
-#>   [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
-#>   [7] TH.data_1.1-5          tensorA_0.36.2.1       bayestestR_0.17.0     
-#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
-#>  [13] sf_1.1-0               StanHeaders_2.32.10    processx_3.9.0        
-#>  [16] survival_3.8-3         magrittr_2.0.5         posterior_1.7.0       
-#>  [19] compiler_4.5.2         rlang_1.2.0            tools_4.5.2           
-#>  [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
-#>  [25] labeling_0.4.3         bridgesampling_1.2-1   mnormt_2.1.2          
-#>  [28] curl_7.0.0             pkgbuild_1.4.8         classInt_0.4-11       
-#>  [31] plyr_1.8.9             RColorBrewer_1.1-3     multcomp_1.4-29       
-#>  [34] abind_1.4-8            KernSmooth_2.23-26     numDeriv_2016.8-1.1   
-#>  [37] withr_3.0.2            datawizard_1.3.0       grid_4.5.2            
-#>  [40] stats4_4.5.2           colorspace_2.1-2       inline_0.3.21         
-#>  [43] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
-#>  [46] ggplot2_4.0.3          ggridges_0.5.7         globals_0.19.1        
-#>  [49] scales_1.4.0           MASS_7.3-65            insight_1.4.6         
-#>  [52] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
-#>  [55] reformulas_0.4.4       generics_0.1.4         otel_0.2.0            
-#>  [58] RcppParallel_5.1.11-2  reshape2_1.4.5         parameters_0.28.3     
-#>  [61] minqa_1.2.8            DBI_1.3.0              proxy_0.4-29          
-#>  [64] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
-#>  [67] parallel_4.5.2         effectsize_1.0.2       matrixStats_1.5.0     
-#>  [70] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
-#>  [73] V8_8.0.1               boot_1.3-32            Matrix_1.7-4          
-#>  [76] sandwich_3.1-1         jsonlite_2.0.0         callr_3.7.6           
-#>  [79] listenv_0.10.1         units_1.0-1            glue_1.8.1            
-#>  [82] parallelly_1.47.0      nloptr_2.2.1           codetools_0.2-20      
-#>  [85] distributional_0.7.0   stringi_1.8.7          gtable_0.3.6          
-#>  [88] QuickJSR_1.9.0         lme4_2.0-1             tibble_3.3.1          
-#>  [91] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
-#>  [94] fmesher_0.7.0          Rdpack_2.6.6           evaluate_1.0.5        
-#>  [97] lattice_0.22-7         rbibutils_2.4.1        backports_1.5.1       
-#> [100] MatrixModels_0.5-4     rstantools_2.6.0       class_7.3-23          
-#> [103] Rcpp_1.1.1-1.1         gridExtra_2.3          coda_0.19-4.1         
-#> [106] nlme_3.1-168           checkmate_2.3.4        xfun_0.57             
-#> [109] zoo_1.8-15             pkgconfig_2.0.3
+#>   [1] Rdpack_2.6.6           DBI_1.3.0              mnormt_2.1.2          
+#>   [4] gridExtra_2.3          inline_0.3.21          sandwich_3.1-1        
+#>   [7] rlang_1.2.0            magrittr_2.0.5         multcomp_1.4-29       
+#>  [10] otel_0.2.0             ggridges_0.5.7         matrixStats_1.5.0     
+#>  [13] e1071_1.7-17           compiler_4.5.2         mgcv_1.9-3            
+#>  [16] loo_2.9.0              callr_3.7.6            vctrs_0.7.3           
+#>  [19] reshape2_1.4.5         stringr_1.6.0          pkgconfig_2.0.3       
+#>  [22] backports_1.5.1        labeling_0.4.3         effectsize_1.0.2      
+#>  [25] nloptr_2.2.1           MatrixModels_0.5-4     INLA_25.10.19         
+#>  [28] xfun_0.57              jsonlite_2.0.0         parallel_4.5.2        
+#>  [31] R6_2.6.1               stringi_1.8.7          RColorBrewer_1.1-3    
+#>  [34] StanHeaders_2.32.10    parallelly_1.47.0      boot_1.3-32           
+#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.1-1.1        
+#>  [40] rstan_2.32.7           knitr_1.51             zoo_1.8-15            
+#>  [43] parameters_0.28.3      Matrix_1.7-4           splines_4.5.2         
+#>  [46] tidyselect_1.2.1       dichromat_2.0-0.1      abind_1.4-8           
+#>  [49] agridat_1.26           codetools_0.2-20       curl_7.0.0            
+#>  [52] processx_3.9.0         listenv_0.10.1         pkgbuild_1.4.8        
+#>  [55] lattice_0.22-7         tibble_3.3.1           plyr_1.8.9            
+#>  [58] withr_3.0.2            bridgesampling_1.2-1   bayestestR_0.17.0     
+#>  [61] S7_0.2.2               posterior_1.7.0        coda_0.19-4.1         
+#>  [64] evaluate_1.0.5         marginaleffects_0.32.0 future_1.70.0         
+#>  [67] survival_3.8-3         sf_1.1-0               units_1.0-1           
+#>  [70] proxy_0.4-29           RcppParallel_5.1.11-2  pillar_1.11.1         
+#>  [73] tensorA_0.36.2.1       KernSmooth_2.23-26     checkmate_2.3.4       
+#>  [76] stats4_4.5.2           reformulas_0.4.4       insight_1.4.6         
+#>  [79] sn_2.1.3               distributional_0.7.0   generics_0.1.4        
+#>  [82] rstantools_2.6.0       scales_1.4.0           minqa_1.2.8           
+#>  [85] globals_0.19.1         xtable_1.8-8           class_7.3-23          
+#>  [88] glue_1.8.1             tools_4.5.2            data.table_1.18.2.1   
+#>  [91] lme4_2.0-1             mvtnorm_1.3-6          grid_4.5.2            
+#>  [94] rbibutils_2.4.1        QuickJSR_1.9.0         datawizard_1.3.0      
+#>  [97] colorspace_2.1-2       nlme_3.1-168           cli_3.6.6             
+#> [100] viridisLite_0.4.3      fmesher_0.7.0          Brobdingnag_1.2-9     
+#> [103] dplyr_1.2.1            V8_8.0.1               gtable_0.3.6          
+#> [106] digest_0.6.39          classInt_0.4-11        TH.data_1.1-5         
+#> [109] brms_2.23.0            farver_2.1.2           lifecycle_1.0.5       
+#> [112] MASS_7.3-65
 ```
 
 # References

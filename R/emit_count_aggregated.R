@@ -43,7 +43,14 @@ emit_count_aggregated <- function(
   residual = NULL,
   family = NULL,
   link = NULL,
-  data_name = NA_character_
+  data_name = NA_character_,
+  known_matrices = NULL,
+  weights = NULL,
+  seed = NULL,
+  control = NULL,
+  na_action = NULL,
+  requested_backend = NULL,
+  requested_aggregate = NULL
 ) {
   backend <- match.arg(backend)
   fam <- fb$family
@@ -116,7 +123,15 @@ emit_count_aggregated <- function(
     warmup = warmup,
     chains = chains,
     prior_fixed_sd = prior_fixed_sd,
-    prior_vc_sd = prior_vc_sd
+    prior_vc_sd = prior_vc_sd,
+    known_matrices = known_matrices,
+    weights = weights,
+    seed = seed,
+    control = control,
+    na_action = na_action,
+    verbose = verbose,
+    requested_backend = requested_backend,
+    requested_aggregate = requested_aggregate
   )
 }
 
@@ -459,7 +474,15 @@ emit_count_aggregated <- function(
   warmup,
   chains,
   prior_fixed_sd,
-  prior_vc_sd
+  prior_vc_sd,
+  known_matrices = NULL,
+  weights = NULL,
+  seed = NULL,
+  control = NULL,
+  na_action = NULL,
+  verbose = TRUE,
+  requested_backend = NULL,
+  requested_aggregate = NULL
 ) {
   posterior_summary <- if (identical(backend, "inla")) {
     .agg_count_inla_summarise(engine_out, fb_aggregated, ri_plan)
@@ -522,6 +545,13 @@ emit_count_aggregated <- function(
         ),
         smooths = list()
       ),
+      # The same nineteen fields, under the same names and in the same
+      # order, as the per-row emits and the aggregated Gaussian emit
+      # record. update() re-issues every recorded field to flexybayes(),
+      # so a field this route left out was a default silently substituted
+      # for what the user asked for -- which is why an aggregated count
+      # fit refused update() outright rather than re-fitting a different
+      # model under the same name.
       call_info = list(
         fixed = fixed,
         random = random,
@@ -529,11 +559,22 @@ emit_count_aggregated <- function(
         data_name = data_name,
         family = family,
         link = link,
+        known_matrices = known_matrices,
+        weights = weights,
         n_samples = n_samples,
         warmup = warmup,
         chains = chains,
+        seed = seed,
+        control = control,
         prior_fixed_sd = prior_fixed_sd,
-        prior_vc_sd = prior_vc_sd
+        prior_vc_sd = prior_vc_sd,
+        na_action = na_action,
+        # The engine and the representation the call ASKED for, and the
+        # reporting it ran under. See the aggregated Gaussian emit for
+        # why the request rather than the resolved engine is recorded.
+        backend = requested_backend,
+        aggregate = requested_aggregate,
+        verbose = verbose
       ),
       model_info = list(
         n_obs = fb_aggregated$N,
@@ -548,11 +589,10 @@ emit_count_aggregated <- function(
         K = fb_aggregated$K,
         compression = fb_aggregated$compression,
         residual = "none",
-        prior_parametrization = if (inherits(fb$priors, "fb_prior")) {
-          "custom"
-        } else {
-          "per_row_equivalent"
-        },
+        # Three cases, not two -- see .agg_prior_parametrization(). The
+        # auto-default is an fb_prior object, so a class test alone
+        # labelled an ordinary call "custom (explicit prior supplied)".
+        prior_parametrization = .agg_prior_parametrization(fb$priors),
         streamed = isTRUE(fb_aggregated$streamed)
       ),
       the_call = the_call,

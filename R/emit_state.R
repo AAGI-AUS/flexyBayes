@@ -27,6 +27,9 @@
   # third of the fitted rows as unobserved responses; the estimand, not
   # the device, is what degrades there.
   .flexybayes_emit_state$high_missingness_warning <- FALSE
+  # One-time warning when the unobserved-cell table is withheld because
+  # the engine computed those rows on the linear-predictor scale.
+  .flexybayes_emit_state$missing_link_scale_warning <- FALSE
   invisible(NULL)
 }
 

@@ -13,15 +13,23 @@ returns.}
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-Invisibly, the summary list, carrying a \code{spatial_field} data
-frame when the model holds an AR1 field.
+Invisibly, an object of class
+\code{c("summary.flexybayes", "list")}. See \code{\link[=summary.flexybayes]{summary.flexybayes()}} for
+the slots.
 }
 \description{
-Returns the fixed / random / hyperpar posterior summary tables
-produced by INLA. A fit carrying an autoregressive latent field also
-gets a \code{spatial_field} element: the field's own parameters on the
-correlation and standard-deviation scales, which is the form a reader
-needs and INLA's precision-scale hyperparameter table is not.
-Internal S3 method.
+Internal S3 method. Builds and prints the same \code{summary.flexybayes}
+object every active engine returns, so \code{summary(fit)$varcomp} answers
+on an INLA fit as it does on a brms one. Before 0.9.1 this method had
+its own dialect -- a bare four-slot list of INLA's own tables, not
+comparable with what the other engine returned and carrying no
+variance-component table at all.
+}
+\details{
+The variance components reach the standard-deviation scale through
+INLA's precision marginals rather than by transforming a tabulated
+point estimate; see \code{.inla_variance_comps()}. INLA's own
+precision-scale hyperparameter table still prints, unmodified,
+beneath them.
 }
 \keyword{internal}

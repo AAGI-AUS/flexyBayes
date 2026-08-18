@@ -102,18 +102,23 @@ offset column.
 }
 \examples{
 \dontshow{if (interactive() && requireNamespace("fst", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-set.seed(1L)
-n <- 1e6
-df <- data.frame(
-  env = factor(sample(letters[1:6], n, replace = TRUE)),
-  geno = factor(sample(1:50, n, replace = TRUE)),
-  y = rnorm(n)
-)
-path <- tempfile(fileext = ".fst")
-fst::write_fst(df, path)
-fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
-                         backend = "inla")
-summary(fit)
+# The fit runs on INLA, which is distributed from its own repository
+# rather than from CRAN, so the guard keeps the example readable on a
+# machine that does not carry it.
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1L)
+  n <- 1e6
+  df <- data.frame(
+    env = factor(sample(letters[1:6], n, replace = TRUE)),
+    geno = factor(sample(1:50, n, replace = TRUE)),
+    y = rnorm(n)
+  )
+  path <- tempfile(fileext = ".fst")
+  fst::write_fst(df, path)
+  fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
+                           backend = "inla")
+  summary(fit)
+}
 \dontshow{\}) # examplesIf}
 }
 \seealso{

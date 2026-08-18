@@ -90,20 +90,38 @@
 }
 
 
-#' Fixed-effect coefficients of a per-row INLA fit
+#' Coefficients of a per-row INLA fit
 #'
 #' Posterior means of the fixed effects, read from the INLA fit's
 #' `summary.fixed` slot (treatment-contrast basis). These are the
 #' coefficients consumed by [emmeans::emmeans()] and
 #' [marginaleffects::predictions()] via the flexyBayes support methods.
 #'
+#' An INLA fit carries no `$glm` slot, so the fixed vector is read here
+#' rather than inherited; every other value of `what` is resolved by the
+#' shared body [coef.flexybayes()] uses, so the two engines answer the
+#' same question the same way.
+#'
 #' @param object A `flexybayes_inla` fit.
+#' @param what Which part of the fit to return: `"fixed"` (the default),
+#'   `"random"`, `"missing"` or `"all"`. See [coef.flexybayes()] for the
+#'   shape of each.
 #' @param ... Ignored. Present for compatibility with the generic.
-#' @return Named numeric vector of fixed-effect posterior means.
+#' @return For the default `what = "fixed"`, a named numeric vector of
+#'   fixed-effect posterior means; otherwise as documented for
+#'   [coef.flexybayes()].
 #' @export
-coef.flexybayes_inla <- function(object, ...) {
+coef.flexybayes_inla <- function(
+  object,
+  what = c("fixed", "random", "missing", "all"),
+  ...
+) {
   sf <- object$inla$summary.fixed
-  stats::setNames(sf$mean, rownames(sf))
+  .fb_coef_what(
+    object,
+    match.arg(what),
+    stats::setNames(sf$mean, rownames(sf))
+  )
 }
 
 #' Posterior covariance of a per-row INLA fit's fixed effects
@@ -330,23 +348,43 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' coincide. This is the prediction surface \pkg{marginaleffects} uses
 #' for average predictions and slopes.
 #'
+#' The `classify` path is the same one [predict.flexybayes()] takes: a
+#' marginal-means table built through the emmeans seam, whose interval on
+#' this engine comes from the Gaussian approximation of the joint
+#' fixed-effect posterior rather than from INLA's own marginals. The
+#' printed table names that.
+#'
 #' @param object A `flexybayes_inla` fit.
-#' @param newdata Optional data frame; defaults to the fit data.
+#' @param newdata Optional data frame; defaults to the fit data. Ignored,
+#'   with a warning, when `classify` is supplied.
 #' @param type `"response"` or `"link"`.
 #' @param se.fit Logical: also return delta-method standard errors from
 #'   the fixed-effect covariance.
+#' @param classify The factors to break a marginal-means table down by:
+#'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
+#'   formula (`~ Variety`). `NULL` (the default) is the historical
+#'   behaviour.
+#' @param level Credible level for the classify table's interval, as a
+#'   proportion. Default `0.95`.
 #' @param ... Ignored. Present for compatibility with the generic.
-#' @return A numeric vector of predictions, or a list `fit` / `se.fit`
-#'   when `se.fit = TRUE`.
+#' @return With `classify`, a data frame of class `fb_predict_classify`.
+#'   Otherwise a numeric vector of predictions, or a list `fit` /
+#'   `se.fit` when `se.fit = TRUE`.
 #' @export
 predict.flexybayes_inla <- function(
   object,
   newdata = NULL,
   type = c("response", "link"),
   se.fit = FALSE,
+  classify = NULL,
+  level = 0.95,
   ...
 ) {
   type <- match.arg(type)
+  if (!is.null(classify)) {
+    .fb_classify_newdata_note(newdata)
+    return(.fb_predict_classify(object, classify, level))
+  }
   fam <- family(object)
   if (!identical(fam$link, "identity")) {
     stop(

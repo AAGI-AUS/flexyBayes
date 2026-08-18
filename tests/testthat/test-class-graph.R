@@ -107,9 +107,30 @@ test_that("confint() gives INLA marginal quantiles, not a default failure", {
   expect_identical(nrow(one), 1L)
 })
 
-test_that("update() refuses by name on a fit with an incomplete call record", {
+test_that("update() re-fits an INLA model now that the record is complete", {
+  # Until 0.9.1 this block recorded the opposite: an INLA fit refused
+  # `update_call_not_reconstructable`, naming `known_matrices` among the
+  # arguments its record was missing. That refusal was correct about the
+  # record and misleading about the cause -- the INLA emit wrote six of
+  # the arguments a re-fit needs against brms's fifteen, and nothing
+  # about the engine made a re-fit unsafe. The record is now complete on
+  # both engines, so the refusal no longer fires here.
   skip_if_no_inla()
   fit <- fit_class_graph_inla()
+
+  refit <- suppressMessages(stats::update(fit, random = ~g))
+  expect_s3_class(refit, "flexybayes_inla")
+  expect_identical(class(refit), class(fit))
+})
+
+test_that("update() still refuses by name on a genuinely short record", {
+  # The refusal itself has to stay reachable: a fit read back from an
+  # older object, or assembled by hand, must not be re-fitted with
+  # defaults silently substituted for what it never recorded.
+  skip_if_no_inla()
+  fit <- fit_class_graph_inla()
+  fit$extras$call_info$known_matrices <- NULL
+  fit$extras$call_info$weights <- NULL
 
   err <- tryCatch(
     stats::update(fit, n_samples = 100L),
@@ -184,15 +205,22 @@ test_that("logLik.flexybayes refuses instead of returning a silent NA", {
 })
 
 test_that("update.flexybayes accepts a complete argument record", {
-  # The positive control for the refusal above: with all thirteen
-  # arguments recorded, the guard passes and the method proceeds to
+  # The positive control for the refusal above: with every required
+  # argument recorded, the guard passes and the method proceeds to
   # rebuild the call. The rebuild is intercepted here rather than run, so
-  # the test asserts the gate and not a second fit.
+  # the test asserts the gate and not a second fit. `na_action` joined
+  # the required set at 0.9.1, once both emits recorded it -- an `omit`
+  # fit that re-fitted as the default would be computed on a different
+  # set of rows from the one it was named after. `backend` and
+  # `aggregate` joined on the same reasoning: a re-fit that took the
+  # formal defaults for those came back on another engine, in another
+  # representation.
   cl <- list(
     fixed = y ~ x, random = ~g, residual = NULL, data_name = "d",
     family = "gaussian", link = "identity", known_matrices = NULL,
     weights = NULL, n_samples = 100L, warmup = 100L, chains = 1L,
-    prior_fixed_sd = NULL, prior_vc_sd = NULL
+    prior_fixed_sd = NULL, prior_vc_sd = NULL, na_action = "augment",
+    backend = "auto", aggregate = "auto", verbose = FALSE
   )
   shell <- structure(
     list(

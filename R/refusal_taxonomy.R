@@ -1113,18 +1113,43 @@
   .register_refusal(
     reason_code = "missing_covariate_not_supported",
     description = paste0(
-      "A predictor has missing values. The missing-response device does ",
-      "not extend to covariates."
+      "A predictor has missing values under the covariate policy `fail`, ",
+      "which is both this package's default and ASReml's."
     ),
     message_template = paste0(
-      "A covariate has missing values. The missing-response device does ",
-      "not extend to predictors: a filled-in covariate is a fabricated ",
-      "observation, not a marginalised latent quantity. Supply the ",
-      "values, or drop the affected rows deliberately before fitting."
+      "A predictor has missing values and the covariate policy is `fail` ",
+      "-- ASReml's default too. A missing predictor is not a missing ",
+      "observation: there is no latent quantity for a value nobody ",
+      "recorded. Supply the values, drop the affected rows yourself, or ",
+      "pass na_action = list(y = \"include\", x = \"omit\") to drop them ",
+      "with a reported count."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
     since_version = "0.9.0"
+  )
+
+  # The one ASReml covariate behaviour this package will not reproduce.
+  # Sibling of missing_covariate_not_supported: same input, different
+  # requested policy, and the two messages point at each other's remedy.
+  .register_refusal(
+    reason_code = "covariate_zero_fill_not_supported",
+    description = paste0(
+      "A predictor has missing values under the covariate policy ",
+      "`include`, which in ASReml means treating the missing covariate ",
+      "as zero (Reference Manual 4.2, section 3.11)."
+    ),
+    message_template = paste0(
+      "A predictor has missing values and the covariate policy is ",
+      "`include`. ASReml treats a missing covariate as zero under that ",
+      "setting (ASReml-R Reference Manual 4.2, section 3.11), which puts ",
+      "a value in the model that the plot did not have. Supply the ",
+      "values, or pass na_action = list(y = \"include\", x = \"omit\") to ",
+      "drop the affected rows and see the count."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.1"
   )
 
   .register_refusal(
@@ -1134,15 +1159,62 @@
       "variable whose value at that cell was never recorded."
     ),
     message_template = paste0(
-      "na_action = \"augment\" cannot complete the design grid: a cell ",
-      "is absent from the data and the model depends on a variable whose ",
-      "value there is not recorded anywhere. Supply the absent cells as ",
-      "rows with the design columns filled in and the response set to ",
-      "NA, or use na_action = \"omit\"."
+      "A cell of the design grid is absent from the data altogether, and ",
+      "a model variable is not constant across the trial, so completing ",
+      "the grid would mean inventing a level of it for a plot nobody ",
+      "recorded. ASReml's nin89 example codes such plots as LANCER; ",
+      "flexyBayes will not write a level you did not. Supply the ",
+      "field-book rows -- one row per sown plot, response set to NA -- ",
+      "pad the array with fb_complete_grid(..., unused_level = ) to name ",
+      "the level the empty cells carry, or use na_action = \"omit\"."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
     since_version = "0.9.0"
+  )
+
+  # A suggested-package guard that refuses by name rather than through a
+  # bare requireNamespace() error, so a caller can catch it by class and
+  # the message can name the alternative the fit already answers.
+  .register_refusal(
+    reason_code = "classify_requires_emmeans",
+    description = paste0(
+      "predict(classify = ) builds its marginal-means table through the ",
+      "emmeans estimation seam, and emmeans is a suggested package rather ",
+      "than a hard dependency."
+    ),
+    message_template = paste0(
+      "predict(classify = ) builds the marginal-means table through ",
+      "emmeans, which is not installed. Install it with ",
+      "install.packages(\"emmeans\"), or read the fixed effects from ",
+      "summary(fit)$fixed and the random-effect predictions from ",
+      "coef(fit, what = \"random\")."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
+  )
+
+  # A residual variogram measures separation along a design index. A
+  # model with no such array has no lag to plot against, which is a
+  # property of the model rather than a gap in the display.
+  .register_refusal(
+    reason_code = "variogram_requires_design_index",
+    description = paste0(
+      "plot(type = \"variogram\") needs the row / column array a ",
+      "structured covariance is indexed by, and the fit's terms name ",
+      "none."
+    ),
+    message_template = paste0(
+      "plot(type = \"variogram\") needs a design index to measure ",
+      "separation along, and this fit carries none. A residual variogram ",
+      "is a picture of how far apart two plots are. Fit a spatial term -- ",
+      "random = ~ ar1(row):ar1(col) -- or use plot(fit, type = ",
+      "\"residuals\") for the fitted-value diagnostics."
+    ),
+    registered_in_adr = "WP16 / v6 S9",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
   )
 
   # Raised when a model carrying observation weights reaches dispatch.
@@ -1439,7 +1511,7 @@
     ),
     registered_in_adr = "Reshape R1 / S4.1",
     plan_field = "rejected_routes",
-    since_version = "0.9.1"
+    since_version = "0.9.0"
   )
   .register_refusal(
     reason_code = "native_greta_fit_quarantined",
@@ -1455,7 +1527,7 @@
     ),
     registered_in_adr = "Reshape R1 / S4.1 / C1",
     plan_field = NA_character_,
-    since_version = "0.9.1"
+    since_version = "0.9.0"
   )
   .register_refusal(
     reason_code = "auto_no_active_route",
@@ -1472,7 +1544,7 @@
     ),
     registered_in_adr = "Reshape R1 / S4.1 / A3",
     plan_field = "rejected_routes",
-    since_version = "0.9.1"
+    since_version = "0.9.0"
   )
   # WP16 (2026-07-25): INLA separable-spatial latent field.
   .register_refusal(
@@ -1485,7 +1557,7 @@
     message_template = "%s",
     registered_in_adr = "WP16 / v6 S9",
     plan_field = NA_character_,
-    since_version = "0.9.1"
+    since_version = "0.9.0"
   )
   invisible(NULL)
 }
@@ -1695,12 +1767,125 @@
       "A method needing the posterior itself -- draws on a sampling ",
       "engine, marginal densities on INLA -- was called on a fit that ",
       "carries neither. The refusal replaces an empty result that would ",
-      "read as an answer."
+      "read as an answer. Its sibling is loo_requires_sampler_draws, ",
+      "raised when the fit does carry a posterior but not the pointwise ",
+      "log-likelihood draws that PSIS-LOO reads."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 5 S14",
     plan_field = NA_character_,
     since_version = "0.9.0"
+  )
+  # Sibling of fit_lacks_posterior_draws, and the two cross-reference each
+  # other so the taxonomy does not read as one reason registered twice.
+  # The distinction is what the fit is missing: that code is raised when
+  # there is no posterior to read at all, this one when the posterior is
+  # there but the quantity PSIS-LOO integrates -- the log-likelihood of
+  # each observation at each draw -- was never stored.
+  .register_refusal(
+    reason_code = "loo_requires_sampler_draws",
+    description = paste0(
+      "loo() was called on a fit whose engine does not store the ",
+      "pointwise log-likelihood draws PSIS-LOO reads. Sibling of ",
+      "fit_lacks_posterior_draws, which is raised when the fit carries no ",
+      "posterior at all."
+    ),
+    message_template = paste0(
+      "loo() estimates the expected log pointwise predictive density by ",
+      "importance-weighting the log-likelihood of each observation at ",
+      "each posterior draw, and this fit does not store that quantity: ",
+      "the engine returned an approximation to the posterior rather than ",
+      "draws of the likelihood, so there is nothing to leave one ",
+      "observation out of. An INLA fit does carry the information ",
+      "criteria it computed at fit time -- WAIC at fit$inla$waic$waic and ",
+      "DIC at fit$inla$dic$dic -- and a fit on the brms engine answers ",
+      "loo() directly."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
+  )
+  # A posterior predictive check overlays datasets DRAWN FROM the fitted
+  # model on the observed response. A fit whose engine returns no
+  # predictive draws has nothing to overlay, and an observed-versus-fitted
+  # panel shown under the same name would be a different display wearing
+  # the check's title.
+  .register_refusal(
+    reason_code = "pp_check_requires_predictive_draws",
+    description = paste0(
+      "pp_check() was called on a fit whose engine returns no posterior ",
+      "predictive draws, so there are no replicated datasets to overlay ",
+      "on the observed response."
+    ),
+    message_template = paste0(
+      "pp_check() draws replicated datasets from the posterior predictive ",
+      "distribution and overlays them on the observed response, and this ",
+      "fit carries no predictive draws to replicate from. The residual ",
+      "diagnostics it does answer are plot(fit, type = \"residuals\") and, ",
+      "on a fit carrying a design index, plot(fit, type = \"variogram\"). ",
+      "A fit on the brms engine answers pp_check() directly."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
+  )
+  # A factor written on the fixed side AND on the random side is aliased
+  # with itself: the fixed part already spends one parameter per level, so
+  # the random copy's deviations are identified only by their own prior.
+  # ASReml accepts the spelling, so a translated script reaches it, and
+  # nothing downstream says the two term sets are estimating the same
+  # thing. The failure it produces is not a clean one either -- the INLA
+  # marginal solve goes intermittently singular on it.
+  .register_refusal(
+    reason_code = "term_in_fixed_and_random",
+    description = paste0(
+      "The same factor appears as a fixed main effect and as a random ",
+      "main effect, which aliases the random deviations against the fixed ",
+      "level means: they are identified only by their own prior."
+    ),
+    message_template = paste0(
+      "The term `%1$s` is on both the fixed and the random side. The ",
+      "fixed part already estimates one mean per level of %1$s, so the ",
+      "random copy has no information left to describe -- its deviations ",
+      "are held up by their prior alone, and the variance component ",
+      "reported for %1$s would be a reading of that prior rather than of ",
+      "the data. Two ways to write what was probably meant: drop `%1$s` ",
+      "from `random` to keep population-level means for it, or drop it ",
+      "from the fixed part to keep shrunk level effects (a variance ",
+      "component and BLUPs). ASReml accepts this spelling and fits it, so ",
+      "a script translated from ASReml can arrive here unchanged."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = "rejected_routes",
+    since_version = "0.9.1"
+  )
+  # emmeans builds its reference grid from the population-level design
+  # matrix, so a factor entering the model only as a random-effects
+  # grouping term is not in the grid and the call dies in a third-party
+  # package with no mention of this one. The information exists on the
+  # fit -- it is the marginal-means door that is shut, not the effects.
+  .register_refusal(
+    reason_code = "classify_random_factor_not_supported",
+    description = paste0(
+      "predict(classify = ) was asked for a factor that enters the model ",
+      "only as a random-effects grouping term. Marginal means are built ",
+      "over the population-level reference grid, which such a factor is ",
+      "not part of."
+    ),
+    message_template = paste0(
+      "predict(classify = \"%1$s\") asks for marginal means of %1$s, and ",
+      "%1$s enters this model only as a random-effects grouping factor. ",
+      "The marginal-means table is built over the population-level ",
+      "reference grid, which carries the fixed part of the model only, so ",
+      "there is no %1$s to average over there. The level effects ",
+      "themselves are on the fit: coef(fit, what = \"random\") or ",
+      "ranef(fit) return the shrunk predictions for %1$s with their ",
+      "intervals. Population-level marginal means for a random factor are ",
+      "planned; they are not in this release."
+    ),
+    registered_in_adr = "ADR 0031",
+    plan_field = NA_character_,
+    since_version = "0.9.1"
   )
   .register_refusal(
     reason_code = "conditional_loglik_not_available",

@@ -69,7 +69,14 @@ emit_gaussian_aggregated <- function(
   residual = NULL,
   family = NULL,
   link = NULL,
-  data_name = NA_character_
+  data_name = NA_character_,
+  known_matrices = NULL,
+  weights = NULL,
+  seed = NULL,
+  control = NULL,
+  na_action = NULL,
+  requested_backend = NULL,
+  requested_aggregate = NULL
 ) {
   backend <- match.arg(backend)
 
@@ -212,7 +219,15 @@ emit_gaussian_aggregated <- function(
     warmup = warmup,
     chains = chains,
     prior_fixed_sd = prior_fixed_sd,
-    prior_vc_sd = prior_vc_sd
+    prior_vc_sd = prior_vc_sd,
+    known_matrices = known_matrices,
+    weights = weights,
+    seed = seed,
+    control = control,
+    na_action = na_action,
+    verbose = verbose,
+    requested_backend = requested_backend,
+    requested_aggregate = requested_aggregate
   )
 }
 
@@ -748,7 +763,15 @@ emit_gaussian_aggregated <- function(
   warmup,
   chains,
   prior_fixed_sd,
-  prior_vc_sd
+  prior_vc_sd,
+  known_matrices = NULL,
+  weights = NULL,
+  seed = NULL,
+  control = NULL,
+  na_action = NULL,
+  verbose = TRUE,
+  requested_backend = NULL,
+  requested_aggregate = NULL
 ) {
   # Posterior summary: pull the engine-side draws / marginals into a
   # uniform shape. greta: collapse mcmc.list across chains, summarise
@@ -811,6 +834,12 @@ emit_gaussian_aggregated <- function(
         family = list(family = fb$family, link = fb$link %||% "identity"),
         smooths = list() # the aggregated path excludes smooths.
       ),
+      # The same nineteen fields, under the same names and in the same
+      # order, as the per-row emits record. update() re-issues every
+      # recorded field to flexybayes(), so a field this route left out
+      # was a default silently substituted for what the user asked for --
+      # which is why update() refused an aggregated fit outright rather
+      # than re-fitting a different model under the same name.
       call_info = list(
         fixed = fixed,
         random = random,
@@ -818,11 +847,25 @@ emit_gaussian_aggregated <- function(
         data_name = data_name,
         family = family,
         link = link,
+        known_matrices = known_matrices,
+        weights = weights,
         n_samples = n_samples,
         warmup = warmup,
         chains = chains,
+        seed = seed,
+        control = control,
         prior_fixed_sd = prior_fixed_sd,
-        prior_vc_sd = prior_vc_sd
+        prior_vc_sd = prior_vc_sd,
+        na_action = na_action,
+        # The engine and the representation the call ASKED for -- the
+        # requested `aggregate` above all, since this route exists only
+        # because the request permitted it. Recording the resolved
+        # engine instead would pin a re-fit of a changed model to a
+        # representation the changed model may no longer be eligible
+        # for.
+        backend = requested_backend,
+        aggregate = requested_aggregate,
+        verbose = verbose
       ),
       model_info = list(
         n_obs = fb_aggregated$N,
@@ -837,21 +880,20 @@ emit_gaussian_aggregated <- function(
         K = fb_aggregated$K,
         compression = fb_aggregated$compression,
         residual = residual_plan$kind,
-        # Whether the posterior the user sees is the per-row-equivalent
-        # one. The aggregated likelihood plus the default precision prior
-        # recover the per-row posterior to numerical precision, so the
-        # default path is tagged "per_row_equivalent". When the user
-        # supplies an explicit prior object, the matched-prior
-        # equivalence against a default-prior per-row fit no longer holds
-        # (and on the INLA aggregated path the residual prior is moreover
-        # not plumbed through -- see the "Matched priors" note on
-        # triangulate()), so the fit is tagged "custom". Surfaced via
-        # canonical_names() and the aggregated print / summary.
-        prior_parametrization = if (inherits(fb$priors, "fb_prior")) {
-          "custom"
-        } else {
-          "per_row_equivalent"
-        }
+        # Which prior the posterior the user sees was taken under. The
+        # aggregated likelihood plus the legacy scalar bridge's precision
+        # prior recover the per-row posterior to numerical precision, so
+        # that path is tagged "per_row_equivalent". An explicit prior
+        # object breaks that matched-prior equivalence against a
+        # default-prior per-row fit (and on the INLA aggregated path the
+        # residual prior is moreover not plumbed through -- see the
+        # "Matched priors" note on triangulate()), so it is tagged
+        # "custom". The auto-default is a third case: it is an fb_prior
+        # object, so the class test alone called it "custom" and the
+        # commonest fit in the package announced an explicit prior nobody
+        # supplied. It gets its own tag, which claims neither. Surfaced
+        # via canonical_names() and the aggregated print / summary.
+        prior_parametrization = .agg_prior_parametrization(fb$priors)
       ),
       the_call = the_call,
       formula = the_call

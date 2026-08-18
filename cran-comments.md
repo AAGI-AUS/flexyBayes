@@ -1,190 +1,106 @@
-<!--
-INTERNAL DRAFT -- not for submission as written.
-
-This file is a pre-submission draft for the future CRAN submission, which is
-gated on the AAGI-AUS collective conversation (decision D8). Three things are
-finalised only at the release cut and must be regenerated then:
-  - the version string (the working tree is on the 0.9.0 development line; a
-    CRAN release version is cut at the D8 release decision);
-  - the package URLs (they 404 until the public repository exists under D8);
-  - the exact `R CMD check --as-cran` status, re-run on the FINAL release
-    tarball with the release version and public URLs, with the command and date
-    recorded.
-The check status quoted below is the one recorded in `validation/VALIDATION.md`
-for 0.9.0, generated 2026-08-15: **0 errors, 0 warnings, 1 NOTE** on the built
-tarball under the CRAN profile. The single NOTE is the
-CRAN-incoming-feasibility item itemised below. Building with vignettes removes
-the two vignette-directory WARNINGs that appear only under
-`--no-build-vignettes`. Re-verify on the final release-cut tarball. Do not
-submit using this file verbatim.
--->
-
 ## Submission
 
-This is the first submission of `flexyBayes` to CRAN.
+This is a new submission of `flexyBayes`, version 0.9.1.
 
-The package is on the `0.9.0` development line; the CRAN release version
-is finalised at the D8 release cut. Public release is held pending the
-AAGI-AUS collective conversation on the upstream repository rename
-(project decision **D8**); the package URL declared in `DESCRIPTION` is
-the agreed forward destination and 404s today — see **NOTE 1** below.
-The check status below is the itemised baseline; it is verified on a
-clean library with user R profiles disabled (not only on the
-maintainer's preconfigured machine), so a fresh reviewer sees the same
-result.
-
-Two inference engines are active: INLA (integrated nested Laplace
-approximation) and brms (the Stan passthrough). greta and gretaR are
-retained as quarantined re-entry candidates and fit nothing — an
-explicit request for either refuses with a structured reason. See
-`NEWS.md` for the reshape.
+The package specifies mixed models in ASReml-style or brms-style formula
+syntax and estimates them through one of two inference engines, INLA or
+brms (a Stan passthrough), returning one object whose accessors behave
+the same whichever engine ran. Model structures neither engine can
+represent are refused by name, with the nearest implemented alternative
+given in the refusal, rather than silently translated into something
+else.
 
 ## Test environments
 
-- local macOS Tahoe 26.5.2 (Apple Silicon), R 4.5.2 — `R CMD check
-  --as-cran`, 1-NOTE structural baseline (NOTE 1 below); one
-  additional environmental NOTE (NOTE 2) fires when the local HTML
-  Tidy binary is older than the version `R CMD check` accepts, and a
-  third environmental NOTE (NOTE 3) fires when the check host cannot
-  reach a network time source. Net `Status:` on the current dev
-  machine is `1 NOTE` when networked + recent-Tidy; up to `3 NOTEs`
-  on a stale-Tidy, offline host.
-- GitHub Actions matrix (committed locally — `.github/workflows/`;
-  activates on first push after the D8 collective decision):
-  ubuntu-latest × {R-devel, R-release, R-oldrel-1} plus R-release ×
-  {windows-latest, macos-latest, macos-14 (Apple Silicon)}. The
-  workflow set is `R-CMD-check.yaml`, `dependency-review.yaml`,
-  `lint.yaml`, `pkgdown.yaml`, `test-coverage.yaml`. INLA is installed
-  on the Linux release leg only via the `Additional_repositories`
-  binary path. greta is intentionally not installed on the standard CI
-  matrix (Python / TF setup is a separate slow workflow); the retained
-  greta tests gate on the backend registry's lifecycle state and skip
-  cleanly.
+- local: macOS Tahoe 26.5.2, aarch64-apple-darwin20 (Apple Silicon),
+  R 4.5.2 (2025-10-31). `R CMD check --as-cran` on the built tarball.
 
-## R CMD check results — itemised per NOTE
+Windows R-devel (`devtools::check_win_devel()`) and the R-hub
+multi-platform check are to be run by the maintainer immediately before
+submission. They are not reported here because they had not been run
+when this file was written, and a check result is not worth quoting
+unless it happened.
+
+## R CMD check results
+
+0 errors | 0 warnings | 1 note
+
+The note is the CRAN incoming-feasibility note, in full:
 
 ```
-Status: 1 NOTE
+* checking CRAN incoming feasibility ... NOTE
+Maintainer: 'Max Moldovan <max.moldovan@adelaide.edu.au>'
+
+New submission
+
+Suggests or Enhances not in mainstream repositories:
+  INLA
+Availability using Additional_repositories specification:
+  INLA   yes   https://inla.r-inla-download.org/R/stable
+  ?        ?   https://greta-dev.r-universe.dev
+
+Found the following (possibly) invalid URLs:
+  URL: https://aagi-aus.github.io/flexyBayes/
+    From: DESCRIPTION
+          man/flexyBayes-package.Rd
+    Status: 404
+    Message: Not Found
 ```
 
-Recorded in `validation/VALIDATION.md` for 0.9.0 (generated 2026-08-15):
-`R CMD check --as-cran` on the built tarball under the CRAN profile,
-0 errors, 0 warnings, 1 NOTE.
+It carries three items.
 
-**NOTE 1 — `checking CRAN incoming feasibility`.**
+**New submission.** Expected, and it resolves on acceptance.
 
-This NOTE carries four sub-items:
+**INLA is not in a mainstream repository.** INLA is distributed from its
+own repository at `https://inla.r-inla-download.org/R/stable`, which is
+declared in `Additional_repositories:` and which the check resolves
+successfully on the line above. This is the established arrangement for
+packages that offer INLA as an inference engine, and INLA is in
+`Suggests`, never in `Imports`.
 
-1. *New submission.* Intrinsic to first submission; resolves once
-   CRAN's incoming checks accept the upload.
-2. *Version contains large components.* This sub-NOTE fires only at
-   development versions (`*.9000` tag per the R-pkgs convention); it
-   is absent at a non-`.9000` version such as `0.9.0`, and reappears
-   only when checking a `*.9000` dev tip between releases.
-3. *Suggests or Enhances not in mainstream repositories: greta, INLA.*
-   Neither is on CRAN, and both are declared in
-   `Additional_repositories:`. `greta` was archived from CRAN and is
-   maintained on the greta-dev R-universe
-   (`https://greta-dev.r-universe.dev`); `INLA` is distributed from
-   `https://inla.r-inla-download.org/R/stable`. The Stan backend
-   (`brms`) is on CRAN, so a reviewer always has at least one
-   CRAN-installable inference engine. Every backend code path is guarded
-   by `requireNamespace(., quietly = TRUE)`; the package degrades
-   gracefully when a Suggests dependency is absent, and the engine-using
-   tests skip cleanly (see "Test-suite behaviour on CRAN").
-4. *Found the following (possibly) invalid URLs:*
-   `https://github.com/AAGI-AUS/flexyBayes` and
-   `https://github.com/AAGI-AUS/flexyBayes/issues`, both returning
-   HTTP 404. **Known pending.** The local-only rename from
-   `bayesreml` to `flexyBayes` was completed 2026-04-27; the matching
-   upstream repository rename is gated on the AAGI-AUS collective
-   conversation (project decision **D8**). The URL declared in
-   `DESCRIPTION` is the *agreed forward destination* —
-   `AAGI-AUS/flexyBayes` is where the package will live once the
-   upstream rename ships; the URL is forward-pointing on purpose so a
-   single edit at the moment of collective approval is unnecessary.
-   This sub-NOTE will resolve once the upstream rename ships. This
-   sub-item may or may not fire on a given check host depending on
-   the network-reachability check's caching behaviour.
+The package does not require it. Every call into INLA sits behind
+`requireNamespace("INLA", quietly = TRUE)`, and each of the three emit
+entry points opens with an installation check that stops with a typed
+message naming the repository to install from. Requesting the INLA
+backend without INLA installed therefore gives a refusal that says what
+to do, not a "there is no package called 'INLA'" error from somewhere
+inside the call stack. Every example, test and vignette path that would
+reach INLA is guarded, so on a machine without it the examples run, the
+INLA-dependent tests skip, and the vignettes build. brms is on CRAN, so
+a reviewer always has one installable engine.
 
-**NOTE 2 (environmental) — `checking HTML version of manual`.**
+The second line of that availability block, the one reading `?` against
+`https://greta-dev.r-universe.dev`, is the check being unable to resolve
+that repository at check time. `greta` is in `Suggests` as a dormant
+engine: it fits nothing in this version, `backend = "auto"` never
+selects it, and an explicit request for it is refused. Its absence
+removes no capability.
 
-```
-Skipping checking HTML validation: 'tidy' doesn't look like recent
-enough HTML Tidy.
-```
+**A 404 URL.** The documentation site declared in `DESCRIPTION` does not
+resolve yet, because the repository it is built from is not yet public.
+The maintainer will not submit until that URL resolves. It is quoted
+here so the check output above is reproduced faithfully rather than
+edited.
 
-Environmental: the local HTML Tidy binary on macOS Tahoe is older
-than the version `R CMD check` is happy with. CRAN's check farm runs
-a current Tidy, so this NOTE does not appear on CRAN itself. Does
-not fire on the current dev machine when a recent Tidy is on PATH.
+## Cores
 
-**NOTE 3 (environmental, only when offline) — `checking for future file timestamps`.**
+`Config/testthat/parallel` is `true`. testthat's own worker default is
+a hard-coded two (verified against the installed testthat 3.3.2
+sources), which is within the CRAN two-core limit. Nothing in the
+package calls `parallel::detectCores()`, sets `mc.cores`, or opens a
+cluster, and both calls into INLA's posterior sampler pin
+`num.threads = "1:1"`. No sampler is given a `cores` argument anywhere
+in the tests, examples or vignettes, so brms runs on its default of one.
 
-```
-unable to verify current time
-```
+## Reverse dependencies
 
-`R CMD check` queries `worldclockapi.com` (or a similar network time
-source) to validate that no file in the source tarball carries a
-modification timestamp in the future. When the check host cannot
-reach that network service — offline build environment, firewalled
-CI runner, etc. — the check returns this NOTE rather than failing
-the timestamp validation. No package file actually carries a future
-timestamp on the development workstation; on a networked check host
-this NOTE does not appear. CRAN's check farm is networked, so this
-NOTE does not appear on CRAN.
+None. This is a new submission.
 
-## Downstream impact
+## Vignettes
 
-`flexyBayes` has zero reverse dependencies on CRAN. `revdep_check()`
-is N/A for this submission.
-
-## Suggests-only dependencies
-
-`INLA` is not on CRAN; it is hosted at the URL declared in
-`Additional_repositories:`. The package degrades gracefully when INLA
-is not installed: every code path that calls `INLA::*` is guarded by
-`requireNamespace("INLA", quietly = TRUE)`, and tests that exercise
-the live INLA backend skip via `skip_if_not_installed("INLA")`.
-
-`brms` (the Stan passthrough, reached by `fb_brms()` or
-`backend = "brms"`) requires a working Stan toolchain. Stan-dependent
-tests gate via `skip_if_not_installed("brms")` plus `skip_on_cran()` /
-`skip_on_ci()` because brms's first-call Stan compile (typically
-30–60 s) exceeds the CRAN check budget.
-
-`greta` remains in `Suggests` because its emit code and registry
-descriptor are retained as a re-entry candidate. It is not an active
-fitting engine, so its absence removes no capability.
-
-## Test-suite behaviour on CRAN
-
-The tests that exercise a *live* inference fit (INLA Laplace,
-brms/Stan) gate behind `skip_if_not_installed()` / `skip_on_cran()`
-and therefore skip on CRAN's clean check machine, since neither engine
-is a hard dependency. What runs in full on CRAN is the
-engine-independent core, which is the bulk of the package's logic and
-its test surface: the ASReml and brms formula parsers, the term
-classifier and intermediate representation, the `lgm_gate()`
-feasibility checks, the backend-dispatch policy table, the refusal
-registry, the canonical parameter-name registry, the prior DSL, the
-capability matrix, and the `triangulate()` metric computations (run
-against fixture draws rather than live fits). The skipped portion is
-the thin engine-call layer, not the package's modelling logic; the
-live engine paths are exercised on the maintainer's machine and on the
-CI legs that install the engines (see the GitHub Actions matrix
-above).
-
-## Vignette compute
-
-Thirteen vignettes ship with the package. Heavy MCMC fits inside
-vignettes use small `n_samples` budgets and conditional evaluation
-(`requireNamespace("INLA")`, `requireNamespace("brms")`); failures of
-the live INLA or Stan integration during CRAN's clean re-render are
-caught by `tryCatch()` so a single chunk failure does not crash the
-vignette render. Vignettes use the `.Rmd.orig` precompile pattern
-(`vignettes/_precompile.R` + `.Rbuildignore` excluding the `.orig`
-sources) — the static `.Rmd` that ships in the package tarball is the
-pre-evaluated output, so the build-side vignette render is a markdown
-rendering exercise, not a live MCMC re-run.
+The twelve vignettes ship pre-evaluated. Their sources carry live model
+fits, and those are run by the maintainer through
+`vignettes/_precompile.R`; what the tarball contains is the resulting
+static markdown, with the fitted output already in it. Building the
+vignettes at check time renders markdown and fits nothing, so the
+vignette build needs neither INLA nor a Stan toolchain.
