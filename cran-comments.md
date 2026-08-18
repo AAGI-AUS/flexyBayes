@@ -37,7 +37,6 @@ Suggests or Enhances not in mainstream repositories:
   INLA
 Availability using Additional_repositories specification:
   INLA   yes   https://inla.r-inla-download.org/R/stable
-  ?        ?   https://greta-dev.r-universe.dev
 
 Found the following (possibly) invalid URLs:
   URL: https://aagi-aus.github.io/flexyBayes/
@@ -69,12 +68,9 @@ reach INLA is guarded, so on a machine without it the examples run, the
 INLA-dependent tests skip, and the vignettes build. brms is on CRAN, so
 a reviewer always has one installable engine.
 
-The second line of that availability block, the one reading `?` against
-`https://greta-dev.r-universe.dev`, is the check being unable to resolve
-that repository at check time. `greta` is in `Suggests` as a dormant
-engine: it fits nothing in this version, `backend = "auto"` never
-selects it, and an explicit request for it is refused. Its absence
-removes no capability.
+`greta` is in `Suggests` as a dormant engine and installs from CRAN:
+it fits nothing in this version, `backend = "auto"` never selects it,
+and an explicit request for it is refused by name.
 
 **A 404 URL.** The documentation site declared in `DESCRIPTION` does not
 resolve yet, because the repository it is built from is not yet public.
