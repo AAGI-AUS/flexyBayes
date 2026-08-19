@@ -29,11 +29,21 @@
 #     back; the Stan emit path always feeds the legacy-scalar bridge
 #     so the result is never empty in normal use).
 #
-# Anything outside the supported eight-row table (cor() / smooth() /
-# half_cauchy / cauchy / lkj / exponential / gamma targets) raises a
-# structured refusal naming both the unsupported spec and the brms-
-# native fallback: pass `prior` directly through `...` to brms::brm()
-# via fb_brms()'s pass-through `...` argument.
+# Which (target, distribution) pairs the table covers is declared once,
+# in `.fb_prior_translation_table()` (R/prior_translation.R), and read
+# from there by both this emit and the refusal messages -- a menu
+# re-listed in prose is a menu that drifts. At 0.9.2 the variance-
+# component targets gained `normal`, `student_t`, `cauchy`,
+# `half_cauchy`, `exponential` and `gamma`, each round-tripped through
+# `brms::make_stancode()`; `cor()` and `smooth()` are refusals rather
+# than deferrals, because no brms model this package emits carries
+# either parameter.
+#
+# Anything outside the table raises a typed refusal (condition class
+# `flexybayes_refusal_prior_not_translatable_for_backend`) naming both
+# the unsupported spec and the brms-native fallback: pass `prior`
+# directly through `...` to brms::brm() via fb_brms()'s pass-through
+# `...` argument.
 
 # ---------------------------------------------------------------- #
 # Pure spec list                                                    #
@@ -127,29 +137,70 @@
     }
     specs[[length(specs) + 1L]] <- row
   }
-  specs
+
+  # `prior_fixed_sd` covers the fixed effects; an fb_prior() covers the
+  # parameters it names. The two are not alternatives, and before 0.9.2
+  # supplying the scalar alongside the auto-default variance prior --
+  # which is what passing it alone produces -- silently dropped it: the
+  # legacy bridge is the only consumer of the scalar and the fb_prior
+  # branch never reached it. The fixed-effect rows are added here when
+  # the caller wrote the argument, and any coefficient the fb_prior names
+  # itself keeps its own row (brms resolves the coef-keyed row over the
+  # class-wide one).
+  c(.brms_fixed_scalar_specs(fb, prior_fixed_sd, specs), specs)
+}
+
+# Class-wide fixed-effect rows for an explicitly supplied
+# `prior_fixed_sd`: one `Intercept` row and one blanket `b` row, each
+# omitted when the fb_prior already carries a row brms would see as a
+# duplicate of it.
+.brms_fixed_scalar_specs <- function(fb, prior_fixed_sd, existing) {
+  if (!.fb_prior_scalar_supplied(fb, "fixed_sd")) {
+    return(list())
+  }
+  has_row <- function(cls) {
+    any(vapply(
+      existing,
+      function(r) {
+        identical(r$class, cls) && is.na(r$coef %||% NA_character_)
+      },
+      logical(1)
+    ))
+  }
+  string <- sprintf("normal(0, %s)", .fmt_num(prior_fixed_sd))
+  out <- list()
+  if (isTRUE(fb$intercept) && !has_row("Intercept")) {
+    out[[length(out) + 1L]] <- list(
+      string = string,
+      class = "Intercept",
+      coef = NA_character_,
+      group = NA_character_,
+      lb = NA_real_,
+      ub = NA_real_
+    )
+  }
+  if (length(fb$fixed_terms) > 0L && !has_row("b")) {
+    out[[length(out) + 1L]] <- list(
+      string = string,
+      class = "b",
+      coef = NA_character_,
+      group = NA_character_,
+      lb = NA_real_,
+      ub = NA_real_
+    )
+  }
+  out
 }
 
 # Families brms parameterises with a residual `sigma` hyperparameter.
-# Mirrors emit_inla's `families_with_prec` discipline -- silently
-# dropping sigma priors on families that lack the parameter keeps
-# the cross-engine prior surface uniform.
+# The roster lives in one place (`.fb_brms_families_with_sigma()`,
+# R/family_traits.R) because this predicate and the
+# heteroscedastic-residual gate in emit_brms.R used to carry separate
+# hand-maintained copies that disagreed about gamma and beta. Dropping a
+# sigma prior on a family that has no sigma keeps the cross-engine prior
+# surface uniform; sending one is a fit brms refuses.
 .brms_family_has_sigma <- function(fam) {
-  if (is.null(fam)) {
-    return(TRUE)
-  }
-  tolower(as.character(fam)) %in%
-    c(
-      "gaussian",
-      "stdnormal",
-      "lognormal",
-      "gamma",
-      "beta",
-      "t",
-      "logistic",
-      "student",
-      "skew_normal"
-    )
+  .fb_family_has_brms_sigma(fam)
 }
 
 # Translate a single fb_prior spec to a brms-prior row. Returns
@@ -189,50 +240,18 @@
 
   # ------------------------------ sigma ---------------------------------- #
   if (identical(target$type, "sigma")) {
-    if (identical(spec$family, "uniform")) {
-      lo <- as.numeric(spec$args$lower %||% 0)
-      hi <- as.numeric(spec$args$upper)
-      string <- sprintf("uniform(%s, %s)", .fmt_num(lo), .fmt_num(hi))
-      # brms requires lb/ub for uniform priors so the parser bounds
-      # the parameter to the prior's support; sigma must be >= 0.
-      return(list(
-        string = string,
-        class = "sigma",
-        coef = NA_character_,
-        group = NA_character_,
-        lb = max(0, lo),
-        ub = hi
-      ))
+    dens <- .brms_vc_density(spec)
+    if (is.null(dens)) {
+      .brms_unsupported(spec$family, "sigma")
     }
-    if (identical(spec$family, "half_normal")) {
-      sc_v <- as.numeric(spec$args$scale %||% 1)
-      # brms half-normal: normal(0, scale) plus the natural sigma
-      # positivity bound (lb = 0).
-      string <- sprintf("normal(0, %s)", .fmt_num(sc_v))
-      return(list(
-        string = string,
-        class = "sigma",
-        coef = NA_character_,
-        group = NA_character_,
-        lb = 0,
-        ub = NA_real_
-      ))
-    }
-    if (identical(spec$family, "pc")) {
-      u <- as.numeric(spec$args$upper %||% 1)
-      p <- as.numeric(spec$args$prob %||% 0.01)
-      rate <- -log(p) / u
-      string <- sprintf("exponential(%s)", .fmt_num(rate))
-      return(list(
-        string = string,
-        class = "sigma",
-        coef = NA_character_,
-        group = NA_character_,
-        lb = 0,
-        ub = NA_real_
-      ))
-    }
-    .brms_unsupported(spec$family, "sigma")
+    return(list(
+      string = dens$string,
+      class = "sigma",
+      coef = NA_character_,
+      group = NA_character_,
+      lb = dens$lb,
+      ub = dens$ub
+    ))
   }
 
   # ------------------------------ sd(group) ------------------------------ #
@@ -243,59 +262,31 @@
     # group = "<g>") rather than the bare intercept-only
     # (class = "sd", group = "<g>") shape.
     coef_v <- target$coef %||% NA_character_
-    if (identical(spec$family, "uniform")) {
-      lo <- as.numeric(spec$args$lower %||% 0)
-      hi <- as.numeric(spec$args$upper)
-      string <- sprintf("uniform(%s, %s)", .fmt_num(lo), .fmt_num(hi))
-      return(list(
-        string = string,
-        class = "sd",
-        coef = coef_v,
-        group = grp,
-        lb = max(0, lo),
-        ub = hi
-      ))
-    }
-    if (identical(spec$family, "half_normal")) {
-      sc_v <- as.numeric(spec$args$scale %||% 1)
-      string <- sprintf("normal(0, %s)", .fmt_num(sc_v))
-      return(list(
-        string = string,
-        class = "sd",
-        coef = coef_v,
-        group = grp,
-        lb = 0,
-        ub = NA_real_
-      ))
-    }
-    if (identical(spec$family, "pc")) {
-      u <- as.numeric(spec$args$upper %||% 1)
-      p <- as.numeric(spec$args$prob %||% 0.01)
-      rate <- -log(p) / u
-      string <- sprintf("exponential(%s)", .fmt_num(rate))
-      return(list(
-        string = string,
-        class = "sd",
-        coef = coef_v,
-        group = grp,
-        lb = 0,
-        ub = NA_real_
-      ))
-    }
-    .brms_unsupported(
-      spec$family,
-      paste0(
-        "sd(group = \"",
-        grp,
-        "\"",
-        if (!is.na(coef_v)) {
-          paste0(", coef = \"", coef_v, "\"")
-        } else {
-          ""
-        },
-        ")"
+    dens <- .brms_vc_density(spec)
+    if (is.null(dens)) {
+      .brms_unsupported(
+        spec$family,
+        paste0(
+          "sd(group = \"",
+          grp,
+          "\"",
+          if (!is.na(coef_v)) {
+            paste0(", coef = \"", coef_v, "\"")
+          } else {
+            ""
+          },
+          ")"
+        )
       )
-    )
+    }
+    return(list(
+      string = dens$string,
+      class = "sd",
+      coef = coef_v,
+      group = grp,
+      lb = dens$lb,
+      ub = dens$ub
+    ))
   }
 
   # ------------------------------ cor / smooth / name -------------------- #
@@ -304,6 +295,111 @@
   }
 
   .brms_unsupported_target(target)
+}
+
+# The Stan density a variance-component prior becomes, plus the bounds
+# brms needs on the parameter. One builder for `sigma` and `sd()`: the
+# two targets differ in how the row is keyed, never in what the density
+# is, and before 0.9.2 they carried two copies of the same three
+# branches.
+#
+# NULL means the distribution has no brms row -- the caller raises the
+# typed refusal, which names the target as well as the family.
+#
+# Every string here was round-tripped through `brms::make_stancode()`
+# against brms 2.23.0 and appears in the generated program as an
+# `lprior +=` line; `tests/testthat/test-prior-translation.R` re-runs
+# that round trip. The DSL lives on the standard-deviation scale, so
+# every row is bounded below at zero: brms renormalises a two-sided
+# density over the truncated support, which is what makes
+# `half_normal(scale)` and `normal(0, scale)` the same prior on a
+# variance component.
+.brms_vc_density <- function(spec) {
+  args <- spec$args
+  switch(
+    spec$family,
+    "uniform" = {
+      lo <- as.numeric(args$lower %||% 0)
+      hi <- as.numeric(args$upper)
+      # brms requires lb/ub for uniform priors so the parser bounds the
+      # parameter to the prior's support.
+      list(
+        string = sprintf("uniform(%s, %s)", .fmt_num(lo), .fmt_num(hi)),
+        lb = max(0, lo),
+        ub = hi
+      )
+    },
+    "half_normal" = list(
+      string = sprintf(
+        "normal(0, %s)",
+        .fmt_num(as.numeric(args$scale %||% 1))
+      ),
+      lb = 0,
+      ub = NA_real_
+    ),
+    "half_cauchy" = list(
+      string = sprintf(
+        "cauchy(0, %s)",
+        .fmt_num(as.numeric(args$scale %||% 1))
+      ),
+      lb = 0,
+      ub = NA_real_
+    ),
+    "pc" = {
+      # The PC prior on a Gaussian variance component is exponential on
+      # the SD scale with rate -log(prob) / upper (Simpson et al. 2017).
+      u <- as.numeric(args$upper %||% 1)
+      p <- as.numeric(args$prob %||% 0.01)
+      list(
+        string = sprintf("exponential(%s)", .fmt_num(-log(p) / u)),
+        lb = 0,
+        ub = NA_real_
+      )
+    },
+    "normal" = list(
+      string = sprintf(
+        "normal(%s, %s)",
+        .fmt_num(as.numeric(.named_or_positional(args, "mean", 1L, 0))),
+        .fmt_num(as.numeric(.named_or_positional(args, "sd", 2L, 1)))
+      ),
+      lb = 0,
+      ub = NA_real_
+    ),
+    "cauchy" = list(
+      string = sprintf(
+        "cauchy(%s, %s)",
+        .fmt_num(as.numeric(args$location %||% 0)),
+        .fmt_num(as.numeric(args$scale %||% 1))
+      ),
+      lb = 0,
+      ub = NA_real_
+    ),
+    "student_t" = list(
+      string = sprintf(
+        "student_t(%s, %s, %s)",
+        .fmt_num(as.numeric(args$df %||% 3)),
+        .fmt_num(as.numeric(args$location %||% 0)),
+        .fmt_num(as.numeric(args$scale %||% 1))
+      ),
+      lb = 0,
+      ub = NA_real_
+    ),
+    "exponential" = list(
+      string = sprintf("exponential(%s)", .fmt_num(as.numeric(args$rate))),
+      lb = 0,
+      ub = NA_real_
+    ),
+    "gamma" = list(
+      string = sprintf(
+        "gamma(%s, %s)",
+        .fmt_num(as.numeric(args$shape)),
+        .fmt_num(as.numeric(args$rate))
+      ),
+      lb = 0,
+      ub = NA_real_
+    ),
+    NULL
+  )
 }
 
 # brms prior row for a b() / Intercept target. Intercept is class
@@ -368,46 +464,85 @@
   default
 }
 
-# Refusal for an unsupported distribution family on a recognised
-# target.
+# Refusal for a distribution the brms translation table does not carry
+# on a recognised target.
+#
+# Typed since 0.9.2. The message was already informative -- it named the
+# supported table -- but the condition was a bare `simpleError`, so a
+# gate or a wrapper could not tell "outside the translation table" from
+# "R fell over", which is the distinction the typed-refusal contract
+# exists to provide (field-sweep FS-15). The supported table is now
+# rendered from `.fb_prior_translation_table()` rather than re-listed
+# here, so the message cannot drift from what the emit actually does.
 .brms_unsupported <- function(family, target_label) {
-  stop(
-    "Stan-passthrough emit does not yet translate `",
-    family,
-    "` priors on ",
-    target_label,
-    ". Supported targets: ",
-    "b()/Intercept ~ normal(mean, sd) | student_t(df, scale); ",
-    "sigma ~ uniform(lower, upper) | half_normal(scale) | pc(upper, prob); ",
-    "sd(group) ~ uniform | half_normal | pc (intercept-variance row); ",
-    "sd(group, coef = <slope>) ~ uniform | half_normal | pc ",
-    "(slope-variance row). ",
-    "For unsupported priors, pass a brms `prior` object directly ",
-    "via `...` (e.g. ",
-    "`fb_brms(..., backend = \"brms\", prior = brms::prior(...))` -- ",
-    "this bypasses the flexyBayes prior DSL on the Stan path).",
-    call. = FALSE
-  )
+  stop(.fb_refusal_condition(
+    reason_code = "prior_not_translatable_for_backend",
+    message = paste0(
+      "The Stan-passthrough emit does not translate `",
+      family,
+      "` priors on ",
+      target_label,
+      ".\n",
+      .fb_prior_translation_menu("brms"),
+      "Two remedies: re-express the prior in a distribution brms ",
+      "carries (listed\n  above), or pass a brms `prior` object ",
+      "directly via `...` (for example\n  ",
+      "`fb_brms(..., backend = \"brms\", prior = brms::prior(...))`), ",
+      "which bypasses\n  the flexyBayes prior DSL on the Stan path."
+    ),
+    family_class = "flexybayes_prior_translation_refusal",
+    engine = "brms"
+  ))
 }
 
-# Refusal for an unsupported target (cor() / smooth() / generic name).
+# Refusal for a target the brms models this package emits do not carry.
+#
+# `cor()` and `smooth()` are not deferrals in the sense the pre-0.9.2
+# message implied: a flexyBayes brms model carries classes `b`,
+# `Intercept`, `sd` and `sigma` and nothing else -- correlated random
+# slopes are refused at ingest and smooths route to INLA -- so a row for
+# either would be a prior on a parameter that does not exist.
 .brms_unsupported_target <- function(target) {
+  ttype <- target$type %||% "<unknown>"
   label <- switch(
-    target$type %||% "<unknown>",
+    ttype,
     "cor" = paste0("cor(group = \"", target$group, "\")"),
     "smooth" = paste0("smooth(\"", target$var, "\")"),
     "name" = paste0("name = \"", target$name, "\""),
-    target$type %||% "<unknown>"
+    ttype
   )
-  stop(
-    "Stan-passthrough emit does not yet handle prior target `",
-    label,
-    "`. Supported targets: b()/Intercept/sigma/sd(group); ",
-    "smoothers and structured covariances are deferred ",
-    "to a future release. For full brms-side control, pass a ",
-    "brms `prior` object via `...` on the Stan-passthrough call.",
-    call. = FALSE
+  why <- switch(
+    ttype,
+    "cor" = paste0(
+      "No brms model this package emits carries a correlation ",
+      "parameter:\n  correlated random slopes are refused at ingest, so ",
+      "there is no `cor` class\n  for the prior to attach to."
+    ),
+    "smooth" = paste0(
+      "No brms model this package emits carries a smooth: `spl()` terms ",
+      "route to\n  the INLA backend, where `smooth(\"var\")` priors do ",
+      "translate."
+    ),
+    paste0(
+      "The Stan-passthrough emit carries prior targets sigma, ",
+      "sd(group = ...) and\n  b(\"name\") only."
+    )
   )
+  stop(.fb_refusal_condition(
+    reason_code = "prior_not_translatable_for_backend",
+    message = paste0(
+      "backend = \"brms\" cannot carry the prior target ",
+      label,
+      ".\n",
+      why,
+      "\n",
+      .fb_prior_translation_menu("brms"),
+      "Two remedies: drop the row, or -- for a smooth -- pass ",
+      "backend = \"inla\",\n  which carries it."
+    ),
+    family_class = "flexybayes_prior_translation_refusal",
+    engine = "brms"
+  ))
 }
 
 # Legacy-scalar bridge: builds the spec list that mirrors the v0.1
@@ -587,8 +722,10 @@
 # uniform(0, U) built by the default machinery is guaranteed to stand in the
 # documented relation to sd(y).
 .brms_retarget_sigma_for_heterogeneous_residual <- function(specs, fb) {
-  het <- Filter(function(t) identical(t$type %||% "", "at_units"),
-                fb$residual_terms %||% list())
+  het <- Filter(
+    function(t) identical(t$type %||% "", "at_units"),
+    fb$residual_terms %||% list()
+  )
   if (length(het) == 0L || length(specs) == 0L) {
     return(specs)
   }
@@ -611,13 +748,16 @@
   } else {
     0
   }
-  c(specs, list(list(
-    string = sprintf("normal(%.6g, 1)", loc),
-    class = "b",
-    coef = NA_character_,
-    group = NA_character_,
-    dpar = "sigma"
-  )))
+  c(
+    specs,
+    list(list(
+      string = sprintf("normal(%.6g, 1)", loc),
+      class = "b",
+      coef = NA_character_,
+      group = NA_character_,
+      dpar = "sigma"
+    ))
+  )
 }
 
 # Stack the spec list into a single brms prior object. Each spec

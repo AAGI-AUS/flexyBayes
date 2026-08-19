@@ -103,6 +103,17 @@ emit_brms <- function(
     prior_fixed_sd = prior_fixed_sd,
     prior_vc_sd = prior_vc_sd
   )
+  # A prior naming a term the model does not have is caught here, against
+  # brms's own parameter list, rather than left to brms's parser. The
+  # parser reports a synthesised Stan name (`b_nonexistent_term`) the
+  # user never wrote, untyped (field-sweep FS-20).
+  .check_brms_prior_rows_reachable(
+    brms_prior,
+    formula = brms_form,
+    data = data,
+    data2 = brms_data2,
+    family = brms_family
+  )
 
   # -- return_code: skip the fit; emit the Stan code only -----------
   if (isTRUE(return_code)) {
@@ -347,6 +358,96 @@ emit_brms <- function(
 
 
 # ---------------------------------------------------------------- #
+# Prior-row reachability (field-sweep FS-20)                        #
+# ---------------------------------------------------------------- #
+
+# Refuse a prior row that names no parameter of the model, before
+# brms's parser does.
+#
+# The oracle is brms's own `default_prior()`, read from the same
+# formula / data / family the fit will use: it enumerates every
+# (class, coef, group) triple the model carries. A flexyBayes prior row
+# whose triple is absent from that enumeration is the user naming a term
+# that does not exist. flexyBayes holds the model's term list at this
+# point and can say so in the user's vocabulary; before 0.9.2 it left
+# the check to brms, which answered with a synthesised Stan parameter
+# name (`b_nonexistent_term`) and an untyped `simpleError`.
+#
+# A row matches when brms lists its exact (class, coef, group) triple.
+# The match has to be exact rather than falling back to the class-wide
+# row: brms lists a blank-`coef` row for every class the model carries,
+# and treating that as a wildcard would let `b(\"nonexistent_term\")`
+# match the class-wide `b` row -- which is how the mismatch reached
+# brms's parser in the first place. `default_prior()` compiles nothing,
+# so the check costs a formula walk.
+.check_brms_prior_rows_reachable <- function(
+  prior,
+  formula,
+  data,
+  data2,
+  family
+) {
+  if (is.null(prior) || !nrow(prior)) {
+    return(invisible(TRUE))
+  }
+  available <- tryCatch(
+    as.data.frame(brms::default_prior(
+      formula,
+      data = data,
+      data2 = data2,
+      family = family
+    )),
+    error = function(e) NULL
+  )
+  # No oracle, no verdict: an unreadable default_prior() must not turn
+  # into a refusal of a model that would otherwise fit.
+  if (is.null(available) || !nrow(available)) {
+    return(invisible(TRUE))
+  }
+  norm <- function(x) {
+    x <- as.character(x %||% "")
+    x[is.na(x)] <- ""
+    x
+  }
+  available$coef <- norm(available$coef)
+  available$group <- norm(available$group)
+  for (i in seq_len(nrow(prior))) {
+    cls <- prior$class[[i]]
+    cf <- norm(prior$coef[[i]])
+    grp <- norm(prior$group[[i]])
+    same_class <- available$class == cls
+    if (any(same_class & available$coef == cf & available$group == grp)) {
+      next
+    }
+    if (!nzchar(grp) && !nzchar(cf)) {
+      # A class-wide row on a class the model does not carry at all.
+      .fb_stop_prior_target_absent(
+        target_label = paste0("class \"", cls, "\""),
+        kind = "parameter class",
+        available = unique(available$class),
+        engine = "brms"
+      )
+    }
+    if (nzchar(grp)) {
+      .fb_stop_prior_target_absent(
+        target_label = paste0("sd(group = \"", grp, "\")"),
+        kind = "grouping factor",
+        available = unique(available$group[same_class]),
+        engine = "brms"
+      )
+    }
+    .fb_stop_prior_target_absent(
+      target_label = paste0("b(\"", cf, "\")"),
+      kind = "fixed-effect coefficient",
+      available = unique(available$coef[same_class]),
+      engine = "brms"
+    )
+  }
+  invisible(TRUE)
+}
+
+
+# ---------------------------------------------------------------- #
 # IR -> brms formula reconstruction                                 #
 # ---------------------------------------------------------------- #
 
@@ -461,11 +562,22 @@ emit_brms <- function(
         stop(.fb_refusal_condition(
           reason_code = "at_level_conditioning_unsupported",
           message = paste0(
-            "at(", term$outer, ", ", paste(term$level, collapse = ", "),
-            "):", term$inner, " conditions the random effect on selected ",
-            "levels of ", term$outer, ", which is a different model from a ",
+            "at(",
+            term$outer,
+            ", ",
+            paste(term$level, collapse = ", "),
+            "):",
+            term$inner,
+            " conditions the random effect on selected ",
+            "levels of ",
+            term$outer,
+            ", which is a different model from a ",
             "heterogeneous variance across all of them. Drop the level to ",
-            "fit diag(", term$outer, "):", term$inner, "."
+            "fit diag(",
+            term$outer,
+            "):",
+            term$inner,
+            "."
           )
         ))
       }
@@ -492,13 +604,24 @@ emit_brms <- function(
       stop(.fb_refusal_condition(
         reason_code = "corh_no_equicorrelation_representation",
         message = paste0(
-          "corh(", term$outer, "):", term$inner, " requests heterogeneous ",
+          "corh(",
+          term$outer,
+          "):",
+          term$inner,
+          " requests heterogeneous ",
           "variances with a single shared correlation. No active backend ",
           "represents that structure: brms group-level effects are either ",
           "uncorrelated or fully unstructured, with nothing between. Use ",
-          "diag(", term$outer, "):", term$inner, " for heterogeneous ",
-          "variances with no correlation, or us(", term$outer, "):",
-          term$inner, " to estimate every pairwise correlation freely."
+          "diag(",
+          term$outer,
+          "):",
+          term$inner,
+          " for heterogeneous ",
+          "variances with no correlation, or us(",
+          term$outer,
+          "):",
+          term$inner,
+          " to estimate every pairwise correlation freely."
         )
       ))
     }
@@ -515,9 +638,7 @@ emit_brms <- function(
       next
     }
 
-    if (
-      !ttype %in% c("simple", "ide", "id", "simple_slope_uncor")
-    ) {
+    if (!ttype %in% c("simple", "ide", "id", "simple_slope_uncor")) {
       stop(.fb_refusal_condition(
         reason_code = "brms_cannot_represent_term",
         message = .brms_term_refusal_message(term),
@@ -597,8 +718,10 @@ emit_brms <- function(
   # 2026-08-15. The entry point exposes no sampler seed, so those digits
   # are one run's realisation at a bulk effective size above 8,000; the
   # per-site percentages are stable, the last digit is not.
-  het <- Filter(function(t) identical(t$type %||% "", "at_units"),
-                fb$residual_terms %||% list())
+  het <- Filter(
+    function(t) identical(t$type %||% "", "at_units"),
+    fb$residual_terms %||% list()
+  )
   if (length(het) == 0L) {
     return(main)
   }
@@ -607,8 +730,10 @@ emit_brms <- function(
       reason_code = "heterogeneous_residual_multiple_factors",
       message = paste0(
         "More than one heterogeneous-residual term was supplied (",
-        paste(vapply(het, function(t) t$var %||% "?", character(1)),
-              collapse = ", "),
+        paste(
+          vapply(het, function(t) t$var %||% "?", character(1)),
+          collapse = ", "
+        ),
         "). A residual is sectioned by one factor; nesting several would ",
         "need their interaction, which must be stated explicitly."
       )
@@ -619,10 +744,16 @@ emit_brms <- function(
     stop(.fb_refusal_condition(
       reason_code = "at_level_conditioning_unsupported",
       message = paste0(
-        "at(", term$var, ", ", paste(term$level, collapse = ", "),
-        "):units conditions the residual on selected levels of ", term$var,
+        "at(",
+        term$var,
+        ", ",
+        paste(term$level, collapse = ", "),
+        "):units conditions the residual on selected levels of ",
+        term$var,
         ", which is a different model from a heterogeneous residual across ",
-        "all of them. Drop the level to fit dsum(~ units | ", term$var, ")."
+        "all of them. Drop the level to fit dsum(~ units | ",
+        term$var,
+        ")."
       )
     ))
   }
@@ -632,11 +763,12 @@ emit_brms <- function(
   # parameter the model does not have -- brms would error, or worse, accept
   # it for a family where sigma means something else.
   fam <- tolower(as.character(fb$family %||% "gaussian"))
-  if (!fam %in% c("gaussian", "student", "t", "lognormal", "skew_normal")) {
+  if (!.fb_family_has_brms_sigma(fam)) {
     stop(.fb_refusal_condition(
       reason_code = "heterogeneous_residual_family_has_no_sigma",
       message = paste0(
-        "A heterogeneous residual variance was requested for family '", fam,
+        "A heterogeneous residual variance was requested for family '",
+        fam,
         "', which has no residual scale parameter to vary -- its dispersion ",
         "is a function of the mean. Model the dispersion directly for that ",
         "family, or fit a Gaussian on a transformed response."
@@ -662,30 +794,42 @@ emit_brms <- function(
     ttype,
     "spline" = paste0(
       "A penalised spline is emitted by INLA as a second-order random ",
-      "walk, so fit spl(", var_name, ") with backend = \"inla\"."
+      "walk, so fit spl(",
+      var_name,
+      ") with backend = \"inla\"."
     ),
     "smooth_mgcv" = paste0(
       "An mgcv smooth basis has no brms lowering in the ASReml grammar. ",
-      "Fit s(", var_name, ") with backend = \"inla\", which carries it as ",
+      "Fit s(",
+      var_name,
+      ") with backend = \"inla\", which carries it as ",
       "a second-order random walk."
     ),
     "polynomial" = paste0(
-      "Fit pol(", var_name, ") with backend = \"inla\", or write the ",
+      "Fit pol(",
+      var_name,
+      ") with backend = \"inla\", or write the ",
       "polynomial terms in the fixed part of the formula."
     ),
     "continuous" = paste0(
       "A continuous variable in the random part is a random regression. ",
-      "Write the slope as (", var_name, " || <grouping factor>) in the ",
+      "Write the slope as (",
+      var_name,
+      " || <grouping factor>) in the ",
       "brms-style grammar."
     ),
     "at" = paste0(
-      "Write the heterogeneous variance as diag(", var_name,
-      "):<inner factor>, which brms emits as (0 + ", var_name,
+      "Write the heterogeneous variance as diag(",
+      var_name,
+      "):<inner factor>, which brms emits as (0 + ",
+      var_name,
       " || <inner factor>)."
     ),
     "us" = paste0(
-      "Write the unstructured covariance as us(", var_name,
-      "):<inner factor>, which brms emits as (0 + ", var_name,
+      "Write the unstructured covariance as us(",
+      var_name,
+      "):<inner factor>, which brms emits as (0 + ",
+      var_name,
       " | <inner factor>)."
     ),
     "ar1" = ,
@@ -696,7 +840,8 @@ emit_brms <- function(
     ),
     "vm_gxe" = paste0(
       "A known-covariance term crossed with a second factor has no brms ",
-      "lowering. Fit vm(", term$inner %||% var_name,
+      "lowering. Fit vm(",
+      term$inner %||% var_name,
       ", K) on its own, or use ASReml for the crossed form."
     ),
     paste0(
@@ -706,10 +851,12 @@ emit_brms <- function(
     )
   )
   paste0(
-    "brms cannot represent the random term type \"", ttype,
+    "brms cannot represent the random term type \"",
+    ttype,
     "\": the brms formula reconstruction has no lowering for it, and ",
     "emitting the model without the term would answer a different ",
-    "question. ", route
+    "question. ",
+    route
   )
 }
 
@@ -738,8 +885,10 @@ emit_brms <- function(
 # augmentation.
 .fb_brms_missing_response_mode <- function(fb, data) {
   resp <- fb$response
-  has_missing <- !is.null(resp) && nzchar(resp) &&
-    resp %in% names(data) && anyNA(data[[resp]])
+  has_missing <- !is.null(resp) &&
+    nzchar(resp) &&
+    resp %in% names(data) &&
+    anyNA(data[[resp]])
   if (!has_missing) {
     return("none")
   }
@@ -755,7 +904,8 @@ emit_brms <- function(
     } else {
       paste0(
         "backend = \"brms\" cannot carry a missing response for family \"",
-        fam, "\"."
+        fam,
+        "\"."
       )
     },
     family_class = "flexybayes_brms_cannot_augment_nongaussian",
@@ -774,7 +924,8 @@ emit_brms <- function(
   if (fmt %in% c("blocks", "low_rank")) {
     stop(
       "emit_brms() supports vm() / ped() only with an exact dense-able ",
-      "covariance carrier (dense / chol / precision); the \"", fmt,
+      "covariance carrier (dense / chol / precision); the \"",
+      fmt,
       "\" carrier is INLA-only. Re-route via backend = \"inla\".",
       call. = FALSE
     )
@@ -813,9 +964,13 @@ emit_brms <- function(
     M <- known_matrices[[sym]]
     if (is.null(M)) {
       stop(
-        "emit_brms(): the covariance matrix '", sym, "' for vm(", term$var,
+        "emit_brms(): the covariance matrix '",
+        sym,
+        "' for vm(",
+        term$var,
         ") is not in known_matrices. Pass it via known_matrices = list(",
-        sym, " = <your relationship matrix>).",
+        sym,
+        " = <your relationship matrix>).",
         call. = FALSE
       )
     }
@@ -826,7 +981,8 @@ emit_brms <- function(
       "precision" = solve(as.matrix(M)),
       "pedigree_sparse_precision" = as.matrix(solve(M)),
       stop(
-        "emit_brms(): unsupported covariance carrier '", fmt,
+        "emit_brms(): unsupported covariance carrier '",
+        fmt,
         "' for the brms vm() / ped() route.",
         call. = FALSE
       )
@@ -943,12 +1099,27 @@ emit_brms <- function(
   if (fam == "beta") {
     return(get("Beta", envir = ns)())
   }
+  if (fam == "hurdle_gamma") {
+    # brms-native: `brms::brmsfamily("hurdle_gamma")` declares
+    # dpars mu, shape, hu on brms 2.23.0. The mean model carries the
+    # link; `hu` (the zero-mass probability) keeps brms's own logit link
+    # and its own prior, which is what `.fb_default_prior_targets()`
+    # records as an engine default rather than a flexyBayes choice.
+    return(
+      if (is.null(link_clean)) {
+        get("hurdle_gamma", envir = ns)()
+      } else {
+        get("hurdle_gamma", envir = ns)(link = link_clean)
+      }
+    )
+  }
   stop(
     "emit_brms() does not yet translate family = \"",
     fam,
     "\". Supported families: gaussian, binomial (single-column ",
     "Bernoulli), poisson, negative_binomial, gamma, lognormal, ",
-    "beta. Other families are deferred to a future release.",
+    "beta, hurdle_gamma. Other families are deferred to a future ",
+    "release.",
     call. = FALSE
   )
 }
@@ -1383,9 +1554,13 @@ emit_brms <- function(
   }
   probs <- attr(tab, "probs")
   cat(
-    "\n-- Residual by level of `", attr(tab, "factor"),
-    "` (posterior median, ", round(100 * diff(probs)), "% interval) ",
-    strrep("-", 8), "\n",
+    "\n-- Residual by level of `",
+    attr(tab, "factor"),
+    "` (posterior median, ",
+    round(100 * diff(probs)),
+    "% interval) ",
+    strrep("-", 8),
+    "\n",
     sep = ""
   )
   body <- data.frame(

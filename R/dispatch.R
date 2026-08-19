@@ -1639,14 +1639,21 @@
       anyNA(data[[resp]])
   ) {
     if (isTRUE(aggregate)) {
-      stop(
-        "`aggregate = TRUE` refused: the response has missing values, and ",
-        "the aggregated path compresses rows into per-cell sufficient ",
-        "statistics that are not defined for a missing response. Pass ",
-        "aggregate = FALSE (or leave it at \"auto\") for the per-row path, ",
-        "which carries a missing response as a latent quantity.",
-        call. = FALSE
-      )
+      # Carries `flexybayes_aggregate_refusal` beneath the per-code class
+      # for the same reason the two refusals further down do: a caller
+      # pattern-matching the family catches every aggregated-route
+      # refusal rather than only some of them.
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_response_incomplete",
+        message = paste0(
+          "`aggregate = TRUE` refused: the response has missing values, and ",
+          "the aggregated path compresses rows into per-cell sufficient ",
+          "statistics that are not defined for a missing response. Pass ",
+          "aggregate = FALSE (or leave it at \"auto\") for the per-row path, ",
+          "which carries a missing response as a latent quantity."
+        ),
+        family_class = "flexybayes_aggregate_refusal"
+      ))
     }
     return(NULL)
   }
@@ -1657,14 +1664,18 @@
   agg_capable_backend <- backend %in% c("inla", "auto")
   if (!agg_capable_backend) {
     if (isTRUE(aggregate)) {
-      stop(
-        "`aggregate = TRUE` is not supported on backend = \"",
-        backend,
-        "\" (the aggregated path is wired for inla only ",
-        "since the greta quarantine). Pass aggregate = FALSE or ",
-        "switch backend.",
-        call. = FALSE
-      )
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_route_unavailable",
+        message = paste0(
+          "`aggregate = TRUE` is not supported on backend = \"",
+          backend,
+          "\" (the aggregated path is wired for inla only ",
+          "since the greta quarantine). Pass aggregate = FALSE or ",
+          "switch backend."
+        ),
+        family_class = "flexybayes_aggregate_refusal",
+        backend = backend
+      ))
     }
     return(NULL)
   }
@@ -1685,12 +1696,16 @@
     # aggregated path is quarantined). aggregate = TRUE cannot be honoured
     # -> refuse; otherwise fall through to the per-row path (main dispatch).
     if (isTRUE(aggregate)) {
-      stop(
-        "`aggregate = TRUE` refused: no active aggregated backend (INLA ",
-        "refused or unavailable; the greta aggregated path is quarantined). ",
-        "Pass aggregate = FALSE for the per-row path.",
-        call. = FALSE
-      )
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_route_unavailable",
+        message = paste0(
+          "`aggregate = TRUE` refused: no active aggregated backend (INLA ",
+          "refused or unavailable; the greta aggregated path is ",
+          "quarantined). Pass aggregate = FALSE for the per-row path."
+        ),
+        family_class = "flexybayes_aggregate_refusal",
+        backend = backend
+      ))
     }
     return(NULL)
   }

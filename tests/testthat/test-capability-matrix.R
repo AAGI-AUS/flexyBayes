@@ -161,7 +161,10 @@ test_that("the committed capability blocks equal a fresh render", {
   expect_false(
     inherits(result, "error"),
     label = paste0(
-      label, " ", verdict, " (got: ",
+      label,
+      " ",
+      verdict,
+      " (got: ",
       if (inherits(result, "error")) conditionMessage(result) else "ok",
       ")"
     )
@@ -175,7 +178,8 @@ test_that("the committed capability blocks equal a fresh render", {
   if (nrow(hit) != 1L) {
     stop(
       "capability anchor names a row that is not in the table (or names ",
-      "it more than once): ", model_class,
+      "it more than once): ",
+      model_class,
       call. = FALSE
     )
   }
@@ -188,10 +192,14 @@ test_that("Gaussian LMM with a simple random intercept fits on both", {
   r <- .cap_row("Gaussian LMM, simple random intercept")
   d <- .cap_data()
   .cap_expect(
-    .cap_emit("inla", y ~ env, random = ~ gen, data = d), r$inla, "INLA"
+    .cap_emit("inla", y ~ env, random = ~gen, data = d),
+    r$inla,
+    "INLA"
   )
   .cap_expect(
-    .cap_emit("brms", y ~ env, random = ~ gen, data = d), r$brms, "brms"
+    .cap_emit("brms", y ~ env, random = ~gen, data = d),
+    r$brms,
+    "brms"
   )
 })
 
@@ -205,15 +213,62 @@ test_that("a binomial GLMM with a simple random effect fits on both", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit(
-      "inla", bin ~ env, random = ~ gen, data = d, family = "binomial"
+      "inla",
+      bin ~ env,
+      random = ~gen,
+      data = d,
+      family = "binomial"
     ),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   .cap_expect(
     .cap_emit(
-      "brms", bin ~ env, random = ~ gen, data = d, family = "binomial"
+      "brms",
+      bin ~ env,
+      random = ~gen,
+      data = d,
+      family = "binomial"
     ),
-    r$brms, "brms"
+    r$brms,
+    "brms"
+  )
+})
+
+test_that("a hurdle gamma emits on brms and refuses on INLA", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  r <- .cap_row("Hurdle gamma (zero mass plus a positive gamma part)")
+  d <- .cap_data()
+  # Zero mass plus a positive gamma part, which is what the family is.
+  set.seed(21L)
+  d$hg <- ifelse(
+    stats::rbinom(nrow(d), 1L, 0.7) == 1L,
+    stats::rgamma(nrow(d), shape = 2, rate = 0.5),
+    0
+  )
+  .cap_expect(
+    .cap_emit(
+      "inla",
+      hg ~ env,
+      random = ~gen,
+      data = d,
+      family = "hurdle_gamma"
+    ),
+    r$inla,
+    "INLA",
+    condition_class = "flexybayes_refusal_inla_gate_refused"
+  )
+  .cap_expect(
+    .cap_emit(
+      "brms",
+      hg ~ env,
+      random = ~gen,
+      data = d,
+      family = "hurdle_gamma"
+    ),
+    r$brms,
+    "brms"
   )
 })
 
@@ -224,11 +279,14 @@ test_that("an uncorrelated random slope fits on brms and defers on INLA", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit("inla", y ~ x + (x || gen), data = d),
-    r$inla, "INLA",
+    r$inla,
+    "INLA",
     condition_class = "flexybayes_inla_simple_slope_uncor_deferred"
   )
   .cap_expect(
-    .cap_emit("brms", y ~ x + (x || gen), data = d), r$brms, "brms"
+    .cap_emit("brms", y ~ x + (x || gen), data = d),
+    r$brms,
+    "brms"
   )
 })
 
@@ -244,11 +302,14 @@ test_that("a factor-by-numeric fixed interaction fits on brms only", {
   )
   .cap_expect(
     .cap_emit("inla", y ~ env * x, data = d),
-    r$inla, "INLA",
+    r$inla,
+    "INLA",
     condition_class = "flexybayes_lgm_factor_numeric_interaction_inla_verified"
   )
   .cap_expect(
-    .cap_emit("brms", y ~ env * x, data = d), r$brms, "brms"
+    .cap_emit("brms", y ~ env * x, data = d),
+    r$brms,
+    "brms"
   )
 })
 
@@ -273,11 +334,13 @@ test_that("interaction random effects fit on brms and refuse on INLA", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ gen + gen:env, data = d),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ gen + gen:env, data = d),
-    r$brms, "brms"
+    r$brms,
+    "brms"
   )
 })
 
@@ -288,14 +351,18 @@ test_that("diag / idh / at heterogeneous variances fit on brms only", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ diag(env):gen, data = d),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   for (spelling in list(
-    ~ diag(env):gen, ~ idh(env):gen, ~ at(env):gen
+    ~ diag(env):gen,
+    ~ idh(env):gen,
+    ~ at(env):gen
   )) {
     .cap_expect(
       .cap_emit("brms", y ~ env, random = spelling, data = d),
-      r$brms, paste("brms", deparse(spelling))
+      r$brms,
+      paste("brms", deparse(spelling))
     )
   }
 })
@@ -307,11 +374,13 @@ test_that("us(f):g fits on brms only", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ us(env):gen, data = d),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ us(env):gen, data = d),
-    r$brms, "brms"
+    r$brms,
+    "brms"
   )
 })
 
@@ -322,11 +391,13 @@ test_that("corh(f):g refuses on both, typed", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ corh(env):gen, data = d),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ corh(env):gen, data = d),
-    r$brms, "brms",
+    r$brms,
+    "brms",
     condition_class = "flexybayes_refusal_corh_no_equicorrelation_representation"
   )
 })
@@ -338,17 +409,26 @@ test_that("the dsum heterogeneous residual fits on brms only", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit(
-      "inla", y ~ env, random = ~ gen,
-      residual = ~ dsum(~ units | env), data = d
+      "inla",
+      y ~ env,
+      random = ~gen,
+      residual = ~ dsum(~ units | env),
+      data = d
     ),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   for (spelling in list(~ dsum(~ units | env), ~ at(env):units)) {
     .cap_expect(
       .cap_emit(
-        "brms", y ~ env, random = ~ gen, residual = spelling, data = d
+        "brms",
+        y ~ env,
+        random = ~gen,
+        residual = spelling,
+        data = d
       ),
-      r$brms, paste("brms", deparse(spelling))
+      r$brms,
+      paste("brms", deparse(spelling))
     )
   }
 })
@@ -363,14 +443,21 @@ test_that("the combined MET model emits both blocks on brms", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit(
-      "inla", y ~ env, random = ~ gen + gen:env,
-      residual = ~ dsum(~ units | env), data = d
+      "inla",
+      y ~ env,
+      random = ~ gen + gen:env,
+      residual = ~ dsum(~ units | env),
+      data = d
     ),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   emitted <- .cap_emit(
-    "brms", y ~ env, random = ~ gen + gen:env,
-    residual = ~ dsum(~ units | env), data = d
+    "brms",
+    y ~ env,
+    random = ~ gen + gen:env,
+    residual = ~ dsum(~ units | env),
+    data = d
   )
   .cap_expect(emitted, r$brms, "brms")
 
@@ -406,12 +493,14 @@ test_that("factor-analytic GxE refuses on both", {
   d <- .cap_data()
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ fa(env, 1):gen, data = d),
-    r$inla, "INLA",
+    r$inla,
+    "INLA",
     condition_class = "flexybayes_refusal_fa_not_representable"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ fa(env, 1):gen, data = d),
-    r$brms, "brms",
+    r$brms,
+    "brms",
     condition_class = "flexybayes_refusal_fa_not_representable"
   )
 })
@@ -424,18 +513,26 @@ test_that("a multi-trait covariance refuses on both", {
   k <- .cap_kinship()
   .cap_expect(
     .cap_emit(
-      "inla", y ~ env, random = ~ us(trait):vm(gen), data = d,
+      "inla",
+      y ~ env,
+      random = ~ us(trait):vm(gen),
+      data = d,
       known_matrices = list(K = k)
     ),
-    r$inla, "INLA",
+    r$inla,
+    "INLA",
     condition_class = "flexybayes_refusal_interaction_not_representable"
   )
   .cap_expect(
     .cap_emit(
-      "brms", y ~ env, random = ~ us(trait):vm(gen), data = d,
+      "brms",
+      y ~ env,
+      random = ~ us(trait):vm(gen),
+      data = d,
       known_matrices = list(K = k)
     ),
-    r$brms, "brms",
+    r$brms,
+    "brms",
     condition_class = "flexybayes_refusal_interaction_not_representable"
   )
 })
@@ -452,18 +549,25 @@ test_that("known-covariance genomic terms fit on both, per carrier", {
   # brms takes the dense carrier; INLA takes the sparse precision.
   .cap_expect(
     .cap_emit(
-      "brms", y ~ env, random = ~ vm(gen, K), data = d,
+      "brms",
+      y ~ env,
+      random = ~ vm(gen, K),
+      data = d,
       known_matrices = list(K = k)
     ),
-    r$brms, "brms"
+    r$brms,
+    "brms"
   )
   .cap_expect(
     .cap_emit(
-      "inla", y ~ env,
-      random = ~ vm(gen, cov = fb_cov(Q, type = "precision")), data = d,
+      "inla",
+      y ~ env,
+      random = ~ vm(gen, cov = fb_cov(Q, type = "precision")),
+      data = d,
       known_matrices = list(Q = q)
     ),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
 })
 
@@ -474,11 +578,13 @@ test_that("the separable AR1 field fits on INLA and refuses on brms", {
   g <- .cap_grid()
   .cap_expect(
     .cap_emit("inla", y ~ 1, random = ~ ar1(row):ar1(col), data = g),
-    r$inla, "INLA"
+    r$inla,
+    "INLA"
   )
   .cap_expect(
     .cap_emit("brms", y ~ 1, random = ~ ar1(row):ar1(col), data = g),
-    r$brms, "brms",
+    r$brms,
+    "brms",
     condition_class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
   )
   # The row's note says the residual spelling refuses and names this one.
@@ -491,7 +597,8 @@ test_that("the separable AR1 field fits on INLA and refuses on brms", {
       label = paste("residual spelling on", engine)
     )
     expect_match(
-      conditionMessage(old), "random = ~ ar1(row):ar1(col)",
+      conditionMessage(old),
+      "random = ~ ar1(row):ar1(col)",
       fixed = TRUE
     )
   }
@@ -503,10 +610,14 @@ test_that("a univariate P-spline fits on INLA and refuses on brms", {
   r <- .cap_row("Univariate P-spline")
   d <- .cap_data()
   .cap_expect(
-    .cap_emit("inla", y ~ 1, random = ~ spl(x), data = d), r$inla, "INLA"
+    .cap_emit("inla", y ~ 1, random = ~ spl(x), data = d),
+    r$inla,
+    "INLA"
   )
   .cap_expect(
-    .cap_emit("brms", y ~ 1, random = ~ spl(x), data = d), r$brms, "brms",
+    .cap_emit("brms", y ~ 1, random = ~ spl(x), data = d),
+    r$brms,
+    "brms",
     condition_class = "flexybayes_refusal_brms_cannot_represent_term"
   )
 })
@@ -519,7 +630,7 @@ test_that("observation weights refuse on both, typed", {
   w <- as.numeric(seq_len(nrow(d)))
   for (engine in c("inla", "brms")) {
     .cap_expect(
-      .cap_emit(engine, y ~ env, random = ~ gen, data = d, weights = w),
+      .cap_emit(engine, y ~ env, random = ~gen, data = d, weights = w),
       if (identical(engine, "inla")) r$inla else r$brms,
       engine,
       condition_class = "flexybayes_refusal_weights_not_supported"
@@ -539,7 +650,7 @@ test_that("exact aggregation is eligible on the INLA path", {
   )
   d$y <- stats::rnorm(nrow(d), 10, 2)
   plan <- suppressMessages(
-    flexybayes(y ~ env, random = ~ gen, data = d, plan = TRUE, verbose = FALSE)
+    flexybayes(y ~ env, random = ~gen, data = d, plan = TRUE, verbose = FALSE)
   )
   expect_true(isTRUE(plan$aggregation$eligible))
 })
@@ -558,6 +669,7 @@ test_that("every capability row carries a behaviour anchor here", {
       "GLMM (binomial, Poisson, negative binomial, gamma, beta),",
       "simple random effect"
     ),
+    "Hurdle gamma (zero mass plus a positive gamma part)",
     "Uncorrelated random slope",
     "Factor-by-numeric fixed interaction",
     "Correlated random slope",

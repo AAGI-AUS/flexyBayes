@@ -244,9 +244,58 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # the reference grid", so it refuses by name and points at the
   # accessors that do carry the level effects
   # (classify_random_factor_not_supported) (= 95).
-  expect_equal(length(entries), 95L)
+  # The field-coverage sweep adds twelve, all on the prior mini-language.
+  # It accepted 23 of 31 malformed specifications and substituted a
+  # default for the value the caller wrote, so three completed fits ran
+  # under a prior nobody asked for. A mini-language is a public API: the
+  # constructor now refuses an unknown or duplicated argument name
+  # (prior_argument_unknown, prior_argument_duplicated), a missing
+  # required one (prior_argument_missing -- half a PC prior states no
+  # probability), a non-scalar or non-finite value
+  # (prior_hyperparameter_not_scalar), and a value outside its domain
+  # (prior_hyperparameter_out_of_domain -- a negative standard deviation
+  # used to reach the sampler and surface as a missing-draws error).
+  # The surrounding entry shapes are typed with it, because a refusal a
+  # wrapper cannot match on by class is not a contract: the empty call,
+  # the non-formula and one-sided argument, the unsupported target and
+  # its missing identifying argument, and the right-hand side that is
+  # not a known distribution call (prior_spec_empty,
+  # prior_spec_not_formula, prior_spec_not_two_sided,
+  # prior_target_unsupported, prior_target_argument_missing,
+  # prior_distribution_not_a_call, prior_distribution_unknown) (= 107).
+  # The same sweep's second slate adds seven more, all on paths that
+  # refused for real reasons in untyped conditions. The prior emit is two:
+  # a distribution the backend cannot carry on that parameter
+  # (prior_not_translatable_for_backend -- on INLA it used to be dropped
+  # silently while prior_summary() printed it as applied), and a prior
+  # naming a term the model does not have (prior_target_not_in_model,
+  # which brms's own parser answered with a synthesised Stan name). The
+  # formula grammar is five: an mgcv smoother in the fixed part
+  # (fixed_smoother_not_supported), a variable indexing both a fixed term
+  # and an f() term (inla_variable_used_twice), a bar-grammar factor slope
+  # whose ASReml surface fits (brms_factor_random_slope_unsupported), and
+  # the two remaining ingest refusals typed with it
+  # (brms_random_effect_form_unsupported,
+  # brms_ingest_feature_unsupported) (= 114). The execution grid then
+  # reached the two aggregated-route entry refusals that raised bare
+  # errors above the plan gate -- a missing response, which is a property
+  # of the data (aggregation_response_incomplete), and an unreachable
+  # aggregated emit, which is a property of the engine roster
+  # (aggregation_route_unavailable, raised at two sites) (= 116).
+  expect_equal(length(entries), 116L)
+  expect_true("aggregation_response_incomplete" %in% entries)
+  expect_true("aggregation_route_unavailable" %in% entries)
+  expect_true("prior_not_translatable_for_backend" %in% entries)
+  expect_true("prior_target_not_in_model" %in% entries)
+  expect_true("fixed_smoother_not_supported" %in% entries)
+  expect_true("inla_variable_used_twice" %in% entries)
+  expect_true("brms_factor_random_slope_unsupported" %in% entries)
   expect_true("term_in_fixed_and_random" %in% entries)
   expect_true("classify_random_factor_not_supported" %in% entries)
+  expect_true("prior_argument_unknown" %in% entries)
+  expect_true("prior_argument_missing" %in% entries)
+  expect_true("prior_hyperparameter_out_of_domain" %in% entries)
+  expect_true("prior_hyperparameter_not_scalar" %in% entries)
   expect_true("loo_requires_sampler_draws" %in% entries)
   expect_true("pp_check_requires_predictive_draws" %in% entries)
   expect_true("covariate_zero_fill_not_supported" %in% entries)

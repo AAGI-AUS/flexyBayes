@@ -159,19 +159,24 @@ test_that("fb_from_brms() refuses correlated random slopes (x | g) per ADR 0020"
   expect_true(grepl("Correlated random slopes", conditionMessage(err)))
 })
 
-test_that("fb_from_brms() refuses smoothers s() for v0.1", {
+test_that("fb_from_brms() refuses smoothers s(), naming spl()", {
+  # Typed since 0.9.2, and routed to the same refusal the ASReml grammar
+  # raises: `y ~ s(x)` means one thing on both surfaces, so it gets one
+  # message, and the useful sentence is the one that names the flexyBayes
+  # spelling (field-sweep FS-18).
   d <- mk_brms_data()
-  expect_error(
+  err <- expect_error(
     flexyBayes:::fb_from_brms(y ~ s(x), data = d),
-    "does not yet support: smoother"
+    class = "flexybayes_refusal_fixed_smoother_not_supported"
   )
+  expect_match(conditionMessage(err), "spl(x)", fixed = TRUE)
 })
 
 test_that("fb_from_brms() refuses gp() for v0.1", {
   d <- mk_brms_data()
   expect_error(
     flexyBayes:::fb_from_brms(y ~ gp(lon, lat), data = d),
-    "does not yet support: gp"
+    class = "flexybayes_refusal_brms_ingest_feature_unsupported"
   )
 })
 
@@ -179,7 +184,7 @@ test_that("fb_from_brms() refuses ar() for v0.1", {
   d <- mk_brms_data()
   expect_error(
     flexyBayes:::fb_from_brms(y ~ x + ar(p = 1, gr = g), data = d),
-    "does not yet support: autocorrelation"
+    class = "flexybayes_refusal_brms_ingest_feature_unsupported"
   )
 })
 
@@ -187,7 +192,7 @@ test_that("fb_from_brms() refuses cens() for v0.1", {
   d <- mk_brms_data()
   expect_error(
     flexyBayes:::fb_from_brms(y ~ x + cens(g), data = d),
-    "does not yet support: addition_form"
+    class = "flexybayes_refusal_brms_ingest_feature_unsupported"
   )
 })
 

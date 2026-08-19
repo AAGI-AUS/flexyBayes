@@ -50,6 +50,16 @@ constant, log-scale constant). \code{NULL} when the prior was
 user-supplied.}
 \item{\code{fixed_sd}, \code{vc_sd}}{Legacy scalar values (when
 \code{kind == "legacy_scalar"}).}
+\item{\code{scalars_supplied}}{Named logical: whether the caller
+supplied \code{prior_fixed_sd} and \code{prior_vc_sd}. An argument left
+unsupplied leaves the engine's own default in force, which
+\code{fixed_sd_engine_default} names.}
+\item{\code{legacy_vc_applied}}{Named character: the density the
+legacy scalar bridge put on each variance component it reached,
+empty when \code{prior_vc_sd} was not supplied.}
+\item{\code{not_applied}}{Named character: a prior this package
+declared that the engine has no parameter for -- a residual
+prior on a family whose dispersion is a function of the mean.}
 \item{\code{declaration_only}}{\code{TRUE} on \code{flexybayes_direct_greta}
 fits -- the prior is a declaration of the user's
 greta-built model, not an enforcement.}

@@ -38,8 +38,23 @@
   list(response = response, intercept = intercept, terms = term_info)
 }
 
+# The smoother spellings other packages use on the fixed side. mgcv and
+# brms write `s(x)`; flexyBayes writes `random = ~ spl(x)` and emits it
+# as INLA's rw2. Before 0.9.2 an `s(x)` in the fixed part fell through to
+# the `expression` catch-all, was pasted into the engine's formula, and
+# surfaced as a bare `could not find function "s"` -- on INLA from the
+# subprocess, and on brms only after a completed sampling run, so the
+# compute was spent before the failure (field-sweep FS-18).
+.fb_fixed_smoother_heads <- function() {
+  c("s", "te", "ti", "t2", "sos", "gp", "spl")
+}
+
 # Classify a single fixed-formula term label
 .classify_fixed_term <- function(lbl, data) {
+  head <- sub("\\(.*$", "", lbl)
+  if (grepl("\\(", lbl) && head %in% .fb_fixed_smoother_heads()) {
+    .stop_fixed_smoother_unsupported(lbl, head, data)
+  }
   if (grepl("^I\\(", lbl)) {
     return(list(type = "expression", label = lbl))
   }
@@ -116,6 +131,69 @@
     }
   }
   list(type = "expression", label = lbl)
+}
+
+# The typed refusal for a smoother written in the fixed part, naming the
+# flexyBayes spelling and the backend that carries it.
+#
+# The package already produces this message on the random side
+# (R/emit_brms.R: "An mgcv smooth basis has no brms lowering in the
+# ASReml grammar. Fit `s(x)` with `backend = \"inla\"`"), and
+# `fb_plan(y ~ s(x), data = d)` reaches a comparable one. Only the
+# fixed-side fit path dropped through to bare evaluation.
+.stop_fixed_smoother_unsupported <- function(lbl, head, data) {
+  inner <- sub("^[^(]*\\(", "", sub("\\)$", "", lbl))
+  args <- trimws(strsplit(inner, ",", fixed = TRUE)[[1L]])
+  # Bare variable arguments only: `s(x, k = 10)` smooths one variable,
+  # `te(x, z)` smooths two, and only the first has a `spl()` counterpart.
+  vars <- args[!grepl("=", args, fixed = TRUE)]
+  vars <- vars[nzchar(vars)]
+  var <- if (length(vars)) vars[[1L]] else args[[1L]]
+  known <- !is.null(data) && var %in% names(data)
+  multivariate <- length(vars) > 1L
+  stop(.fb_refusal_condition(
+    reason_code = "fixed_smoother_not_supported",
+    message = paste0(
+      "`",
+      lbl,
+      "` is a smoother written in the fixed part of the formula, and ",
+      "flexyBayes\n",
+      "does not carry smoothers there -- `",
+      head,
+      "()` is the mgcv / brms spelling.\n\n",
+      if (multivariate) {
+        paste0(
+          "flexyBayes carries one smooth, the univariate P-spline ",
+          "`random = ~ spl(x)`, which\n",
+          "  emits INLA's second-order random walk. It has no ",
+          "multivariate counterpart, so\n",
+          "  there is no flexyBayes spelling of this term."
+        )
+      } else {
+        paste0(
+          "flexyBayes spells a univariate smooth on the random side: ",
+          "`random = ~ spl(",
+          var,
+          ")`,\n",
+          "  which emits INLA's second-order random walk. Pass ",
+          "backend = \"inla\"; brms\n",
+          "  has no lowering for it in this grammar."
+        )
+      },
+      if (!known && !multivariate) {
+        paste0(
+          "\n(`",
+          var,
+          "` was read as the smoothed variable; it is not a column of ",
+          "the data.)"
+        )
+      } else {
+        ""
+      }
+    ),
+    family_class = "flexybayes_fixed_term_refusal",
+    term_label = lbl
+  ))
 }
 
 # Parse an ASReml one-sided formula (random or residual) via AST walking
@@ -375,7 +453,8 @@
                 "dsum). Per-region structured residuals are planned for a ",
                 "future release."
               ),
-              inner_txt, parsed$grp
+              inner_txt,
+              parsed$grp
             )
           ))
         }
@@ -408,8 +487,27 @@
 # never reaches the "simple variable" branch.
 .asreml_function_vocabulary <- function() {
   c(
-    "ar1", "ar2", "at", "cor", "corh", "diag", "dsum", "fa", "id", "ide",
-    "idh", "lin", "ped", "pol", "s", "spl", "str", "t2", "te", "ti", "us",
+    "ar1",
+    "ar2",
+    "at",
+    "cor",
+    "corh",
+    "diag",
+    "dsum",
+    "fa",
+    "id",
+    "ide",
+    "idh",
+    "lin",
+    "ped",
+    "pol",
+    "s",
+    "spl",
+    "str",
+    "t2",
+    "te",
+    "ti",
+    "us",
     "vm"
   )
 }
@@ -457,8 +555,11 @@
   stop(.fb_refusal_condition(
     reason_code = "asreml_function_not_recognised",
     message = paste0(
-      "\"", paste(deparse(expr), collapse = ""), "\" uses the function ",
-      token, "(), which is not in the ASReml vocabulary flexyBayes reads. ",
+      "\"",
+      paste(deparse(expr), collapse = ""),
+      "\" uses the function ",
+      token,
+      "(), which is not in the ASReml vocabulary flexyBayes reads. ",
       "The random / residual grammar is a closed set, so an unrecognised ",
       "call is refused rather than read as a variable of that name.",
       suggestion,
@@ -485,8 +586,10 @@
   if (is.call(expr)) {
     fn <- as.character(expr[[1]])
     if (fn %in% c("id", "idv", "ide") && length(expr) >= 2L) {
-      return(is.symbol(expr[[2]]) &&
-        identical(as.character(expr[[2]]), "units"))
+      return(
+        is.symbol(expr[[2]]) &&
+          identical(as.character(expr[[2]]), "units")
+      )
     }
   }
   FALSE
@@ -596,9 +699,15 @@
             reason_code = "fa_rank_exceeds_dim",
             message = paste0(
               "fa() requires k < the number of levels of \"",
-              term$outer, "\"; got k = ", term$k, " with ",
-              term$n_outer, " level(s). Use k <= ",
-              term$n_outer - 1L, ", or us(", term$outer,
+              term$outer,
+              "\"; got k = ",
+              term$k,
+              " with ",
+              term$n_outer,
+              " level(s). Use k <= ",
+              term$n_outer - 1L,
+              ", or us(",
+              term$outer,
               ") for a full unstructured covariance."
             )
           ))
@@ -812,31 +921,46 @@
   ))
   slope_route <- if (length(numeric_vars) == 1L && length(group_vars) == 1L) {
     paste0(
-      "For the random regression write (", numeric_vars, " || ",
-      group_vars, ") in the brms-style grammar -- an uncorrelated ",
-      "per-", group_vars, " slope on ", numeric_vars,
+      "For the random regression write (",
+      numeric_vars,
+      " || ",
+      group_vars,
+      ") in the brms-style grammar -- an uncorrelated ",
+      "per-",
+      group_vars,
+      " slope on ",
+      numeric_vars,
       ", which both engines represent."
     )
   } else {
     paste0(
       "For a random regression write the slope in the brms-style grammar ",
-      "as (", numeric_vars[[1L]], " || <grouping factor>)."
+      "as (",
+      numeric_vars[[1L]],
+      " || <grouping factor>)."
     )
   }
   stop(.fb_refusal_condition(
     reason_code = "numeric_variable_in_random_interaction",
     message = paste0(
-      label, " puts the numeric variable ",
+      label,
+      " puts the numeric variable ",
       paste0("`", numeric_vars, "`", collapse = ", "),
       " inside a random interaction, and the two readings of that ",
       "spelling are different models. ASReml reads it as a random ",
       "regression on the numeric variable within the grouping factor. ",
       "The interaction crossing flexyBayes would emit instead gives one ",
-      "independent deviation per cell -- ", format(n_cells), " of them ",
+      "independent deviation per cell -- ",
+      format(n_cells),
+      " of them ",
       "here. flexyBayes refuses rather than choosing one reading for ",
-      "you. ", slope_route,
+      "you. ",
+      slope_route,
       " For a genuine per-cell effect convert the variable first: ",
-      "data$", numeric_vars[[1L]], " <- factor(data$", numeric_vars[[1L]],
+      "data$",
+      numeric_vars[[1L]],
+      " <- factor(data$",
+      numeric_vars[[1L]],
       ")."
     ),
     numeric_vars = numeric_vars,

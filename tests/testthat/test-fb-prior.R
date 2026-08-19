@@ -79,20 +79,29 @@ test_that("fb_prior() rejects unsupported targets", {
 # Distributions                                                    #
 # ---------------------------------------------------------------- #
 
+# Each family is written with its own complete argument list, read off
+# .fb_prior_family_table(). The earlier form of this test passed the same
+# two positional arguments to every family, which only worked because an
+# unmatchable call fell through unnamed -- the defect the 0.9.2
+# strict-matching pass removed.
 test_that("fb_prior() accepts the v0.1 distribution families", {
-  for (fam in c(
-    "pc",
-    "half_normal",
-    "half_cauchy",
-    "student_t",
-    "normal",
-    "exponential",
-    "lkj",
-    "cauchy",
-    "gamma"
-  )) {
-    expr <- as.call(c(as.name(fam), 1, 0.01))
-    f <- stats::as.formula(paste0("sigma ~ ", deparse(expr)))
+  calls <- list(
+    pc = quote(pc(upper = 1, prob = 0.01)),
+    half_normal = quote(half_normal(scale = 1)),
+    half_cauchy = quote(half_cauchy(scale = 1)),
+    student_t = quote(student_t(df = 3, scale = 1)),
+    normal = quote(normal(mean = 0, sd = 1)),
+    exponential = quote(exponential(rate = 1)),
+    lkj = quote(lkj(eta = 2)),
+    cauchy = quote(cauchy(location = 0, scale = 1)),
+    gamma = quote(gamma(shape = 1, rate = 0.01))
+  )
+  expect_setequal(
+    names(calls),
+    setdiff(flexyBayes:::.fb_prior_supported_families(), "uniform")
+  )
+  for (fam in names(calls)) {
+    f <- stats::as.formula(paste0("sigma ~ ", deparse(calls[[fam]])))
     p <- fb_prior(f)
     expect_identical(
       p$specs[[1]]$spec$family,
@@ -197,11 +206,11 @@ test_that("fb_prior() accepts uniform(lower, upper)", {
 test_that("uniform() rejects missing upper, negative lower, upper <= lower", {
   expect_error(
     fb_prior(sigma ~ uniform(lower = 0)),
-    regexp = "uniform\\(\\) requires `upper`"
+    regexp = "omits `upper`"
   )
   expect_error(
     fb_prior(sigma ~ uniform(lower = -1, upper = 5)),
-    regexp = "lower must be >= 0"
+    regexp = "must be >= 0"
   )
   expect_error(
     fb_prior(sigma ~ uniform(lower = 5, upper = 5)),
@@ -230,14 +239,19 @@ test_that(".default_uniform_prior() maps to faithful INLA expression priors", {
   # PC approximation that disagreed with greta on small group counts.
   dat <- data.frame(y = stats::rnorm(60), g = factor(rep(1:5, each = 12)))
   dp <- flexyBayes:::.default_uniform_prior(
-    data = dat, response = "y", family = "gaussian", random_groups = "g"
+    data = dat,
+    response = "y",
+    family = "gaussian",
+    random_groups = "g"
   )
   out <- flexyBayes:::priors_to_inla(dp)
   expect_setequal(names(out), c("sigma", "g"))
   expect_match(out$sigma$prior, "^expression:")
   expect_match(out$g$prior, "^expression:")
   expect_false(any(vapply(
-    out, function(e) identical(e$prior, "pc.prec"), logical(1)
+    out,
+    function(e) identical(e$prior, "pc.prec"),
+    logical(1)
   )))
 })
 

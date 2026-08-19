@@ -162,7 +162,13 @@
     negative_binomial = "log",
     negbinom = "log",
     gamma = "log",
-    beta = "logit"
+    beta = "logit",
+    # brms-native, brms-only: `brms::brmsfamily("hurdle_gamma")` declares
+    # dpars mu, shape, hu on brms 2.23.0, and the entry allowlist used to
+    # refuse a family the engine behind it carries (field-sweep FS-4 /
+    # field finding C2). INLA's likelihood roster has no counterpart, so
+    # lgm_gate() refuses `backend = "inla"` for it on the family row.
+    hurdle_gamma = "log"
   )
   fam <- tolower(family)
   # The generalised extreme value and Dirichlet families are not GLM-link
@@ -172,7 +178,9 @@
   # there explicitly instead of refusing them as merely "unsupported".
   if (fam %in% c("gen_extreme_value", "gev", "extreme_value")) {
     stop(
-      "Family \"", family, "\" (generalised extreme value) is fitted via ",
+      "Family \"",
+      family,
+      "\" (generalised extreme value) is fitted via ",
       "the dedicated `fb_gev()` entry point, not the `flexybayes()` ",
       "formula path: block maxima have no mean-link parameterisation. See ",
       "`?fb_gev`.",
@@ -200,13 +208,60 @@
         "multivariate responses) are planned future work; see ",
         "fb_refusals(). Block-maxima (generalised extreme value) and ",
         "compositional (Dirichlet) data have dedicated fitters: ",
-        "see `?fb_gev` and `?fb_dirichlet`."
+        "see `?fb_gev` and `?fb_dirichlet`.",
+        .fb_family_boundary_note(fam)
       ),
       family_class = "flexybayes_unsupported_family"
     ))
   }
   lnk <- if (!is.null(link)) tolower(link) else defaults[[fam]]
   list(family = fam, link = lnk)
+}
+
+# The documented-boundary note for a family a user is likely to reach
+# for and not find. Appended to the unsupported-family refusal so the
+# message says which layer the boundary is at, rather than leaving the
+# user to infer that flexyBayes is merely behind its engines.
+#
+# The three families here were the ones the field engagement named
+# (finding C2). Their status was checked against the installed engines
+# rather than recalled -- `brms::brmsfamily()` refuses all three on brms
+# 2.23.0, so blocking them is not a narrowing over that engine; INLA's
+# roster (`names(INLA::inla.models()$likelihood)`, 107 entries at INLA
+# 25.10.19) does carry `tweedie`, so that one is a genuine flexyBayes
+# boundary and says so. Getting this backwards changes what the fix is:
+# the fourth family the field named, `hurdle_gamma`, IS brms-native and
+# is now admitted above.
+.fb_family_boundary_note <- function(fam) {
+  notes <- list(
+    tweedie = paste0(
+      "\n\nBoundary note. INLA's likelihood roster does carry `tweedie`, ",
+      "so this is a\nflexyBayes boundary rather than an engine one: the ",
+      "package has no INLA emit for\nit (no link / power parameter, no ",
+      "validated fit). brms carries no Tweedie family\nat all. Tracked ",
+      "as a feature request in inst/KNOWN_ISSUES.md; for compound-Poisson\n",
+      "gamma data today, fit the zero / positive parts separately and ",
+      "recombine on the\nposterior, or use family = \"hurdle_gamma\" with ",
+      "backend = \"brms\"."
+    ),
+    zero_inflated_gamma = paste0(
+      "\n\nBoundary note. Neither active engine carries this family: ",
+      "`brms::brmsfamily(\n\"zero_inflated_gamma\")` refuses on brms ",
+      "2.23.0, and INLA's roster has no\ncounterpart. The nearest ",
+      "implemented alternative is family = \"hurdle_gamma\" with\n",
+      "backend = \"brms\" -- a hurdle and a zero-inflated gamma are the ",
+      "same model when the\npositive part has no mass at zero, which a ",
+      "gamma does not."
+    ),
+    compound_poisson = paste0(
+      "\n\nBoundary note. `brms::brmsfamily(\"compound_poisson\")` ",
+      "refuses on brms 2.23.0, so\nthis is not a narrowing over that ",
+      "engine. INLA's roster carries `tweedie`, which\nis the ",
+      "compound-Poisson gamma; flexyBayes has no emit for it. See the ",
+      "`tweedie`\nentry in inst/KNOWN_ISSUES.md."
+    )
+  )
+  notes[[fam]] %||% ""
 }
 
 # Map flexyBayes family string to stats::family object
@@ -219,7 +274,11 @@
     "poisson" = poisson(link = fam_link$link),
     "negative_binomial" = ,
     "negbinom" = poisson(link = "log"),
-    "gamma" = Gamma(link = fam_link$link),
+    "gamma" = ,
+    # The starting-value GLM for a hurdle gamma is the gamma GLM of its
+    # positive part; the zero-mass component has no `stats` counterpart
+    # and does not inform the mean-model starting values.
+    "hurdle_gamma" = Gamma(link = fam_link$link),
     "beta" = gaussian(link = "identity"),
     gaussian()
   )

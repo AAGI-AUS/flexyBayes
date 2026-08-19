@@ -287,20 +287,43 @@ print.lgm_refusal <- function(x, ...) {
     as.character(fb$family)
   }
 
+  # Test the spelling INLA will be handed, not the one the user wrote.
+  # The two vocabularies differ -- flexyBayes says negative_binomial,
+  # negbinom and binary where INLA says nbinomial and binomial -- and the
+  # reconciler that maps between them (.resolve_inla_family(), in
+  # R/emit_inla.R) runs after this gate. Comparing the flexyBayes
+  # spelling against INLA's own roster refused three of the eight
+  # supported family spellings for a naming reason, on an engine that
+  # carries every one of those likelihoods.
+  resolved <- .resolve_inla_family(fb)
+
   allowed <- .inla_likelihood_allowlist()
-  if (tolower(fam_name) %in% tolower(allowed)) {
+  if (tolower(resolved) %in% tolower(allowed)) {
     return(.lgm_pass("family_allowlist"))
   }
 
+  spelling_note <- if (!identical(tolower(resolved), tolower(fam_name))) {
+    paste0(" (INLA spelling \"", resolved, "\")")
+  } else {
+    ""
+  }
   .lgm_fail(
     "family_allowlist",
     paste0(
       "family \"",
       fam_name,
-      "\" is not in the INLA likelihood ",
+      "\"",
+      spelling_note,
+      " is not in the INLA likelihood ",
       "allowlist (no built-in Laplace machinery)."
     ),
-    diagnostic = paste0("fb$family = \"", fam_name, "\"")
+    diagnostic = paste0(
+      "fb$family = \"",
+      fam_name,
+      "\"; resolved INLA family = \"",
+      resolved,
+      "\""
+    )
   )
 }
 

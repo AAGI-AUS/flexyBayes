@@ -220,7 +220,10 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
     verbose = FALSE,
     return_code = TRUE
   )
-  expect_named(res, c("formula", "family", "hyper", "control_family"))
+  expect_named(
+    res,
+    c("formula", "family", "hyper", "control_family", "control_fixed")
+  )
   expect_s3_class(res$formula, "formula")
   expect_identical(res$family, "gaussian")
   # control_family is empty when the user supplies no sigma prior;

@@ -27,7 +27,6 @@
 # estimate / std.error / conf.low / conf.high happens here, on the way
 # out, so the broom contract is untouched.
 
-
 # ---------------------------------------------------------------- #
 # Small readers over a fitted object                                #
 # ---------------------------------------------------------------- #
@@ -139,7 +138,10 @@
     at_units = paste0("units sectioned by ", term$var),
     ar1 = paste0("ar1(", term$var, ") field + nugget"),
     ar1_spatial = paste0(
-      "ar1(", term$row_var, "):ar1(", term$col_var,
+      "ar1(",
+      term$row_var,
+      "):ar1(",
+      term$col_var,
       ") field + nugget (4 parameters)"
     ),
     spline = paste0("spline in ", term$var),
@@ -291,6 +293,15 @@
   } else {
     character(0)
   }
+  # What the bridge priored where there is no engine table to read it
+  # off -- the INLA route. prior_summary() carries the record; this is a
+  # projection of it, in the order the two sources deserve: the engine's
+  # own table first, the declaration second.
+  bridge_declared <- if (legacy) {
+    ps$legacy_vc_applied %||% character(0)
+  } else {
+    character(0)
+  }
   sectioned <- .fb_sectioned_residual_prior(ps)
 
   vapply(
@@ -313,6 +324,9 @@
       # matched-prior gate rather than for this cell.
       if (cmp %in% names(bridged)) {
         return(unname(bridged[[cmp]]))
+      }
+      if (cmp %in% names(bridge_declared)) {
+        return(unname(bridge_declared[[cmp]]))
       }
       if (cmp %in% engine_default) {
         return("engine default")
@@ -349,9 +363,12 @@
 # prior, which on Stan is false. .brms_legacy_specs() writes
 # lognormal(0, prior_vc_sd) onto sigma and onto every named sd group.
 #
-# On the INLA route the bridge writes nothing and the engine keeps its own
-# hyperprior, so `engine default` is the true cell there and this returns
-# nothing, leaving the branch below it to answer.
+# On the INLA route there is no engine prior table to read, so this
+# returns nothing and the branch below answers from the recorded prior --
+# which since 0.9.2 carries the same lognormal, because the scalar now
+# reaches INLA as the expression prior that writes that density on the SD
+# scale. Before then the bridge handed INLA nothing and `engine default`
+# was the true cell there.
 #
 # The strings are read off the engine's own prior table rather than
 # rebuilt from the scalar, so the cell states what reached the sampler and
@@ -758,7 +775,12 @@
 # case, `level` is the level label alone.
 
 .FB_RANDOM_COLS <- c(
-  "group", "level", "estimate", "std.error", "conf.low", "conf.high"
+  "group",
+  "level",
+  "estimate",
+  "std.error",
+  "conf.low",
+  "conf.high"
 )
 
 # .fb_random_empty() --- the typed zero-row frame.
@@ -948,7 +970,9 @@
     error = function(e) {
       warning(
         "flexyBayes: the random-effect table could not be built from this ",
-        "fit (", conditionMessage(e), "); returning none.",
+        "fit (",
+        conditionMessage(e),
+        "); returning none.",
         call. = FALSE
       )
       list()
@@ -1119,7 +1143,8 @@
     "flexyBayes: the unobserved-cell table is empty on this fit even ",
     "though it carries missing responses. INLA computes a fitted value ",
     "for an NA response on the identity link, and this fit uses the '",
-    link, "' link, so those rows would be on the linear-predictor scale ",
+    link,
+    "' link, so those rows would be on the linear-predictor scale ",
     "while every row around them is on the response scale. The count of ",
     "unobserved cells is still nobs(fit) - nobs(fit, type = ",
     "\"observed\"), and the posterior itself is on the fit at ",
@@ -1196,7 +1221,9 @@
     error = function(e) {
       warning(
         "flexyBayes: the missing-cell table could not be built from this ",
-        "fit (", conditionMessage(e), "); returning none.",
+        "fit (",
+        conditionMessage(e),
+        "); returning none.",
         call. = FALSE
       )
       NULL
@@ -1524,14 +1551,24 @@
   }
   if (!is.null(cv$mode_status)) {
     cat("  Engine    : ", cv$engine, "\n", sep = "")
-    cat("  Mode status: ", format(cv$mode_status), " (0 = converged)\n",
-        sep = "")
-    cat("  Marginal log-likelihood: ", format(round(cv$mlik, 3)), "\n",
-        sep = "")
+    cat(
+      "  Mode status: ",
+      format(cv$mode_status),
+      " (0 = converged)\n",
+      sep = ""
+    )
+    cat(
+      "  Marginal log-likelihood: ",
+      format(round(cv$mlik, 3)),
+      "\n",
+      sep = ""
+    )
     if (!is.na(cv$kld_max)) {
       cat(
         "  Largest symmetric KLD between the Gaussian approximation and ",
-        "the\n  corrected marginal: ", format(signif(cv$kld_max, 3)), "\n",
+        "the\n  corrected marginal: ",
+        format(signif(cv$kld_max, 3)),
+        "\n",
         sep = ""
       )
     }
@@ -1543,7 +1580,9 @@
         if (isTRUE(cv$numerical_confirm)) "PASS" else "FAIL",
         if (length(cv$numerical_confirm_reasons) > 0L) {
           paste0(
-            " (", paste(cv$numerical_confirm_reasons, collapse = "; "), ")"
+            " (",
+            paste(cv$numerical_confirm_reasons, collapse = "; "),
+            ")"
           )
         } else {
           ""
@@ -1605,7 +1644,8 @@ print.summary.flexybayes <- function(x, digits = 4L, ...) {
 
   cat(
     "\n-- Fixed effects (posterior mean, 95% credible interval) ",
-    strrep("-", 8), "\n",
+    strrep("-", 8),
+    "\n",
     sep = ""
   )
   if (nrow(x$fixed) > 0L) {
@@ -1619,7 +1659,8 @@ print.summary.flexybayes <- function(x, digits = 4L, ...) {
 
   cat(
     "\n-- Variance components (95% credible interval) ",
-    strrep("-", 18), "\n",
+    strrep("-", 18),
+    "\n",
     sep = ""
   )
   cat(

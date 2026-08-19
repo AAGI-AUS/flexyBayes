@@ -1,0 +1,614 @@
+# inst/validation/scenarios.yaml -- the numerical-validation registry
+# (rubrics/validation_ladder.md, schema templates/validation/README.md).
+#
+# Every row below is an EXISTING study. Nothing here was simulated to fill
+# a tier floor: the five studies are the design-preserving missingness
+# sweep, the heterogeneous-variance three-arm oracle, the five-model
+# ASReml head-to-head, the six-pair ASReml comparison of 2026-08-18, and
+# the recipe-63 alternative-implementation hunt, plus the stability cells
+# the suite and the execution grid already assert and the one
+# interval-coverage study the package has.
+#
+# `n` is the number of observations in the scenario's data cell, read from
+# the generating script rather than recalled. `result_cache` names the
+# artefact the numbers come from: a path under `inst/validation/` where
+# the package ships a copy, and a workspace-relative path where it does
+# not. The README beside this file records which artefacts are shipped
+# copies and which are not, and what that means for `check_scenarios.R`.
+#
+# What this registry does NOT yet cover at the declared tier is written
+# down in README.md rather than papered over here.
+
+tier: V3
+package_version: "0.9.2"
+generated_on: 2026-08-19
+
+scenarios:
+
+  # --- Study 1: design-preserving missingness sweep --------------------
+  #
+  # 170 banked cells x 25 seeds, 66,388 rows. Five designs crossed with
+  # seven missing-response proportions (slice A), four non-ignorable
+  # mechanisms at three strengths (slice B), and three trial sizes
+  # (slice C). Generating scripts: `design-preserving-missingness/
+  # sweep_full.R` and `report_sweep.R`. Data sizes are the design
+  # dimensions in `design-preserving-missingness/R/designs.R`.
+
+  - id: missing-sweep-rcbd-proportions
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 60
+    params: {var_block: 1.0, var_gen: 2.0, var_residual: 0.8}
+    condition: missing
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml missing-plot device (-F phi), 7 proportions x 25 seeds"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-sweep-ibd-proportions
+    estimator: flexybayes
+    dgp: incomplete-blocks
+    n: 72
+    params: {var_block: 1.0, var_gen: 2.0, var_residual: 0.8}
+    condition: imbalance
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml missing-plot device, non-orthogonal blocking"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-sweep-rowcol-proportions
+    estimator: flexybayes
+    dgp: row-column
+    n: 100
+    condition: missing
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml missing-plot device, 7 proportions x 25 seeds"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-sweep-spatial-proportions
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 120
+    condition: missing
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml missing-plot device; `omit` refuses on a holed grid"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-sweep-met-proportions
+    estimator: flexybayes
+    dgp: multi-environment-trial
+    n: 180
+    condition: missing
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml missing-plot device, 7 proportions x 25 seeds"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  # The device identity itself, against a REML that shares no code with
+  # it. The pooled result over the five designs at p <= 0.20 is 4,000
+  # comparisons, none exceeding 1e-2, largest 0.0097.
+
+  - id: missing-device-identity-rcbd
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 60
+    condition: missing
+    kind: correctness
+    oracle_class: M-B
+    oracle_ref: "independently written dense-V observed-data REML (no shared code)"
+    quantity_class: var_component
+    tolerance: 1e-2
+    tolerance_rationale: "the band the report reads the identity at; 0 of 4000 pooled comparisons at p <= 0.20 exceed it"
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-device-identity-ibd
+    estimator: flexybayes
+    dgp: incomplete-blocks
+    n: 72
+    condition: missing
+    kind: correctness
+    oracle_class: M-B
+    oracle_ref: "independently written dense-V observed-data REML"
+    quantity_class: var_component
+    tolerance: 1e-2
+    tolerance_rationale: "as missing-device-identity-rcbd"
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-device-identity-rowcol
+    estimator: flexybayes
+    dgp: row-column
+    n: 100
+    condition: missing
+    kind: correctness
+    oracle_class: M-B
+    oracle_ref: "independently written dense-V observed-data REML"
+    quantity_class: var_component
+    tolerance: 1e-2
+    tolerance_rationale: "as missing-device-identity-rcbd"
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-device-identity-spatial
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 120
+    condition: missing
+    kind: correctness
+    oracle_class: M-B
+    oracle_ref: "independently written dense-V observed-data REML, separable covariance from the grid dimensions"
+    quantity_class: var_component
+    tolerance: 1e-2
+    tolerance_rationale: "as missing-device-identity-rcbd"
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-device-identity-met
+    estimator: flexybayes
+    dgp: multi-environment-trial
+    n: 180
+    condition: missing
+    kind: correctness
+    oracle_class: M-B
+    oracle_ref: "independently written dense-V observed-data REML"
+    quantity_class: var_component
+    tolerance: 1e-2
+    tolerance_rationale: "as missing-device-identity-rcbd"
+    result_cache: inst/validation/report_sweep.txt
+
+  # Slice B: the mechanism axis, measured against the simulating truth at
+  # the reference cell (medium size, p = 0.30), four non-ignorable
+  # mechanisms at three strengths plus the two ignorable ones.
+
+  - id: missing-mechanism-rcbd
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 60
+    params: {p_missing: 0.30}
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components, 14 mechanism cells x 25 seeds"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-mechanism-ibd
+    estimator: flexybayes
+    dgp: incomplete-blocks
+    n: 72
+    params: {p_missing: 0.30}
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-mechanism-rowcol
+    estimator: flexybayes
+    dgp: row-column
+    n: 100
+    params: {p_missing: 0.30}
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-mechanism-spatial
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 120
+    params: {p_missing: 0.30}
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known field and nugget variances"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-mechanism-met
+    estimator: flexybayes
+    dgp: multi-environment-trial
+    n: 180
+    params: {p_missing: 0.30}
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  # Slice C: the size axis. The medium cell of each design is the slice-B
+  # row above, so only the small and large ends are registered here.
+
+  - id: missing-size-rcbd-small
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 24
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components, smallest supported trial"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-rcbd-large
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 160
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-ibd-small
+    estimator: flexybayes
+    dgp: incomplete-blocks
+    n: 24
+    condition: imbalance
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components, smallest supported trial"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-ibd-large
+    estimator: flexybayes
+    dgp: incomplete-blocks
+    n: 180
+    condition: imbalance
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-rowcol-small
+    estimator: flexybayes
+    dgp: row-column
+    n: 36
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components, smallest supported trial"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-rowcol-large
+    estimator: flexybayes
+    dgp: row-column
+    n: 224
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-spatial-small
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 48
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known field and nugget variances, smallest supported grid"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-spatial-large
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 320
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known field and nugget variances"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-met-small
+    estimator: flexybayes
+    dgp: multi-environment-trial
+    n: 60
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components, smallest supported trial"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  - id: missing-size-met-large
+    estimator: flexybayes
+    dgp: multi-environment-trial
+    n: 400
+    condition: missing
+    kind: correctness
+    oracle_class: M-E
+    oracle_ref: "simulation with known variance components"
+    quantity_class: var_component
+    result_cache: inst/validation/report_sweep.txt
+
+  # --- Study 2: heterogeneous-variance three-arm oracle -----------------
+  #
+  # `design-preserving-missingness/oracle_heterogeneous.R`. Both probes
+  # assert the parameter COUNT before comparing any value.
+
+  - id: het-diag-site-by-gen
+    estimator: flexybayes
+    dgp: met-genotype-variance-by-site
+    n: 480
+    params: {sd_gen_by_site: [0.5, 1.2, 2.2], sd_residual: 0.6}
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392 diag(site):gen and an independent lme4 dummy() expansion"
+    quantity_class: var_component
+    result_cache: inst/validation/oracle_het.log
+
+  - id: het-dsum-residual-by-site
+    estimator: flexybayes
+    dgp: met-residual-variance-by-site
+    n: 360
+    params: {sd_gen: 0.8, sd_residual_by_site: [0.4, 1.0, 2.0]}
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392, nlme::varIdent, and a direct brms::brm() under brms's own priors"
+    quantity_class: var_component
+    result_cache: inst/validation/oracle_het.log
+
+  # --- Study 3: five-model ASReml head-to-head -------------------------
+  #
+  # `head-to-head/run_comparison.R`. 17 variance components across five
+  # models, with the simulating truth, the ASReml estimate and the
+  # flexyBayes estimate kept as separate columns. The parameter counts
+  # are the structural check.
+
+  - id: h2h-rcbd
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 96
+    params: {var_block: 1.0, var_gen: 2.0}
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392, REML point estimates on identical data"
+    quantity_class: var_component
+    result_cache: inst/validation/head_to_head_summary.csv
+
+  - id: h2h-rcbd-large
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 1800
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392, 30 x 60 layout -- enough levels to determine the components"
+    quantity_class: var_component
+    result_cache: inst/validation/head_to_head_summary.csv
+
+  - id: h2h-ibd
+    estimator: flexybayes
+    dgp: incomplete-blocks
+    n: 120
+    condition: imbalance
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392, genotype and block partly confounded"
+    quantity_class: var_component
+    result_cache: inst/validation/head_to_head_summary.csv
+
+  - id: h2h-met-diag
+    estimator: flexybayes
+    dgp: met-genotype-variance-by-site
+    n: 480
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392 diag(site):gen; brms route, min bulk ESS 336"
+    quantity_class: var_component
+    result_cache: inst/validation/head_to_head_summary.csv
+
+  - id: h2h-met-dsum
+    estimator: flexybayes
+    dgp: met-residual-variance-by-site
+    n: 360
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392 dsum(~ units | site); brms route, min bulk ESS 754"
+    quantity_class: var_component
+    result_cache: inst/validation/head_to_head_summary.csv
+
+  # --- Study 4: six-pair ASReml comparison, 2026-08-18 -----------------
+  #
+  # `review/phase_reports_091/headtohead_run.R` (workspace). Same design,
+  # different estimator, on every pair: ASReml returns an AI-REML point
+  # estimate and flexyBayes a posterior.
+
+  - id: h2h6-rcbd-complete
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 96
+    params: {sd_block: 0.7, sd_error: 0.5}
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml 4.2.0.392, yield ~ Variety, random = ~ Block"
+    quantity_class: var_component
+    result_cache: review/phase_reports_091/headtohead_tables.csv
+
+  - id: h2h6-rcbd-missing10
+    estimator: flexybayes
+    dgp: randomised-complete-blocks
+    n: 96
+    params: {n_missing: 10}
+    condition: missing
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml with na.method(y = 'include') against the default augment path"
+    quantity_class: var_component
+    result_cache: review/phase_reports_091/headtohead_tables.csv
+
+  - id: h2h6-rowcol-ar1-complete
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 120
+    params: {rho_row: 0.6, rho_col: 0.4, sd_field: 1.0, sd_error: 0.35}
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml residual = ~ ar1(Row):ar1(Col); the three- versus four-parameter difference is reported, not hidden"
+    quantity_class: var_component
+    result_cache: review/phase_reports_091/headtohead_tables.csv
+
+  - id: h2h6-rowcol-ar1-holed
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 120
+    params: {n_missing: 12}
+    condition: missing
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml on a holed grid against the default augment path"
+    quantity_class: var_component
+    result_cache: review/phase_reports_091/headtohead_tables.csv
+
+  - id: h2h6-met-diag-gxe
+    estimator: flexybayes
+    dgp: met-genotype-variance-by-site
+    n: 240
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml random = ~ Geno + diag(Env):Geno, same grammar on both sides"
+    quantity_class: var_component
+    result_cache: review/phase_reports_091/headtohead_tables.csv
+
+  - id: h2h6-het-residual-by-env
+    estimator: flexybayes
+    dgp: met-residual-variance-by-site
+    n: 240
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "asreml residual = ~ dsum(~ units | Env), same grammar on both sides"
+    quantity_class: var_component
+    result_cache: review/phase_reports_091/headtohead_tables.csv
+
+  # --- Study 5: alternative-implementation hunt (recipe 63) ------------
+  #
+  # `review/phase_reports_091/alternatives_flexybayes.yaml` declares the
+  # estimand, the tolerances and the not-the-same-question note for each
+  # entry BEFORE any fit ran. One shared 60-row gaussian fixture.
+
+  - id: alt-e1-hand-rolled-reml
+    estimator: flexybayes
+    dgp: gaussian-random-intercept
+    n: 60
+    params: {sd_g: 0.8, sigma: 1.0}
+    condition: clean
+    kind: correctness
+    oracle_class: M-B
+    oracle_ref: "a dense-V profile REML written for the rehearsal from Patterson & Thompson (1971) / Harville (1977) without reading the package emit"
+    quantity_class: var_component
+    tolerance: 0.30
+    tolerance_rationale: "relative band declared before the run; a posterior mean of a right-skewed SD sits above the REML point at 10 groups"
+    result_cache: review/phase_reports_091/alternatives_results.csv
+
+  - id: alt-e1-competitor-implementations
+    estimator: flexybayes
+    dgp: gaussian-random-intercept
+    n: 60
+    params: {sd_g: 0.8, sigma: 1.0}
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "lme4::lmer, glmmTMB::glmmTMB, MCMCglmm::MCMCglmm and asreml on identical data"
+    quantity_class: var_component
+    tolerance: 0.30
+    tolerance_rationale: "as alt-e1-hand-rolled-reml; the fixed-effect band is 0.05 and the residual band 0.10"
+    result_cache: review/phase_reports_091/alternatives_results.csv
+
+  - id: alt-e2-heteroscedastic-residual-ratio
+    estimator: flexybayes
+    dgp: gaussian-two-level-residual-variance
+    n: 60
+    condition: clean
+    kind: correctness
+    oracle_class: M-D
+    oracle_ref: "nlme::lme with varIdent and glmmTMB with dispformula; the RATIO is the quantity all three name"
+    quantity_class: var_component
+    tolerance: 0.15
+    tolerance_rationale: "declared before the run; the three parameterise the heteroscedasticity differently, so only the ratio is comparable"
+    result_cache: review/phase_reports_091/alternatives_results.csv
+
+  # --- Stability / edge of domain (F22) --------------------------------
+
+  - id: stability-spatial-field-collapse
+    estimator: flexybayes
+    dgp: separable-ar1-field
+    n: 120
+    params: {p_missing: 0.10, n_hole_patterns: 10}
+    condition: missing
+    kind: stability
+    oracle_class: M-A
+    oracle_ref: "expected: the field standard deviation runs to its floor on 5 of 10 hole patterns and the fit says so, rather than reporting a converged mode with the variance absorbed into the nugget"
+    quantity_class: var_component
+    result_cache: tests/testthat/test-spatial-field-collapse.R
+
+  - id: stability-weak-identification-inla
+    estimator: flexybayes
+    dgp: gaussian-random-intercept-two-per-cluster
+    n: 56
+    params: {n_clusters: 28, obs_per_cluster: 2}
+    condition: clean
+    kind: stability
+    oracle_class: M-A
+    oracle_ref: "expected: the fit completes and the structured convergence record carries the weak identification (execution-grid cell S6-inla-weak)"
+    quantity_class: var_component
+    result_cache: inst/validation/execution_grid/ledger.csv
+
+  - id: stability-funnel-divergence-brms
+    estimator: flexybayes
+    dgp: gaussian-random-intercept-near-zero-between-variance
+    n: 24
+    params: {n_clusters: 3, sd_between: 0.02, adapt_delta: 0.5, max_treedepth: 5}
+    condition: clean
+    kind: stability
+    oracle_class: M-A
+    oracle_ref: "expected: the fit completes and the divergent transitions are on the fit object (execution-grid cells S6-brms-funnel and S6-brms-funnel-tight)"
+    quantity_class: mcmc_summary
+    result_cache: inst/validation/execution_grid/ledger.csv
+
+  # --- Stochastic calibration (F21) ------------------------------------
+  #
+  # The one calibration study the package has. It is a genuine
+  # interval-coverage study through `flexybayes()` -- and it is BELOW the
+  # V3 floor on three counts, all of them stated in README.md and waived
+  # there rather than glossed here: 10 replicates per cell against the
+  # tier's 1,000, a 0.7.0.9000 candidate rather than this release, and a
+  # backend set that still included greta.
+
+  - id: calibration-interval-coverage-recovery
+    estimator: flexybayes
+    dgp: gaussian-binomial-poisson-random-intercept-and-fixed
+    n: 240
+    params: {b0: 0.5, b1: 0.8, tau: 1.0, sigma: 0.7}
+    condition: clean
+    kind: calibration
+    method: coverage
+    n_sim: 10
+    oracle_class: M-E
+    oracle_ref: "simulation with known truth; the credible interval is scored for covering it, over 3 families x 2 structures x 3 backends x 10 replicates (180 fits, 480 parameter rows)"
+    quantity_class: coverage
+    result_cache: release-validation/results/validation_results.rds

@@ -1931,6 +1931,297 @@
 }
 
 
+# --- field-hardening reasons -------------------------------------- #
+#
+# The 0.9.1 field-coverage sweep found three refusal-shaped holes that
+# were not refusals: the prior mini-language accepted malformed
+# specifications and substituted defaults, two scalar prior arguments
+# were accepted and then discarded, and the INLA family gate compared a
+# flexyBayes spelling against INLA's own roster. The codes below give the
+# constructor, the arrival check, and the reconciled gate a vocabulary,
+# so a caller can distinguish "this specification is not representable"
+# from "R fell over".
+#
+# The prior-DSL codes cover the whole constructor surface rather than
+# only the newly-caught classes: a mini-language is a public API, and a
+# refusal a wrapper cannot pattern-match on is not a contract.
+.populate_refusal_registry_field_hardening <- function() {
+  .register_refusal(
+    reason_code = "prior_spec_empty",
+    description = paste0(
+      "fb_prior() was called with no specification. A prior object with ",
+      "no targets would silently leave every parameter on its engine ",
+      "default."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_spec_not_formula",
+    description = paste0(
+      "An fb_prior() argument is not a formula. The DSL's only argument ",
+      "shape is `target ~ distribution(...)`."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_spec_not_two_sided",
+    description = paste0(
+      "An fb_prior() formula is one-sided, so it names a distribution ",
+      "without naming the parameter it applies to."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_target_unsupported",
+    description = paste0(
+      "The left-hand side of a prior formula is not one of the supported ",
+      "targets. A bare name that is not `sigma` used to be carried as an ",
+      "opaque target and dropped at emit time."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_target_argument_missing",
+    description = paste0(
+      "A prior target call is missing the argument that identifies which ",
+      "parameter it targets -- sd() and cor() need `group`, b() and ",
+      "smooth() need a name."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_distribution_not_a_call",
+    description = paste0(
+      "The right-hand side of a prior formula is not a distribution call, ",
+      "so it carries no hyperparameters."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_distribution_unknown",
+    description = paste0(
+      "The distribution named on the right-hand side of a prior formula ",
+      "is outside the DSL's supported set."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_argument_unknown",
+    description = paste0(
+      "A prior distribution call carries an argument name the family does ",
+      "not have. Before 0.9.2 the call fell through unmatched and every ",
+      "hyperparameter then took its emit-time default, so a misspelt ",
+      "argument became a silently substituted prior."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2 / FS-12",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_argument_duplicated",
+    description = paste0(
+      "A prior distribution call binds the same hyperparameter twice, so ",
+      "which of the two values applies is not decidable from the call."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-2",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_argument_missing",
+    description = paste0(
+      "A prior distribution call omits a hyperparameter the family ",
+      "requires. A half-specified PC prior is the sharp case: half a ",
+      "probability statement is not a probability statement, and the ",
+      "completed value reached the engine unannounced."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-12",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_hyperparameter_not_scalar",
+    description = paste0(
+      "A prior hyperparameter is not a finite numeric scalar. A zero-length ",
+      "or length-two value used to surface as one of R's own interpreter ",
+      "messages several layers downstream."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-14",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_hyperparameter_out_of_domain",
+    description = paste0(
+      "A prior hyperparameter lies outside the domain its family defines ",
+      "-- a non-positive scale, rate, shape or degrees of freedom, a tail ",
+      "probability outside (0, 1), or reversed uniform bounds. A negative ",
+      "standard deviation used to reach the sampler and surface as a ",
+      "missing-draws error."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-13",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_not_translatable_for_backend",
+    description = paste0(
+      "The selected backend has no representation for a supplied prior ",
+      "specification. Before 0.9.2 the INLA route discarded such a row ",
+      "silently while prior_summary() printed it as applied, and the brms ",
+      "route refused it with an untyped error."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-15 / FS-21",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "prior_target_not_in_model",
+    description = paste0(
+      "A prior names a coefficient or a variance component the model does ",
+      "not have. The check reads the engine's own parameter list, so the ",
+      "refusal names the model's actual terms rather than a synthesised ",
+      "Stan parameter name."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-20",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "fixed_smoother_not_supported",
+    description = paste0(
+      "An mgcv-style smoother (s(), te(), ti(), t2(), gp(), sos()) appears ",
+      "in the fixed part of the formula. flexyBayes spells a univariate ",
+      "smooth `random = ~ spl(x)` on the INLA backend; before 0.9.2 the ",
+      "term reached the engine and surfaced as `could not find function ",
+      "\"s\"`, on brms only after a completed sampling run."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-18",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "inla_variable_used_twice",
+    description = paste0(
+      "The same variable indexes both a fixed-effect term and a latent ",
+      "f() term in the emitted INLA formula. INLA refuses a duplicated ",
+      "key; before 0.9.2 the refusal surfaced as the generic ",
+      "inla-program-exited message."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-17",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "brms_factor_random_slope_unsupported",
+    description = paste0(
+      "A bar-grammar random slope on a factor -- (f | g), (0 + f | g), ",
+      "(f || g) -- is outside the brms ingest. The ASReml surface of the ",
+      "same model fits, so the refusal names it verbatim; before 0.9.2 the ",
+      "message listed other bar spellings, none of which expresses the ",
+      "model."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-6 / field finding U1",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "brms_random_effect_form_unsupported",
+    description = paste0(
+      "A bar-grammar random-effect specification outside the supported ",
+      "set -- multi-variable slopes and group-of-coefficients shorthand. ",
+      "Untyped before 0.9.2."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-6",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "brms_ingest_feature_unsupported",
+    description = paste0(
+      "A brms formula feature outside the ingest layer's scope (an ",
+      "extended term the walker collected but cannot lower). Untyped ",
+      "before 0.9.2."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Field sweep FS-6",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+
+  # -- aggregated-route entry gate (dispatch.R) ---------------------
+  #
+  # The execution grid's capability-matrix section reached three
+  # aggregation refusals that the v0.4.0 bulk migration did not cover,
+  # because they sit above the plan gate rather than inside it: the two
+  # refusals below the plan gate already carry a condition class, these
+  # three raised a bare stop(). They split on two boundaries, not one.
+  # The response boundary is a property of the data (no sufficient
+  # statistic exists), the route boundary is a property of the engine
+  # roster (no aggregated emit is reachable) -- a caller handling one
+  # has no business catching the other, so they get separate codes.
+  .register_refusal(
+    reason_code = "aggregation_response_incomplete",
+    description = paste0(
+      "aggregate = TRUE with missing values in the response. The ",
+      "aggregated path compresses rows into per-cell sufficient ",
+      "statistics, which are not defined for a missing response, so ",
+      "the request has no aggregated reading. Untyped before 0.9.2."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Execution grid EG-2026-08-19-001",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  .register_refusal(
+    reason_code = "aggregation_route_unavailable",
+    description = paste0(
+      "aggregate = TRUE with no aggregated emit route available -- ",
+      "either the named backend carries no aggregated path at all, or ",
+      "no aggregated backend resolves for the model. Raised at two ",
+      "sites with site-specific messages. Untyped before 0.9.2."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Execution grid EG-2026-08-19-001",
+    plan_field = NA_character_,
+    since_version = "0.9.2"
+  )
+  invisible(NULL)
+}
+
+
 # --- lock helper -------------------------------------------------- #
 
 # .lock_refusal_registry() --- locks the environment so no further

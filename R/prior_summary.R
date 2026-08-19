@@ -62,6 +62,16 @@
 #'       user-supplied.}
 #'     \item{`fixed_sd`, `vc_sd`}{Legacy scalar values (when
 #'       `kind == "legacy_scalar"`).}
+#'     \item{`scalars_supplied`}{Named logical: whether the caller
+#'       supplied `prior_fixed_sd` and `prior_vc_sd`. An argument left
+#'       unsupplied leaves the engine's own default in force, which
+#'       `fixed_sd_engine_default` names.}
+#'     \item{`legacy_vc_applied`}{Named character: the density the
+#'       legacy scalar bridge put on each variance component it reached,
+#'       empty when `prior_vc_sd` was not supplied.}
+#'     \item{`not_applied`}{Named character: a prior this package
+#'       declared that the engine has no parameter for -- a residual
+#'       prior on a family whose dispersion is a function of the mean.}
 #'     \item{`declaration_only`}{`TRUE` on `flexybayes_direct_greta`
 #'       fits -- the prior is a declaration of the user's
 #'       greta-built model, not an enforcement.}
@@ -139,14 +149,26 @@ prior_summary.default <- function(object, ...) {
 # matched-prior gate; this reads the same record.
 .prior_summary_engine_default <- function(object) {
   fp <- object$extras$fingerprint
-  if (!is.null(fp) && length(fp$engine_default_params) > 0L) {
+  # An empty record is an answer, not a missing one: it says every
+  # variance component carries a prior this package chose. Treating
+  # length 0 as "not recorded" and recomputing sent the summary down a
+  # path that had no access to the scalar the fit ran under, so a fit
+  # whose components were all covered still printed them as engine
+  # defaults, three lines under the header naming the prior they carry.
+  if (!is.null(fp) && !is.null(fp$engine_default_params)) {
     return(fp$engine_default_params)
   }
   fb_terms <- object$extras$fb_terms
   if (is.null(fb_terms)) {
     return(character(0))
   }
-  rec <- tryCatch(.fb_prior_record(fb_terms), error = function(e) NULL)
+  rec <- tryCatch(
+    .fb_prior_record(
+      fb_terms,
+      prior_vc_sd = .fb_prior_scalar_value(fb_terms, "vc_sd")
+    ),
+    error = function(e) NULL
+  )
   if (is.null(rec)) character(0) else rec$engine_default
 }
 
@@ -173,6 +195,67 @@ prior_summary.default <- function(object, ...) {
   }
   term <- sectioned[[1L]]
   term$var %||% term$outer %||% NA_character_
+}
+
+# .prior_summary_fixed_engine_default() --- what carries the fixed
+# effects when `prior_fixed_sd` was not supplied. Named rather than left
+# blank: "this package set no fixed-effect prior" and "the fixed effects
+# have no prior" are different statements, and only the first is true.
+.prior_summary_fixed_engine_default <- function(backend_label) {
+  switch(
+    backend_label,
+    "brms" = paste0(
+      "brms's own defaults -- flat on the population-level coefficients, ",
+      "student_t on the intercept, centred on the response"
+    ),
+    "inla" = paste0(
+      "INLA's own control.fixed defaults -- prec = 0.001 on the slopes ",
+      "(a standard deviation near 32), and prec.intercept = 0, which is ",
+      "flat"
+    ),
+    "greta" = "the legacy normal(0, 100) on every fixed-effect coefficient",
+    "the engine's own fixed-effect default"
+  )
+}
+
+# .prior_summary_not_applied() --- a declared prior the engine has no
+# parameter for.
+#
+# A residual-scale prior is declared for every fit the default-prior
+# walker touches, including families whose brms counterpart carries no
+# `sigma`: Gamma parameterises `shape`, Beta parameterises `phi`, and
+# neither is on the standard-deviation scale the DSL lives on. The emit
+# drops the row -- it has to, or brms refuses the fit -- and the drop is
+# reported here rather than left for a reader to infer from its absence.
+.prior_summary_not_applied <- function(priors, fb_terms, backend_label) {
+  if (!identical(backend_label, "brms") || is.null(fb_terms)) {
+    return(character(0))
+  }
+  fam <- tolower(as.character(fb_terms$family %||% "gaussian")[[1L]])
+  if (.fb_family_has_brms_sigma(fam)) {
+    return(character(0))
+  }
+  declares_sigma <- if (inherits(priors, "fb_prior")) {
+    any(vapply(
+      priors$specs,
+      function(s) identical(s$target$type %||% "", "sigma"),
+      logical(1)
+    ))
+  } else {
+    isTRUE(priors$legacy)
+  }
+  if (!isTRUE(declares_sigma)) {
+    return(character(0))
+  }
+  c(
+    sigma = paste0(
+      "family \"",
+      fam,
+      "\" has no residual scale parameter in brms -- its ",
+      "dispersion is a function of the mean -- so the declared sigma prior ",
+      "is not applied, and that dispersion parameter keeps brms's own default"
+    )
+  )
 }
 
 .prior_summary_impl <- function(object, backend_label, declaration_only) {
@@ -233,6 +316,66 @@ prior_summary.default <- function(object, ...) {
 
   out$declaration_only <- isTRUE(declaration_only)
 
+  # Which scalar prior arguments the caller wrote, and therefore which of
+  # them this fit actually carries. Before 0.9.2 the printed summary
+  # asserted `prior_fixed_sd` and `prior_vc_sd` unconditionally while
+  # neither reached the engine on some routes, so the accessor built to
+  # answer "what prior did this fit use?" named priors the fit did not
+  # use. Absent on a fit built by a direct emit call, which is the same
+  # as not supplied.
+  ir <- fb_terms %||% list()
+  out$scalars_supplied <- c(
+    fixed_sd = .fb_prior_scalar_supplied(ir, "fixed_sd"),
+    vc_sd = .fb_prior_scalar_supplied(ir, "vc_sd")
+  )
+  out$fixed_sd_applied <- .fb_prior_scalar_value(ir, "fixed_sd")
+
+  # Which variance components the legacy scalar bridge actually priored,
+  # and with what density. Read off the fit's own prior record rather
+  # than rebuilt from the scalar, and empty unless the caller supplied
+  # `prior_vc_sd`. summary()'s variance-component table projects this:
+  # on brms the engine's own table answers first, and on INLA -- where
+  # there is no engine prior table to read -- this is what lets the cell
+  # name the prior the fit carries instead of the two words that were
+  # true only while the bridge handed INLA nothing.
+  out$legacy_vc_applied <- if (
+    isTRUE(unname(out$scalars_supplied[["vc_sd"]]))
+  ) {
+    object$extras$fingerprint$priors %||% character(0)
+  } else {
+    character(0)
+  }
+  out$fixed_sd_engine_default <- .prior_summary_fixed_engine_default(
+    backend_label
+  )
+  # Which fixed-effect coefficients an fb_prior() covers with a `b()`
+  # row. The engine-default sentence below is true only of the
+  # coefficients nothing names: since 0.9.2 a `b()` row reaches brms as a
+  # coef-keyed prior row and INLA through a per-coefficient
+  # `control.fixed` entry, so saying "the fixed effects carry the
+  # engine's own defaults" without qualification would be the same
+  # one-story breach in the other direction.
+  out$fixed_b_named <- if (inherits(priors, "fb_prior")) {
+    nm <- vapply(
+      priors$specs,
+      function(s) {
+        if (identical(s$target$type, "b")) s$target$name else NA_character_
+      },
+      character(1)
+    )
+    unique(nm[!is.na(nm)])
+  } else {
+    character(0)
+  }
+
+  # A declared residual prior the engine cannot carry, because the family
+  # has no residual scale parameter for it to apply to.
+  out$not_applied <- .prior_summary_not_applied(
+    priors,
+    fb_terms,
+    backend_label
+  )
+
   # What the declaration does not cover. Both slots exist so a reader of
   # the printed summary sees the whole prior, not the half this package
   # chose.
@@ -259,6 +402,42 @@ prior_summary.default <- function(object, ...) {
 # Print method                                                     #
 # ---------------------------------------------------------------- #
 
+# One line for the fixed-effect prior: the scalar when the caller wrote
+# it, the engine's own default by name when they did not.
+.prior_summary_cat_fixed_line <- function(x) {
+  supplied <- isTRUE(unname((x$scalars_supplied %||%
+    c(fixed_sd = FALSE))[["fixed_sd"]]))
+  if (supplied) {
+    cat(
+      "    prior_fixed_sd = ",
+      format(x$fixed_sd_applied),
+      "  ",
+      "(every fixed effect, intercept included, ~ N(0, ",
+      format(x$fixed_sd_applied),
+      "))\n",
+      sep = ""
+    )
+  } else {
+    named <- x$fixed_b_named %||% character(0)
+    cat(
+      "    prior_fixed_sd:  not supplied -- ",
+      if (length(named)) {
+        paste0(
+          "every fixed effect except ",
+          paste(paste0("`", named, "`"), collapse = ", "),
+          "\n      (given a prior by the fb_prior() row below) carries "
+        )
+      } else {
+        "the fixed effects carry "
+      },
+      x$fixed_sd_engine_default,
+      "\n",
+      sep = ""
+    )
+  }
+  invisible(NULL)
+}
+
 #' @export
 print.prior_summary_flexybayes <- function(x, ...) {
   cat("<prior_summary>  backend = ", x$backend, sep = "")
@@ -283,20 +462,24 @@ print.prior_summary_flexybayes <- function(x, ...) {
     },
     legacy_scalar = {
       cat("  Source: legacy scalar bridge\n")
-      cat(
-        "    prior_fixed_sd = ",
-        format(x$fixed_sd),
-        "  ",
-        "(beta ~ N(0, prior_fixed_sd))\n",
-        sep = ""
-      )
-      cat(
-        "    prior_vc_sd    = ",
-        format(x$vc_sd),
-        "  ",
-        "(sigma ~ Lognormal(0, prior_vc_sd))\n",
-        sep = ""
-      )
+      .prior_summary_cat_fixed_line(x)
+      if (isTRUE(unname(x$scalars_supplied[["vc_sd"]]))) {
+        cat(
+          "    prior_vc_sd    = ",
+          format(x$vc_sd),
+          "  ",
+          "(sigma and every variance component ~ Lognormal(0, ",
+          format(x$vc_sd),
+          ") on the SD scale)\n",
+          sep = ""
+        )
+      } else {
+        cat(
+          "    prior_vc_sd:     not supplied -- the variance components ",
+          "carry each engine's own hyperprior\n",
+          sep = ""
+        )
+      }
     },
     fb_prior = {
       if (identical(x$default_origin, "auto")) {
@@ -314,6 +497,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
       } else {
         cat("  Source: user-supplied fb_prior()\n")
       }
+      .prior_summary_cat_fixed_line(x)
       cat("\n")
       print(x$fb_prior)
     },
@@ -329,11 +513,20 @@ print.prior_summary_flexybayes <- function(x, ...) {
 
   # ---- What the declaration above does not say ------------------------
 
+  if (length(x$not_applied) > 0L) {
+    cat("\n  Declared but not applied on this engine:\n", sep = "")
+    for (nm in names(x$not_applied)) {
+      cat("    ", nm, " -- ", x$not_applied[[nm]], "\n", sep = "")
+    }
+  }
+
   if (!is.null(x$residual_lowered_to) && !is.na(x$residual_lowered_to)) {
     cat(
       "\n  Residual: this model has no scalar `sigma`. The residual is a\n",
       "  distributional predictor with one log-sigma coefficient per level\n",
-      "  of `", x$residual_lowered_to, "`, and a declared uniform on the SD\n",
+      "  of `",
+      x$residual_lowered_to,
+      "`, and a declared uniform on the SD\n",
       "  scale is retargeted onto those coefficients on the log scale --\n",
       "  it is not applied as written above.\n",
       sep = ""

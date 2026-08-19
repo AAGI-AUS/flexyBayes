@@ -60,6 +60,17 @@
       anchor = "test-family-support.R"
     ),
     list(
+      model_class = "Hurdle gamma (zero mass plus a positive gamma part)",
+      spelling = "`family = \"hurdle_gamma\"`",
+      inla = "refuses",
+      brms = "fits",
+      note = "brms-native (`dpars` mu, shape, hu); the zero-mass
+        probability `hu` keeps brms's own prior. INLA's likelihood roster
+        carries no counterpart, so the family gate refuses it there and
+        `auto` routes to brms.",
+      anchor = "test-family-support.R"
+    ),
+    list(
       model_class = "Uncorrelated random slope",
       spelling = "`(x || g)`",
       inla = "refuses",
@@ -292,11 +303,16 @@
     seq_len(nrow(tab)),
     function(i) {
       paste0(
-        "| ", .fb_md_escape(tab$model_class[[i]]),
-        " | ", .fb_md_escape(tab$spelling[[i]]),
-        " | ", tab$inla[[i]],
-        " | ", tab$brms[[i]],
-        " | ", .fb_md_escape(tab$note[[i]]),
+        "| ",
+        .fb_md_escape(tab$model_class[[i]]),
+        " | ",
+        .fb_md_escape(tab$spelling[[i]]),
+        " | ",
+        tab$inla[[i]],
+        " | ",
+        tab$brms[[i]],
+        " | ",
+        .fb_md_escape(tab$note[[i]]),
         " |"
       )
     },
@@ -357,7 +373,9 @@
 .fb_capability_splice <- function(path, write = TRUE) {
   if (!file.exists(path)) {
     stop(
-      ".fb_capability_splice(): no such file '", path, "'.",
+      ".fb_capability_splice(): no such file '",
+      path,
+      "'.",
       call. = FALSE
     )
   }
@@ -367,21 +385,34 @@
 
   if (length(begin) != 1L || length(end) != 1L || end < begin) {
     stop(
-      ".fb_capability_splice(): '", path, "' must carry exactly one ",
-      .FB_CAPABILITY_MARKER_BEGIN, " line followed by exactly one ",
-      .FB_CAPABILITY_MARKER_END, " line. Found ", length(begin),
-      " begin and ", length(end), " end marker(s).",
+      ".fb_capability_splice(): '",
+      path,
+      "' must carry exactly one ",
+      .FB_CAPABILITY_MARKER_BEGIN,
+      " line followed by exactly one ",
+      .FB_CAPABILITY_MARKER_END,
+      " line. Found ",
+      length(begin),
+      " begin and ",
+      length(end),
+      " end marker(s).",
       call. = FALSE
     )
   }
 
-  block <- strsplit(.fb_capability_markdown(markers = TRUE), "\n",
-                    fixed = TRUE)[[1L]]
+  block <- strsplit(
+    .fb_capability_markdown(markers = TRUE),
+    "\n",
+    fixed = TRUE
+  )[[1L]]
   out <- c(
     if (begin > 1L) lines[seq_len(begin - 1L)] else character(0),
     block,
-    if (end < length(lines)) lines[seq.int(end + 1L, length(lines))] else
+    if (end < length(lines)) {
+      lines[seq.int(end + 1L, length(lines))]
+    } else {
       character(0)
+    }
   )
 
   if (isTRUE(write)) {

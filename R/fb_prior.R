@@ -52,6 +52,18 @@
 #' file header. Calls outside the supported set raise a structured
 #' error with the supported list.
 #'
+#' Argument matching is strict. Each distribution has a fixed parameter
+#' list, and a call is matched against it by base R's own rules, so
+#' `half_normal(1)` and `half_normal(scale = 1)` are the same
+#' specification. An argument name the distribution does not have, a
+#' duplicated argument, a missing required argument, a non-scalar or
+#' non-finite value, or a value outside its domain (a non-positive
+#' scale, a tail probability outside `(0, 1)`) is refused at
+#' construction with a condition carrying a `flexybayes_refusal_*`
+#' class -- see [fb_refusals()]. Both halves of a PC prior are
+#' required: `pc(upper = 1)` states no probability, and is refused
+#' rather than completed with a default the caller never wrote.
+#'
 #' @param ... One or more two-sided formulas of the form
 #'   `target ~ distribution(args)`, one per parameter being given a
 #'   prior.
@@ -74,6 +86,37 @@
 #' Structured-covariance terms (`us`, `fa`, `ar1`, `vm`, `ped`) on greta
 #' fall back to the legacy scale prior.
 #'
+#' @section What each backend can carry:
+#'
+#' `fb_prior()` is engine-neutral: it records what was asked for. Whether
+#' a given (target, distribution) pair can be *carried* depends on the
+#' backend, and the two differ.
+#'
+#' * **brms** takes any of the ten distributions on `sigma` and
+#'   `sd(group = )` -- the parameter is bounded below at zero and brms
+#'   renormalises a two-sided density over that support, which is why
+#'   `normal(0, s)` and `half_normal(s)` are the same prior there -- and
+#'   `normal` / `student_t` on `b()`. It carries no `cor()` or
+#'   `smooth()` prior, because no model this package emits on brms has
+#'   either parameter.
+#' * **INLA** takes `half_normal`, `uniform`, `pc` and `exponential` on
+#'   `sigma`, `sd(group = )` and `smooth()` (`exponential` is the PC
+#'   prior written in its distributional form), and `normal` on `b()`,
+#'   which arrives through `control.fixed`.
+#'
+#' A specification the selected backend cannot carry is refused at the
+#' fit, naming the row and both remedies -- re-express it in a
+#' distribution that engine does carry, or switch backend. Before 0.9.2
+#' the INLA route discarded such a row silently while
+#' [prior_summary()] printed it as applied, so a prior-sensitivity
+#' analysis could vary a scale and compare the engine's default with
+#' itself. Whatever `prior_summary()` shows on a fit now reached the
+#' engine.
+#'
+#' A prior naming a coefficient or a variance component the model does
+#' not have is likewise refused at the fit, against the engine's own
+#' parameter list and in the vocabulary the caller wrote.
+#'
 #' @returns An `fb_prior` object, an S3 class inheriting from list,
 #'   whose `$specs` element carries the parsed `target` and `spec`
 #'   pairs.
@@ -89,31 +132,40 @@
 fb_prior <- function(...) {
   args <- list(...)
   if (length(args) == 0L) {
-    stop("`fb_prior()` requires at least one specification.", call. = FALSE)
+    stop(.fb_refusal_condition(
+      reason_code = "prior_spec_empty",
+      message = "`fb_prior()` requires at least one specification."
+    ))
   }
 
   specs <- vector("list", length(args))
   for (i in seq_along(args)) {
     a <- args[[i]]
     if (!inherits(a, "formula")) {
-      stop(
-        "Each `fb_prior()` argument must be a two-sided formula ",
-        "`target ~ distribution(...)`. Argument ",
-        i,
-        " is: ",
-        deparse(a),
-        call. = FALSE
-      )
+      stop(.fb_refusal_condition(
+        reason_code = "prior_spec_not_formula",
+        message = paste0(
+          "Each `fb_prior()` argument must be a two-sided formula ",
+          "`target ~ distribution(...)`. Argument ",
+          i,
+          " is: ",
+          .fb_prior_deparse(a),
+          "."
+        )
+      ))
     }
     if (length(a) != 3L) {
-      stop(
-        "`fb_prior()` formula ",
-        i,
-        " must be two-sided ",
-        "(target on left, distribution on right). Got: ",
-        deparse(a),
-        call. = FALSE
-      )
+      stop(.fb_refusal_condition(
+        reason_code = "prior_spec_not_two_sided",
+        message = paste0(
+          "`fb_prior()` formula ",
+          i,
+          " must be two-sided ",
+          "(target on left, distribution on right). Got: ",
+          .fb_prior_deparse(a),
+          "."
+        )
+      ))
     }
     specs[[i]] <- list(
       target = .parse_prior_target(a[[2]]),
@@ -144,7 +196,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     if (nm == "sigma") {
       return(list(type = "sigma"))
     }
-    return(list(type = "name", name = nm))
+    # A bare name other than `sigma` used to be carried as an opaque
+    # target and then dropped at emit time, so `phi ~ half_normal(...)`
+    # was accepted and never applied. There is no parameter it can name.
+    .stop_prior_target_unsupported(expr)
   }
   if (is.call(expr)) {
     fn <- as.character(expr[[1]])
@@ -157,21 +212,25 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     if (fn == "sd") {
       group <- .extract_string_arg(args_list, "group")
       if (is.null(group)) {
-        stop(
-          "sd() prior target requires `group = \"...\"` argument.",
-          call. = FALSE
-        )
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_argument_missing",
+          message = paste0(
+            "sd() prior target requires `group = \"...\"` argument."
+          )
+        ))
       }
       return(list(type = "sd", group = group))
     }
 
     if (fn == "b") {
       if (length(args_list) < 1L) {
-        stop(
-          "b() prior target requires a name string, e.g., ",
-          "b(\"treatment\").",
-          call. = FALSE
-        )
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_argument_missing",
+          message = paste0(
+            "b() prior target requires a name string, e.g., ",
+            "b(\"treatment\")."
+          )
+        ))
       }
       name <- as.character(args_list[[1]])
       return(list(type = "b", name = name))
@@ -180,21 +239,25 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     if (fn == "cor") {
       group <- .extract_string_arg(args_list, "group")
       if (is.null(group)) {
-        stop(
-          "cor() prior target requires `group = \"...\"` argument.",
-          call. = FALSE
-        )
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_argument_missing",
+          message = paste0(
+            "cor() prior target requires `group = \"...\"` argument."
+          )
+        ))
       }
       return(list(type = "cor", group = group))
     }
 
     if (fn == "smooth") {
       if (length(args_list) < 1L) {
-        stop(
-          "smooth() prior target requires a variable name, e.g., ",
-          "smooth(\"time\").",
-          call. = FALSE
-        )
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_argument_missing",
+          message = paste0(
+            "smooth() prior target requires a variable name, e.g., ",
+            "smooth(\"time\")."
+          )
+        ))
       }
       var <- as.character(args_list[[1]])
       basis <- if (!is.null(args_list$basis)) {
@@ -205,13 +268,25 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       return(list(type = "smooth", var = var, basis = basis))
     }
   }
-  stop(
-    "Unsupported prior target: ",
-    deparse(expr),
-    ". Supported: sigma, sd(group = ...), b(\"name\"), ",
-    "cor(group = ...), smooth(\"var\").",
-    call. = FALSE
-  )
+  .stop_prior_target_unsupported(expr)
+}
+
+# Deparse a language object to one line -- a long call deparses to a
+# character vector, and a refusal message must be a single string.
+.fb_prior_deparse <- function(expr) {
+  paste(deparse(expr), collapse = " ")
+}
+
+.stop_prior_target_unsupported <- function(expr) {
+  stop(.fb_refusal_condition(
+    reason_code = "prior_target_unsupported",
+    message = paste0(
+      "Unsupported prior target: ",
+      .fb_prior_deparse(expr),
+      ". Supported: sigma, sd(group = ...), b(\"name\"), ",
+      "cor(group = ...), smooth(\"var\")."
+    )
+  ))
 }
 
 # Helper -- extract a named string argument from a parsed call.
@@ -230,157 +305,372 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
 # Parse distribution side of a prior spec formula. Returns:
 #   list(family = "pc", args = list(upper = 1, prob = 0.01))
-# Canonical parameter order for each supported prior family. The names
-# match exactly what the emit paths read (e.g. legacy reads `sd` for
-# normal, `scale` for half_normal; INLA / brms read `upper` / `prob` for
-# pc), so naming positional arguments to these keys makes the by-name
-# reads downstream see the same thing whether the user wrote the call
-# positionally or with names.
-.prior_family_params <- list(
-  normal = c("mean", "sd"),
-  half_normal = "scale",
-  half_cauchy = "scale",
-  cauchy = c("location", "scale"),
-  student_t = c("df", "location", "scale"),
-  exponential = "rate",
-  gamma = c("shape", "rate"),
-  lkj = "eta",
-  pc = c("upper", "prob"),
-  uniform = c("lower", "upper")
-)
+
+# The parameter contract for every supported prior family -- the one
+# place the DSL's argument names, its required arguments, and the domain
+# each argument lives on are written down. `.name_prior_args()` matches a
+# user call against `params` so a positional call binds exactly as R
+# would, and `.check_prior_args()` enforces `required` and `domain`
+# afterwards. The names match what the emit paths read (legacy reads `sd`
+# for normal, `scale` for half_normal; INLA and brms read `upper` /
+# `prob` for pc), so a named and a positional call are the same
+# specification downstream.
+#
+# Before 0.9.2 this table held parameter names only, an unmatchable call
+# was returned unchanged, and every emit-side read carried a `%||%`
+# default -- so `half_normal(sd = 1.5)` was accepted and fitted under
+# `half_normal(scale = 1)`. The required and domain columns exist so the
+# refusal happens where the user can see it.
+#
+# Domains:
+#   positive     finite and strictly greater than zero (scales, rates,
+#                shapes, degrees of freedom, a PC upper bound)
+#   nonnegative  finite and >= 0 (the uniform lower bound, which lives on
+#                the non-negative SD scale)
+#   real         finite, any sign (means and locations)
+#   unit_open    finite and strictly inside (0, 1) (tail probabilities)
+.fb_prior_family_table <- function() {
+  list(
+    normal = list(
+      params = c("mean", "sd"),
+      required = "sd",
+      domain = c(mean = "real", sd = "positive")
+    ),
+    half_normal = list(
+      params = "scale",
+      required = "scale",
+      domain = c(scale = "positive")
+    ),
+    half_cauchy = list(
+      params = "scale",
+      required = "scale",
+      domain = c(scale = "positive")
+    ),
+    cauchy = list(
+      params = c("location", "scale"),
+      required = "scale",
+      domain = c(location = "real", scale = "positive")
+    ),
+    student_t = list(
+      params = c("df", "location", "scale"),
+      required = c("df", "scale"),
+      domain = c(df = "positive", location = "real", scale = "positive")
+    ),
+    exponential = list(
+      params = "rate",
+      required = "rate",
+      domain = c(rate = "positive")
+    ),
+    gamma = list(
+      params = c("shape", "rate"),
+      required = c("shape", "rate"),
+      domain = c(shape = "positive", rate = "positive")
+    ),
+    lkj = list(
+      params = "eta",
+      required = "eta",
+      domain = c(eta = "positive")
+    ),
+    pc = list(
+      params = c("upper", "prob"),
+      required = c("upper", "prob"),
+      domain = c(upper = "positive", prob = "unit_open")
+    ),
+    uniform = list(
+      params = c("lower", "upper"),
+      required = "upper",
+      domain = c(lower = "nonnegative", upper = "positive")
+    )
+  )
+}
+
+# The supported distribution names, read off the one table rather than
+# re-listed. A family without a parameter contract cannot be emitted.
+.fb_prior_supported_families <- function() {
+  names(.fb_prior_family_table())
+}
 
 # Rewrite a prior-distribution call so positional arguments carry their
-# canonical names, using base R's own argument-matching via match.call()
-# against a stub function whose formals are the family's parameters. An
-# unmatchable call (e.g. an unexpected extra argument) is returned
-# unchanged so the existing validators surface the error.
+# canonical names, using base R's own argument matching via match.call()
+# against a stub whose formals are the family's parameters. An
+# unmatchable call is a refusal, not a fallback: the argument names are
+# the mini-language's public surface, and a name the family does not have
+# is a specification the package cannot honour.
 .name_prior_args <- function(expr, fn) {
-  params <- .prior_family_params[[fn]]
-  if (is.null(params)) {
+  entry <- .fb_prior_family_table()[[fn]]
+  if (is.null(entry)) {
     return(expr)
   }
+  params <- entry$params
   stub <- function() NULL
   fm <- stats::setNames(rep(list(quote(expr = )), length(params)), params)
   formals(stub) <- fm
-  tryCatch(match.call(stub, expr), error = function(e) expr)
+  matched <- tryCatch(
+    match.call(stub, expr),
+    error = function(e) conditionMessage(e)
+  )
+  if (is.character(matched)) {
+    .stop_prior_call_unmatchable(fn, params, expr, matched)
+  }
+  matched
+}
+
+# Turn base R's own argument-matching failure into a typed refusal that
+# names the family's parameters. Two shapes reach here: a duplicated
+# formal, and a name (or a positional overflow) the family does not have.
+.stop_prior_call_unmatchable <- function(fn, params, expr, detail) {
+  supported <- paste0(fn, "(", paste(params, collapse = ", "), ")")
+  if (grepl("matched by multiple", detail, fixed = TRUE)) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_argument_duplicated",
+      message = paste0(
+        "Prior specification ",
+        .fb_prior_deparse(expr),
+        " binds the same ",
+        "hyperparameter more than once (",
+        detail,
+        "). Supply each ",
+        "argument of ",
+        supported,
+        " once."
+      )
+    ))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "prior_argument_unknown",
+    message = paste0(
+      "Prior specification ",
+      .fb_prior_deparse(expr),
+      " carries an ",
+      "argument `",
+      fn,
+      "()` does not have (",
+      detail,
+      "). Supported: ",
+      supported,
+      "."
+    )
+  ))
+}
+
+# Enforce the family's required arguments and the domain of each one,
+# after evaluation, on the canonically-named argument list.
+.check_prior_args <- function(fn, args, expr) {
+  entry <- .fb_prior_family_table()[[fn]]
+  if (is.null(entry)) {
+    return(invisible(NULL))
+  }
+  supported <- paste0(fn, "(", paste(entry$params, collapse = ", "), ")")
+  nms <- names(args) %||% rep("", length(args))
+
+  unknown <- setdiff(nms[nzchar(nms)], entry$params)
+  if (length(unknown)) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_argument_unknown",
+      message = paste0(
+        "Prior specification ",
+        .fb_prior_deparse(expr),
+        " carries the ",
+        "argument",
+        if (length(unknown) > 1L) "s" else "",
+        " ",
+        paste0("`", unknown, "`", collapse = ", "),
+        ", which `",
+        fn,
+        "()` does not have. Supported: ",
+        supported,
+        "."
+      )
+    ))
+  }
+
+  missing_args <- setdiff(entry$required, nms)
+  if (length(missing_args)) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_argument_missing",
+      message = paste0(
+        "Prior specification ",
+        .fb_prior_deparse(expr),
+        " omits ",
+        paste0("`", missing_args, "`", collapse = ", "),
+        ", which `",
+        fn,
+        "()` requires. Supported: ",
+        supported,
+        if (identical(fn, "pc")) {
+          paste0(
+            ". A PC prior is the pair: `pc(upper = U, prob = p)` states ",
+            "Pr(sigma > U) = p, and half of that statement fixes no prior."
+          )
+        } else {
+          "."
+        }
+      )
+    ))
+  }
+
+  for (nm in names(args)) {
+    if (!nzchar(nm)) {
+      next
+    }
+    .check_prior_hyperparameter(
+      value = args[[nm]],
+      name = nm,
+      domain = entry$domain[[nm]] %||% "real",
+      fn = fn,
+      expr = expr
+    )
+  }
+  invisible(NULL)
+}
+
+# One hyperparameter: a finite numeric scalar, then the family's domain.
+.check_prior_hyperparameter <- function(value, name, domain, fn, expr) {
+  label <- paste0("`", name, "` in ", .fb_prior_deparse(expr))
+  if (
+    length(value) == 1L &&
+      !is.numeric(value) &&
+      is.atomic(value) &&
+      is.na(value)
+  ) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_hyperparameter_not_scalar",
+      message = paste0(label, " must be a finite number. Got NA.")
+    ))
+  }
+  if (!is.numeric(value) || length(value) != 1L) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_hyperparameter_not_scalar",
+      message = paste0(
+        label,
+        " must be a single number. Got ",
+        if (is.numeric(value)) {
+          paste0("a numeric vector of length ", length(value))
+        } else if (is.language(value)) {
+          paste0("the unevaluated expression `", .fb_prior_deparse(value), "`")
+        } else {
+          paste0("an object of class ", paste(class(value), collapse = "/"))
+        },
+        "."
+      )
+    ))
+  }
+  if (!is.finite(value)) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_hyperparameter_not_scalar",
+      message = paste0(
+        label,
+        " must be a finite number. Got ",
+        format(value),
+        "."
+      )
+    ))
+  }
+  ok <- switch(
+    domain,
+    "positive" = value > 0,
+    "nonnegative" = value >= 0,
+    "unit_open" = value > 0 && value < 1,
+    "real" = TRUE,
+    TRUE
+  )
+  if (isTRUE(ok)) {
+    return(invisible(NULL))
+  }
+  requirement <- switch(
+    domain,
+    "positive" = paste0(
+      "be strictly positive -- zero or a negative value names no ",
+      "distribution on this parameter"
+    ),
+    "nonnegative" = "be >= 0 (the SD scale is non-negative)",
+    "unit_open" = "be a probability strictly inside (0, 1)",
+    "lie in its domain"
+  )
+  stop(.fb_refusal_condition(
+    reason_code = "prior_hyperparameter_out_of_domain",
+    message = paste0(
+      label,
+      " must ",
+      requirement,
+      ". Got ",
+      format(value),
+      "."
+    )
+  ))
 }
 
 .parse_prior_distribution <- function(expr, envir = baseenv()) {
   if (!is.call(expr)) {
-    stop(
-      "Prior distribution must be a call (e.g., ",
-      "`pc(upper = 1, prob = 0.01)`). Got: ",
-      deparse(expr),
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "prior_distribution_not_a_call",
+      message = paste0(
+        "Prior distribution must be a call (e.g., ",
+        "`pc(upper = 1, prob = 0.01)`). Got: ",
+        .fb_prior_deparse(expr),
+        "."
+      )
+    ))
   }
 
   fn <- as.character(expr[[1]])
-  supported <- c(
-    "pc",
-    "half_normal",
-    "half_cauchy",
-    "student_t",
-    "normal",
-    "exponential",
-    "lkj",
-    "cauchy",
-    "gamma",
-    "uniform"
-  )
+  supported <- .fb_prior_supported_families()
 
   if (!fn %in% supported) {
-    stop(
-      "Unsupported prior distribution: ",
-      fn,
-      ". Supported distributions: ",
-      paste(supported, collapse = ", "),
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "prior_distribution_unknown",
+      message = paste0(
+        "Unsupported prior distribution: ",
+        fn,
+        ". Supported distributions: ",
+        paste(supported, collapse = ", "),
+        "."
+      )
+    ))
   }
 
   # Name positional arguments by the family's canonical parameter order
   # *before* evaluating, so that `normal(0, 50)` and `normal(0, sd = 50)`
   # carry identical names downstream. Every emit path (legacy / greta,
   # INLA, brms) reads these arguments by name; without this step a
-  # positional call silently drops to the default scale on the
-  # by-name paths. Matching is delegated to base R via match.call() on a
-  # stub with the canonical formals, so named + positional binding
-  # follows the usual rules; an unmatchable call falls back to the raw
-  # (unnamed) form rather than erroring.
+  # positional call silently drops to the default scale on the by-name
+  # paths. Matching is delegated to base R via match.call() on a stub
+  # with the canonical formals, so named and positional binding follow
+  # the usual rules -- and a call base R cannot match is refused here
+  # rather than carried unnamed into the emit paths.
   expr <- .name_prior_args(expr, fn)
 
   # Evaluate distribution arguments in the formula's calling
   # environment so users can pass data-driven scales like
-  # `pc(upper = 2.5 * sd(y), prob = 0.05)`. Fall back to leaving the
-  # language object in place if evaluation fails (validators below
-  # surface a clear error).
+  # `pc(upper = 2.5 * sd(y), prob = 0.05)`. An expression that does not
+  # evaluate is left in place and refused by the scalar check below,
+  # which names the argument.
   args <- as.list(expr[-1])
   args <- lapply(args, function(a) {
     tryCatch(eval(a, envir = envir), error = function(e) a)
   })
 
-  # uniform-specific validation (degenerate or open-ended bounds
-  # would produce silently bad cross-engine emit otherwise).
-  if (fn == "uniform") {
-    lower <- args$lower
-    upper <- args$upper
-    if (
-      is.null(lower) &&
-        length(args) >= 1L &&
-        nchar(names(args)[[1]] %||% "") == 0L
-    ) {
-      lower <- args[[1]]
-    }
-    if (
-      is.null(upper) &&
-        length(args) >= 2L &&
-        nchar(names(args)[[2]] %||% "") == 0L
-    ) {
-      upper <- args[[2]]
-    }
-    if (is.null(lower)) {
-      lower <- 0
-    }
-    if (is.null(upper)) {
-      stop(
-        "uniform() requires `upper`; got: ",
-        deparse(expr),
-        ". Example: `sd(group = \"g\") ~ uniform(lower = 0, upper = 5)`.",
-        call. = FALSE
-      )
-    }
-    if (
-      !is.numeric(lower) ||
-        !is.numeric(upper) ||
-        length(lower) != 1L ||
-        length(upper) != 1L ||
-        !is.finite(lower) ||
-        !is.finite(upper)
-    ) {
-      stop("uniform() lower/upper must be finite scalars.", call. = FALSE)
-    }
-    if (lower < 0) {
-      stop(
-        "uniform() lower must be >= 0 for sd-scale targets ",
-        "(sd is non-negative). Got lower = ",
-        lower,
-        ".",
-        call. = FALSE
-      )
-    }
-    if (upper <= lower) {
-      stop(
+  # uniform carries one argument the table cannot express: `lower`
+  # defaults to 0, and `upper` must exceed it. The default is applied
+  # before the shared check so a bare `uniform(upper = 5)` is complete.
+  if (fn == "uniform" && is.null(args$lower)) {
+    args$lower <- 0
+  }
+
+  # Required arguments, scalar-ness, and the per-argument domain.
+  .check_prior_args(fn, args, expr)
+
+  if (fn == "uniform" && args$upper <= args$lower) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_hyperparameter_out_of_domain",
+      message = paste0(
         "uniform() upper must be > lower. Got lower = ",
-        lower,
+        args$lower,
         ", upper = ",
-        upper,
-        ".",
-        call. = FALSE
+        args$upper,
+        "."
       )
-    }
-    args$lower <- lower
-    args$upper <- upper
+    ))
   }
 
   list(family = fn, args = args)
@@ -416,7 +706,15 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     NULL
   }
   is_log_link <- isTRUE(link_name == "log") ||
-    fam %in% c("poisson", "negative_binomial", "negbinom", "nbinomial", "gamma")
+    fam %in%
+      c(
+        "poisson",
+        "negative_binomial",
+        "negbinom",
+        "nbinomial",
+        "gamma",
+        "hurdle_gamma"
+      )
   is_logit_link <- isTRUE(link_name == "logit") ||
     fam %in% c("binomial", "binary", "beta")
 
@@ -536,7 +834,15 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     NULL
   }
   is_log_link <- isTRUE(link_name == "log") ||
-    fam %in% c("poisson", "negative_binomial", "negbinom", "nbinomial", "gamma")
+    fam %in%
+      c(
+        "poisson",
+        "negative_binomial",
+        "negbinom",
+        "nbinomial",
+        "gamma",
+        "hurdle_gamma"
+      )
   is_logit_link <- isTRUE(link_name == "logit") ||
     fam %in% c("binomial", "binary", "beta")
 
@@ -726,7 +1032,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
         add_engine(
           paste0("cor_", t$inner),
           paste0(
-            "us(", t$outer, "):", t$inner, " level correlations keep brms's ",
+            "us(",
+            t$outer,
+            "):",
+            t$inner,
+            " level correlations keep brms's ",
             "default LKJ prior; flexyBayes sets no correlation prior"
           )
         )
@@ -768,7 +1078,9 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     add_engine(
       paste0("sd_", lbl),
       paste0(
-        "random term type \"", ttype, "\" is outside the default-prior walker"
+        "random term type \"",
+        ttype,
+        "\" is outside the default-prior walker"
       )
     )
   }
@@ -876,6 +1188,68 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     ),
     scale
   )
+}
+
+# Faithful INLA expression prior for the legacy `lognormal(0, s)`
+# variance-component prior on the SD scale -- the prior the greta path has
+# always used for `prior_vc_sd` and the brms path emits as a `lognormal`
+# row. INLA parameterises the hyperparameter as theta = log(precision), so
+# sigma = exp(-theta / 2) and log sigma = -theta / 2. Transforming
+# p(sigma) = 1 / (sigma s sqrt(2 pi)) exp(-(log sigma)^2 / (2 s^2))
+# through that change of variables (Jacobian sigma / 2) gives
+#
+#   log p(theta) = -log(2) - log(s) - 0.5 log(2 pi) - theta^2 / (8 s^2)
+#
+# on the whole real line, so the prior needs no support guard. Single line
+# for the same splicing reason as the two above.
+#
+# Before 0.9.2 the INLA route consumed no legacy scalar at all: a fit
+# passed `prior_vc_sd = 3` ran under INLA's own log-gamma precision
+# default while `prior_summary()` printed the lognormal in its header.
+.inla_lognormal_sd_expr <- function(scale) {
+  sprintf(
+    paste0(
+      "expression: s=%.16g;",
+      " return( -log(2.0) - log(s) - 0.5*log(2*3.141592653589793)",
+      " - (theta*theta)/(8.0*s*s) );"
+    ),
+    scale
+  )
+}
+
+# The legacy scalar variance-component prior, keyed the way
+# priors_to_inla() keys an fb_prior: "sigma" for the residual, the
+# grouping-factor tag for each variance component the default-prior
+# walker reaches. One walk, so the two routes cannot disagree about
+# which components carry a prior this package chose.
+.priors_legacy_to_inla <- function(fb, vc_sd) {
+  targets <- .fb_default_prior_targets(fb)
+  keys <- unique(c("sigma", targets$shared, targets$vm_ped))
+  keys <- keys[nzchar(keys)]
+  entry <- list(
+    prior = .inla_lognormal_sd_expr(vc_sd),
+    meta = list(family = "lognormal", scale = vc_sd)
+  )
+  stats::setNames(rep(list(entry), length(keys)), keys)
+}
+
+# Did the caller write this scalar prior argument? flexybayes() records
+# the answer on the IR; a direct emit_*() call carries no record, and the
+# absence means "not supplied", which is what it meant before 0.9.2.
+.fb_prior_scalar_supplied <- function(fb, which) {
+  flags <- fb$prior_scalars$supplied
+  if (is.null(flags) || is.null(flags[[which]])) {
+    return(FALSE)
+  }
+  isTRUE(unname(flags[[which]]))
+}
+
+# The value of a scalar prior argument as the caller left it, for the
+# surfaces that report what the fit ran under. NA when the fit carries no
+# record (a direct emit_*() call).
+.fb_prior_scalar_value <- function(fb, which) {
+  value <- fb$prior_scalars[[which]]
+  if (is.null(value)) NA_real_ else value
 }
 
 # ---------------------------------------------------------------- #
@@ -1057,37 +1431,60 @@ priors_to_legacy <- function(prior, fixed_sd_default = 10, vc_sd_default = 1) {
   )
 }
 
-# Translate fb_prior -> INLA hyperpar control list. v0.1 minimum:
-# returns a named list keyed by f()-term group / "sigma" mapping
-# to INLA `prior = "pc.prec"` / `param` arguments per the cross-engine
-# translation table.
+# Translate fb_prior -> INLA hyperpar control list: a named list keyed
+# by f()-term group / smoother variable, with "sigma" for the residual,
+# mapping to the `hyper` body INLA takes on that term.
+#
+# Untranslatable rows refuse here rather than falling through. Before
+# 0.9.2 this function handled `pc`, `half_normal` and `uniform` on
+# `sigma` / `sd()` / `smooth()` and returned nothing at all for every
+# other pair, while `prior_summary()` printed each of them as applied --
+# a prior-sensitivity analysis on INLA could vary a `student_t` scale
+# and compare the engine's default with itself (field-sweep FS-21).
+# Which pairs translate is declared once, in
+# `.fb_prior_translation_table()` (R/prior_translation.R).
+#
+# `b()` rows are translatable but do not arrive here: INLA states the
+# fixed-effect prior in `control.fixed`, which
+# `.priors_to_inla_control_fixed()` builds. They are skipped rather than
+# refused.
 priors_to_inla <- function(prior) {
   out <- list()
   if (!inherits(prior, "fb_prior")) {
     return(out)
   }
+  .fb_check_prior_translation(prior, "inla")
 
   for (s in prior$specs) {
+    if (!s$target$type %in% c("sigma", "sd", "smooth")) {
+      # b() arrives through control.fixed; nothing else survives the
+      # translation check above.
+      next
+    }
+    key <- switch(
+      s$target$type,
+      "sigma" = "sigma",
+      "sd" = s$target$group,
+      "smooth" = s$target$var
+    )
     if (s$spec$family == "pc") {
       u <- as.numeric(s$spec$args$upper %||% 1)
       a <- as.numeric(s$spec$args$prob %||% 0.01)
-      key <- switch(
-        s$target$type,
-        "sigma" = "sigma",
-        "sd" = s$target$group,
-        "smooth" = s$target$var,
-        "<unknown>"
-      )
       out[[key]] <- list(prior = "pc.prec", param = c(u, a))
+    } else if (s$spec$family == "exponential") {
+      # The PC prior IS exponential on the SD scale: `pc.prec(U, alpha)`
+      # states P(sigma > U) = alpha, i.e. Exp(-log(alpha) / U). Writing
+      # U = 1 / rate and alpha = exp(-1) recovers the requested rate
+      # exactly for any positive rate, and avoids the underflow that
+      # U = 1, alpha = exp(-rate) would hit for a large rate.
+      rate <- as.numeric(s$spec$args$rate)
+      out[[key]] <- list(
+        prior = "pc.prec",
+        param = c(1 / rate, exp(-1)),
+        meta = list(family = "exponential", rate = rate)
+      )
     } else if (s$spec$family == "half_normal") {
       scale <- as.numeric(s$spec$args$scale %||% 1)
-      key <- switch(
-        s$target$type,
-        "sigma" = "sigma",
-        "sd" = s$target$group,
-        "smooth" = s$target$var,
-        "<unknown>"
-      )
       # Exact half_normal(scale = s) via an INLA expression prior on the
       # SD scale (no longer the lossy PC approximation).
       out[[key]] <- list(
@@ -1097,13 +1494,6 @@ priors_to_inla <- function(prior) {
     } else if (s$spec$family == "uniform") {
       lower <- as.numeric(s$spec$args$lower %||% 0)
       upper <- as.numeric(s$spec$args$upper)
-      key <- switch(
-        s$target$type,
-        "sigma" = "sigma",
-        "sd" = s$target$group,
-        "smooth" = s$target$var,
-        "<unknown>"
-      )
       # Exact uniform(lower, upper) on the SD scale via an INLA
       # expression prior (.inla_uniform_sd_expr). This supersedes the
       # former lossy PC-prior approximation: the PC prior concentrated
@@ -1121,4 +1511,55 @@ priors_to_inla <- function(prior) {
     }
   }
   out
+}
+
+# Translate the `b()` rows of an fb_prior into INLA's control.fixed.
+#
+# INLA states the fixed-effect prior as a mean and a precision, and both
+# accept per-coefficient named lists with a `default` fallback (verified
+# against INLA 25.10.19: `control.fixed = list(mean = list(x = 1,
+# default = 0), prec = list(x = 0.0625, default = 0.001))` round-trips
+# into `fit$.args$control.fixed`). The intercept has its own pair of
+# arguments, `mean.intercept` / `prec.intercept`.
+#
+# `available` is the design-matrix column names the emit will build, so
+# a `b()` row naming a coefficient the model does not carry refuses by
+# name (field-sweep FS-20) instead of arriving as a `control.fixed`
+# entry INLA silently ignores.
+.priors_to_inla_control_fixed <- function(prior, available = NULL) {
+  out <- list(mean = list(), prec = list())
+  intercept <- list()
+  if (!inherits(prior, "fb_prior")) {
+    return(list())
+  }
+  for (s in prior$specs) {
+    if (!identical(s$target$type, "b")) {
+      next
+    }
+    nm <- s$target$name
+    mean_v <- as.numeric(.named_or_positional(s$spec$args, "mean", 1L, 0))
+    sd_v <- as.numeric(.named_or_positional(s$spec$args, "sd", 2L, 1))
+    if (nm %in% c("Intercept", "(Intercept)")) {
+      intercept <- list(
+        mean.intercept = mean_v,
+        prec.intercept = 1 / (sd_v^2)
+      )
+      next
+    }
+    if (!is.null(available) && !nm %in% available) {
+      .fb_stop_prior_target_absent(
+        target_label = paste0("b(\"", nm, "\")"),
+        kind = "fixed-effect coefficient",
+        available = available,
+        engine = "inla"
+      )
+    }
+    out$mean[[nm]] <- mean_v
+    out$prec[[nm]] <- 1 / (sd_v^2)
+  }
+  if (!length(out$mean)) {
+    out$mean <- NULL
+    out$prec <- NULL
+  }
+  c(out[!vapply(out, is.null, logical(1))], intercept)
 }

@@ -97,9 +97,37 @@ emit_inla <- function(
   # the "sigma" entry into control.family (residual precision).
   hyper_ctrl <- if (inherits(fb$priors, "fb_prior")) {
     priors_to_inla(fb$priors)
+  } else if (.fb_prior_scalar_supplied(fb, "vc_sd")) {
+    # The legacy scalar route. Until 0.9.2 this branch did not exist: the
+    # INLA path read only an fb_prior, so a fit passed `prior_vc_sd` ran
+    # under INLA's own log-gamma precision default while
+    # `prior_summary()` printed the lognormal in its header -- the
+    # accessor built to answer "what prior did this fit use?" naming a
+    # prior the fit did not use.
+    .priors_legacy_to_inla(fb, prior_vc_sd)
   } else {
     list()
   }
+  # An `sd(group = ...)` row whose group is not a variance component of
+  # this model would key a `hyper` entry no f() term reads -- the INLA
+  # half of field-sweep FS-20, where the same mistake on brms surfaced as
+  # brms's own parser error and here was not reported at all.
+  .check_inla_hyper_keys_reachable(fb, hyper_ctrl)
+  # A variable that keys both a fixed term and an f() term is a formula
+  # INLA refuses -- its own message is "Key [x] is used twice and that is
+  # not allowed". Caught here so the user is told which variable and what
+  # to do, rather than reading the generic subprocess-exit message
+  # (field-sweep FS-17).
+  .check_inla_variable_not_used_twice(fb)
+  # `prior_fixed_sd` reaches INLA through control.fixed, which is where
+  # INLA keeps the fixed-effect prior, and so do the `b()` rows of an
+  # fb_prior(). Empty unless the caller wrote one of them, so an
+  # unsupplied call keeps INLA's own defaults.
+  control_fixed <- .build_inla_control_fixed(
+    fb,
+    prior_fixed_sd,
+    data = data
+  )
   # v0.3.10: the formula builder consults
   # known_matrices to count blocks per blocks-format vm/ped term,
   # so it must run AFTER the data_inla setup loop (which validates
@@ -119,7 +147,8 @@ emit_inla <- function(
       ),
       family = inla_family,
       hyper = hyper_ctrl,
-      control_family = control_family
+      control_family = control_family,
+      control_fixed = control_fixed
     )))
   }
 
@@ -302,7 +331,8 @@ emit_inla <- function(
       n_row <- length(unique(data[[term$row_var]]))
       n_col <- length(unique(data[[term$col_var]]))
       combos <- interaction(
-        data[[term$row_var]], data[[term$col_var]],
+        data[[term$row_var]],
+        data[[term$col_var]],
         drop = TRUE
       )
       one_obs_per_node <- nrow(data) == n_row * n_col &&
@@ -313,15 +343,28 @@ emit_inla <- function(
         stop(.fb_refusal_condition(
           reason_code = "ar1_spatial_requires_complete_grid",
           message = paste0(
-            "The data carry ", nrow(data), " rows for the ", n_row,
-            " x ", n_col, " (", term$row_var, ", ", term$col_var, ") array, ",
-            "which has ", n_nodes, " nodes",
+            "The data carry ",
+            nrow(data),
+            " rows for the ",
+            n_row,
+            " x ",
+            n_col,
+            " (",
+            term$row_var,
+            ", ",
+            term$col_var,
+            ") array, ",
+            "which has ",
+            n_nodes,
+            " nodes",
             if (replicated) {
               ", and some nodes hold more than one row"
             } else {
               ""
             },
-            ". ", .ar1_term_spelling(term), " is fitted as a separable ",
+            ". ",
+            .ar1_term_spelling(term),
+            " is fitted as a separable ",
             "autoregressive field indexed by that array, so each ",
             "combination of the two factors has to identify exactly one ",
             "unit -- the same requirement ASReml states for ",
@@ -360,21 +403,31 @@ emit_inla <- function(
   }
 
   # Fit
+  #
+  # control.fixed is spliced in only when it carries something. An empty
+  # list means the caller did not supply `prior_fixed_sd`, and the
+  # argument is then left out of the call entirely rather than passed
+  # empty, so a fit that asks for nothing is byte-identical to the call
+  # this emit made before the argument was wired.
   t0 <- proc.time()
-  fit <- tryCatch(
-    INLA::inla(
-      formula = inla_form,
-      family = inla_family,
-      data = data_inla,
-      control.compute = list(
-        config = TRUE,
-        return.marginals = TRUE,
-        dic = TRUE,
-        waic = TRUE
-      ),
-      control.family = control_family,
-      ...
+  inla_args <- list(
+    formula = inla_form,
+    family = inla_family,
+    data = data_inla,
+    control.compute = list(
+      config = TRUE,
+      return.marginals = TRUE,
+      dic = TRUE,
+      waic = TRUE
     ),
+    control.family = control_family,
+    ...
+  )
+  if (length(control_fixed)) {
+    inla_args$control.fixed <- control_fixed
+  }
+  fit <- tryCatch(
+    do.call(INLA::inla, inla_args),
     error = function(e) {
       stop("INLA fit failed: ", conditionMessage(e), call. = FALSE)
     }
@@ -485,7 +538,7 @@ emit_inla <- function(
         # What has to match before this fit can be compared with another
         # engine's -- the same slot, built by the same function, as the
         # brms emit fills. See R/model_fingerprint.R.
-        fingerprint = .fb_model_fingerprint(fb, data)
+        fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd)
       )
     ),
     # The INLA fit wears the shared `flexybayes` parent, as the brms fit
@@ -513,7 +566,9 @@ emit_inla <- function(
     error = function(e) {
       warning(
         "flexyBayes: the INLA fit succeeded but its variance-component ",
-        "table could not be built (", conditionMessage(e), "). ",
+        "table could not be built (",
+        conditionMessage(e),
+        "). ",
         "summary(fit)$varcomp will be empty; the posterior itself is ",
         "unaffected and INLA's own hyperparameter table is at ",
         "fit$inla$summary.hyperpar.",
@@ -837,7 +892,8 @@ emit_inla <- function(
   if (length(m) == 3L) {
     return(sprintf(
       "<prior: uniform-SD(%s, %s)>",
-      .fb_signif_string(m[[2L]]), .fb_signif_string(m[[3L]])
+      .fb_signif_string(m[[2L]]),
+      .fb_signif_string(m[[3L]])
     ))
   }
   m <- regmatches(
@@ -852,8 +908,18 @@ emit_inla <- function(
     regexec(paste0("expression: *s=", num), body)
   )[[1L]]
   if (length(m) == 2L) {
+    # Both SD-scale expression priors open with the same `s=` scale, so
+    # they are told apart on the term only one of them carries: the
+    # lognormal is quadratic in theta, the half-normal is not.
+    if (grepl("theta*theta", body, fixed = TRUE)) {
+      return(sprintf(
+        "<prior: lognormal-SD(0, %s)>",
+        .fb_signif_string(m[[2L]])
+      ))
+    }
     return(sprintf(
-      "<prior: half-normal-SD(%s)>", .fb_signif_string(m[[2L]])
+      "<prior: half-normal-SD(%s)>",
+      .fb_signif_string(m[[2L]])
     ))
   }
 
@@ -864,7 +930,9 @@ emit_inla <- function(
       vals <- trimws(strsplit(par[[2L]], ",", fixed = TRUE)[[1L]])
       vals <- vapply(vals, .fb_signif_string, character(1L), USE.NAMES = FALSE)
       return(sprintf(
-        "<prior: %s(%s)>", nm[[2L]], paste(vals, collapse = ", ")
+        "<prior: %s(%s)>",
+        nm[[2L]],
+        paste(vals, collapse = ", ")
       ))
     }
     return(sprintf("<prior: %s>", nm[[2L]]))
@@ -969,42 +1037,287 @@ emit_inla <- function(
   }
   col_model <- if (isTRUE(term$col_ar1)) "ar1" else "iid"
   paste0(
-    "f(", term$row_var, "_id, model = \"ar1\", group = ",
-    term$col_var, "_id, control.group = list(model = \"", col_model, "\"))"
+    "f(",
+    term$row_var,
+    "_id, model = \"ar1\", group = ",
+    term$col_var,
+    "_id, control.group = list(model = \"",
+    col_model,
+    "\"))"
   )
 }
 
-# Build the control.family list passed to INLA::inla(). When the
-# user supplies an fb_prior() spec keyed under "sigma", attach it as
-# the residual-precision hyperprior -- but only for families whose
-# likelihood actually carries a precision hyperparameter (Gaussian,
-# lognormal, gamma, beta, T). For Poisson, binomial, exponential
-# etc. the likelihood has no `prec` hyperparameter and INLA refuses
-# any control.family$hyper input, so we silently drop the sigma prior
-# in that case (it is not a no-op for the model -- there is no such
-# parameter to constrain). Returns an empty list when no residual
-# prior is specified, so INLA's default loggamma applies for the
-# Gaussian-family case where prec is the lone hyperparameter.
+# Build the control.family list passed to INLA::inla(). When the user
+# supplies an fb_prior() spec keyed under "sigma", attach it as the
+# residual-scale hyperprior under the keyword the likelihood actually
+# declares -- `prec` for gaussian, lognormal, logistic, t and gamma, and
+# `phi` for beta. The keyword roster lives in
+# `.fb_inla_residual_hyper()` (R/family_traits.R) and is read from
+# INLA's own `inla.models()` declaration; writing `prec` for beta is what
+# made a beta fit on INLA fail with a raw engine error rather than fit.
+#
+# A likelihood with no residual-scale hyperparameter -- poisson,
+# binomial, and the overdispersion-parameterised nbinomial and
+# betabinomial -- takes no hyper input at all, so the sigma prior is
+# dropped, as it is on the brms side for a family with no sigma. Returns
+# an empty list when no residual prior is specified, so INLA's own
+# default applies.
 .build_inla_control_family <- function(hyper_ctrl, family) {
   entry <- hyper_ctrl[["sigma"]]
   if (is.null(entry)) {
     return(list())
   }
-  families_with_prec <- c(
-    "gaussian",
-    "stdnormal",
-    "lognormal",
-    "gamma",
-    "beta",
-    "T",
-    "logistic"
-  )
-  if (!tolower(family) %in% families_with_prec) {
+  keyword <- .fb_inla_hyper_keyword(family)
+  if (is.null(keyword)) {
     return(list())
   }
   body <- entry[c("prior", "param")]
   body <- body[!vapply(body, is.null, logical(1))]
-  list(hyper = list(prec = body))
+  stats::setNames(list(stats::setNames(list(body), keyword)), "hyper")
+}
+
+# Build the control.fixed list passed to INLA::inla(). INLA states the
+# fixed-effect prior as a precision, so the documented SD maps to
+# prec = 1 / sd^2, applied to the slopes and to the intercept alike --
+# the argument documents itself as covering the intercept, the factor
+# contrasts and the continuous slopes uniformly, and INLA's own defaults
+# treat the intercept separately (prec.intercept = 0, i.e. flat).
+#
+# Empty unless the caller wrote `prior_fixed_sd` or supplied a `b()`
+# prior row. Applying the documented default of 100 unconditionally would
+# replace INLA's flat intercept prior on every fit, which is a different
+# model for a response far from zero; supplied means honoured, and
+# prior_summary() names the engine default otherwise.
+#
+# The two routes compose the way INLA composes them: the scalar sets the
+# blanket `mean` / `prec`, a `b()` row sets a per-coefficient entry, and
+# INLA resolves the named entry over the `default` one. A `b()` row alone
+# leaves the unnamed coefficients on INLA's own defaults, which is the
+# same supplied-ness rule the scalar follows.
+.build_inla_control_fixed <- function(
+  fb,
+  prior_fixed_sd,
+  data = NULL,
+  coef_names = NULL
+) {
+  scalar_supplied <- .fb_prior_scalar_supplied(fb, "fixed_sd")
+  per_coef <- .priors_to_inla_control_fixed(
+    fb$priors,
+    available = coef_names %||% .fb_inla_fixed_coef_names(fb, data)
+  )
+  if (!scalar_supplied) {
+    return(per_coef)
+  }
+  if (
+    !is.numeric(prior_fixed_sd) ||
+      length(prior_fixed_sd) != 1L ||
+      !is.finite(prior_fixed_sd) ||
+      prior_fixed_sd <= 0
+  ) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_hyperparameter_out_of_domain",
+      message = paste0(
+        "`prior_fixed_sd` must be a single positive number -- it is the ",
+        "standard deviation of the fixed-effect normal prior. Got ",
+        paste(format(prior_fixed_sd), collapse = ", "),
+        "."
+      )
+    ))
+  }
+  prec <- 1 / (prior_fixed_sd^2)
+  out <- list(
+    mean = 0,
+    prec = prec,
+    mean.intercept = 0,
+    prec.intercept = prec
+  )
+  if (!length(per_coef)) {
+    return(out)
+  }
+  # Per-coefficient rows win over the blanket scalar, expressed the way
+  # INLA reads it: a named list whose `default` entry is the scalar.
+  if (!is.null(per_coef$mean)) {
+    out$mean <- c(per_coef$mean, list(default = 0))
+    out$prec <- c(per_coef$prec, list(default = prec))
+  }
+  for (nm in c("mean.intercept", "prec.intercept")) {
+    if (!is.null(per_coef[[nm]])) {
+      out[[nm]] <- per_coef[[nm]]
+    }
+  }
+  out
+}
+
+# The fixed-effect coefficient names INLA will build from this model:
+# the design-matrix columns of the fixed part, minus the intercept.
+# Used to check a `b()` prior row against the model the fit will run
+# (field-sweep FS-20). NULL when the names cannot be derived, which the
+# caller reads as "no check possible" rather than "no coefficients".
+.fb_inla_fixed_coef_names <- function(fb, data) {
+  if (is.null(data) || !is.data.frame(data)) {
+    return(NULL)
+  }
+  labels <- vapply(
+    fb$fixed_terms %||% list(),
+    function(term) {
+      term$label %||%
+        term$var %||%
+        paste(term$vars %||% character(0), collapse = ":")
+    },
+    character(1)
+  )
+  labels <- labels[nzchar(labels)]
+  if (!length(labels)) {
+    return(character(0))
+  }
+  form <- tryCatch(
+    stats::as.formula(paste0("~ ", paste(labels, collapse = " + "))),
+    error = function(e) NULL
+  )
+  if (is.null(form)) {
+    return(NULL)
+  }
+  cols <- tryCatch(
+    colnames(stats::model.matrix(form, data = data)),
+    error = function(e) NULL
+  )
+  if (is.null(cols)) {
+    return(NULL)
+  }
+  setdiff(cols, "(Intercept)")
+}
+
+
+# Refuse an `sd(group = ...)` / `smooth("var")` prior whose key names no
+# variance component of this model.
+#
+# The reachable set is the one the default-prior walker uses
+# (`.fb_default_prior_targets()`), widened by every random term's own
+# variable so a term outside the walker is not refused for being outside
+# the walker. `sigma` is always reachable: the residual scale is dropped
+# by family, not by term, and that drop is deliberate and documented in
+# R/family_traits.R.
+.check_inla_hyper_keys_reachable <- function(fb, hyper_ctrl) {
+  keys <- setdiff(names(hyper_ctrl), "sigma")
+  if (!length(keys)) {
+    return(invisible(TRUE))
+  }
+  targets <- .fb_default_prior_targets(fb)
+  term_vars <- unlist(lapply(
+    fb$random_terms %||% list(),
+    function(term) {
+      c(term$var, term$inner, term$outer, term$slope_var)
+    }
+  ))
+  available <- unique(c(targets$shared, targets$vm_ped, term_vars))
+  available <- available[nzchar(available %||% character(0))]
+  missing_keys <- setdiff(keys, available)
+  if (!length(missing_keys)) {
+    return(invisible(TRUE))
+  }
+  .fb_stop_prior_target_absent(
+    target_label = paste0("sd(group = \"", missing_keys[[1L]], "\")"),
+    kind = "variance component",
+    available = available,
+    engine = "inla"
+  )
+}
+
+
+# ---------------------------------------------------------------- #
+# Duplicate-key guard (field-sweep FS-17)                           #
+# ---------------------------------------------------------------- #
+
+# Refuse a model whose emitted INLA formula would key the same variable
+# twice -- once as a fixed term and once as the index of an f() term.
+#
+# INLA's own message for this is "Key [x] is used twice and that is not
+# allowed. A typical example where this happens is: y ~ x + f(x). Change
+# this formula into: y ~ x + f(x2) where you define x2 = x", but it
+# reaches the caller only as the generic "the inla-program exited with an
+# error" wrapper, which names neither the variable nor the remedy. Both
+# of INLA's remedies are repeated here, plus the one that is specific to
+# a spline: an rw2 smooth already carries a linear trend in its null
+# space, so the fixed copy of the same variable is usually redundant
+# rather than needed.
+.check_inla_variable_not_used_twice <- function(fb) {
+  fixed_keys <- unlist(lapply(
+    fb$fixed_terms %||% list(),
+    function(term) {
+      switch(
+        term$type %||% "",
+        "factor" = ,
+        "continuous" = term$var,
+        character(0)
+      )
+    }
+  ))
+  latent_keys <- unlist(lapply(
+    fb$random_terms %||% list(),
+    function(term) {
+      switch(
+        term$type %||% "",
+        "simple" = ,
+        "ide" = ,
+        "id" = ,
+        "spline" = term$var,
+        character(0)
+      )
+    }
+  ))
+  clash <- intersect(
+    fixed_keys %||% character(0),
+    latent_keys %||% character(0)
+  )
+  if (!length(clash)) {
+    return(invisible(TRUE))
+  }
+  is_spline <- any(vapply(
+    fb$random_terms %||% list(),
+    function(term) {
+      identical(term$type, "spline") && term$var %in% clash
+    },
+    logical(1)
+  ))
+  stop(.fb_refusal_condition(
+    reason_code = "inla_variable_used_twice",
+    message = paste0(
+      "backend = \"inla\": ",
+      paste(paste0("`", clash, "`"), collapse = ", "),
+      " would index both a fixed-effect term and a\n",
+      "latent f() term in the emitted formula, and INLA refuses a key ",
+      "used twice.\n\n",
+      if (is_spline) {
+        paste0(
+          "Two remedies. Drop the fixed copy -- `y ~ 1, random = ~ spl(",
+          clash[[1L]],
+          ")` -- because\n  an rw2 smooth already carries a linear ",
+          "trend in its null space, so the\n  fixed term is redundant ",
+          "rather than additional. Or duplicate the column\n  (`",
+          clash[[1L]],
+          "2 <- ",
+          clash[[1L]],
+          "`) and smooth the copy, which is what INLA's own ",
+          "message\n  suggests and keeps the two effects separately ",
+          "identified.\n"
+        )
+      } else {
+        paste0(
+          "Two remedies. Drop the term from one side, or duplicate the ",
+          "column (`",
+          clash[[1L]],
+          "2 <- ",
+          clash[[1L]],
+          "`)\n  and use the copy on the random side, which is what ",
+          "INLA's own message suggests.\n"
+        )
+      },
+      "backend = \"brms\" carries the same model without the ",
+      "duplicate-key restriction."
+    ),
+    family_class = "flexybayes_inla_emit_refusal",
+    variables = clash
+  ))
 }
 
 # ---------------------------------------------------------------- #
@@ -1411,14 +1724,17 @@ emit_inla <- function(
       is.finite(vc$q97.5[[i_field]]) &&
       vc$q97.5[[i_field]] < .FB_SPATIAL_COLLAPSE_FRACTION * nugget
   ) {
-    reasons <- c(reasons, sprintf(
-      paste0(
-        "the field standard deviation is at the boundary (upper credible ",
-        "bound %.4g against a nugget of %.4g)"
-      ),
-      vc$q97.5[[i_field]],
-      nugget
-    ))
+    reasons <- c(
+      reasons,
+      sprintf(
+        paste0(
+          "the field standard deviation is at the boundary (upper credible ",
+          "bound %.4g against a nugget of %.4g)"
+        ),
+        vc$q97.5[[i_field]],
+        nugget
+      )
+    )
   }
 
   rho_rows <- which(startsWith(cmp, "rho"))
@@ -1431,12 +1747,15 @@ emit_inla <- function(
         lo < -.FB_SPATIAL_RHO_UNIDENTIFIED &&
         hi > .FB_SPATIAL_RHO_UNIDENTIFIED
     ) {
-      reasons <- c(reasons, sprintf(
-        "%s is unidentified (interval [%.3f, %.3f])",
-        cmp[[i]],
-        lo,
-        hi
-      ))
+      reasons <- c(
+        reasons,
+        sprintf(
+          "%s is unidentified (interval [%.3f, %.3f])",
+          cmp[[i]],
+          lo,
+          hi
+        )
+      )
     }
   }
   reasons
@@ -1537,40 +1856,59 @@ emit_inla <- function(
   for (term in field_terms) {
     if (identical(term$type, "ar1")) {
       idx <- paste0(term$var, "_id")
-      out <- c(out, list(
-        as_corr(
-          paste0("Rho for ", idx),
-          paste0("correlation along ", term$var, " (rho)")
-        ),
-        as_sd(
-          paste0("Precision for ", idx),
-          "field SD (sigma_field)"
+      out <- c(
+        out,
+        list(
+          as_corr(
+            paste0("Rho for ", idx),
+            paste0("correlation along ", term$var, " (rho)")
+          ),
+          as_sd(
+            paste0("Precision for ", idx),
+            "field SD (sigma_field)"
+          )
         )
-      ))
+      )
     } else {
       idx <- paste0(term$row_var, "_id")
-      out <- c(out, list(
-        as_corr(
-          paste0("Rho for ", idx),
-          paste0("correlation along ", term$row_var, " (rho_",
-                 term$row_var, ")")
-        ),
-        as_corr(
-          paste0("GroupRho for ", idx),
-          paste0("correlation along ", term$col_var, " (rho_",
-                 term$col_var, ")")
-        ),
-        as_sd(
-          paste0("Precision for ", idx),
-          "field SD (sigma_field)"
+      out <- c(
+        out,
+        list(
+          as_corr(
+            paste0("Rho for ", idx),
+            paste0(
+              "correlation along ",
+              term$row_var,
+              " (rho_",
+              term$row_var,
+              ")"
+            )
+          ),
+          as_corr(
+            paste0("GroupRho for ", idx),
+            paste0(
+              "correlation along ",
+              term$col_var,
+              " (rho_",
+              term$col_var,
+              ")"
+            )
+          ),
+          as_sd(
+            paste0("Precision for ", idx),
+            "field SD (sigma_field)"
+          )
         )
-      ))
+      )
     }
   }
-  out <- c(out, list(as_sd(
-    "Precision for the Gaussian observations",
-    "nugget SD (sigma_e)"
-  )))
+  out <- c(
+    out,
+    list(as_sd(
+      "Precision for the Gaussian observations",
+      "nugget SD (sigma_e)"
+    ))
+  )
   out <- Filter(Negate(is.null), out)
   if (length(out) == 0L) {
     return(NULL)
@@ -1593,7 +1931,9 @@ emit_inla <- function(
     return(invisible(NULL))
   }
   cat(
-    "\n-- Hyperparameters (INLA, precision scale) ", strrep("-", 21), "\n",
+    "\n-- Hyperparameters (INLA, precision scale) ",
+    strrep("-", 21),
+    "\n",
     sep = ""
   )
   print(round(hp, 4))
@@ -1613,7 +1953,8 @@ emit_inla <- function(
     logical(1L)
   ))
   cat(
-    "\n", if (separable) "Separable AR1 field" else "AR1 field",
+    "\n",
+    if (separable) "Separable AR1 field" else "AR1 field",
     " (posterior median, 95% interval):\n",
     sep = ""
   )
@@ -1666,12 +2007,19 @@ print.flexybayes_inla <- function(x, ...) {
   # `$extras$formula`; what prints is the same formula with each prior
   # block named rather than spelled out.
   cat(
-    "  INLA formula: ", .fb_display_inla_formula(x$extras$formula), "\n",
+    "  INLA formula: ",
+    .fb_display_inla_formula(x$extras$formula),
+    "\n",
     sep = ""
   )
   cat(
-    "  Params   : ", mi$n_fixed, " fixed, ", mi$n_random, " random, ",
-    mi$n_hyper, " hyperparameter(s)\n",
+    "  Params   : ",
+    mi$n_fixed,
+    " fixed, ",
+    mi$n_random,
+    " random, ",
+    mi$n_hyper,
+    " hyperparameter(s)\n",
     sep = ""
   )
   cat(

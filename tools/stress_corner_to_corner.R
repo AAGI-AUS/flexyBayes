@@ -1,6 +1,21 @@
 # =============================================================================
 # stress_corner_to_corner.R
 #
+# EXTRA PROBE -- NOT RELEASE EVIDENCE. `tools/execution_grid.R` is the F28
+# instrument (recipe 62); this script is not, and must never be offered in
+# its place. Five differences decide that, and all five matter: this
+# harness runs under `pkgload::load_all()` rather than against an
+# installed build, it probes inputs chosen BECAUSE they were known to
+# refuse, its cases are not derived from the claim surface, it banks no
+# per-cell ledger, and it is wired to no gate. Seventeen live misses
+# survived it in the 0.9.1 field engagement while it reported clean.
+#
+# It is kept because it carries cases the grid does not -- the
+# post-fit / ecosystem surface, streaming, and predict variants -- and
+# those cases should migrate into the grid over time. Run it as an extra
+# probe when that surface is touched; read its output as a hint, never as
+# a claim.
+#
 # Adversarial corner-to-corner capability stress run for flexyBayes.
 # Intentionally pushes every capability area to the cases where anomalies
 # surface, and verifies the package's central contract: invalid / unsupported

@@ -160,15 +160,34 @@ test_that("priors_to_brms_specs: Intercept-named b spec routes to class Intercep
 # (6) priors_to_brms_specs: unsupported family raises structured    #
 # ---------------------------------------------------------------- #
 
-test_that("priors_to_brms_specs: unsupported half_cauchy on sigma refuses", {
+# This test asserted that `half_cauchy` on sigma refuses. It was a true
+# statement about the 0.9.1 emit and a false one about brms, which parses
+# `cauchy(0, s)` on a lower-bounded parameter perfectly well; at 0.9.2 the
+# variance-component table carries it, so the test now asserts the
+# translation and the refusal moves to a distribution brms genuinely
+# cannot take on a variance component.
+test_that("priors_to_brms_specs: half_cauchy on sigma translates", {
   d <- mk_brms_stan_gaussian_data()
   fb <- fb_from_brms(y ~ x + (1 | g), data = d)
   fb$priors <- fb_prior(sigma ~ half_cauchy(scale = 1))
 
-  expect_error(
+  sp <- flexyBayes:::.priors_to_brms_specs(fb$priors, fb)
+  row <- Filter(function(r) identical(r$class, "sigma"), sp)[[1L]]
+  expect_identical(row$string, "cauchy(0, 1)")
+  expect_identical(row$lb, 0)
+})
+
+test_that("priors_to_brms_specs: lkj on sigma refuses typed", {
+  d <- mk_brms_stan_gaussian_data()
+  fb <- fb_from_brms(y ~ x + (1 | g), data = d)
+  fb$priors <- fb_prior(sigma ~ lkj(eta = 2))
+
+  err <- expect_error(
     flexyBayes:::.priors_to_brms_specs(fb$priors, fb),
-    "half_cauchy.*sigma"
+    class = "flexybayes_refusal_prior_not_translatable_for_backend"
   )
+  expect_match(conditionMessage(err), "lkj")
+  expect_match(conditionMessage(err), "sigma")
 })
 
 

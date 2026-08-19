@@ -1,12 +1,13 @@
 # Evidence snapshot
 
-Four text artefacts recording the numerical checks the package's public
-claims rest on. They are copies, not the working trees: the scripts, the
+The numerical checks the package's public claims rest on: the evidence
+artefacts, the scenario registry the validation ladder reads, and the
+execution-grid ledger. They are copies, not the working trees: the scripts, the
 fitted objects and the rendered reports live outside this package, and each
 entry below names the script that produced its artefact so a reader can
 reproduce it rather than take the numbers on trust.
 
-Everything here is plain text or CSV. Nothing in this directory is read by
+Everything here is plain text, CSV or YAML. Nothing in this directory is read by
 package code, and nothing is regenerated at build or check time.
 
 Locate the directory from R with
@@ -96,3 +97,167 @@ parameters would be measuring the wrong thing.
 
 **Generating script, data, run.** As `head_to_head_summary.csv` above; both
 files are projections of the same `comparison.rds`.
+
+## `benchmark_scaling.csv` and `benchmark_scaling.md`
+
+**What.** The evidence behind the scaling claim in `DESCRIPTION` and
+`README.md`. `benchmark_scaling.md` says what was measured and where the
+claim stops; the CSV is the slim table, eighteen rows across three studies:
+the boundary between the per-row and the streamed-aggregated fit path
+(where the per-row path stops, and what the streamed one costs at the same
+size), the extreme end (partitioned `.fst` shards to five billion rows),
+and a re-measurement of the fast boundary cells against this release. Times
+and peak memory are the operating system's numbers for a fresh subprocess
+per cell (`/usr/bin/time -l`), not estimates taken inside a long-lived
+session.
+
+**Generating scripts.** `tools/benchmark_bigdata_boundary.R` and
+`tools/stress_bigdata_extreme.R`, in this repository and excluded from the
+build. The `boundary-confirm` rows were produced by the same boundary
+design run against an installed tarball rather than a loaded source tree.
+
+**Data.** Simulated. Six environments crossed with 60 genotypes (360 cells)
+for the boundary rows, six by 200 (1,200 cells) for the extreme rows;
+gaussian random intercept, INLA backend, seed `42`.
+
+**Run.** `boundary` and `extreme` on 2026-05-31 against the development
+tree released the same day as 0.6.0; `boundary-confirm` on 2026-08-19
+against an installed tarball of 0.9.2. Apple silicon macOS, 32 GB RAM, 10
+cores, R 4.5.2, INLA 25.10.19, fst 0.9.8.
+
+**Reading it.** The claim rests on the `peak_mb` column, not on the wall
+clock: the per-row path's memory grows with the row count and stops between
+one and five million rows, while the streamed path holds one chunk plus the
+cell accumulator, so 708 MB at ten million rows becomes 846 MB at five
+billion. The `intercept` column is the honesty check on the other half --
+the aggregated path recovers the per-row estimate to five decimal places at
+every size where both were run, so the scaling is not bought with an
+approximation. One run per cell on one machine: this is an
+order-of-magnitude envelope, not a distribution, and it compares the
+package's two paths against each other rather than against another package.
+
+## `scenarios.yaml`
+
+**What.** The numerical-validation registry: one row per validation
+scenario, in the schema the validation ladder reads
+(`Config/rpkg/validationTier` in `DESCRIPTION`, `V3` for this package).
+Forty-five rows across five studies, plus three stability cells and one
+calibration study. Every row is an existing study. Nothing was simulated
+to reach a floor, and where a floor is not reached the shortfall is
+written down below rather than filled with a row that would not survive
+being read.
+
+**Oracle classes present.** M-A (a declared expected behaviour at the
+edge of the domain), M-B (an independently written REML that shares no
+code with the package), M-D (ASReml, `lme4`, `glmmTMB`, `nlme`,
+`MCMCglmm`), M-E (simulation with known truth).
+
+**`result_cache` and the R gate.** Each row names the artefact its
+numbers come from. Rows whose study ships a copy here point at that copy
+(`report_sweep.txt`, `oracle_het.log`, `head_to_head_summary.csv`,
+`execution_grid/ledger.csv`); rows whose evidence is a workspace
+artefact point at it by its workspace-relative path. The consequence is
+worth stating plainly: the R-side gate `check_scenarios.R` reads each
+`result_cache` with `readRDS()` and fails on anything that is not a
+serialised R object, so **that gate does not pass on this registry
+today** -- the shipped artefacts are text and CSV projections of fitted
+objects that are deliberately kept outside the package, and the fitted
+objects themselves are not shipped. The structural gates (F20, F21, F22
+in `rpkg_audit.py`) read the registry itself and do pass. Making the R
+gate pass would mean either shipping the fitted objects or teaching the
+gate to read a text artefact, and that is a decision about the gate
+rather than about the evidence.
+
+## `execution_grid/`
+
+**What.** The F28 execution-grid evidence (recipe 62). `ledger.csv` has
+one row per grid cell -- the claim-derived cross product of the
+capability matrix, the prior routes, the malformed-prior corpus, the
+family allowlist, the structure and grammar surfaces, and the
+prior-translation table -- each carrying the outcome a live call
+produced against an installed build. `capability_matrix.csv` is the
+machine-readable export of the generated capability table, so ledger
+coverage of every claimed cell can be checked without parsing R.
+`roster_diff.csv` records every response family an installed engine
+carries and the entry allowlist refuses, with the layer that owns each
+boundary. `misses.csv` is the M1-M6 register: one row per open miss from
+the last run. `sessioninfo.txt` names the engines the cells ran against.
+
+**Generating script.** `tools/execution_grid.R`, in this repository and
+excluded from the build. It runs against an installed build or a built
+tarball, never `pkgload::load_all()`, with one `callr::r()` child per
+cell.
+
+**Reading it.** `class` is the outcome vocabulary -- `fit`,
+`refuse_typed`, `error_untyped`, `construct_accept`, `crash`, `timeout`.
+`expected` is derived from a claim surface before the run and
+`expect_src` in the wide record names the surface line by line.
+`verdict` is the comparison. The two numbers that matter are the count
+of `error_untyped` and the count of `DIVERGENT`, and both are meant to
+be zero.
+
+## Validation tier V3: what is declared, and what is waived
+
+`DESCRIPTION` declares `Config/rpkg/validationTier: V3`. The tier is
+assigned because the outputs feed agronomic decisions, which is the
+ladder's V3 rule, not because the evidence is complete. Four things the
+tier asks for are not met by the studies registered above, and they are
+waived here rather than left to be discovered.
+
+- Reason (F21, stochastic calibration): the registry carries one
+  calibration scenario, `calibration-interval-coverage-recovery`. It is
+  a real interval-coverage study run through `flexybayes()` with known
+  truth, and it is short of the tier on three counts: 10 replicates per
+  cell against the V3 floor of 1,000, a `0.7.0.9000` candidate rather
+  than this release, and a backend set that still included greta. The
+  package has no simulation-based calibration of its own estimator at
+  all: the 2026-06-02 multi-backend SBC study calibrated the ENGINES
+  through direct `cmdstanr`, `INLA::inla()` and `greta` calls, so it is
+  evidence about Stan, INLA and greta rather than about this package's
+  emit, and registering it here would have claimed something it does not
+  show. Writing a calibration entry that the study does not support was
+  the alternative, and it is worse than a waiver.
+- Reason (F20, named cells): the V3 breadth table asks for a
+  null-recovery scenario at two or more sample sizes. The registered
+  studies simulate non-null truths throughout, so no row claims one. The
+  near-boundary signal cells the tier also asks for are covered
+  (`stability-spatial-field-collapse` at a variance running to its
+  floor, `stability-funnel-divergence-brms` at a between-cluster SD of
+  0.02).
+- Reason (registry currency): the five registered studies were run
+  between 2026-06-08 and 2026-08-19 against builds from `0.7.0.9000` to
+  `0.9.2`. The two head-to-head studies and the alternatives hunt are on
+  the 0.9.x line; the missing-response sweep and the coverage study
+  predate it.
+- Reason (F24 and F25, the Mathematical Foundations Document): a
+  declared V3 tier on a numerical-method package asks for `math/` --
+  a foundations document carrying the derivation of every terminal
+  identity the code implements, and a per-equation grounding register
+  tying each one to a function, an anchor, its tests, its scenarios and
+  an independent grounding reference. The package has neither file. The
+  work is scheduled as **its own validation arc**, paired with the
+  simulation-based-calibration study that lifts the F21 waiver above
+  and sharing its derivation content with the planned methods paper,
+  because the two need the same algebra written down once: the
+  aggregated sufficient-statistic identities, the prior-translation
+  closed forms on the standard-deviation scale, and the structured
+  covariance parameterisations. Assembling a foundations document from
+  the existing sources inside this release would meet the file check
+  and not the floor -- the derivations would be sketched rather than
+  complete, and the grounding column would carry the package's own
+  tests as the authority for identities the package itself asserts,
+  which is the self-oracle failure the register exists to prevent. A
+  document that fails its own gate is worse than a recorded absence.
+
+- Version: this waiver applies to **0.9.2** and expires at the next
+  release.
+- Owner: Max Moldovan
+
+The waived floors are the next validation arc, not a permanent state:
+a simulation-based calibration and an interval-coverage study of at
+least 1,000 replicates, run through `flexybayes()` on the two active
+engines and including a null-recovery cell at two sample sizes, is what
+lifts the F20 and F21 waivers, and `math/foundations.qmd` plus a
+`math/math_map.yaml` whose every equation carries a function, an
+anchor, its tests, its scenarios and a grounded independent reference
+is what lifts F24 and F25. Both are scheduled into the same arc.

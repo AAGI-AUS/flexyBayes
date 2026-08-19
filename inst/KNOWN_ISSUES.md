@@ -30,6 +30,7 @@ which had drifted from the emit layer in four places.
 |---|---|:-:|:-:|---|
 | Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
+| Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms's own prior. INLA's likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
 | Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The INLA mapping named greta as one of its three verification arbitrators, so it stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
 | Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
@@ -209,6 +210,34 @@ know it went away. Each was re-checked live against this tree.
   `str` reached an untyped `stop()`. The grammar is a closed set now:
   `foo(g)` refuses as `asreml_function_not_recognised`, and `ar2`, `str`
   and the `cor` family each refuse under their own code.
+
+## Response families: where the boundary is, and whose it is
+
+The entry allowlist (`.resolve_family()`) is narrower than either engine's
+own family roster. That is deliberate -- a family is admitted when this
+package has an emit for it and a test exercises it -- but the refusal used
+to say only "unsupported", which left a reader unable to tell a flexyBayes
+boundary from an engine one. The four families a field engagement reached
+for, each checked against the installed engines rather than recalled:
+
+| Family | brms 2.23.0 | INLA 25.10.19 | flexyBayes | Where the boundary is |
+|---|:-:|:-:|:-:|---|
+| `hurdle_gamma` | native (`dpars` mu, shape, hu) | absent | **fits on brms since 0.9.2** | -- |
+| `zero_inflated_gamma` | absent (`brmsfamily()` refuses) | absent | refuses | Neither engine has it. Use `hurdle_gamma`: for a gamma positive part, which has no mass at zero, the hurdle and the zero-inflated model are the same model. |
+| `tweedie` | absent | **present** in the likelihood roster | refuses | **flexyBayes**, not the engine. No INLA emit (no link / power parameter, no validated fit). A feature request, not a defect -- see below. |
+| `compound_poisson` | absent | present as `tweedie` | refuses | Same as `tweedie`; the two name the same distribution. |
+
+Each of these refusals now carries the boundary note in its message, so the
+distinction reaches the user at the point of refusal rather than only here.
+
+**Tweedie on INLA is the open feature ask.** INLA carries the likelihood;
+flexyBayes has no emit for it. The work is a family row, the `p` power
+parameter threaded through `control.family`, and a validated fit against an
+independent implementation (`statmod`/`cplm` or `mgcv::Tweedie`) before the
+row can read `fits`. Until then, for compound-Poisson gamma data: fit the
+zero and positive parts separately and recombine on the posterior, or use
+`family = "hurdle_gamma"` with `backend = "brms"`, which is the same
+two-part decomposition with the parts fitted jointly.
 
 ## Minor / environment-specific notes
 

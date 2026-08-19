@@ -300,15 +300,21 @@ $\sigma \sim \mathrm{Lognormal}(0, m)$ default. Passing a structured
 regularisation* vignette articulates the choice in detail and shows
 how to set priors deliberately.
 
-Fixed-effect coefficients carry a separate weakly-informative default:
-$\beta \sim \mathcal{N}(0, 100)$, applied uniformly to the intercept,
-contrast levels, continuous slopes, factor-by-continuous
-interactions, and `I()`-expression terms. The scale (`sd = 100`)
-covers responses with central tendency up to several hundred on the
-natural scale without crushing the posterior toward zero, while
-still regularising at small per-coefficient sample sizes (Gelman et
-al., 2008). Override via `prior_fixed_sd = ...` or, for individual
-coefficients, via `b("name") ~ normal(...)` in `fb_prior()`.
+Fixed-effect coefficients are handled the other way round: the engine's
+own default stands until you ask for something else. Supply
+`prior_fixed_sd = s` and every fixed effect -- the intercept, contrast
+levels, continuous slopes, factor-by-continuous interactions, and
+`I()`-expression terms -- carries $\mathcal{N}(0, s)$ on both engines,
+weakly informative in the sense of Gelman et al. (2008). Leave the
+argument out and brms keeps its flat coefficients and its
+response-centred `student_t` intercept, while INLA keeps `prec = 0.001`
+on the slopes and a flat intercept. Neither is replaced by a prior
+nobody asked for, because putting $\mathcal{N}(0, 100)$ where a
+response-centred intercept prior was is a different model for any
+response far from zero, and `sleepstudy` at a mean near 300 ms is the
+ordinary case rather than the exotic one. `prior_summary()` names which
+of the two a fit ran under. Individual coefficients are set with
+`b("name") ~ normal(...)` in `fb_prior()`.
 
 # 6. The same model on a second engine
 

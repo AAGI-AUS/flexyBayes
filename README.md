@@ -2,7 +2,7 @@
 
 Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax
 
-Licence: MIT. Version 0.9.1 is a stable release of the supported
+Licence: MIT. Version 0.9.2 is a stable release of the supported
 capability set.
 
 `flexyBayes` is a multi-backend Bayesian mixed-model framework. It
@@ -70,9 +70,10 @@ burden and in what they offer.
 
 All exports are at the **experimental** `lifecycle` stage. See
 `API_STABILITY.md` in the source repository for what that guarantees. The
-fastest way to explore the package without any backend is the planner. For a
-worked fit with production sampling settings and its diagnostics reported in
-full, follow the *getting started* vignette.
+planner runs with no inference backend installed at all, so it is the least
+you need in place to explore the package. For a worked fit with production
+sampling settings and its diagnostics reported in full, follow the
+*getting started* vignette.
 
 ### Backend support by model class
 
@@ -90,6 +91,7 @@ this release (see the callout above) and are therefore not columns.
 |---|---|:-:|:-:|---|
 | Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
+| Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms's own prior. INLA's likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
 | Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The INLA mapping named greta as one of its three verification arbitrators, so it stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
 | Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
@@ -111,6 +113,16 @@ this release (see the callout above) and are therefore not columns.
 
 This block is generated from `.fb_capability_matrix()` by `tools/generate_capability_matrix.R`. Edit the R table, re-run the generator, and let `tests/testthat/test-capability-matrix.R` check that every verdict still matches the gate and emit code. Do not edit the rows here by hand.
 <!-- capability-matrix:end -->
+
+> **What the aggregation row is worth.** The sufficient-statistic route is
+> what carries the package to dataset sizes the per-row path cannot reach:
+> the per-row path runs out of memory between one and five million rows on
+> a 32 GB machine, while the streamed path fits five billion rows through a
+> roughly flat memory envelope, because it is always fitting the same small
+> number of cells. The measured record -- sizes, wall-clock, peak memory,
+> the hardware, and the model scope outside which the route refuses rather
+> than approximates -- is banked with the package at
+> `system.file("validation/benchmark_scaling.md", package = "flexyBayes")`.
 
 > **MET capability, stated currently.** A multi-environment-trial model fits
 > on brms, and its pieces are checked against ASReml: nested
@@ -141,7 +153,7 @@ GxE BLUPs, factor loadings, environment genetic correlations) requires a
 **greta** factor-analytic (`fa(env, k):gen`) fit -- it is computed from the
 identified *realised* effects, which fit on greta. greta is quarantined, so
 no active backend currently produces this fit. On an INLA or brms fit it
-refuses with a pointer to the right path, and the scalable INLA MET route gives
+refuses with a pointer to the right path, and the INLA MET route gives
 variance components via `summary()` / `fb_structured_cov()`.
 
 ## Installation
@@ -171,9 +183,9 @@ install rather than failing obscurely.
 
 ## Quick start
 
-The planner needs no inference backend and is the fastest way to see what
-flexyBayes will do with a model: it builds the intermediate representation,
-chooses a backend, and reports the plan without fitting.
+The planner needs no inference backend to show what flexyBayes will do with a
+model: it builds the intermediate representation, chooses a backend, and
+reports the plan without fitting.
 
 ```r
 library(flexyBayes)

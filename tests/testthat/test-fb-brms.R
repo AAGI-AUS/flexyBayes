@@ -226,12 +226,16 @@ test_that("fb_brms() refuses correlated random slopes (x | g) with ADR 0020 stru
 
 test_that("fb_brms() refuses brms smoothers with structured message", {
   d <- mk_brms_gaussian_data()
-  err <- tryCatch(
+  # Typed since 0.9.2 (field-sweep FS-18): the smoother used to reach the
+  # engine and surface as `could not find function "s"`, on brms only
+  # after a completed sampling run.
+  err <- expect_error(
     fb(y ~ s(x) + (1 | g1), data = d, verbose = FALSE),
-    error = function(e) conditionMessage(e)
+    class = "flexybayes_refusal_fixed_smoother_not_supported"
   )
-  expect_true(grepl("does not yet support", err))
-  expect_true(grepl("smoother|s\\(", err))
+  expect_match(conditionMessage(err), "s\\(x\\)")
+  expect_match(conditionMessage(err), "spl\\(x\\)")
+  expect_match(conditionMessage(err), "backend = \"inla\"")
 })
 
 

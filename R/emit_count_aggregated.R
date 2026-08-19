@@ -162,6 +162,12 @@ emit_count_aggregated <- function(
 
   hyper_ctrl <- if (inherits(fb$priors, "fb_prior")) {
     priors_to_inla(fb$priors)
+  } else if (.fb_prior_scalar_supplied(fb, "vc_sd")) {
+    # The legacy scalar route, keyed exactly as priors_to_inla() keys an
+    # fb_prior, so the aggregated and per-row INLA fits carry the same
+    # random-intercept prior. They have to: their agreement is an
+    # algebraic identity that only holds when the two share one prior.
+    .priors_legacy_to_inla(fb, .fb_prior_scalar_value(fb, "vc_sd"))
   } else {
     list()
   }
@@ -189,6 +195,23 @@ emit_count_aggregated <- function(
   }
   if (!is.null(e_arg)) {
     inla_args$E <- e_arg
+  }
+
+  # Spliced in only when it carries something, so a call that supplies no
+  # `prior_fixed_sd` reaches INLA exactly as it did before the argument
+  # was wired.
+  # `coef_names` is the aggregated design's own column vocabulary: the
+  # aggregated INLA formula names model-matrix columns, so a `b()` prior
+  # row has to be checked against those rather than against the per-row
+  # term labels, or a row naming a factor level would arrive as a
+  # `control.fixed` entry INLA silently ignores.
+  control_fixed <- .build_inla_control_fixed(
+    fb,
+    .fb_prior_scalar_value(fb, "fixed_sd"),
+    coef_names = setdiff(fb_aggregated$fixed_cols, "(Intercept)")
+  )
+  if (length(control_fixed)) {
+    inla_args$control.fixed <- control_fixed
   }
 
   inla_fit <- do.call(INLA::inla, inla_args)

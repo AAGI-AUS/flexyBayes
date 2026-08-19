@@ -74,12 +74,16 @@
 #'   error -- use `residual` instead.
 #' @param data A data.frame containing all variables referenced in the formulas.
 #' @param family Character: `"gaussian"`, `"binomial"`, `"poisson"`,
-#'   `"negative_binomial"`, `"gamma"`, or `"beta"`. A `stats` family
-#'   object (`binomial()`, `gaussian()`) is also accepted and supplies
-#'   its own link, so `Gamma()` means the inverse link it names rather
-#'   than the log link `family = "gamma"` defaults to. Passing a family
-#'   object together with a contradicting `link` is refused rather than
-#'   resolved.
+#'   `"negative_binomial"`, `"gamma"`, `"beta"`, or `"hurdle_gamma"`
+#'   (brms only -- INLA's likelihood roster has no counterpart, so the
+#'   family gate refuses it there and `backend = "auto"` routes to brms).
+#'   A `stats` family object (`binomial()`, `gaussian()`) is also
+#'   accepted and supplies its own link, so `Gamma()` means the inverse
+#'   link it names rather than the log link `family = "gamma"` defaults
+#'   to. Passing a family object together with a contradicting `link` is
+#'   refused rather than resolved. A family outside this set is refused
+#'   at the door; where the boundary is flexyBayes's own rather than the
+#'   engines', the refusal says so and `inst/KNOWN_ISSUES.md` records it.
 #' @param link Character or NULL: override the default link function
 #'   (e.g., `"probit"` for binomial). Leave it unset when `family` is a
 #'   family object, which carries its own link.
@@ -182,7 +186,17 @@
 #'   narrower for explicit shrinkage. A weakly-informative normal prior
 #'   on the data scale, in the spirit of the weakly-informative-prior
 #'   literature for regression coefficients (e.g. Gelman et al. 2008,
-#'   *Annals of Applied Statistics* 2(4):1360-1383).
+#'   *Annals of Applied Statistics* 2(4):1360-1383). **Applied when you
+#'   supply it**, on every backend: brms receives one `normal(0, sd)`
+#'   row per fixed-effect class, INLA receives `control.fixed` with
+#'   `prec = 1 / sd^2` on the slopes and the intercept alike, and greta
+#'   has always used it. Left unsupplied, each engine keeps its own
+#'   fixed-effect default -- brms's flat coefficients and
+#'   response-centred `student_t` intercept, INLA's `prec = 0.001` and
+#'   flat intercept -- because replacing a response-centred intercept
+#'   prior with `normal(0, 100)` is a different model for any response
+#'   far from zero. [prior_summary()] names which of the two a fit ran
+#'   under.
 #' @param prior_vc_sd Numeric: hyperparameter for the legacy
 #'   `lognormal(0, prior_vc_sd)` variance-component prior. **Note:**
 #'   when both `prior` and `prior_vc_sd` are left at their defaults,
@@ -196,7 +210,13 @@
 #'   (see the priors vignette). The legacy `lognormal(0, 1)` default
 #'   fires only when `prior_vc_sd` is passed explicitly. Silence the
 #'   one-time announcement message via
-#'   `options(flexyBayes.silence_default_prior_note = TRUE)`.
+#'   `options(flexyBayes.silence_default_prior_note = TRUE)`. When it is
+#'   passed explicitly it reaches both active engines as the same
+#'   density on the standard-deviation scale: brms as a
+#'   `lognormal(0, prior_vc_sd)` prior row, INLA as the expression prior
+#'   that writes that density in INLA's log-precision parameterisation.
+#'   The two engines therefore carry the same variance-component prior,
+#'   which is what [triangulate()] requires before it compares them.
 #' @param verbose Logical: print the generated backend code to the console.
 #' @param mcmc_verbose Logical: show the sampler's progress bar. Has no
 #'   effect on the deterministic INLA path.
@@ -534,6 +554,27 @@ flexybayes <- function(
   # supersedes the earlier PC default.
   default_prior_active <- is.null(prior) && missing(prior_vc_sd)
 
+  # Which of the two scalar prior arguments the caller actually wrote.
+  # Both are documented as applied and neither was: `prior_fixed_sd` was
+  # absent from the condition above, so passing it alone left the
+  # auto-default in charge and the only consumer of the scalar was never
+  # reached, and the INLA route never consumed `prior_vc_sd` at all.
+  # Supplied-ness rather than value is what the emits need, because
+  # applying the documented default unconditionally is not the fix:
+  # brms centres its own intercept prior on the response, and replacing
+  # that with `normal(0, 100)` would be informative in the wrong
+  # direction for any response far from zero. Supplied means honoured;
+  # not supplied means the engine's own default, which prior_summary()
+  # now says out loud.
+  prior_scalars <- list(
+    fixed_sd = prior_fixed_sd,
+    vc_sd = prior_vc_sd,
+    supplied = c(
+      fixed_sd = !missing(prior_fixed_sd),
+      vc_sd = !missing(prior_vc_sd)
+    )
+  )
+
   # Build the flexyBayes intermediate representation (IR). The universal
   # entry detects the grammar from the call shape -- ASReml
   # fixed/random/residual, a brms-style bar-grouped formula, or (reserved) a
@@ -555,6 +596,7 @@ flexybayes <- function(
     prior_vc_sd = prior_vc_sd,
     syntax = syntax
   )
+  fb$prior_scalars <- prior_scalars
 
   # Missing responses, resolved once the IR exists so the layer can see
   # which variables index a structured covariance. Under the default,
@@ -595,7 +637,9 @@ flexybayes <- function(
         message = paste0(
           "backend = \"auto\" with code inspection resolves to brms (the ",
           "only active code-producing engine; greta is quarantined), but ",
-          "brms cannot represent this model (", cap$reason_code, "). ",
+          "brms cannot represent this model (",
+          cap$reason_code,
+          "). ",
           "Returning its code would show a different model from the one ",
           "requested. Pass backend = \"inla\" to fit it, or reformulate ",
           "for an engine that can express it."

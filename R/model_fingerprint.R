@@ -309,18 +309,41 @@
 
   prior <- fb$priors
   if (!inherits(prior, "fb_prior")) {
-    # Legacy scalar bridge (or no prior at all). brms receives
-    # lognormal(0, prior_vc_sd) on every variance component and INLA
-    # receives nothing, keeping its own loggamma default, so no variance
-    # component is matched across engines under this route.
     unmatched <- c(
       "sigma",
       paste0("sd_", c(targets$shared, targets$vm_ped))
     )
+
+    # Legacy scalar bridge, explicitly requested. Both active engines now
+    # carry the same lognormal(0, prior_vc_sd) on the SD scale -- brms as
+    # a prior row, INLA as the expression prior that writes the same
+    # density in its log-precision parameterisation. Until 0.9.2 only
+    # brms received it, so the record said no variance component was
+    # matched, and it was right for the wrong reason: the INLA half was
+    # missing rather than different.
+    if (.fb_prior_scalar_supplied(fb, "vc_sd") && is.finite(prior_vc_sd)) {
+      density <- sprintf("lognormal(0, %s)", format(prior_vc_sd, digits = 6))
+      return(list(
+        recorded = stats::setNames(
+          rep(density, length(unmatched)),
+          unmatched
+        ),
+        sources = stats::setNames(
+          rep("legacy_scalar", length(unmatched)),
+          unmatched
+        ),
+        engine_default = engine_default
+      ))
+    }
+
+    # No prior of any kind: each engine keeps its own hyperprior, so no
+    # variance component is matched across the two.
     reason <- if (is.finite(prior_vc_sd)) {
       paste0(
         "no fb_prior() was supplied: the brms path used the legacy scalar ",
-        "lognormal(0, ", format(prior_vc_sd, digits = 6), ") and the INLA ",
+        "lognormal(0, ",
+        format(prior_vc_sd, digits = 6),
+        ") and the INLA ",
         "path kept its own default hyperprior"
       )
     } else {

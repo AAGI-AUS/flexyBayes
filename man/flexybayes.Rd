@@ -131,12 +131,16 @@ fits. The refusal points at the random-side field described under
 \item{data}{A data.frame containing all variables referenced in the formulas.}
 
 \item{family}{Character: \code{"gaussian"}, \code{"binomial"}, \code{"poisson"},
-\code{"negative_binomial"}, \code{"gamma"}, or \code{"beta"}. A \code{stats} family
-object (\code{binomial()}, \code{gaussian()}) is also accepted and supplies
-its own link, so \code{Gamma()} means the inverse link it names rather
-than the log link \code{family = "gamma"} defaults to. Passing a family
-object together with a contradicting \code{link} is refused rather than
-resolved.}
+\code{"negative_binomial"}, \code{"gamma"}, \code{"beta"}, or \code{"hurdle_gamma"}
+(brms only -- INLA's likelihood roster has no counterpart, so the
+family gate refuses it there and \code{backend = "auto"} routes to brms).
+A \code{stats} family object (\code{binomial()}, \code{gaussian()}) is also
+accepted and supplies its own link, so \code{Gamma()} means the inverse
+link it names rather than the log link \code{family = "gamma"} defaults
+to. Passing a family object together with a contradicting \code{link} is
+refused rather than resolved. A family outside this set is refused
+at the door; where the boundary is flexyBayes's own rather than the
+engines', the refusal says so and \code{inst/KNOWN_ISSUES.md} records it.}
 
 \item{link}{Character or NULL: override the default link function
 (e.g., \code{"probit"} for binomial). Leave it unset when \code{family} is a
@@ -249,7 +253,17 @@ wider (e.g. \code{1000}) for responses on a larger natural scale, or
 narrower for explicit shrinkage. A weakly-informative normal prior
 on the data scale, in the spirit of the weakly-informative-prior
 literature for regression coefficients (e.g. Gelman et al. 2008,
-\emph{Annals of Applied Statistics} 2(4):1360-1383).}
+\emph{Annals of Applied Statistics} 2(4):1360-1383). \strong{Applied when you
+supply it}, on every backend: brms receives one \code{normal(0, sd)}
+row per fixed-effect class, INLA receives \code{control.fixed} with
+\code{prec = 1 / sd^2} on the slopes and the intercept alike, and greta
+has always used it. Left unsupplied, each engine keeps its own
+fixed-effect default -- brms's flat coefficients and
+response-centred \code{student_t} intercept, INLA's \code{prec = 0.001} and
+flat intercept -- because replacing a response-centred intercept
+prior with \code{normal(0, 100)} is a different model for any response
+far from zero. \code{\link[=prior_summary]{prior_summary()}} names which of the two a fit ran
+under.}
 
 \item{prior_vc_sd}{Numeric: hyperparameter for the legacy
 \code{lognormal(0, prior_vc_sd)} variance-component prior. \strong{Note:}
@@ -264,7 +278,13 @@ Analysis} 1(3):515-534, recommends a half-t / half-Cauchy instead
 (see the priors vignette). The legacy \code{lognormal(0, 1)} default
 fires only when \code{prior_vc_sd} is passed explicitly. Silence the
 one-time announcement message via
-\code{options(flexyBayes.silence_default_prior_note = TRUE)}.}
+\code{options(flexyBayes.silence_default_prior_note = TRUE)}. When it is
+passed explicitly it reaches both active engines as the same
+density on the standard-deviation scale: brms as a
+\code{lognormal(0, prior_vc_sd)} prior row, INLA as the expression prior
+that writes that density in INLA's log-precision parameterisation.
+The two engines therefore carry the same variance-component prior,
+which is what \code{\link[=triangulate]{triangulate()}} requires before it compares them.}
 
 \item{verbose}{Logical: print the generated backend code to the console.}
 

@@ -232,6 +232,20 @@ fb_from_brms <- function(
 
   # Reject unsupported features fail-fast (per v0.1 minimum scope)
   if (length(walked$ext_terms) > 0L) {
+    # A univariate smoother gets the smoother refusal, whichever grammar
+    # it was written in: `y ~ s(x)` means the same thing on both
+    # surfaces, and the useful sentence is the one naming
+    # `random = ~ spl(x)` on the INLA backend rather than "queued for a
+    # later expansion" (field-sweep FS-18). The multivariate forms
+    # (`te`, `ti`, `t2`, `gp`, `sos`) have no `spl()` counterpart, so
+    # they keep the ingest-feature refusal below, which claims nothing.
+    for (t in walked$ext_terms) {
+      lbl <- paste(t$deparse, collapse = " ")
+      head <- sub("\\(.*$", "", lbl)
+      if (head %in% c("s", "spl")) {
+        .stop_fixed_smoother_unsupported(lbl, head, data)
+      }
+    }
     classes <- vapply(
       walked$ext_terms,
       function(t) {
@@ -244,12 +258,17 @@ fb_from_brms <- function(
       },
       character(1)
     )
-    stop(
-      "brms ingest does not yet support: ",
-      paste(classes, collapse = ", "),
-      ". These features will be added in subsequent iterations.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "brms_ingest_feature_unsupported",
+      message = paste0(
+        "The brms ingest layer has no lowering for: ",
+        paste(classes, collapse = ", "),
+        ".\n",
+        "These features are queued for a later expansion of the ingest ",
+        "layer."
+      ),
+      family_class = "flexybayes_brms_ingest_refusal"
+    ))
   }
 
   # Build a fixed-only formula and re-parse via .parse_fixed (gives
@@ -278,18 +297,32 @@ fb_from_brms <- function(
         slope_variable = rt$slope_var
       )
     }
-    if (identical(rt$type, "brms_re_unsupported")) {
-      stop(
-        "brms ingest does not yet support this random-effect ",
-        "specification. Found: ",
-        rt$deparse,
-        ". Supported: (1 | g), (1 || g), (x || g), ",
-        "(1 + x || g). Other forms (factor random slopes, ",
-        "multi-variable uncorrelated slopes, group-of-coefficients ",
-        "shorthand) are queued for later expansion of the brms ",
-        "ingest layer.",
-        call. = FALSE
+    if (identical(rt$type, "brms_re_factor_slope_unsupported")) {
+      .stop_factor_slope_unsupported(
+        grouping_factor = rt$rhs,
+        slope_variable = rt$slope_var,
+        correlated = rt$correlated,
+        found = rt$deparse
       )
+    }
+    if (identical(rt$type, "brms_re_unsupported")) {
+      stop(.fb_refusal_condition(
+        reason_code = "brms_random_effect_form_unsupported",
+        message = paste0(
+          "The bar grammar has no lowering for this random-effect ",
+          "specification.\n",
+          "Found: ",
+          rt$deparse,
+          "\n",
+          "Supported bar forms: (1 | g), (1 || g), (x || g), ",
+          "(1 + x || g).\n",
+          "Multi-variable slopes and the group-of-coefficients shorthand ",
+          "are queued for\n  a later expansion of the brms ingest layer, ",
+          "and have no ASReml surface that\n  expresses the same model ",
+          "today."
+        ),
+        family_class = "flexybayes_brms_ingest_refusal"
+      ))
     }
     random_terms[[length(random_terms) + 1L]] <- rt
   }
@@ -522,6 +555,23 @@ fb_from_brms <- function(
 
   # Random intercept: (1 | g) or (1 || g).
   if (is_one(lhs)) {
+    # A grouping *expression* rather than a column. `(1 | g:h)` is the
+    # bar spelling of the ASReml `random = ~ g:h`, and the two surfaces
+    # have to produce the same term descriptor or the structural gates
+    # see two different models: the ASReml spelling was refused by
+    # lgm_gate() with a typed, remedy-naming refusal while the bar
+    # spelling was typed as a simple intercept on a group called "g:h",
+    # passed the gate, and reached the INLA binary, which failed with a
+    # message about the emitted formula rather than the user's model.
+    # The interaction is classified by the same walker the ASReml side
+    # uses, so the descriptors are identical -- including the
+    # numeric-in-a-random-interaction guard `.enrich()` fires.
+    if (is.call(rhs) && identical(rhs[[1L]], as.name(":"))) {
+      walked_group <- .walk(rhs)
+      if (length(walked_group) == 1L) {
+        return(.enrich(walked_group[[1L]], data = data))
+      }
+    }
     out <- list(type = "simple", var = group_name)
     if (group_name %in% names(data)) {
       f <- factor(data[[group_name]])
@@ -598,6 +648,30 @@ fb_from_brms <- function(
     }
   }
 
+  # Random slope on a FACTOR: (f | g), (0 + f | g), (f || g). The bar
+  # grammar has no lowering for it, but the ASReml surface of the same
+  # model fits -- `random = ~ us(f):g` for the correlated form and
+  # `random = ~ diag(f):g` for the uncorrelated one -- so the refusal
+  # names that surface verbatim rather than listing bar spellings none of
+  # which expresses the model (field-sweep FS-6 / field finding U1).
+  factor_slope <- .brms_factor_slope_var(lhs, data)
+  if (!is.na(factor_slope)) {
+    return(list(
+      type = "brms_re_factor_slope_unsupported",
+      lhs = lhs_str,
+      rhs = group_name,
+      slope_var = factor_slope,
+      correlated = isTRUE(cor),
+      deparse = paste0(
+        "(",
+        lhs_str,
+        if (isTRUE(cor)) " | " else " || ",
+        group_name,
+        ")"
+      )
+    ))
+  }
+
   # Slope correlated: (x | g) or (1 + x | g). Refused with the
   # structured deferral message.
   if (isTRUE(cor)) {
@@ -666,6 +740,128 @@ fb_from_brms <- function(
   out
 }
 
+# The factor a bar-grammar random slope is written on, or NA when the
+# left-hand side is not a factor slope. Recognises the bare form (`f`),
+# the intercept-suppressed form (`0 + f`) and the intercept-carrying form
+# (`1 + f`) in either operand order -- all three are unstructured or
+# diagonal per-level effects of the same factor within the grouping
+# factor, and all three have the same ASReml surface.
+.brms_factor_slope_var <- function(lhs, data) {
+  is_factor_var <- function(e) {
+    if (!is.name(e)) {
+      return(FALSE)
+    }
+    nm <- as.character(e)
+    nm %in% names(data) && (is.factor(data[[nm]]) || is.character(data[[nm]]))
+  }
+  if (is_factor_var(lhs)) {
+    return(as.character(lhs))
+  }
+  if (is.call(lhs) && identical(lhs[[1L]], as.name("+")) && length(lhs) == 3L) {
+    left <- lhs[[2L]]
+    right <- lhs[[3L]]
+    is_const <- function(e) {
+      identical(deparse(e), "0") || identical(deparse(e), "1")
+    }
+    if (is_const(left) && is_factor_var(right)) {
+      return(as.character(right))
+    }
+    if (is_const(right) && is_factor_var(left)) {
+      return(as.character(left))
+    }
+  }
+  NA_character_
+}
+
+# Raise the structured refusal for a bar-grammar factor slope, naming
+# the ASReml surface that fits.
+#
+# The correlated form `(f | g)` is one free variance per level of `f`
+# plus the full correlation block between levels -- `us(f):g`. The
+# uncorrelated form `(f || g)` drops the correlations and keeps the
+# per-level variances -- `diag(f):g`. Both fit on brms; both refuse on
+# INLA with the gate's own structured-covariance message, so the refusal
+# says which backend carries them.
+.stop_factor_slope_unsupported <- function(
+  grouping_factor,
+  slope_variable,
+  correlated,
+  found
+) {
+  asreml <- paste0(
+    "random = ~ ",
+    if (isTRUE(correlated)) "us(" else "diag(",
+    slope_variable,
+    "):",
+    grouping_factor
+  )
+  other <- paste0(
+    "random = ~ ",
+    if (isTRUE(correlated)) "diag(" else "us(",
+    slope_variable,
+    "):",
+    grouping_factor
+  )
+  msg <- paste0(
+    "The bar grammar has no lowering for a random slope on a factor.\n",
+    "Found: ",
+    found,
+    "   (`",
+    slope_variable,
+    "` is a factor)\n\n",
+    "The same model in the ASReml grammar fits on brms:\n\n",
+    "  flexybayes(<response> ~ ",
+    slope_variable,
+    ", ",
+    asreml,
+    ", data = <data>,\n",
+    "             backend = \"brms\")\n\n",
+    if (isTRUE(correlated)) {
+      paste0(
+        "`us(",
+        slope_variable,
+        "):",
+        grouping_factor,
+        "` is one free variance per level of `",
+        slope_variable,
+        "` within each\n  `",
+        grouping_factor,
+        "`, plus the correlations between those levels -- which is what ",
+        "the\n  correlated bar form asks for. Drop the correlations with ",
+        "`",
+        other,
+        "`.\n"
+      )
+    } else {
+      paste0(
+        "`diag(",
+        slope_variable,
+        "):",
+        grouping_factor,
+        "` is one free variance per level of `",
+        slope_variable,
+        "` within each\n  `",
+        grouping_factor,
+        "`, with no correlation between levels -- which is what the ",
+        "uncorrelated\n  bar form asks for. Add the correlations with `",
+        other,
+        "`.\n"
+      )
+    },
+    "backend = \"inla\" refuses both: INLA's f() machinery does not ",
+    "represent a\n  structured covariance across factor levels."
+  )
+  stop(.fb_refusal_condition(
+    reason_code = "brms_factor_random_slope_unsupported",
+    message = msg,
+    family_class = "flexybayes_brms_ingest_refusal",
+    grouping_factor = grouping_factor,
+    slope_variable = slope_variable,
+    correlated = isTRUE(correlated),
+    asreml_surface = asreml
+  ))
+}
+
 # Raise the structured refusal for (x | g).
 # The custom condition class flexybayes_correlated_slope_unsupported
 # carries the grouping factor, slope variable, deferral target, and
@@ -678,20 +874,41 @@ fb_from_brms <- function(
   uncorrelated <- paste0("(", slope_variable, " || ", grouping_factor, ")")
   msg <- paste0(
     "Correlated random slopes (x | g) are not yet supported.\n",
-    "Got: (", slope_variable, " | ", grouping_factor, ")\n\n",
-    "Fit ", uncorrelated, " instead. That is the uncorrelated random\n",
-    "intercept and slope: a per-", grouping_factor, " intercept deviation\n",
-    "and a per-", grouping_factor, " slope on ", slope_variable,
+    "Got: (",
+    slope_variable,
+    " | ",
+    grouping_factor,
+    ")\n\n",
+    "Fit ",
+    uncorrelated,
+    " instead. That is the uncorrelated random\n",
+    "intercept and slope: a per-",
+    grouping_factor,
+    " intercept deviation\n",
+    "and a per-",
+    grouping_factor,
+    " slope on ",
+    slope_variable,
     ", each with its own\n",
     "variance and no correlation parameter between them. It emits on brms\n",
     "and is the right model whenever the intercept-slope correlation is not\n",
     "itself of inferential interest.\n\n",
-    "Do NOT reach for the asreml crossing ~ ", grouping_factor, " + ",
-    grouping_factor, ":", slope_variable, ".\n",
-    "With a numeric ", slope_variable,
+    "Do NOT reach for the asreml crossing ~ ",
+    grouping_factor,
+    " + ",
+    grouping_factor,
+    ":",
+    slope_variable,
+    ".\n",
+    "With a numeric ",
+    slope_variable,
     " that is one independent deviation per\n",
-    grouping_factor, "-by-", slope_variable,
-    " cell, not a per-", grouping_factor, " slope -- a\n",
+    grouping_factor,
+    "-by-",
+    slope_variable,
+    " cell, not a per-",
+    grouping_factor,
+    " slope -- a\n",
     "different model with a different parameter count.\n\n",
     "If the correlation parameter itself is needed, it is deferred to a\n",
     "future release (structured-covariance representation). No active\n",

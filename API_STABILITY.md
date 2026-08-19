@@ -1,6 +1,6 @@
 # API stability -- flexyBayes
 
-`flexyBayes` is in the **0.9.1** development line. Every public export carries
+`flexyBayes` is in the **0.9.2** development line. Every public export carries
 a `lifecycle::badge("experimental")`, so the guarantees below are deliberately
 weaker than they will be at v1.0: bug fixes and additions never break callers,
 but renamings, default changes, and shape changes are permitted within 0.x
@@ -180,7 +180,7 @@ On the auto-default path -- when neither an `fb_prior()` nor a legacy
 | `us(f):g` level correlations | brms's own LKJ | recorded as engine-default |
 | AR1 field hyperparameters (`ar1()`, `ar1(row):ar1(col)`) | INLA's own hyperpriors | recorded as engine-default |
 | Any other random-term type (a multi-way interaction, `spl()`, `fa()`) | the engine's own default | recorded as engine-default |
-| Fixed-effect coefficients | `normal(0, prior_fixed_sd)`, `prior_fixed_sd = 100` | weakly-informative on the natural data scale |
+| Fixed-effect coefficients | each engine's own default -- brms: flat on the population-level coefficients and a response-centred `student_t` on the intercept; INLA: `prec = 0.001` on the slopes and a flat intercept; greta: `normal(0, 100)` | `prior_fixed_sd` is applied when it is supplied, on every backend; unsupplied, the engine's default stands and `prior_summary()` names it |
 
 "Recorded as engine-default" is a contract, not a shrug: the parameter and the
 reason are written into the fit's prior provenance, so `triangulate()`'s
@@ -195,7 +195,10 @@ cross-engine translatability, and the PC prior remains the recommended explicit
 choice (`fb_prior(sigma ~ pc(upper = U, prob = p))`) when the number of groups is
 small. The legacy scalar bridge (`prior_fixed_sd`, `prior_vc_sd`) preserves the
 original `lognormal(0, prior_vc_sd)` semantics verbatim when `prior_vc_sd` is
-passed explicitly.
+passed explicitly, and does so on both active engines: brms receives a
+`lognormal(0, prior_vc_sd)` prior row and INLA the expression prior that writes
+the same density on the standard-deviation scale, so the two carry one prior and
+`triangulate()` compares the components rather than excluding them.
 
 ## Deprecation policy
 

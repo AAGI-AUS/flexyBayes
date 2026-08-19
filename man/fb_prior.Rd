@@ -49,7 +49,53 @@ distributional name.
 v0.1 supports the targets and distributions listed above in the
 file header. Calls outside the supported set raise a structured
 error with the supported list.
+
+Argument matching is strict. Each distribution has a fixed parameter
+list, and a call is matched against it by base R's own rules, so
+\code{half_normal(1)} and \code{half_normal(scale = 1)} are the same
+specification. An argument name the distribution does not have, a
+duplicated argument, a missing required argument, a non-scalar or
+non-finite value, or a value outside its domain (a non-positive
+scale, a tail probability outside \verb{(0, 1)}) is refused at
+construction with a condition carrying a \verb{flexybayes_refusal_*}
+class -- see \code{\link[=fb_refusals]{fb_refusals()}}. Both halves of a PC prior are
+required: \code{pc(upper = 1)} states no probability, and is refused
+rather than completed with a default the caller never wrote.
 }
+\section{What each backend can carry}{
+
+
+\code{fb_prior()} is engine-neutral: it records what was asked for. Whether
+a given (target, distribution) pair can be \emph{carried} depends on the
+backend, and the two differ.
+\itemize{
+\item \strong{brms} takes any of the ten distributions on \code{sigma} and
+\code{sd(group = )} -- the parameter is bounded below at zero and brms
+renormalises a two-sided density over that support, which is why
+\code{normal(0, s)} and \code{half_normal(s)} are the same prior there -- and
+\code{normal} / \code{student_t} on \code{b()}. It carries no \code{cor()} or
+\code{smooth()} prior, because no model this package emits on brms has
+either parameter.
+\item \strong{INLA} takes \code{half_normal}, \code{uniform}, \code{pc} and \code{exponential} on
+\code{sigma}, \code{sd(group = )} and \code{smooth()} (\code{exponential} is the PC
+prior written in its distributional form), and \code{normal} on \code{b()},
+which arrives through \code{control.fixed}.
+}
+
+A specification the selected backend cannot carry is refused at the
+fit, naming the row and both remedies -- re-express it in a
+distribution that engine does carry, or switch backend. Before 0.9.2
+the INLA route discarded such a row silently while
+\code{\link[=prior_summary]{prior_summary()}} printed it as applied, so a prior-sensitivity
+analysis could vary a scale and compare the engine's default with
+itself. Whatever \code{prior_summary()} shows on a fit now reached the
+engine.
+
+A prior naming a coefficient or a variance component the model does
+not have is likewise refused at the fit, against the engine's own
+parameter list and in the vocabulary the caller wrote.
+}
+
 \examples{
 p <- fb_prior(
   sigma                 ~ pc(upper = 2, prob = 0.05),

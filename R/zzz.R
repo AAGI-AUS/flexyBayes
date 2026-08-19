@@ -99,6 +99,11 @@
   # random-interaction guard.
   .populate_refusal_registry_v0900_names()
 
+  # Field-hardening: the prior mini-language refuses at construction, the
+  # scalar prior arguments arrive or are refused by name, and the INLA
+  # family gate speaks the reconciled spelling.
+  .populate_refusal_registry_field_hardening()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

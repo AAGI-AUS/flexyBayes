@@ -1,3 +1,231 @@
+# flexyBayes 0.9.2
+
+## Bug fixes
+
+* **The prior mini-language refuses malformed specifications instead of
+  substituting a default.** `fb_prior()` matched a distribution call
+  against the family's parameter list and, when the match failed --
+  which is exactly what a wrong argument name produces -- carried the
+  call on unnamed, after which every emit-side read fell back to its own
+  default. `half_normal(sd = 1.5)` fitted under `half_normal(scale =
+  1)`, `pc(upper = 1)` fitted under a tail probability the caller never
+  wrote, and a negative standard deviation reached the sampler and
+  surfaced four layers downstream as a missing-draws error. Argument
+  matching is now strict: an unknown or duplicated argument name, a
+  missing required argument, a non-scalar or non-finite value, and a
+  value outside its domain are each refused at construction with a
+  `flexybayes_refusal_*` class, and both halves of a PC prior are
+  required. The whole constructor surface is typed, so a caller can
+  match a refusal by class rather than by message text.
+
+* **Gamma and beta fit on the Stan backend again, on every prior route.**
+  Which families carry a residual `sigma` was written down twice, and the
+  two lists disagreed: the prior emit believed gamma and beta had one,
+  the heteroscedastic-residual gate knew they did not. The prior emit
+  won, so every route -- the plain default with no prior argument
+  included -- sent brms a `sigma` prior for a parameter the model does
+  not have and brms refused the fit. Two of the six advertised response
+  families were unreachable on that backend. The fact now has one table
+  (`R/family_traits.R`), both call sites read it, a test grounds it
+  against brms's own declaration of each family's distributional
+  parameters, and a second test fails if a duplicate roster reappears.
+
+* **`prior_fixed_sd` and `prior_vc_sd` reach the engine, and
+  `prior_summary()` tells one story about them.** Both arguments were
+  documented as applied and neither was. `prior_fixed_sd` was absent
+  from the condition that decides whether the auto-default prior fires,
+  so passing it alone left the default in charge and the legacy bridge
+  -- the only consumer of the scalar -- was never reached: the prior
+  table was byte-identical to the same call without the argument.
+  `prior_vc_sd` was consumed by the brms route and by nothing on the
+  INLA route, so an INLA fit ran under INLA's own log-gamma precision
+  default while `prior_summary()` printed `Lognormal(0, 3)` in its
+  header and, four lines further down, said no prior had been supplied
+  and the engine had used its own. Supplying either argument now applies
+  it -- `prior_fixed_sd` through brms prior rows and INLA's
+  `control.fixed`, `prior_vc_sd` through a brms `lognormal` row and the
+  INLA expression prior that writes the same density on the
+  standard-deviation scale -- on the per-row and aggregated routes
+  alike, so the two engines carry the same variance-component prior and
+  `triangulate()` can compare the components. Leaving either unsupplied
+  keeps each engine's own default, which `prior_summary()` now names
+  instead of asserting a prior that is not there. A residual prior
+  declared for a family with no residual scale parameter is reported as
+  declared-but-not-applied rather than silently dropped.
+
+* **Beta, negative-binomial and binary responses fit on INLA.** The
+  family gate compared a flexyBayes spelling against INLA's own
+  likelihood roster, and the reconciler that maps between the two
+  vocabularies runs after the gate -- so `negative_binomial`, `negbinom`
+  and `binary` were refused for a naming reason on an engine that
+  carries `nbinomial` and `binomial` perfectly well, three of the eight
+  supported spellings. The gate now resolves the spelling first, and a
+  refusal names both. Separately, the residual hyperparameter for the
+  beta likelihood was emitted as `prec` where INLA declares `phi`, so a
+  beta fit died inside the engine with a raw error whose own text quoted
+  the correct alternatives. The keyword now comes from a table read out
+  of `INLA::inla.models()`, and a test re-reads that declaration from
+  the installed engine. All sixteen family x backend cells the
+  capability matrix advertises now fit.
+
+* **`(1 | g:h)` refuses on INLA exactly as `random = ~ g:h` does.** The
+  two spellings are one model, and the README says the grammar is
+  detected from the call shape. On INLA they diverged: the ASReml
+  spelling was stopped by `lgm_gate()` with a typed refusal naming the
+  engine that fits it, while the bar spelling was read as a simple
+  random intercept on a group called `g:h`, passed the gate, reached the
+  INLA binary, and failed there with a message describing the emitted
+  formula rather than the user's model. Both surfaces are now classified
+  by the same walker, so the term descriptors are identical and every
+  downstream gate sees one model -- including the guard against a
+  numeric variable inside a random interaction, which now fires on the
+  bar surface too.
+
+* **A prior the backend cannot carry is refused by name, instead of
+  being dropped or raising a bare error.** `priors_to_inla()` translated
+  three distributions on three targets and returned nothing at all for
+  every other pair, while `prior_summary()` printed each of them as
+  applied: `b()` and `cor()` targets were inert on INLA, as were five of
+  the ten distributions on the variance components, so a
+  prior-sensitivity analysis could vary a `student_t` scale and compare
+  the engine's own default with itself. The brms side refused the same
+  class of specification for a real reason but in an untyped condition,
+  so no caller could tell "outside the translation table" from "R fell
+  over". Which pairs each engine carries is now one table
+  (`R/prior_translation.R`, the sibling of the family-traits table), and
+  a pair outside it refuses at the fit, naming the row and both remedies
+  -- re-express it in a distribution that engine does carry, or switch
+  backend. The table also widened: brms takes all ten distributions on
+  `sigma` and `sd(group = )`, and INLA gained `exponential` on the
+  variance components (it is the PC prior in distributional form) and
+  `normal` on `b()`, which arrives through `control.fixed` per
+  coefficient. Every translatable pair carries an arrival test that
+  reads the hyperparameter string back out of the fitted engine object
+  rather than out of the translator.
+
+* **A prior naming a term the model does not have refuses at fit entry,
+  in the caller's vocabulary.** `b("nonexistent_term")` was passed
+  through to brms's parser, which answered with a synthesised Stan
+  parameter name (`b_nonexistent_term`) the user never wrote, untyped;
+  on the INLA route the same mistake was ignored altogether. The check
+  now runs against the engine's own parameter list -- `default_prior()`
+  on brms, the design-matrix columns and f()-term keys on INLA -- and
+  names the offending target and the model's actual terms.
+
+* **A smoother written in the fixed part refuses instead of reaching the
+  engine.** `y ~ s(x)` raised a bare `could not find function "s"` --
+  from the INLA subprocess, and on brms only after a completed sampling
+  run, so the compute was spent before the failure. Every mgcv-style
+  smoother spelling (`s`, `te`, `ti`, `t2`, `sos`, `gp`) now refuses at
+  parse time naming the flexyBayes spelling, `random = ~ spl(x)` on the
+  INLA backend. Ordinary transformations in the fixed part are
+  untouched.
+
+* **A spline whose variable is also a fixed term refuses typed on
+  INLA.** The emit placed `x` in the fixed part and as `f(x, model =
+  "rw2")`, and INLA refuses a key used twice -- reaching the caller as
+  the generic "the inla-program exited with an error" wrapper, which
+  names neither the variable nor the remedy. The refusal now names both
+  of INLA's own remedies and the one specific to an rw2 smooth, whose
+  null space already carries the linear trend.
+
+* **A bar-grammar random slope on a factor names the ASReml surface that
+  fits.** `(trt | g)` raised an untyped error listing other bar
+  spellings, none of which expresses the model, and never mentioned that
+  the identical model written `random = ~ us(trt):g` completes on brms.
+  The refusal is typed and names that surface verbatim -- `us(f):g` for
+  the correlated form, `diag(f):g` for the uncorrelated one -- and a test
+  fits both, so the alternative named is one that works. The remaining
+  ingest refusals were typed alongside it.
+
+* **Every aggregated-route refusal can be caught by class.** Three
+  refusals on the way into the aggregated path raised a bare error --
+  `aggregate = TRUE` with a missing response, `aggregate = TRUE` on a
+  backend that carries no aggregated emit, and `aggregate = TRUE` with
+  no aggregated backend resolving for the model -- while the two
+  refusals further along the same path already carried a condition
+  class. A caller could match three of the five by class and had to
+  match the other two by message text. All five are typed now, on two
+  reason codes that separate the boundaries: a missing response is a
+  property of the data (`aggregation_response_incomplete`), an
+  unreachable emit is a property of the engine roster
+  (`aggregation_route_unavailable`). Message wording is unchanged, and
+  each refusal still carries `flexybayes_aggregate_refusal` beneath its
+  per-code class, so existing handlers keep working.
+
+## New features
+
+* **`family = "hurdle_gamma"` fits on the brms backend.** The entry
+  allowlist refused it, and the engine behind it carries it natively
+  (`brms::brmsfamily("hurdle_gamma")` declares `mu`, `shape` and `hu`) --
+  a restriction over the engine with no documented boundary and no named
+  alternative. It is admitted end to end: entry, family traits, emit,
+  the capability matrix and a live fit. INLA's likelihood roster has no
+  counterpart, so the family gate refuses it there and `backend = "auto"`
+  routes to brms.
+
+* **The remaining family boundaries say whose they are.** Three
+  neighbouring families a field engagement reached for stay refused, and
+  the refusal now records which layer the boundary sits at, checked
+  against the installed engines rather than recalled: neither engine
+  carries `zero_inflated_gamma` or `compound_poisson`, and INLA's
+  likelihood roster does carry `tweedie` -- so that one is a flexyBayes
+  boundary rather than an engine one, and is tracked as a feature
+  request in `inst/KNOWN_ISSUES.md`. Each of the three names
+  `hurdle_gamma` as the nearest implemented alternative.
+
+## Documentation
+
+* **The fixed-effect prior contract is corrected in the two vignettes
+  that still stated the old one.** *Getting started* and *Default priors
+  and the `fb_prior()` DSL* both described a blanket
+  `normal(0, 100)` on every fixed effect as the working default. That
+  was never what the engines received, and it is not what this release
+  applies: `prior_fixed_sd` is honoured when it is supplied, and left
+  unsupplied each engine keeps its own fixed-effect prior, which
+  `prior_summary()` names. The reference documentation was corrected
+  when the behaviour was fixed and the vignettes are now consistent
+  with it.
+
+* **The priors vignette carries the per-backend translation contract.**
+  Section 6 previously described the cross-engine translation in a
+  parenthesis that no longer matched the code. It now carries the
+  target-by-distribution table for each engine, the argument each
+  translating pair arrives through, and the reason `cor()` is a refusal
+  on both engines rather than a gap.
+
+* **The scaling claim now points at its measurements, and the claims
+  that had none are gone.** `DESCRIPTION` said the package "scales to
+  large agricultural datasets" and the README called a route "scalable"
+  and the planner the "fastest way" to explore the package, none of
+  which named evidence. The scaling claim is real and now says what
+  produces it -- exact per-cell sufficient statistics on replicated
+  designs -- and the measurements behind it ship at
+  `inst/validation/benchmark_scaling.md`: the size at which the per-row
+  path runs out of memory, what the streamed path costs at the same
+  size, five billion rows through a flat memory envelope, and the model
+  scope outside which the route refuses rather than approximates. The
+  three claims with nothing behind them were reworded to say what is
+  actually true (the planner needs no backend installed), because a
+  quieter claim beats a strong one with no measurement under it.
+
+## Internal
+
+* **The capability claims are verified by execution, not by the
+  registry that generates them.** `tools/execution_grid.R` runs the
+  claim-derived cross product -- every capability-matrix cell, every
+  prior route by family and backend, the malformed-prior corpus, the
+  family allowlist against the installed engines' own rosters, the
+  structure and grammar surfaces, and the prior-translation table --
+  against an installed build, one isolated process per cell, and banks
+  the per-cell ledger under `inst/validation/execution_grid/`.
+
+* **`inst/validation/scenarios.yaml` registers the numerical-validation
+  studies** in the schema the validation ladder reads, and `DESCRIPTION`
+  declares `Config/rpkg/validationTier: V3`. Every registered row is an
+  existing study. What the tier asks for and the studies do not yet
+  supply is written down in `inst/validation/README.md`.
+
 # flexyBayes 0.9.1
 
 Work aimed at the reader who arrives from ASReml with last season's

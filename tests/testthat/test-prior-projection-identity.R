@@ -288,11 +288,14 @@ test_that("a bridged component names the prior the bridge applied", {
   expect_match(printed, "lognormal(0, 3)", fixed = TRUE)
 })
 
-test_that("the same bridge on INLA is genuinely an engine default", {
-  # The counterpart, and the reason the repair is engine-aware. The bridge
-  # hands INLA nothing -- the engine keeps its own hyperprior -- so
-  # `engine default` is the true cell there and inventing a lognormal
-  # would be the same defect in the other direction.
+test_that("the same bridge on INLA names the same prior it does on Stan", {
+  # The counterpart. This cell used to read `engine default` on INLA and
+  # that was the true reading, because the bridge handed INLA nothing:
+  # the fit ran under INLA's own log-gamma precision default while
+  # prior_summary() printed the lognormal in its header. The scalar now
+  # reaches INLA as the expression prior that writes the same density on
+  # the SD scale, so the two engines carry one prior and the cell says
+  # the same thing on both.
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
@@ -310,5 +313,10 @@ test_that("the same bridge on INLA is genuinely an engine default", {
 
   expect_identical(prior_summary(fit)$kind, "legacy_scalar")
   out <- suppressMessages(summary(fit))
-  expect_true(all(out$varcomp$prior %in% "engine default"))
+  cells <- stats::setNames(out$varcomp$prior, out$varcomp$component)
+  expect_true("sigma" %in% names(cells))
+  expect_true("sd_g" %in% names(cells))
+  expect_identical(unname(cells[["sigma"]]), "lognormal(0, 3)")
+  expect_identical(unname(cells[["sd_g"]]), "lognormal(0, 3)")
+  expect_false(any(cells %in% "engine default"))
 })
