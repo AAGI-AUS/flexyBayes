@@ -26,7 +26,6 @@ knitr::opts_chunk$set(
 options(flexyBayes.silence_default_prior_note = TRUE)
 inla_ok  <- requireNamespace("INLA",  quietly = TRUE)
 brms_ok  <- requireNamespace("brms",  quietly = TRUE)
-set.seed(100)
 ```
 
 # 1. Why Bayesian mixed models?
@@ -162,6 +161,7 @@ intercept.
 
 ```{r sleepstudy-data}
 library(flexyBayes)
+set.seed(100)
 data(sleepstudy, package = "lme4")
 str(sleepstudy)
 ```
@@ -282,9 +282,14 @@ The output is laid out in three blocks.
 
 A coefficient plot of the fixed effects is one line:
 
-```{r sleepstudy-plot, eval = brms_ok, fig.height = 3.5}
+```{r sleepstudy-plot, eval = brms_ok, fig.height = 3.5, fig.cap = "Posterior mean and 95 % credible interval for each fixed-effect coefficient of fit_brms -- an interval clear of zero is a coefficient the data pins down."}
 plot(fit_brms, type = "effects")
 ```
+
+Each row is one design-matrix column: the interval on `Days` excludes
+zero, so the fitted slope is resolved from noise at this sampling
+budget, and the interval on `(Intercept)` sits far from zero because it
+is the baseline reaction time in milliseconds, not a centred effect.
 
 ### Variance-component priors
 
@@ -316,7 +321,163 @@ ordinary case rather than the exotic one. `prior_summary()` names which
 of the two a fit ran under. Individual coefficients are set with
 `b("name") ~ normal(...)` in `fb_prior()`.
 
-# 6. The same model on a second engine
+# 6. Reading a fit the way a REML user does
+
+A reader arriving from ASReml, `lme4`, or `nlme` starts from a fitted
+object and reaches for a small, fixed accessor set -- the variance-
+component table, random effects, predicted means, observation counts,
+and the machinery around a missing plot, each with a flexyBayes
+spelling. This section is a compact tour of it on a simulated field
+trial -- six rows by eight columns, twelve varieties in four blocks --
+read through the ASReml-style grammar -- no `asreml()` call runs
+anywhere on this page.
+
+```{r reml-trial-data}
+set.seed(20260817L)
+trial <- expand.grid(row = factor(1:6), col = factor(1:8))
+attr(trial, "out.attrs") <- NULL
+trial$Block   <- factor(rep(1:4, each = 12))
+trial$Variety <- factor(paste0("V", rep(1:12, times = 4)))
+
+v_eff <- rnorm(12, 0, 0.6)
+b_eff <- rnorm(4, 0, 0.4)
+trial$yield <- 5 +
+  v_eff[as.integer(trial$Variety)] +
+  b_eff[as.integer(trial$Block)] +
+  rnorm(nrow(trial), 0, 0.5)
+```
+
+```{r reml-fit-block, eval = inla_ok}
+fit <- flexybayes(
+  fixed = yield ~ Variety, random = ~ Block, data = trial,
+  verbose = FALSE
+)
+fit
+```
+
+`summary()` prints its report and returns the object behind it, so
+the table read on screen is the table returned, each row a posterior
+mean and credible interval where ASReml reports a point estimate and
+a standard error:
+
+```{r reml-varcomp, eval = inla_ok}
+fb_sum <- summary(fit)
+fb_sum$varcomp
+```
+
+`coef(fit, what = "random")` and `ranef(fit)` return the same object
+-- `flexyBayes::ranef(fit)` is the collision-proof spelling where
+`nlme` or `lme4` is also attached:
+
+```{r reml-coef-random, eval = inla_ok}
+coef(fit, what = "random")$Block
+identical(ranef(fit), coef(fit, what = "random"))
+```
+
+`predict(fit, classify = "Variety")` averages the fitted model over
+the levels of the named factors, built on `emmeans`:
+
+```{r reml-classify, eval = inla_ok}
+head(predict(fit, classify = "Variety"), 4)
+```
+
+The design and observed counts differ only on an augmented fit --
+`update()` re-fits with the recorded `na_action` carried forward --
+here adding the field's row stratum on top of `Block`:
+
+```{r reml-nobs-update, eval = inla_ok}
+c(design = nobs(fit), observed = nobs(fit, type = "observed"))
+fit_row <- update(fit, random = ~ Block + row)
+```
+
+### Missing plots
+
+A lost plot is a row with the design columns filled in and the
+response `NA`, never an absent row. `na_action` accepts ASReml's own
+vocabulary, by shape rather than by class.
+
+| flexyBayes value | Behaviour |
+|---|---|
+| `"augment"` (the default) | The missing response is kept as a latent quantity the engine marginalises, and the design grid is completed where the absent cells are determinable. |
+| `"omit"` | The rows are deleted. A structured covariance over the resulting broken grid then refuses downstream. |
+| `"fail"` | A missing response is refused, and the design grid is left alone. |
+| `list(x = "fail")` (the default on both sides) | A missing predictor is refused. |
+| `list(x = "omit")` | The affected rows are dropped, with a warning naming the count and the columns. |
+| `list(x = "include")` | Refused by name -- a zero is a value the plot did not have, and nothing downstream would say so. |
+
+```{r reml-holed-fit, eval = inla_ok}
+holed <- trial
+holed$yield[c(5, 9)] <- NA
+fit_holed <- flexybayes(
+  fixed = yield ~ Variety, random = ~ Block, data = holed,
+  na_action = list(y = "include", x = "fail"), verbose = FALSE
+)
+coef(fit_holed, what = "missing")
+```
+
+The two unobserved cells are a table of their own, on the response
+scale. `fb_complete_grid()` reinstates plots absent from the file
+altogether, with the response `NA`, provided every other column at
+the reinstated cells is determined:
+
+```{r reml-complete-grid}
+absent <- trial[-c(3, 17), c("row", "col", "yield")]
+padded <- fb_complete_grid(absent, ~ row * col, response = "yield")
+c(rows = nrow(padded), missing = sum(is.na(padded$yield)))
+```
+
+Add the variety and the block back, and it refuses -- a variety label
+at an unsown plot is a real quantity nobody recorded, and every table
+downstream would report it as data:
+
+```{r reml-complete-grid-refusal}
+refused <- tryCatch(
+  fb_complete_grid(trial[-c(3, 17), ], ~ row * col, response = "yield"),
+  error = function(e) e
+)
+cat(conditionMessage(refused))
+```
+
+The door is open, and it has a name on it -- the warning names every
+column that was filled in:
+
+```{r reml-complete-grid-hatch, warning = TRUE}
+padded_named <- fb_complete_grid(
+  trial[-c(3, 17), ], ~ row * col,
+  response = "yield", unused_level = "UNSOWN"
+)
+nrow(padded_named)
+```
+
+### The separable field
+
+```{r reml-field-fit, eval = inla_ok}
+fit_field <- flexybayes(
+  fixed = yield ~ Variety, random = ~ ar1(row):ar1(col), data = trial,
+  verbose = FALSE
+)
+```
+
+The respelled field is a latent Gaussian field with independent plot
+noise beside it -- four parameters, not ASReml's three-parameter
+separable AR1 residual:
+
+```{r reml-variogram, eval = inla_ok, fig.height = 4.5, fig.cap = "Empirical residual semivariance of the fitted field against row-by-column separation -- a curve that rises and flattens is spatial correlation, a flat curve near the noise floor is a field with little to model."}
+plot(fit_field, type = "variogram")
+```
+
+The curve is the empirical semivariance on the observed rows only --
+augmented rows carry no residual by construction -- and nothing is
+fitted to it -- a flat curve near the noise floor says little spatial
+structure remains unexplained.
+
+Variance components are posterior means with credible intervals, not
+REML point estimates. There is no Wald test, by decision -- read the
+credible interval in `summary(fit)$fixed` instead. *The formula
+surface* vignette is the term catalogue: what parses, what emits per
+engine, and what refuses.
+
+# 7. The same model on a second engine
 
 `fit_brms` is a Markov chain Monte Carlo (MCMC) fit. INLA runs a
 fundamentally different algorithm -- a Laplace approximation over a
@@ -444,10 +605,11 @@ Subject-level variance collapsed above. `"auto"` optimises for speed
 first. Pin `backend = "brms"` explicitly whenever a small-group
 variance component is itself the quantity you care about.
 
-# 7. Where to next?
+# 8. Where to next?
 
-The remaining vignettes are organised by topic, not by engine. A
-suggested reading order:
+Section 6 above is the compact REML-accessor tour. The remaining
+vignettes are organised by topic, not by engine. A suggested reading
+order:
 
 | Vignette | What it covers |
 |---|---|
@@ -462,7 +624,7 @@ suggested reading order:
 | Understanding dispatch and refusals | how `lgm_gate()` and the capability predicates choose an engine, how to read a refusal, and the backend registry a new engine registers into |
 | Big-data streaming | exact sufficient-statistic aggregation for datasets that do not fit in memory |
 
-# 8. Pitfalls
+# 9. Pitfalls
 
 **Never `R CMD INSTALL` while `flexyBayes` is loaded.** R's lazy-load
 database can be corrupted when a package is overwritten under a live
@@ -495,9 +657,9 @@ approximated. The capability table in the README says which is which.
 `summary()`.** Print the derived SD explicitly (`1 / sqrt(precision)`)
 rather than trusting a glance at the hyperparameter table -- an
 astronomically large precision reads as a small number next to
-plausible-looking fixed effects. Section 6 shows the pattern.
+plausible-looking fixed effects. Section 7 shows the pattern.
 
-# 9. Active prompts
+# 10. Active prompts
 
 Try the following while the package is loaded:
 
@@ -516,7 +678,7 @@ Try the following while the package is loaded:
    lognormal). Does the posterior on `sd_Subject__Intercept` change
    appreciably?
 
-# 10. Session information
+# 11. Session information
 
 ```{r session-info}
 sessionInfo()
