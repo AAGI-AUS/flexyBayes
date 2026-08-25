@@ -28,7 +28,6 @@ inla_ok <- requireNamespace("INLA", quietly = TRUE)
 brms_ok <- requireNamespace("brms", quietly = TRUE)
 lme4_ok <- requireNamespace("lme4", quietly = TRUE)
 mass_ok <- requireNamespace("MASS", quietly = TRUE)
-set.seed(1000)
 ```
 
 # 1. Why hierarchical?
@@ -73,6 +72,7 @@ a fixed continuous covariate.
 
 ```{r ri-fit, eval = brms_ok && lme4_ok}
 library(flexyBayes)
+set.seed(1000)
 data(sleepstudy, package = "lme4")
 fit_ri <- flexybayes(
   Reaction ~ Days + (1 | Subject), data = sleepstudy,

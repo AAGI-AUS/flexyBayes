@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 10: Cross-engine triangulation: when Bayesian engines disagree"
+title: "Tutorial 09: Cross-engine triangulation: when Bayesian engines disagree"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -8,7 +8,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 10: Cross-engine triangulation}
+  %\VignetteIndexEntry{Tutorial 09: Cross-engine triangulation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -27,7 +27,6 @@ options(flexyBayes.silence_default_prior_note = TRUE)
 brms_ok <- requireNamespace("brms", quietly = TRUE)
 inla_ok  <- requireNamespace("INLA",  quietly = TRUE)
 both_ok  <- brms_ok && inla_ok
-set.seed(500)
 ```
 
 > **Premise.** Disagreement between two Bayesian inference engines on
@@ -277,6 +276,8 @@ We simulate a hierarchical Poisson regression with one extreme
 observation and fit it on brms and INLA with matched priors.
 
 ```{r sim-data}
+library(flexyBayes)
+set.seed(500)
 G       <- 30L                              # number of groups
 n_per   <- 8L                               # observations per group
 sigma_g <- 0.4
@@ -294,7 +295,6 @@ We fit the same Poisson model on both engines, with a
 penalised-complexity prior on the group-level standard deviation.
 
 ```{r matched-prior}
-library(flexyBayes)
 priors <- fb_prior(
   sigma           ~ pc(upper = 1, prob = 0.05),
   sd(group = "group") ~ pc(upper = 1, prob = 0.05),
@@ -404,7 +404,7 @@ available. See `?canonical_names` for the per-fit map view and
 
 ## 5.2 Visualise the comparison
 
-```{r tri-density, eval = both_ok, fig.height = 3.5}
+```{r tri-density, eval = both_ok, fig.height = 3.5, fig.cap = "Overlaid 90% credible-interval density regions for the group-level standard deviation, one row from the brms fit and one from the INLA fit -- near-identical shapes confirm the table's concordant-looking numbers, and a visible shift or shape difference is the thing to classify against Section 3."}
 # Overlay marginals via posterior::draws_array. INLA posterior sampling
 # may be unavailable in CRAN's vignette re-render -- wrap defensively.
 if (requireNamespace("bayesplot", quietly = TRUE)) {
@@ -443,7 +443,7 @@ predictor with the group effects dropped is a different and much
 narrower distribution, so both are computed here and the difference is
 the point:
 
-```{r ppc-max, eval = brms_ok, fig.width = 7, fig.height = 3.5}
+```{r ppc-max, eval = brms_ok, fig.width = 7, fig.height = 3.5, fig.cap = "Histograms of the replicated maximum count under the hierarchical predictive (left panel, group intercepts included) and the population-mean-only predictive (right panel), each with the observed maximum marked in firebrick -- the observed value landing outside a panel's bulk means that predictive cannot accommodate the planted extreme."}
 set.seed(20260815L)
 
 # The hierarchical predictive: one posterior draw of every parameter,

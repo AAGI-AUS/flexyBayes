@@ -29,7 +29,6 @@ brms_ok     <- requireNamespace("brms",    quietly = TRUE)
 mgcv_ok     <- requireNamespace("mgcv",    quietly = TRUE)
 agridat_ok  <- requireNamespace("agridat", quietly = TRUE)
 ggplot2_ok  <- requireNamespace("ggplot2", quietly = TRUE)
-set.seed(900)
 ```
 
 # 1. Why start with regression?
@@ -68,6 +67,7 @@ factor.
 
 ```{r plantgrowth-data}
 library(flexyBayes)
+set.seed(900)
 data(PlantGrowth)
 str(PlantGrowth)
 ```
@@ -123,7 +123,7 @@ vignette.
 
 A standard exploratory plot of the cell means:
 
-```{r barley-plot, eval = agridat_ok && ggplot2_ok, fig.height = 4}
+```{r barley-plot, eval = agridat_ok && ggplot2_ok, fig.height = 4, fig.cap = "Mean yield per genotype at each environment in fisher.barley, one line per genotype -- near-parallel lines mean the genotype ranking is stable across environments, and crossing lines flag a genotype-by-environment interaction."}
 library(ggplot2)
 ggplot(fisher.barley,
        aes(x = env, y = yield, group = gen, colour = gen)) +
@@ -136,6 +136,10 @@ ggplot(fisher.barley,
        colour = "genotype",
        title = "fisher.barley: genotype means per environment")
 ```
+
+The lines stay close to parallel across the six environments, which is
+consistent with the additive `gen + env` model fitted above: little of
+the genotype ranking changes from one environment to the next.
 
 # 4. Continuous predictors: pooled `sleepstudy`
 
@@ -212,6 +216,7 @@ We illustrate with a synthetic sinusoid plus noise -- a clean test
 of how well a flexible smoother recovers the underlying signal.
 
 ```{r smooth-sim}
+set.seed(930)
 n  <- 80
 x  <- sort(runif(n, 0, 10))
 y  <- sin(x) + rnorm(n, 0, 0.3)
@@ -262,7 +267,7 @@ curve, not a wigglier one.
 
 A fitted-curve overlay:
 
-```{r smooth-overlay, eval = (inla_ok || brms_ok) && ggplot2_ok, fig.height = 3.5}
+```{r smooth-overlay, eval = (inla_ok || brms_ok) && ggplot2_ok, fig.height = 3.5, fig.cap = "The spl() fitted curve (firebrick) against the simulated points and the true sin(x) curve (blue dashed) -- the closer the firebrick line tracks the dashed one, the better the spline has recovered the signal from noisy data."}
 sim_dat$fitted <- as.numeric(fitted(fit_smooth))
 sim_dat <- sim_dat[order(sim_dat$x), ]
 ggplot(sim_dat, aes(x = x, y = y)) +
@@ -296,7 +301,7 @@ newx <- data.frame(
 newx$fitted <- predict(fit_smooth, newdata = newx)
 ```
 
-```{r smooth-predict-plot, eval = (inla_ok || brms_ok) && ggplot2_ok, fig.height = 3.5}
+```{r smooth-predict-plot, eval = (inla_ok || brms_ok) && ggplot2_ok, fig.height = 3.5, fig.cap = "predict() evaluated on a grid extending 10% past the training range on each side (firebrick line), with the original training points shown for context -- a curve that keeps a plausible shape past the training points, rather than diverging, is a well-behaved extrapolation."}
 ggplot(newx, aes(x = x, y = fitted)) +
   geom_line(colour = "firebrick", linewidth = 1) +
   geom_point(data = sim_dat, aes(x = x, y = y), alpha = 0.4,

@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 09: Spatio-temporal models: AR1, spatial, temporal"
+title: "Tutorial 08: Spatio-temporal models: AR1, spatial, temporal"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -8,7 +8,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 09: Spatio-temporal models}
+  %\VignetteIndexEntry{Tutorial 08: Spatio-temporal models}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -28,7 +28,6 @@ inla_ok    <- requireNamespace("INLA",    quietly = TRUE)
 brms_ok    <- requireNamespace("brms",    quietly = TRUE)
 agridat_ok <- requireNamespace("agridat", quietly = TRUE)
 ggplot2_ok <- requireNamespace("ggplot2", quietly = TRUE)
-set.seed(1400)
 ```
 
 # 1. Why spatio-temporal models?
@@ -124,6 +123,7 @@ spelling of the same display refuses.
 
 ```{r stroup-data, eval = agridat_ok}
 library(flexyBayes)
+set.seed(1400)
 data(stroup.nin, package = "agridat")
 sn <- stroup.nin
 sn$row <- factor(sn$row)
@@ -272,7 +272,7 @@ The usual visual diagnostic is the map of what is left after the field
 has been removed. If the spatial correlation has been accounted for,
 the residuals should look unstructured:
 
-```{r residual-plot, eval = inla_ok && ggplot2_ok, fig.height = 4}
+```{r residual-plot, eval = inla_ok && ggplot2_ok, fig.height = 4, fig.cap = "Spatial map of the fitted-model residuals, column on the x-axis and row on the y-axis, coloured from blue (negative) through white (zero) to firebrick (positive) -- an unstructured, salt-and-pepper pattern means the AR1 field has absorbed the spatial correlation, while large same-coloured patches would mean it has not."}
 grid$resid <- residuals(fit_sim)
 library(ggplot2)
 ggplot(grid, aes(x = as.numeric(col), y = as.numeric(row), fill = resid)) +

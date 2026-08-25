@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 07: Multi-environment trials and genomic selection"
+title: "Tutorial 06: Multi-environment trials and genomic selection"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -8,7 +8,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 07: METs and genomic selection}
+  %\VignetteIndexEntry{Tutorial 06: METs and genomic selection}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -28,7 +28,6 @@ inla_ok    <- requireNamespace("INLA",    quietly = TRUE)
 brms_ok    <- requireNamespace("brms",    quietly = TRUE)
 agridat_ok <- requireNamespace("agridat", quietly = TRUE)
 ggplot2_ok <- requireNamespace("ggplot2", quietly = TRUE)
-set.seed(1500)
 ```
 
 # 1. The two questions of plant breeding
@@ -71,6 +70,7 @@ Section 2.4 returns to it.
 
 ```{r met-data, eval = agridat_ok}
 library(flexyBayes)
+set.seed(1500)
 data(besag.met, package = "agridat")
 str(besag.met)
 table(besag.met$county, besag.met$rep)
@@ -248,7 +248,7 @@ read on a small trial, so this one uses `agridat::yan.winterwheat` (Yan
 cell, which is exactly the unreplicated shape Section 2.4 warns about
 for modelling and which is perfectly good for looking at.
 
-```{r yw-interaction-plot, eval = agridat_ok && ggplot2_ok, fig.height = 4}
+```{r yw-interaction-plot, eval = agridat_ok && ggplot2_ok, fig.height = 4, fig.cap = "Mean yield per genotype at each of the nine yan.winterwheat environments, one line per genotype -- lines that cross indicate genotypes swap rank across environments (genotype-by-environment interaction), while parallel lines would indicate a stable ranking."}
 library(ggplot2)
 data(yan.winterwheat, package = "agridat")
 gxe <- aggregate(yield ~ gen + env, data = yan.winterwheat, mean)
@@ -412,7 +412,11 @@ seg <- matrix(rbinom(n * n_marker, 2L, rep(p, each = n)), n, n_marker)
 resegregate <- matrix(runif(n * n_marker) < 0.25, n, n_marker)
 Z[resegregate] <- seg[resegregate]
 
-# VanRaden's realised relationship matrix, scaled to unit mean diagonal.
+# Realised relationship matrix, scaled to unit mean diagonal. Dividing
+# by the marker count here -- rather than by VanRaden's (2008)
+# allele-frequency-weighted 2 * sum(p * (1 - p)) -- is the Astle and
+# Balding (2009) scaling. See the "Kinship matrix scaling" pitfall in
+# Section 7 for what that choice does to sigma_g^2 and heritability.
 Zc <- scale(Z, scale = FALSE)
 G <- tcrossprod(Zc) / n_marker
 G <- G / mean(diag(G)) + diag(n) * 1e-6
@@ -501,6 +505,10 @@ sessionInfo()
 ```
 
 # References
+
+Astle, W., & Balding, D. J. (2009). Population structure and cryptic
+relatedness in genetic association studies. *Statistical Science*,
+24(4), 451--471.
 
 Bauer, A. M., Reif, J. C., & Schipprack, W. (2009). Reduction of the
 genetic distance for marker-assisted backcrossing. *Theoretical and

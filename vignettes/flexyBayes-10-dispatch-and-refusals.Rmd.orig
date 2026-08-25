@@ -1,5 +1,5 @@
 ---
-title: "Understanding dispatch and refusals"
+title: "Tutorial 10: Understanding dispatch and refusals"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -8,7 +8,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Understanding dispatch and refusals}
+  %\VignetteIndexEntry{Tutorial 10: Understanding dispatch and refusals}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -27,7 +27,6 @@ options(flexyBayes.silence_default_prior_note = TRUE)
 inla_ok    <- requireNamespace("INLA",    quietly = TRUE)
 brms_ok    <- requireNamespace("brms",    quietly = TRUE)
 agridat_ok <- requireNamespace("agridat", quietly = TRUE)
-set.seed(600)
 ```
 
 # 1. Who this is for
@@ -73,6 +72,7 @@ see Section 10) without touching the ingest or gate layers.
 
 ```{r fb-terms, eval = TRUE}
 library(flexyBayes)
+set.seed(600)
 data(sleepstudy, package = "lme4")
 fb_t <- flexyBayes:::fb_from_brms(
   Reaction ~ Days + (1 | Subject),

@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 08: Downstream analysis: emmeans, marginaleffects, bayesplot, loo"
+title: "Tutorial 07: Downstream analysis: emmeans, marginaleffects, bayesplot, loo"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -8,7 +8,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 08: Downstream analysis}
+  %\VignetteIndexEntry{Tutorial 07: Downstream analysis}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -31,7 +31,6 @@ bp_ok        <- requireNamespace("bayesplot", quietly = TRUE)
 loo_ok       <- requireNamespace("loo", quietly = TRUE)
 es_ok        <- requireNamespace("effectsize", quietly = TRUE)
 posterior_ok <- requireNamespace("posterior", quietly = TRUE)
-set.seed(800)
 ```
 
 # 1. Once the fit is in hand
@@ -55,6 +54,7 @@ vignette and retain it for the rest of this vignette.
 
 ```{r fit-base, eval = brms_ok}
 library(flexyBayes)
+set.seed(800)
 data(sleepstudy, package = "lme4")
 fit <- flexybayes(
   Reaction ~ Days + (1 | Subject),
@@ -198,7 +198,7 @@ provides the canonical posterior visualisations. The bridge from
 `flexyBayes` to `bayesplot` is the `posterior::draws_array` interface,
 exposed via `fb_as_draws_simple()`.
 
-```{r bp-areas, eval = brms_ok && bp_ok && posterior_ok, fig.height = 3.5}
+```{r bp-areas, eval = brms_ok && bp_ok && posterior_ok, fig.height = 3.5, fig.cap = "Posterior density for the intercept, the Days slope, and the two standard deviations, each shaded over its central 90% interval -- a single narrow peak reads as a well-identified parameter, a wide or flat-topped shape as a poorly-identified one."}
 library(bayesplot)
 draws <- flexyBayes::fb_as_draws_simple(fit)
 da <- do.call(cbind, draws[c("b_Intercept", "b_Days",
@@ -207,18 +207,24 @@ colnames(da) <- c("intercept", "beta_Days", "sigma_Subject", "sigma_e")
 mcmc_areas(da, prob = 0.9)
 ```
 
+All four densities are unimodal, and the shaded 90% interval sits
+comfortably inside each curve's support -- the shapes this fit's
+posterior should have with four production-budget chains.
+
 Diagnostic plots -- trace, autocorrelation, rank -- are equally
 straightforward:
 
-```{r bp-trace, eval = brms_ok && bp_ok, fig.height = 3.5}
+```{r bp-trace, eval = brms_ok && bp_ok, fig.height = 3.5, fig.cap = "Trace plots of the four sampled chains for the Days slope and the Subject-level standard deviation, iteration on the x-axis and sampled value on the y-axis -- overlapping, drift-free traces are the visual signature of a converged sampler."}
 mcmc_trace(da, pars = c("beta_Days", "sigma_Subject"))
 ```
 
-A trustworthy fit shows trace plots that look like *fuzzy
-caterpillars*, autocorrelations that decay rapidly, and rank
-histograms close to uniform. Departure from any of these is a
-diagnostic prompt -- see the *cross-engine triangulation* vignette
-for what to do.
+Both traces here overlap throughout their range with no visible drift
+or separation between chains -- the fuzzy-caterpillar shape a
+converged sampler is expected to show. A trustworthy fit shows trace
+plots that look like *fuzzy caterpillars*, autocorrelations that decay
+rapidly, and rank histograms close to uniform. Departure from any of
+these is a diagnostic prompt -- see the *cross-engine triangulation*
+vignette for what to do.
 
 # 6. `loo` -- predictive performance and model comparison
 

@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 06: Default priors and the `fb_prior()` DSL"
+title: "Tutorial 05: Default priors and the `fb_prior()` DSL"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -8,7 +8,7 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 06: Priors and regularisation}
+  %\VignetteIndexEntry{Tutorial 05: Priors and regularisation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,7 +25,6 @@ knitr::opts_chunk$set(
 )
 brms_ok <- requireNamespace("brms", quietly = TRUE)
 inla_ok <- requireNamespace("INLA", quietly = TRUE)
-set.seed(700)
 ```
 
 # 1. Why priors matter
@@ -151,6 +150,7 @@ consume.
 
 ```{r dsl-overview}
 library(flexyBayes)
+set.seed(700)
 data(sleepstudy, package = "lme4")
 sd_y <- sd(sleepstudy$Reaction)
 round(sd_y, 1)
@@ -281,7 +281,7 @@ whether the prior predicts data *roughly compatible with the
 observed scale*. A widely off-scale prior is a red flag, often
 visible before running any MCMC.
 
-```{r prior-predictive, fig.height = 3.5}
+```{r prior-predictive, fig.height = 3.5, fig.cap = "Histogram of the simulated mean(y) under the prior alone (200 draws from the uniform-default variance components and the fixed-effect priors), with the observed mean reaction time marked in firebrick -- the observed value should land inside the bulk of the histogram, not out in a tail."}
 n_sim   <- 200
 sigma_e <- runif(n_sim, 0, 5 * sd_y)        # uniform default on SD
 sigma_g <- runif(n_sim, 0, 5 * sd_y)

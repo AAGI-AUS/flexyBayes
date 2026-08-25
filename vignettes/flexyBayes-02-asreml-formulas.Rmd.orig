@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 02: The formula surface: asreml-shaped terms and structured covariance"
+title: "Tutorial 02: The formula surface: ASReml-shaped terms and structured covariance"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
@@ -26,7 +26,6 @@ knitr::opts_chunk$set(
 options(flexyBayes.silence_default_prior_note = TRUE)
 inla_ok <- requireNamespace("INLA", quietly = TRUE)
 brms_ok <- requireNamespace("brms", quietly = TRUE)
-set.seed(1100)
 ```
 
 # 1. Scope
@@ -68,9 +67,10 @@ The companion `fb_brms()` entry -- covered in the *getting started*,
 covers a subset of these term types via brms-style notation. For the
 full surface, asreml-shaped formulas are the reference path.
 
-Readers coming from ASReml may want the *From an ASReml call* vignette
-first. It translates one field-trial call and the accessors read after
-it, where this page catalogues the whole term surface.
+Readers coming from ASReml may want the section "Reading a fit the way
+a REML user does" in the *getting started* vignette first. It
+translates one field-trial call and the accessors read after it, where
+this page catalogues the whole term surface.
 
 > **`flexyBayes` does not depend on the proprietary `asreml` package.**
 > The DSL borrows ASReml's notation, and the inference engine is brms
@@ -99,6 +99,7 @@ matrices.
 
 ```{r met-data}
 library(flexyBayes)
+set.seed(1100)
 data(met_example, package = "flexyBayes")
 dat   <- met_example$dat
 G_mat <- met_example$G_mat
