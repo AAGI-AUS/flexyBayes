@@ -269,7 +269,7 @@ colnames(da) <- c("intercept", "beta_Days", "sigma_Subject", "sigma_e")
 mcmc_areas(da, prob = 0.9)
 ```
 
-![plot of chunk bp-areas](flexyBayes-08-downstream-analysis-figs/bp-areas-1.png)
+![plot of chunk bp-areas](flexyBayes-07-downstream-analysis-figs/bp-areas-1.png)
 
 Diagnostic plots -- trace, autocorrelation, rank -- are equally
 straightforward:
@@ -279,7 +279,7 @@ straightforward:
 mcmc_trace(da, pars = c("beta_Days", "sigma_Subject"))
 ```
 
-![plot of chunk bp-trace](flexyBayes-08-downstream-analysis-figs/bp-trace-1.png)
+![plot of chunk bp-trace](flexyBayes-07-downstream-analysis-figs/bp-trace-1.png)
 
 A trustworthy fit shows trace plots that look like *fuzzy
 caterpillars*, autocorrelations that decay rapidly, and rank

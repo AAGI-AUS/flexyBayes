@@ -385,24 +385,23 @@ family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |
 
 ## Vignettes
 
-Twelve vignettes ship with the package:
+Eleven vignettes ship with the package:
 
 | # | Vignette |
 |---|---|
-| 00 | From an ASReml call |
 | 01 | Getting started |
-| 02 | The formula surface: asreml-shaped terms and structured covariance |
+| 02 | The formula surface: ASReml-shaped terms and structured covariance |
 | 03 | Foundational regression |
 | 04 | Hierarchical models |
-| 06 | Priors and regularisation |
-| 07 | METs and genomic selection |
-| 08 | Downstream analysis |
-| 09 | Spatio-temporal models |
-| 10 | Cross-engine triangulation |
-| 11 | Dispatch, refusals, and the backend registry |
-| 16 | Streaming exact aggregation |
+| 05 | Priors and regularisation |
+| 06 | METs and genomic selection |
+| 07 | Downstream analysis |
+| 08 | Spatio-temporal models |
+| 09 | Cross-engine triangulation |
+| 10 | Dispatch, refusals, and the backend registry |
+| 11 | Streaming exact aggregation |
 
-Vignette 11 is the technical/internals reference, and the rest target a
+Vignette 10 is the technical/internals reference, and the rest target a
 general audience. The numbering keeps gaps at 05 and 12--15, and the
 gaps record merges rather than missing pages. Vignettes 12--14 were
 folded into 11 when greta's quarantine collapsed several

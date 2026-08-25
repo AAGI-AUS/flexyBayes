@@ -316,7 +316,7 @@ ggplot(gxe, aes(x = env, y = yield, group = gen, colour = gen)) +
        title = "yan.winterwheat: genotype means per environment")
 ```
 
-![plot of chunk yw-interaction-plot](flexyBayes-07-met-and-genomics-figs/yw-interaction-plot-1.png)
+![plot of chunk yw-interaction-plot](flexyBayes-06-met-and-genomics-figs/yw-interaction-plot-1.png)
 
 Crossing lines indicate GxE -- the rank of a genotype changes across
 environments. Parallel lines indicate none, and a genotype main effect

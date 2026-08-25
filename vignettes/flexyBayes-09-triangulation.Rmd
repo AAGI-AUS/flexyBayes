@@ -544,7 +544,7 @@ hist(max_mean, breaks = 30, xlab = "max(y_rep)",
 abline(v = y_obs_max, col = "firebrick", lwd = 2)
 ```
 
-![plot of chunk ppc-max](flexyBayes-10-triangulation-figs/ppc-max-1.png)
+![plot of chunk ppc-max](flexyBayes-09-triangulation-figs/ppc-max-1.png)
 
 ``` r
 par(op)

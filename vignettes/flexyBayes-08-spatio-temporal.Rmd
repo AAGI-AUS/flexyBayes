@@ -319,7 +319,7 @@ ggplot(grid, aes(x = as.numeric(col), y = as.numeric(row), fill = resid)) +
        title = "Field residuals after the AR1 x AR1 field is removed")
 ```
 
-![plot of chunk residual-plot](flexyBayes-09-spatio-temporal-figs/residual-plot-1.png)
+![plot of chunk residual-plot](flexyBayes-08-spatio-temporal-figs/residual-plot-1.png)
 
 A patchy map -- large red and blue regions -- would indicate spatial
 structure the field has not captured. The natural extensions are a

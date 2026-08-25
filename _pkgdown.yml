@@ -27,8 +27,6 @@ navbar:
       text: Tutorials
       menu:
         - text: "Foundations"
-        - text: 00 — From an ASReml call
-          href: articles/flexyBayes-00-from-asreml.html
         - text: 01 — Getting started
           href: articles/flexyBayes-01-getting-started.html
         - text: 02 — The formula surface
@@ -39,24 +37,24 @@ navbar:
         - text: "Core mixed-model concepts"
         - text: 04 — Hierarchical models
           href: articles/flexyBayes-04-hierarchical.html
-        - text: 06 — Priors and regularisation
-          href: articles/flexyBayes-06-priors.html
+        - text: 05 — Priors and regularisation
+          href: articles/flexyBayes-05-priors.html
         - text: "---"
         - text: "Applied workflows"
-        - text: 07 — METs and genomic selection
-          href: articles/flexyBayes-07-met-and-genomics.html
-        - text: 08 — Downstream analysis
-          href: articles/flexyBayes-08-downstream-analysis.html
-        - text: 09 — Spatio-temporal models
-          href: articles/flexyBayes-09-spatio-temporal.html
+        - text: 06 — METs and genomic selection
+          href: articles/flexyBayes-06-met-and-genomics.html
+        - text: 07 — Downstream analysis
+          href: articles/flexyBayes-07-downstream-analysis.html
+        - text: 08 — Spatio-temporal models
+          href: articles/flexyBayes-08-spatio-temporal.html
         - text: "---"
         - text: "Advanced & internals"
-        - text: 10 — Cross-engine triangulation
-          href: articles/flexyBayes-10-triangulation.html
-        - text: 11 — Dispatch, refusals, and the backend registry
-          href: articles/flexyBayes-11-dispatch-and-refusals.html
-        - text: 16 — Streaming exact aggregation
-          href: articles/flexyBayes-16-big-data-streaming.html
+        - text: 09 — Cross-engine triangulation
+          href: articles/flexyBayes-09-triangulation.html
+        - text: 10 — Dispatch, refusals, and the backend registry
+          href: articles/flexyBayes-10-dispatch-and-refusals.html
+        - text: 11 — Streaming exact aggregation
+          href: articles/flexyBayes-11-big-data-streaming.html
 
 reference:
   - title: Verbs
@@ -203,21 +201,30 @@ articles:
   - title: Foundations
     navbar: ~
     contents:
-      - flexyBayes-00-from-asreml
       - flexyBayes-01-getting-started
       - flexyBayes-02-asreml-formulas
       - flexyBayes-03-regression
   - title: Core mixed-model concepts
     contents:
       - flexyBayes-04-hierarchical
-      - flexyBayes-06-priors
+      - flexyBayes-05-priors
   - title: Applied workflows
     contents:
-      - flexyBayes-07-met-and-genomics
-      - flexyBayes-08-downstream-analysis
-      - flexyBayes-09-spatio-temporal
+      - flexyBayes-06-met-and-genomics
+      - flexyBayes-07-downstream-analysis
+      - flexyBayes-08-spatio-temporal
   - title: Advanced and internals
     contents:
-      - flexyBayes-10-triangulation
-      - flexyBayes-11-dispatch-and-refusals
-      - flexyBayes-16-big-data-streaming
+      - flexyBayes-09-triangulation
+      - flexyBayes-10-dispatch-and-refusals
+      - flexyBayes-11-big-data-streaming
+
+redirects:
+  - ["articles/flexyBayes-00-from-asreml.html", "articles/flexyBayes-01-getting-started.html"]
+  - ["articles/flexyBayes-06-priors.html", "articles/flexyBayes-05-priors.html"]
+  - ["articles/flexyBayes-07-met-and-genomics.html", "articles/flexyBayes-06-met-and-genomics.html"]
+  - ["articles/flexyBayes-08-downstream-analysis.html", "articles/flexyBayes-07-downstream-analysis.html"]
+  - ["articles/flexyBayes-09-spatio-temporal.html", "articles/flexyBayes-08-spatio-temporal.html"]
+  - ["articles/flexyBayes-10-triangulation.html", "articles/flexyBayes-09-triangulation.html"]
+  - ["articles/flexyBayes-11-dispatch-and-refusals.html", "articles/flexyBayes-10-dispatch-and-refusals.html"]
+  - ["articles/flexyBayes-16-big-data-streaming.html", "articles/flexyBayes-11-big-data-streaming.html"]

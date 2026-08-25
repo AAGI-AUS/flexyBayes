@@ -301,7 +301,7 @@ hist(y_rep, breaks = 30, main = "Prior-predictive mean(y)",
 abline(v = mean(sleepstudy$Reaction), col = "firebrick", lwd = 2)
 ```
 
-![plot of chunk prior-predictive](flexyBayes-06-priors-figs/prior-predictive-1.png)
+![plot of chunk prior-predictive](flexyBayes-05-priors-figs/prior-predictive-1.png)
 
 If the observed mean reaction time (firebrick line) lies inside the
 prior-predictive distribution of `mean(y)`, the prior is not in
