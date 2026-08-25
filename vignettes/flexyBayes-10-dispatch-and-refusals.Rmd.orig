@@ -3,6 +3,7 @@ title: "Tutorial 10: Understanding dispatch and refusals"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true

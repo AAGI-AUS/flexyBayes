@@ -3,12 +3,13 @@ title: "Tutorial 07: Downstream analysis: emmeans, marginaleffects, bayesplot, l
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 07: Downstream analysis}
+  %\VignetteIndexEntry{Tutorial 07: Downstream analysis: emmeans, marginaleffects, bayesplot, loo}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

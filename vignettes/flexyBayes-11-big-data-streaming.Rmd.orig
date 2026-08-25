@@ -3,6 +3,7 @@ title: "Tutorial 11: Streaming exact aggregation: fitting a model without holdin
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true

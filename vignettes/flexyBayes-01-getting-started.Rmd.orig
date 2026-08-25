@@ -3,12 +3,13 @@ title: "Tutorial 01: Getting started with flexyBayes"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 01: Getting started}
+  %\VignetteIndexEntry{Tutorial 01: Getting started with flexyBayes}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

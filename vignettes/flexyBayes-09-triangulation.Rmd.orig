@@ -3,12 +3,13 @@ title: "Tutorial 09: Cross-engine triangulation: when Bayesian engines disagree"
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 09: Cross-engine triangulation}
+  %\VignetteIndexEntry{Tutorial 09: Cross-engine triangulation: when Bayesian engines disagree}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

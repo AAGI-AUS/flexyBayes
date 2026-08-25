@@ -3,12 +3,13 @@ title: "Tutorial 03: Foundational regression: linear models, random effects, and
 date: "`r Sys.Date()`"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 03: Foundational regression}
+  %\VignetteIndexEntry{Tutorial 03: Foundational regression: linear models, random effects, and penalised splines}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
