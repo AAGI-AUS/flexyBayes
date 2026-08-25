@@ -132,14 +132,16 @@ covers everything else.
 
 # 3. The four-verb API
 
-`flexyBayes` exposes four user-facing entry points. Pick the verb
-that matches how the model is expressed. The choice of entry never
+`flexyBayes` exposes four user-facing entry points -- one universal
+entry, two engine pins, and the comparison verb (`fb()` is an alias of
+`flexybayes()`). Pick the verb that matches how the model is expressed. The choice of entry never
 implicitly changes the choice of backend.
 
 | Verb | When to use |
 |---|---|
 | `flexybayes()` / `fb()` | Principal / universal entry. ASReml-style (`fixed = ..., random = ~ g, residual = ~ ...`) or brms-style (`response ~ x + (1 \| g)`) formulas. It auto-detects the grammar and takes a `backend` argument to choose the engine. The ASReml term vocabulary it *parses* is wider than the set either engine emits -- `fa()`, `corh()` and an AR1 residual parse and then refuse -- so consult the capability table before assuming a term fits. |
-| `fb_inla()` / `fb_brms()` | Engine pins: fix the backend to INLA (Laplace) or Stan (brms). Each accepts the same two formula grammars. `fb_greta()` still exists but refuses -- greta is quarantined (see Section 2). |
+| `fb_inla()` | Engine pin: fix the backend to INLA (Laplace). Accepts the same two formula grammars, and refuses by name any model INLA cannot represent. |
+| `fb_brms()` | Engine pin: fix the backend to Stan through brms (Hamiltonian Monte Carlo). Accepts the same two formula grammars. |
 | `triangulate()` | Cross-engine posterior comparison. Takes two fits from different backends and reports per-parameter agreement metrics. |
 
 The universal entries `flexybayes()` / `fb()` take a `backend`
