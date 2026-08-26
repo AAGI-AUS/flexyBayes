@@ -337,7 +337,32 @@
     ))
   }
 
-  K_est <- .fb_checked_cell_count(Ks, cell_key_contribs)
+  # Past R's integer limit the cell count is not a plan, it is a reason:
+  # the plan comes back ineligible with `cell_count_exceeds_integer`, so
+  # `aggregate = "auto"` takes the per-row route (as 0.9.2 did, but
+  # saying why) and `aggregate = TRUE` refuses by name in the dispatch
+  # gate. The double-valued count travels on the plan for the printers.
+  overflow <- tryCatch(
+    {
+      K_est <- .fb_checked_cell_count(Ks, cell_key_contribs)
+      NULL
+    },
+    flexybayes_refusal_cell_count_exceeds_integer = function(e) e
+  )
+  if (!is.null(overflow)) {
+    plan <- .new_fb_aggregation_plan(
+      eligible = FALSE,
+      reason_codes = "cell_count_exceeds_integer",
+      cell_key_terms = cell_key_contribs,
+      requires_materialisation = FALSE,
+      K_est = NA_integer_,
+      N = N,
+      compression_est = NA_real_
+    )
+    plan$K_est_double <- overflow$K_est
+    plan$overflow_refusal <- overflow
+    return(plan)
+  }
   compression_est <- as.numeric(K_est) / as.numeric(N)
 
   # ---- Engine limit: interaction design columns ---- #

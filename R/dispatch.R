@@ -1728,6 +1728,11 @@
 
   if (!isTRUE(plan$eligible)) {
     if (isTRUE(aggregate)) {
+      # A cell count past the integer limit carries its own typed refusal
+      # on the plan; raise that one, not the generic ineligibility.
+      if (!is.null(plan$overflow_refusal)) {
+        stop(plan$overflow_refusal)
+      }
       cond <- structure(
         class = c("flexybayes_aggregate_refusal", "error", "condition"),
         list(

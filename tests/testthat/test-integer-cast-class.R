@@ -148,18 +148,36 @@ test_that("aggregation planner refuses by name past the integer cell-count limit
     )
   )
 
+  # The planner does not refuse: it records the reason, so the default
+  # aggregate = "auto" takes the per-row route as 0.9.2 did (found by the
+  # 27-Aug barrero side-by-side script, which 0.9.3 had refused outright).
+  plan <- .fb_aggregation_plan(fb, ds)
+  expect_false(plan$eligible)
+  expect_identical(plan$reason_codes, "cell_count_exceeds_integer")
+  expect_true(is.na(plan$K_est))
+  expect_true(plan$K_est_double > .Machine$integer.max)
+  err <- plan$overflow_refusal
+  expect_s3_class(err, "flexybayes_refusal_cell_count_exceeds_integer")
+  expect_identical(err$reason_code, "cell_count_exceeds_integer")
+  expect_match(err$message, "2,500,000,000|2500000000", perl = TRUE)
+})
+
+test_that("aggregate = TRUE on an overflowing cell key refuses by name before any fit; auto does not", {
+  skip_if_not_installed("INLA")
+  d <- data.frame(
+    y = rnorm(1000L),
+    f1 = factor(sample(seq_len(1000L)), levels = seq_len(50000L)),
+    f2 = factor(sample(seq_len(1000L)), levels = seq_len(50000L))
+  )
   expect_error(
-    .fb_aggregation_plan(fb, ds),
+    suppressMessages(flexybayes(y ~ f1, random = ~ f2, data = d,
+      backend = "inla", aggregate = TRUE)),
     class = "flexybayes_refusal_cell_count_exceeds_integer"
   )
-
-  err <- tryCatch(
-    .fb_aggregation_plan(fb, ds),
-    flexybayes_refusal_cell_count_exceeds_integer = function(e) e
-  )
-  expect_identical(err$reason_code, "cell_count_exceeds_integer")
-  expect_true(err$K_est > .Machine$integer.max)
-  expect_match(err$message, "2,500,000,000|2500000000", perl = TRUE)
+  # auto: no refusal reaches the caller before the engine; the plan says why
+  p <- fb_plan(y ~ f1, random = ~ f2, data = d, backend = "inla",
+    aggregate = "auto")
+  expect_true("cell_count_exceeds_integer" %in% p$aggregation$reason_codes)
 })
 
 test_that("aggregation planner does not refuse below the integer cell-count limit", {

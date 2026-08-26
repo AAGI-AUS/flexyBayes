@@ -100,10 +100,11 @@ the record of what changed between 0.8.3 and this release.
   package has verified an INLA per-row fit to complete, the binding
   random-effect term and the remedies, instead of a raw engine message
   after tens of minutes (FS-25).
-* **The aggregation planner's cell count is carried as a double** and
-  refused by name past R's integer limit (`cell_count_exceeds_integer`)
-  instead of becoming `NA` (FS-24); a grep gate keeps the cast class
-  closed.
+* **The aggregation planner's cell count is carried as a double.** Past
+  R's integer limit the plan records `cell_count_exceeds_integer` instead
+  of an `NA` count (FS-24): `aggregate = "auto"` takes the per-row route
+  and says why, `aggregate = TRUE` refuses by name. A grep gate keeps the
+  cast class closed.
 * A streamed fit's `print()` banner names its engine and route instead of
   `(unknown engine)`.
 * Gate labels spell `GxE` in ASCII; a gate message that named a
