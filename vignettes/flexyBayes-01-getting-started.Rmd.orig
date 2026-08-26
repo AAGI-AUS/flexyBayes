@@ -70,10 +70,12 @@ fitted object supports `summary()`, `predict()`,
 `emmeans::emmeans()`, `marginaleffects::predictions()`, and the
 `bayesplot::*` family.
 
-If you arrive from ASReml with last season's call in hand, the *From an
-ASReml call* vignette is the shorter door onto this material. It
-translates one real call line by line, then the six commands typed after
-it, and it sends you back here for the full Bayesian on-ramp.
+If you arrive from ASReml with last season's call in hand, Section 6 of
+this page is the shorter door onto this material: it fits one field trial
+and then walks the accessors you would reach for next -- variance
+components, random effects, predicted means, observation counts, missing
+plots and the empirical variogram -- before returning to the full Bayesian
+on-ramp.
 
 # 2. Installation
 
@@ -574,7 +576,7 @@ under the default prior on some datasets, this one included. That
 fragility is the lesson, not a detail to hide: a single approximate
 fit of a small-group variance component is not trustworthy on its
 own. Triangulate it against MCMC, or supply an explicit
-penalised-complexity prior on the SD (the *priors and regularisation*
+penalised-complexity prior on the SD (the *default priors*
 vignette shows how). The *cross-engine triangulation* vignette
 catalogues this and the other common disagreement patterns and the
 protocol for diagnosing each. A divergence this large on a parameter
@@ -619,13 +621,13 @@ order:
 | Foundational regression | one- and two-way fixed effects, univariate smooths, comparison with `lm()` |
 | Hierarchical models | random intercepts, nested and crossed effects, the two random-slope spellings, Poisson and binomial generalised linear mixed models (GLMMs) |
 | The formula surface | the term-type catalogue -- what parses, what emits, what refuses -- and the structured-covariance machinery: `diag`, `us`, per-level residual variances, known-covariance carriers |
-| Priors and regularisation | the `fb_prior()` DSL, the uniform-on-SD default, the fixed-effect default, prior-predictive checks |
-| Multi-environment trials and genomics | MET, genotype-by-environment interaction (GxE), GBLUP (genomic BLUP) |
+| Default priors | the `fb_prior()` DSL, the uniform-on-SD default, the fixed-effect default, prior-predictive checks |
+| Multi-environment trials and genomic selection | MET, genotype-by-environment interaction (GxE), GBLUP (genomic BLUP) |
 | Downstream analysis | `emmeans`, `marginaleffects`, `bayesplot`, `loo` |
 | Spatio-temporal | the separable AR1 field, the complete-grid requirement, missing plots |
 | Cross-engine triangulation | when engines disagree, what it means, what to do |
 | Understanding dispatch and refusals | how `lgm_gate()` and the capability predicates choose an engine, how to read a refusal, and the backend registry a new engine registers into |
-| Big-data streaming | exact sufficient-statistic aggregation for datasets that do not fit in memory |
+| Streaming exact aggregation | exact sufficient-statistic aggregation for datasets that do not fit in memory |
 
 # 9. Pitfalls
 
