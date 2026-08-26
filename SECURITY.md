@@ -29,7 +29,7 @@ We commit to:
    patch / fix plan or an explanation of why the issue is not
    actionable.
 3. Coordinate a fix and (where appropriate) public disclosure on a
-   timeline that protects users — typically a 90-day embargo from
+   timeline that protects users -- typically a 90-day embargo from
    first acknowledgement.
 
 If you do not receive a response within the windows above, please
@@ -47,5 +47,5 @@ Likely areas of security interest:
   scripts;
 - handling of user-supplied numeric data in code-generation paths.
 
-Reports outside the package — e.g. issues in upstream `INLA` or
-`brms` — should be directed to those projects' security channels.
+Reports outside the package -- e.g. issues in upstream `INLA` or
+`brms` -- should be directed to those projects' security channels.

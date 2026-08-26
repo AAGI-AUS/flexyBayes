@@ -74,7 +74,7 @@ The test suite is organised into three implicit tiers via
 `testthat::skip_*` guards. Pick the tier that matches what you can
 warm in your environment.
 
-**Tier 1 — CRAN-fast (no heavy engines).**
+**Tier 1 -- CRAN-fast (no heavy engines).**
 
 ```r
 devtools::test()           # ~30 s; engine-free path only
@@ -85,7 +85,7 @@ Covers IR parsing, prior DSL, refusal templates, registry lookups,
 canonical-name transforms, dispatch trace shape, and the review-code
 workflow. Expected: roughly **PASS 700+ / FAIL 0** with many SKIPs.
 
-**Tier 2 — local integration (INLA warm; brms gated).**
+**Tier 2 -- local integration (INLA warm; brms gated).**
 
 ```r
 Sys.setenv(NOT_CRAN = "true")
@@ -97,7 +97,7 @@ tests fire. `skip_if_not_installed("brms")` still gates the Stan
 passthrough tests. Expected: **PASS 850+ / FAIL 0** with a small
 handful of SKIPs (brms round-trip, vdiffr).
 
-**Tier 3 — full triangulation (INLA + brms / Stan).**
+**Tier 3 -- full triangulation (INLA + brms / Stan).**
 
 ```r
 Sys.setenv(NOT_CRAN = "true")
@@ -131,8 +131,8 @@ it does not appear on networked machines or on CRAN. See
 
 #### Re-precompile vignettes
 
-When a `.Rmd.orig` source changes — or when the `DESCRIPTION`
-version bumps and you want the `sessionInfo()` chunks to refresh —
+When a `.Rmd.orig` source changes -- or when the `DESCRIPTION`
+version bumps and you want the `sessionInfo()` chunks to refresh --
 re-precompile via:
 
 ```bash
