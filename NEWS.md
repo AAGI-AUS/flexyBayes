@@ -22,8 +22,8 @@ the record of what changed between 0.8.3 and this release.
 * **`fb_backend_status()` reports the two active engines only** (INLA,
   brms). The rows for the withdrawn engine and its dormant sibling are
   gone, with the Python/TensorFlow discovery probe that populated them.
-* **The refusal-code registry drops eleven codes and adds five** (net
-  114). Removed: `backend_quarantined`, the six codes of the dormant
+* **The refusal-code registry drops eleven codes and adds nine** (116 in
+  0.9.2, 114 now). Removed: `backend_quarantined`, the six codes of the dormant
   sibling engine's refusal family, the two codes naming the withdrawn
   engine directly, `low_rank_requires_greta` (renamed, below) and the
   stale `predict_kernel_invalid_include`, which had no live raise site.
@@ -31,8 +31,8 @@ the record of what changed between 0.8.3 and this release.
   `cell_count_exceeds_integer`, `inla_program_failed`,
   `weights_requires_gaussian`, `weights_not_aggregatable`,
   `binomial_response_not_binary`, `update_unnamed_argument_not_supported`
-  and `at_field_per_level_hyper_not_representable` (net of the renames
-  the registry holds 114 codes; `fb_refusals()` is the authority).
+  and `at_field_per_level_hyper_not_representable`; `fb_refusals()` is
+  the authority.
 * **`fb_met_summary()` abstains unconditionally** (`met_summary_not_
   available`). Its breeder summaries were derived from the withdrawn
   engine's realised factor-analytic effects, and neither active engine
