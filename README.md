@@ -2,7 +2,7 @@
 
 Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax
 
-Licence: MIT. Version 0.9.2 is a stable release of the supported
+Licence: MIT. Version 0.9.3 is a stable release of the supported
 capability set.
 
 `flexyBayes` is a multi-backend Bayesian mixed-model framework. It
