@@ -68,7 +68,12 @@ test_that("Gaussian identity-link weights are NOT refused", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wdat()
   w <- as.numeric(seq_len(nrow(d)))
-  for (be in c("inla", "brms")) {
+  engines <- c(
+    if (requireNamespace("INLA", quietly = TRUE)) "inla",
+    if (requireNamespace("brms", quietly = TRUE)) "brms"
+  )
+  skip_if(length(engines) == 0L, "neither engine is installed")
+  for (be in engines) {
     expect_no_error(
       suppressMessages(flexybayes(
         y ~ x, data = d, weights = w, backend = be, return_code = TRUE

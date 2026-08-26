@@ -479,6 +479,13 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
                   'aggregate = TRUE)'),
     brms = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
                   'aggregate = TRUE)')
+  ),
+  list(
+    model_class = "Per-trial separable AR1 field",
+    inla = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
+                  'data = d_ar1_at_trial)'),
+    brms = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
+                  'data = d_ar1_at_trial)')
   )
 )
 
@@ -630,52 +637,8 @@ for (spec in .M_CALLS) {
   variant = "space-level-factor"
 )
 
-# --- M (hand-added): a per-trial separable AR1 field (C5/FS-27) -------- #
-#
-# Not derived from the capability matrix (no `matrix_cell`) -- a
-# specific regression scenario. at(trial):ar1(row):ar1(col) lowers to
-# INLA only (one separable field per level of `trial`, shared
-# hyperparameters via replicate =); brms has no lowering for it at all
-# (the pre-existing single-field ar1_spatial refusal, unchanged).
-.add_cell(
-  id = "M-nested-ar1-field-inla",
-  section = "M",
-  code = paste0(
-    'flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
-    'data = d_ar1_at_trial, family = "gaussian", backend = "inla"',
-    .engine_args("inla"), ')'
-  ),
-  expected = "fit",
-  expect_src = paste0(
-    "R/refusal_taxonomy.R, at_field_per_level_hyper_not_representable ",
-    "description: 'The supported spelling, at(trial):ar1(row):ar1(col) ",
-    "with no level argument, fits one field per level of `trial` on ",
-    "INLA via the replicate = mechanism, sharing rho_row, rho_col and ",
-    "the field variance across every level ...' (FS-27/C5)"
-  ),
-  backend = "inla",
-  family = "gaussian",
-  variant = "nested-ar1-field"
-)
-.add_cell(
-  id = "M-nested-ar1-field-brms",
-  section = "M",
-  code = paste0(
-    'flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
-    'data = d_ar1_at_trial, family = "gaussian", backend = "brms"',
-    .engine_args("brms"), ')'
-  ),
-  expected = "refuse_typed",
-  expect_src = paste0(
-    "R/emit_brms.R ar1 / ar1_spatial route: 'An autoregressive latent ",
-    "field is emitted by INLA only.' Unchanged by C5 -- the per-trial ",
-    "spelling reuses the ar1_spatial term type this refusal already ",
-    "keys on (flexybayes_refusal_stan_cannot_represent_ar1_field)."
-  ),
-  backend = "brms",
-  family = "gaussian",
-  variant = "nested-ar1-field"
-)
+# The per-trial separable AR1 field (C5/FS-27) is a capability-matrix row
+# and its two cells derive from .M_CALLS above.
 
 # --- S1: prior route x family x backend -------------------------------- #
 #

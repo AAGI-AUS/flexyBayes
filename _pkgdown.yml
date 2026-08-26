@@ -97,6 +97,8 @@ reference:
       - fb_structured_cov
       - fb_refusals
       - prior_summary
+      - ranef
+      - fb_complete_grid
       - cat_code
   - title: Cross-package interop
     desc: Tidiers, emmeans, marginaleffects, and draws conversion.
@@ -113,6 +115,9 @@ reference:
       - get_data.flexybayes
       - set_coef.flexybayes
       - fb_as_draws_simple
+      - as_draws_df.flexybayes
+      - loo.flexybayes
+      - pp_check.flexybayes
   - title: Methods
     desc: >
       S3 methods on the fit objects. Most are reached through their
@@ -120,6 +125,7 @@ reference:
       for completeness.
     contents:
       - summary.flexybayes
+      - print.summary.flexybayes
       - summary.flexybayes_aggregated
       - summary.flexybayes_glm
       - summary.fb_plan
@@ -134,11 +140,13 @@ reference:
       - coef.flexybayes_inla
       - confint.flexybayes
       - confint.flexybayes_brms
+      - confint.flexybayes_inla
       - confint.flexybayes_glm
       - vcov.flexybayes
       - vcov.flexybayes_inla
       - predict.flexybayes_brms
       - predict.flexybayes_inla
+      - print.fb_predict_classify
       - fitted.flexybayes
       - fitted.flexybayes_inla
       - residuals.flexybayes

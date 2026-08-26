@@ -149,7 +149,13 @@ test_that(".available_backend_names() are active and installed", {
   }
   # 0.9.3 withdrew the package's third native engine entirely (see
   # NEWS.md); only the two active engines are ever registered.
-  expect_setequal(avail, c("inla", "brms"))
+  # Only the engines whose packages are installed are available, so the
+  # expectation follows the machine (the INLA-absent check has no INLA).
+  expected <- c(
+    if (requireNamespace("INLA", quietly = TRUE)) "inla",
+    if (requireNamespace("brms", quietly = TRUE)) "brms"
+  )
+  expect_setequal(avail, expected)
 })
 
 test_that("capability predicates: both active engines universal on a plain model, brms refuses structured-cov", {
