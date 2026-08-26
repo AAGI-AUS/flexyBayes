@@ -262,9 +262,9 @@ rbind(default    = extract_sigma(fit_default),
       halfnormal = extract_sigma(fit_hn),
       legacy     = extract_sigma(fit_legacy))
 #>                mean q025.2.5% q975.97.5%
-#> default    40.41784  27.42551   60.10388
-#> halfnormal 16.99887  14.59894   19.68233
-#> legacy     34.35764  24.97466   49.02514
+#> default    39.46677  27.31404   57.31749
+#> halfnormal 16.92567  14.46865   19.53223
+#> legacy     34.44136  24.98739   46.96731
 ```
 
 The uniform default and the legacy lognormal land close together
@@ -409,7 +409,7 @@ fit_pc <- flexybayes(
 )
 extract_sigma(fit_pc)
 #>       mean  q025.2.5% q975.97.5% 
-#>   31.90921   23.54935   42.52449
+#>   32.05827   23.64657   42.47482
 ```
 
 The tighter PC prior pulls the posterior on $\sigma_{\mathrm{Subject}}$
@@ -503,7 +503,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3    flexyBayes_0.9.2
+#> [1] ggplot2_4.0.3    flexyBayes_0.9.3
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] tidyselect_1.2.1       viridisLite_0.4.3      dplyr_1.2.1           
@@ -523,23 +523,25 @@ sessionInfo()
 #>  [43] e1071_1.7-17           future_1.70.0          inline_0.3.21         
 #>  [46] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
 #>  [49] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
-#>  [52] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
-#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
-#>  [58] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
-#>  [61] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
-#>  [64] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
-#>  [67] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
-#>  [70] sandwich_3.1-1         jsonlite_2.0.0         callr_3.8.0           
-#>  [73] listenv_0.10.1         units_1.0-1            glue_1.8.1            
-#>  [76] parallelly_1.47.0      codetools_0.2-20       distributional_0.8.1  
-#>  [79] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
-#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
-#>  [85] R6_2.6.1               fmesher_0.7.0          evaluate_1.0.5        
-#>  [88] lattice_0.22-7         backports_1.5.1        MatrixModels_0.5-4    
-#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.2            
-#>  [94] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
-#>  [97] checkmate_2.3.4        mgcv_1.9-3             xfun_0.57             
-#> [100] zoo_1.8-15             pkgconfig_2.0.3
+#>  [52] mvtnorm_1.3-6          reformulas_0.4.4       generics_0.1.4        
+#>  [55] otel_0.2.0             RcppParallel_5.1.11-2  reshape2_1.4.5        
+#>  [58] minqa_1.2.8            DBI_1.3.0              proxy_0.4-29          
+#>  [61] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
+#>  [64] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
+#>  [67] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
+#>  [70] boot_1.3-32            V8_8.0.1               Matrix_1.7-4          
+#>  [73] sandwich_3.1-1         jsonlite_2.0.0         callr_3.8.0           
+#>  [76] listenv_0.10.1         units_1.0-1            glue_1.8.1            
+#>  [79] parallelly_1.47.0      nloptr_2.2.1           codetools_0.2-20      
+#>  [82] distributional_0.8.1   stringi_1.8.7          gtable_0.3.6          
+#>  [85] QuickJSR_1.9.0         lme4_2.0-1             tibble_3.3.1          
+#>  [88] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
+#>  [91] fmesher_0.7.0          Rdpack_2.6.6           evaluate_1.0.5        
+#>  [94] lattice_0.22-7         rbibutils_2.4.1        backports_1.5.1       
+#>  [97] MatrixModels_0.5-4     rstantools_2.6.0       class_7.3-23          
+#> [100] Rcpp_1.1.2             coda_0.19-4.1          gridExtra_2.3         
+#> [103] nlme_3.1-168           checkmate_2.3.4        mgcv_1.9-3            
+#> [106] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
 ```
 
 # References

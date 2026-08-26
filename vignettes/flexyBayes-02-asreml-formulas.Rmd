@@ -140,7 +140,7 @@ fit_fix
 #>   fixed:      2 
 #>   random:     0 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.22 sec
+#>   runtime:    1.91 sec
 #>   Representation: aggregated_exact (compression 30:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 4 cells (ratio 30:1)
@@ -167,7 +167,7 @@ fit_int
 #>   Engine:         INLA Laplace
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 1.9 sec
+#>   Runtime  : 2 sec
 #>   INLA formula: yield ~ 1 + env + x_cov + I(x_cov^2)
 #>   Params   : 6 fixed, 0 random, 1 hyperparameter(s)
 #>   numerical confirm: PASS
@@ -205,7 +205,7 @@ fit_rand
 #>   fixed:      2 
 #>   random:     1 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.06 sec
+#>   runtime:    2.2 sec
 #>   Representation: aggregated_exact (compression 3:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 40 cells (ratio 3:1)
@@ -262,10 +262,10 @@ fit_nested
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 4 chain(s) x 2000 samples (warmup 2000)
-#>   Runtime  : 21 sec
+#>   Runtime  : 20.6 sec
 #>   Params   : 60 monitored; 4 fixed, 2 random terms
-#>   Max Rhat: 1.001  [OK] 
-#>   Min ESS: 1715 
+#>   Max Rhat: 1.003  [OK] 
+#>   Min ESS: 1740 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -309,10 +309,10 @@ fit_design
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 4 chain(s) x 1000 samples (warmup 2000)
-#>   Runtime  : 18.8 sec
+#>   Runtime  : 18.3 sec
 #>   Params   : 42 monitored; 4 fixed, 3 random terms
-#>   Max Rhat: 1.005  [OK] 
-#>   Min ESS: 1131 
+#>   Max Rhat: 1.01  [OK] 
+#>   Min ESS: 548 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -365,10 +365,10 @@ fit_vm
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
-#>   Runtime  : 18.9 sec
+#>   Runtime  : 15.8 sec
 #>   Params   : 19 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.005  [OK] 
-#>   Min ESS: 474 
+#>   Max Rhat: 1.002  [OK] 
+#>   Min ESS: 560 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -428,10 +428,10 @@ fit_dense
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
-#>   Runtime  : 17.6 sec
+#>   Runtime  : 16.1 sec
 #>   Params   : 19 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.005  [OK] 
-#>   Min ESS: 563 
+#>   Max Rhat: 1.008  [OK] 
+#>   Min ESS: 396 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -483,7 +483,7 @@ fit_prec
 #>   Engine:         INLA Laplace
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2.4 sec
+#>   Runtime  : 2.3 sec
 #>   INLA formula: yield ~ 1 + env + f(geno_id, model = "generic0", Cmatrix = Q, <prior: uniform-SD(0, 15.98)>)
 #>   Params   : 4 fixed, 1 random, 2 hyperparameter(s)
 #>   numerical confirm: PASS
@@ -597,10 +597,10 @@ fit_us
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
-#>   Runtime  : 21.4 sec
+#>   Runtime  : 20.3 sec
 #>   Params   : 58 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.008  [OK] 
-#>   Min ESS: 490 
+#>   Max Rhat: 1.02  [OK] 
+#>   Min ESS: 328 
 #> ------------------------------------------------------- 
 #>   $glm    -- GLM-compatible shim (coef, vcov, fitted, etc.)
 #>   $brms   -- live brmsfit (loo, posterior_predict, summary)
@@ -737,17 +737,17 @@ fit_het
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
-#>   Runtime  : 17.4 sec
+#>   Runtime  : 16.6 sec
 #>   Params   : 22 monitored; 4 fixed, 1 random terms
-#>   Max Rhat: 1.007  [OK] 
-#>   Min ESS: 549 
+#>   Max Rhat: 1.006  [OK] 
+#>   Min ESS: 382 
 #> 
 #> -- Residual by level of `env` (posterior median, 95% interval) --------
 #>  level variance  lower  upper     SD SD.lower SD.upper
-#>     E1   5.0080 2.8259 9.4488 2.2379   1.6810   3.0739
-#>     E2   5.0150 2.7830 9.2517 2.2394   1.6682   3.0417
-#>     E3   1.4167 0.6968 2.9714 1.1903   0.8347   1.7238
-#>     E4   2.5668 1.3351 5.2637 1.6021   1.1554   2.2943
+#>     E1   4.8806 2.8540 9.1812 2.2092   1.6894   3.0300
+#>     E2   4.9450 2.8210 9.1901 2.2237   1.6796   3.0315
+#>     E3   1.4037 0.6952 3.0460 1.1848   0.8338   1.7453
+#>     E4   2.5753 1.3067 4.9063 1.6048   1.1431   2.2150
 #>   Summarised from the draws of exp(2 * b_sigma_<level>); the fitted
 #>   coefficients are on log sigma, so neither they nor their posterior
 #>   means are variances. There is no scalar residual variance in this
@@ -792,23 +792,23 @@ summary(fit_het)
 #>   N        : 120 design rows, 120 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 2 chain(s) x 1000 samples (warmup 2000)
-#>   Runtime  : 17.4 sec
+#>   Runtime  : 16.6 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
-#>  (Intercept)  47.9376    0.7221  46.5111   49.4368
-#>        envE2   2.1197    0.5753   0.9254    3.2163
-#>        envE3   3.4532    0.4640   2.5158    4.3450
-#>        envE4   6.0114    0.5103   4.9984    7.0133
+#>  (Intercept)  48.0020    0.7564  46.4342   49.5227
+#>        envE2   2.0994    0.5946   0.9217    3.2141
+#>        envE3   3.4280    0.4897   2.4511    4.3573
+#>        envE4   5.9880    0.5268   4.9548    7.0092
 #> 
 #> -- Variance components (95% credible interval) ------------------
 #> Estimate = posterior mean (not REML). Prior column is the prior that was used.
 #>  component estimate std.error conf.low conf.high                         prior
-#>    sd_geno   1.7954    0.5724   1.0340    3.2436 uniform(lower=0, upper=15.98)
-#>   sigma_E1   2.2379    0.3393   1.6810    3.0739              normal(1.162, 1)
-#>   sigma_E2   2.2394    0.3516   1.6682    3.0417              normal(1.162, 1)
-#>   sigma_E3   1.1903    0.2233   0.8347    1.7238              normal(1.162, 1)
-#>   sigma_E4   1.6021    0.2979   1.1554    2.2943              normal(1.162, 1)
+#>    sd_geno   1.8104    0.5865   1.0266    3.3657 uniform(lower=0, upper=15.98)
+#>   sigma_E1   2.2092    0.3468   1.6894    3.0300              normal(1.162, 1)
+#>   sigma_E2   2.2237    0.3586   1.6796    3.0315              normal(1.162, 1)
+#>   sigma_E3   1.1848    0.2288   0.8338    1.7453              normal(1.162, 1)
+#>   sigma_E4   1.6048    0.2771   1.1431    2.2150              normal(1.162, 1)
 #>  note
 #>      
 #>      
@@ -818,10 +818,10 @@ summary(fit_het)
 #> 
 #> -- Residual by level of `env` (posterior median, 95% interval) --------
 #>  level variance  lower  upper     SD SD.lower SD.upper
-#>     E1   5.0080 2.8259 9.4488 2.2379   1.6810   3.0739
-#>     E2   5.0150 2.7830 9.2517 2.2394   1.6682   3.0417
-#>     E3   1.4167 0.6968 2.9714 1.1903   0.8347   1.7238
-#>     E4   2.5668 1.3351 5.2637 1.6021   1.1554   2.2943
+#>     E1   4.8806 2.8540 9.1812 2.2092   1.6894   3.0300
+#>     E2   4.9450 2.8210 9.1901 2.2237   1.6796   3.0315
+#>     E3   1.4037 0.6952 3.0460 1.1848   0.8338   1.7453
+#>     E4   2.5753 1.3067 4.9063 1.6048   1.1431   2.2150
 #>   Summarised from the draws of exp(2 * b_sigma_<level>); the fitted
 #>   coefficients are on log sigma, so neither they nor their posterior
 #>   means are variances. There is no scalar residual variance in this
@@ -829,9 +829,9 @@ summary(fit_het)
 #> 
 #> -- Convergence -----------------------------------------------
 #>   Engine    : Stan HMC via brms
-#>   Max R-hat : 1.007
-#>   Min ESS (bulk): 549
-#>   Min ESS (tail): 738
+#>   Max R-hat : 1.006
+#>   Min ESS (bulk): 382
+#>   Min ESS (tail): 599
 #>   Divergent transitions: 0
 ```
 
@@ -868,6 +868,21 @@ plots as design cells so a trial with missing plots is still fittable.
 The *spatio-temporal* vignette demonstrates all of this, including the
 four recovered hyperparameters against a known simulation truth.
 
+A single trial is one field realisation. Naming a grouping factor before
+the field extends the same term to several trials at once, on INLA:
+
+| Term | Semantics | Status |
+|---|---|---|
+| `at(trial):ar1(row):ar1(col)` | one field realisation per level of `trial`, row correlation / column correlation / field SD **shared across every level** | fits (INLA) |
+| `at(trial, level):ar1(row):ar1(col)` | a single conditioned level, or (the same gap read the other way) per-trial hyperparameters | refused by name |
+
+Sharing the hyperparameters is not a shortcut -- it is what makes the
+field identifiable at all with a handful of trials, each too small on
+its own to pin down a row correlation, a column correlation and a field
+SD separately. brms has no lowering for either spelling. The
+*spatio-temporal* vignette demonstrates the shared-hyperparameter fit on
+three simulated trials, recovered against known values.
+
 # 9. The `weights` argument
 
 The intended meaning is the ASReml one: a non-negative weight vector
@@ -875,22 +890,79 @@ scaling the residual variance, $y_i \sim \mathcal{N}(\mu_i, \sigma_e^2 /
 w_i)$, which is useful when observations are pre-aggregated (cell means,
 weighted averages, prior counts).
 
-**It is not yet supported.** The argument is parsed and recorded in the
-model representation, but neither active emitter consumes it, so a
-non-constant weight vector is refused rather than fitted:
+| Term | Semantics | Status |
+|---|---|---|
+| `weights = w` (Gaussian, identity link) | precision weighting, $Var(y_i) = \sigma^2 / w_i$ | fits (INLA, brms) |
+| `weights = w` (any other family, or a non-identity link on Gaussian) | ambiguous with frequency / likelihood-power / trials / exposure weighting | refused by name |
 
-```r
-flexybayes(fixed = ..., data = ..., weights = w_i, ...)
-#> Error: `weights` are not yet supported by the active backends
+Gaussian weighted fits pass for the Gaussian family on an identity
+link, on both engines, and are checked against
+`lme4::lmer(weights=)` on a shared simulated fixture. Any other family,
+or a non-identity link on Gaussian, refuses by name
+(`weights_requires_gaussian`) rather than returning the unweighted
+posterior under a weighted call -- the word covers several distinct
+models (inverse-residual-variance, frequency, likelihood-power, trials,
+exposure) that cannot share one argument without saying which is meant,
+and only the first is honoured so far. `aggregate = TRUE` alongside
+weights also refuses by name (`weights_not_aggregatable`): the
+aggregated route's closed-form sufficient statistics do not carry a
+per-observation weight through the compression.
+
+
+``` r
+w <- sample(1:5, nrow(dat), replace = TRUE)   # e.g. replicates behind each cell mean
+fit_w <- flexybayes(
+  fixed   = yield ~ env,
+  random  = ~ geno,
+  data    = dat,
+  weights = w,
+  backend = "inla",
+  verbose = FALSE
+)
+fit_w
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~geno 
+#>   Model    : G: geno iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 120 design rows, 120 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.2 sec
+#>   INLA formula: yield ~ 1 + env + f(geno, model = "iid", <prior: uniform-SD(0, 15.98)>)
+#>   Params   : 4 fixed, 1 random, 2 hyperparameter(s)
+#>   numerical confirm: PASS
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
+#>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
+#>   $fb   -- the fb_terms IR used for dispatch
 ```
 
-The refusal is deliberate. Both backends previously generated identical
-code with and without weights, so a weighted call returned the
-unweighted posterior with nothing to indicate it. The word also covers
-several distinct models -- inverse-residual-variance, frequency,
-likelihood-power, trials, exposure -- which cannot share one argument
-without saying which is meant, so each mapping is being implemented and
-validated against an analytic oracle before the argument is honoured.
+The Gaussian fit runs as an ordinary precision-weighted model: rows
+with a larger weight pull the fit harder, in the same sense as
+`asreml(..., weights = w)` or `lme4::lmer(..., weights = w)`. Asking
+for the same weight vector on a non-Gaussian family refuses rather
+than silently ignoring it:
+
+
+``` r
+refused <- tryCatch(
+  flexybayes(
+    fixed   = count_y ~ env,
+    random  = ~ geno,
+    data    = dat,
+    weights = w,
+    family  = "poisson",
+    backend = "inla",
+    verbose = FALSE
+  ),
+  error = function(e) e
+)
+cat("Refused:", conditionMessage(refused), "\n")
+#> Refused: `weights` is lowered for family = "gaussian" with the identity link only (INLA's `scale = w` per-observation precision multiplier; brms's sigma-distributional offset -- both give Var(y_i) = sigma^2 / w_i, the same Gaussian likelihood weighting on either engine). This model is family = "poisson", link = "log". Drop `weights`, or pre-scale the response if the intended semantics is exactly Var(y_i) = sigma^2 / w_i.
+```
 
 # 10. The `family` and `link` arguments
 
@@ -1004,7 +1076,7 @@ fit_b
 #>   fixed:      2 
 #>   random:     1 
 #>   backend:    inla (path = aggregated_gaussian )
-#>   runtime:    2.23 sec
+#>   runtime:    1.86 sec
 #>   Representation: aggregated_exact (compression 3:1)
 #>   Engine:         INLA Laplace
 #>   aggregation: N = 120 rows -> K = 40 cells (ratio 3:1)
@@ -1076,7 +1148,7 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] flexyBayes_0.9.2
+#> [1] flexyBayes_0.9.3
 #> 
 #> loaded via a namespace (and not attached):
 #>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          

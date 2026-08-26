@@ -1,14 +1,15 @@
 ---
-title: "Tutorial 10: Cross-engine triangulation: when Bayesian engines disagree"
-date: "2026-08-17"
+title: "Tutorial 09: Cross-engine triangulation: when Bayesian engines disagree"
+date: "2026-08-26"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 10: Cross-engine triangulation}
+  %\VignetteIndexEntry{Tutorial 09: Cross-engine triangulation: when Bayesian engines disagree}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -263,6 +264,8 @@ observation and fit it on brms and INLA with matched priors.
 
 
 ``` r
+library(flexyBayes)
+set.seed(500)
 G       <- 30L                              # number of groups
 n_per   <- 8L                               # observations per group
 sigma_g <- 0.4
@@ -281,7 +284,6 @@ penalised-complexity prior on the group-level standard deviation.
 
 
 ``` r
-library(flexyBayes)
 priors <- fb_prior(
   sigma           ~ pc(upper = 1, prob = 0.05),
   sd(group = "group") ~ pc(upper = 1, prob = 0.05),
@@ -358,12 +360,12 @@ summary(fit_inla)
 #>   Engine:         INLA Laplace
 #>   N        : 240 design rows, 240 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2 sec
+#>   Runtime  : 2.1 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
-#>  (Intercept)   0.5881    0.1305   0.3270    0.8416
-#>            x   0.4189    0.0441   0.3324    0.5053
+#>  (Intercept)   0.5882    0.1305   0.3270    0.8417
+#>            x   0.4187    0.0441   0.3322    0.5052
 #> 
 #> -- Variance components (95% credible interval) ------------------
 #> Estimate = posterior mean (not REML). Prior column is the prior that was used.
@@ -372,12 +374,12 @@ summary(fit_inla)
 #> 
 #> -- Hyperparameters (INLA, precision scale) ---------------------
 #>                       mean    sd 0.025quant 0.5quant 0.975quant   mode
-#> Precision for group 2.5035 0.718     1.3366   2.4234     4.1306 2.2663
+#> Precision for group 2.5034 0.718     1.3365   2.4233     4.1304 2.2663
 #> 
 #> -- Convergence -----------------------------------------------
 #>   Engine    : INLA nested Laplace approximation
 #>   Mode status: 0 (0 = converged)
-#>   Marginal log-likelihood: -766.43
+#>   Marginal log-likelihood: -763.906
 #>   Largest symmetric KLD between the Gaussian approximation and the
 #>   corrected marginal: 5.49e-08
 #>   Numerical confirm: PASS
@@ -421,9 +423,9 @@ if (!is.null(tri)) tri
 #> 
 #> Metrics (per common parameter):
 #>         param mean_a mean_b mean_shift_sd sd_ratio  w1_sd    verdict
-#> 1 (Intercept) 0.5852 0.5886        0.0253   0.9784 0.0467 concordant
-#> 2           x 0.4180 0.4195        0.0333   0.9779 0.0356 concordant
-#> 3    sd_group 0.6526 0.6528        0.0019   0.9881 0.1575 discordant
+#> 1 (Intercept) 0.5852 0.5862        0.0073   1.0667 0.0516 concordant
+#> 2           x 0.4180 0.4190        0.0219   1.0148 0.0249 concordant
+#> 3    sd_group 0.6526 0.6530        0.0038   0.9878 0.1575 discordant
 ```
 
 The report opens with the overall status and then gives a verdict per
@@ -544,7 +546,7 @@ hist(max_mean, breaks = 30, xlab = "max(y_rep)",
 abline(v = y_obs_max, col = "firebrick", lwd = 2)
 ```
 
-![plot of chunk ppc-max](flexyBayes-09-triangulation-figs/ppc-max-1.png)
+![Histograms of the replicated maximum count under the hierarchical predictive (left panel, group intercepts included) and the population-mean-only predictive (right panel), each with the observed maximum marked in firebrick -- the observed value landing outside a panel's bulk means that predictive cannot accommodate the planted extreme.](flexyBayes-09-triangulation-figs/ppc-max-1.png)
 
 ``` r
 par(op)
@@ -647,7 +649,7 @@ sd_brms
 #> 2      sigma 31.25928 1.762590 28.00741 34.91937
 c(inla_sd_Subject = sd_inla)
 #> inla_sd_Subject 
-#>    1.758824e-06
+#>    1.580376e-08
 ```
 
 
@@ -663,10 +665,10 @@ tri_ss <- tryCatch(
 if (!is.null(tri_ss)) tri_ss
 #> <triangulate_result>
 #>   status:   discordant
-#>     - (Intercept): Wasserstein-1 0.29 SD; SD ratio 1.63
-#>     - Days: Wasserstein-1 0.27 SD; SD ratio 0.65
-#>     - sd_Subject: mean shift 4.90 SD; Wasserstein-1 4.88 SD; SD ratio 21849746.41
-#>     - sigma: mean shift 6.84 SD; Wasserstein-1 6.84 SD; SD ratio 0.74
+#>     - (Intercept): Wasserstein-1 0.28 SD; SD ratio 1.59
+#>     - Days: Wasserstein-1 0.27 SD; SD ratio 0.64
+#>     - sd_Subject: mean shift 4.90 SD; Wasserstein-1 4.88 SD; SD ratio 1765305978.99
+#>     - sigma: mean shift 7.03 SD; Wasserstein-1 7.03 SD; SD ratio 0.75
 #>   source_a: brms
 #>   source_b: inla
 #>   independence: algorithmic + implementation
@@ -680,10 +682,10 @@ if (!is.null(tri_ss)) tri_ss
 #> 
 #> Metrics (per common parameter):
 #>         param   mean_a   mean_b mean_shift_sd     sd_ratio  w1_sd    verdict
-#> 1 (Intercept) 251.4187 251.3297        0.0085 1.631200e+00 0.2885 discordant
-#> 2        Days  10.4686  10.4465        0.0184 6.546000e-01 0.2676 discordant
-#> 3  sd_Subject  40.3762   0.0000        4.8955 2.184975e+07 4.8835 discordant
-#> 4       sigma  31.2593  47.6291        6.8407 7.366000e-01 6.8438 discordant
+#> 1 (Intercept) 251.4187 251.8482        0.0409 1.590500e+00 0.2758 discordant
+#> 2        Days  10.4686  10.4038        0.0531 6.430000e-01 0.2736 discordant
+#> 3  sd_Subject  40.3762   0.0000        4.8955 1.765306e+09 4.8835 discordant
+#> 4       sigma  31.2593  47.7936        7.0309 7.495000e-01 7.0306 discordant
 ```
 
 Read the status line first, then the `sd_Subject` row. On this dataset
@@ -714,7 +716,7 @@ This is what the protocol is for.
   -- not 1.4 or 0.7, which would be a difference of opinion, but a
   number no approximation error explains.
 - **Step 4, resolve.** With eighteen groups the prior does real work
-  (the *priors and regularisation* vignette shows how much). Supplying a
+  (the *default priors* vignette shows how much). Supplying a
   penalised-complexity prior on the SD, or reading the brms fit for this
   component, are both defensible. Averaging the two is not.
 
@@ -790,36 +792,36 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.0
+#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.3
 #> 
 #> loaded via a namespace (and not attached):
 #>   [1] Rdpack_2.6.6           DBI_1.3.0              mnormt_2.1.2          
 #>   [4] gridExtra_2.3          inline_0.3.21          sandwich_3.1-1        
-#>   [7] rlang_1.2.0            magrittr_2.0.5         multcomp_1.4-29       
+#>   [7] rlang_1.3.0            magrittr_2.0.5         multcomp_1.4-29       
 #>  [10] otel_0.2.0             ggridges_0.5.7         matrixStats_1.5.0     
 #>  [13] e1071_1.7-17           compiler_4.5.2         mgcv_1.9-3            
-#>  [16] loo_2.9.0              callr_3.7.6            vctrs_0.7.3           
+#>  [16] loo_2.9.0              callr_3.8.0            vctrs_0.7.3           
 #>  [19] reshape2_1.4.5         stringr_1.6.0          pkgconfig_2.0.3       
 #>  [22] backports_1.5.1        labeling_0.4.3         effectsize_1.0.2      
 #>  [25] nloptr_2.2.1           MatrixModels_0.5-4     INLA_25.10.19         
 #>  [28] xfun_0.57              jsonlite_2.0.0         parallel_4.5.2        
 #>  [31] R6_2.6.1               stringi_1.8.7          RColorBrewer_1.1-3    
 #>  [34] StanHeaders_2.32.10    parallelly_1.47.0      boot_1.3-32           
-#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.1-1.1        
+#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.2            
 #>  [40] rstan_2.32.7           knitr_1.51             zoo_1.8-15            
 #>  [43] parameters_0.28.3      Matrix_1.7-4           splines_4.5.2         
 #>  [46] tidyselect_1.2.1       dichromat_2.0-0.1      abind_1.4-8           
 #>  [49] agridat_1.26           codetools_0.2-20       curl_7.0.0            
 #>  [52] processx_3.9.0         listenv_0.10.1         pkgbuild_1.4.8        
 #>  [55] lattice_0.22-7         tibble_3.3.1           plyr_1.8.9            
-#>  [58] withr_3.0.2            bridgesampling_1.2-1   bayestestR_0.17.0     
-#>  [61] S7_0.2.2               posterior_1.7.0        coda_0.19-4.1         
+#>  [58] withr_3.0.3            bridgesampling_1.2-1   bayestestR_0.17.0     
+#>  [61] S7_0.2.2               posterior_1.7.1        coda_0.19-4.1         
 #>  [64] evaluate_1.0.5         marginaleffects_0.32.0 future_1.70.0         
 #>  [67] survival_3.8-3         sf_1.1-0               units_1.0-1           
 #>  [70] proxy_0.4-29           RcppParallel_5.1.11-2  pillar_1.11.1         
 #>  [73] tensorA_0.36.2.1       KernSmooth_2.23-26     checkmate_2.3.4       
 #>  [76] stats4_4.5.2           reformulas_0.4.4       insight_1.4.6         
-#>  [79] sn_2.1.3               distributional_0.7.0   generics_0.1.4        
+#>  [79] sn_2.1.3               distributional_0.8.1   generics_0.1.4        
 #>  [82] rstantools_2.6.0       scales_1.4.0           minqa_1.2.8           
 #>  [85] globals_0.19.1         xtable_1.8-8           class_7.3-23          
 #>  [88] glue_1.8.1             tools_4.5.2            data.table_1.18.2.1   

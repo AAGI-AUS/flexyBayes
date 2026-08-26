@@ -286,10 +286,10 @@ data.frame(
   upper     = round(recovered$upper, 3)
 )
 #>                         parameter simulated recovered lower upper
-#> 1 correlation along row (rho_row)       0.7     0.652 0.479 0.773
+#> 1 correlation along row (rho_row)       0.7     0.652 0.478 0.773
 #> 2 correlation along col (rho_col)       0.5     0.501 0.314 0.647
 #> 3          field SD (sigma_field)       1.0     1.001 0.846 1.192
-#> 4             nugget SD (sigma_e)       0.5     0.461 0.323 0.633
+#> 4             nugget SD (sigma_e)       0.5     0.461 0.323 0.634
 ```
 
 Each simulated value sits inside its interval. The row correlation is
@@ -381,9 +381,9 @@ fit_temporal
 #> 
 #> Separable AR1 field (posterior median, 95% interval):
 #>                              parameter  median    2.5%   97.5%
-#>  correlation along Days_f (rho_Days_f)  0.8687  0.8126  0.9071
-#>                 field SD (sigma_field) 46.7930 38.7758 56.2115
-#>                    nugget SD (sigma_e) 15.3480 12.8126 18.5347
+#>  correlation along Days_f (rho_Days_f)  0.9989  0.9985  0.9992
+#>                 field SD (sigma_field)  0.0053  0.0044  0.0059
+#>                    nugget SD (sigma_e) 31.7969 29.3971 34.7652
 #>   The field and the nugget are separate parameters: this is a latent
 #>   autoregressive field plus independent observation noise, not ASReml's
 #>   nugget-free separable residual. Variances are the squares of the SDs.
@@ -408,7 +408,197 @@ field parameters are printed together rather than the correlations alone --
 under the residual spelling this vignette used to carry, the amplitude
 was not on the page at all.
 
-# 4. Spatial trend in addition to the field
+# 4. Multiple trials, one field shape
+
+Section 2's field is fitted on a single trial: one grid, one field
+realisation. A breeding programme rarely stops at one trial, and the
+question that follows naturally is whether the field can be fitted
+*per trial* rather than refitting the model trial by trial. It can, on
+INLA, with `at(trial):ar1(row):ar1(col)` and no `level` argument on
+`at()`:
+
+
+``` r
+set.seed(101L)
+rho_row_true <- 0.7; rho_col_true <- 0.5
+sd_field_true <- 1.0; sd_nugget_true <- 0.5
+n_row <- 9L; n_col <- 10L
+
+one_trial <- function(trial_id, mu) {
+  grid <- expand.grid(col = factor(1:n_col), row = factor(1:n_row))
+  L <- t(chol(sd_field_true^2 *
+    kronecker(ar1_mat(n_row, rho_row_true), ar1_mat(n_col, rho_col_true))))
+  grid$yield <- mu + as.numeric(L %*% rnorm(n_row * n_col)) +
+    rnorm(n_row * n_col, 0, sd_nugget_true)
+  grid$trial <- factor(trial_id)
+  grid
+}
+d3 <- do.call(rbind, Map(one_trial, c("T1", "T2", "T3"), c(10, 12, 9)))
+nrow(d3)   # three 9 x 10 grids
+#> [1] 270
+
+fit3 <- flexybayes(
+  fixed   = yield ~ trial,
+  random  = ~ at(trial):ar1(row):ar1(col),
+  data    = d3,
+  backend = "inla",
+  verbose = FALSE
+)
+fit3
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ trial 
+#>   Random   : ~at(trial):ar1(row):ar1(col) 
+#>   Model    : G: ar1(row):ar1(col) field + nugget (4 parameters); R: units 
+#>              this is not ASReml residual = ~ ar1:ar1 (3 parameters)
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 270 design rows, 270 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2 sec
+#>   INLA formula: yield ~ 1 + trial + f(row_id, model = "ar1", group = col_id, control.group = list(model = "ar1"), replicate = trial_id)
+#>   Params   : 3 fixed, 1 random, 4 hyperparameter(s)
+#>   numerical confirm: PASS
+#> 
+#> Separable AR1 field (posterior median, 95% interval):
+#>                        parameter median   2.5%  97.5%
+#>  correlation along row (rho_row) 0.7467 0.5818 0.8551
+#>  correlation along col (rho_col) 0.5315 0.3239 0.6924
+#>           field SD (sigma_field) 0.9703 0.8047 1.1718
+#>              nugget SD (sigma_e) 0.5044 0.3915 0.6536
+#>   The field and the nugget are separate parameters: this is a latent
+#>   autoregressive field plus independent observation noise, not ASReml's
+#>   nugget-free separable residual. Variances are the squares of the SDs.
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
+#>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
+#>   $fb   -- the fb_terms IR used for dispatch
+```
+
+Three trials, one field shape each -- but read the variance-component
+table above: there is **one** `rho_row`, **one** `rho_col`, and **one**
+field SD, not three of each. `at(trial):ar1(row):ar1(col)` fits one
+field *realisation* per trial (via INLA's `replicate =` mechanism) while
+**sharing the row correlation, the column correlation and the field SD
+across every trial**. This is a statement about the trials having the
+same kind of spatial process, not necessarily the same realised map, and
+it is a real modelling choice: with only three trials there is not
+enough replication to estimate a separate correlation pair for each one,
+so pooling them is what makes the field identifiable at all. Simulated
+against known values, the shared parameters recover cleanly:
+
+
+``` r
+sm3 <- summary(fit3)
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : yield ~ trial 
+#>   Random   : ~at(trial):ar1(row):ar1(col) 
+#>   Model    : G: ar1(row):ar1(col) field + nugget (4 parameters); R: units 
+#>              this is not ASReml residual = ~ ar1:ar1 (3 parameters)
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 270 design rows, 270 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2 sec
+#> 
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)  10.0216    0.3725   9.2995   10.7841
+#>      trialT2   2.2675    0.5263   1.1967    3.2947
+#>      trialT3  -1.3516    0.5315  -2.4553   -0.3390
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>   component estimate std.error conf.low conf.high                         prior
+#>       sigma   0.5091    0.0666   0.3920    0.6531 uniform(lower=0, upper=9.021)
+#>  sd_spatial   0.9749    0.0933   0.8055    1.1710                engine default
+#>     rho_row   0.7393    0.0700   0.5818    0.8551                engine default
+#>     rho_col   0.5255    0.0941   0.3239    0.6924                engine default
+#>  note
+#>      
+#>      
+#>      
+#>      
+#> The field and the nugget are separate parameters: this is not ASReml's nugget-free residual.
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
+#>                                           mean     sd 0.025quant 0.5quant
+#> Precision for the Gaussian observations 4.0595 1.0707     2.3411   3.9301
+#> Precision for row_id                    1.0813 0.2080     0.7283   1.0622
+#> Rho for row_id                          0.7393 0.0700     0.5818   0.7467
+#> GroupRho for row_id                     0.5255 0.0941     0.3239   0.5315
+#>                                         0.975quant   mode
+#> Precision for the Gaussian observations     6.5250 3.6879
+#> Precision for row_id                        1.5442 1.0257
+#> Rho for row_id                              0.8551 0.7608
+#> GroupRho for row_id                         0.6924 0.5434
+#> 
+#> Separable AR1 field (posterior median, 95% interval):
+#>                        parameter median   2.5%  97.5%
+#>  correlation along row (rho_row) 0.7467 0.5818 0.8551
+#>  correlation along col (rho_col) 0.5315 0.3239 0.6924
+#>           field SD (sigma_field) 0.9703 0.8047 1.1718
+#>              nugget SD (sigma_e) 0.5044 0.3915 0.6536
+#>   The field and the nugget are separate parameters: this is a latent
+#>   autoregressive field plus independent observation noise, not ASReml's
+#>   nugget-free separable residual. Variances are the squares of the SDs.
+#> 
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -368.844
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 2.01e-07
+#>   Numerical confirm: PASS
+recovered <- sm3$spatial_field
+data.frame(
+  parameter = recovered$parameter,
+  simulated = c(rho_row_true, rho_col_true, sd_field_true, sd_nugget_true),
+  recovered = round(recovered$median, 3),
+  lower     = round(recovered$lower, 3),
+  upper     = round(recovered$upper, 3)
+)
+#>                         parameter simulated recovered lower upper
+#> 1 correlation along row (rho_row)       0.7     0.747 0.582 0.855
+#> 2 correlation along col (rho_col)       0.5     0.532 0.324 0.692
+#> 3          field SD (sigma_field)       1.0     0.970 0.805 1.172
+#> 4             nugget SD (sigma_e)       0.5     0.504 0.391 0.654
+```
+
+Each simulated value sits inside its interval, on the one pooled set of
+parameters that governs all three fields at once. The per-trial residual
+map should still look unstructured within each panel, the same read as
+Section 2.3's single-trial version:
+
+
+``` r
+d3$resid <- residuals(fit3)
+ggplot(d3, aes(x = as.numeric(col), y = as.numeric(row), fill = resid)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
+                       midpoint = 0) +
+  scale_y_reverse() +
+  coord_fixed() +
+  facet_wrap(~ trial) +
+  theme_minimal(base_size = 12) +
+  labs(x = "column", y = "row", fill = "residual")
+```
+
+![Spatial residual map, one panel per trial, column on the x-axis and row on the y-axis, coloured from blue (negative) through white (zero) to firebrick (positive) -- an unstructured, salt-and-pepper pattern in every panel means the shared field has absorbed each trial's spatial correlation despite the correlations being pooled across trials rather than fitted per trial.](flexyBayes-08-spatio-temporal-figs/pertrial-resid-plot-1.png)
+
+All three panels are salt-and-pepper, with no large same-coloured
+patches -- the shared field is doing its job on each trial, not just on
+average across them. Asking for a *level*-conditioned field or for
+per-trial (unshared) hyperparameters --
+`at(trial, level):ar1(row):ar1(col)` -- refuses
+(`at_field_per_level_hyper_not_representable`): there is no lowering
+for either request. brms has no lowering for this term at all and
+refuses outright, on `backend = "brms"` or `backend = "auto"` alike.
+
+# 5. Spatial trend in addition to the field
 
 Field trials often display *both* small-scale spatial correlation
 (captured by the AR1 field) and *large-scale* spatial trend (a slowly
@@ -430,10 +620,10 @@ agronomy-textbook decomposition (Gilmour, Cullis, & Verbyla, 1997) --
 with the qualification of Section 1: what is fitted here is the field-plus-
 nugget version of it.
 
-# 5. Limitations of the current spatial coverage
+# 6. Limitations of the current spatial coverage
 
 `flexyBayes` covers regular grids with AR1 correlation, fit natively on
-INLA under a complete-grid condition (Section 6). It does *not* cover:
+INLA under a complete-grid condition (Section 7). It does *not* cover:
 
 - **ASReml's nugget-free separable residual** -- refused by name
   (Section 2.1), not approximated.
@@ -451,7 +641,7 @@ or `mgcv::gam()` with the relevant spatial basis. The *dispatch and
 refusals* vignette describes how a third-party fit can plug into
 `triangulate()` via the `fb_as_draws_simple` interface.
 
-# 6. Pitfalls
+# 7. Pitfalls
 
 **Row and column must be factors.** `flexyBayes` reads `ar1(row)` as
 "AR1 correlation on the levels of `row` in their factor order". Numeric
@@ -493,7 +683,7 @@ you have older code that pinned `backend` to that engine for a spatial
 or temporal AR1 fit, drop the pin and move the term to the random
 side.
 
-# 7. Active prompts
+# 8. Active prompts
 
 1. Refit `stroup.nin` (Section 2.2) without the field. How much does
    $\sigma_e$ change, and what does that tell you about how much of the
@@ -509,7 +699,7 @@ side.
    Confirm the first refuses, then compare the second's four recovered
    parameters with the complete-grid fit. How much does the gap cost you?
 
-# 8. Session information
+# 9. Session information
 
 
 ``` r
@@ -532,43 +722,47 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3    flexyBayes_0.9.2
+#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.3
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] tidyselect_1.2.1       viridisLite_0.4.3      dplyr_1.2.1           
-#>   [4] farver_2.1.2           loo_2.9.0              S7_0.2.2              
-#>   [7] INLA_25.10.19          TH.data_1.1-5          tensorA_0.36.2.1      
-#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
-#>  [13] sf_1.1-0               StanHeaders_2.32.10    agridat_1.26          
-#>  [16] processx_3.9.0         survival_3.8-3         magrittr_2.0.5        
-#>  [19] posterior_1.7.1        compiler_4.5.2         rlang_1.3.0           
-#>  [22] tools_4.5.2            data.table_1.18.2.1    sn_2.1.3              
-#>  [25] knitr_1.51             labeling_0.4.3         bridgesampling_1.2-1  
-#>  [28] mnormt_2.1.2           pkgbuild_1.4.8         classInt_0.4-11       
-#>  [31] curl_7.0.0             plyr_1.8.9             RColorBrewer_1.1-3    
-#>  [34] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
-#>  [37] numDeriv_2016.8-1.1    withr_3.0.3            grid_4.5.2            
-#>  [40] stats4_4.5.2           colorspace_2.1-2       xtable_1.8-8          
-#>  [43] e1071_1.7-17           future_1.70.0          inline_0.3.21         
-#>  [46] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
-#>  [49] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
-#>  [52] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
-#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
-#>  [58] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
-#>  [61] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
-#>  [64] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
-#>  [67] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
-#>  [70] sandwich_3.1-1         jsonlite_2.0.0         callr_3.8.0           
-#>  [73] listenv_0.10.1         units_1.0-1            glue_1.8.1            
-#>  [76] parallelly_1.47.0      codetools_0.2-20       distributional_0.8.1  
-#>  [79] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
-#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
-#>  [85] R6_2.6.1               fmesher_0.7.0          evaluate_1.0.5        
-#>  [88] lattice_0.22-7         backports_1.5.1        MatrixModels_0.5-4    
-#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.2            
-#>  [94] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
-#>  [97] checkmate_2.3.4        mgcv_1.9-3             xfun_0.57             
-#> [100] zoo_1.8-15             pkgconfig_2.0.3
+#>   [1] Rdpack_2.6.6           DBI_1.3.0              mnormt_2.1.2          
+#>   [4] gridExtra_2.3          inline_0.3.21          sandwich_3.1-1        
+#>   [7] rlang_1.3.0            magrittr_2.0.5         multcomp_1.4-29       
+#>  [10] otel_0.2.0             ggridges_0.5.7         matrixStats_1.5.0     
+#>  [13] e1071_1.7-17           compiler_4.5.2         mgcv_1.9-3            
+#>  [16] loo_2.9.0              callr_3.8.0            vctrs_0.7.3           
+#>  [19] reshape2_1.4.5         stringr_1.6.0          pkgconfig_2.0.3       
+#>  [22] backports_1.5.1        labeling_0.4.3         effectsize_1.0.2      
+#>  [25] nloptr_2.2.1           MatrixModels_0.5-4     INLA_25.10.19         
+#>  [28] xfun_0.57              jsonlite_2.0.0         parallel_4.5.2        
+#>  [31] R6_2.6.1               stringi_1.8.7          RColorBrewer_1.1-3    
+#>  [34] StanHeaders_2.32.10    parallelly_1.47.0      boot_1.3-32           
+#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.2            
+#>  [40] rstan_2.32.7           knitr_1.51             zoo_1.8-15            
+#>  [43] parameters_0.28.3      Matrix_1.7-4           splines_4.5.2         
+#>  [46] tidyselect_1.2.1       dichromat_2.0-0.1      abind_1.4-8           
+#>  [49] agridat_1.26           codetools_0.2-20       curl_7.0.0            
+#>  [52] processx_3.9.0         listenv_0.10.1         pkgbuild_1.4.8        
+#>  [55] lattice_0.22-7         tibble_3.3.1           plyr_1.8.9            
+#>  [58] withr_3.0.3            bridgesampling_1.2-1   bayestestR_0.17.0     
+#>  [61] S7_0.2.2               posterior_1.7.1        coda_0.19-4.1         
+#>  [64] evaluate_1.0.5         marginaleffects_0.32.0 future_1.70.0         
+#>  [67] survival_3.8-3         sf_1.1-0               units_1.0-1           
+#>  [70] proxy_0.4-29           RcppParallel_5.1.11-2  pillar_1.11.1         
+#>  [73] tensorA_0.36.2.1       KernSmooth_2.23-26     checkmate_2.3.4       
+#>  [76] stats4_4.5.2           reformulas_0.4.4       insight_1.4.6         
+#>  [79] sn_2.1.3               distributional_0.8.1   generics_0.1.4        
+#>  [82] rstantools_2.6.0       scales_1.4.0           minqa_1.2.8           
+#>  [85] globals_0.19.1         xtable_1.8-8           class_7.3-23          
+#>  [88] glue_1.8.1             tools_4.5.2            data.table_1.18.2.1   
+#>  [91] lme4_2.0-1             mvtnorm_1.3-6          grid_4.5.2            
+#>  [94] rbibutils_2.4.1        QuickJSR_1.9.0         datawizard_1.3.0      
+#>  [97] colorspace_2.1-2       nlme_3.1-168           cli_3.6.6             
+#> [100] viridisLite_0.4.3      fmesher_0.7.0          Brobdingnag_1.2-9     
+#> [103] dplyr_1.2.1            V8_8.0.1               gtable_0.3.6          
+#> [106] digest_0.6.39          classInt_0.4-11        TH.data_1.1-5         
+#> [109] brms_2.23.0            farver_2.1.2           lifecycle_1.0.5       
+#> [112] MASS_7.3-65
 ```
 
 # References
