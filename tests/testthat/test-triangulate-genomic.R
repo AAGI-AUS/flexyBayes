@@ -123,7 +123,10 @@ test_that("triangulate_genomic() agrees across brms and INLA GBLUP fits", {
   fit_brms <- flexybayes(
     y ~ 1, random = ~ vm(geno, Gmat), data = dat,
     known_matrices = list(Gmat = G), backend = "brms",
-    n_samples = 600L, warmup = 600L, chains = 2L,
+    # Quantitative assertion (heritability agreement), so the budget is
+    # raised rather than the ESS warning muffled: 600 draws emitted a
+    # bulk-ESS warning in the 2026-08-27 gates run.
+    n_samples = 1500L, warmup = 1000L, chains = 2L,
     verbose = FALSE, mcmc_verbose = FALSE
   )
   fit_inla <- flexybayes(
