@@ -310,7 +310,7 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # outside {"auto", "inla", "brms"} -- including the withdrawn engine's
   # name -- refuses by this code rather than via match.arg()) (121 - 11 +
   # 2 = 112).
-  expect_equal(length(entries), 112L)
+  expect_equal(length(entries), 114L)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)

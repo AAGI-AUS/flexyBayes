@@ -355,23 +355,54 @@ augment.flexybayes <- function(x, data = NULL, ...) {
   out
 }
 
-# ---- INLA: glance() / augment() not available (tidy() only) ------------
+# ---- INLA: glance() returns the one-row shape with NA sampler fields;
+#            augment() is not available (tidy() only) --------------------
 # An INLA fit inherits "flexybayes" (the class graph was aligned at
-# 0.9.0), so the parent methods below are reachable on it. They cannot
-# answer from an INLA fit's slots -- glance() reports sampler diagnostics
-# and augment() needs the per-row model frame the Laplace fit does not
-# keep -- so the INLA methods refuse by name and point at what does work,
-# rather than letting the parent produce an empty or misleading result.
-# They also make methods("glance") / methods("augment") list INLA.
+# 0.9.0), so the parent methods below are reachable on it.
+#
+# glance() -- D15 / WP-D (found by WP-G2's stress run). Before this fix,
+# glance.flexybayes_inla() hard-refused, and calling the PARENT
+# glance.flexybayes() directly (bypassing S3 dispatch, as a diagnostic
+# probe would) crashed with "arguments imply differing number of rows:
+# 1, 0": that method reads model_info$n_params (only brms's model_info
+# carries this key; INLA's carries n_fixed/n_random/n_hyper instead) and
+# call_info$chains / call_info$n_samples (present as keys but NULL on an
+# INLA fit, which never receives sampler arguments), both NULL feeding
+# data.frame(). logLik.flexybayes_inla()'s own roxygen already says its
+# job is to let "downstream summaries (for example glance()) degrade
+# gracefully instead of erroring" -- the refusal below contradicted that
+# stated intent. Reuses exactly that method's df/nobs attributes (the
+# fixed-effect coefficient count; INLA's random effects are latent, not
+# free parameters, so they are not added in) so there is one definition
+# of "how many parameters" across logLik() and glance(), not two.
+# Sampler-specific columns (chains, samples, max_rhat, min_ess) are
+# genuinely inapplicable to a deterministic Laplace fit and are NA, not
+# guessed at -- the standard tidier convention (report what applies,
+# NA the rest) rather than a refusal.
+#
+# augment() genuinely has no INLA-side answer (no per-row model frame
+# retained the way a data.frame-shaped .fitted/.resid table needs), so
+# it keeps refusing by name and pointing at what does work. This also
+# makes methods("augment") list INLA.
 
 #' @rdname glance.flexybayes
 #' @export
 glance.flexybayes_inla <- function(x, ...) {
-  stop(
-    "glance() is not available for INLA fits (`flexybayes_inla`). ",
-    "Use tidy() for a coefficient-level summary, or summary() / ",
-    "fb_structured_cov() for variance components.",
-    call. = FALSE
+  mi <- x$extras$model_info %||% list()
+  ll <- suppressMessages(stats::logLik(x))
+
+  data.frame(
+    nobs = mi$n_obs %||% attr(ll, "nobs") %||% NA_integer_,
+    npar = attr(ll, "df") %||% NA_integer_,
+    logLik = as.numeric(ll),
+    family = mi$family %||% NA_character_,
+    link = mi$link %||% NA_character_,
+    chains = NA_integer_,
+    samples = NA_integer_,
+    max_rhat = NA_real_,
+    min_ess = NA_real_,
+    run_time = round(x$extras$run_time %||% NA_real_, 1L),
+    stringsAsFactors = FALSE
   )
 }
 

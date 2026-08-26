@@ -602,7 +602,7 @@ This is what the protocol is for.
   -- not 1.4 or 0.7, which would be a difference of opinion, but a
   number no approximation error explains.
 - **Step 4, resolve.** With eighteen groups the prior does real work
-  (the *priors and regularisation* vignette shows how much). Supplying a
+  (the *default priors* vignette shows how much). Supplying a
   penalised-complexity prior on the SD, or reading the brms fit for this
   component, are both defensible. Averaging the two is not.
 

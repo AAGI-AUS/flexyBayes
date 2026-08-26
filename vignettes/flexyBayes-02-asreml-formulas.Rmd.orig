@@ -605,6 +605,21 @@ plots as design cells so a trial with missing plots is still fittable.
 The *spatio-temporal* vignette demonstrates all of this, including the
 four recovered hyperparameters against a known simulation truth.
 
+A single trial is one field realisation. Naming a grouping factor before
+the field extends the same term to several trials at once, on INLA:
+
+| Term | Semantics | Status |
+|---|---|---|
+| `at(trial):ar1(row):ar1(col)` | one field realisation per level of `trial`, row correlation / column correlation / field SD **shared across every level** | fits (INLA) |
+| `at(trial, level):ar1(row):ar1(col)` | a single conditioned level, or (the same gap read the other way) per-trial hyperparameters | refused by name |
+
+Sharing the hyperparameters is not a shortcut -- it is what makes the
+field identifiable at all with a handful of trials, each too small on
+its own to pin down a row correlation, a column correlation and a field
+SD separately. brms has no lowering for either spelling. The
+*spatio-temporal* vignette demonstrates the shared-hyperparameter fit on
+three simulated trials, recovered against known values.
+
 # 9. The `weights` argument
 
 The intended meaning is the ASReml one: a non-negative weight vector
@@ -612,22 +627,58 @@ scaling the residual variance, $y_i \sim \mathcal{N}(\mu_i, \sigma_e^2 /
 w_i)$, which is useful when observations are pre-aggregated (cell means,
 weighted averages, prior counts).
 
-**It is not yet supported.** The argument is parsed and recorded in the
-model representation, but neither active emitter consumes it, so a
-non-constant weight vector is refused rather than fitted:
+| Term | Semantics | Status |
+|---|---|---|
+| `weights = w` (Gaussian, identity link) | precision weighting, $Var(y_i) = \sigma^2 / w_i$ | fits (INLA, brms) |
+| `weights = w` (any other family, or a non-identity link on Gaussian) | ambiguous with frequency / likelihood-power / trials / exposure weighting | refused by name |
 
-```r
-flexybayes(fixed = ..., data = ..., weights = w_i, ...)
-#> Error: `weights` are not yet supported by the active backends
+Gaussian weighted fits pass for the Gaussian family on an identity
+link, on both engines, and are checked against
+`lme4::lmer(weights=)` on a shared simulated fixture. Any other family,
+or a non-identity link on Gaussian, refuses by name
+(`weights_requires_gaussian`) rather than returning the unweighted
+posterior under a weighted call -- the word covers several distinct
+models (inverse-residual-variance, frequency, likelihood-power, trials,
+exposure) that cannot share one argument without saying which is meant,
+and only the first is honoured so far. `aggregate = TRUE` alongside
+weights also refuses by name (`weights_not_aggregatable`): the
+aggregated route's closed-form sufficient statistics do not carry a
+per-observation weight through the compression.
+
+```{r weights-gaussian, eval = inla_ok}
+w <- sample(1:5, nrow(dat), replace = TRUE)   # e.g. replicates behind each cell mean
+fit_w <- flexybayes(
+  fixed   = yield ~ env,
+  random  = ~ geno,
+  data    = dat,
+  weights = w,
+  backend = "inla",
+  verbose = FALSE
+)
+fit_w
 ```
 
-The refusal is deliberate. Both backends previously generated identical
-code with and without weights, so a weighted call returned the
-unweighted posterior with nothing to indicate it. The word also covers
-several distinct models -- inverse-residual-variance, frequency,
-likelihood-power, trials, exposure -- which cannot share one argument
-without saying which is meant, so each mapping is being implemented and
-validated against an analytic oracle before the argument is honoured.
+The Gaussian fit runs as an ordinary precision-weighted model: rows
+with a larger weight pull the fit harder, in the same sense as
+`asreml(..., weights = w)` or `lme4::lmer(..., weights = w)`. Asking
+for the same weight vector on a non-Gaussian family refuses rather
+than silently ignoring it:
+
+```{r weights-non-gaussian-refuse, eval = inla_ok}
+refused <- tryCatch(
+  flexybayes(
+    fixed   = count_y ~ env,
+    random  = ~ geno,
+    data    = dat,
+    weights = w,
+    family  = "poisson",
+    backend = "inla",
+    verbose = FALSE
+  ),
+  error = function(e) e
+)
+cat("Refused:", conditionMessage(refused), "\n")
+```
 
 # 10. The `family` and `link` arguments
 

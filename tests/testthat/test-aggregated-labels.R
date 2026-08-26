@@ -100,3 +100,46 @@ test_that("a Poisson aggregated fit prints aggregated-poisson", {
     "[flexyBayes / aggregated-poisson]", print_out, fixed = TRUE
   )))
 })
+
+test_that("print on a flexybayes_stream() fit names the backend and the aggregated path (D10)", {
+  # Before this fix, emit_gaussian_aggregated()/emit_count_aggregated()
+  # left $exactness unset and $extras$backend_decision NULL on the
+  # streamed route (only .dispatch_backend()'s post-emit step, which
+  # flexybayes_stream() bypasses, populated them on the ordinary
+  # aggregate = TRUE route) -- the banner read "backend:    (path = )"
+  # and "Engine:         (unknown engine)" instead of naming INLA and
+  # the aggregated path. Reproduces the bare-print evidence recorded in
+  # logs/flexyBayes-11-big-data-streaming.copy_paste.log.
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  set.seed(20260826L)
+  n <- 1000L
+  d <- data.frame(
+    f = factor(sample(paste0("f", seq_len(5L)), n, replace = TRUE)),
+    g = factor(sample(paste0("g", seq_len(20L)), n, replace = TRUE))
+  )
+  d$y <- stats::rnorm(n)
+  fit <- suppressMessages(flexybayes_stream(
+    y ~ f,
+    random = ~g,
+    source = d,
+    backend = "inla",
+    verbose = FALSE
+  ))
+  expect_s3_class(fit, "flexybayes_aggregated")
+  expect_identical(fit$exactness, "aggregated_exact")
+  expect_identical(fit$extras$backend_decision$backend, "inla")
+  expect_identical(fit$extras$backend_decision$path, "aggregated_gaussian")
+
+  print_out <- utils::capture.output(print(fit))
+  expect_true(any(grepl(
+    "backend:    inla (path = aggregated_gaussian )", print_out, fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "Engine:         INLA Laplace", print_out, fixed = TRUE
+  )))
+  expect_true(any(grepl(
+    "Representation: aggregated_exact", print_out, fixed = TRUE
+  )))
+  expect_false(any(grepl("(unknown engine)", print_out, fixed = TRUE)))
+})

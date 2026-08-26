@@ -96,6 +96,23 @@
 #'   one-screen surface, `summary.fb_plan()` for the verbose dump, and
 #'   `as.data.frame.fb_plan()` for the programmatic-consumer shape.
 #'
+#' @examples
+#' # Planning never fires the backend, so this runs without INLA or
+#' # brms installed.
+#' set.seed(1)
+#' d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'
+#' # brms-style grammar.
+#' p1 <- fb_plan(y ~ x + (1 | g), data = d)
+#' print(p1)
+#'
+#' # ASReml-style grammar plans the identical model (FS-22 parity).
+#' p2 <- fb_plan(y ~ x, random = ~ g, data = d)
+#' identical(p1$backend_chosen, p2$backend_chosen)
+#'
+#' # The representation table and the memory estimate are both on the
+#' # plan object without ever fitting.
+#' as.data.frame(p1)[, c("backend_chosen", "gate_outcome")]
 #' @export
 fb_plan <- function(
   formula,

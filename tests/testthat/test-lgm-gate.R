@@ -211,6 +211,29 @@ test_that(".lgm_count_hyperparams() handles us_gxe via n*(n+1)/2", {
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb), 11L)
 })
 
+test_that(".inla_random_term_class_label() GxE labels use plain ASCII, not U+00D7", {
+  # FB-16 (D3): the multiplication sign renders as U+FFFD under xelatex +
+  # lmodern when these labels reach vignette/console output, and is
+  # forbidden house style. Assert the literal ASCII spelling directly, not
+  # just its absence, so a re-introduced Unicode glyph is caught by value.
+  expect_identical(
+    flexyBayes:::.inla_random_term_class_label("fa_gxe"), "factor-analytic GxE"
+  )
+  expect_identical(
+    flexyBayes:::.inla_random_term_class_label("us_gxe"), "unstructured GxE"
+  )
+  expect_identical(
+    flexyBayes:::.inla_random_term_class_label("corh_gxe"), "equicorrelated GxE"
+  )
+  for (lbl in c(
+    flexyBayes:::.inla_random_term_class_label("fa_gxe"),
+    flexyBayes:::.inla_random_term_class_label("us_gxe"),
+    flexyBayes:::.inla_random_term_class_label("corh_gxe")
+  )) {
+    expect_false(grepl("×", lbl, fixed = TRUE))
+  }
+})
+
 # ---------------------------------------------------------------- #
 # Checks 7-9 — INLA emit-support allowlists (ADR 0017)             #
 # ---------------------------------------------------------------- #
@@ -565,4 +588,54 @@ test_that("a second gate-refusal route is typed and names its own rule", {
   expect_identical(err$rule_id, "residual_term_type_inla")
   # The per-rule class lets one rule be caught without catching the rest.
   expect_s3_class(err, "flexybayes_lgm_residual_term_type_inla")
+})
+
+# ---------------------------------------------------------------- #
+# D11 / WP-D: a vignette("...") reference in R/ must exist          #
+# ---------------------------------------------------------------- #
+# lgm_gate.R's own refusal-help banner used to name
+# "flexyBayes-11-dispatch-and-refusals" after the 0.9.3 renumber moved
+# that page to -10-; the string was stale and nothing caught it. This
+# test scans every R/ source for a flexyBayes-<NN>-<slug> filename
+# token and asserts each one names a real vignettes/*.Rmd.orig file, so
+# a future renumber that misses one message fails CI instead of
+# shipping a broken vignette("...") pointer.
+
+.vignette_source_dir_d11 <- function() {
+  cand <- testthat::test_path("..", "..", "vignettes")
+  if (dir.exists(cand)) {
+    return(normalizePath(cand))
+  }
+  NULL
+}
+
+test_that("every flexyBayes-<NN>-<slug> filename named in R/ exists under vignettes/", {
+  vig_dir <- .vignette_source_dir_d11()
+  skip_if(is.null(vig_dir), "vignette sources not present in this layout")
+
+  r_dir <- testthat::test_path("..", "..", "R")
+  skip_if(!dir.exists(r_dir), "R/ sources not present in this layout")
+  r_files <- list.files(r_dir, pattern = "\\.R$", full.names = TRUE)
+  expect_gt(length(r_files), 0L)
+
+  real_pages <- sub(
+    "\\.Rmd\\.orig$", "",
+    list.files(vig_dir, pattern = "^flexyBayes-[0-9]{2}-.*\\.Rmd\\.orig$")
+  )
+  expect_gt(length(real_pages), 0L)
+
+  referenced <- character(0)
+  for (f in r_files) {
+    txt <- paste(readLines(f, warn = FALSE), collapse = "\n")
+    hits <- regmatches(
+      txt,
+      gregexpr("flexyBayes-[0-9]{2}-[a-z-]+[a-z]", txt)
+    )[[1L]]
+    referenced <- c(referenced, hits)
+  }
+  referenced <- unique(referenced)
+  expect_gt(length(referenced), 0L) # the gate banner itself, at minimum
+
+  missing <- setdiff(referenced, real_pages)
+  expect_identical(missing, character(0))
 })

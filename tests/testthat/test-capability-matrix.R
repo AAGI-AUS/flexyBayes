@@ -604,6 +604,41 @@ test_that("the separable AR1 field fits on INLA and refuses on brms", {
   }
 })
 
+test_that("the per-trial separable AR1 field fits on INLA and refuses on brms", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  r <- .cap_row("Per-trial separable AR1 field")
+  g <- .cap_grid()
+  g <- rbind(
+    cbind(g, trial = factor("A")),
+    cbind(g, trial = factor("B"))
+  )
+  .cap_expect(
+    .cap_emit(
+      "inla", y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = g
+    ),
+    r$inla,
+    "INLA"
+  )
+  .cap_expect(
+    .cap_emit(
+      "brms", y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = g
+    ),
+    r$brms,
+    "brms",
+    condition_class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
+  )
+  # The row's note says the level-conditioned / per-level-hyperparameter
+  # spelling refuses by name. Pin it directly, not just via the row.
+  level_conditioned <- .cap_emit(
+    "inla", y ~ 1, random = ~ at(trial, "A"):ar1(row):ar1(col), data = g
+  )
+  expect_true(inherits(
+    level_conditioned,
+    "flexybayes_refusal_at_field_per_level_hyper_not_representable"
+  ))
+})
+
 test_that("a univariate P-spline fits on INLA and refuses on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
@@ -700,6 +735,7 @@ test_that("every capability row carries a behaviour anchor here", {
     "Multi-trait covariance",
     "Known-covariance genomic / pedigree random effect",
     "Separable AR1 spatial field",
+    "Per-trial separable AR1 field",
     "Univariate P-spline",
     "Observation weights (Gaussian, identity link)",
     "Exact sufficient-statistic aggregation"

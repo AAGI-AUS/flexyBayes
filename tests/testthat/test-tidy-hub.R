@@ -157,22 +157,43 @@ test_that("tidy.flexybayes_inla on an empty fixed-summary returns 0 rows", {
   expect_true(all(.canonical_tidy_cols %in% names(td)))
 })
 
-test_that("glance() / augment() on an INLA fit refuse with an informative error", {
-  # INLA fits (`flexybayes_inla`) support tidy() but not glance()/augment().
-  # The methods raise an actionable error (pointing to tidy() / summary())
-  # rather than dispatching to the bare method's implementation, and they
-  # appear in methods() so dispatch is explicit rather than a bare "no
-  # applicable method".
-  expect_true(
-    "glance.flexybayes_inla" %in% as.character(utils::methods("glance"))
-  )
+test_that("augment() on an INLA fit refuses with an informative error", {
+  # INLA fits (`flexybayes_inla`) support tidy() but not augment(): there
+  # is no per-row model frame retained the way a data.frame-shaped
+  # .fitted/.resid table needs. The method raises an actionable error
+  # (pointing to tidy() / predict()) rather than dispatching to the bare
+  # method's implementation, and appears in methods() so dispatch is
+  # explicit rather than a bare "no applicable method".
   expect_true(
     "augment.flexybayes_inla" %in% as.character(utils::methods("augment"))
   )
 
   shell <- structure(list(), class = c("flexybayes_inla", "list"))
-  expect_error(generics::glance(shell), "not available for INLA")
   expect_error(generics::augment(shell), "not available for INLA")
+})
+
+test_that("glance() on an INLA fit returns the one-row shape, not a refusal (D15)", {
+  # D15 / WP-D: glance.flexybayes_inla() used to hard-refuse, which
+  # contradicted logLik.flexybayes_inla()'s own stated purpose ("lets
+  # downstream summaries (for example glance()) degrade gracefully").
+  # It now returns the same 10-column shape glance.flexybayes() does,
+  # with sampler-specific columns NA rather than guessed at -- even on
+  # a bare shell with none of the usual slots populated.
+  expect_true(
+    "glance.flexybayes_inla" %in% as.character(utils::methods("glance"))
+  )
+
+  shell <- structure(list(), class = c("flexybayes_inla", "list"))
+  g <- suppressMessages(generics::glance(shell))
+  expect_s3_class(g, "data.frame")
+  expect_identical(nrow(g), 1L)
+  expect_named(
+    g,
+    c("nobs", "npar", "logLik", "family", "link", "chains", "samples",
+      "max_rhat", "min_ess", "run_time")
+  )
+  expect_true(is.na(g$nobs))
+  expect_true(is.na(g$logLik))
 })
 
 # ---------------------------------------------------------------- #

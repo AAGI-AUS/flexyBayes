@@ -412,7 +412,7 @@ correction.
 
 **Group counts dominate the prior.** With fewer than ~20 levels of a
 random-effect factor, the prior on the group-level standard
-deviation does meaningful work. The *priors and regularisation*
+deviation does meaningful work. The *default priors*
 vignette walks through how to set this prior deliberately and how
 to assess sensitivity.
 

@@ -90,6 +90,65 @@ the time and memory envelope is unchanged. That is the point of the
 confirmation -- not that the release is faster, but that the route the
 original study measured is still the route the release takes.
 
+## The 2026-08-22 ceilings study: a realistic multi-term MET design
+
+The studies above use a single random intercept (`random = ~ geno`) -- close
+to the cheapest latent field INLA can be asked to carry. A real
+multi-environment trial (MET) carries several crossed and nested random
+terms at once, and that changes where the *per-row* path stops by more than
+an order of magnitude. This study measures that, on
+`agridat::barrero.maize` grown by appending copies of the trial network with
+new years -- new environments and new genotype-by-year and
+genotype-by-location-by-year levels; the genotype list itself does not grow
+-- fitting the reduced, one-residual-variance variant of the Barrero Table 6
+model:
+
+```
+fixed:    yield ~ loc + yearf + loc:yearf
+random:   ~ gen + rep:loc:yearf + gen:yearf + gen:loc + gen:loc:yearf
+residual: ~ units
+```
+
+on INLA against ASReml, each fit in its own capped subprocess, same 32 GB /
+10-core Apple silicon machine as above. Two rungs were run and both are
+logged in this workspace as raw console output, not extrapolated:
+
+| rung | N | random effects | flexyBayes / INLA | ASReml |
+|---|---:|---:|---|---|
+| k = 64 | 911,808 | 322,598 | **preflight refused** before any fit ran -- the design exceeds the memory ceiling (`run_scaling_k64.log`) | subprocess crashed (`could not start R ... has crashed or was killed`) |
+| k = 128 | 1,823,616 | 1,031,084 | ran past preflight, then the INLA subprocess **segmentation-faulted after 2,494.4 s** (about 41.6 minutes) -- `"The inla-program exited with an error"`, a raw, untyped death (`run_inla_k128.log`) | not run at this rung |
+
+Neither rung is a completed fit on either engine. Refusing the 911,808-row
+rung outright is this package's own contract working as intended -- nothing
+ran, nothing was wasted -- while the 1,823,616-row rung passes preflight and
+then dies mid-solve after most of an hour, which is exactly the raw-engine-
+death class the C2 fix (`inla_program_failed`) now catches, so a future run
+at this size gets a typed refusal in seconds rather than 41 minutes of
+silence followed by an opaque INLA string. **The flexyBayes/INLA ceiling on
+this design family is therefore bracketed between 911,808 and 1,823,616
+rows, and has not been measured or bisected**: there is no logged rung in
+this range, on this design, where the fit actually completes.
+
+A 911,808-row / 515,756-random-effect / 340.9-second flexyBayes *success* is
+quoted in `SCALE_STRATEGY_2026-08-22.md` and `EXEC_SPEC_v0.9.3_scale_2026-08-23.md`
+(workspace planning documents, not part of the package) and was carried from
+there into an earlier draft of this record's CSV as a `success` row. It does
+not check out against the run this workspace actually logged at that row
+count: `run_scaling_k64.log` and
+`dir_outcomes_barrero_scaling_22Aug2026/tab_scaling_ladder_k64.csv` both
+record a **preflight refusal** with **322,598** random effects, not 515,756
+-- a figure this write-up reproduced independently by re-running the ladder
+script's own level-counting logic and matching it exactly. No artefact
+anywhere in this workspace carries a 515,756-effect, 340.9-second, success
+record for 911,808 rows. The CSV beside this file has been corrected rather
+than carrying the unverified number forward a fourth time.
+
+ASReml's own boundary on this same design family -- 58.4 s at 683,856 rows,
+70.7 s at 797,832 rows, then insufficient workspace from 854,820 rows -- is
+`SCALE_STRATEGY_2026-08-22.md` §1's own figure and was not independently
+re-run in this session; it is at least consistent in direction with the
+crash this study observed for ASReml at 911,808 rows.
+
 ## Where the claim stops
 
 1. **Model scope.** The exactness holds for gaussian-identity,

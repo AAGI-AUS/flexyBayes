@@ -38,6 +38,44 @@ the singular values of the full smooth basis.
 A fit carrying no recognised approximation (an exact fit) is
 refused rather than returned as a vacuous pass.
 }
+\examples{
+# An exact fit (no registered approximation) refuses rather than
+# returning a vacuous pass. \donttest{} + an INLA guard: this needs
+# a live fit and does not fire on a machine without INLA installed.
+\donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                     verbose = FALSE)
+  tryCatch(validate_approximation(fit), error = function(e) {
+    message(conditionMessage(e)) # "carries no recognised approximation"
+  })
+}
+}
+
+# The low_rank_smooth verdict shape, on a plan-only object carrying
+# the scheme (no active engine reaches low_rank_smooth on the
+# current backends -- it was built for a since-withdrawn engine and
+# now refuses at dispatch; see R/emit_smooth_low_rank.R). This part
+# needs no engine and always runs.
+demo_fit <- structure(
+  list(
+    exactness = "approximate_low_rank_smooth",
+    extras = list(parse_info = list(approx = list(
+      x = list(
+        scheme = "low_rank_smooth", rank = 4L, k = 9L,
+        frobenius_capture = 0.995,
+        V_K = matrix(0, 9L, 4L), singular_values = rep(1, 9L)
+      )
+    )))
+  ),
+  class = c("flexybayes", "list")
+)
+v <- validate_approximation(demo_fit)
+print(v)
+v$pass
+}
 \seealso{
 \code{\link[=flexybayes]{flexybayes()}} for fitting; the approximation registry
 records each scheme's bias bound and fallback.

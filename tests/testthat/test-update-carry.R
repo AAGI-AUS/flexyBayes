@@ -285,3 +285,69 @@ test_that("a short count record still refuses by name", {
   expect_s3_class(err, "flexybayes_refusal_update_call_not_reconstructable")
   expect_match(conditionMessage(err), "known_matrices", fixed = TRUE)
 })
+
+# =============================================================================
+# D16 / WP-D (found by WP-G2's stress run): the classic unnamed
+# stats::update() replacement-formula idiom, `update(fit, . ~ . + z)`,
+# used to be silently discarded -- the override loop matches `...` to
+# the recorded argument set by NAME, and an unnamed element has no name
+# to match, so the re-fit ran with the unchanged original call and
+# nothing said so. A valid object answering a question nobody asked, not
+# a re-fit and not a refusal. Now refuses by name instead.
+# =============================================================================
+
+test_that("update() refuses the unnamed stats::update() replacement-formula idiom", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  .uc_silence()
+  fit <- suppressMessages(flexybayes(
+    y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
+  ))
+  orig_fixed <- fit$extras$call_info$fixed
+
+  err <- tryCatch(
+    stats::update(fit, . ~ . + g),
+    condition = function(e) e
+  )
+  expect_s3_class(
+    err, "flexybayes_refusal_update_unnamed_argument_not_supported"
+  )
+  expect_s3_class(err, "flexybayes_refusal")
+  expect_match(conditionMessage(err), "update(fit, . ~ . + z)", fixed = TRUE)
+  expect_match(conditionMessage(err), "fixed = ", fixed = TRUE)
+
+  # The pre-fix behaviour: re-run the identical call directly (what the
+  # silently-discarded path used to do) and confirm the recorded formula
+  # is unchanged -- so the fix is a refusal, not a null re-fit either.
+  identity_refit <- suppressMessages(stats::update(fit))
+  expect_identical(identity_refit$extras$call_info$fixed, orig_fixed)
+})
+
+test_that("update() with a mix of one unnamed and one named argument still refuses", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  .uc_silence()
+  fit <- suppressMessages(flexybayes(
+    y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
+  ))
+  err <- tryCatch(
+    stats::update(fit, . ~ . + g, verbose = FALSE),
+    condition = function(e) e
+  )
+  expect_s3_class(
+    err, "flexybayes_refusal_update_unnamed_argument_not_supported"
+  )
+})
+
+test_that("update() with only named arguments is unaffected by the D16 guard", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  .uc_silence()
+  fit <- suppressMessages(flexybayes(
+    y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
+  ))
+  refit <- suppressMessages(stats::update(fit, fixed = y ~ f + h))
+  expect_s3_class(refit, "flexybayes")
+  expect_identical(refit$extras$call_info$fixed, y ~ f + h)
+  expect_true(any(grepl("^h", summary(refit)$fixed$term)))
+})

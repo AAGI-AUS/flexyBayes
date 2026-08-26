@@ -536,6 +536,72 @@
   ))
 }
 
+# .refuse_non_binary_binomial_response() --- the binomial-response guard.
+#
+# D14 / WP-D. flexybayes() / fb_inla() / fb_brms() (the main,
+# non-streaming entry) have no cbind(success, failure) or trials =
+# spelling -- that exists only on flexybayes_stream() -- so
+# family = "binomial" on this entry requires a numeric 0/1 response.
+# Left unguarded, a response outside {0, 1} reached the engine on every
+# route and failed there raw: INLA's own subprocess dies ("Binomial
+# data ... is void"), which C2's wrapper then reports as
+# inla_program_failed with a design-memory diagnosis that has nothing to
+# do with the actual cause; brms raises an untyped condition; the
+# aggregated route (R/dispatch.R's own .maybe_aggregate_gaussian() call
+# site) already had an ad hoc untyped stop() for the identical fact.
+# One typed refusal at the dispatch choke point every route passes
+# through replaces all three.
+.refuse_non_binary_binomial_response <- function(fb, data) {
+  if (!identical(fb$family %||% "", "binomial")) {
+    return(invisible(NULL))
+  }
+  col <- fb$response
+  if (is.null(col) || !nzchar(col) || is.null(data[[col]])) {
+    return(invisible(NULL)) # nothing to check against
+  }
+  yv <- data[[col]]
+  if (is.numeric(yv) && all(yv %in% c(0, 1) | is.na(yv))) {
+    return(invisible(NULL))
+  }
+
+  offending <- if (is.numeric(yv)) {
+    sort(unique(yv[!is.na(yv) & !(yv %in% c(0, 1))]))
+  } else {
+    unique(yv)
+  }
+  values_shown <- paste(utils::head(as.character(offending), 6L),
+    collapse = ", "
+  )
+  more_note <- if (length(offending) > 6L) {
+    paste0(", and ", length(offending) - 6L, " more")
+  } else {
+    ""
+  }
+  what <- if (is.numeric(yv)) {
+    paste0("the value(s) ", values_shown, more_note, " outside {0, 1}")
+  } else {
+    paste0(
+      "class `", class(yv)[[1L]], "`, not a numeric 0/1 vector ",
+      "(value(s) ", values_shown, more_note, ")"
+    )
+  }
+
+  stop(.fb_refusal_condition(
+    reason_code = "binomial_response_not_binary",
+    message = paste0(
+      "family = \"binomial\" requires a numeric 0/1 response on this ",
+      "entry point. Column `", col, "` carries ", what, ". There is no ",
+      "cbind(success, failure) or trials = spelling on flexybayes() / ",
+      "fb_inla() / fb_brms(); pass pre-aggregated trial counts through ",
+      "flexybayes_stream(..., trials = ...) instead, or recode `", col,
+      "` to a numeric 0/1 vector for a per-row binary outcome."
+    ),
+    family_class = "flexybayes_binomial_response_not_binary_refusal",
+    column = col,
+    offending_values = offending
+  ))
+}
+
 # .refuse_unrepresentable_structures() --- the named-structure guard.
 #
 # Some structures parse into the IR so the formula catalogue can describe
@@ -813,6 +879,13 @@
   # by name here, in one vocabulary, rather than as an lgm_gate() print on
   # one engine and an untyped stop() on the other.
   .refuse_unrepresentable_structures(fb)
+
+  # D14 / WP-D: a family = "binomial" response outside {0, 1} on this
+  # (non-streaming) entry used to reach the engine unrefused on every
+  # route -- an INLA subprocess death, an untyped brms condition, and an
+  # ad hoc untyped stop() on the aggregated route (now removed; see
+  # below). One typed refusal here, before any route is attempted.
+  .refuse_non_binary_binomial_response(fb, data)
 
   # Factor-dictionary persistence. Build a metadata-only
   # <fb_dataset> descriptor at dispatch time so every exit path can
@@ -1713,21 +1786,11 @@
   } else {
     # Exact aggregation for the count families requires unit-trial
     # binomial (a 0/1 numeric response); a non-Bernoulli binomial needs
-    # per-row trial counts the cell sums cannot recover.
-    if (identical(fb$family, "binomial")) {
-      yv <- data[[fb$response]]
-      if (!(is.numeric(yv) && all(yv %in% c(0, 1)))) {
-        if (isTRUE(aggregate)) {
-          stop(
-            "`aggregate = TRUE` refused: a binomial response that is ",
-            "not a 0/1 numeric vector needs per-row trial counts the ",
-            "cell sums cannot recover. Pass aggregate = FALSE.",
-            call. = FALSE
-          )
-        }
-        return(NULL)
-      }
-    }
+    # per-row trial counts the cell sums cannot recover. This used to be
+    # checked here with an untyped stop() -- now dead code, because
+    # .refuse_non_binary_binomial_response() (D14 / WP-D) already refused
+    # unconditionally at the top of .dispatch_backend(), the only caller
+    # of .maybe_aggregate_gaussian(), before this branch is ever reached.
     src <- .fb_stream_source(data, chunk_rows = max(nrow(data), 1L))
     fb_aggregated <- .fb_stream_aggregate(
       fb,
@@ -1959,6 +2022,23 @@
 #'       `"stage5a_v1"`. The audit-anchor for reproducibility -- a
 #'       policy change bumps this string.}
 #'   }
+#' @examples
+#' # backend_decision() reads a slot recorded on an already-fitted
+#' # object, so (unlike fb_plan()) an engine has to run first. Wrapped
+#' # in \donttest{} and guarded on INLA so this does not fire on a
+#' # machine without it.
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                      verbose = FALSE)
+#'   bd <- backend_decision(fit)
+#'   bd$backend   # "inla"
+#'   bd$path      # the dispatch path token
+#'   bd$reason    # why this backend was chosen
+#' }
+#' }
 #' @export
 backend_decision <- function(fit) {
   if (!inherits(fit, "flexybayes") && !inherits(fit, "flexybayes_inla")) {

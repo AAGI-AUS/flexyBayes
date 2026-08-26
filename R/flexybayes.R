@@ -15,8 +15,21 @@
 #'   left `NULL`). The grammar is detected from the call shape; use
 #'   `syntax` to force it.
 #' @param random One-sided formula: `~ random_terms` using ASReml syntax.
-#'   Supports `vm()`, `at()`, `diag()`, `idh()`, `us()`, `fa()`, `ar1()`,
-#'   `spl()`, `ped()`, `dsum()`, `id()`, and nested colon terms.
+#'   "Parsed" and "fitted" are not the same claim, so the term catalogue is
+#'   two lists.
+#'
+#'   **Parsed and fitted** (emitted by at least one active engine): `vm()`,
+#'   `at()`, `diag()`, `idh()`, `us()`, `ar1()`, `spl()`, `ped()`, `dsum()`,
+#'   `id()`, and nested colon terms, including the per-trial separable AR1
+#'   field described under "Spatial and temporal autoregressive fields"
+#'   below.
+#'
+#'   **Parsed and refused by name** (recognised syntax, no active engine has
+#'   a lowering for it): `fa()`, the factor-analytic genotype-by-environment
+#'   covariance, is refused on both engines (`fa_not_representable`) -- it
+#'   parses into the formula catalogue and stops there. `corh(f):g` and
+#'   `at(f, level):g` are likewise real syntax with no active emit rather
+#'   than unsupported syntax; both are described in full just below.
 #'
 #'   **Heterogeneous variances.** `diag(f):g`, `idh(f):g` and `at(f):g` all fit
 #'   one variance per level of `f` with no covariance between levels -- the
@@ -57,6 +70,18 @@
 #'   the correlations a reader acts on. Neither model is wrong. They are
 #'   different models, and writing the field on the random side is what
 #'   keeps them distinguishable by name.
+#'
+#'   **Per-trial nested field.** `at(trial):ar1(row):ar1(col)`, with no
+#'   `level` argument on `at()`, fits one separable AR1 field per level of
+#'   `trial` on INLA, via the `replicate =` mechanism -- one complete grid
+#'   per trial, each with its own realised field, but the row correlation,
+#'   column correlation and field SD are **shared across every level of
+#'   `trial`**, not estimated per trial. `at(trial, level):ar1(row):ar1(col)`
+#'   (a `level` argument) asks for either a single conditioned trial or
+#'   per-trial (unshared) hyperparameters, and both are refused
+#'   (`at_field_per_level_hyper_not_representable`): there is no lowering
+#'   for a level-conditioned field or for hyperparameters that vary by
+#'   level. brms has no lowering for this field at all and refuses.
 #' @param residual One-sided formula: `~ residual_structure`. Default `~ units`
 #'   (iid residuals). `~ dsum(~ units | env)`, and the equivalent
 #'   `~ at(env):units`, give a separate residual variance per level of `env`.

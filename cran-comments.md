@@ -23,9 +23,21 @@ unless it happened.
 
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+The check artefacts for this release are `00check_v0.9.3_inla-present.log`
+and `00check_v0.9.3_inla-absent.log` -- one run with INLA installed, one
+without, since the package behaves differently, and is tested differently,
+in each case. Both are produced at the release bake (after the work
+recorded in `WS/review/phase_reports_093/reports/`) and kept with the
+release records alongside the tarball; that is where to read the exact
+error/warning/note count for 0.9.3, rather than a number quoted here with
+no artefact behind it.
 
-The note is the CRAN incoming-feasibility note, in full:
+The note below is what the 0.9.1 and 0.9.2 check artefacts both carry, and
+is expected again for 0.9.3 because neither of the two conditions that
+produce it changed in this release: `DESCRIPTION`'s
+`Additional_repositories:` still names only the INLA repository, and its
+`URL:` field still names the not-yet-public documentation site. Reproduced
+from the 0.9.2 artefact so the shape is not asserted from memory:
 
 ```
 * checking CRAN incoming feasibility ... NOTE
@@ -90,9 +102,30 @@ None. This is a new submission.
 
 ## Vignettes
 
-The twelve vignettes ship pre-evaluated. Their sources carry live model
+The eleven vignettes ship pre-evaluated. Their sources carry live model
 fits, and those are run by the maintainer through
 `vignettes/_precompile.R`; what the tarball contains is the resulting
 static markdown, with the fitted output already in it. Building the
 vignettes at check time renders markdown and fits nothing, so the
 vignette build needs neither INLA nor a Stan toolchain.
+
+## `fb_log_posterior()`: no active producer, no oracle to skip
+
+`fb_log_posterior()` (the log-posterior producer downstream tools such as
+`proxymix` compress into a closed-form proxy) is exported but currently
+dormant: brms and INLA both abstain with a typed, informative
+`fb_c4_unavailable` condition rather than a producer (INLA's posterior is
+a deterministic Laplace/grid approximation, not a sampling log-density,
+and brms's Stan-unconstrained-scale parameter mapping is version-fragile
+-- a wrong mapping would return a plausible-but-wrong log-density
+silently, so both abstain per the package's own Independent Oracle
+Principle rather than guess). Up to and including 0.8.2, the greta
+backend was the one real producer, validated against an analytic
+conjugate log-posterior to machine precision (see `NEWS.md`, 0.8.2).
+That backend, and the conjugate-oracle test that validated it, were
+withdrawn from this release along with the rest of the greta engine
+(see `NEWS.md`) rather than carried forward unmaintained -- so there is
+presently no greta-gated code path in this package at all, and
+consequently nothing to skip on CRAN or CI: every `fb_log_posterior()`
+test in the shipped suite runs unconditionally on both active engines and
+asserts the abstention.

@@ -202,6 +202,21 @@
       anchor = "test-inla-spatial-ar1.R"
     ),
     list(
+      model_class = "Per-trial separable AR1 field",
+      spelling = "`random = ~ at(trial):ar1(row):ar1(col)`",
+      inla = "fits",
+      brms = "refuses",
+      note = "One field realisation per level of `trial`, via INLA's
+        `replicate =` mechanism, but the row correlation, column
+        correlation and field SD are shared across every level -- not
+        estimated per trial. `at(trial, level):ar1(row):ar1(col)` (a
+        level argument, asking for a single conditioned trial or for
+        per-trial hyperparameters) refuses by name
+        (`at_field_per_level_hyper_not_representable`). brms has no
+        lowering for either spelling.",
+      anchor = "test-nested-ar1-field.R"
+    ),
+    list(
       model_class = "Univariate P-spline",
       spelling = "`~ spl(x)`",
       inla = "fits",

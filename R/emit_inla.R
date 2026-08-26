@@ -171,13 +171,19 @@
   if (!all(needed %in% names(df))) {
     return(NULL)
   }
-  ok <- df$method == "per_row" &
+  done <- df$method == "per_row" &
     df$outcome == "success" &
-    !is.na(df$n) &
-    !is.na(df$random_effects)
-  if (!any(ok)) {
+    !is.na(df$n)
+  if (!any(done)) {
     return(NULL)
   }
+  # Prefer a completed fit that recorded its latent-field size; fall back to
+  # the largest completed per-row fit on record, flagging that its field
+  # size was not recorded. Since the 2026-08-26 correction of the ceilings
+  # study no completed fit on the genotype-growth ladder exists, so the
+  # fallback is what a refusal reports today (1,000,000 rows, 360 cells).
+  with_field <- done & !is.na(df$random_effects)
+  ok <- if (any(with_field)) with_field else done
   df_ok <- df[ok, , drop = FALSE]
   best <- df_ok[which.max(df_ok$n), ]
   list(

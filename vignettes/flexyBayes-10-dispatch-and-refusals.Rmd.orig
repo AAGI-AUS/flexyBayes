@@ -555,7 +555,7 @@ call -- your fit object is not silently corrupted.
 **Reading `"lgm_compatible"` as "the model is correct".** The flag
 means only that INLA's structural assumptions are not violated. It
 says nothing about whether the model fits the data or the priors are
-appropriate. The *priors and regularisation* and *cross-engine
+appropriate. The *default priors* and *cross-engine
 triangulation* vignettes cover those orthogonal concerns.
 
 **Treating a refusal as a bug.** Refusals are how the package

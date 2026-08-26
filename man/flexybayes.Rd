@@ -73,8 +73,21 @@ left \code{NULL}). The grammar is detected from the call shape; use
 \code{syntax} to force it.}
 
 \item{random}{One-sided formula: \code{~ random_terms} using ASReml syntax.
-Supports \code{vm()}, \code{at()}, \code{diag()}, \code{idh()}, \code{us()}, \code{fa()}, \code{ar1()},
-\code{spl()}, \code{ped()}, \code{dsum()}, \code{id()}, and nested colon terms.
+"Parsed" and "fitted" are not the same claim, so the term catalogue is
+two lists.
+
+\strong{Parsed and fitted} (emitted by at least one active engine): \code{vm()},
+\code{at()}, \code{diag()}, \code{idh()}, \code{us()}, \code{ar1()}, \code{spl()}, \code{ped()}, \code{dsum()},
+\code{id()}, and nested colon terms, including the per-trial separable AR1
+field described under "Spatial and temporal autoregressive fields"
+below.
+
+\strong{Parsed and refused by name} (recognised syntax, no active engine has
+a lowering for it): \code{fa()}, the factor-analytic genotype-by-environment
+covariance, is refused on both engines (\code{fa_not_representable}) -- it
+parses into the formula catalogue and stops there. \code{corh(f):g} and
+\code{at(f, level):g} are likewise real syntax with no active emit rather
+than unsupported syntax; both are described in full just below.
 
 \strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
 one variance per level of \code{f} with no covariance between levels -- the
@@ -114,7 +127,19 @@ correlated structure and is pulled towards zero by it. The gap grows
 with the share of the total variance the nugget holds, and it falls on
 the correlations a reader acts on. Neither model is wrong. They are
 different models, and writing the field on the random side is what
-keeps them distinguishable by name.}
+keeps them distinguishable by name.
+
+\strong{Per-trial nested field.} \code{at(trial):ar1(row):ar1(col)}, with no
+\code{level} argument on \code{at()}, fits one separable AR1 field per level of
+\code{trial} on INLA, via the \verb{replicate =} mechanism -- one complete grid
+per trial, each with its own realised field, but the row correlation,
+column correlation and field SD are \strong{shared across every level of
+\code{trial}}, not estimated per trial. \code{at(trial, level):ar1(row):ar1(col)}
+(a \code{level} argument) asks for either a single conditioned trial or
+per-trial (unshared) hyperparameters, and both are refused
+(\code{at_field_per_level_hyper_not_representable}): there is no lowering
+for a level-conditioned field or for hyperparameters that vary by
+level. brms has no lowering for this field at all and refuses.}
 
 \item{residual}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
 (iid residuals). \code{~ dsum(~ units | env)}, and the equivalent

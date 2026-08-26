@@ -2213,6 +2213,47 @@
     plan_field = NA_character_,
     since_version = "0.9.3"
   )
+  .register_refusal(
+    reason_code = "binomial_response_not_binary",
+    description = paste0(
+      "family = \"binomial\" on the main (non-streaming) entry requires ",
+      "the response to be a numeric vector of only 0 and 1: there is no ",
+      "cbind(success, failure) or trials = spelling on flexybayes() / ",
+      "fb_inla() / fb_brms() (that exists only on flexybayes_stream()). ",
+      "Before this refusal, a response outside {0, 1} reached the engine ",
+      "unrefused and failed there: INLA with a raw subprocess error ",
+      "('Binomial data ... is void', wrapped into inla_program_failed ",
+      "with an unrelated design-memory diagnosis), brms with an untyped ",
+      "condition ('Family ... requires responses to contain only two ",
+      "different values'), and the aggregated route with an untyped ",
+      "stop(). This refusal fires once, before any of the three, naming ",
+      "the column, the offending values, and the remedy: trials = on ",
+      "flexybayes_stream() for pre-aggregated counts, or recode to a ",
+      "0/1 numeric vector for a per-row binary outcome."
+    ),
+    message_template = "%s",
+    registered_in_adr = "WP-D D14",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
+  .register_refusal(
+    reason_code = "update_unnamed_argument_not_supported",
+    description = paste0(
+      "update() re-issues every recorded flexybayes() argument by name, ",
+      "matching an override in ... to it by name too; an unnamed ",
+      "argument -- stats::update()'s classic replacement-formula idiom, ",
+      "update(fit, . ~ . + z) -- has no name to match and was, before ",
+      "this refusal, silently discarded: the re-fit ran with the ",
+      "unchanged recorded call, a valid object answering a question ",
+      "nobody asked rather than a re-fit or a refusal. Name the slot ",
+      "instead: update(fit, fixed = y ~ x + z) (brms-style), or ",
+      "random = ~ ... / residual = ~ ... on the ASReml grammar."
+    ),
+    message_template = "%s",
+    registered_in_adr = "WP-D D16",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
   invisible(NULL)
 }
 

@@ -44,6 +44,7 @@ which had drifted from the emit layer in four places.
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget -- four hyperparameters, one observation per grid node. This is not ASReml's three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
+| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, via INLA's `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level -- not estimated per trial. `at(trial, level):ar1(row):ar1(col)` (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (`at_field_per_level_hyper_not_representable`). brms has no lowering for either spelling. |
 | Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA's second-order random walk. brms has no lowering for the smooth basis. |
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA's `scale = w`; on brms a known offset on the sigma distributional parameter, NOT brms's own `weights()` addition term (a different, likelihood-power quantity per brms's own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (`weights_requires_gaussian`); `aggregate = TRUE` alongside weights also refuses by name (`weights_not_aggregatable`). |
 | Exact sufficient-statistic aggregation | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
@@ -138,11 +139,18 @@ Each is reproducible on this release. Priority is for the MET use case.
    `trials =` on the main fit entry. The streaming path has `trials` but the
    modelling entry does not. Today the only working form is Bernoulli long
    expansion. *Usability.*
-6. **Observation weights.** Parsed, recorded, and consumed by no emitter. The
-   refusal is correct, and the fix is an inverse-variance Gaussian emit checked
-   against an analytic oracle, with the other weight senses (frequency,
-   likelihood-power, trials, exposure) kept distinct rather than folded into
-   one argument.
+6. **Observation weights outside the Gaussian/identity case.** `weights =`
+   now fits (0.9.3) for the Gaussian family on an identity link, on both
+   engines, in the ASReml / lme4 / `glm(weights=)` precision sense --
+   checked against an analytic oracle and matching `lme4::lmer(weights=)`
+   closely on a shared simulated fixture (see the capability matrix
+   above). What remains open: any other family, and a non-identity link
+   on Gaussian, still refuse by name (`weights_requires_gaussian`)
+   rather than lowering to that family's own weight sense (frequency,
+   likelihood-power, trials, exposure), and `aggregate = TRUE` alongside
+   weights refuses (`weights_not_aggregatable`) because the closed-form
+   sufficient statistics do not carry a per-observation weight through
+   the compression.
 7. **A bounded uniform prior whose upper bound cuts into the posterior can
    crash the INLA binary.** *Symptom*: the `inla` subprocess exits with a
    segmentation fault, INLA retries once with improved initial values and
@@ -210,6 +218,18 @@ know it went away. Each was re-checked live against this tree.
   `str` reached an untyped `stop()`. The grammar is a closed set now:
   `foo(g)` refuses as `asreml_function_not_recognised`, and `ar2`, `str`
   and the `cor` family each refuse under their own code.
+- **Per-trial separable AR1 field.** The single-lattice AR1 field
+  (`random = ~ ar1(row):ar1(col)`, one trial, one grid) had no
+  multi-environment spelling. `random = ~ at(trial):ar1(row):ar1(col)`,
+  with no `level` argument on `at()`, now fits on INLA via the
+  `replicate =` mechanism: one field realisation per level of `trial`,
+  but the field's row correlation, column correlation and SD are
+  **shared across every level** -- not estimated per trial. The
+  boundary is where it was: `at(trial, level):ar1(row):ar1(col)` (a
+  `level` argument, asking for a single conditioned trial or for
+  per-trial hyperparameters) refuses
+  (`at_field_per_level_hyper_not_representable`), and brms has no
+  lowering for either spelling.
 
 ## Response families: where the boundary is, and whose it is
 

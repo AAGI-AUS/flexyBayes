@@ -337,7 +337,95 @@ field parameters are printed together rather than the correlations alone --
 under the residual spelling this vignette used to carry, the amplitude
 was not on the page at all.
 
-# 4. Spatial trend in addition to the field
+# 4. Multiple trials, one field shape
+
+Section 2's field is fitted on a single trial: one grid, one field
+realisation. A breeding programme rarely stops at one trial, and the
+question that follows naturally is whether the field can be fitted
+*per trial* rather than refitting the model trial by trial. It can, on
+INLA, with `at(trial):ar1(row):ar1(col)` and no `level` argument on
+`at()`:
+
+```{r pertrial-sim, eval = inla_ok}
+set.seed(101L)
+rho_row_true <- 0.7; rho_col_true <- 0.5
+sd_field_true <- 1.0; sd_nugget_true <- 0.5
+n_row <- 9L; n_col <- 10L
+
+one_trial <- function(trial_id, mu) {
+  grid <- expand.grid(col = factor(1:n_col), row = factor(1:n_row))
+  L <- t(chol(sd_field_true^2 *
+    kronecker(ar1_mat(n_row, rho_row_true), ar1_mat(n_col, rho_col_true))))
+  grid$yield <- mu + as.numeric(L %*% rnorm(n_row * n_col)) +
+    rnorm(n_row * n_col, 0, sd_nugget_true)
+  grid$trial <- factor(trial_id)
+  grid
+}
+d3 <- do.call(rbind, Map(one_trial, c("T1", "T2", "T3"), c(10, 12, 9)))
+nrow(d3)   # three 9 x 10 grids
+
+fit3 <- flexybayes(
+  fixed   = yield ~ trial,
+  random  = ~ at(trial):ar1(row):ar1(col),
+  data    = d3,
+  backend = "inla",
+  verbose = FALSE
+)
+fit3
+```
+
+Three trials, one field shape each -- but read the variance-component
+table above: there is **one** `rho_row`, **one** `rho_col`, and **one**
+field SD, not three of each. `at(trial):ar1(row):ar1(col)` fits one
+field *realisation* per trial (via INLA's `replicate =` mechanism) while
+**sharing the row correlation, the column correlation and the field SD
+across every trial**. This is a statement about the trials having the
+same kind of spatial process, not necessarily the same realised map, and
+it is a real modelling choice: with only three trials there is not
+enough replication to estimate a separate correlation pair for each one,
+so pooling them is what makes the field identifiable at all. Simulated
+against known values, the shared parameters recover cleanly:
+
+```{r pertrial-recover, eval = inla_ok}
+sm3 <- summary(fit3)
+recovered <- sm3$spatial_field
+data.frame(
+  parameter = recovered$parameter,
+  simulated = c(rho_row_true, rho_col_true, sd_field_true, sd_nugget_true),
+  recovered = round(recovered$median, 3),
+  lower     = round(recovered$lower, 3),
+  upper     = round(recovered$upper, 3)
+)
+```
+
+Each simulated value sits inside its interval, on the one pooled set of
+parameters that governs all three fields at once. The per-trial residual
+map should still look unstructured within each panel, the same read as
+Section 2.3's single-trial version:
+
+```{r pertrial-resid-plot, eval = inla_ok && ggplot2_ok, fig.height = 3.2, fig.width = 8, fig.cap = "Spatial residual map, one panel per trial, column on the x-axis and row on the y-axis, coloured from blue (negative) through white (zero) to firebrick (positive) -- an unstructured, salt-and-pepper pattern in every panel means the shared field has absorbed each trial's spatial correlation despite the correlations being pooled across trials rather than fitted per trial."}
+d3$resid <- residuals(fit3)
+ggplot(d3, aes(x = as.numeric(col), y = as.numeric(row), fill = resid)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "steelblue", mid = "white", high = "firebrick",
+                       midpoint = 0) +
+  scale_y_reverse() +
+  coord_fixed() +
+  facet_wrap(~ trial) +
+  theme_minimal(base_size = 12) +
+  labs(x = "column", y = "row", fill = "residual")
+```
+
+All three panels are salt-and-pepper, with no large same-coloured
+patches -- the shared field is doing its job on each trial, not just on
+average across them. Asking for a *level*-conditioned field or for
+per-trial (unshared) hyperparameters --
+`at(trial, level):ar1(row):ar1(col)` -- refuses
+(`at_field_per_level_hyper_not_representable`): there is no lowering
+for either request. brms has no lowering for this term at all and
+refuses outright, on `backend = "brms"` or `backend = "auto"` alike.
+
+# 5. Spatial trend in addition to the field
 
 Field trials often display *both* small-scale spatial correlation
 (captured by the AR1 field) and *large-scale* spatial trend (a slowly
@@ -359,10 +447,10 @@ agronomy-textbook decomposition (Gilmour, Cullis, & Verbyla, 1997) --
 with the qualification of Section 1: what is fitted here is the field-plus-
 nugget version of it.
 
-# 5. Limitations of the current spatial coverage
+# 6. Limitations of the current spatial coverage
 
 `flexyBayes` covers regular grids with AR1 correlation, fit natively on
-INLA under a complete-grid condition (Section 6). It does *not* cover:
+INLA under a complete-grid condition (Section 7). It does *not* cover:
 
 - **ASReml's nugget-free separable residual** -- refused by name
   (Section 2.1), not approximated.
@@ -380,7 +468,7 @@ or `mgcv::gam()` with the relevant spatial basis. The *dispatch and
 refusals* vignette describes how a third-party fit can plug into
 `triangulate()` via the `fb_as_draws_simple` interface.
 
-# 6. Pitfalls
+# 7. Pitfalls
 
 **Row and column must be factors.** `flexyBayes` reads `ar1(row)` as
 "AR1 correlation on the levels of `row` in their factor order". Numeric
@@ -422,7 +510,7 @@ you have older code that pinned `backend` to that engine for a spatial
 or temporal AR1 fit, drop the pin and move the term to the random
 side.
 
-# 7. Active prompts
+# 8. Active prompts
 
 1. Refit `stroup.nin` (Section 2.2) without the field. How much does
    $\sigma_e$ change, and what does that tell you about how much of the
@@ -438,7 +526,7 @@ side.
    Confirm the first refuses, then compare the second's four recovered
    parameters with the complete-grid fit. How much does the gap cost you?
 
-# 8. Session information
+# 9. Session information
 
 ```{r session-info}
 sessionInfo()

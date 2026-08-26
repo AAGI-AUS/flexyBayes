@@ -224,7 +224,7 @@ print.lgm_refusal <- function(x, ...) {
     "reason>\")\n",
     sep = ""
   )
-  cat("Docs: vignette(\"flexyBayes-11-dispatch-and-refusals\").\n")
+  cat("Docs: vignette(\"flexyBayes-10-dispatch-and-refusals\").\n")
   invisible(x)
 }
 
@@ -760,11 +760,11 @@ print.lgm_refusal <- function(x, ...) {
     "at_simple" = "heterogeneous variance by simple factor",
     "us" = "unstructured covariance",
     "fa" = "factor-analytic",
-    "fa_gxe" = "factor-analytic G\u00d7E",
-    "us_gxe" = "unstructured G\u00d7E",
+    "fa_gxe" = "factor-analytic GxE",
+    "us_gxe" = "unstructured GxE",
     "ar1" = "autoregressive lag-1",
     "ar1_spatial" = "AR1 spatial",
-    "corh_gxe" = "equicorrelated G\u00d7E",
+    "corh_gxe" = "equicorrelated GxE",
     "nested" = "nested / interaction random effect",
     "combo" = "multi-way interaction random effect",
     "polynomial" = "polynomial random effect",

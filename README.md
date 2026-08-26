@@ -103,6 +103,7 @@ are columns; see the callout above.
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget -- four hyperparameters, one observation per grid node. This is not ASReml's three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
+| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, via INLA's `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level -- not estimated per trial. `at(trial, level):ar1(row):ar1(col)` (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (`at_field_per_level_hyper_not_representable`). brms has no lowering for either spelling. |
 | Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA's second-order random walk. brms has no lowering for the smooth basis. |
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA's `scale = w`; on brms a known offset on the sigma distributional parameter, NOT brms's own `weights()` addition term (a different, likelihood-power quantity per brms's own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (`weights_requires_gaussian`); `aggregate = TRUE` alongside weights also refuses by name (`weights_not_aggregatable`). |
 | Exact sufficient-statistic aggregation | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
@@ -280,13 +281,20 @@ transform -- no `name_map` argument needed in standard cases.
 | `canonical_names(fit)` | The backend-native ↔ canonical-name table with per-row scale transforms. |
 | `review_code = TRUE` on `flexybayes()` / `fb_brms()` | Inspect-before-fit workflow. `cat_code(rev)` prints the generated backend code, and `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. |
 
+A fitted object exposes everything a downstream tool needs through these
+exported accessors, so a pipeline can consume a fit -- its variance
+components, its dispatch decision, its seed -- without reading flexyBayes
+internals. The AAGI ORCHESTRA workspace, which coordinates several
+analysis packages, builds its provenance records from exactly this
+surface; nothing in flexyBayes depends on it.
+
 ## ASReml-hands accessors
 
-If you arrive with an `asreml()` call in hand, the *From an ASReml call*
-vignette translates one line by line, then the six commands typed after
-it. These are the accessors it uses. They are views over an ordinary
-Bayesian fit -- the estimator is named on every table, because a
-posterior mean is not a REML component.
+If you arrive with an `asreml()` call in hand, *Getting started*'s
+section 6, "Reading a fit the way a REML user does", walks the
+accessors below one at a time. They are views over an ordinary Bayesian
+fit -- the estimator is named on every table, because a posterior mean
+is not a REML component.
 
 | You type | You get |
 |---|---|
@@ -388,7 +396,7 @@ Eleven vignettes ship with the package:
 | 02 | The formula surface: ASReml-shaped terms and structured covariance |
 | 03 | Foundational regression |
 | 04 | Hierarchical models |
-| 05 | Priors and regularisation |
+| 05 | Default priors and the `fb_prior()` DSL |
 | 06 | METs and genomic selection |
 | 07 | Downstream analysis |
 | 08 | Spatio-temporal models |
@@ -397,14 +405,12 @@ Eleven vignettes ship with the package:
 | 11 | Streaming exact aggregation |
 
 Vignette 10 is the technical/internals reference, and the rest target a
-general audience. The numbering keeps gaps at 05 and 12--15, and the
-gaps record merges rather than missing pages. Vignettes 12--14 were
-folded into 11 when the 0.9.3 engine withdrawal (see `NEWS.md`)
-collapsed several dispatch-internals topics into one. The structured-covariance vignette
-05 has been folded into 02 and the extending-backends vignette 15 into
-11, so one page now carries the whole formula surface and one page
-carries the whole dispatch-and-registry story. The retained numbers keep
-the shipped filenames stable across the merges.
+general audience. The deck is contiguous 01--11 as of the 0.9.3 renumber
+(see `NEWS.md`): the pre-0.9.3 deck ran 00 and 06--16 with gaps at 05 and
+12--15 recording earlier merges, and *From an ASReml call* (page 00) was
+folded into *Getting started*'s new accessor section rather than kept as
+its own page. Every number in the table above is the page's current,
+shipped filename suffix.
 
 Heavy MCMC vignettes use a `.Rmd.orig` precompile pattern. The `.Rmd`
 that ships in the package tarball is the pre-evaluated static output.
@@ -462,6 +468,11 @@ silently. The current release does not cover the following. Each is a
 roadmap deferral, and a request that needs one is met with a
 structured refusal naming the gap, not a quiet wrong answer.
 
+- **Scale ceiling on the per-row path (realistic multi-term design)**: on a
+  crossed/nested multi-environment-trial design the flexyBayes/INLA ceiling
+  is bracketed between 911,808 rows (preflight refuses) and 1,823,616 rows
+  (the engine dies after 41.6 minutes), not measured or bisected -- see
+  `inst/validation/benchmark_scaling.md` for the two logged rungs.
 - **Multi-environment-trial scale**: the combined model -- interaction
   random effects (`gen:loc`, `gen:loc:yearf`) *together with* a
   heteroscedastic per-environment residual (`dsum(~ units | env)`) --
@@ -486,9 +497,14 @@ structured refusal naming the gap, not a quiet wrong answer.
 - **Smooth terms**: univariate penalised splines (`s(x)`, `spl(x)`) are
   supported on INLA. Multivariate and tensor-product smooths (`te()`,
   `ti()`, `t2()`) are refused and deferred to a later release.
-- **Observation weights**: parsed and recorded, consumed by no active
-  emitter. A non-constant weight vector refuses rather than returning the
-  unweighted posterior under a weighted call.
+- **Observation weights**: fit for the Gaussian family on an identity
+  link, on both engines, in the ASReml / lme4 / `glm(weights=)` precision
+  sense (`Var(y_i) = sigma^2 / w_i`) -- both engines match
+  `lme4::lmer(weights=)` closely on a shared simulated fixture. Any other
+  family, or a non-identity link on Gaussian, refuses by name
+  (`weights_requires_gaussian`) rather than returning the unweighted
+  posterior under a weighted call; `aggregate = TRUE` alongside weights
+  also refuses by name (`weights_not_aggregatable`).
 - **Hidden-Markov, multi-state, and survival models**: not supported.
   Survival / time-to-event families are refused at the family gate.
   A NIMBLE backend covering these is on the roadmap with no fixed

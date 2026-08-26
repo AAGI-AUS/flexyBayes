@@ -1011,5 +1011,38 @@ flexybayes_stream <- function(
   if (!is.null(fit$extras) && !is.null(fit$extras$aggregation_meta)) {
     fit$extras$aggregation_meta$streamed <- TRUE
   }
+
+  # D10 / WP-D: emit_gaussian_aggregated() / emit_count_aggregated() set
+  # neither $exactness nor $extras$backend_decision -- the ordinary
+  # aggregate = TRUE route through .dispatch_backend() populates both
+  # AFTER calling the same emit functions (see R/dispatch.R, "fit$exactness
+  # <- 'aggregated_exact'" and the .build_routing_decision() call right
+  # after it). flexybayes_stream() calls these emit functions directly,
+  # bypassing that dispatch-side step entirely, so a streamed fit's
+  # print() banner read $exactness's un-set default ("exact (model, not
+  # inference)") and $backend_decision's absence ("(unknown engine)")
+  # instead. Mirror dispatch.R's two lines here so the streamed route
+  # carries the identical trace the in-memory aggregated route does.
+  if (!is.null(fit$extras)) {
+    fit$exactness <- "aggregated_exact"
+    fit$extras$backend_decision <- .build_routing_decision(
+      backend = backend,
+      path = if (identical(family, "gaussian")) {
+        "aggregated_gaussian"
+      } else {
+        "aggregated_count"
+      },
+      gate_checks = NULL,
+      reason = sprintf(
+        "streamed aggregation (N = %s, K = %s, ratio = %.2f:1)",
+        format(agg$N, big.mark = " ", scientific = FALSE),
+        format(agg$K, big.mark = " ", scientific = FALSE),
+        agg$N / agg$K
+      ),
+      preflight_summary = NULL,
+      representation_plan = NULL,
+      rejected_routes = list()
+    )
+  }
   fit
 }

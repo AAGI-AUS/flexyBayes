@@ -43,3 +43,21 @@ on an \code{flexybayes_inla} or \code{flexybayes_brms} fit alike, reading
 \code{fit$extras$backend_decision} as populated by \code{.build_routing_decision()}
 during dispatch (see the top of this file).
 }
+\examples{
+# backend_decision() reads a slot recorded on an already-fitted
+# object, so (unlike fb_plan()) an engine has to run first. Wrapped
+# in \donttest{} and guarded on INLA so this does not fire on a
+# machine without it.
+\donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                     verbose = FALSE)
+  bd <- backend_decision(fit)
+  bd$backend   # "inla"
+  bd$path      # the dispatch path token
+  bd$reason    # why this backend was chosen
+}
+}
+}

@@ -99,6 +99,38 @@ test_that("triangulate() applies a name_map to fit_b parameter names", {
   expect_setequal(tri$common, "(Intercept)")
 })
 
+test_that("triangulate() applies transform_b before comparison and matches a hand-computed target", {
+  # D4 / FB-10: transform_b is keyed by fit_b's *native* parameter name and
+  # applied before name_map, per the @param transform_a,transform_b
+  # roxygen's own worked example (INLA precision -> SD via 1/sqrt(x)).
+  set.seed(11L)
+  d_a <- list(sd_g = rnorm(1000, mean = 2, sd = 0.3))
+  precision_draws <- rgamma(1000, shape = 5, rate = 2) # strictly positive
+  d_b <- list("Precision for g" = precision_draws)
+
+  # Hand-computed target, independent of triangulate()'s internals: apply
+  # the transform directly to the raw draws and derive the summary
+  # statistics from that transformed vector.
+  hand_transformed_b <- 1 / sqrt(precision_draws)
+  hand_mean_b <- mean(hand_transformed_b)
+  hand_sd_b <- stats::sd(hand_transformed_b)
+
+  tri <- triangulate(
+    mk_synthetic(d_a),
+    mk_synthetic(d_b),
+    name_map = c("Precision for g" = "sd_g"),
+    transform_b = list("Precision for g" = function(x) 1 / sqrt(x))
+  )
+
+  expect_identical(tri$n_common, 1L)
+  m <- tri$metrics
+  expect_identical(m$param, "sd_g")
+  expect_equal(m$mean_b, hand_mean_b, tolerance = 1e-10)
+  expect_equal(m$sd_b, hand_sd_b, tolerance = 1e-10)
+  expect_equal(m$mean_diff, mean(d_a$sd_g) - hand_mean_b, tolerance = 1e-10)
+  expect_equal(m$sd_ratio, stats::sd(d_a$sd_g) / hand_sd_b, tolerance = 1e-10)
+})
+
 test_that("triangulate() reports zero common when names don't match", {
   set.seed(8L)
   d_a <- list(mu_atg = rnorm(500))

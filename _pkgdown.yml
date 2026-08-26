@@ -37,7 +37,7 @@ navbar:
         - text: "Core mixed-model concepts"
         - text: 04 — Hierarchical models
           href: articles/flexyBayes-04-hierarchical.html
-        - text: 05 — Priors and regularisation
+        - text: 05 — Default priors
           href: articles/flexyBayes-05-priors.html
         - text: "---"
         - text: "Applied workflows"

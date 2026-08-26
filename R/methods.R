@@ -859,6 +859,48 @@ update.flexybayes <- function(object, ...) {
   }
 
   dots <- list(...)
+
+  # D16 / WP-D (found by WP-G2's stress run). The override loop below
+  # ("Override with user-supplied arguments") walks `names(dots)` and
+  # assigns `args[[nm]] <- dots[[nm]]` for each. `stats::update()`'s
+  # classic idiom is an UNNAMED replacement formula as the second
+  # positional argument -- `update(fit, . ~ . + z)` -- and an unnamed
+  # element has no entry in `names(dots)` to walk (a single unnamed
+  # element makes `names(dots)` NULL outright; a mix of named and
+  # unnamed makes it carry ""), so that loop silently visits zero
+  # iterations for it. Confirmed live before this fix:
+  # `update(fit, . ~ . + z)` returned a fit whose recorded `fixed`
+  # formula, and whose coefficients, were IDENTICAL to the original --
+  # a valid object answering a question nobody asked, not a re-fit.
+  # This is not a documented spelling: every worked example in this
+  # package (`README.md`'s accessor table, the roxygen above) uses a
+  # named argument (`update(fit, random = ~ Block + Variety)`), so this
+  # refuses the unsupported idiom by name rather than building a
+  # formula-delta merger `stats::update.formula()`-style, which no
+  # documented usage asks for.
+  if (length(dots) > 0L) {
+    dot_names <- names(dots)
+    has_unnamed <- is.null(dot_names) || any(!nzchar(dot_names))
+    if (has_unnamed) {
+      stop(.fb_refusal_condition(
+        reason_code = "update_unnamed_argument_not_supported",
+        message = paste0(
+          "update() does not support the classic stats::update() idiom ",
+          "of an unnamed replacement formula, for example ",
+          "`update(fit, . ~ . + z)`. Every argument update() re-issues ",
+          "is matched by name, so an unnamed argument has nothing to ",
+          "match and was previously discarded silently, re-fitting the ",
+          "unchanged model under the same call. Name the slot you want ",
+          "changed instead: `update(fit, fixed = y ~ x + z)` for the ",
+          "brms-style entry, or `random = ~ ...` / `residual = ~ ...` ",
+          "on the ASReml grammar."
+        ),
+        family_class =
+          "flexybayes_update_unnamed_argument_not_supported_refusal"
+      ))
+    }
+  }
+
   args <- list(
     fixed = cl$fixed,
     random = cl$random,
