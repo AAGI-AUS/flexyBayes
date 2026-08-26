@@ -23,8 +23,9 @@
 #'
 #' * [flexybayes()] -- ASReml-format entry: `fixed` / `random` / `residual`
 #'   formulas and `known_matrices` for kinship / pedigree. Observation
-#'   `weights` are parsed and then refused (`weights_not_supported`) until
-#'   an active emitter consumes them.
+#'   `weights` are lowered for the Gaussian family (identity link) and
+#'   refused by name for any other family -- see `?flexybayes`'s
+#'   `@param weights` for the exact semantics.
 #' * [fb()] / [flexybayes()] -- the universal entry. Accepts an ASReml
 #'   (`fixed` / `random` / `residual`) or brms-style (`y ~ x + (1 | g)`)
 #'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).

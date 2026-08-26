@@ -640,6 +640,69 @@
       col_ar1 = (rt == "ar1")
     )))
   }
+  # at(trial):ar1(row) -- first half of a per-trial separable AR1 field
+  # (C5, FS-27). Intermediate node only; a:b:c parses as (a:b):c, so the
+  # second ar1() completes the term in the next fold below.
+  #
+  # A LEVEL argument on at() (at(trial, "siteA"):ar1(...)) asks for
+  # something this emit does not lower: a field conditioned on one
+  # specific level, or (the reading FS-27's fix owner calls out by
+  # name) per-level hyperparameters rather than the shared
+  # hyperparameters INLA's replicate = mechanism produces. Refused here,
+  # at parse time, rather than falling through to the generic
+  # interaction_not_representable node a class of refusal this specific
+  # deserves its own name.
+  if (lt == "at" && rt == "ar1") {
+    if (!is.null(l$level)) {
+      stop(.fb_refusal_condition(
+        reason_code = "at_field_per_level_hyper_not_representable",
+        message = paste0(
+          # l$level is already a deparse()d literal (e.g. `"T1"`, quotes
+          # included) -- .dep() at the at() parse site (above) deparses
+          # the raw call argument verbatim.
+          "at(", l$var, ", ", l$level, "):ar1(", r$var, ") names a ",
+          "single level of `", l$var, "` for a separable AR1 field. ",
+          "The lowering this package has (INLA's replicate = ",
+          "mechanism) fits one field per level of `", l$var, "` with ",
+          "the field hyperparameters (rho_row, rho_col, field ",
+          "variance) SHARED across every level -- there is no ",
+          "lowering for a field conditioned on one level alone, and ",
+          "none for per-level (unshared) hyperparameters either. Drop ",
+          "the level argument -- at(", l$var, "):ar1(...):ar1(...) -- ",
+          "to fit one field per level of `", l$var, "` with shared ",
+          "hyperparameters, or fit each level as its own single-trial ",
+          "ar1(...):ar1(...) model."
+        ),
+        family_class = "flexybayes_ar1_spatial_refusal"
+      ))
+    }
+    return(list(list(
+      type = "at_ar1_partial",
+      at_var = l$var,
+      row_var = r$var
+    )))
+  }
+  # at(trial):ar1(row):ar1(col) -- the complete per-trial separable AR1
+  # field (C5, FS-27): one separable field per level of `at_var`, on
+  # INLA, lowered with SHARED hyperparameters via INLA's replicate =
+  # mechanism on the existing ar1 + group emit (.inla_ar1_field_term(),
+  # R/emit_inla.R). Reuses the "ar1_spatial" type -- every downstream
+  # consumer (the gate's INLA allowlist, the brms
+  # stan_cannot_represent_ar1_field refusal, the complete-lattice
+  # check) already dispatches on that type; `at_var` is the only new
+  # field, NULL for the pre-existing single-field case.
+  if (
+    identical(lt, "at_ar1_partial") &&
+      rt %in% c("ar1", "id", "ide", "simple", "units")
+  ) {
+    return(list(list(
+      type = "ar1_spatial",
+      row_var = l$row_var,
+      col_var = r$var,
+      col_ar1 = (rt == "ar1"),
+      at_var = l$at_var
+    )))
+  }
   # vm(geno,G) : id(env)  - structured GxE with known G
   if (lt == "vm" && rt %in% c("id", "ide", "simple")) {
     return(list(list(
@@ -749,6 +812,12 @@
       }
       if (!is.null(term$col_var) && term$col_var %in% names(data)) {
         term$n_col <- length(unique(data[[term$col_var]]))
+      }
+      # C5/FS-27: the per-trial spelling's replicate count, for
+      # diagnostic visibility (preflight / plan display). NULL / absent
+      # for the pre-existing single-field case.
+      if (!is.null(term$at_var) && term$at_var %in% names(data)) {
+        term$n_at <- length(unique(data[[term$at_var]]))
       }
       term
     },

@@ -266,6 +266,54 @@ d_funnel <- data.frame(
   y = c(rnorm(8L, 0, 0.02), rnorm(8L, 0, 0.02), rnorm(8L, 0, 0.02)),
   x = rnorm(24L), g = f_g
 )
+
+# Space-level fixture (C4/FS-26): a factor level containing a space --
+# the National Barley Agronomy tables NAPPLIED2 column ("nil N", "low
+# N", "high N") is the real-world trigger. Two crossed random-intercept
+# groups (TRIAL, N_TRIAL) at 4 and 3 levels with 8 reps per cell and a
+# real fixed + random signal baked into the response (not pure noise):
+# a 3-level x 2-level version of this same shape hit an INLA
+# hyperparameter grid-search numerical instability of its own (a GSL
+# interpolation abort, unrelated to the level-name defect this fixture
+# exists to exercise) on several seeds. This size and signal is stable
+# across five spot-checked seeds and three repeated runs of the grid
+# seed used below.
+set.seed(14L)
+.sp_trial_u <- stats::rnorm(4L, 0, 0.4)
+.sp_ntrial_u <- stats::rnorm(3L, 0, 0.3)
+d_space_level <- expand.grid(
+  NAPPLIED2 = factor(c("nil N", "low N", "high N")),
+  TRIAL = factor(seq_len(4L)),
+  N_TRIAL = factor(seq_len(3L)),
+  rep = seq_len(8L)
+)
+.sp_napplied_eff <- c("high N" = 1.2, "low N" = 0.6, "nil N" = 0)
+d_space_level$GRAIN_YIELD_THA <- 3 +
+  .sp_napplied_eff[as.character(d_space_level$NAPPLIED2)] +
+  .sp_trial_u[as.integer(d_space_level$TRIAL)] +
+  .sp_ntrial_u[as.integer(d_space_level$N_TRIAL)] +
+  stats::rnorm(nrow(d_space_level), 0, 0.4)
+
+# Per-trial separable AR1 field fixture (C5/FS-27): three trials, each a
+# complete 6 x 8 lattice, row / col labels reused identically across
+# trials (the INLA replicate = mechanism expects one field per replicate
+# of the SAME node count, not per-trial-distinct labels).
+.ar1_mat_fn <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
+.at_trial_field <- function(seed) {
+  set.seed(seed)
+  grid <- expand.grid(col = seq_len(8L), row = seq_len(6L))
+  Lc <- t(chol(1 * kronecker(.ar1_mat_fn(6L, 0.5), .ar1_mat_fn(8L, 0.3))))
+  u <- as.numeric(Lc %*% stats::rnorm(48L))
+  data.frame(
+    y = 5 + u + stats::rnorm(48L, 0, 0.5),
+    row = factor(grid$row), col = factor(grid$col)
+  )
+}
+d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
+  dd <- .at_trial_field(1000L + i)
+  dd$trial <- factor(paste0("T", i))
+  dd
+}))
 '
 
 .preamble <- paste0(
@@ -421,7 +469,7 @@ d_funnel <- data.frame(
     brms = 'flexybayes(y ~ 1, random = ~ spl(x), data = d_cap)'
   ),
   list(
-    model_class = "Observation weights",
+    model_class = "Observation weights (Gaussian, identity link)",
     inla = 'flexybayes(y ~ env, random = ~ gen, data = d_cap, weights = w_cap)',
     brms = 'flexybayes(y ~ env, random = ~ gen, data = d_cap, weights = w_cap)'
   ),
@@ -527,6 +575,107 @@ for (spec in .M_CALLS) {
     ))
   }
 }
+
+# --- M (hand-added): a factor level containing a space (C4/FS-26) ------ #
+#
+# Not derived from the capability matrix (no `matrix_cell`, so the M/
+# matrix drift-check above does not expect a corresponding row) --
+# this is a specific regression scenario, not a model-class cross
+# product cell. `aggregate = FALSE` isolates the per-row emit_inla()
+# fix this cell exercises: the same space-level design is also
+# aggregation-eligible, and the aggregated INLA route (a different
+# code path, R/emit_gaussian_aggregated.R) carries the identical
+# untyped defect and has not been fixed in this slice -- see the WP-C
+# report's Handoffs. `backend = "auto"` under the fix now correctly
+# reaches INLA on this shape where it fell through silently before
+# (FS-26's "Class" note: "a user with spaces in a factor level gets
+# brms silently where INLA was available and appropriate").
+.add_cell(
+  id = "M-gaussian-lmm-space-level-inla",
+  section = "M",
+  code = paste0(
+    'flexybayes(GRAIN_YIELD_THA ~ NAPPLIED2, random = ~ TRIAL + N_TRIAL, ',
+    'data = d_space_level, family = "gaussian", backend = "inla", ',
+    'aggregate = FALSE', .engine_args("inla"), ')'
+  ),
+  expected = "fit",
+  expect_src = paste0(
+    "R/methods_inla.R roxygen, coef.flexybayes_inla: 'A factor with a ",
+    "non-syntactic level ... is legalised internally (make.names()) ",
+    "before the INLA emit ... this method restores the user's own, ",
+    "unlegalised label in the names it returns, as do ranef(), ",
+    "summary() and predict(classify = ) on the same fit.' (C4/FS-26)"
+  ),
+  backend = "inla",
+  family = "gaussian",
+  variant = "space-level-factor"
+)
+.add_cell(
+  id = "M-gaussian-lmm-space-level-brms",
+  section = "M",
+  code = paste0(
+    'flexybayes(GRAIN_YIELD_THA ~ NAPPLIED2, random = ~ TRIAL + N_TRIAL, ',
+    'data = d_space_level, family = "gaussian", backend = "brms"',
+    .engine_args("brms"), ')'
+  ),
+  expected = "fit",
+  expect_src = paste0(
+    "FS-26 control: the identical model fits on brms regardless of the ",
+    "space in the level (brms/Stan formula construction never builds a ",
+    "bare symbol from a variable name plus a factor level, so the ",
+    "defect was INLA-path-specific throughout)."
+  ),
+  backend = "brms",
+  family = "gaussian",
+  variant = "space-level-factor"
+)
+
+# --- M (hand-added): a per-trial separable AR1 field (C5/FS-27) -------- #
+#
+# Not derived from the capability matrix (no `matrix_cell`) -- a
+# specific regression scenario. at(trial):ar1(row):ar1(col) lowers to
+# INLA only (one separable field per level of `trial`, shared
+# hyperparameters via replicate =); brms has no lowering for it at all
+# (the pre-existing single-field ar1_spatial refusal, unchanged).
+.add_cell(
+  id = "M-nested-ar1-field-inla",
+  section = "M",
+  code = paste0(
+    'flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
+    'data = d_ar1_at_trial, family = "gaussian", backend = "inla"',
+    .engine_args("inla"), ')'
+  ),
+  expected = "fit",
+  expect_src = paste0(
+    "R/refusal_taxonomy.R, at_field_per_level_hyper_not_representable ",
+    "description: 'The supported spelling, at(trial):ar1(row):ar1(col) ",
+    "with no level argument, fits one field per level of `trial` on ",
+    "INLA via the replicate = mechanism, sharing rho_row, rho_col and ",
+    "the field variance across every level ...' (FS-27/C5)"
+  ),
+  backend = "inla",
+  family = "gaussian",
+  variant = "nested-ar1-field"
+)
+.add_cell(
+  id = "M-nested-ar1-field-brms",
+  section = "M",
+  code = paste0(
+    'flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
+    'data = d_ar1_at_trial, family = "gaussian", backend = "brms"',
+    .engine_args("brms"), ')'
+  ),
+  expected = "refuse_typed",
+  expect_src = paste0(
+    "R/emit_brms.R ar1 / ar1_spatial route: 'An autoregressive latent ",
+    "field is emitted by INLA only.' Unchanged by C5 -- the per-trial ",
+    "spelling reuses the ar1_spatial term type this refusal already ",
+    "keys on (flexybayes_refusal_stan_cannot_represent_ar1_field)."
+  ),
+  backend = "brms",
+  family = "gaussian",
+  variant = "nested-ar1-field"
+)
 
 # --- S1: prior route x family x backend -------------------------------- #
 #
@@ -930,8 +1079,16 @@ for (fm in .s3c_families) {
        brms = "fit",
        src = "capability matrix: nested / interaction refuses | fits"),
   list(key = "weights", call = "random = ~ g, weights = runif(60, 0.5, 2)",
-       inla = "refuse_typed", brms = "refuse_typed",
-       src = "capability matrix: weights = w refuses | refuses")
+       inla = "fit", brms = "fit",
+       # C6: weights are lowered for family = "gaussian" with the
+       # identity link only. The count arm (poisson, ycount) is exactly
+       # the family this row's own note excludes, so it refuses by name
+       # (weights_requires_gaussian) on both engines rather than fitting
+       # something else.
+       poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
+       src = paste0("capability matrix: Observation weights (Gaussian, ",
+                    "identity link) fits | fits; refused by name off ",
+                    "that family (weights_requires_gaussian)"))
 )
 
 for (st in .s4_structures) {

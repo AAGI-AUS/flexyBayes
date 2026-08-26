@@ -162,16 +162,23 @@ keyword carriers (\verb{chol = }, \verb{precision = }, \verb{blocks = },
 \verb{low_rank_factor = }) are deprecated and emit a migration warning.
 See the formula-surface vignette for per-type worked examples.}
 
-\item{weights}{Optional numeric weight vector (length N). \strong{Not yet
-supported by the active backends}: the value is parsed and recorded
-in the model representation, but neither the brms nor the INLA
-emitter consumes it, so a non-constant vector is refused
-(\code{weights_not_supported}) rather than silently producing the
-unweighted posterior. Earlier documentation described the ASReml
-inverse-variance sense, \code{Var(y_i) = sigma^2 / w_i}; that mapping is
-the intended one, and will be implemented alongside the other
-weight semantics (frequency, likelihood-power, trials, exposure),
-which are different models and cannot share one argument silently.}
+\item{weights}{Optional numeric weight vector (length N). Lowered for
+\code{family = "gaussian"} with the identity link only, in the ASReml /
+lme4 / \code{glm(weights=)} precision sense, \code{Var(y_i) = sigma^2 / w_i}:
+INLA's \code{scale = w} per-observation precision multiplier, and on
+brms a known offset on the log-link sigma distributional parameter
+(not brms's own \code{weights()} addition term, which implements a
+different, likelihood-power quantity). A constant vector (including
+\code{rep(1, N)}) is the unweighted model under a different spelling and
+passes through unchanged. A non-constant vector on any other family,
+or a non-identity link on Gaussian, is refused by name
+(\code{weights_requires_gaussian}) rather than silently producing the
+unweighted posterior -- likelihood-power, frequency, trials, and
+exposure are different models and cannot share this argument
+silently. \code{aggregate = TRUE} together with weights is also refused
+by name (\code{weights_not_aggregatable}): the aggregated route's
+closed-form sufficient statistics do not carry a per-observation
+weight through the compression.}
 
 \item{na_action}{How to treat observations whose response is missing,
 and -- through the list form below -- observations whose predictors

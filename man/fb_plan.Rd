@@ -7,6 +7,8 @@
 fb_plan(
   formula,
   data,
+  random = NULL,
+  residual = NULL,
   backend = c("auto", "greta", "inla", "brms"),
   priors = NULL,
   known_matrices = list(),
@@ -16,16 +18,27 @@ fb_plan(
   aggregate = "auto",
   memory_ceiling_gb = NULL,
   predict_plan = NULL,
+  syntax = c("auto", "asreml", "brms"),
   ...
 )
 }
 \arguments{
-\item{formula}{A brms-style two-sided formula such as
-\code{y ~ x + s(z) + (1 | g)}. The same formula the fit would receive.}
+\item{formula}{Either a brms-style two-sided formula such as
+\code{y ~ x + s(z) + (1 | g)}, or (when \code{random} and/or \code{residual} are
+supplied) the ASReml-grammar fixed-effects formula, e.g.
+\code{yield ~ loc + yearf}. The same formula the fit would receive.}
 
 \item{data}{A data.frame holding every variable the formula
 names. Planning reads its dimensions and column types, never its
 values.}
+
+\item{random}{An optional one-sided ASReml-grammar random-effects
+formula (e.g. \code{~ gen + gen:loc}). \code{NULL} (default) for a brms-style
+\code{formula}, or for a fixed-effects-only ASReml model.}
+
+\item{residual}{An optional one-sided ASReml-grammar residual
+structure formula (e.g. \code{~ dsum(~ units | env)}). \code{NULL} (default)
+for the ordinary independent-residual model.}
 
 \item{backend}{A single string, one of \code{"auto"} (the default),
 \code{"inla"}, \code{"brms"}, or \code{"greta"}. Chooses the engine the plan
@@ -55,6 +68,10 @@ preflight memory ceiling. Defaults to the
 \item{predict_plan}{An optional \code{list(newdata = ..., chunk_size = ...)} requesting a prediction-shape plan. Plan-only, so it never
 fires \code{predict()}.}
 
+\item{syntax}{Grammar override, one of \code{"auto"} (default,
+detected from \code{formula} / \code{random} / \code{residual} exactly as
+\code{flexybayes()} does), \code{"asreml"}, or \code{"brms"}.}
+
 \item{...}{Currently unused, reserved for future plan inputs.}
 }
 \value{
@@ -67,4 +84,17 @@ Returns the dispatch + preflight + representation + memory decision
 the routing layer would make, without running MCMC or Laplace
 approximation. Useful for verifying the backend chosen, memory
 estimate, and any structural refusals before paying the fit cost.
+}
+\details{
+Accepts either grammar \code{flexybayes()} accepts: a single brms-style
+two-sided formula (\code{y ~ x + s(z) + (1 | g)}), or the ASReml triple
+(\code{formula} as the fixed-effects side, plus \code{random} / \code{residual}).
+Before 0.9.3, \code{fb_plan()} was brms-formula-only and silently dropped
+\code{random} / \code{residual} into its unused \code{...} when a caller supplied
+them ASReml-style, planning a fixed-effects-only model and reporting
+a backend the full model would not reach live (FS-22). Both
+spellings now route through the same grammar detection
+\code{flexybayes()} uses (\code{syntax = "auto"} by default), so
+\code{fb_plan(fixed = ..., random = ..., residual = ..., data = ...)} and
+\code{flexybayes(fixed = ..., random = ..., residual = ..., data = ..., plan = TRUE)} plan the identical model.
 }

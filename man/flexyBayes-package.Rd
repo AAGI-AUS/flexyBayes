@@ -31,8 +31,9 @@ The entry points share a single internal model representation
 \itemize{
 \item \code{\link[=flexybayes]{flexybayes()}} -- ASReml-format entry: \code{fixed} / \code{random} / \code{residual}
 formulas and \code{known_matrices} for kinship / pedigree. Observation
-\code{weights} are parsed and then refused (\code{weights_not_supported}) until
-an active emitter consumes them.
+\code{weights} are lowered for the Gaussian family (identity link) and
+refused by name for any other family -- see \code{?flexybayes}'s
+\verb{@param weights} for the exact semantics.
 \item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} -- the universal entry. Accepts an ASReml
 (\code{fixed} / \code{random} / \code{residual}) or brms-style (\code{y ~ x + (1 | g)})
 formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).

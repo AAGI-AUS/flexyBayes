@@ -282,7 +282,15 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # of the data (aggregation_response_incomplete), and an unreachable
   # aggregated emit, which is a property of the engine roster
   # (aggregation_route_unavailable, raised at two sites) (= 116).
-  expect_equal(length(entries), 116L)
+  # 0.9.3's WP-C scale/weights slate adds five more: an aggregation
+  # cell-count product past R's integer limit (cell_count_exceeds_
+  # integer), a typed INLA engine-death classification (inla_program_
+  # failed), a per-level hyperparameter an at():ar1() field cannot
+  # represent (at_field_per_level_hyper_not_representable), and the
+  # two weights refusals -- wrong family/link (weights_requires_
+  # gaussian) and the aggregated route (weights_not_aggregatable)
+  # (= 121).
+  expect_equal(length(entries), 121L)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)

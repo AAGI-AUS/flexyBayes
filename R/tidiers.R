@@ -230,8 +230,13 @@ tidy.flexybayes_inla <- function(
     )
   }
 
+  # C4/FS-26: this term vector is summary()'s own fixed-effect source
+  # (.fb_summary_fixed() calls tidy() rather than reading summary.fixed
+  # directly), so restoring the user's own labels here is what makes
+  # summary() correct, the same substitution coef.flexybayes_inla()
+  # applies to its own copy of the same rownames.
   out <- data.frame(
-    term = rownames(sf),
+    term = .inla_restore_term_labels(x$level_labels, rownames(sf)),
     estimate = sf[["mean"]],
     std.error = sf[["sd"]],
     stringsAsFactors = FALSE

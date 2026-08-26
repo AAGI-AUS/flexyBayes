@@ -85,7 +85,15 @@
     numeric(length(fixed_names))
   )
   mat <- t(mat)
-  colnames(mat) <- fixed_names
+  # C4/FS-26: `fixed_names` above is deliberately the legalised name --
+  # that is what the INLA latent field actually carries and what the
+  # `paste0(nm, ":1")` lookup has to match. The column names on the
+  # RETURNED matrix are the user's own, restored here at the very end,
+  # so vcov.flexybayes_inla()'s dimnames agree with
+  # coef.flexybayes_inla()'s (also restored) names -- the two are
+  # indexed against each other (e.g. `V[colnames(X), colnames(X)]` in
+  # the emmeans / marginaleffects seam) and must speak the same labels.
+  colnames(mat) <- .inla_restore_term_labels(object$level_labels, fixed_names)
   mat
 }
 
@@ -102,6 +110,12 @@
 #' shared body [coef.flexybayes()] uses, so the two engines answer the
 #' same question the same way.
 #'
+#' A factor with a non-syntactic level (for example a level containing a
+#' space, `"low N"`) is legalised internally (`make.names()`) before the
+#' INLA emit, so the fit itself never dies on it; this method restores
+#' the user's own, unlegalised label in the names it returns, as do
+#' [ranef()], `summary()` and `predict(classify = )` on the same fit.
+#'
 #' @param object A `flexybayes_inla` fit.
 #' @param what Which part of the fit to return: `"fixed"` (the default),
 #'   `"random"`, `"missing"` or `"all"`. See [coef.flexybayes()] for the
@@ -117,10 +131,19 @@ coef.flexybayes_inla <- function(
   ...
 ) {
   sf <- object$inla$summary.fixed
+  # C4/FS-26: `rownames(sf)` carries the legalised (make.names()) level
+  # names the fit was actually built against when the model touches a
+  # non-syntactic factor level; restore the user's own labels here so
+  # coef() -- and ranef(), which delegates to coef(what = "random") via
+  # R/methods.R -- print what the user wrote.
+  fixed_names <- .inla_restore_term_labels(
+    object$level_labels,
+    rownames(sf)
+  )
   .fb_coef_what(
     object,
     match.arg(what),
-    stats::setNames(sf$mean, rownames(sf))
+    stats::setNames(sf$mean, fixed_names)
   )
 }
 
@@ -197,8 +220,11 @@ confint.flexybayes_inla <- function(
     function(m) vapply(probs, INLA::inla.qmarginal, numeric(1), marginal = m),
     numeric(2)
   ))
+  # C4/FS-26: `names(marg)` is the legalised name; restore the user's
+  # own here so confint()'s rownames stay consistent with coef()'s and
+  # vcov()'s (also restored) names on the same fit.
   dimnames(bounds) <- list(
-    names(marg),
+    .inla_restore_term_labels(object$level_labels, names(marg)),
     paste0(round(probs * 100, 1), "%")
   )
 
@@ -399,11 +425,18 @@ predict.flexybayes_inla <- function(
   }
 
   if (is.null(newdata)) {
-    newdata <- object$data
+    # C4/FS-26: .fb_fit_data(), not the raw object$data -- the latter is
+    # the level-legalised copy the fit was built against, and
+    # coef(object) below now carries the user's own (restored) names.
+    # Using the raw slot here would reintroduce the exact mismatch
+    # .fb_fixef_model_matrix()'s own reconciliation check exists to
+    # catch (the same one predict(classify = ) hit during development;
+    # see R/ecosystem_support.R's .fb_fit_data()).
+    newdata <- .fb_fit_data(object)
   }
   trms <- stats::delete.response(stats::terms(formula(object)))
   bhat <- coef(object)
-  X <- .fb_fixef_model_matrix(trms, newdata, names(bhat), object$data)
+  X <- .fb_fixef_model_matrix(trms, newdata, names(bhat), .fb_fit_data(object))
   eta <- as.numeric(X %*% bhat)
 
   if (!se.fit) {

@@ -19,8 +19,21 @@
 
 # Data frame a fit was trained on (greta keeps it on the glm shim;
 # INLA keeps it at the top level).
+#
+# C4/FS-26: an INLA fit's `$data` is the level-legalised copy
+# emit_inla() built the fit against (`$level_labels` carries the map).
+# coef.flexybayes_inla() restores the user's own coefficient labels, so
+# every consumer here (recover_data()/emm_basis() for predict(classify
+# = ), marginaleffects' get_data()/get_predict(), plot(), the missing-
+# cell summary) needs the SAME labels to build a design matrix or
+# reference grid that lines up with those coefficient names --
+# .fb_fixef_model_matrix()'s own reconciliation check below exists to
+# catch exactly that kind of mismatch. .inla_restore_data_original_
+# levels() is a no-op for any fit `$level_labels` never touched
+# (every non-INLA engine, and an INLA fit with no non-syntactic level).
 .fb_fit_data <- function(object) {
-  object$data %||% object$glm$data
+  data <- object$data %||% object$glm$data
+  .inla_restore_data_original_levels(object$level_labels, data)
 }
 
 # Per-factor `xlev` (level vocabulary) from the fit data, so a reference

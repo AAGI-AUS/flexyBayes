@@ -622,18 +622,32 @@ test_that("a univariate P-spline fits on INLA and refuses on brms", {
   )
 })
 
-test_that("observation weights refuse on both, typed", {
+test_that("observation weights fit on both for Gaussian, typed refusal otherwise", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
-  r <- .cap_row("Observation weights")
+  r <- .cap_row("Observation weights (Gaussian, identity link)")
   d <- .cap_data()
   w <- as.numeric(seq_len(nrow(d)))
   for (engine in c("inla", "brms")) {
     .cap_expect(
       .cap_emit(engine, y ~ env, random = ~gen, data = d, weights = w),
       if (identical(engine, "inla")) r$inla else r$brms,
-      engine,
-      condition_class = "flexybayes_refusal_weights_not_supported"
+      engine
+    )
+  }
+  # A family the row does not cover (r$inla / r$brms describe the
+  # Gaussian-identity cell only) refuses by name on both engines.
+  d_poisson <- d
+  d_poisson$y <- stats::rpois(nrow(d), 3)
+  for (engine in c("inla", "brms")) {
+    .cap_expect(
+      .cap_emit(
+        engine, y ~ env, random = ~gen, data = d_poisson, weights = w,
+        family = "poisson"
+      ),
+      "refuses",
+      paste(engine, "poisson"),
+      condition_class = "flexybayes_refusal_weights_requires_gaussian"
     )
   }
 })
@@ -687,7 +701,7 @@ test_that("every capability row carries a behaviour anchor here", {
     "Known-covariance genomic / pedigree random effect",
     "Separable AR1 spatial field",
     "Univariate P-spline",
-    "Observation weights",
+    "Observation weights (Gaussian, identity link)",
     "Exact sufficient-statistic aggregation"
   )
   expect_setequal(tab$model_class, probed)

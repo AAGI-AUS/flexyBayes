@@ -697,6 +697,21 @@
 # file: sigma specs are dropped for families that carry no sigma, for exactly
 # the same reason.
 #
+# C6 observation weights hit the identical wall by a different door:
+# .fb_to_brms_formula() lowers `weights=` as a known OFFSET on log(sigma)
+# (R/emit_brms.R documents why this, and not brms's own `weights()`
+# addition term, is the precision-weighting-correct mapping), which is
+# ALSO a `sigma ~ ...` distributional sub-formula -- `sigma ~ 1 +
+# offset(...)` when there is no heterogeneous residual alongside it. brms's
+# own parameter table for that shape (checked live via brms::get_prior(),
+# not assumed) carries `class = "Intercept", dpar = "sigma"` and no
+# `class = "b"` row, since offset() contributes no coefficient -- a
+# different target from the heterogeneous-residual case's `class = "b"`
+# (its `0 + f` has no intercept). Both reasons are handled by the same
+# retarget below; when both are present at once (a per-section residual
+# on data that also carries observation weights) the `0 + f` shape wins,
+# so the target stays `class = "b"`.
+#
 # THE REPLACEMENT IS A CHOICE, AND IT IS ANNOUNCED. The default uniform(0, U)
 # on the residual SD has no exact counterpart on a log-scale linear predictor,
 # so it cannot be carried across unchanged; any prior here is a new decision
@@ -726,7 +741,8 @@
     function(t) identical(t$type %||% "", "at_units"),
     fb$residual_terms %||% list()
   )
-  if (length(het) == 0L || length(specs) == 0L) {
+  has_weight_offset <- .fb_weights_nonconstant(.fb_ir_weights(fb))
+  if ((length(het) == 0L && !has_weight_offset) || length(specs) == 0L) {
     return(specs)
   }
 
@@ -748,11 +764,18 @@
   } else {
     0
   }
+  # `0 + f` (heterogeneous residual, with or without weights alongside)
+  # has no intercept -- brms::get_prior() gives it class "b". Weights
+  # alone lower to `sigma ~ 1 + offset(...)`, which keeps the intercept
+  # and gives class "Intercept" instead (verified live, see the function
+  # banner above) -- offset() itself contributes no coefficient to
+  # retarget.
+  target_class <- if (length(het) >= 1L) "b" else "Intercept"
   c(
     specs,
     list(list(
       string = sprintf("normal(%.6g, 1)", loc),
-      class = "b",
+      class = target_class,
       coef = NA_character_,
       group = NA_character_,
       dpar = "sigma"

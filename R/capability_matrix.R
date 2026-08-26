@@ -211,14 +211,20 @@
       anchor = "test-smooth.R"
     ),
     list(
-      model_class = "Observation weights",
+      model_class = "Observation weights (Gaussian, identity link)",
       spelling = "`weights = w`",
-      inla = "refuses",
-      brms = "refuses",
-      note = "Parsed and recorded, consumed by no active emitter. A
-        non-constant vector refuses rather than returning the
-        unweighted posterior.",
-      anchor = "test-weights-refusal.R"
+      inla = "fits",
+      brms = "fits",
+      note = "Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml
+        / lme4 / glm(weights=) sense): INLA's `scale = w`; on brms a
+        known offset on the sigma distributional parameter, NOT brms's
+        own `weights()` addition term (a different, likelihood-power
+        quantity per brms's own documentation). Both engines match
+        lme4::lmer(weights=) closely on a shared simulated fixture. Any
+        other family, or a non-identity link on Gaussian, refuses by
+        name (`weights_requires_gaussian`); `aggregate = TRUE` alongside
+        weights also refuses by name (`weights_not_aggregatable`).",
+      anchor = "test-weights-lowering.R"
     ),
     list(
       model_class = "Exact sufficient-statistic aggregation",

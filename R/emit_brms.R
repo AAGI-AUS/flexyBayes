@@ -38,6 +38,39 @@
 # compiling or sampling. This is also how fb_brms(backend = "brms",
 # review_code = TRUE) populates the <flexybayes_review> code slot.
 
+# The column name .fb_to_brms_formula()'s sigma-distributional offset
+# term (C6) references, and emit_brms() materialises on a copy of
+# `data`. flexyBayes lowers `weights =` for the Gaussian family as a
+# known per-observation PRECISION multiplier, Var(y_i) = sigma^2 / w_i
+# -- the ASReml / lme4 / glm(weights=) / INLA `scale=` convention (see
+# R/emit_inla.R). brms's own `weights()` addition term is a different
+# quantity: per brms's own documentation (brmsformula.Rd, "Additional
+# response information" -- "weighted regression ... is implemented by
+# multiplying the log-posterior values of each observation by their
+# corresponding weights") and confirmed via the Stan code
+# brms::make_stancode() generates (`target += weights[n] *
+# normal_lpdf(...)`), it is a LIKELIHOOD-POWER weighting: rescaling
+# every weight by a common constant leaves the log-posterior optimum
+# for sigma UNCHANGED (a normalised weighted average), not scaled by
+# that constant -- confirmed empirically against
+# lme4::lmer(weights=) on identical simulated data, where the
+# addition-term route's sigma diverged from lme4's by about 25%
+# (not Monte Carlo noise; stable across repeat fits). Precision
+# weighting is instead lowered on brms's sigma distributional
+# parameter (log link) as a known OFFSET,
+# log(sigma_i) = log(sigma_base) - 0.5 * log(w_i), which reproduces
+# lme4::lmer(weights=)'s sigma to within Monte Carlo error (grounding
+# spike: lme4 sigma 0.9819 vs brms-offset 0.983 on the same data,
+# against 0.7342 for the addition-term route -- WP-C report, item C6,
+# carries the full trail). A fixed internal name rather than threading
+# a caller-chosen name through both functions; namespaced against
+# colliding with a real column the way the rest of this emit's
+# synthesised names are. NOT a leading-dot / double-underscore /
+# trailing-underscore name -- verified live: brms::brm() refuses
+# "Variable names may not contain double underscores or underscores
+# at the end."
+.FB_BRMS_WEIGHTS_OFFSET_COL <- "flexybayes_obs_weight_offset"
+
 # ---------------------------------------------------------------- #
 # Public-style entry -- internal in v0.2                            #
 # ---------------------------------------------------------------- #
@@ -90,6 +123,24 @@ emit_brms <- function(
   mi_mode <- .fb_brms_missing_response_mode(fb, data)
   if (identical(mi_mode, "mi")) {
     attr(fb, "brms_mi_response") <- TRUE
+  }
+  # C6: materialise the sigma-offset column .fb_to_brms_formula()'s
+  # distributional sigma sub-formula references -- see the constant's
+  # definition above for why this is an offset on log(sigma), not the
+  # raw weights, and not brms's own weights() addition term. `[[<-` on
+  # a plain data.frame is copy-on-modify (the caller's own frame is
+  # untouched); this follows the same convention
+  # .inla_legalise_factor_levels() (R/emit_inla.R, C4) already uses
+  # for its own `data[[v]] <- ...`. Only when the weights are actually
+  # non-constant -- a constant vector (any value, not only 1) is the
+  # unweighted model under a different spelling, and a non-zero offset
+  # built from it would silently rescale the reported sigma rather than
+  # leaving it unweighted (and, for a family with no sigma at all, the
+  # distributional sub-formula this triggers below would error outright
+  # on a request that was never really asking to be weighted).
+  ir_weights <- .fb_ir_weights(fb) %||% weights
+  if (.fb_weights_nonconstant(ir_weights)) {
+    data[[.FB_BRMS_WEIGHTS_OFFSET_COL]] <- -0.5 * log(ir_weights)
   }
   brms_form <- .fb_to_brms_formula(fb)
   # Materialised relationship covariances for any vm() / ped() term,
@@ -273,7 +324,15 @@ emit_brms <- function(
         ),
         random = fb$random_terms,
         residual = fb$residual_terms,
-        family = list(family = fb$family, link = fb$link)
+        family = list(family = fb$family, link = fb$link),
+        # C6: the observation-weight vector lowered onto brms's sigma
+        # offset (see .FB_BRMS_WEIGHTS_OFFSET_COL), NULL when the model
+        # carries none. Read back at summary() time by
+        # .brms_weights_sigma_row() so the single "sigma" varcomp row
+        # can be recovered from the b_sigma_Intercept draws exactly as
+        # .brms_residual_by_level_table() already does for `sigma ~
+        # 0 + f`.
+        weights = ir_weights
       ),
       call_info = list(
         fixed = fixed,
@@ -683,9 +742,16 @@ emit_brms <- function(
 
   # `mi` marks the response as partially missing so brms samples the absent
   # values as parameters instead of dropping their rows. Added only when the
-  # caller asks for it -- see .fb_brms_missing_response_mode().
-  lhs <- if (isTRUE(attr(fb, "brms_mi_response"))) {
-    paste(response, "| mi()")
+  # caller asks for it -- see .fb_brms_missing_response_mode(). Observation
+  # weights (C6) are NOT an addition term here -- they are lowered on the
+  # sigma distributional sub-formula below as a known offset, for the
+  # reasons the .FB_BRMS_WEIGHTS_OFFSET_COL definition above documents.
+  addition <- character(0)
+  if (isTRUE(attr(fb, "brms_mi_response"))) {
+    addition <- c(addition, "mi()")
+  }
+  lhs <- if (length(addition)) {
+    paste(response, "|", paste(addition, collapse = " + "))
   } else {
     response
   }
@@ -722,7 +788,12 @@ emit_brms <- function(
     function(t) identical(t$type %||% "", "at_units"),
     fb$residual_terms %||% list()
   )
-  if (length(het) == 0L) {
+  # C6: observation weights ALSO put flexyBayes on brms's sigma
+  # distributional sub-formula (a known offset, not a heterogeneous-
+  # residual factor) -- so the early return below is reachable only
+  # when NEITHER a heterogeneous residual NOR weights are in play.
+  has_weight_offset <- .fb_weights_nonconstant(.fb_ir_weights(fb))
+  if (length(het) == 0L && !has_weight_offset) {
     return(main)
   }
   if (length(het) > 1L) {
@@ -739,44 +810,63 @@ emit_brms <- function(
       )
     ))
   }
-  term <- het[[1L]]
-  if (!is.null(term$level)) {
-    stop(.fb_refusal_condition(
-      reason_code = "at_level_conditioning_unsupported",
-      message = paste0(
-        "at(",
-        term$var,
-        ", ",
-        paste(term$level, collapse = ", "),
-        "):units conditions the residual on selected levels of ",
-        term$var,
-        ", which is a different model from a heterogeneous residual across ",
-        "all of them. Drop the level to fit dsum(~ units | ",
-        term$var,
-        ")."
-      )
-    ))
+  # sigma_rhs accumulates the two independent reasons the sigma
+  # sub-formula can exist: a heterogeneous-residual factor (0 + factor,
+  # one coefficient per level) and/or the C6 weight offset. Either can
+  # be present alone; both can be present together (a per-section
+  # residual variance on data that also carries known observation
+  # weights) -- the two compose by `+` on the linear predictor for
+  # log(sigma).
+  sigma_rhs <- NULL
+  if (length(het) == 1L) {
+    term <- het[[1L]]
+    if (!is.null(term$level)) {
+      stop(.fb_refusal_condition(
+        reason_code = "at_level_conditioning_unsupported",
+        message = paste0(
+          "at(",
+          term$var,
+          ", ",
+          paste(term$level, collapse = ", "),
+          "):units conditions the residual on selected levels of ",
+          term$var,
+          ", which is a different model from a heterogeneous residual ",
+          "across all of them. Drop the level to fit dsum(~ units | ",
+          term$var,
+          ")."
+        )
+      ))
+    }
+
+    # A residual variance only exists for a family that HAS one. Poisson
+    # and binomial carry no sigma, so `sigma ~ f` would be a predictor on
+    # a parameter the model does not have -- brms would error, or worse,
+    # accept it for a family where sigma means something else.
+    fam <- tolower(as.character(fb$family %||% "gaussian"))
+    if (!.fb_family_has_brms_sigma(fam)) {
+      stop(.fb_refusal_condition(
+        reason_code = "heterogeneous_residual_family_has_no_sigma",
+        message = paste0(
+          "A heterogeneous residual variance was requested for family '",
+          fam,
+          "', which has no residual scale parameter to vary -- its ",
+          "dispersion is a function of the mean. Model the dispersion ",
+          "directly for that family, or fit a Gaussian on a transformed ",
+          "response."
+        )
+      ))
+    }
+    sigma_rhs <- paste0("0 + ", term$var)
+  } else {
+    sigma_rhs <- "1"
+  }
+  if (has_weight_offset) {
+    sigma_rhs <- paste0(
+      sigma_rhs, " + offset(", .FB_BRMS_WEIGHTS_OFFSET_COL, ")"
+    )
   }
 
-  # A residual variance only exists for a family that HAS one. Poisson and
-  # binomial carry no sigma, so `sigma ~ f` would be a predictor on a
-  # parameter the model does not have -- brms would error, or worse, accept
-  # it for a family where sigma means something else.
-  fam <- tolower(as.character(fb$family %||% "gaussian"))
-  if (!.fb_family_has_brms_sigma(fam)) {
-    stop(.fb_refusal_condition(
-      reason_code = "heterogeneous_residual_family_has_no_sigma",
-      message = paste0(
-        "A heterogeneous residual variance was requested for family '",
-        fam,
-        "', which has no residual scale parameter to vary -- its dispersion ",
-        "is a function of the mean. Model the dispersion directly for that ",
-        "family, or fit a Gaussian on a transformed response."
-      )
-    ))
-  }
-
-  brms::bf(main, stats::as.formula(paste("sigma ~ 0 +", term$var)))
+  brms::bf(main, stats::as.formula(paste("sigma ~", sigma_rhs)))
 }
 
 # .brms_term_refusal_message() --- what to tell a user whose random term has
@@ -1543,6 +1633,58 @@ emit_brms <- function(
   attr(out, "factor") <- var_name
   attr(out, "probs") <- probs
   out
+}
+
+# .brms_weights_sigma_row() --- the single "sigma" row when weights (C6)
+# put sigma on brms's distributional sub-formula without a heterogeneous
+# residual alongside it.
+#
+# `sigma ~ 1 + offset(...)` (R/emit_brms.R's .fb_to_brms_formula()) has
+# no scalar `sigma` draw either, for the same reason .brms_at_units_terms()
+# fixes above -- it names the intercept coefficient `b_sigma_Intercept`
+# instead, on the LOG scale, and OFFSET at 0 (i.e. weight = 1). Exp'd,
+# that is the model's residual SD at unit weight -- the same "sigma at
+# w = 1" convention INLA's summary.hyperpar and lme4::lmer(weights =)
+# report (see .FB_BRMS_WEIGHTS_OFFSET_COL's banner for the full
+# grounding trail against both). Median point summary and
+# quantile-transformed interval for the same convexity reason as the
+# per-level rows above.
+#
+# NULL whenever the fit carries no weights, carries a heterogeneous
+# residual (that case's per-level rows already include the weight
+# offset net of level, since the two compose additively on log sigma --
+# .fb_varcomp_residual_by_level() covers it), or the Intercept
+# coefficient cannot be found.
+.brms_weights_sigma_row <- function(object, probs = c(0.025, 0.975)) {
+  het <- .brms_at_units_terms(object)
+  w <- object$extras$parse_info$weights
+  if (length(het) > 0L || !.fb_weights_nonconstant(w) || is.null(object$brms)) {
+    return(NULL)
+  }
+  if (!requireNamespace("posterior", quietly = TRUE)) {
+    return(NULL)
+  }
+  draws <- tryCatch(
+    as.matrix(posterior::as_draws_matrix(object$brms)),
+    error = function(e) NULL
+  )
+  if (is.null(draws) || !("b_sigma_Intercept" %in% colnames(draws))) {
+    return(NULL)
+  }
+  b <- draws[, "b_sigma_Intercept"]
+  s <- exp(b)
+  q <- stats::quantile(s, probs = probs, names = FALSE, na.rm = TRUE)
+  data.frame(
+    level = "sigma",
+    variance = NA_real_,
+    variance_lower = NA_real_,
+    variance_upper = NA_real_,
+    sd = stats::median(s, na.rm = TRUE),
+    sd_lower = q[1L],
+    sd_upper = q[2L],
+    sd_se = stats::sd(s, na.rm = TRUE),
+    stringsAsFactors = FALSE
+  )
 }
 
 # Render the block. Shared by print() and summary() so the two cannot

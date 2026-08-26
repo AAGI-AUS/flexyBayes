@@ -40,11 +40,32 @@
 #' approximation. Useful for verifying the backend chosen, memory
 #' estimate, and any structural refusals before paying the fit cost.
 #'
-#' @param formula     A brms-style two-sided formula such as
-#'   `y ~ x + s(z) + (1 | g)`. The same formula the fit would receive.
+#' Accepts either grammar `flexybayes()` accepts: a single brms-style
+#' two-sided formula (`y ~ x + s(z) + (1 | g)`), or the ASReml triple
+#' (`formula` as the fixed-effects side, plus `random` / `residual`).
+#' Before 0.9.3, `fb_plan()` was brms-formula-only and silently dropped
+#' `random` / `residual` into its unused `...` when a caller supplied
+#' them ASReml-style, planning a fixed-effects-only model and reporting
+#' a backend the full model would not reach live (FS-22). Both
+#' spellings now route through the same grammar detection
+#' `flexybayes()` uses (`syntax = "auto"` by default), so
+#' `fb_plan(fixed = ..., random = ..., residual = ..., data = ...)` and
+#' `flexybayes(fixed = ..., random = ..., residual = ..., data = ...,
+#' plan = TRUE)` plan the identical model.
+#'
+#' @param formula     Either a brms-style two-sided formula such as
+#'   `y ~ x + s(z) + (1 | g)`, or (when `random` and/or `residual` are
+#'   supplied) the ASReml-grammar fixed-effects formula, e.g.
+#'   `yield ~ loc + yearf`. The same formula the fit would receive.
 #' @param data        A data.frame holding every variable the formula
 #'   names. Planning reads its dimensions and column types, never its
 #'   values.
+#' @param random      An optional one-sided ASReml-grammar random-effects
+#'   formula (e.g. `~ gen + gen:loc`). `NULL` (default) for a brms-style
+#'   `formula`, or for a fixed-effects-only ASReml model.
+#' @param residual    An optional one-sided ASReml-grammar residual
+#'   structure formula (e.g. `~ dsum(~ units | env)`). `NULL` (default)
+#'   for the ordinary independent-residual model.
 #' @param backend     A single string, one of `"auto"` (the default),
 #'   `"inla"`, `"brms"`, or `"greta"`. Chooses the engine the plan
 #'   reports on, with `"auto"` planning the route dispatch would take.
@@ -66,6 +87,9 @@
 #' @param predict_plan An optional `list(newdata = ..., chunk_size =
 #'   ...)` requesting a prediction-shape plan. Plan-only, so it never
 #'   fires `predict()`.
+#' @param syntax      Grammar override, one of `"auto"` (default,
+#'   detected from `formula` / `random` / `residual` exactly as
+#'   `flexybayes()` does), `"asreml"`, or `"brms"`.
 #' @param ...         Currently unused, reserved for future plan inputs.
 #'
 #' @returns An `<fb_plan>` classed list. See `print.fb_plan()` for the
@@ -76,6 +100,8 @@
 fb_plan <- function(
   formula,
   data,
+  random = NULL,
+  residual = NULL,
   backend = c("auto", "greta", "inla", "brms"),
   priors = NULL,
   known_matrices = list(),
@@ -85,23 +111,44 @@ fb_plan <- function(
   aggregate = "auto",
   memory_ceiling_gb = NULL,
   predict_plan = NULL,
+  syntax = c("auto", "asreml", "brms"),
   ...
 ) {
   .check_approximate_scheme(backend)
   backend <- match.arg(backend)
   aggregate <- .normalise_aggregate(aggregate)
+  syntax <- match.arg(syntax)
 
   the_call <- match.call()
   data_name <- deparse(substitute(data))
 
-  fb <- fb_from_brms(
-    formula = formula,
+  # Grammar auto-detection (S6/FS-22): route through the same
+  # .build_ir_polymorphic() / .detect_grammar() machinery flexybayes()
+  # uses, so a plan built from either spelling reaches the identical IR
+  # a live fit would build. Before 0.9.3 this call was
+  # fb_from_brms(formula = formula, ...) unconditionally, which is why
+  # an ASReml-style `random =` / `residual =` passed to fb_plan() had
+  # nowhere to go.
+  # Grammar auto-detection (S6/FS-22): route through the same
+  # .build_ir_polymorphic() / .detect_grammar() machinery flexybayes()
+  # uses, so a plan built from either spelling reaches the identical IR
+  # a live fit would build. Before 0.9.3 this call was
+  # fb_from_brms(formula = formula, ...) unconditionally, which is why
+  # an ASReml-style `random =` / `residual =` passed to fb_plan() had
+  # nowhere to go.
+  fb <- .build_ir_polymorphic(
+    fixed = formula,
+    random = random,
+    residual = residual,
     data = data,
     family = family,
     link = link,
-    prior = priors,
     weights = weights,
-    known_matrices = known_matrices
+    known_matrices = known_matrices,
+    prior = priors,
+    prior_fixed_sd = 100,
+    prior_vc_sd = 1,
+    syntax = syntax
   )
 
   .fb_plan_from_ir(
@@ -148,6 +195,18 @@ fb_plan <- function(
   # find that out before paying for a fit, so it refuses with the same
   # code rather than reporting a route for a model no engine will take.
   .refuse_term_in_fixed_and_random(fb)
+
+  # ---- weights guard (C6; before any planning work) -------------- #
+  # .dispatch_backend() refuses a non-gaussian / non-identity-link
+  # weighted model by name (weights_requires_gaussian) before it
+  # reaches an emit. Without the same call here, fb_plan() on that
+  # exact model reported "Will fit: yes" -- a plan/live disagreement
+  # of the kind C3 (S6/FS-22) closed for grammar routing, reopened here
+  # by a refusal C3 predates. `weights = NULL` is deliberate: the IR
+  # .build_ir_polymorphic() built above already carries the weights
+  # argument as an addition_terms entry, so .fb_ir_weights(fb) alone
+  # recovers it.
+  .refuse_unsupported_weights(fb)
 
   # ---- preflight (always; bypass dispatcher threshold) ---------- #
   pf_dataset <- .fb_dataset(data)
@@ -767,6 +826,27 @@ print.fb_plan <- function(x, ...) {
     "\n",
     sep = ""
   )
+
+  # S6: N, K, rows-per-cell and a threshold-stated verdict, whenever the
+  # cell count is known -- not only when the model is eligible. Before
+  # 0.9.3 an ineligible-by-compression model (compression_unproductive)
+  # printed only its reason code with no numbers, so a user could not
+  # see WHY aggregation would not pay without reading the source. `agg$K`
+  # / `agg$ratio` (rows per cell) are populated whenever the cell count
+  # resolved, regardless of `eligible` -- see .fb_plan_from_ir()'s `agg`
+  # construction.
+  if (!is.na(x$aggregation$K)) {
+    cat(
+      "    ",
+      .fb_aggregation_verdict_line(
+        N = x$aggregation$N,
+        K = x$aggregation$K,
+        rows_per_cell = x$aggregation$ratio
+      ),
+      "\n",
+      sep = ""
+    )
+  }
 
   cat("  Cov validation policy:   ", x$cov_validation_policy, "\n", sep = "")
 

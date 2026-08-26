@@ -101,6 +101,25 @@
 
   present <- vars[vars %in% names(tab)]
   out <- tab[, present, drop = FALSE]
+  # C4/FS-26: on an INLA fit whose model touched a non-syntactic factor
+  # level, the reference grid emmeans built (via R/emmeans_support.R's
+  # recover_data(), which reads object$data) carries the legalised
+  # (make.names()) labels; restore the user's own here so the table a
+  # breeder reads shows what they wrote. object$level_labels is NULL
+  # for every fit this legalisation never touched (every non-INLA
+  # engine, and an INLA fit with no non-syntactic level), so this is a
+  # no-op there.
+  for (v in present) {
+    if (is.factor(out[[v]])) {
+      levels(out[[v]]) <- .inla_restore_level_labels(
+        object$level_labels,
+        v,
+        levels(out[[v]])
+      )
+    } else if (is.character(out[[v]])) {
+      out[[v]] <- .inla_restore_level_labels(object$level_labels, v, out[[v]])
+    }
+  }
   out$estimate <- .fb_classify_column(tab, c("emmean", "response", "rate"))
   out$std.error <- .fb_classify_column(tab, c("SE", "std.error"))
   out$conf.low <- .fb_classify_column(tab, c("asymp.LCL", "lower.CL"))

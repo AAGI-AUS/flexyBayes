@@ -2222,6 +2222,104 @@
 }
 
 
+# --- v0.9.3 registry population ---------------------------------- #
+
+# .populate_refusal_registry_v093() --- the 0.9.3 scale-strategy
+# refusals (WP-C): the cell-count integer-cast sibling of the 0.9.0
+# row-count guard, typed engine-death wraps for INLA and brms, and the
+# per-level AR1-field boundary this release still refuses. Called from
+# .onLoad() before .lock_refusal_registry().
+.populate_refusal_registry_v093 <- function() {
+  .register_refusal(
+    reason_code = "cell_count_exceeds_integer",
+    description = paste0(
+      "The aggregation planner's estimated cell count (the product of ",
+      "the cell key's factor level counts) exceeds R's integer limit. ",
+      "Recording it would coerce it to NA, so the plan's cell count and ",
+      "compression estimate would both silently disappear. The row-count ",
+      "sibling (row_count_exceeds_integer) fixed the identical defect for ",
+      "N; this is the cell-count member of the same class (FS-24)."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Scale strategy S1 / FS-24",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
+  .register_refusal(
+    reason_code = "inla_program_failed",
+    description = paste0(
+      "The INLA engine died -- a non-zero exit from the inla-program ",
+      "subprocess, an inla.core.safe failure, or an empty/NULL result ",
+      "with no R-level error at all -- past the design-memory preflight, ",
+      "which models per-term storage but not the sparse-Cholesky solver ",
+      "cost of a large latent field. Before 0.9.3 this reached the user ",
+      "as a raw pass-through of the engine's own message after tens of ",
+      "minutes of runtime, with no reason code and no remedy (FS-25). ",
+      "Carries the design size, the largest design this package has ",
+      "verified an INLA fit to complete (read from ",
+      "inst/validation/benchmark_scaling.csv), the binding random-effect ",
+      "term where determinable, and the remedies."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Scale strategy S2 / FS-25",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
+  .register_refusal(
+    reason_code = "weights_requires_gaussian",
+    description = paste0(
+      "`weights` is lowered for family = \"gaussian\" with the identity ",
+      "link only (brms's y | weights(w) addition term; INLA's ",
+      "scale = w per-observation precision multiplier -- both give ",
+      "Var(y_i) = sigma^2 / w_i on the Gaussian likelihood). Superseded ",
+      "the all-families weights_not_supported refusal for this one ",
+      "well-defined mapping (C6); every other family, and a non-identity ",
+      "link on gaussian, still refuse -- weights_not_supported remains ",
+      "registered for the historical all-families refusal text."
+    ),
+    message_template = "%s",
+    registered_in_adr = "C6",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
+  .register_refusal(
+    reason_code = "weights_not_aggregatable",
+    description = paste0(
+      "aggregate = TRUE with non-constant observation weights. Weights ",
+      "are lowered for the per-row Gaussian route only; the aggregated ",
+      "route's sufficient statistics (per-cell sums and counts) do not ",
+      "fold in a per-observation weight, so a weighted aggregated fit is ",
+      "refused rather than silently ignoring the weight or answering a ",
+      "different question under the same name."
+    ),
+    message_template = "%s",
+    registered_in_adr = "C6",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
+  .register_refusal(
+    reason_code = "at_field_per_level_hyper_not_representable",
+    description = paste0(
+      "at(trial, level):ar1(row):ar1(col) names a single conditioned ",
+      "level of the grouping factor for a per-trial separable AR1 ",
+      "field, or (the same lowering gap read the other way) asks for ",
+      "field hyperparameters that vary by level rather than being ",
+      "shared. The supported spelling, at(trial):ar1(row):ar1(col) ",
+      "with no level argument, fits one field per level of `trial` on ",
+      "INLA via the replicate = mechanism, sharing rho_row, rho_col ",
+      "and the field variance across every level; there is no ",
+      "lowering for a level-conditioned field or for per-level ",
+      "(unshared) hyperparameters."
+    ),
+    message_template = "%s",
+    registered_in_adr = "FS-27 / C5",
+    plan_field = NA_character_,
+    since_version = "0.9.3"
+  )
+  invisible(NULL)
+}
+
+
 # --- lock helper -------------------------------------------------- #
 
 # .lock_refusal_registry() --- locks the environment so no further

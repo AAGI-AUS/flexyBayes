@@ -30,6 +30,451 @@
 # DESCRIPTION:Suggests with Additional_repositories declaration.
 
 # ---------------------------------------------------------------- #
+# S2 -- no engine death without a typed refusal (C2, FS-25)         #
+# ---------------------------------------------------------------- #
+
+# .inla_call() --- thin, mockable wrapper around the one INLA engine
+# call site. Exists so (a) there is exactly one place the death-
+# pattern classification below has to route through, and (b) tests
+# can substitute a controlled failure via
+# testthat::local_mocked_bindings(.inla_call = ...) without needing a
+# real INLA program crash (slow, and not reliably reproducible on
+# demand). Carries no error handling of its own -- the caller's
+# tryCatch is what turns a raw engine death into a typed refusal, so
+# mocking this function alone exercises that translation exactly as a
+# real crash would.
+.inla_call <- function(args) {
+  do.call(INLA::inla, args)
+}
+
+# .inla_is_program_death_message() --- TRUE when an error message
+# names the INLA program dying, rather than a flexyBayes-side argument
+# or formula error. Deliberately narrow: FS-25's observed failure text
+# is "The inla-program exited with an error. Unless you interrupted it
+# yourself, ..."; the alternate spelling `inla.core.safe` is INLA's
+# other reporting path for the same class of event. Only these
+# patterns route to `inla_program_failed` -- any other message is
+# flexyBayes's own code and must propagate unwrapped (own-code errors
+# must not be misnamed as an engine death).
+.inla_is_program_death_message <- function(msg) {
+  if (!is.character(msg) || length(msg) != 1L || is.na(msg)) {
+    return(FALSE)
+  }
+  grepl("inla-program|inla\\.core\\.safe|\\bexited\\b", msg, ignore.case = TRUE)
+}
+
+# .inla_design_latent_effect_summary() --- best-effort tally of the
+# failed design's random-effect "nodes", read directly from the random
+# terms' grouping variable(s) against the data already in scope at the
+# emit call. This is NOT a re-invocation of .fb_preflight()'s byte-cost
+# model: that object is computed upstream in .dispatch_backend() (only
+# above the 1e5-row threshold) and is not threaded down to emit_inla()
+# through the backend-registry dispatch table, so it is not available
+# here without new cross-file plumbing (recorded as a Handoff). This
+# tally is a plain sum of observed level counts per random term,
+# best-effort -- a term this function cannot size (no resolvable
+# grouping variable in `data`) contributes nothing rather than aborting
+# the refusal it is building.
+#
+# Returns list(total = <double or NA>, binding_term = <character or
+# NA>, binding_n = <double or NA>) -- `binding_term` names the single
+# random term contributing the most nodes, mirroring the preflight's
+# own "binding term" vocabulary (R/fb_preflight.R
+# design_memory_exceeds_ceiling).
+.inla_design_latent_effect_summary <- function(fb, data) {
+  empty <- list(
+    total = NA_real_, binding_term = NA_character_, binding_n = NA_real_
+  )
+  terms <- fb$random_terms
+  if (!length(terms) || !is.data.frame(data)) {
+    return(empty)
+  }
+  total <- 0
+  counted_any <- FALSE
+  binding_term <- NA_character_
+  binding_n <- -Inf
+  for (t in terms) {
+    vars <- if (!is.null(t$vars)) {
+      as.character(t$vars)
+    } else if (!is.null(t$var)) {
+      as.character(t$var)
+    } else {
+      character(0L)
+    }
+    vars <- vars[nzchar(vars) & vars %in% names(data)]
+    if (!length(vars)) {
+      next
+    }
+    n_levels <- tryCatch(
+      as.numeric(nrow(unique(data[vars]))),
+      error = function(e) NA_real_
+    )
+    if (is.na(n_levels)) {
+      next
+    }
+    counted_any <- TRUE
+    total <- total + n_levels
+    if (n_levels > binding_n) {
+      binding_n <- n_levels
+      binding_term <- if (!is.null(t$label) && nzchar(t$label)) {
+        t$label
+      } else {
+        paste(vars, collapse = ":")
+      }
+    }
+  }
+  if (!counted_any) {
+    return(empty)
+  }
+  list(total = total, binding_term = binding_term, binding_n = binding_n)
+}
+
+# .inla_largest_verified() --- the largest per-row INLA rung this
+# package has verified to complete, read from
+# inst/validation/benchmark_scaling.csv (S4/C2, FS-25 -- see the
+# "inla-ceilings" study rows added there). Returns
+# list(n =, random_effects =, run_date =) for the largest `n` among
+# `method == "per_row"` rows carrying `outcome == "success"` AND a
+# recorded `random_effects` count.
+#
+# The `random_effects` filter matters: this artefact also carries the
+# `boundary` / `boundary-confirm` studies, which grow N on a FIXED,
+# small random-effect structure (`random = ~ geno`, 6 genotypes) to
+# measure the aggregated-vs-per-row row-count boundary -- a different
+# question from the one an inla_program_failed refusal is answering.
+# Their per_row rows reach a larger raw N (up to 1e6) than the
+# genotype-growth ceilings study, but they say nothing about how large
+# a LATENT FIELD this package has verified, which is what actually
+# killed the FS-25 fit (a sparse-Cholesky solver cost, not a design-
+# memory cost). Restricting to rows that recorded a random-effect
+# count isolates the study that measured what matters here.
+#
+# NULL if the artefact is missing, unreadable, or carries no such row
+# -- a refusal message then degrades to "not yet measured" rather than
+# erroring on a missing CSV.
+.inla_largest_verified <- function() {
+  path <- system.file(
+    "validation", "benchmark_scaling.csv",
+    package = "flexyBayes"
+  )
+  if (!nzchar(path) || !file.exists(path)) {
+    return(NULL)
+  }
+  df <- tryCatch(
+    utils::read.csv(path, stringsAsFactors = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(df) || !nrow(df)) {
+    return(NULL)
+  }
+  needed <- c("method", "outcome", "n", "random_effects")
+  if (!all(needed %in% names(df))) {
+    return(NULL)
+  }
+  ok <- df$method == "per_row" &
+    df$outcome == "success" &
+    !is.na(df$n) &
+    !is.na(df$random_effects)
+  if (!any(ok)) {
+    return(NULL)
+  }
+  df_ok <- df[ok, , drop = FALSE]
+  best <- df_ok[which.max(df_ok$n), ]
+  list(
+    n = as.numeric(best$n),
+    random_effects = if (
+      "random_effects" %in% names(best) && !is.na(best$random_effects)
+    ) {
+      as.numeric(best$random_effects)
+    } else {
+      NA_real_
+    },
+    run_date = if ("run_date" %in% names(best)) {
+      as.character(best$run_date)
+    } else {
+      NA_character_
+    }
+  )
+}
+
+# .inla_program_failed_condition() --- builds (does not raise) the
+# `inla_program_failed` typed refusal condition object (S2/C2, FS-25),
+# mirroring .fb_refusal_condition()'s own build-then-stop() idiom --
+# every call site wraps this in stop(). Carries the design size, the
+# largest size this package has verified, the binding quantity if
+# known, and the remedies -- so the user never receives a raw engine-
+# death string with no reason code and no next step
+# (SCALE_STRATEGY_2026-08-22 S2).
+.inla_program_failed_condition <- function(fb, data, engine_message) {
+  n_rows <- if (is.data.frame(data)) as.numeric(nrow(data)) else NA_real_
+  latent <- .inla_design_latent_effect_summary(fb, data)
+  largest <- .inla_largest_verified()
+
+  largest_txt <- if (is.null(largest)) {
+    "not yet measured"
+  } else {
+    paste0(
+      format(largest$n, big.mark = ",", scientific = FALSE),
+      " rows",
+      if (!is.na(largest$random_effects)) {
+        paste0(
+          " / ",
+          format(largest$random_effects, big.mark = ",", scientific = FALSE),
+          " random effects"
+        )
+      } else {
+        ""
+      },
+      " (", largest$run_date, ")"
+    )
+  }
+
+  binding_txt <- if (is.na(latent$binding_term)) {
+    "not determined from the random terms"
+  } else {
+    paste0(
+      latent$binding_term,
+      " (", format(latent$binding_n, big.mark = ",", scientific = FALSE),
+      " levels)"
+    )
+  }
+
+  .fb_refusal_condition(
+    reason_code = "inla_program_failed",
+    message = paste0(
+      "The INLA engine failed while fitting this design: \"",
+      engine_message,
+      "\" This design has ",
+      format(n_rows, big.mark = ",", scientific = FALSE),
+      " rows",
+      if (!is.na(latent$total)) {
+        paste0(
+          " and an estimated ",
+          format(latent$total, big.mark = ",", scientific = FALSE),
+          " random-effect levels"
+        )
+      } else {
+        ""
+      },
+      ". The largest design this package has verified an INLA per-row ",
+      "fit to complete is ", largest_txt, ". The binding term (largest ",
+      "single random-effect contributor) is ", binding_txt, ". ",
+      "Remedies, in order of least to most disruptive: reduce the model ",
+      "(fewer random-effect terms or coarser groupings); aggregate where ",
+      "eligible (fb_plan() reports whether this design compresses); ",
+      "switch engine (backend = \"brms\"); or add memory and retry."
+    ),
+    family_class = "flexybayes_inla_engine_refusal",
+    n_rows = n_rows,
+    n_latent_effects_est = latent$total,
+    binding_term = latent$binding_term,
+    binding_n_levels = if (is.finite(latent$binding_n)) {
+      latent$binding_n
+    } else {
+      NA_real_
+    },
+    largest_verified_n = if (is.null(largest)) NA_real_ else largest$n,
+    largest_verified_random_effects = if (is.null(largest)) {
+      NA_real_
+    } else {
+      largest$random_effects
+    },
+    engine_message = engine_message
+  )
+}
+
+
+# ---------------------------------------------------------------- #
+# C4 -- legalise non-syntactic factor levels (FS-26)                 #
+# ---------------------------------------------------------------- #
+
+# .inla_legalise_factor_levels() --- rewrite every factor level the
+# model touches to a syntactic name on a COPY of `data`, and return the
+# copy alongside a per-variable map so the caller can print the user's
+# own labels back through the accessors. A level was already syntactic
+# in the common case (breeding-trial factor labels usually are, and
+# level counts are small) -- this is a no-op there -- the map is still
+# recorded uniformly so the accessors have one lookup path rather than
+# a conditional one.
+#
+# The syntax check is NOT bare make.names(level) == level. INLA names a
+# fixed-effect coefficient by concatenating the VARIABLE name onto the
+# level with no separator (e.g. `env` + `2` -> `env2`), and that
+# concatenated string is what has to survive INLA's own formula
+# round-trip -- not the level alone. A purely-numeric level like `"2"`
+# fails make.names() in isolation (a name cannot start with a digit),
+# but `env2` is a perfectly valid, unambiguous identifier; legalising
+# `"2"` to `"X2"` here anyway is a FALSE POSITIVE that broke the
+# per-row vs. streamed-aggregated equivalence test the moment a design
+# used integer-coded factor levels
+# (test-aggregation-equivalence-backend.R uses `env <- factor(env)` on
+# an integer vector) -- the streamed/aggregated route
+# (R/emit_gaussian_aggregated.R) does not run this legalisation at all,
+# so the two routes' coefficient names silently diverged. The check
+# below probes with a throwaway letter-led prefix (any real `t$var` is
+# itself already a legal R name, i.e. letter- or dot-led, so a letter
+# prefix always reproduces the actual concatenation context) and only
+# legalises a level whose PREFIXED form still changes under
+# make.names() -- true for a space or other symbol-breaking character,
+# false for a level that merely starts with a digit.
+#
+# Scans fixed_terms, random_terms and residual_terms for every
+# variable name the model actually references (`$var` scalar terms,
+# `$vars` interaction / at() terms), not just the response's immediate
+# predictors -- a level living only inside a random or residual term
+# (like FS-26's own `TRIAL`) is exactly as unrepresentable to INLA as
+# one on the fixed side.
+#
+# Returns list(data = <copy of `data`, factor columns relabelled>,
+# maps = <named list, one entry per relabelled variable, each a
+# character vector keyed by the LEGAL label with the ORIGINAL label as
+# its value -- .inla_restore_level_labels() reads it in that
+# direction>).
+.inla_legalise_factor_levels <- function(fb, data) {
+  if (!is.data.frame(data)) {
+    return(list(data = data, maps = list()))
+  }
+  vars <- unique(unlist(lapply(
+    c(fb$fixed_terms, fb$random_terms, fb$residual_terms),
+    function(t) {
+      v <- if (!is.null(t$vars)) {
+        as.character(t$vars)
+      } else if (!is.null(t$var)) {
+        as.character(t$var)
+      } else {
+        character(0L)
+      }
+      v[nzchar(v)]
+    }
+  )))
+  vars <- vars[vars %in% names(data)]
+  vars <- vars[vapply(vars, function(v) is.factor(data[[v]]), logical(1L))]
+
+  if (!length(vars)) {
+    return(list(data = data, maps = list()))
+  }
+
+  # A fixed, unlikely-to-collide letter-led prefix. Its only job is to
+  # make every probed string start with a letter, so make.names()'s
+  # verdict reflects whether the LEVEL's own characters are a problem,
+  # not whether it happens to start with a digit -- concatenation onto
+  # a real (letter-led) variable name already solves that part.
+  probe_prefix <- "Q9zZ"
+
+  maps <- list()
+  for (v in vars) {
+    original <- levels(data[[v]])
+    probed <- paste0(probe_prefix, original)
+    legal_probed <- make.names(probed, unique = TRUE)
+    legal <- substring(legal_probed, nchar(probe_prefix) + 1L)
+    if (!identical(original, legal)) {
+      levels(data[[v]]) <- legal
+    }
+    maps[[v]] <- stats::setNames(original, legal)
+  }
+
+  list(data = data, maps = maps)
+}
+
+# .inla_restore_level_labels() --- translate a character vector of
+# legal labels for variable `var` back to the user's own, using the
+# map .inla_legalise_factor_levels() recorded on the fit
+# (`object$level_labels`). Values not present in the map (a level the
+# legalisation pass never touched, or a variable it never carried) pass
+# through unchanged -- this is a display-time convenience, not a gate,
+# so an unmapped value is not an error.
+.inla_restore_level_labels <- function(level_labels, var, values) {
+  map <- level_labels[[var]]
+  if (is.null(map) || !length(values)) {
+    return(values)
+  }
+  hit <- values %in% names(map)
+  values[hit] <- unname(map[values[hit]])
+  values
+}
+
+# .inla_restore_term_labels() --- the composite-name sibling of
+# .inla_restore_level_labels(), for fixed-effect / interaction TERM
+# strings rather than bare factor values. INLA (via R's own default
+# treatment-contrast dummy coding) names a fixed-effect coefficient by
+# pasting the variable name directly onto its level with no separator
+# (e.g. `NAPPLIED2X.low.N`... in practice `NAPPLIED2low.N`, the legal
+# level with no punctuation between var and level), so restoring the
+# user's own label is a substring replace, once per relabelled
+# variable x legal-level pair, over every term string. Order does not
+# matter across variables (a legal level string is always prefixed by
+# its own variable name in a term, so distinct variables cannot
+# collide on the same substring); handles interaction terms (`a:b`)
+# the same way, because the replace runs on the whole string.
+#
+# `object$level_labels` is `NULL` / empty for a fit this legalisation
+# never touched (every non-INLA fit, and an INLA fit with no
+# non-syntactic level) -- returns `terms` unchanged in that case, so
+# call sites do not need their own NULL guard.
+.inla_restore_term_labels <- function(level_labels, terms) {
+  if (!length(level_labels) || !length(terms)) {
+    return(terms)
+  }
+  for (var in names(level_labels)) {
+    map <- level_labels[[var]]
+    for (legal in names(map)) {
+      original <- map[[legal]]
+      if (identical(legal, original)) {
+        next
+      }
+      needle <- paste0(var, legal)
+      hit <- grepl(needle, terms, fixed = TRUE)
+      if (any(hit)) {
+        terms[hit] <- gsub(
+          needle,
+          paste0(var, original),
+          terms[hit],
+          fixed = TRUE
+        )
+      }
+    }
+  }
+  terms
+}
+
+# .inla_restore_data_original_levels() --- the reverse of
+# .inla_legalise_factor_levels(): a copy of `data` with every
+# relabelled factor's LEVELS reverted from legal back to the user's
+# own, via the same `level_labels` map. Level relabelling is 1:1 and
+# order-preserving (make.names(..., unique = TRUE) never reorders or
+# merges levels), so this round-trips exactly.
+#
+# The one consumer this exists for: .fb_fit_data()
+# (R/ecosystem_support.R) is the single shared read-point every
+# downstream-ecosystem integration (emmeans, marginaleffects, plot(),
+# the missing-cell summary) uses for "the data to build a design
+# matrix / reference grid from". Once coef.flexybayes_inla() restores
+# the user's own coefficient names (C4/FS-26), a design matrix built
+# from the still-legalised data would name its columns by the legal
+# labels and no longer line up with the fit's own (now-original)
+# coefficient names -- .fb_fixef_model_matrix()'s own reconciliation
+# check exists precisely to catch a mismatch like that. Feeding it the
+# original-labelled data keeps both sides speaking the same labels
+# again, and every consumer of .fb_fit_data() gets the user's own
+# labels for free rather than needing its own restoration call.
+.inla_restore_data_original_levels <- function(level_labels, data) {
+  if (!length(level_labels) || !is.data.frame(data)) {
+    return(data)
+  }
+  for (v in names(level_labels)) {
+    if (v %in% names(data) && is.factor(data[[v]])) {
+      levels(data[[v]]) <- .inla_restore_level_labels(
+        level_labels,
+        v,
+        levels(data[[v]])
+      )
+    }
+  }
+  data
+}
+
+
+# ---------------------------------------------------------------- #
 # Public-style entry -- internal in v0.1                           #
 # ---------------------------------------------------------------- #
 
@@ -60,6 +505,21 @@ emit_inla <- function(
   ...
 ) {
   .check_fb_terms(fb, "`fb` must be an fb_terms object.")
+
+  # Legalise non-syntactic factor levels (C4/FS-26). INLA expands a
+  # factor fixed term to per-level names built as paste0(var, level)
+  # and evaluates them internally; a level containing a space (or
+  # anything else make.names() would touch, e.g. "low N") then fails
+  # deep inside the retried inla-program call with an untyped
+  # `object 'NAPPLIED2low N' not found`. Legalise every factor the
+  # model uses on a COPY of `data` before anything below builds a
+  # formula, an index column, or the data list INLA reads -- every
+  # subsequent use of `data` in this function sees the legalised copy.
+  # The map travels on the fit so summary() / coef() / ranef() /
+  # predict(classify =) can translate the legal labels back to the
+  # user's own before printing.
+  level_map <- .inla_legalise_factor_levels(fb, data)
+  data <- level_map$data
 
   # `seed` and `control` are Stan sampler settings threaded through from
   # the public entry point. INLA's nested Laplace approximation has no
@@ -328,46 +788,77 @@ emit_inla <- function(
       data_inla[[paste0(v, "_id")]] <- as.integer(factor(data[[v]]))
     }
     if (identical(ttype, "ar1_spatial")) {
+      # C5/FS-27: the per-trial spelling's replicate index. Built the
+      # same way as the row / col index columns; INLA's replicate =
+      # reads it to fit one independent realisation of the field per
+      # distinct value.
+      if (!is.null(term$at_var)) {
+        data_inla[[paste0(term$at_var, "_id")]] <-
+          as.integer(factor(data[[term$at_var]]))
+      }
       n_row <- length(unique(data[[term$row_var]]))
       n_col <- length(unique(data[[term$col_var]]))
-      combos <- interaction(
-        data[[term$row_var]],
-        data[[term$col_var]],
-        drop = TRUE
-      )
-      one_obs_per_node <- nrow(data) == n_row * n_col &&
-        !any(duplicated(combos))
-      if (!one_obs_per_node) {
-        n_nodes <- n_row * n_col
-        replicated <- any(duplicated(combos))
+      n_nodes <- n_row * n_col
+      if (is.null(term$at_var)) {
+        combos <- interaction(
+          data[[term$row_var]],
+          data[[term$col_var]],
+          drop = TRUE
+        )
+        one_obs_per_node <- nrow(data) == n_nodes && !any(duplicated(combos))
+        bad_at_levels <- if (one_obs_per_node) character(0L) else "<the design>"
+      } else {
+        # C5/FS-27: "the complete-lattice check runs per level" -- one
+        # field per level of at_var means each level's OWN subset must
+        # independently form a complete row x col lattice; the global
+        # row count check the single-field case uses does not
+        # generalise (every level legitimately re-uses the same row /
+        # col labels, so the whole table is n_at times n_nodes, not
+        # n_nodes).
+        at_levels <- unique(data[[term$at_var]])
+        bad_at_levels <- character(0L)
+        for (lev in at_levels) {
+          sub <- data[data[[term$at_var]] == lev, , drop = FALSE]
+          combos <- interaction(
+            sub[[term$row_var]],
+            sub[[term$col_var]],
+            drop = TRUE
+          )
+          ok <- nrow(sub) == n_nodes && !any(duplicated(combos))
+          if (!ok) {
+            bad_at_levels <- c(bad_at_levels, as.character(lev))
+          }
+        }
+      }
+      if (length(bad_at_levels)) {
         stop(.fb_refusal_condition(
           reason_code = "ar1_spatial_requires_complete_grid",
           message = paste0(
-            "The data carry ",
-            nrow(data),
-            " rows for the ",
-            n_row,
-            " x ",
-            n_col,
-            " (",
-            term$row_var,
-            ", ",
-            term$col_var,
-            ") array, ",
-            "which has ",
-            n_nodes,
-            " nodes",
-            if (replicated) {
-              ", and some nodes hold more than one row"
+            if (!is.null(term$at_var)) {
+              paste0(
+                "The level(s) of `", term$at_var, "` that do not ",
+                "independently form a complete ", n_row, " x ", n_col,
+                " (", term$row_var, ", ", term$col_var, ") lattice: ",
+                paste(bad_at_levels, collapse = ", "), ". "
+              )
             } else {
-              ""
+              paste0(
+                "The data carry ", nrow(data), " rows for the ", n_row,
+                " x ", n_col, " (", term$row_var, ", ", term$col_var,
+                ") array, which has ", n_nodes, " nodes. "
+              )
             },
-            ". ",
             .ar1_term_spelling(term),
             " is fitted as a separable ",
             "autoregressive field indexed by that array, so each ",
             "combination of the two factors has to identify exactly one ",
-            "unit -- the same requirement ASReml states for ",
+            "unit",
+            if (!is.null(term$at_var)) {
+              paste0(", WITHIN each level of `", term$at_var, "`")
+            } else {
+              ""
+            },
+            " -- the same requirement ASReml states for ",
             "`residual = ~ ar1:ar1`, and the same reason it refuses a ",
             "trial with plots deleted. Keep the unobserved plots as ",
             "design cells with na_action = \"augment\" (the default), ",
@@ -426,12 +917,57 @@ emit_inla <- function(
   if (length(control_fixed)) {
     inla_args$control.fixed <- control_fixed
   }
+  # C6: weights lowered for the Gaussian family, identity link only --
+  # INLA's scale = is a per-observation precision multiplier on the
+  # Gaussian / Student-T likelihood (?INLA::inla: "Fixed (optional)
+  # scale parameters of the precision ... default rep(1, n.data)"),
+  # giving the same Var(y_i) = sigma^2 / w_i semantics brms's sigma
+  # distributional offset lowers to on that engine (R/emit_brms.R's
+  # .FB_BRMS_WEIGHTS_OFFSET_COL -- NOT brms's own weights() addition
+  # term, a different quantity; that constant's banner carries the
+  # grounding trail). Everything this emit cannot honour (non-gaussian,
+  # non-identity link, the aggregated route) is already refused
+  # upstream by .refuse_unsupported_weights() / the aggregation gate
+  # (R/dispatch.R) before this call is reached -- this site only
+  # carries the value through. Spliced in only when weights are
+  # actually non-constant, for the same "byte-identical to the
+  # unweighted call" reason control.fixed follows above -- a constant
+  # vector (any value, not only 1) is the unweighted model under a
+  # different spelling, and scale = <constant != 1> would silently
+  # rescale the reported sigma rather than leaving it unweighted.
+  ir_weights <- .fb_ir_weights(fb) %||% weights
+  if (.fb_weights_nonconstant(ir_weights)) {
+    inla_args$scale <- ir_weights
+  }
   fit <- tryCatch(
-    do.call(INLA::inla, inla_args),
+    .inla_call(inla_args),
     error = function(e) {
-      stop("INLA fit failed: ", conditionMessage(e), call. = FALSE)
+      if (.inla_is_program_death_message(conditionMessage(e))) {
+        stop(.inla_program_failed_condition(
+          fb = fb,
+          data = data,
+          engine_message = conditionMessage(e)
+        ))
+      }
+      # Not a recognised engine-death signature -- this is flexyBayes's
+      # own code (a bad argument the emit built, a formula it mis-
+      # constructed) or an INLA-side argument-validation error triggered
+      # by one. Re-raise verbatim: wrapping it as an engine-death refusal
+      # would misname the failure and hide it from anyone debugging the
+      # emit itself (S2 draws this line explicitly).
+      stop(e)
     }
   )
+  if (is.null(fit) || !length(fit)) {
+    stop(.inla_program_failed_condition(
+      fb = fb,
+      data = data,
+      engine_message = paste0(
+        "INLA::inla() returned NULL / an empty result with no error ",
+        "condition."
+      )
+    ))
+  }
   elapsed <- unname((proc.time() - t0)["elapsed"])
 
   # Post-fit numerical-confirm gate
@@ -450,7 +986,14 @@ emit_inla <- function(
     list(
       inla = fit,
       fb = fb,
+      # `data` carries the level-legalised copy (C4/FS-26) -- internal
+      # consumers (predict()'s design-matrix reconstruction chief among
+      # them) need the same labels the INLA fit itself was built
+      # against. `level_labels` is the map back to the user's own,
+      # which summary() / coef() / ranef() / predict(classify =) read
+      # at the display boundary.
       data = data,
+      level_labels = level_map$maps,
       num_check = num_check,
       extras = list(
         summary = list(
@@ -1019,7 +1562,15 @@ emit_inla <- function(
   } else {
     term$col_var
   }
-  paste0("ar1(", term$row_var, "):", inner)
+  base <- paste0("ar1(", term$row_var, "):", inner)
+  # C5/FS-27: the per-trial spelling wraps the single-field form in
+  # at(<at_var>): -- quoting it back is what makes a refusal on the
+  # per-trial shape name the formula the user actually wrote rather
+  # than the single-field one.
+  if (!is.null(term$at_var)) {
+    return(paste0("at(", term$at_var, "):", base))
+  }
+  base
 }
 
 # WP16: build the INLA f() latent-field term for an AR1 / separable
@@ -1031,11 +1582,25 @@ emit_inla <- function(
 # idiom's faithfulness was validated against a hand-built AR1(x)AR1 GLS/REML
 # oracle (rebuild/wp16_inla_spatial_oracle.R). The <..>_id integer index
 # columns are pre-built in emit_inla()'s data_inla setup.
+#
+# C5/FS-27: at(trial):ar1(row):ar1(col) -- one separable field per
+# level of `trial` -- adds `replicate = <at_var>_id` to the same f().
+# INLA's replicate mechanism fits K independent realisations of the
+# identical model (same node count, same hyperparameters shared across
+# every replicate) -- exactly "one field per level, shared
+# hyperparameters", with no second f() call and no per-replicate
+# hyperparameter block to keep in sync. `<at_var>_id` is pre-built in
+# emit_inla()'s data_inla setup alongside the row / col index columns.
 .inla_ar1_field_term <- function(term) {
   if (identical(term$type, "ar1")) {
     return(paste0("f(", term$var, "_id, model = \"ar1\")"))
   }
   col_model <- if (isTRUE(term$col_ar1)) "ar1" else "iid"
+  replicate_clause <- if (!is.null(term$at_var)) {
+    paste0(", replicate = ", term$at_var, "_id")
+  } else {
+    ""
+  }
   paste0(
     "f(",
     term$row_var,
@@ -1043,7 +1608,9 @@ emit_inla <- function(
     term$col_var,
     "_id, control.group = list(model = \"",
     col_model,
-    "\"))"
+    "\")",
+    replicate_clause,
+    ")"
   )
 }
 

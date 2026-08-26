@@ -38,6 +38,104 @@
 # happen via a `flexyBayes.aggregation_compression_threshold` option.
 .FB_AGGREGATION_PRODUCTIVITY_THRESHOLD <- 0.5
 
+# .fb_aggregation_verdict_line() --- one line stating N, K (when known),
+# rows per cell, and a plain verdict on whether aggregation pays, with
+# the threshold stated in the same units the line reports (S6, scale
+# strategy 2026-08-22: "a gen:loc:yearf model ... measured 1.06 rows per
+# cell against the shipped demo's 1,200 cells" -- the printed line is
+# what would have shown a user that contrast directly, on either
+# model, without reading the strategy document).
+#
+# Rows per cell (N/K) is the quantity a breeder reads directly off a
+# trial design; the productivity test is expressed internally as
+# K/N <= .FB_AGGREGATION_PRODUCTIVITY_THRESHOLD (>= 2:1 compression), so
+# the equivalent rows-per-cell threshold is its reciprocal. Shared by
+# print.fb_aggregation_plan() and print.fb_plan()'s Aggregation: line so
+# the two plan surfaces cannot drift on wording -- this is the S6 half
+# of "the plan surface tells the truth" (the FS-22 half is the grammar
+# fix in R/fb_plan.R).
+#
+# `rows_per_cell` is generally N/K precomputed by the caller (both
+# callers already carry it under different field names); passing it
+# explicitly rather than recomputing from N and K keeps this a pure
+# formatting function and avoids a second definition of "rows per
+# cell" that could drift from the one the caller actually used.
+.fb_aggregation_verdict_line <- function(N, K, rows_per_cell) {
+  thresh <- 1 / .FB_AGGREGATION_PRODUCTIVITY_THRESHOLD
+  n_txt <- if (is.na(N)) {
+    "NA"
+  } else {
+    format(N, big.mark = " ", scientific = FALSE)
+  }
+  k_txt <- if (is.na(K)) {
+    "NA"
+  } else {
+    format(K, big.mark = " ", scientific = FALSE)
+  }
+  rpc_txt <- if (is.na(rows_per_cell)) {
+    "NA"
+  } else {
+    sprintf("%.2f", rows_per_cell)
+  }
+  verdict <- if (is.na(rows_per_cell)) {
+    "aggregation applicability unknown (cell count not resolved)"
+  } else if (rows_per_cell >= thresh) {
+    sprintf("aggregation will pay (threshold: rows/cell >= %.1f)", thresh)
+  } else {
+    sprintf(
+      "aggregation will NOT pay (threshold: rows/cell >= %.1f)",
+      thresh
+    )
+  }
+  sprintf("N = %s; K = %s; rows/cell = %s; %s", n_txt, k_txt, rpc_txt, verdict)
+}
+
+# .fb_checked_cell_count() --- a cell-count estimate carried safely
+# past R's integer limit, or a refusal.
+#
+# K_est = prod(Ks) is the product of the aggregation cell key's level
+# counts. Growing a design by genotype the way a breeding programme
+# does (FS-24) reaches this product well before the row count reaches
+# its own limit: at 911,808 rows / 54,208 genotypes the cell-key
+# product is already about 2.4e9. `as.integer(prod(Ks))` past
+# `2^31 - 1` returned `NA` with only a base-R coercion warning, and
+# `compression_est` then divided by that `NA` silently -- the plan
+# lost both its cell count and its compression estimate rather than
+# refusing. `Ks` already arrives as a double vector (`vapply(...,
+# numeric(1L))`), so `prod(Ks)` is computed in double space; only the
+# final cast back to `integer` for the common, well within-range case
+# could overflow, and this is where the guard sits.
+#
+# This is the cell-count member of the same class the row-count guard
+# (`.fb_checked_row_count()`, R/stream_aggregate.R) repairs for `N`.
+.fb_checked_cell_count <- function(Ks, cell_key_contribs) {
+  K_est_dbl <- prod(Ks)
+  if (is.finite(K_est_dbl) && K_est_dbl <= .Machine$integer.max) {
+    return(as.integer(round(K_est_dbl)))
+  }
+  labels <- vapply(
+    cell_key_contribs,
+    function(c) if (!is.null(c$label)) c$label else "<unlabelled>",
+    character(1L)
+  )
+  stop(.fb_refusal_condition(
+    reason_code = "cell_count_exceeds_integer",
+    message = paste0(
+      "This model's aggregation cell key (",
+      paste(labels, collapse = " x "),
+      ") has an estimated cell count of ",
+      format(K_est_dbl, scientific = FALSE, big.mark = ","),
+      ", past R's integer limit of ",
+      format(.Machine$integer.max, scientific = FALSE),
+      ". A count that large silently becomes NA when recorded, so the ",
+      "aggregation plan would carry no cell count and no compression ",
+      "estimate at all. Reduce the cell-key cardinality (drop or coarsen ",
+      "an interacting factor) or fit on the per-row route."
+    ),
+    K_est = K_est_dbl
+  ))
+}
+
 
 .fb_aggregation_plan <- function(fb_ir, fb_dataset) {
   .check_fb_terms(
@@ -239,7 +337,7 @@
     ))
   }
 
-  K_est <- as.integer(prod(Ks))
+  K_est <- .fb_checked_cell_count(Ks, cell_key_contribs)
   compression_est <- as.numeric(K_est) / as.numeric(N)
 
   # ---- Engine limit: interaction design columns ---- #
@@ -470,5 +568,18 @@ print.fb_aggregation_plan <- function(x, ...) {
       sprintf("%.3f", x$compression_est)
     }
   ))
+  rows_per_cell <- if (is.na(x$K_est) || identical(x$K_est, 0L)) {
+    NA_real_
+  } else {
+    x$N / x$K_est
+  }
+  cat(
+    "  ",
+    .fb_aggregation_verdict_line(
+      N = x$N, K = x$K_est, rows_per_cell = rows_per_cell
+    ),
+    "\n",
+    sep = ""
+  )
   invisible(x)
 }

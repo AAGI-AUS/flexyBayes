@@ -639,8 +639,16 @@
 # Naming follows the canonical vocabulary: `sigma_<level>`, on the
 # standard-deviation scale like every other row of the table.
 #
-# NULL on every fit without a sectioned residual, which is the signal to
-# leave the table alone.
+# C6 (observation weights) hits the same wall by a different door: with
+# no sectioned residual but weights present, brms's sigma is `~ 1 +
+# offset(...)` rather than a scalar -- one Intercept coefficient, not
+# one per level. .brms_weights_sigma_row() recovers that single row;
+# it is folded in here, named plainly "sigma" (there is no level to
+# suffix), so a weighted fit's varcomp table reads exactly like an
+# unweighted one's.
+#
+# NULL on every fit without a sectioned residual and without weights,
+# which is the signal to leave the table alone.
 #
 # @noRd
 # @keywords internal
@@ -649,15 +657,26 @@
     .brms_residual_by_level_table(object),
     error = function(e) NULL
   )
-  if (!is.data.frame(tab) || nrow(tab) == 0L) {
+  if (is.data.frame(tab) && nrow(tab) > 0L) {
+    return(data.frame(
+      component = paste0("sigma_", as.character(tab$level)),
+      estimate = as.numeric(tab$sd),
+      std.error = as.numeric(tab$sd_se %||% NA_real_),
+      conf.low = as.numeric(tab$sd_lower),
+      conf.high = as.numeric(tab$sd_upper),
+      stringsAsFactors = FALSE
+    ))
+  }
+  wrow <- tryCatch(.brms_weights_sigma_row(object), error = function(e) NULL)
+  if (!is.data.frame(wrow) || nrow(wrow) == 0L) {
     return(NULL)
   }
   data.frame(
-    component = paste0("sigma_", as.character(tab$level)),
-    estimate = as.numeric(tab$sd),
-    std.error = as.numeric(tab$sd_se %||% NA_real_),
-    conf.low = as.numeric(tab$sd_lower),
-    conf.high = as.numeric(tab$sd_upper),
+    component = "sigma",
+    estimate = as.numeric(wrow$sd),
+    std.error = as.numeric(wrow$sd_se %||% NA_real_),
+    conf.low = as.numeric(wrow$sd_lower),
+    conf.high = as.numeric(wrow$sd_upper),
     stringsAsFactors = FALSE
   )
 }
@@ -856,9 +875,22 @@
     if (!is.data.frame(tab) || nrow(tab) == 0L) {
       return(NULL)
     }
+    # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
+    # for a group INLA's f() indexes by a relabelled factor; restore the
+    # user's own label the same way coef.flexybayes_inla() does for the
+    # fixed table, so ranef() -- which reaches this function via
+    # coef(what = "random") -- prints what the user wrote.
+    level_vals <- tab$ID %||% seq_len(nrow(tab))
+    if (is.character(level_vals)) {
+      level_vals <- .inla_restore_level_labels(
+        object$level_labels,
+        nm,
+        level_vals
+      )
+    }
     .fb_random_rows(
       group = nm,
-      level = tab$ID %||% seq_len(nrow(tab)),
+      level = level_vals,
       estimate = .fb_random_column(tab, "mean"),
       std_error = .fb_random_column(tab, "sd"),
       conf_low = .fb_random_column(tab, "0.025quant"),

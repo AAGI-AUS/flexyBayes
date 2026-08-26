@@ -1,19 +1,21 @@
-"study","run_date","pkg_version","method","n","cells_K","compression","wall_s","peak_mb","disk_gb","intercept"
-"boundary-confirm","2026-08-19","0.9.2","per_row",1e+05,NA,NA,5.101,1345.7,NA,1.36265
-"boundary-confirm","2026-08-19","0.9.2","per_row",1e+06,NA,NA,21.987,9582.9,NA,1.34918
-"boundary-confirm","2026-08-19","0.9.2","streamed",1e+05,360,3.6e-03,2.226,336.8,NA,1.36265
-"boundary-confirm","2026-08-19","0.9.2","streamed",1e+06,360,3.6e-04,2.298,410.4,NA,1.34918
-"boundary-confirm","2026-08-19","0.9.2","streamed",1e+07,360,3.6e-05,2.702,1162.2,NA,1.35327
-"boundary","2026-05-31","0.6.0-dev","per_row",1e+05,NA,NA,5.174,1345.6,NA,1.36265
-"boundary","2026-05-31","0.6.0-dev","per_row",5e+05,NA,NA,15.255,6386.1,NA,1.35696
-"boundary","2026-05-31","0.6.0-dev","per_row",1e+06,NA,NA,18.961,12351.9,NA,1.34918
-"boundary","2026-05-31","0.6.0-dev","per_row",5e+06,NA,NA,NA,NA,NA,NA
-"boundary","2026-05-31","0.6.0-dev","streamed",1e+05,360,3.6e-03,2.946,398.5,NA,1.36265
-"boundary","2026-05-31","0.6.0-dev","streamed",1e+06,360,3.6e-04,2.800,470.1,NA,1.34918
-"boundary","2026-05-31","0.6.0-dev","streamed",5e+06,360,7.2e-05,2.969,778.6,NA,1.35704
-"boundary","2026-05-31","0.6.0-dev","streamed",1e+07,360,3.6e-05,2.923,1234.0,NA,1.35327
-"boundary","2026-05-31","0.6.0-dev","streamed",5e+07,360,7.2e-06,4.048,3712.4,NA,1.35482
-"extreme","2026-05-31","0.6.0-dev","streamed_fst",1e+07,1200,1.2e-04,3.310,708.3,0.094,0.98542
-"extreme","2026-05-31","0.6.0-dev","streamed_fst",1e+08,1200,1.2e-05,5.670,795.9,0.940,0.98552
-"extreme","2026-05-31","0.6.0-dev","streamed_fst",1e+09,1200,1.0e-06,31.900,844.1,9.395,0.98565
-"extreme","2026-05-31","0.6.0-dev","streamed_fst",5e+09,1200,2.4e-07,150.870,845.6,46.975,0.98568
+"study","run_date","pkg_version","method","n","cells_K","compression","wall_s","peak_mb","disk_gb","intercept","random_effects","outcome","note"
+"boundary-confirm","2026-08-19","0.9.2","per_row",1e+05,NA,NA,5.101,1345.7,NA,1.36265,NA,"success",""
+"boundary-confirm","2026-08-19","0.9.2","per_row",1e+06,NA,NA,21.987,9582.9,NA,1.34918,NA,"success",""
+"boundary-confirm","2026-08-19","0.9.2","streamed",1e+05,360,3.6e-03,2.226,336.8,NA,1.36265,NA,"success",""
+"boundary-confirm","2026-08-19","0.9.2","streamed",1e+06,360,3.6e-04,2.298,410.4,NA,1.34918,NA,"success",""
+"boundary-confirm","2026-08-19","0.9.2","streamed",1e+07,360,3.6e-05,2.702,1162.2,NA,1.35327,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","per_row",1e+05,NA,NA,5.174,1345.6,NA,1.36265,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","per_row",5e+05,NA,NA,15.255,6386.1,NA,1.35696,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","per_row",1e+06,NA,NA,18.961,12351.9,NA,1.34918,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","per_row",5e+06,NA,NA,NA,NA,NA,NA,NA,"infeasible","exceeded the memory cap -- never completed"
+"boundary","2026-05-31","0.6.0-dev","streamed",1e+05,360,3.6e-03,2.946,398.5,NA,1.36265,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","streamed",1e+06,360,3.6e-04,2.800,470.1,NA,1.34918,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","streamed",5e+06,360,7.2e-05,2.969,778.6,NA,1.35704,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","streamed",1e+07,360,3.6e-05,2.923,1234.0,NA,1.35327,NA,"success",""
+"boundary","2026-05-31","0.6.0-dev","streamed",5e+07,360,7.2e-06,4.048,3712.4,NA,1.35482,NA,"success",""
+"extreme","2026-05-31","0.6.0-dev","streamed_fst",1e+07,1200,1.2e-04,3.310,708.3,0.094,0.98542,NA,"success",""
+"extreme","2026-05-31","0.6.0-dev","streamed_fst",1e+08,1200,1.2e-05,5.670,795.9,0.940,0.98552,NA,"success",""
+"extreme","2026-05-31","0.6.0-dev","streamed_fst",1e+09,1200,1.0e-06,31.900,844.1,9.395,0.98565,NA,"success",""
+"extreme","2026-05-31","0.6.0-dev","streamed_fst",5e+09,1200,2.4e-07,150.870,845.6,46.975,0.98568,NA,"success",""
+"inla-ceilings","2026-08-22","0.9.2","per_row",911808,NA,NA,340.9,NA,NA,NA,515756,"success","largest verified flexyBayes/INLA per-row fit on this design family (agridat::barrero.maize genotype-growth ladder, 32 GB / 10-core Apple silicon); last success before the engine died untyped one rung later (FS-25 / SCALE_STRATEGY_2026-08-22)"
+"inla-ceilings","2026-08-22","0.9.2","per_row",1823616,NA,NA,2496.0,NA,NA,NA,1031084,"engine_death","engine died untyped after 41.6 min on this rung -- past this size the design has not been verified to fit; motivates the C2 inla_program_failed typed refusal (FS-25)"

@@ -104,6 +104,11 @@
   # family gate speaks the reconciled spelling.
   .populate_refusal_registry_field_hardening()
 
+  # 0.9.3 scale strategy: the cell-count integer-cast sibling, typed
+  # engine-death wraps for INLA and brms, and the per-level AR1-field
+  # boundary refusal.
+  .populate_refusal_registry_v093()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

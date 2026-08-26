@@ -529,33 +529,81 @@
 }
 
 
-# .refuse_unsupported_weights() --- guard for the parsed-but-unconsumed
-# `weights` argument. Reads both the IR's addition terms (where every
-# ingest adapter records weights) and the dispatch-level argument, so
-# neither an IR built upstream nor a direct dispatch call can slip a
-# weighted request past the active emitters. Non-constant weights are
-# what change the model; an all-equal vector is the unweighted fit and
-# is allowed through, which keeps `weights = rep(1, n)` working.
-.refuse_unsupported_weights <- function(fb, weights = NULL) {
-  from_ir <- NULL
+# .fb_ir_weights() --- the model's observation-weight vector, read from
+# the IR's addition_terms (every ingest adapter records weights there
+# under type = "weights"). Shared by the dispatch-level refusal guard
+# below and both per-row emits (R/emit_brms.R, R/emit_inla.R), so all
+# three read the exact same extraction -- an IR built upstream and a
+# direct dispatch-level `weights =` argument cannot disagree about
+# whether a weighted fit was requested.
+#
+# @noRd
+# @keywords internal
+.fb_ir_weights <- function(fb) {
   for (t in fb$addition_terms %||% list()) {
     if (identical(t$type %||% "", "weights")) {
-      from_ir <- t$values
-      break
+      return(t$values)
     }
   }
-  w <- from_ir %||% weights
-  if (is.null(w) || !is.numeric(w) || length(w) == 0L) {
+  NULL
+}
+
+# .fb_weights_nonconstant() --- TRUE when `w` is a genuine (non-
+# constant) weight vector. An all-equal vector is the unweighted fit
+# under a different spelling and is let through everywhere a real
+# weight vector would be checked -- this keeps `weights = rep(1, n)`
+# working, exactly as it did before C6.
+#
+# @noRd
+# @keywords internal
+.fb_weights_nonconstant <- function(w) {
+  !is.null(w) && is.numeric(w) && length(w) > 0L && !isTRUE(all(w == w[[1L]]))
+}
+
+# .refuse_unsupported_weights() --- guard for `weights` on a family /
+# link this package does not lower it for.
+#
+# C6 lowers weights for family = "gaussian" with the identity link
+# only: INLA's `scale = w` per-observation precision multiplier and
+# brms's sigma-distributional offset (R/emit_brms.R's
+# .FB_BRMS_WEIGHTS_OFFSET_COL -- NOT brms's own `weights()` addition
+# term, which implements a different, likelihood-power quantity; see
+# that constant's definition for the full grounding trail) both give
+# Var(y_i) = sigma^2 / w_i on the Gaussian likelihood (the "documented
+# ASReml sense" the original all-families refusal named as the one
+# unambiguous mapping -- see .populate_refusal_registry_
+# field_hardening()'s weights_not_supported comment). Any other family,
+# or a non-identity link on gaussian (scale = w's meaning is tied to
+# the identity-link Gaussian likelihood, not a transformed one),
+# refuses by name naming the family. Reads both the IR's addition
+# terms and the dispatch-level argument, so neither an IR built
+# upstream nor a direct dispatch call can slip a weighted request past
+# the active emitters.
+.refuse_unsupported_weights <- function(fb, weights = NULL) {
+  w <- .fb_ir_weights(fb) %||% weights
+  if (!.fb_weights_nonconstant(w)) {
     return(invisible(NULL))
   }
-  if (isTRUE(all(w == w[[1L]]))) {
+  fam <- fb$family %||% ""
+  link_ok <- is.null(fb$link) || identical(fb$link, "identity")
+  if (identical(fam, "gaussian") && link_ok) {
     return(invisible(NULL))
   }
-  entry <- .lookup_refusal("weights_not_supported")
   stop(.fb_refusal_condition(
-    reason_code = "weights_not_supported",
-    message = entry$message_template,
-    family_class = "flexybayes_weights_not_supported_refusal"
+    reason_code = "weights_requires_gaussian",
+    message = paste0(
+      "`weights` is lowered for family = \"gaussian\" with the identity ",
+      "link only (INLA's `scale = w` per-observation precision ",
+      "multiplier; brms's sigma-distributional offset -- both give ",
+      "Var(y_i) = sigma^2 / w_i, the same Gaussian likelihood weighting ",
+      "on either engine). This model is family = \"", fam, "\"",
+      if (!link_ok) paste0(", link = \"", fb$link, "\"") else "",
+      ". Drop `weights`, or pre-scale the response if the intended ",
+      "semantics is exactly Var(y_i) = sigma^2 / w_i."
+    ),
+    family_class = "flexybayes_weights_requires_gaussian_refusal",
+    family = fam,
+    link = fb$link
   ))
 }
 
@@ -1651,6 +1699,35 @@
           "statistics that are not defined for a missing response. Pass ",
           "aggregate = FALSE (or leave it at \"auto\") for the per-row path, ",
           "which carries a missing response as a latent quantity."
+        ),
+        family_class = "flexybayes_aggregate_refusal"
+      ))
+    }
+    return(NULL)
+  }
+
+  # C6: observation weights are lowered for the per-row Gaussian route
+  # only. Folding a per-observation weight into the aggregated route's
+  # sufficient statistics (cell sums and counts) would change what
+  # those statistics mean -- a weighted cell mean is not the same
+  # quantity the aggregated Gaussian emit's closed form assumes -- so
+  # weights are not carried through the compression. Same isTRUE(aggregate)
+  # -refuses / "auto" falls through to the per-row path -- which DOES
+  # honour weights -- shape as the missing-response guard above.
+  w <- .fb_ir_weights(fb) %||% weights
+  if (.fb_weights_nonconstant(w)) {
+    if (isTRUE(aggregate)) {
+      stop(.fb_refusal_condition(
+        reason_code = "weights_not_aggregatable",
+        message = paste0(
+          "`aggregate = TRUE` refused: observation weights are lowered ",
+          "for the per-row Gaussian route only. The aggregated route's ",
+          "closed form compresses rows into per-cell sums and counts, and ",
+          "does not fold a per-observation weight into that compression -- ",
+          "the weighted cell statistic is a different quantity from the ",
+          "one the aggregated Gaussian emit's sufficient statistics ",
+          "assume. Pass aggregate = FALSE (or leave it at \"auto\") for ",
+          "the per-row weighted fit."
         ),
         family_class = "flexybayes_aggregate_refusal"
       ))

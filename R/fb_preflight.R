@@ -762,7 +762,17 @@
 # alone in `model.matrix(~ f1*f2*...)` carries prod(L_i - 1) columns
 # when main effects and intercept are also present (the standard
 # convention). Returns NA_integer_ when any factor cardinality
-# cannot be resolved from the dataset wrapper's dictionaries.
+# cannot be resolved from the dataset wrapper's dictionaries, OR when
+# the product overflows R's integer range (a high-cardinality
+# factor:factor interaction can reach 2^31 - 1 well before any single
+# factor's level count does -- the same class C1 repairs for the
+# aggregation planner's cell count). Either way the caller's
+# `is.na()` check already routes to `unknown_representation = TRUE`,
+# which forces a refusal (R/fb_preflight.R:124-132) rather than
+# letting a wrong byte estimate reach the memory-ceiling comparison,
+# so the overflow case is folded into the existing NA contract rather
+# than adding a second reason code for a value the caller treats
+# identically either way.
 .preflight_factor_interaction_dummies <- function(vars, fb_dataset) {
   if (!length(vars)) {
     return(NA_integer_)
@@ -777,8 +787,12 @@
   if (anyNA(ks)) {
     return(NA_integer_)
   }
-  ks_minus_one <- pmax(as.integer(ks) - 1L, 0L)
-  as.integer(prod(ks_minus_one))
+  ks_minus_one <- pmax(ks - 1, 0)
+  n_dummies_dbl <- prod(ks_minus_one)
+  if (!is.finite(n_dummies_dbl) || n_dummies_dbl > .Machine$integer.max) {
+    return(NA_integer_)
+  }
+  as.integer(round(n_dummies_dbl))
 }
 
 # Build a display label from an IR term descriptor. Mirrors the
@@ -861,6 +875,41 @@
 # depends on `k`) treats NA_integer_ as the signal to escalate to a
 # `representation_unknown_for_preflight` refusal at the top level.
 .preflight_term_level_count <- function(term, fb_dataset) {
+  # ar1_spatial's latent size is the separable field's node count --
+  # n_row x n_col for the single-field form, or n_row x n_col x n_at
+  # for the C5/FS-27 per-trial spelling (INLA's replicate = mechanism
+  # materialises n_at independent copies of the identical n_row x
+  # n_col field). Neither dimension lives under $var / $var_n /
+  # $n_levels / $K, the fields the generic lookup below checks, so
+  # ar1_spatial always fell through to NA here -- escalating EVERY
+  # ar1_spatial term (not only the new per-trial one) to
+  # representation_unknown_for_preflight the moment a caller bypassed
+  # the 1e5-row dispatcher threshold (fb_plan() always does; a real
+  # fit does once N crosses it). Found while implementing C5, whose
+  # "auto routes this to INLA" acceptance criterion requires this
+  # preflight to clear rather than refuse. .enrich() (R/parse_formula.R)
+  # already populates $n_row / $n_col / $n_at from the real data at
+  # IR-build time; .fb_dataset_levels() is the metadata-only fallback
+  # (fb_from_brms(data = NULL, carry_n_rows = ...)).
+  if (identical(term$type, "ar1_spatial")) {
+    n_row <- term$n_row %||%
+      .fb_dataset_levels(fb_dataset, as.character(term$row_var %||% ""))
+    n_col <- term$n_col %||%
+      .fb_dataset_levels(fb_dataset, as.character(term$col_var %||% ""))
+    if (is.na(n_row) || is.na(n_col)) {
+      return(NA_integer_)
+    }
+    n_at <- 1L
+    if (!is.null(term$at_var)) {
+      n_at_resolved <- term$n_at %||%
+        .fb_dataset_levels(fb_dataset, as.character(term$at_var))
+      if (is.na(n_at_resolved)) {
+        return(NA_integer_)
+      }
+      n_at <- as.integer(n_at_resolved)
+    }
+    return(as.integer(n_row) * as.integer(n_col) * n_at)
+  }
   # Random-term IR carries $var_n; fixed-factor IR carries $n_levels;
   # the asreml ingest occasionally uses $K. Try each in order.
   for (slot in c("var_n", "n_levels", "K")) {

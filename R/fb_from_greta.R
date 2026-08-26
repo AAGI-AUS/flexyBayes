@@ -247,14 +247,22 @@ fb_from_greta <- function(
   }
 
   # Per-target dimensionality. Sum of element-counts across targets =
-  # total free-parameter dimensionality of the model.
+  # total free-parameter dimensionality of the model. Carried as a
+  # double: a target array's dim is a symbolic TensorFlow-graph shape
+  # (e.g. a full genomic relationship matrix over tens of thousands of
+  # genotypes), not yet materialised R memory at this point, so its
+  # element product can plausibly exceed 2^31 - 1 without having hit
+  # any memory ceiling yet (the C1 class this guards is the same one
+  # the aggregation planner's cell count repairs -- FS-24). A double
+  # is exact up to 2^53, comfortably past any model this package can
+  # otherwise reach.
   model_dim <- vapply(
     targets,
     function(a) {
       d <- dim(a)
-      if (is.null(d)) 1L else as.integer(prod(d))
+      if (is.null(d)) 1 else prod(as.double(d))
     },
-    integer(1)
+    numeric(1)
   )
 
   # Likelihood detection -- family + n_data + response_label.
