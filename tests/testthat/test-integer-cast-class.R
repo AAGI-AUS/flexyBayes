@@ -164,17 +164,44 @@ test_that("aggregation planner refuses by name past the integer cell-count limit
 
 test_that("aggregate = TRUE on an overflowing cell key refuses by name before any fit; auto does not", {
   skip_if_not_installed("INLA")
+  # The overflow plan is built the way the unit test above builds it --
+  # from metadata-only dictionaries -- and handed to the dispatch gate
+  # through a mocked planner, so the gate's own behaviour is what is
+  # tested, not the data-dependent order in which the planner collects
+  # its other reasons (under R CMD check a real 1,000-row frame reached
+  # `compression_unproductive` first).
+  fb_over <- .icc_make_plan_ir(
+    fixed_terms = list(
+      list(type = "factor", var = "f1"),
+      list(type = "factor", var = "f2")
+    ),
+    n = 1000L
+  )
+  ds_over <- .fb_dataset(
+    data = NULL,
+    n_rows = 1000L,
+    col_types = list(y = "double", f1 = "factor", f2 = "factor"),
+    dictionaries = list(
+      f1 = as.character(seq_len(50000L)),
+      f2 = as.character(seq_len(50000L))
+    )
+  )
+  plan_over <- .fb_aggregation_plan(fb_over, ds_over)
+  expect_identical(plan_over$reason_codes, "cell_count_exceeds_integer")
+  testthat::local_mocked_bindings(
+    .fb_aggregation_plan = function(...) plan_over
+  )
   d <- data.frame(
-    y = rnorm(1000L),
-    f1 = factor(sample(seq_len(1000L)), levels = seq_len(50000L)),
-    f2 = factor(sample(seq_len(1000L)), levels = seq_len(50000L))
+    y = rnorm(24L),
+    f1 = factor(rep(c("a", "b"), 12L)),
+    f2 = factor(rep(c("p", "q", "r"), 8L))
   )
   expect_error(
     suppressMessages(flexybayes(y ~ f1, random = ~ f2, data = d,
       backend = "inla", aggregate = TRUE)),
     class = "flexybayes_refusal_cell_count_exceeds_integer"
   )
-  # auto: no refusal reaches the caller before the engine; the plan says why
+  # auto: the plan surface carries the reason and the route is per row.
   p <- fb_plan(y ~ f1, random = ~ f2, data = d, backend = "inla",
     aggregate = "auto")
   expect_true("cell_count_exceeds_integer" %in% p$aggregation$reason_codes)
