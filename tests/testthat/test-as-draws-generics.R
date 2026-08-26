@@ -218,13 +218,17 @@ test_that("brms draws match the seam exactly, INLA hyperparameters do", {
   for (nm in c("sigma", "sd_g")) {
     expect_identical(as.numeric(d[[nm]]), as.numeric(raw[[nm]]), label = nm)
   }
+  # Two independent 300-draw means of the same posterior differ by
+  # Monte-Carlo error: sd of the difference is sqrt(v1 / n + v2 / n). A
+  # fixed 5% relative tolerance failed on 2026-08-26 at a 2.1-sd draw
+  # (0.730 against 0.771), so the bound is now four such sds -- a
+  # ~6e-5 chance per term under agreement, and still far tighter than
+  # any disagreement a wrong mapping would produce.
   for (nm in c("(Intercept)", "fb", "x")) {
-    expect_equal(
-      mean(as.numeric(d[[nm]])),
-      mean(as.numeric(raw[[nm]])),
-      tolerance = 0.05,
-      label = nm
-    )
+    a <- as.numeric(d[[nm]])
+    b <- as.numeric(raw[[nm]])
+    mc_sd <- sqrt(stats::var(a) / length(a) + stats::var(b) / length(b))
+    expect_lt(abs(mean(a) - mean(b)), 4 * mc_sd, label = nm)
   }
 
   # And the SD scale is a transform of the precision the engine stored,
