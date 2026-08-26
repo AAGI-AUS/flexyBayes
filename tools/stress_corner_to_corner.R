@@ -50,9 +50,7 @@ suppressWarnings(suppressMessages({
 
 set.seed(20260602L)
 HAS_INLA  <- requireNamespace("INLA", quietly = TRUE)
-HAS_GRETA <- requireNamespace("greta", quietly = TRUE)
 HAS_BRMS  <- requireNamespace("brms", quietly = TRUE)
-RUN_GRETA <- HAS_GRETA && !identical(Sys.getenv("STRESS_SKIP_GRETA"), "1")
 RUN_BRMS  <- HAS_BRMS  && !identical(Sys.getenv("STRESS_SKIP_BRMS"), "1")
 
 GS <- list(n_samples = 80L, warmup = 80L, chains = 1L,
@@ -249,13 +247,12 @@ if (HAS_INLA)
   probe_refuse("probe.formula.unknown_function", "silent_failure",
     fb_inla(y ~ mysmooth(x), data = d_g))
 
-# (2d) non-binary "binomial" on greta: project history says it must refuse,
-#      not silently fit Bernoulli. y in {0,1,2}.
-if (RUN_GRETA) {
-  d_multi <- data.frame(y = rep(c(0L, 1L, 2L), 20), x = rnorm(60))
-  probe_refuse("probe.greta.nonbinary_binomial", "silent_failure",
-    do.call(fb_greta, c(list(quote(y ~ x), data = d_multi, family = "binomial"), GS)))
-} else .rec("probe.greta.nonbinary_binomial", "silent_failure", "probe", "SKIP", "greta off")
+# (2d) non-binary "binomial": the withdrawn engine used to preflight-
+# refuse this rather than silently fit Bernoulli (see NEWS.md). Neither
+# active engine has a successor preflight check -- both fail inside the
+# engine with an untyped error instead of a clean refusal (a genuine
+# capability gap, not a residue item; noted in the WP-G2 report rather
+# than probed here as if a check existed).
 
 # =============================================================================
 # AREA 3 -- CROSS-BACKEND FIT + TRIANGULATE CONSISTENCY
@@ -268,10 +265,6 @@ d_lin <- data.frame(x = rnorm(n)); d_lin$y <- 1 + 0.8 * d_lin$x + rnorm(n, 0, 0.
 fit_i <- if (HAS_INLA) probe_ok("fit.inla.gaussian", "fit",
   fb_inla(y ~ x, data = d_lin),
   check = function(f) inherits(f, "flexybayes_inla") || "flexybayes" %in% class(f)) else NULL
-fit_g <- if (RUN_GRETA) probe_ok("fit.greta.gaussian", "fit",
-  do.call(fb_greta, c(list(quote(y ~ x), data = d_lin), GS)),
-  check = function(f) inherits(f, "flexybayes")) else
-  { .rec("fit.greta.gaussian", "fit", "success", "SKIP", "greta off"); NULL }
 fit_b <- if (RUN_BRMS) probe_ok("fit.brms.gaussian", "fit",
   fb_brms(y ~ x, data = d_lin, chains = 1L, n_samples = 300L, warmup = 300L,
           mcmc_verbose = FALSE),
@@ -286,14 +279,10 @@ fit_b <- if (RUN_BRMS) probe_ok("fit.brms.gaussian", "fit",
   if (is.finite(md) && md < 0.5) TRUE else
     sprintf("max |mean_diff| = %.3f across %d params (expected < 0.5)", md, t$n_common)
 }
-if (!is.null(fit_i) && !is.null(fit_g))
-  probe_ok("tri.greta_inla", "triangulate", triangulate(fit_g, fit_i), check = .tri_check)
 if (!is.null(fit_i) && !is.null(fit_b))
   probe_ok("tri.brms_inla", "triangulate", triangulate(fit_b, fit_i), check = .tri_check)
-if (!is.null(fit_g) && !is.null(fit_b))
-  probe_ok("tri.greta_brms", "triangulate", triangulate(fit_g, fit_b), check = .tri_check)
 
-# non-Gaussian fits across backends (binomial + poisson) on INLA (fast) + greta
+# non-Gaussian fits on INLA (fast)
 if (HAS_INLA) {
   probe_ok("fit.inla.binomial", "fit",
     fb_inla(y ~ x, data = d_bin, family = "binomial"))
@@ -301,17 +290,11 @@ if (HAS_INLA) {
   probe_ok("fit.inla.poisson", "fit",
     fb_inla(y ~ x, data = d_pois, family = "poisson"))
 }
-if (RUN_GRETA) {
-  probe_ok("fit.greta.binomial", "fit",
-    do.call(fb_greta, c(list(quote(y ~ x), data = d_bin, family = "binomial"), GS)))
-}
 
-# mixed model (random intercept) on INLA + greta
+# mixed model (random intercept) on INLA
 d_mix <- data.frame(y = rnorm(80), x = rnorm(80), g = factor(rep(1:8, 10)))
 if (HAS_INLA) probe_ok("fit.inla.mixed", "fit",
   fb_inla(y ~ x + (1 | g), data = d_mix))
-if (RUN_GRETA) probe_ok("fit.greta.mixed", "fit",
-  do.call(fb_greta, c(list(quote(y ~ x + (1 | g)), data = d_mix), GS)))
 
 # =============================================================================
 # AREA 4 -- POST-FIT + ECOSYSTEM SURFACE (on a real fit)
@@ -319,7 +302,7 @@ if (RUN_GRETA) probe_ok("fit.greta.mixed", "fit",
 message("\n==== AREA 4: post-fit + ecosystem surface ====")
 # Standard S3 surface -- exercise on the INLA fit (fast, and the surface that
 # carried the fitted()/residuals() silent-NULL bug now fixed).
-pf <- if (!is.null(fit_i)) fit_i else if (!is.null(fit_g)) fit_g else NULL
+pf <- if (!is.null(fit_i)) fit_i else if (!is.null(fit_b)) fit_b else NULL
 pf_n <- if (!is.null(fit_i)) 80L else 80L  # both fit on d_lin (n = 80)
 if (!is.null(pf)) {
   probe_ok("post.summary",  "postfit", summary(pf))
@@ -344,12 +327,11 @@ if (!is.null(pf)) {
       on.exit(grDevices::dev.off(), add = TRUE); plot(pf); TRUE })
 } else .rec("post.surface", "postfit", "success", "SKIP", "no fit available")
 
-# Broom tidiers + emmeans/marginaleffects are registered for the greta-class
-# fit (and use the identity-link reference grid). Exercise them on the greta
-# fit where they are designed to work. (On a bare flexybayes_inla object they
-# are unavailable via dispatch -- a documented capability boundary, noted in
-# the report, not an anomaly.)
-gf <- fit_g
+# Broom tidiers + emmeans/marginaleffects need a fit that carries full
+# posterior draws; brms is the draws-carrying backend post-0.9.3 (see
+# NEWS.md). Exercise them there rather than on the INLA fit's Laplace
+# summary.
+gf <- fit_b
 if (!is.null(gf)) {
   probe_ok("eco.tidy",   "ecosystem", tidy.flexybayes(gf))
   probe_ok("eco.glance", "ecosystem", glance.flexybayes(gf))
@@ -359,7 +341,7 @@ if (!is.null(gf)) {
     probe_ok("eco.marginaleffects", "ecosystem",
              marginaleffects::avg_slopes(gf))
 } else .rec("eco.surface", "ecosystem", "success", "SKIP",
-            "greta off -- tidiers/ecosystem are the greta-class surface")
+            "brms off -- tidiers/ecosystem need a draws-carrying fit")
 
 # =============================================================================
 # AREA 5 -- STREAMING + AGGREGATION
@@ -409,40 +391,31 @@ if (HAS_INLA) {
 } else .rec("stream.area", "streaming", "success", "SKIP", "INLA absent")
 
 # =============================================================================
-# AREA 6 -- PREDICT VARIANTS + REFUSALS (greta-backed; needs draws)
+# AREA 6 -- PREDICT VARIANTS (brms-backed; needs draws)
 # =============================================================================
+# (0.9.3: the file-output, chunked-read, and allow_new_levels = "refuse" /
+# "population" predict variants exercised here before the withdrawal were
+# carried exclusively by the bare predict.flexybayes() method deleted
+# alongside it (see NEWS.md). Confirmed dead on both surviving engines via
+# formals(predict.flexybayes_brms) / formals(predict.flexybayes_inla):
+# neither names output_file, chunk_size, or allow_new_levels, so passing
+# them is silently swallowed into ... rather than acted on or refused --
+# re-probing them here would report PASS without exercising anything.
+# Only the three variants both methods genuinely implement -- newdata,
+# se.fit, type -- remain.)
 message("\n==== AREA 6: predict variants ====")
-if (RUN_GRETA && !is.null(fit_g)) {
-  nd  <- data.frame(x = rnorm(20))
-  ndL <- data.frame(x = rnorm(20))                       # for new-level tests use a mixed fit
-  probe_ok("predict.greta.point", "predict",
-    predict(fit_g, newdata = nd),
+if (RUN_BRMS && !is.null(fit_b)) {
+  nd <- data.frame(x = rnorm(20))
+  probe_ok("predict.brms.point", "predict",
+    predict(fit_b, newdata = nd),
     check = function(v) { vv <- if (is.list(v)) v$fit else v
       length(vv) == 20L && all(is.finite(vv)) })
-  probe_ok("predict.greta.se", "predict",
-    predict(fit_g, newdata = nd, se.fit = TRUE),
+  probe_ok("predict.brms.se", "predict",
+    predict(fit_b, newdata = nd, se.fit = TRUE),
     check = function(v) is.list(v) && all(c("fit", "se.fit") %in% names(v)))
-  probe_ok("predict.greta.link", "predict",
-    predict(fit_g, newdata = nd, type = "link"))
-  probe_ok("predict.greta.chunked", "predict",
-    predict(fit_g, newdata = nd, chunk_size = 5L),
-    check = function(v) { vv <- if (is.list(v)) v$fit else v; length(vv) == 20L })
-  # file output + overwrite refusal
-  of <- tempfile(fileext = ".csv")
-  probe_ok("predict.greta.file_output", "predict",
-    predict(fit_g, newdata = nd, output_file = of, interop = TRUE),
-    check = function(p) file.exists(of))
-  probe_refuse("predict.greta.no_overwrite", "predict",
-    predict(fit_g, newdata = nd, output_file = of, interop = TRUE))
-  # invalid include vocabulary -> refusal
-  fit_gm <- do.call(fb_greta, c(list(quote(y ~ x + (1 | g)), data = d_mix), GS))
-  probe_refuse("predict.greta.refuse_new_level", "predict",
-    { nld <- data.frame(x = rnorm(5), g = factor(rep("ZZZ", 5)))
-      predict(fit_gm, newdata = nld, allow_new_levels = "refuse") })
-  probe_ok("predict.greta.population_new_level", "predict",
-    { nld <- data.frame(x = rnorm(5), g = factor(rep("ZZZ", 5)))
-      suppressWarnings(predict(fit_gm, newdata = nld, allow_new_levels = "population")) })
-} else .rec("predict.area", "predict", "success", "SKIP", "greta off / no greta fit")
+  probe_ok("predict.brms.link", "predict",
+    predict(fit_b, newdata = nd, type = "link"))
+} else .rec("predict.area", "predict", "success", "SKIP", "brms off / no brms fit")
 
 # =============================================================================
 # SUMMARY + PERSIST
@@ -450,7 +423,7 @@ if (RUN_GRETA && !is.null(fit_g)) {
 df <- do.call(rbind, RESULTS$rows)
 dir.create("tools/stress_results", showWarnings = FALSE, recursive = TRUE)
 saveRDS(list(results = df, sessionInfo = utils::capture.output(utils::sessionInfo()),
-             backends = c(INLA = HAS_INLA, greta = RUN_GRETA, brms = RUN_BRMS)),
+             backends = c(INLA = HAS_INLA, brms = RUN_BRMS)),
         "tools/stress_results/stress_corner_to_corner_results.rds")
 
 n_anom <- sum(df$status == "ANOMALY")
@@ -464,8 +437,8 @@ writeLines(c(
   "",
   sprintf("Probes: **%d** | PASS **%d** | ANOMALY **%d** | SKIP **%d**",
           nrow(df), n_pass, n_anom, n_skip),
-  sprintf("Backends exercised: INLA=%s greta=%s brms=%s",
-          HAS_INLA, RUN_GRETA, RUN_BRMS),
+  sprintf("Backends exercised: INLA=%s brms=%s",
+          HAS_INLA, RUN_BRMS),
   "",
   "## Anomalies",
   if (n_anom == 0L) "_None._" else "",

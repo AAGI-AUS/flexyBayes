@@ -9,8 +9,8 @@
   "archetype": "A1",
   "counts": {
     "blocker": 0,
-    "should_fix": 5,
-    "nice_to_have": 15
+    "should_fix": 3,
+    "nice_to_have": 14
   },
   "gates": {
     "F16_hygiene": "fail",
@@ -50,15 +50,6 @@
       "category": "Tests",
       "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
       "location": "tests/testthat/test-tidy-hub.R",
-      "redacted": false
-    },
-    {
-      "id": "Tests",
-      "severity": "nice_to_have",
-      "status": "FAIL",
-      "category": "Tests",
-      "title": "1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).",
-      "location": "tests/testthat/test-gretaR-slot.R",
       "redacted": false
     },
     {
@@ -193,25 +184,7 @@
       "status": "FAIL",
       "category": "Security",
       "title": "Audit shell calls for user-input injection risk.",
-      "location": "R/emit_gretaR.R",
-      "redacted": false
-    },
-    {
-      "id": "Security",
-      "severity": "should_fix",
-      "status": "FAIL",
-      "category": "Security",
-      "title": "Audit shell calls for user-input injection risk.",
       "location": "R/fb_preflight.R",
-      "redacted": false
-    },
-    {
-      "id": "Security",
-      "severity": "should_fix",
-      "status": "FAIL",
-      "category": "Security",
-      "title": "Avoid eval(parse()); it is hard to secure and test.",
-      "location": "R/emit_greta.R",
       "redacted": false
     },
     {
@@ -286,15 +259,6 @@
       "rubric": "elegance",
       "title": "E9 Error-message style: humane=317 (cli/rlang=0, stop(call.=FALSE)=317), bare stop()=130, ratio=0.71 (target \u22650.80)",
       "location": "R/",
-      "redacted": false
-    },
-    {
-      "id": "E10",
-      "severity": "should_fix",
-      "status": "FAIL",
-      "rubric": "elegance",
-      "title": "E10 No decorative comments: 3 hits; first: R/gretaR_slot.R:135",
-      "location": "R/, tests/, vignettes/",
       "redacted": false
     },
     {

@@ -45,7 +45,7 @@ jobs:
           extra-packages: any::pkgdown, any::knitr, any::rmarkdown, local::.
           needs: website
           # "hard" stops pak from trying to resolve the special-repo /
-          # heavy Suggests (INLA, greta) which fail to solve on CI.
+          # heavy Suggests (INLA) which fail to solve on CI.
           dependencies: '"hard"'
 
       - name: Build site

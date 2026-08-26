@@ -253,8 +253,6 @@ test_that("fb_log_posterior() abstains typed on a live INLA fit", {
   err <- tryCatch(fb_log_posterior(fit), condition = function(e) e)
   expect_s3_class(err, "fb_c4_unavailable")
   expect_match(conditionMessage(err), "INLA backend")
-  # The abstention no longer directs the reader at a quarantined route.
-  expect_false(grepl("fb_greta()", conditionMessage(err), fixed = TRUE))
 })
 
 test_that("fb_log_posterior() abstains typed on a live brms fit", {
@@ -278,6 +276,5 @@ test_that("fb_log_posterior() abstains typed on a live brms fit", {
   err <- tryCatch(fb_log_posterior(fit), condition = function(e) e)
   expect_s3_class(err, "fb_c4_unavailable")
   expect_match(conditionMessage(err), "brms backend")
-  expect_false(grepl("fb_greta()", conditionMessage(err), fixed = TRUE))
   expect_false(grepl("honest", conditionMessage(err), fixed = TRUE))
 })

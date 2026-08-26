@@ -40,7 +40,6 @@ keywords:
   - mcmc
   - inla
   - asreml
-  - greta
   - r
 references:
   - type: article

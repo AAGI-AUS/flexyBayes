@@ -323,7 +323,5 @@ W("- `R CMD check --as-cran` reports one NOTE: new submission, and "
   "`Suggests`/`Enhances` not in a mainstream repository. Both are expected "
   "for a package not yet on CRAN whose optional backends live on "
   "r-universe.")
-W("- 199 tests skip. They are the greta / gretaR quarantine guards and "
-  "backend-availability guards, not silent omissions.")
 
 print("\n".join(out))

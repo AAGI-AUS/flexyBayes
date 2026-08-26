@@ -50,10 +50,6 @@ test_that("fb_engine() merges opts = list(...) and ... options", {
 
 test_that("fb_engine() rejects unknown engines and 'auto'", {
   expect_error(fb_engine("stan"), "unknown engine")
-  # The engine withdrawn entirely in 0.9.3 (see NEWS.md) is unknown to
-  # the constructor like any other unrecognised name -- no special-cased
-  # message for it.
-  expect_error(fb_engine("greta"), "unknown engine")
   # 'auto' is a routing directive, not an engine.
   expect_error(fb_engine("auto"), "routing directive")
 })

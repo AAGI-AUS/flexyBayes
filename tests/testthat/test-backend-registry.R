@@ -74,8 +74,6 @@ test_that("the 0.9.3 population registers the expected backends", {
   )
   expect_identical(flexyBayes:::.lookup_backend("inla")$status, "active")
   expect_identical(flexyBayes:::.lookup_backend("brms")$status, "active")
-  expect_null(flexyBayes:::.lookup_backend("greta"))
-  expect_null(flexyBayes:::.lookup_backend("gretaR"))
   # (koine, the dormant 4th-backend slot, moved to flexyBayesOrchestra in the
   # lean-core split, 2026-06-06; it is no longer registered in the core.)
   # brms is retained as the engine label (the brms -> stan rename was
@@ -149,10 +147,9 @@ test_that(".available_backend_names() are active and installed", {
       expect_true(requireNamespace(e$available_pkg, quietly = TRUE), info = nm)
     }
   }
-  # The dormant sibling engine withdrawn in 0.9.3 (see NEWS.md) is not
-  # registered at all any more, so it can never appear here regardless
-  # of whether its package happens to be installed.
-  expect_false("gretaR" %in% avail)
+  # 0.9.3 withdrew the package's third native engine entirely (see
+  # NEWS.md); only the two active engines are ever registered.
+  expect_setequal(avail, c("inla", "brms"))
 })
 
 test_that("capability predicates: both active engines universal on a plain model, brms refuses structured-cov", {

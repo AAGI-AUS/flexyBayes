@@ -37,7 +37,6 @@
 )
 
 .skip_ledger_optional_backends <- c(
-  "greta",
   "INLA",
   "inla",
   "brms",

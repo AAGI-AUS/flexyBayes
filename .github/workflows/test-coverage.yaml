@@ -23,13 +23,10 @@ jobs:
         with:
           # knitr + rmarkdown are the VignetteBuilder, needed to build
           # the package for covr instrumentation.
-          # greta is archived from CRAN; install from GitHub source so
-          # requireNamespace("greta") succeeds for the codegen/dispatch/
-          # review tests (no Python/TF; fitting tests skip via skip_on_ci()).
-          extra-packages: any::covr, any::xml2, any::knitr, any::rmarkdown, any::testthat, any::withr, greta-dev/greta
+          extra-packages: any::covr, any::xml2, any::knitr, any::rmarkdown, any::testthat, any::withr
           needs: coverage
           # "hard" stops pak from trying to resolve the special-repo /
-          # heavy Suggests (INLA, greta) which fail to solve on CI;
+          # heavy Suggests (INLA) which fail to solve on CI;
           # backend-specific tests skip via skip_on_ci().
           dependencies: '"hard"'
 

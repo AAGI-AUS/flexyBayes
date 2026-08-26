@@ -1,8 +1,8 @@
 # smoke.R -- fast local sanity profile for the flexyBayes test suite.
 #
 # Pure-R subset only: preflight + dispatch + IR shape + canonical names
-# + backend-decision metadata.  No greta MCMC, no INLA, no tarball
-# build.  Target wall-time: < 30 s on a laptop.
+# + backend-decision metadata.  No MCMC, no INLA, no tarball build.
+# Target wall-time: < 30 s on a laptop.
 #
 # Run from the workspace root:
 #   Rscript flexyBayes/tools/profiles/smoke.R

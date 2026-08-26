@@ -1,5 +1,13 @@
 # flexyBayes validation record
 
+> **Superseded 2026-08-26.** This is a pre-withdrawal snapshot -- package
+> version 0.9.1, before the 0.9.3 backend-withdrawal work recorded in
+> `NEWS.md`. Some lines below cite artefacts or file paths that no
+> longer exist in the source tree; history is kept as-is here rather
+> than rewritten. For current validation evidence see
+> `inst/validation/`; for the 0.9.3 release work itself see
+> `review/phase_reports_093/`.
+
 - package version: **0.9.1**
 - commit: release tree tagged `v0.9.1` (squash of the 0.9.1 development line; the granular audit trail is in the project ledger)
 - generated: 2026-08-18
@@ -83,4 +91,3 @@ Per-model head-to-head timings are in `head-to-head/head-to-head.pdf` Table 2. S
 ## Known non-blocking notes
 
 - `R CMD check --as-cran` reports one NOTE: new submission, and `Suggests`/`Enhances` not in a mainstream repository. Both are expected for a package not yet on CRAN whose optional backends live on r-universe.
-- 199 tests skip. They are the greta / gretaR quarantine guards and backend-availability guards, not silent omissions.

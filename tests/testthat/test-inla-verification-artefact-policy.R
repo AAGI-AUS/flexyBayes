@@ -128,10 +128,10 @@ test_that("the gate is a trivial pass without a factor:numeric term", {
 
 
 # ---------------------------------------------------------------- #
-# (2) The refusal message names brms, never greta                    #
+# (2) The refusal message names brms                                 #
 # ---------------------------------------------------------------- #
 
-test_that("the factor:numeric refusal recommends brms and not greta", {
+test_that("the factor:numeric refusal recommends brms", {
   skip_if_not_installed("INLA")
   d <- .fni_fixture()
   withr::local_options(
@@ -154,7 +154,6 @@ test_that("the factor:numeric refusal recommends brms and not greta", {
   )
   msg <- conditionMessage(err)
   expect_match(msg, "backend = \"brms\"", fixed = TRUE)
-  expect_false(grepl("backend = \"greta\"", msg, fixed = TRUE))
 })
 
 test_that("the same model fits on brms", {

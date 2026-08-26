@@ -355,12 +355,6 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("grammar_brms_with_asreml_terms" %in% entries)
   expect_true("engine_pin_backend_conflict" %in% entries)
   expect_true("fa_rank_exceeds_dim" %in% entries)
-  expect_false("grammar_greta_via_fb_deferred" %in% entries)
-  # The native-graph-on-a-different-engine code (added alongside
-  # engine_pin_backend_conflict above, at v0.5.0) is withdrawn with the
-  # engine at 0.9.3 -- native model-graph ingestion no longer exists as
-  # a concept, so there is no successor code to spot-check in its place.
-  expect_false("native_greta_requires_greta_backend" %in% entries)
 
   # spot-check a representative new code from each family
   expect_true("precision_not_symmetric" %in% entries) # structured cov
@@ -375,12 +369,6 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_false("non_gaussian_family" %in% entries)
   expect_false("smooth_term_not_aggregatable" %in% entries)
   expect_false("policy_table_no_match_fallback_pending" %in% entries)
-  # The dormant sibling engine's refusal family (installation, version
-  # floor, family, random-group, random-term-type, structured-cov) is
-  # withdrawn with it at 0.9.3 -- none of its codes are registered any
-  # more, so there is no "gretaR gate" family left to spot-check.
-  expect_false("gretaR_not_installed" %in% entries)
-  expect_false("gretaR_cannot_represent_structured_cov" %in% entries)
 })
 
 # ---------------------------------------------------------------- #

@@ -9,6 +9,5 @@ exclusions: list(
     "tests/testthat/_snaps",
     "vignettes",
     "inst/examples",                   # illustrative cross-backend scripts; style-relaxed
-    "inst/gretaR_worker.R",            # out-of-process worker; gretaR/posterior refs unresolvable without them installed (CI false positives)
     "tests/testthat" = list(line_length_linter = Inf)  # tests carry long fixtures + expected strings
   )

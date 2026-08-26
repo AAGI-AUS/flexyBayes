@@ -1,9 +1,11 @@
 # stress.R -- env-gated full-suite probe.
 #
 # Sets FLEXYBAYES_RUN_STRESS=true so the four currently-gated stress
-# tests run (greta MCMC backend-fidelity + known-covariance vm/ped
-# Phase B-greta MCMC + 1e8-row preflight).  Wall-time depends on the
-# greta MCMC paths -- typically 5 -- 15 minutes on a laptop.
+# tests run: a block-diagonal structured-covariance MCMC check, an
+# INLA per-row-vs-aggregated agreement band at a strict 1e-3
+# tolerance, an lme4 fixed-effects agreement check at a strict
+# tolerance, and the 1e8-row preflight.  Wall-time depends mostly on
+# the MCMC paths -- typically 5 -- 15 minutes on a laptop.
 #
 # Run from the workspace root:
 #   Rscript flexyBayes/tools/profiles/stress.R

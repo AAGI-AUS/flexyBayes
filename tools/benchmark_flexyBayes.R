@@ -10,7 +10,7 @@
 #
 #   1. package/runtime environment;
 #   2. parse / IR / gate / prior-translation speed and correctness;
-#   3. backend smoke fits through INLA, greta, and brms where available;
+#   3. backend smoke fits through INLA and brms where available;
 #   4. triangulation behaviour;
 #   5. selected code-generation and review-code surfaces;
 #   6. representation benchmarks (per the design spec):
@@ -33,7 +33,7 @@
 # -----------------------
 # Heavy Bayesian backends can stall during Python/TensorFlow or Stan
 # setup. Each backend task runs in a separate R process via system2()
-# with a per-task timeout. That way a stalled greta / brms / INLA
+# with a per-task timeout. That way a stalled brms / INLA
 # run is recorded as a timeout rather than blocking the whole study.
 #
 # Typical runtime on the local Mac with all dependencies installed:
@@ -142,7 +142,6 @@ installed_table <- function() {
     "pkgload",
     "data.table",
     "testthat",
-    "greta",
     "INLA",
     "brms",
     "posterior",
@@ -419,10 +418,11 @@ run_microbenchmarks <- function(
 #
 #   generated_code_size_bytes   nchar(return_code(fit)) at representative n
 #   pre_fit_object_size_bytes   object.size() of the largest R object
-#                               the codegen path creates BEFORE
-#                               greta::mcmc() is called -- the design
-#                               matrix or, on the indexed-emit path,
-#                               its indexed equivalent
+#                               the codegen path creates BEFORE the
+#                               backend's own fit/sample step runs --
+#                               the design matrix or, on the
+#                               indexed-emit path, its indexed
+#                               equivalent
 #   code_generation_time_sec    wall time for flexybayes(..., return_code = TRUE)
 #
 # The point of these rows is the n-scaling check: under the indexed
@@ -452,10 +452,11 @@ make_repr_data <- function(n, n_group = 8L, seed = 71L) {
   data.frame(y = y, x = x, g = g)
 }
 
-# Estimate the largest R object the codegen path creates BEFORE
-# greta::mcmc() runs. For the supported indexed-emit term classes this
-# is either the integer level-index vector (random intercept, simple
-# fixed factor) or the basis matrix (smooth s(x)). The estimate is
+# Estimate the largest R object the codegen path creates BEFORE the
+# backend's own fit/sample step runs. For the supported indexed-emit
+# term classes this is either the integer level-index vector (random
+# intercept, simple fixed factor) or the basis matrix (smooth s(x)).
+# The estimate is
 # constructed deterministically from data + the IR shape, matching what
 # the emit path actually allocates -- not what model.matrix() would
 # allocate on a hypothetical dense fall-back.
@@ -575,24 +576,6 @@ run_representation_benchmarks <- function(
   term_classes = c("fixed_factor_simple", "random_intercept", "smooth"),
   cores = 2L
 ) {
-  # Loaded greta is required only because the greta-emit codegen path
-  # itself touches greta's namespace at code-build time. We skip the
-  # representation block cleanly if greta is not installed rather than
-  # erroring -- the rest of the harness should still run.
-  if (!requireNamespace("greta", quietly = TRUE)) {
-    return(dt(
-      task_id = "representation_skipped_no_greta",
-      group = "representation",
-      term_class = NA_character_,
-      n = NA_integer_,
-      status = "skipped",
-      generated_code_size_bytes = NA_real_,
-      pre_fit_object_size_bytes = NA_real_,
-      code_generation_time_sec = NA_real_,
-      error = "greta not installed; representation block skipped"
-    ))
-  }
-
   load_local_flexybayes(pkg_dir)
 
   cells <- expand.grid(
@@ -656,7 +639,7 @@ run_child_task <- function(task_id, pkg_dir = "flexyBayes") {
 
   tryCatch(
     {
-      if (identical(task_id, "review_code_greta")) {
+      if (identical(task_id, "review_code_auto")) {
         d <- make_gaussian_ri(60L, 6L, 101L)
         rev <- suppressMessages(flexybayes(
           fixed = y ~ x,
@@ -744,59 +727,6 @@ run_child_task <- function(task_id, pkg_dir = "flexyBayes") {
         ))
       }
 
-      if (identical(task_id, "greta_gaussian_fixed")) {
-        d <- make_gaussian_ri(50L, 5L, 301L)
-        fit <- suppressMessages(fb_brms(
-          y ~ x,
-          data = d,
-          backend = "greta",
-          n_samples = 60L,
-          warmup = 60L,
-          chains = 1L,
-          verbose = FALSE,
-          mcmc_verbose = FALSE
-        ))
-        bd <- backend_decision(fit)
-        return(finish(
-          "backend_fit",
-          details = list(
-            backend = bd$backend,
-            path = bd$path,
-            n_params = fit$extras$model_info$n_params,
-            max_rhat = suppressWarnings(max(
-              fit$extras$convergence$gelman$psrf[, "Point est."],
-              na.rm = TRUE
-            ))
-          )
-        ))
-      }
-
-      if (identical(task_id, "greta_gaussian_ri")) {
-        d <- make_gaussian_ri(60L, 6L, 302L)
-        fit <- suppressMessages(fb_brms(
-          y ~ x + (1 | g),
-          data = d,
-          backend = "greta",
-          n_samples = 60L,
-          warmup = 60L,
-          chains = 1L,
-          verbose = FALSE,
-          mcmc_verbose = FALSE
-        ))
-        bd <- backend_decision(fit)
-        ps <- prior_summary(fit)
-        return(finish(
-          "backend_fit",
-          details = list(
-            backend = bd$backend,
-            path = bd$path,
-            n_params = fit$extras$model_info$n_params,
-            prior_kind = ps$kind,
-            prior_origin = ps$default_origin
-          )
-        ))
-      }
-
       if (identical(task_id, "brms_stancode")) {
         d <- make_gaussian_ri(60L, 6L, 401L)
         rev <- suppressMessages(fb_brms(
@@ -842,68 +772,9 @@ run_child_task <- function(task_id, pkg_dir = "flexyBayes") {
         ))
       }
 
-      if (identical(task_id, "triangulate_greta_inla")) {
-        d <- make_gaussian_ri(60L, 6L, 501L)
-        fit_g <- suppressMessages(fb_brms(
-          y ~ x + (1 | g),
-          data = d,
-          backend = "greta",
-          n_samples = 60L,
-          warmup = 60L,
-          chains = 1L,
-          verbose = FALSE,
-          mcmc_verbose = FALSE
-        ))
-        fit_i <- suppressMessages(fb_brms(
-          y ~ x + (1 | g),
-          data = d,
-          backend = "inla",
-          verbose = FALSE
-        ))
-        tri <- triangulate(fit_g, fit_i, n_samples = 200L)
-        return(finish(
-          "triangulation",
-          details = list(
-            source_a = tri$source_a,
-            source_b = tri$source_b,
-            n_common = tri$n_common,
-            common = paste(tri$common, collapse = ","),
-            max_wasserstein = if (nrow(tri$metrics)) {
-              max(tri$metrics$wasserstein_1, na.rm = TRUE)
-            } else {
-              NA_real_
-            }
-          )
-        ))
-      }
-
-      if (identical(task_id, "smooth_greta_fit")) {
-        d <- make_gaussian_ri(60L, 6L, 601L)
-        fit <- suppressMessages(flexybayes(
-          fixed = y ~ 1,
-          random = ~ s(x),
-          data = d,
-          backend = "greta",
-          n_samples = 60L,
-          warmup = 60L,
-          chains = 1L,
-          verbose = FALSE,
-          mcmc_verbose = FALSE
-        ))
-        pred <- predict(fit)
-        return(finish(
-          "smooths",
-          details = list(
-            n_pred = length(pred),
-            pred_has_na = anyNA(pred),
-            n_params = fit$extras$model_info$n_params
-          )
-        ))
-      }
-
       if (identical(task_id, "testthat_tally")) {
         # This runs the project's own tally script. It can be expensive
-        # because NOT_CRAN=true lets selected greta/INLA integration
+        # because NOT_CRAN=true lets selected INLA/brms integration
         # tests run. The parent process enforces the timeout.
         Sys.setenv(NOT_CRAN = "true")
         out <- utils::capture.output(source("tools/tally.R", local = TRUE))
@@ -1035,35 +906,27 @@ task_plan <- function(profile = "standard", include_brms_fit = FALSE) {
   # requested 3 hour budget.
   base <- dt(
     task_id = c(
-      "review_code_greta",
+      "review_code_auto",
       "structured_cov_return_code",
       "inla_gaussian_ri",
       "inla_poisson_ri",
-      "greta_gaussian_fixed",
-      "greta_gaussian_ri",
-      "brms_stancode",
-      "triangulate_greta_inla",
-      "smooth_greta_fit"
+      "brms_stancode"
     ),
     tier = c(
       "light",
       "light",
       "fit",
       "fit",
-      "fit",
-      "fit",
-      "light",
-      "fit",
-      "fit"
+      "light"
     ),
-    timeout_sec = c(300, 300, 600, 600, 1200, 1200, 900, 1800, 1200)
+    timeout_sec = c(300, 300, 600, 600, 900)
   )
 
   if (identical(profile, "smoke")) {
     base <- base[
       task_id %chin%
         c(
-          "review_code_greta",
+          "review_code_auto",
           "structured_cov_return_code",
           "inla_gaussian_ri",
           "brms_stancode"
@@ -1301,7 +1164,7 @@ write_report <- function(
         })
       )
     } else {
-      "_Representation block produced no rows (greta may not be installed)._"
+      "_Representation block produced no rows._"
     },
     "",
     "## Output Files",
@@ -1432,7 +1295,7 @@ main <- function() {
   plan <- task_plan(profile, include_brms_fit = include_brms_fit)
 
   # Light child tasks can use the full core cap. Heavy fit tasks use
-  # a lower cap to avoid making greta/Stan/INLA compete too hard.
+  # a lower cap to avoid making Stan/INLA compete too hard.
   light_plan <- plan[tier == "light"]
   fit_plan <- plan[tier != "light"]
 

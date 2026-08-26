@@ -27,7 +27,7 @@ jobs:
           extra-packages: any::lintr, any::cyclocomp, any::knitr, any::rmarkdown, local::.
           needs: lint
           # "hard" stops pak from trying to resolve the special-repo /
-          # heavy Suggests (INLA, greta) which fail to solve on CI.
+          # heavy Suggests (INLA) which fail to solve on CI.
           dependencies: '"hard"'
 
       - name: Lint

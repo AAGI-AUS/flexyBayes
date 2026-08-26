@@ -1,5 +1,12 @@
 # R Package Audit: flexyBayes
 
+> **Superseded 2026-08-26.** This is a pre-withdrawal snapshot -- package
+> version 0.9.1, before the 0.9.3 backend-withdrawal work recorded in
+> `NEWS.md`. Findings that cited a file path since deleted are removed
+> below rather than left to mislead; the rest of this history is kept
+> as-is. For current validation evidence see `inst/validation/`; for
+> the 0.9.3 release work itself see `review/phase_reports_093/`.
+
 ## Package
 - Package: flexyBayes
 - Version: 0.9.1
@@ -13,16 +20,13 @@
 ## Blocker (0)
 - None
 
-## Should-fix (5)
+## Should-fix (3)
 - **Tests** `tests/testthat/test-tooling-skip-ledger.R`: Trivial assertion detected.
 - **Security** `tests/testthat/test-fb-preflight-stress.R`: Audit shell calls for user-input injection risk.
-- **Security** `R/emit_gretaR.R`: Audit shell calls for user-input injection risk.
 - **Security** `R/fb_preflight.R`: Audit shell calls for user-input injection risk.
-- **Security** `R/emit_greta.R`: Avoid eval(parse()); it is hard to secure and test.
 
-## Nice-to-have (15)
+## Nice-to-have (14)
 - **Tests** `tests/testthat/test-tidy-hub.R`: 1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
-- **Tests** `tests/testthat/test-gretaR-slot.R`: 1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
 - **Tests** `tests/testthat/test-inla-verification-simple-slope-uncor.R`: 1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
 - **Tests** `tests/testthat/test-validation-lmer.R`: 4 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).
 - **Tests** `tests/testthat/test-emit-smooth-low-rank.R`: 1 bare skip() call(s); a manual unconditional skip can hide core behaviour (the conditional skip_*() guards are exempt).

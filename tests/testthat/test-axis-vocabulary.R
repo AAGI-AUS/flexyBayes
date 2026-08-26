@@ -118,9 +118,8 @@ test_that("the one remaining backend pair registers with the ADR 0029 axes", {
   expect_length(ls(flexyBayes:::.backend_independence_registry), 1L)
 })
 
-test_that("an unregistered or same-backend pair looks up to NULL", {
+test_that("a same-backend pair looks up to NULL", {
   expect_null(flexyBayes:::.lookup_pair_independence(c("inla", "inla")))
-  expect_null(flexyBayes:::.lookup_pair_independence(c("greta", "nimble")))
 })
 
 test_that("the backend-independence registry is locked after .onLoad()", {

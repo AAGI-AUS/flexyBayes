@@ -29,13 +29,13 @@ test_that("flexybayes_stream() defaults to inla and refuses an unrecognised back
     flexybayes_stream(
       y ~ env,
       source = data.frame(y = 1, env = factor("a")),
-      backend = "greta"
+      backend = "stan"
     ),
     condition = function(e) e
   )
   expect_s3_class(err, "flexybayes_refusal_unknown_backend")
   expect_s3_class(err, "flexybayes_unknown_backend_refusal")
-  expect_identical(err$backend, "greta")
+  expect_identical(err$backend, "stan")
   expect_match(conditionMessage(err), "not a recognised flexyBayes engine")
   expect_match(conditionMessage(err), '"inla"', fixed = TRUE)
   # The failure must not be argument matching -- that is the untyped

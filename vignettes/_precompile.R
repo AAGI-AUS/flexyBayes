@@ -23,7 +23,6 @@
 #
 # - flexyBayes installed at the version matching DESCRIPTION
 #   (`devtools::install()` or `R CMD INSTALL` of a recent tarball).
-# - greta installed and `greta::install_greta_deps()` completed.
 # - INLA installed (Additional_repositories binary path).
 #
 # Outputs:

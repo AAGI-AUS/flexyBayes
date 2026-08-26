@@ -33,7 +33,7 @@ body:
     id: session
     attributes:
       label: Session info
-      description: Output of `sessionInfo()` — especially the `flexyBayes`, `greta`, and `INLA` versions.
+      description: Output of `sessionInfo()` — especially the `flexyBayes` and `INLA` versions.
       render: text
     validations:
       required: true
@@ -44,7 +44,6 @@ body:
       label: Which backend
       description: Which dispatch path was the call running on?
       options:
-        - greta
         - INLA
         - brms (passthrough)
         - auto
@@ -56,6 +55,6 @@ body:
     id: extra
     attributes:
       label: Additional context
-      description: Anything else — verbose output, generated greta code, screenshots, related issues.
+      description: Anything else — verbose output, generated model code, screenshots, related issues.
     validations:
       required: false

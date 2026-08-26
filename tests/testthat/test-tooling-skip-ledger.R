@@ -58,11 +58,11 @@ test_that(".skip_classify_site routes audit's five reason classes", {
     "cran_ci_time_budget"
   )
   expect_identical(
-    env$.skip_classify_site("skip_if_no_greta", ""),
+    env$.skip_classify_site("skip_if_no_brms", ""),
     "unavailable_optional_backend"
   )
   expect_identical(
-    env$.skip_classify_site("skip_if_not_installed", "greta"),
+    env$.skip_classify_site("skip_if_not_installed", "brms"),
     "unavailable_optional_backend"
   )
   expect_identical(
@@ -87,7 +87,7 @@ test_that(".parse_one_test_file returns the expected columns + types", {
   writeLines(
     c(
       "test_that('fixture skip site', {",
-      "  testthat::skip_if_not_installed('greta')",
+      "  testthat::skip_if_not_installed('brms')",
       "  testthat::skip('[flake-stochastic-rng] fixture flake')",
       "  expect_true(TRUE)",
       "})"
