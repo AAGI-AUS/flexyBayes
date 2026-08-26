@@ -131,27 +131,6 @@ test_that("fb_dirichlet() recovers known concentrations by ML", {
   )
 })
 
-test_that("fb_dirichlet() recovers concentrations via greta", {
-  skip_if_no_greta()
-
-  set.seed(7L)
-  truth <- c(2, 5, 3)
-  X <- rdirichlet(400L, alpha = truth)
-  fit <- fb_dirichlet(
-    X,
-    method = "greta",
-    n_samples = 400L,
-    warmup = 400L,
-    chains = 2L
-  )
-  est <- fit$estimates
-  for (j in seq_along(truth)) {
-    expect_gte(truth[j], est$conf.low[j])
-    expect_lte(truth[j], est$conf.high[j])
-  }
-  expect_equal(est$estimate, truth, tolerance = 0.6)
-})
-
 test_that("fb_dirichlet() carries through column labels", {
   set.seed(2L)
   X <- rdirichlet(200L, c(3, 3, 3))

@@ -145,26 +145,11 @@ test_that("print.fb_prior() emits a multi-line summary", {
 # ---------------------------------------------------------------- #
 # Translation helpers                                              #
 # ---------------------------------------------------------------- #
-
-test_that("priors_to_legacy() extracts vc_sd from sigma pc spec", {
-  p <- fb_prior(sigma ~ pc(upper = 3, prob = 0.05))
-  out <- flexyBayes:::priors_to_legacy(p)
-  expect_identical(out$vc_sd, 3)
-  expect_false(out$legacy)
-})
-
-test_that("priors_to_legacy() extracts fixed_sd from b normal spec", {
-  p <- fb_prior(b("treatment") ~ normal(mean = 0, sd = 7))
-  out <- flexyBayes:::priors_to_legacy(p)
-  expect_identical(out$fixed_sd, 7)
-})
-
-test_that("priors_to_legacy() falls back to defaults for non-fb_prior input", {
-  out <- flexyBayes:::priors_to_legacy(NULL)
-  expect_identical(out$fixed_sd, 10)
-  expect_identical(out$vc_sd, 1)
-  expect_true(out$legacy)
-})
+#
+# priors_to_legacy() (the legacy-scalar bridge for the native engine's
+# emit path, withdrawn entirely in 0.9.3 -- see NEWS.md) was deleted
+# with it; its three unit tests are removed rather than adapted, since
+# no active engine reads that bridge shape.
 
 test_that("priors_to_inla() emits pc.prec for sigma pc spec", {
   p <- fb_prior(sigma ~ pc(upper = 2, prob = 0.05))
@@ -235,8 +220,9 @@ test_that("priors_to_inla() emits an exact uniform-on-SD expression prior", {
 test_that(".default_uniform_prior() maps to faithful INLA expression priors", {
   # The synthesised default reaches all three INLA paths via
   # priors_to_inla(); it must carry the exact uniform-on-SD expression
-  # prior (matching the greta backend's flat uniform), not the former
-  # PC approximation that disagreed with greta on small group counts.
+  # prior (matching the flat uniform the withdrawn native engine used,
+  # see NEWS.md 0.9.3), not the former PC approximation that disagreed
+  # with it on small group counts.
   dat <- data.frame(y = stats::rnorm(60), g = factor(rep(1:5, each = 12)))
   dp <- flexyBayes:::.default_uniform_prior(
     data = dat,
@@ -253,21 +239,6 @@ test_that(".default_uniform_prior() maps to faithful INLA expression priors", {
     function(e) identical(e$prior, "pc.prec"),
     logical(1)
   )))
-})
-
-test_that("priors_to_legacy() exposes uniform-on-VC via uniform_per_vc (ADR 0004)", {
-  p <- fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 5))
-  out <- flexyBayes:::priors_to_legacy(p)
-  expect_true("g" %in% names(out$uniform_per_vc))
-  expect_identical(out$uniform_per_vc$g$lower, 0)
-  expect_identical(out$uniform_per_vc$g$upper, 5)
-})
-
-test_that("priors_to_legacy() exposes uniform-on-sigma via uniform_per_vc", {
-  p <- fb_prior(sigma ~ uniform(lower = 0, upper = 7))
-  out <- flexyBayes:::priors_to_legacy(p)
-  expect_true("__sigma__" %in% names(out$uniform_per_vc))
-  expect_identical(out$uniform_per_vc[["__sigma__"]]$upper, 7)
 })
 
 # ---------------------------------------------------------------- #

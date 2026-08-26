@@ -18,7 +18,7 @@ A \code{logLik} object whose value is \code{NA_real_}, carrying \code{df} and
 \description{
 INLA reports a \emph{marginal} log-likelihood (the model evidence, available
 through \code{\link[=summary]{summary()}}), not the \emph{conditional} model log-likelihood that the
-\code{logLik()} generic denotes and that the greta / brms backends expose.
+\code{logLik()} generic denotes and that the brms backend exposes.
 Returning the marginal quantity under the \code{logLik} name would conflate two
 different things, so this method returns \code{NA} (with the degrees of
 freedom and observation count filled in) and a one-line note. This also

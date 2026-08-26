@@ -263,58 +263,92 @@ test_that("vm() cov = fb_cov(type = 'low_rank') without scheme refuses at parse"
 # ---------------------------------------------------------------- #
 # (d) Codegen equivalence: fb_cov() form == legacy keyword form.    #
 # ---------------------------------------------------------------- #
+#
+# 0.9.3: these tests originally asserted on literal R-source fragments
+# (e.g. "L_G_geno <- t(chol(Gmat))") that the withdrawn native engine's
+# codegen produced (see NEWS.md). That code generator no longer exists
+# on any active engine, so the assertion is rewritten to what the
+# migration actually claims: the fb_cov() form and the legacy keyword
+# form parse to the same cov_representation IR slot (already covered
+# in section (c) above) and therefore emit byte-identical generated
+# code on an active engine -- verified here on brms Stan code.
 
-test_that("codegen: cov = fb_cov(L, type = 'chol') emits the same square root as chol = L", {
-  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
+test_that("codegen: cov = fb_cov(L, type = 'chol') matches the legacy chol = L keyword", {
+  skip_if_not_installed("brms")
   dat <- .fb_cov_fixture_data()
   G <- diag(6) + 0.1
   L <- t(chol(G))
 
-  code_new <- flexybayes(
+  code_new <- suppressWarnings(flexybayes(
     yield ~ 1,
     random = ~ vm(geno, cov = fb_cov(L_chol, type = "chol")),
     data = dat,
     known_matrices = list(L_chol = L),
     return_code = TRUE,
+    backend = "brms",
     verbose = FALSE
-  )
-  expect_true(grepl("L_G_geno <- as.matrix(L_chol)", code_new, fixed = TRUE))
-  expect_false(grepl("t(chol(", code_new, fixed = TRUE))
+  ))
+  code_legacy <- suppressWarnings(flexybayes(
+    yield ~ 1,
+    random = ~ vm(geno, chol = L_chol),
+    data = dat,
+    known_matrices = list(L_chol = L),
+    return_code = TRUE,
+    backend = "brms",
+    verbose = FALSE
+  ))
+  expect_identical(code_new, code_legacy)
 })
 
-test_that("codegen: cov = fb_cov(Q, type = 'precision') emits solve(chol(Q))", {
-  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
+test_that("codegen: cov = fb_cov(Q, type = 'precision') matches the legacy precision = Q keyword", {
+  skip_if_not_installed("brms")
   skip_if_not_installed("Matrix")
   dat <- .fb_cov_fixture_data()
   Q <- solve(diag(6) + 0.1)
-  code_new <- flexybayes(
+  code_new <- suppressWarnings(flexybayes(
     yield ~ 1,
     random = ~ vm(geno, cov = fb_cov(Qprec, type = "precision")),
     data = dat,
     known_matrices = list(Qprec = Q),
     return_code = TRUE,
+    backend = "brms",
     verbose = FALSE
-  )
-  expect_true(grepl(
-    "L_G_geno <- as.matrix(solve(chol(Qprec)))",
-    code_new,
-    fixed = TRUE
   ))
+  code_legacy <- suppressWarnings(flexybayes(
+    yield ~ 1,
+    random = ~ vm(geno, precision = Qprec),
+    data = dat,
+    known_matrices = list(Qprec = Q),
+    return_code = TRUE,
+    backend = "brms",
+    verbose = FALSE
+  ))
+  expect_identical(code_new, code_legacy)
 })
 
-test_that("codegen: cov = fb_cov(G, type = 'dense') keeps the t(chol()) wrap", {
-  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
+test_that("codegen: cov = fb_cov(G, type = 'dense') matches the legacy bare-matrix keyword", {
+  skip_if_not_installed("brms")
   dat <- .fb_cov_fixture_data()
   G <- diag(6) + 0.1
-  code_new <- flexybayes(
+  code_new <- suppressWarnings(flexybayes(
     yield ~ 1,
     random = ~ vm(geno, cov = fb_cov(Gmat, type = "dense")),
     data = dat,
     known_matrices = list(Gmat = G),
     return_code = TRUE,
+    backend = "brms",
     verbose = FALSE
-  )
-  expect_true(grepl("L_G_geno <- t(chol(Gmat))", code_new, fixed = TRUE))
+  ))
+  code_legacy <- suppressWarnings(flexybayes(
+    yield ~ 1,
+    random = ~ vm(geno, Gmat),
+    data = dat,
+    known_matrices = list(Gmat = G),
+    return_code = TRUE,
+    backend = "brms",
+    verbose = FALSE
+  ))
+  expect_identical(code_new, code_legacy)
 })
 
 # ---------------------------------------------------------------- #

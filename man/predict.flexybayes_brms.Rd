@@ -38,8 +38,8 @@ draws to a numeric vector; if \code{FALSE}, return the
 \item{classify}{The factors to break a marginal-means table down by:
 a character value (\code{"Variety"}, \code{"Variety:env"}) or a one-sided
 formula (\code{~ Variety}). \code{NULL} (the default) is the historical
-behaviour. See \code{\link[=predict.flexybayes]{predict.flexybayes()}} for how the two prediction
-paths differ.}
+behaviour. See \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}} for how the two active
+engines' prediction paths differ.}
 
 \item{level}{Credible level for the classify table's interval, as a
 proportion. Default \code{0.95}.}

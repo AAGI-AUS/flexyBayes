@@ -25,6 +25,6 @@ code it writes to \code{file}.
 }
 \description{
 Writes the backend code carried by a \verb{<flexybayes_review>}
-object (greta R code for \code{\link[=flexybayes]{flexybayes()}} / \code{fb_greta()}; Stan
-code via \code{\link[brms:stancode]{brms::stancode()}} for \code{fb_brms()}) to a connection.
+object (Stan code via \code{\link[brms:stancode]{brms::stancode()}} for
+\code{\link[=flexybayes]{flexybayes()}} / \code{fb_brms()}) to a connection.
 }

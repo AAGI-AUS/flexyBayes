@@ -354,157 +354,6 @@
   invisible(NULL)
 }
 
-# Route guard. Runs at setup_env time on the greta dispatch
-# path (setup_env is greta-only; emit_inla() runs its own allowlist
-# check via lgm_gate). Dispatches:
-#
-#   format = "dense"                      -> no-op (legacy path).
-#   format = "chol"                       -> active on greta: run
-#                                            input validator, then
-#                                            proceed silently.
-#   format = "precision" /
-#   format = "pedigree_sparse_precision"  -> active on greta: run
-#                                            input validator
-#                                            (precision validator
-#                                            applies to both), then
-#                                            proceed silently. (Sparse
-#                                            efficiency wins land on
-#                                            the INLA path; greta
-#                                            densifies via as.matrix()
-#                                            at codegen time.)
-#   format = "blocks"                     -> forward-pointer refusal
-#                                            (active from v0.3.8).
-#   format = "low_rank"                   -> approximate-route refusal.
-#
-# The validators raise typed structural refusals (chol_not_triangular,
-# precision_not_positive_definite, ...) so users see input errors at
-# input granularity, not as a downstream emit failure.
-.stage5a_route_check <- function(
-  term,
-  known_matrices,
-  expected_n = NULL,
-  fit_levels = NULL
-) {
-  cov <- term$cov_representation
-  if (is.null(cov) || identical(cov$format, "dense")) {
-    return(invisible(NULL))
-  }
-
-  fmt <- cov$format
-
-  if (fmt == "chol") {
-    L <- known_matrices[[cov$data]]
-    .validate_chol_input(
-      L,
-      name = cov$data,
-      group_var = term$var,
-      expected_n = expected_n,
-      fit_levels = fit_levels
-    )
-    return(invisible(NULL))
-  }
-
-  if (fmt %in% c("precision", "pedigree_sparse_precision")) {
-    Q <- known_matrices[[cov$data]]
-    .validate_precision_input(
-      Q,
-      name = cov$data,
-      group_var = term$var,
-      expected_n = expected_n,
-      fit_levels = fit_levels
-    )
-    return(invisible(NULL))
-  }
-
-  if (fmt == "blocks") {
-    blocks_list <- known_matrices[[cov$data]]
-    .validate_blocks_input(
-      blocks_list,
-      name = cov$data,
-      group_var = term$var,
-      expected_n = expected_n
-    )
-    return(invisible(NULL))
-  }
-
-  if (fmt == "low_rank") {
-    .stop_structured_cov_refusal(
-      reason_code = "approximate_route_not_yet_registered",
-      message = paste0(
-        "vm(",
-        term$var,
-        ", cov = fb_cov(",
-        cov$data,
-        ", type = \"low_rank\", scheme = \"",
-        cov$scheme,
-        "\")): the low-rank covariance carrier is a reserved type ",
-        "-- its vocabulary is registered but the approximate-",
-        "covariance fit route activates in a later release. Until ",
-        "then, materialise the rank-K matrix and route through the ",
-        "dense carrier: vm(",
-        term$var,
-        ", cov = fb_cov(",
-        cov$data,
-        " %*% t(",
-        cov$data,
-        "), type = \"dense\"))."
-      ),
-      format = "low_rank",
-      scheme = cov$scheme
-    )
-  }
-
-  invisible(NULL)
-}
-
-# Codegen helper. Returns the R expression (as a string) that
-# constructs a square root B of V such that B B' = V on the greta
-# emit path. Inputs:
-#
-#   cov          The cov_representation slot from the parsed term
-#                (NULL or absent for legacy IRs).
-#   legacy_mat   The pre-Stage-5A `term$mat` field, used as the
-#                dense fallback when cov_representation is absent
-#                (saved fits, parser-bypass test fixtures).
-#
-# Per-format square roots:
-#   dense:  t(chol(V))  -- lower-triangular Cholesky of V.
-#   chol:   as.matrix(L)  -- user supplies L directly.
-#   precision / pedigree_sparse_precision:  solve(chol(Q))  -- B = R^{-1}
-#     where R = chol(Q), giving B B' = Q^{-1} = V.
-#   blocks: t(chol(bdiag(V_1, ...)))  -- block-diagonal V; the K-independent
-#     MVN draws are algebraically identical to a single MVN with V = bdiag,
-#     which the dense codepath already handles correctly (exact and
-#     boring).
-#
-# The route guard ensures low_rank cannot reach this helper from
-# setup_env; the stop() branch is a contract assertion.
-.vm_ped_sqrt_expr <- function(cov, legacy_mat) {
-  if (is.null(cov)) {
-    return(paste0("t(chol(", legacy_mat, "))"))
-  }
-  switch(
-    cov$format,
-    "dense" = paste0("t(chol(", cov$data, "))"),
-    "chol" = paste0("as.matrix(", cov$data, ")"),
-    "precision" = paste0("as.matrix(solve(chol(", cov$data, ")))"),
-    "pedigree_sparse_precision" = paste0(
-      "as.matrix(solve(chol(",
-      cov$data,
-      ")))"
-    ),
-    "blocks" = paste0("t(chol(as.matrix(", "Matrix::bdiag(", cov$data, "))))"),
-    stop(
-      "internal: vm/ped cov_representation$format = '",
-      cov$format,
-      "' reached .vm_ped_sqrt_expr() despite the setup_env route ",
-      "guard. This is a flexyBayes bug -- the guard's allowlist ",
-      "and this dispatch are out of sync.",
-      call. = FALSE
-    )
-  )
-}
-
 # Validator: user-supplied Cholesky factor.
 #
 # Scope: lower-triangular pattern check + square-shape check +
@@ -777,11 +626,10 @@
 # named list `blocks = my_blocks` where `my_blocks` resolves at fit
 # time to `list(V_1, ..., V_K)` --- each V_k is the dense covariance
 # matrix for one block of the grouping factor's levels (taken in the
-# natural ordering of `levels(group_var)`). The validator runs both
-# on the greta path (from `.stage5a_route_check()`) and on the INLA
-# path (from `emit_inla()`'s data_inla setup loop); both pass the
-# same `expected_n` (the level count) so the partition contract is
-# enforced uniformly.
+# natural ordering of `levels(group_var)`). The validator runs on the
+# INLA path (from `emit_inla()`'s data_inla setup loop), passing
+# `expected_n` (the level count) so the partition contract is
+# enforced.
 #
 # Returns a list with `block_sizes` (integer vector of n_k) and
 # `total_n` so callers can pre-compute per-block integer index
@@ -1055,7 +903,7 @@
         "levels(`",
         group_var,
         "`). INLA's generic0 model and ",
-        "greta's t(chol(V)) emit both require positional alignment ",
+        "brms's known-covariance emit both require positional alignment ",
         "with levels(`",
         group_var,
         "`). Permute the matrix:\n",
@@ -1111,4 +959,55 @@
     family_class = "flexybayes_structured_cov_refusal",
     ...
   ))
+}
+
+# The low-rank covariance carrier's vocabulary is registered
+# (fb_cov(type = "low_rank", scheme = )) but no engine has an
+# approximate-covariance fit route wired to it -- it is a reserved
+# slot for a future release, not a per-engine capability gap. Without
+# this check, a low_rank vm()/ped() carrier still refuses (both active
+# engines' own capability gates catch it), but each engine's message
+# points at the *other* engine as the alternative, which is circular
+# here: neither can fit it. This check fires first, at parse time,
+# before either engine's dispatch-specific message would otherwise
+# mislead, and names the actual workaround (materialise the rank-K
+# product as a dense carrier).
+#
+# Called from new_fb_terms() (R/fb_terms.R) once the full random_terms
+# list is assembled, for every vm()/ped() term regardless of which
+# grammar (asreml or brms) or which cov_representation construction
+# path (the fb_cov() front door or the deprecated legacy keyword
+# carriers) built it -- so it applies uniformly regardless of
+# `backend`, and does not fire on a bare .parse_formula() call in
+# isolation (a handful of tests call .parse_formula() directly to
+# check parsing/deprecation behaviour without going through the full
+# IR-construction path; those must stay refusal-free).
+.check_low_rank_cov_reserved <- function(cov_rep, var_name) {
+  if (is.null(cov_rep) || !identical(cov_rep$format, "low_rank")) {
+    return(invisible(NULL))
+  }
+  .stop_structured_cov_refusal(
+    reason_code = "approximate_route_not_yet_registered",
+    message = paste0(
+      "vm(",
+      var_name,
+      ", cov = fb_cov(",
+      cov_rep$data,
+      ", type = \"low_rank\", scheme = \"",
+      cov_rep$scheme,
+      "\")): the low-rank covariance carrier is a reserved type ",
+      "-- its vocabulary is registered but the approximate-",
+      "covariance fit route activates in a later release. Until ",
+      "then, materialise the rank-K matrix and route through the ",
+      "dense carrier: vm(",
+      var_name,
+      ", cov = fb_cov(",
+      cov_rep$data,
+      " %*% t(",
+      cov_rep$data,
+      "), type = \"dense\"))."
+    ),
+    format = "low_rank",
+    scheme = cov_rep$scheme
+  )
 }

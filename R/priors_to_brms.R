@@ -548,9 +548,9 @@
 # Legacy-scalar bridge: builds the spec list that mirrors the v0.1
 # legacy prior (normal(0, prior_fixed_sd) on every fixed-effect
 # coefficient incl. Intercept; lognormal(0, prior_vc_sd) on sigma and
-# every named sd group). Uses lognormal because the legacy greta-side
-# prior on variance components is lognormal(0, vc_sd) (codegen.R
-# .sigma_decl); the brms-side row preserves that shape without a
+# every named sd group). Uses lognormal because the legacy prior on
+# variance components (from the since-withdrawn v0.1 engine) was
+# lognormal(0, vc_sd); the brms-side row preserves that shape without a
 # positivity bound (brms applies the natural sigma >= 0 anyway).
 .brms_legacy_specs <- function(
   fb,

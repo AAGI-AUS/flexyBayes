@@ -12,11 +12,10 @@
 # the family system so `family = "gen_extreme_value"` is recognised and the
 # user is routed to `fb_gev()` rather than refused generically.
 #
-# The fitter uses dependency-free maximum likelihood (base `optim`). A
-# scalable Bayesian GEV belongs on INLA's native `gev` / `bgev` family
-# rather than the greta backend, which has no GEV distribution and whose
-# free-form-likelihood idioms do not recover the shape reliably; that route
-# is left for a future release rather than wired half-heartedly here.
+# The fitter uses dependency-free maximum likelihood (base `optim`); no
+# active engine has a turnkey GEV route today. A scalable Bayesian GEV
+# belongs on INLA's native `gev` / `bgev` family; that route is left for
+# a future release rather than wired half-heartedly here.
 # References: Coles (2001), *An Introduction to Statistical Modeling of
 # Extreme Values*; Jenkinson (1955).
 
@@ -134,8 +133,8 @@ rgev <- function(n, location, scale, shape = 0) {
 #' for the requested return periods.
 #'
 #' A scalable Bayesian GEV belongs on INLA's native `gev` / `bgev` family
-#' and is planned for a future release; the greta backend ships no GEV
-#' distribution.
+#' and is planned for a future release; no active engine has a turnkey
+#' GEV route today.
 #'
 #' @param y Numeric vector of block-maxima observations. Must contain at
 #'   least four finite values.

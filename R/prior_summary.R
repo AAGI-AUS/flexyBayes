@@ -12,15 +12,9 @@
 #   (3) NULL (pre-IR-recording fits; surfaced as `no_prior_recorded`).
 #
 # Closest precedent: `brms::prior_summary()` / `rstanarm::prior_summary()`.
-# The flexyBayes implementation differs in two intentional ways:
-#
-#   - it surfaces whether the prior came from the auto-default
-#     (so users know the bounded uniform on SD is the working
-#     prior, not a placeholder);
-#   - it flags `flexybayes_direct_greta` fits as declaration-only,
-#     because `fb_greta()` accepts an `fb_prior()` only as a
-#     declaration of what the user-built model graph encodes ---
-#     `flexyBayes` never re-priors the user's model on that path.
+# The flexyBayes implementation differs in one intentional way: it
+# surfaces whether the prior came from the auto-default (so users know
+# the bounded uniform on SD is the working prior, not a placeholder).
 
 #' Resolved-prior summary for a flexyBayes fit
 #'
@@ -32,12 +26,7 @@
 #' underlying `fb_prior` (when applicable) is exposed under
 #' `$fb_prior` for programmatic access.
 #'
-#' For `flexybayes_direct_greta` fits the priors are a *declaration*
-#' of what the user-built model graph encodes; the summary flags
-#' this with `declaration_only = TRUE`.
-#'
-#' @param object A `flexybayes`, `flexybayes_inla`, or
-#'   `flexybayes_direct_greta` object.
+#' @param object A `flexybayes_inla` or `flexybayes_brms` object.
 #' @param ... Ignored by current methods (reserved for future
 #'   per-component selection).
 #'
@@ -47,8 +36,8 @@
 #'   \describe{
 #'     \item{`kind`}{One of `"fb_prior"`, `"legacy_scalar"`,
 #'       `"no_prior_recorded"`.}
-#'     \item{`backend`}{The backend the fit ran on:
-#'       `"inla"`, `"brms"`, `"greta"`, or `"greta-direct"`.}
+#'     \item{`backend`}{The backend the fit ran on: `"inla"` or
+#'       `"brms"`.}
 #'     \item{`fb_prior`}{The `fb_prior` object (when
 #'       `kind == "fb_prior"`).}
 #'     \item{`default_origin`}{`"auto"` when the prior was
@@ -72,9 +61,8 @@
 #'     \item{`not_applied`}{Named character: a prior this package
 #'       declared that the engine has no parameter for -- a residual
 #'       prior on a family whose dispersion is a function of the mean.}
-#'     \item{`declaration_only`}{`TRUE` on `flexybayes_direct_greta`
-#'       fits -- the prior is a declaration of the user's
-#'       greta-built model, not an enforcement.}
+#'     \item{`declaration_only`}{Reserved; always `FALSE` for every
+#'       current backend.}
 #'   }
 #'
 #' @examples
@@ -93,12 +81,6 @@ prior_summary <- function(object, ...) UseMethod("prior_summary")
 
 #' @rdname prior_summary
 #' @export
-prior_summary.flexybayes <- function(object, ...) {
-  .prior_summary_impl(object, backend_label = "greta", declaration_only = FALSE)
-}
-
-#' @rdname prior_summary
-#' @export
 prior_summary.flexybayes_inla <- function(object, ...) {
   .prior_summary_impl(object, backend_label = "inla", declaration_only = FALSE)
 }
@@ -107,16 +89,6 @@ prior_summary.flexybayes_inla <- function(object, ...) {
 #' @export
 prior_summary.flexybayes_brms <- function(object, ...) {
   .prior_summary_impl(object, backend_label = "brms", declaration_only = FALSE)
-}
-
-#' @rdname prior_summary
-#' @export
-prior_summary.flexybayes_direct_greta <- function(object, ...) {
-  .prior_summary_impl(
-    object,
-    backend_label = "greta-direct",
-    declaration_only = TRUE
-  )
 }
 
 #' @rdname prior_summary
@@ -213,7 +185,6 @@ prior_summary.default <- function(object, ...) {
       "(a standard deviation near 32), and prec.intercept = 0, which is ",
       "flat"
     ),
-    "greta" = "the legacy normal(0, 100) on every fixed-effect coefficient",
     "the engine's own fixed-effect default"
   )
 }
@@ -441,19 +412,7 @@ prior_summary.default <- function(object, ...) {
 #' @export
 print.prior_summary_flexybayes <- function(x, ...) {
   cat("<prior_summary>  backend = ", x$backend, sep = "")
-  if (isTRUE(x$declaration_only)) {
-    cat("  (declaration only)", sep = "")
-  }
   cat("\n")
-
-  if (isTRUE(x$declaration_only)) {
-    cat(
-      "  Note: fb_greta() does not modify the user's model graph; ",
-      "the prior below records what the user declared the model ",
-      "encodes.\n",
-      sep = ""
-    )
-  }
 
   switch(
     x$kind,

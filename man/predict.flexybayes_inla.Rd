@@ -48,9 +48,9 @@ coincide. This is the prediction surface \pkg{marginaleffects} uses
 for average predictions and slopes.
 }
 \details{
-The \code{classify} path is the same one \code{\link[=predict.flexybayes]{predict.flexybayes()}} takes: a
-marginal-means table built through the emmeans seam, whose interval on
-this engine comes from the Gaussian approximation of the joint
-fixed-effect posterior rather than from INLA's own marginals. The
-printed table names that.
+The \code{classify} path builds a marginal-means table through the emmeans
+seam (the same construction \code{\link[=predict.flexybayes_brms]{predict.flexybayes_brms()}} uses), whose
+interval on this engine comes from the Gaussian approximation of the
+joint fixed-effect posterior rather than from INLA's own marginals.
+The printed table names that.
 }

@@ -232,7 +232,8 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
 })
 
 test_that("fb(... backend = 'inla') dispatches to emit_inla", {
-  # ADR 0004 D1: v0.1's flexybayes() (and fb alias) is greta-only.
+  # ADR 0004 D1: v0.1's flexybayes() (and fb alias) fit only through the
+  # engine withdrawn entirely in 0.9.3 (see NEWS.md).
   # User-facing INLA dispatch is deferred to v0.2 with the brms-
   # format ingest path (fb_brms()). The internal emit_inla() pathway
   # is exercised by the test above ("emit_inla() returns formula +

@@ -4,13 +4,20 @@
 #
 # Three acceptance criteria per v038-plan-2026-05-25 section 5.2:
 #
-#   (a) snapshot of print() on a greta MCMC fit -> Engine: greta MCMC
-#   (b) snapshot of print() on an INLA Laplace fit -> Engine: INLA Laplace
+#   (a) snapshot of print() on an INLA Laplace fit -> Engine: INLA Laplace
+#   (b) snapshot of print() on a brms / Stan HMC fit -> Engine: brms / Stan HMC
 #   (c) snapshot of print() on an aggregated-exact fit ->
 #       Representation: aggregated_exact (compression 5:1)
 #
-# The full-fit fixtures depend on greta/INLA being installed and would
-# be slow even when available; we instead snapshot-test the helper
+# 0.9.3 also adds a fourth: .engine_label_for_fit() falls through to the
+# raw backend string, unrecognised-verbatim, for any engine name that is
+# neither "inla" nor "brms" -- this used to be a real, engine-specific
+# branch for the native engine withdrawn entirely in 0.9.3 (see NEWS.md),
+# and is now the generic fallback for a future engine the display helper
+# has not been taught to label yet.
+#
+# The full-fit fixtures depend on INLA/brms being installed and would be
+# slow even when available; we instead snapshot-test the helper
 # functions directly with synthesised fit-shaped objects. This keeps
 # the test fast, deterministic, and resilient to engine version drift
 # while still verifying the user-visible label content + adjacency.
@@ -43,15 +50,15 @@
 }
 
 # ---------------------------------------------------------------- #
-# (a) greta MCMC fit                                                 #
+# (a) unrecognised engine name falls through verbatim                #
 # ---------------------------------------------------------------- #
 
-test_that("Engine: greta MCMC for a greta-backed fit", {
-  fit <- .test_truth_fit(backend = "greta", path = "explicit_greta")
+test_that("Engine: falls through to the raw backend string for an unrecognised engine", {
+  fit <- .test_truth_fit(backend = "future_engine", path = "explicit_future_engine")
   repr <- flexyBayes:::.repr_label_for_fit(fit, fit$extras$backend_decision)
   engine <- flexyBayes:::.engine_label_for_fit(fit, fit$extras$backend_decision)
   expect_equal(repr, "exact (model, not inference)")
-  expect_equal(engine, "greta MCMC")
+  expect_equal(engine, "future_engine")
 })
 
 # ---------------------------------------------------------------- #
@@ -106,7 +113,7 @@ test_that("print.flexybayes emits Representation:/Engine: adjacent (no Exact.:)"
     list(
       exactness = "exact",
       extras = list(
-        backend_decision = list(backend = "greta", path = "explicit_greta"),
+        backend_decision = list(backend = "brms", path = "explicit_brms"),
         call_info = list(
           fixed = y ~ x,
           random = NULL,

@@ -1,13 +1,15 @@
 # tidiers.R -- broom-style tidy / glance / augment methods for the
 # flexyBayes fit classes.
 #
-# A flexyBayes fit is a backend-specific S3 list: the greta route returns
-# `flexybayes`, the brms route `c("flexybayes_brms", "flexybayes", ...)`,
-# and the INLA route `c("flexybayes_inla", "flexybayes", "list")`.
+# A flexyBayes fit is a backend-specific S3 list: the brms route returns
+# `c("flexybayes_brms", "flexybayes", ...)` (the bare `flexybayes` method
+# below serves it, via inheritance -- there is no separate
+# `tidy.flexybayes_brms`), and the INLA route
+# `c("flexybayes_inla", "flexybayes", "list")` (its own method).
 # Downstream code that
 # wanted a flat one-row-per-term summary had to reach into backend-specific
 # slots, which is fragile and -- worse -- different across backends, so a
-# triangulation table that compared greta against INLA was hand-built every
+# triangulation table that compared brms against INLA was hand-built every
 # time. These methods register against the `tidy()` generic (re-exported by
 # `broom`), so `broom::tidy(fit)` and `generics::tidy(fit)` both return a
 # stable, documented `data.frame` with the canonical `broom` column names
@@ -40,10 +42,10 @@ generics::augment
 #' `broom::tidy(fit)` and `generics::tidy(fit)` both dispatch here.
 #'
 #' This is the supported accessor for cross-engine summaries. The hub returns
-#' backend-specific objects -- `flexybayes` (greta), `flexybayes_brms`
-#' (brms), `flexybayes_inla` (INLA) -- whose internal layouts differ. Tidying
-#' through this generic yields the same columns across all three, so a
-#' greta-versus-INLA triangulation table can be assembled by `rbind`-ing two
+#' backend-specific objects -- `flexybayes_brms` (brms) and
+#' `flexybayes_inla` (INLA) -- whose internal layouts differ. Tidying
+#' through this generic yields the same columns across both, so a
+#' brms-versus-INLA triangulation table can be assembled by `rbind`-ing two
 #' `tidy()` outputs rather than reaching into each backend's slots by hand.
 #'
 #' The credible intervals are posterior quantile-based intervals, not
@@ -52,8 +54,8 @@ generics::augment
 #' carries the posterior standard deviation of each term, again under the
 #' `broom`-canonical (dotless to the user, dotted in the column name) label.
 #'
-#' @param x A flexyBayes fit: `flexybayes` (greta backend) or
-#'   `flexybayes_brms` (brms backend, which inherits this method).
+#' @param x A flexyBayes fit: `flexybayes_brms` (brms backend, which
+#'   inherits this method via the bare `flexybayes` class).
 #' @param conf.int Logical. Whether to attach credible intervals. Defaults to
 #'   `TRUE`.
 #' @param conf.level Numeric in `(0, 1)`. The credible level for the
@@ -100,7 +102,7 @@ tidy.flexybayes <- function(
   .tidy_random_flexybayes(x, conf.int)
 }
 
-# Fixed-effect tidier shared by the greta / brms fit classes. Reads the
+# Fixed-effect tidier shared by the flexybayes / brms fit classes. Reads the
 # posterior mean from coef(), the posterior SD from the diagonal of vcov(),
 # and -- when asked -- the credible interval from confint().
 .tidy_fixed_flexybayes <- function(x, conf.int, conf.level) {
@@ -128,7 +130,7 @@ tidy.flexybayes <- function(
   out
 }
 
-# Variance-component tidier shared by the greta / brms fit classes. The
+# Variance-component tidier shared by the flexybayes / brms fit classes. The
 # components live on `fit$extras$variance_comps`, already summarised to
 # component / estimate / sd / q2.5 / q97.5 by the backend post-fit code.
 .tidy_random_flexybayes <- function(x, conf.int) {

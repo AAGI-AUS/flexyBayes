@@ -209,14 +209,16 @@ waived here rather than left to be discovered.
   a real interval-coverage study run through `flexybayes()` with known
   truth, and it is short of the tier on three counts: 10 replicates per
   cell against the V3 floor of 1,000, a `0.7.0.9000` candidate rather
-  than this release, and a backend set that still included greta. The
-  package has no simulation-based calibration of its own estimator at
-  all: the 2026-06-02 multi-backend SBC study calibrated the ENGINES
-  through direct `cmdstanr`, `INLA::inla()` and `greta` calls, so it is
-  evidence about Stan, INLA and greta rather than about this package's
-  emit, and registering it here would have claimed something it does not
-  show. Writing a calibration entry that the study does not support was
-  the alternative, and it is worse than a waiver.
+  than this release, and a backend set that still included the native
+  engine withdrawn entirely in 0.9.3 (see `NEWS.md`). The package has no
+  simulation-based calibration of its own estimator at all: the
+  2026-06-02 multi-backend SBC study calibrated the ENGINES through
+  direct `cmdstanr`, `INLA::inla()`, and that withdrawn engine's own
+  sampler calls, so it is evidence about Stan, INLA, and that engine
+  rather than about this package's emit, and registering it here would
+  have claimed something it does not show. Writing a calibration entry
+  that the study does not support was the alternative, and it is worse
+  than a waiver.
 - Reason (F20, named cells): the V3 breadth table asks for a
   null-recovery scenario at two or more sample sizes. The registered
   studies simulate non-null truths throughout, so no row claims one. The

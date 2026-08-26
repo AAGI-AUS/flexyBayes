@@ -2,8 +2,11 @@
 #
 # marginaleffects discovers a model through a small set of S3 generics:
 # get_coef(), set_coef(), get_vcov(), get_predict() and get_data().
-# We register all five for both backends via @exportS3Method (delayed
-# registration -- marginaleffects stays in Suggests).
+# We register all five for both active backends via @exportS3Method
+# (delayed registration -- marginaleffects stays in Suggests). Each
+# generic has an explicit `flexybayes_inla` method; the bare
+# `flexybayes` method is the default, reached by a brms fit via S3
+# inheritance (no `flexybayes_brms`-specific override exists here).
 #
 # get_predict() computes population-level (fixed-effect) predictions
 # from the SAME design-matrix / coefficient basis that get_coef() and
@@ -62,7 +65,7 @@
 }
 
 
-#' marginaleffects support: fixed-effect coefficients (greta backend)
+#' marginaleffects support: fixed-effect coefficients (default method)
 #' @param model A `flexybayes` fit.
 #' @param ... Ignored. Present for compatibility with the generic.
 #' @return Named numeric vector of coefficients.
@@ -74,7 +77,7 @@ get_coef.flexybayes <- function(model, ...) .fb_get_coef(model, ...)
 #' @exportS3Method marginaleffects::get_coef
 get_coef.flexybayes_inla <- function(model, ...) .fb_get_coef(model, ...)
 
-#' marginaleffects support: set coefficients (greta backend)
+#' marginaleffects support: set coefficients (default method)
 #' @param model A `flexybayes` fit.
 #' @param coefs Replacement coefficient vector.
 #' @param ... Ignored. Present for compatibility with the generic.
@@ -91,7 +94,7 @@ set_coef.flexybayes_inla <- function(model, coefs, ...) {
   .fb_set_coef(model, coefs, ...)
 }
 
-#' marginaleffects support: covariance (greta backend)
+#' marginaleffects support: covariance (default method)
 #' @param model A `flexybayes` fit.
 #' @param ... Ignored. Present for compatibility with the generic.
 #' @return Fixed-effect covariance matrix.
@@ -103,7 +106,7 @@ get_vcov.flexybayes <- function(model, ...) .fb_get_vcov(model, ...)
 #' @exportS3Method marginaleffects::get_vcov
 get_vcov.flexybayes_inla <- function(model, ...) .fb_get_vcov(model, ...)
 
-#' Model data accessor (greta backend)
+#' Model data accessor (default method)
 #'
 #' Registered for [insight::get_data()] so marginaleffects (which
 #' discovers a model's data through insight) can build reference grids
@@ -120,7 +123,7 @@ get_data.flexybayes <- function(x, ...) .fb_get_data(x, ...)
 #' @exportS3Method insight::get_data
 get_data.flexybayes_inla <- function(x, ...) .fb_get_data(x, ...)
 
-#' marginaleffects support: population-level predictions (greta backend)
+#' marginaleffects support: population-level predictions (default method)
 #' @param model A `flexybayes` fit.
 #' @param newdata Data frame to predict on (default: fit data).
 #' @param type Prediction scale (identity link only).

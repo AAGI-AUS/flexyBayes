@@ -4,7 +4,7 @@
 # print.flexybayes_aggregated() / summary.flexybayes_aggregated() that
 # render the two adjacent "Representation:" and "Engine:" lines. The
 # split disambiguates representation regime (exact vs aggregated_exact)
-# from inference engine (greta MCMC vs INLA Laplace vs brms / Stan
+# from inference engine (INLA Laplace vs brms / Stan
 # HMC) --- closes the 2026-05-25 audit Critical Fix #4.
 #
 # These helpers also back fb_plan()'s engine_label / representation_label
@@ -87,9 +87,6 @@
   if (is.na(backend)) {
     return("(unknown engine)")
   }
-  if (identical(backend, "greta")) {
-    return("greta MCMC")
-  }
   if (identical(backend, "brms")) {
     return("brms / Stan HMC")
   }
@@ -98,9 +95,6 @@
       return("INLA Laplace (aggregated)")
     }
     return("INLA Laplace")
-  }
-  if (identical(backend, "gretaR")) {
-    return("gretaR (R-native; dormant)")
   }
   backend
 }

@@ -1,11 +1,13 @@
 # ---------------------------------------------------------------- #
 # Hub tidy() coverage -- the broom-style tidy generic must return    #
 # the same canonical columns across the backend fit classes the hub  #
-# returns (greta `flexybayes`, INLA `flexybayes_inla`), so a         #
-# cross-engine table can be assembled by rbind() rather than         #
-# hand-built. The greta-class coverage is exercised in test-methods  #
-# via the mock fit; this file adds the generics-dispatch check and    #
-# the INLA-class coverage on a real (skip-guarded) INLA fit.         #
+# returns (the bare `flexybayes` method, reached via inheritance by  #
+# any engine with no more specific override -- currently brms; and   #
+# INLA's own `flexybayes_inla`), so a cross-engine table can be       #
+# assembled by rbind() rather than hand-built. The bare-method       #
+# coverage is exercised in test-methods via the mock fit; this file  #
+# adds the generics-dispatch check and the INLA-class coverage on a  #
+# real (skip-guarded) INLA fit.                                      #
 # ---------------------------------------------------------------- #
 
 .canonical_tidy_cols <- c(
@@ -16,15 +18,13 @@
   "conf.high"
 )
 
-# A minimal greta-class fit stub, self-contained in this file so the test
-# does not depend on the make_mock_flexybayes() helper defined inside
-# test-methods.R. It carries just enough of the contract for coef() / vcov()
-# / confint() / variance_comps to drive tidy.flexybayes().
-.tidy_hub_mock_greta <- function() {
-  draws_mat <- matrix(stats::rnorm(300L), ncol = 1L) + 50
-  colnames(draws_mat) <- "mu_atg"
-  draws <- coda::mcmc.list(coda::mcmc(draws_mat))
-
+# A minimal bare-`flexybayes`-class fit stub, self-contained in this file
+# so the test does not depend on the make_mock_flexybayes() helper defined
+# inside test-methods.R. It carries just enough of the contract for
+# coef() / vcov() / confint() / variance_comps to drive
+# tidy.flexybayes() -- the bare method, reached via inheritance by any
+# engine with no more specific override.
+.tidy_hub_mock_bare <- function() {
   glm_obj <- list(coefficients = c("(Intercept)" = 50.1))
   attr(glm_obj, "posterior_vcov") <- matrix(
     0.5, 1L, 1L,
@@ -44,7 +44,6 @@
   structure(
     list(
       glm = glm_obj,
-      greta = list(draws = draws),
       extras = list(
         variance_comps = vc,
         parse_info = list(
@@ -64,15 +63,51 @@ test_that("the tidy generic is re-exported and dispatches by class", {
   expect_true("tidy.flexybayes_inla" %in% as.character(utils::methods("tidy")))
 })
 
-test_that("tidy() on a greta-class fit dispatches via the generic", {
-  fit <- .tidy_hub_mock_greta()
-  td <- generics::tidy(fit)
+test_that("tidy() on a bare-flexybayes fit dispatches via the generic", {
+  # conf.int = FALSE: confint.flexybayes() (the bare parent method, which
+  # a mock of this class dispatches to) refuses unconditionally with
+  # fit_lacks_posterior_draws -- it no longer reads a draws slot off any
+  # engine, so no hand-built mock can satisfy it. The conf.int = TRUE
+  # default path (which a real brms fit reaches via its own
+  # confint.flexybayes_brms() override, not this one) is covered on a
+  # live fit below.
+  fit <- .tidy_hub_mock_bare()
+  td <- generics::tidy(fit, conf.int = FALSE)
+  expect_true(is.data.frame(td))
+  expect_true(all(c("term", "estimate", "std.error") %in% names(td)))
+})
+
+test_that("tidy() on a live brms fit returns the full canonical column set", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+
+  set.seed(12L)
+  dat <- data.frame(y = rnorm(30L, 2 + 0.5 * (1:30), 1), x = 1:30)
+  fit <- flexybayes(
+    y ~ x,
+    data = dat,
+    backend = "brms",
+    n_samples = 200L,
+    warmup = 200L,
+    chains = 1L,
+    seed = 20260427L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  )
+
+  # Default conf.int = TRUE dispatches through confint.flexybayes_brms(),
+  # the live override reading actual posterior draws -- the case the
+  # bare-mock test above cannot exercise.
+  td <- tidy(fit)
   expect_true(is.data.frame(td))
   expect_true(all(.canonical_tidy_cols %in% names(td)))
+  expect_true(all(is.finite(td$conf.low)))
+  expect_true(all(is.finite(td$conf.high)))
+  expect_true(all(td$conf.low <= td$conf.high))
 })
 
 test_that("tidy(effects = 'random') returns the variance components", {
-  fit <- .tidy_hub_mock_greta()
+  fit <- .tidy_hub_mock_bare()
   td <- tidy(fit, effects = "random")
   expect_true(all(
     c("term", "estimate", "std.error") %in% names(td)
@@ -125,8 +160,9 @@ test_that("tidy.flexybayes_inla on an empty fixed-summary returns 0 rows", {
 test_that("glance() / augment() on an INLA fit refuse with an informative error", {
   # INLA fits (`flexybayes_inla`) support tidy() but not glance()/augment().
   # The methods raise an actionable error (pointing to tidy() / summary())
-  # rather than dispatching to the greta implementation, and they appear in
-  # methods() so dispatch is explicit rather than a bare "no applicable method".
+  # rather than dispatching to the bare method's implementation, and they
+  # appear in methods() so dispatch is explicit rather than a bare "no
+  # applicable method".
   expect_true(
     "glance.flexybayes_inla" %in% as.character(utils::methods("glance"))
   )

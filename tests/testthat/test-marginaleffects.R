@@ -2,7 +2,7 @@
 # (get_coef / set_coef / get_vcov / get_predict / insight::get_data).
 #
 # predictions(), avg_slopes() and avg_comparisons() are exercised
-# end-to-end on real greta- and INLA-backed fits, with numeric sanity
+# end-to-end on real brms- and INLA-backed fits, with numeric sanity
 # against the known data-generating process. Closes the E-emmeans /
 # marginaleffects coverage gap: before these, the fit class was not in
 # marginaleffects' support list and no get_predict method existed.
@@ -95,11 +95,11 @@ test_that("predictions() / avg_slopes() on an INLA fit recover the DGP", {
 
 
 # ---------------------------------------------------------------- #
-# greta backend (MCMC -- gated)                                     #
+# brms backend (MCMC via Stan)                                      #
 # ---------------------------------------------------------------- #
 
-test_that("predictions() / avg_slopes() work on a greta fit", {
-  skip_if_greta_backend_unusable()
+test_that("predictions() / avg_slopes() work on a brms fit", {
+  skip_if_not_installed("brms")
   skip_if_not_installed("marginaleffects")
   skip_on_cran()
   skip_on_ci()
@@ -108,7 +108,7 @@ test_that("predictions() / avg_slopes() work on a greta fit", {
   fit <- suppressMessages(flexybayes(
     fixed = y ~ f + x,
     data = d,
-    backend = "greta",
+    backend = "brms",
     n_samples = 400L,
     warmup = 400L,
     chains = 2L,
@@ -131,9 +131,9 @@ test_that("predictions() / avg_slopes() work on a greta fit", {
 # Cross-engine consistency of the integration                       #
 # ---------------------------------------------------------------- #
 
-test_that("INLA and greta avg_comparisons agree on the factor effect", {
+test_that("INLA and brms avg_comparisons agree on the factor effect", {
   skip_if_not_installed("INLA")
-  skip_if_greta_backend_unusable()
+  skip_if_not_installed("brms")
   skip_if_not_installed("marginaleffects")
   skip_on_cran()
   skip_on_ci()
@@ -149,7 +149,7 @@ test_that("INLA and greta avg_comparisons agree on the factor effect", {
   fg <- suppressMessages(flexybayes(
     fixed = y ~ f + x,
     data = d,
-    backend = "greta",
+    backend = "brms",
     n_samples = 500L,
     warmup = 500L,
     chains = 2L,

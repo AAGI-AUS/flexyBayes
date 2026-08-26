@@ -1,14 +1,15 @@
 ---
-title: "Understanding dispatch and refusals"
-date: "2026-08-17"
+title: "Tutorial 10: Understanding dispatch and refusals"
+date: "2026-08-26"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Understanding dispatch and refusals}
+  %\VignetteIndexEntry{Tutorial 10: Understanding dispatch and refusals}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -42,7 +43,7 @@ user call
        ├ pass    → emit_inla()
        └ refuse  → resolve_auto_fallback:
                      brms if it can represent the model,
-                     otherwise a typed refusal (never greta)
+                     otherwise a typed refusal
   → fitted-model object (class flexybayes_inla or flexybayes_brms)
 ```
 
@@ -51,14 +52,16 @@ the package. Everything downstream -- `lgm_gate()`, the emit shims,
 the posterior unification -- operates on `fb_terms`, not on the
 user's formulas. This separation is what lets two ingest paths
 (asreml-format and brms-format) share one dispatch infrastructure,
-and what let the backend roster change (greta and gretaR quarantined,
-see Section 10) without touching the ingest or gate layers.
+and what let the backend roster change when a native engine was later
+withdrawn entirely (see `NEWS.md`, 0.9.3) without touching the ingest
+or gate layers.
 
 # 3. The `fb_terms` intermediate representation
 
 
 ``` r
 library(flexyBayes)
+set.seed(600)
 data(sleepstudy, package = "lme4")
 fb_t <- flexyBayes:::fb_from_brms(
   Reaction ~ Days + (1 | Subject),
@@ -69,8 +72,7 @@ class(fb_t)
 names(fb_t)
 #>  [1] "response"       "family"         "link"           "intercept"     
 #>  [5] "fixed_terms"    "random_terms"   "residual_terms" "addition_terms"
-#>  [9] "priors"         "data_summary"   "capabilities"   "source"        
-#> [13] "greta_meta"
+#>  [9] "priors"         "data_summary"   "capabilities"   "source"
 ```
 
 The fields you read most often:
@@ -114,7 +116,8 @@ fb_a$random_terms[[1]]$k         # number of factor-analytic loadings
 uses `backend = "auto"`: it consults `lgm_gate()` and routes to INLA
 when the model is latent-Gaussian feasible, to brms otherwise (when
 brms can represent it), or refuses by name when neither can --
-**never** to greta or gretaR, which are quarantined (Section 10).
+**never** to a withdrawn or otherwise unrecognised backend (see
+`NEWS.md`, 0.9.3).
 
 
 ``` r
@@ -128,7 +131,7 @@ backend_decision(fit)
 #> [1] "auto_accept"
 #> 
 #> $gate_checks
-#> [1] "lgm_compatible"      "gretaR_slot_dormant"
+#> [1] "lgm_compatible"
 #> 
 #> $reason
 #> [1] "lgm_gate() accepted; INLA dispatch."
@@ -140,22 +143,7 @@ backend_decision(fit)
 #> NULL
 #> 
 #> $rejected_routes
-#> $rejected_routes[[1]]
-#> $rejected_routes[[1]]$backend
-#> [1] "greta"
-#> 
-#> $rejected_routes[[1]]$reason
-#> [1] "backend_quarantined"
-#> 
-#> 
-#> $rejected_routes[[2]]
-#> $rejected_routes[[2]]$backend
-#> [1] "gretaR"
-#> 
-#> $rejected_routes[[2]]$reason
-#> [1] "backend_quarantined"
-#> 
-#> 
+#> list()
 #> 
 #> $routing_policy_version
 #> [1] "stage5a_v1"
@@ -172,7 +160,6 @@ When you want a specific engine, the pins make the intent explicit:
 |---|---|---|
 | `fb_inla()`  | `fb(..., backend = "inla")`  | Laplace approximation |
 | `fb_brms()`  | `fb(..., backend = "brms")`  | Stan via brms (HMC) |
-| `fb_greta()` | `fb(..., backend = "greta")` | refuses -- quarantined |
 
 A pin fits via one engine only, so a conflicting `backend` argument
 is a clear error rather than a silent override:
@@ -243,7 +230,7 @@ res <- flexyBayes:::lgm_gate(fb_t)
 class(res)
 #> [1] "fb_terms" "list"
 res$capabilities
-#> [1] "lgm_compatible"      "gretaR_slot_dormant"
+#> [1] "lgm_compatible"
 ```
 
 
@@ -318,12 +305,11 @@ ref
 #> flexyBayes: INLA backend refused for this model.
 #> Reasons (1 structural failure):
 #>   - [family_allowlist] family "imaginary_invented_family" is not in the INLA likelihood allowlist (no built-in Laplace machinery).
-#>     Diagnostic: fb$family = "imaginary_invented_family"
+#>     Diagnostic: fb$family = "imaginary_invented_family"; resolved INLA family = "imaginary_invented_family"
 #> Re-route: brms is the other active engine -- pass backend = "brms"
 #>   (or call fb_brms()) when it can represent the model. Under the
 #>   default backend = "auto" that re-route is already attempted, and
-#>   auto refuses when brms cannot represent the model either. greta and
-#>   gretaR are quarantined and are never selected.
+#>   auto refuses when brms cannot represent the model either.
 #> For mixtures with <= 2 components, the planned INLA-within-MCMC escape
 #>   (Gomez-Rubio & Rue 2018) is on the roadmap.
 #> Override (not recommended): lgm_gate(fb, force = "inla",
@@ -358,8 +344,7 @@ ref_us
 #> Re-route: brms is the other active engine -- pass backend = "brms"
 #>   (or call fb_brms()) when it can represent the model. Under the
 #>   default backend = "auto" that re-route is already attempted, and
-#>   auto refuses when brms cannot represent the model either. greta and
-#>   gretaR are quarantined and are never selected.
+#>   auto refuses when brms cannot represent the model either.
 #> For mixtures with <= 2 components, the planned INLA-within-MCMC escape
 #>   (Gomez-Rubio & Rue 2018) is on the roadmap.
 #> Override (not recommended): lgm_gate(fb, force = "inla",
@@ -436,8 +421,8 @@ Three ways to resolve it:
    the headroom and the per-term breakdown are read from the same count.
 
 The indexed representation that would let a model bypass the ceiling
-entirely via MCMC was greta-only, and greta has been withdrawn as a
-fitting engine (Section 10) -- routing to brms is the current
+entirely via MCMC was specific to the native engine withdrawn entirely
+in 0.9.3 (see `NEWS.md`) -- routing to brms is the current
 alternative, subject to brms being able to represent the model at
 all.
 
@@ -456,8 +441,6 @@ dispatch as a structured trail of evidence:
 - soft warnings (`"lgm_warning:hyperparam_budget:soft"`).
 - override audit (`"lgm_force_bypassed:family_allowlist"`,
   `"lgm_force_reason:..."`).
-- `"gretaR_slot_dormant"` -- every LGM-compatible IR carries this
-  informational flag (Section 10).
 
 Every `triangulate()` print scans for these markers and surfaces them
 prominently so a cross-engine comparison discloses the dispatch
@@ -493,8 +476,9 @@ The backend registry is the home for backend facts: the legitimate
 backend names, what grammars each can ingest, which inference paradigm
 each uses, which R package makes each usable, whether each is in the
 `auto` candidate set, which models each can represent, and its
-*lifecycle state* (`active` / `dormant` / `quarantined`). Dispatch
-*consumes* these facts. It does not restate them.
+*lifecycle state* (`active` / `dormant` -- a slot can be provisioned
+before its emit path is ready; see Section 10). Dispatch *consumes*
+these facts. It does not restate them.
 
 The roster below is read out of the live registry at build time, so
 what you see is what the installed package holds rather than a list
@@ -510,23 +494,17 @@ flexyBayes:::.available_backend_names()
 flexyBayes:::.auto_default_backend_names()
 #> [1] "inla"
 
-# Every registered backend, and which of them are quarantined -- the
-# quarantine is one field, not a sweep through the call sites.
+# Every registered backend, regardless of whether its package is
+# installed on this machine -- the set `.available_backend_names()`
+# filters down from.
 flexyBayes:::.registered_backend_names()
-#> [1] "brms"   "greta"  "gretaR" "inla"
-vapply(
-  flexyBayes:::.registered_backend_names(),
-  flexyBayes:::.backend_is_quarantined,
-  logical(1)
-)
-#>   brms  greta gretaR   inla 
-#>  FALSE   TRUE   TRUE  FALSE
+#> [1] "brms" "inla"
 ```
 
 The design rule is *extend by registration, not by API growth*: new
 capability enters by adding a row to a registry, not by widening the
 public verb surface. The everyday surface -- `fb()` / `flexybayes()`
-plus the three engine pins -- does not change when a backend is added.
+plus the two engine pins -- does not change when a backend is added.
 
 ## 9.1 What an entry records
 
@@ -556,9 +534,12 @@ collection of special cases.
 ## 9.2 Availability is not capability
 
 The capability predicate answers "could this engine represent the
-model", a purely structural question. greta's predicate still says
-`TRUE` for a plain random intercept even though greta is quarantined.
-Availability is what actually stops dispatch from choosing it:
+model", a purely structural question -- it does not check whether the
+engine's R package is installed. `.capability_inla()`, for instance,
+only calls `lgm_gate()`, which is plain R logic with no dependency on
+the `INLA` package itself. Availability is the separate, install-
+dependent question that actually stops dispatch from choosing an
+engine whose package is missing:
 
 
 ``` r
@@ -569,25 +550,25 @@ d <- data.frame(
 )
 ir <- fb_from_asreml(y ~ env, random = ~ geno, data = d)
 
-flexyBayes:::.backend_can_fit("greta", ir)$ok
+flexyBayes:::.backend_can_fit("inla", ir)$ok
 #> [1] TRUE
-flexyBayes:::.backend_can_fit("brms",  ir)$ok
+flexyBayes:::.backend_can_fit("brms", ir)$ok
 #> [1] TRUE
 ```
 
-Note what is *not* in `.available_backend_names()` above: `"greta"`.
-greta and gretaR carry the `quarantined` lifecycle state (Section 10),
-a fact the availability query respects even though the capability
-predicate still answers the structural question when asked directly.
-Keeping the two apart is exactly the registry design that let a
-quarantine be added as one state-field flip rather than a sweep through
-every call site.
+Both answer `TRUE` here regardless of whether `INLA` or `brms` happens
+to be installed on this machine -- that is the point: a "yes,
+structurally" from the predicate is not the same claim as "and I can
+actually run it", which `.available_backend_names()` (Section 9)
+answers separately by checking `requireNamespace()`. Keeping the two
+apart is what let the backend roster change (Section 10) as a registry
+edit rather than a sweep through every call site.
 
 A predicate delegates to the existing authority for its decision rather
 than duplicating it -- the INLA predicate, for instance, asks the
 latent-Gaussian gate of Section 5 -- so a model can never be judged
 feasible by one part of the package and infeasible by another. Dispatch
-checks availability *before* consulting capability, so a quarantined
+checks availability *before* consulting capability, so an uninstalled
 backend's "yes, structurally" is never reached during a real fitting
 call.
 
@@ -611,55 +592,7 @@ On the `auto` path, the engines that were considered and rejected are
 recorded on the fit and surfaced by `backend_decision()`, so a user can
 always see why a particular backend was chosen.
 
-# 10. The quarantined engines and the gretaR slot
-
-greta and gretaR are **quarantined**, not deleted. A backend registry
-lifecycle state (`active` / `dormant` / `quarantined`) tracks this: an
-explicit `backend = "greta"` or `"gretaR"` request raises a
-structured `backend_quarantined` refusal, and `auto` never falls back
-to either, silently or otherwise. The registry descriptors, the emit
-code, and the legacy greta *import* grammar (`fb_from_greta()`,
-reading an already-fitted object's draws) are retained -- re-entry is
-repair-and-conform against the backend conformance battery, never a
-bare re-activation.
-
-## 10.1 Reading draws from a previously-fitted greta object
-
-If you have a `greta::model()` object fit in an earlier session (or
-under an older package version), `fb_from_greta()` still builds an
-`fb_terms`-compatible wrapper around its *already-sampled* draws, so
-the standard post-fit surface (`summary()`, `coef()`, `vcov()`,
-`triangulate()`) works without refitting:
-
-```r
-ir <- fb_from_greta(
-  m,  # an already-fitted greta::model() object
-  canonical_names = c(b0 = "(Intercept)", b1 = "Days", sigma = "sigma")
-)
-```
-
-`canonical_names` maps each greta target-array name to the canonical
-name `flexyBayes` uses elsewhere (`(Intercept)`, `Days`, `sigma`,
-`sd_<group>`, ...), which is what lets `triangulate()` compare it
-against an INLA or brms fit without a user-supplied `name_map`. This
-path reads existing draws. It does not fit new models -- `greta::mcmc()`
-itself is quarantined (`native_greta_fit_quarantined`).
-
-## 10.2 The gretaR slot
-
-The package separately carries a provisioned, dormant slot for a
-*gretaR* backend (torch-based NUTS). It was never activated before
-the A2 quarantine landed, and quarantine now applies to it too --
-`gretaR_status()` remains the canonical discoverability surface:
-
-
-``` r
-gs <- gretaR_status()
-gs$dormancy_reason
-#> [1] "slot_provisioned_not_activated"
-```
-
-# 11. Adding a new backend
+# 10. Adding a new backend
 
 The architecture is wrap-don't-rewrite: each backend is an
 `emit_<backend>()` function consuming an `fb_terms` IR and returning
@@ -699,10 +632,9 @@ keeps it as explicit code rather than deriving it from the registry.
 The roster has room for growth by design. A backend slot can be
 provisioned in a dormant state -- registered but not yet active, so it
 refuses cleanly at dispatch until activated -- which is how a new
-front end can be reserved before its emit path is ready. The gretaR
-slot in Section 10.2 is exactly that construction.
+front end can be reserved before its emit path is ready.
 
-# 12. Pitfalls
+# 11. Pitfalls
 
 **`flexyBayes:::` is internal API.** The `:::` accessor reaches
 non-exported functions. They are stable across patch releases but not
@@ -727,7 +659,7 @@ prevents silent approximation. The right response is one of: route to
 brms if it can represent the model, reduce model complexity, or -- if
 you understand the risk -- invoke the override.
 
-# 13. Active prompts
+# 12. Active prompts
 
 1. Construct an `fb_terms` object with `family = "tweedie"` (a real
    distribution INLA supports) and run `lgm_gate()`. Does it pass?
@@ -737,7 +669,7 @@ you understand the risk -- invoke the override.
    number of grouping-factor levels, then resolve it via the sparse-
    precision route in Section 6.
 
-# 14. Session information
+# 13. Session information
 
 
 ``` r
@@ -760,47 +692,43 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] bayesplot_1.15.0 emmeans_2.0.2    ggplot2_4.0.3    flexyBayes_0.9.0
+#> [1] ggplot2_4.0.3    flexyBayes_0.9.2
 #> 
 #> loaded via a namespace (and not attached):
-#>   [1] Rdpack_2.6.6           DBI_1.3.0              mnormt_2.1.2          
-#>   [4] gridExtra_2.3          inline_0.3.21          sandwich_3.1-1        
-#>   [7] rlang_1.2.0            magrittr_2.0.5         multcomp_1.4-29       
-#>  [10] otel_0.2.0             ggridges_0.5.7         matrixStats_1.5.0     
-#>  [13] e1071_1.7-17           compiler_4.5.2         mgcv_1.9-3            
-#>  [16] loo_2.9.0              callr_3.7.6            vctrs_0.7.3           
-#>  [19] reshape2_1.4.5         stringr_1.6.0          pkgconfig_2.0.3       
-#>  [22] backports_1.5.1        labeling_0.4.3         effectsize_1.0.2      
-#>  [25] nloptr_2.2.1           MatrixModels_0.5-4     INLA_25.10.19         
-#>  [28] xfun_0.57              jsonlite_2.0.0         parallel_4.5.2        
-#>  [31] R6_2.6.1               stringi_1.8.7          RColorBrewer_1.1-3    
-#>  [34] StanHeaders_2.32.10    parallelly_1.47.0      boot_1.3-32           
-#>  [37] numDeriv_2016.8-1.1    estimability_1.5.1     Rcpp_1.1.1-1.1        
-#>  [40] rstan_2.32.7           knitr_1.51             zoo_1.8-15            
-#>  [43] parameters_0.28.3      Matrix_1.7-4           splines_4.5.2         
-#>  [46] tidyselect_1.2.1       dichromat_2.0-0.1      abind_1.4-8           
-#>  [49] agridat_1.26           codetools_0.2-20       curl_7.0.0            
-#>  [52] processx_3.9.0         listenv_0.10.1         pkgbuild_1.4.8        
-#>  [55] lattice_0.22-7         tibble_3.3.1           plyr_1.8.9            
-#>  [58] withr_3.0.2            bridgesampling_1.2-1   bayestestR_0.17.0     
-#>  [61] S7_0.2.2               posterior_1.7.0        coda_0.19-4.1         
-#>  [64] evaluate_1.0.5         marginaleffects_0.32.0 future_1.70.0         
-#>  [67] survival_3.8-3         sf_1.1-0               units_1.0-1           
-#>  [70] proxy_0.4-29           RcppParallel_5.1.11-2  pillar_1.11.1         
-#>  [73] tensorA_0.36.2.1       KernSmooth_2.23-26     checkmate_2.3.4       
-#>  [76] stats4_4.5.2           reformulas_0.4.4       insight_1.4.6         
-#>  [79] sn_2.1.3               distributional_0.7.0   generics_0.1.4        
-#>  [82] rstantools_2.6.0       scales_1.4.0           minqa_1.2.8           
-#>  [85] globals_0.19.1         xtable_1.8-8           class_7.3-23          
-#>  [88] glue_1.8.1             tools_4.5.2            data.table_1.18.2.1   
-#>  [91] lme4_2.0-1             mvtnorm_1.3-6          grid_4.5.2            
-#>  [94] rbibutils_2.4.1        QuickJSR_1.9.0         datawizard_1.3.0      
-#>  [97] colorspace_2.1-2       nlme_3.1-168           cli_3.6.6             
-#> [100] viridisLite_0.4.3      fmesher_0.7.0          Brobdingnag_1.2-9     
-#> [103] dplyr_1.2.1            V8_8.0.1               gtable_0.3.6          
-#> [106] digest_0.6.39          classInt_0.4-11        TH.data_1.1-5         
-#> [109] brms_2.23.0            farver_2.1.2           lifecycle_1.0.5       
-#> [112] MASS_7.3-65
+#>   [1] tidyselect_1.2.1       viridisLite_0.4.3      dplyr_1.2.1           
+#>   [4] farver_2.1.2           loo_2.9.0              S7_0.2.2              
+#>   [7] INLA_25.10.19          TH.data_1.1-5          tensorA_0.36.2.1      
+#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
+#>  [13] sf_1.1-0               StanHeaders_2.32.10    agridat_1.26          
+#>  [16] processx_3.9.0         survival_3.8-3         magrittr_2.0.5        
+#>  [19] posterior_1.7.1        compiler_4.5.2         rlang_1.3.0           
+#>  [22] tools_4.5.2            data.table_1.18.2.1    sn_2.1.3              
+#>  [25] knitr_1.51             labeling_0.4.3         bridgesampling_1.2-1  
+#>  [28] mnormt_2.1.2           pkgbuild_1.4.8         classInt_0.4-11       
+#>  [31] curl_7.0.0             plyr_1.8.9             RColorBrewer_1.1-3    
+#>  [34] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
+#>  [37] numDeriv_2016.8-1.1    withr_3.0.3            grid_4.5.2            
+#>  [40] stats4_4.5.2           colorspace_2.1-2       xtable_1.8-8          
+#>  [43] e1071_1.7-17           future_1.70.0          inline_0.3.21         
+#>  [46] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
+#>  [49] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#>  [52] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
+#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
+#>  [58] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
+#>  [61] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
+#>  [64] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
+#>  [67] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
+#>  [70] sandwich_3.1-1         jsonlite_2.0.0         callr_3.8.0           
+#>  [73] listenv_0.10.1         units_1.0-1            glue_1.8.1            
+#>  [76] parallelly_1.47.0      codetools_0.2-20       distributional_0.8.1  
+#>  [79] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
+#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
+#>  [85] R6_2.6.1               fmesher_0.7.0          evaluate_1.0.5        
+#>  [88] lattice_0.22-7         backports_1.5.1        MatrixModels_0.5-4    
+#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.2            
+#>  [94] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
+#>  [97] checkmate_2.3.4        mgcv_1.9-3             xfun_0.57             
+#> [100] zoo_1.8-15             pkgconfig_2.0.3
 ```
 
 # References

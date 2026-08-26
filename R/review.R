@@ -1,6 +1,6 @@
 # <flexybayes_review> -- deferred-execution token returned when a
 # user passes `review_code = TRUE` to `flexybayes()` (and, when
-# those entries land, `fb_brms()` / `fb_greta()`). The object
+# that entry lands, `fb_brms()`). The object
 # carries the generated backend code together with the IR
 # (intermediate representation), resolved prior, captured call,
 # RNG snapshot, and the arguments needed to advance the deferred
@@ -42,10 +42,10 @@
   if (
     !is.character(backend) ||
       length(backend) != 1L ||
-      !backend %in% c("greta", "stan_via_brms", "inla")
+      !backend %in% c("stan_via_brms", "inla")
   ) {
     stop(
-      "`backend` must be one of \"greta\", \"stan_via_brms\", ",
+      "`backend` must be one of \"stan_via_brms\", ",
       "\"inla\".",
       call. = FALSE
     )
@@ -156,8 +156,8 @@ print.flexybayes_review <- function(x, ...) {
 #' Emit the generated backend code for a deferred review object
 #'
 #' Writes the backend code carried by a `<flexybayes_review>`
-#' object (greta R code for [flexybayes()] / `fb_greta()`; Stan
-#' code via [brms::stancode()] for `fb_brms()`) to a connection.
+#' object (Stan code via [brms::stancode()] for
+#' [flexybayes()] / `fb_brms()`) to a connection.
 #'
 #' @param x   A `<flexybayes_review>` object carrying the generated
 #'   backend code.
@@ -220,9 +220,7 @@ proceed.flexybayes_review <- function(x, ...) {
   # Restore the .Random.seed snapshot captured at review-object
   # construction so that proceed(rev) reproduces the chain that the
   # equivalent direct call (review_code = FALSE) would have produced
-  # at the same outer seed. Best-effort on the R-RNG side; TensorFlow-
-  # internal sources of randomness on the greta path remain subject
-  # to the standard greta seeding discipline (see greta::greta).
+  # at the same outer seed.
   if (!is.null(x$seed)) {
     assign(".Random.seed", x$seed, envir = globalenv())
   }
@@ -230,7 +228,6 @@ proceed.flexybayes_review <- function(x, ...) {
   args <- x$proceed_args
   emit_fn <- switch(
     x$backend,
-    "greta" = emit_greta,
     "stan_via_brms" = emit_brms,
     stop(
       "proceed(): unrecognised backend \"",

@@ -31,7 +31,7 @@ which had drifted from the emit layer in four places.
 | Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
 | Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms's own prior. INLA's likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
-| Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The INLA mapping named greta as one of its three verification arbitrators, so it stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
+| Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The three-arbitrator verification named a since-withdrawn engine as one arbitrator, so the INLA mapping stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
 | Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
 | Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | refuses | fits | INLA collapses the finest strata, so it refuses rather than reporting a zero. brms emits `(1 \| a:b)`. |
@@ -247,12 +247,6 @@ two-part decomposition with the parts fitted jointly.
   is the INLA subprocess, not flexyBayes, and is below the level R can
   capture, and it is cosmetic and does not affect results. Not reproducible on
   every platform.
-- **greta readiness probe noise.** `fb_backend_status()` captures the Python /
-  TensorFlow discovery output, and `fb_backend_status(deep = FALSE)` skips
-  that probe entirely (a fast, non-invasive check). On a misconfigured Python
-  stack a *subprocess* launcher may still write to the OS console below the
-  level R can capture, and `deep = FALSE` avoids triggering it. greta is
-  quarantined as a fitting engine, so this affects the status report only.
 
 ## How to help
 

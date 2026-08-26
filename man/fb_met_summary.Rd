@@ -7,21 +7,15 @@
 fb_met_summary(fit, genotype_levels = NULL, environment_levels = NULL)
 }
 \arguments{
-\item{fit}{A \code{flexybayes} greta fit with a \code{fa()} factor-analytic G x E
-term.}
+\item{fit}{A flexybayes fit.}
 
 \item{genotype_levels, environment_levels}{Optional character labels for
-the inner (genotype) and outer (environment) factors; default to
-positional labels.}
+the inner (genotype) and outer (environment) factors; unused (see
+Lifecycle).}
 }
 \value{
-An \code{fb_met_summary} object (one entry is built per \code{fa()} term,
-the function returns the first / named): \code{op} (data frame of overall
-performance per genotype with credible interval), \code{stability} (data
-frame of across-environment spread per genotype), \code{gxe_blup} (the
-posterior-mean genotype-by-environment effect matrix), \code{env_cor} (the
-environment genetic-correlation matrix), \code{loadings} (posterior-mean
-factor loadings), and metadata.
+Does not return: raises the classed \code{met_summary_not_available}
+refusal.
 }
 \description{
 For a \code{fa(env, k):gen} factor-analytic G x E fit, summarise the
@@ -30,31 +24,20 @@ quantities a plant breeder acts on: each genotype's overall performance
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
 realised effects are identified -- invariant to the rotation and sign
-ambiguity of the raw loadings -- so their posterior summaries are
-interpretable; judge convergence on these and on the identified
-covariance (\code{\link[=fb_structured_cov]{fb_structured_cov()}}) rather than on the raw loadings.
+ambiguity of the raw loadings -- so their posterior summaries would be
+interpretable.
 }
 \section{Lifecycle}{
 
-Superseded while greta is quarantined. The breeder summaries are
-computed from realised factor-analytic effects, and no active engine
-emits an \code{fa(env, k):gen} term, so on a brms or INLA fit the function
-abstains by name (\code{met_summary_not_available}). What an active engine
-does report for a multi-environment trial is the variance components,
-through \code{\link[=summary]{summary()}}, and on brms the genotype-by-environment
-covariance of a \code{diag()} or \code{us()} term through \code{brms::VarCorr()}.
+No active engine emits an \code{fa(env, k):gen} term -- both INLA and brms
+refuse a factor-analytic structured-covariance term before a fit object
+exists -- so this function always abstains (\code{met_summary_not_available}).
+What an active engine does report for a multi-environment trial is the
+variance components, through \code{\link[=summary]{summary()}}, and on brms the
+genotype-by-environment covariance of a \code{diag()} or \code{us()} term through
+\code{brms::VarCorr()}.
 }
 
-\examples{
-\dontrun{
-fit <- flexybayes(
-  yield ~ env, random = ~ fa(env, 2):gen, data = met, backend = "greta"
-)
-ms <- fb_met_summary(fit)
-head(ms$op[order(-ms$op$mean), ]) # best genotypes on average
-ms$env_cor # environment crossover structure
-}
-}
 \seealso{
 \code{\link[=fb_structured_cov]{fb_structured_cov()}} for the identified environment covariance
 and its convergence diagnostic.

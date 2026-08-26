@@ -5,7 +5,8 @@
 # after fitting a spatial model: the empirical semivariance of the
 # residuals against separation along the design index. The second is a live
 # 0.9.0 defect the display sits next to -- plot() decided whether a fit had
-# sampler draws by testing `$greta$draws`, which is NULL on a brms fit, so
+# sampler draws by testing the since-withdrawn native engine's draws slot
+# alone (see NEWS.md, 0.9.3), which is NULL on a brms fit, so
 # plot(brms_fit) declined to draw its diagnostics while naming brms as a
 # supported backend in the same sentence.
 #
@@ -218,8 +219,10 @@ test_that("the refusal code is registered in the taxonomy", {
 # ---------------------------------------------------------------- #
 
 test_that("the sampler-draws predicate reads the engine, not one slot", {
-  # The 0.9.0 predicate tested $greta$draws alone. A brms fit carries its
-  # draws inside the brmsfit, and an INLA fit carries none.
+  # The 0.9.0 predicate tested a since-withdrawn native engine's draws
+  # slot alone (see NEWS.md, 0.9.3). A brms fit carries its draws inside
+  # the brmsfit, and an INLA fit carries none -- with that engine gone,
+  # the predicate is now unconditionally `inherits(x$brms, "brmsfit")`.
   brms_like <- structure(
     list(brms = structure(list(), class = "brmsfit")),
     class = c("flexybayes_brms", "flexybayes", "list")
@@ -228,18 +231,11 @@ test_that("the sampler-draws predicate reads the engine, not one slot", {
     list(inla = list()),
     class = c("flexybayes_inla", "flexybayes", "list")
   )
-  greta_like <- structure(
-    list(greta = list(draws = list(1))),
-    class = c("flexybayes", "list")
-  )
 
   expect_true(flexyBayes:::.fb_has_sampler_draws(brms_like))
-  expect_true(flexyBayes:::.fb_has_sampler_draws(greta_like))
   expect_false(flexyBayes:::.fb_has_sampler_draws(inla_like))
 
   expect_identical(flexyBayes:::.fb_default_plot_type(brms_like),
-    "diagnostics")
-  expect_identical(flexyBayes:::.fb_default_plot_type(greta_like),
     "diagnostics")
   expect_identical(flexyBayes:::.fb_default_plot_type(inla_like), "residuals")
 })
@@ -277,9 +273,9 @@ test_that("plot(brms_fit) draws its diagnostics (AD-6, live 0.9.0 bug)", {
     verbose = FALSE, mcmc_verbose = FALSE
   )))
 
-  # Before the fix this emitted "trace / density plots require MCMC draws
-  # (greta or brms backend)" -- naming brms as supported while refusing a
-  # brms fit.
+  # Before the fix this emitted a message naming brms as a supported
+  # engine for trace/density plots while refusing to draw them on this
+  # exact brms fit.
   expect_no_message(plot(fit))
   expect_no_message(plot(fit, type = "diagnostics"))
 })

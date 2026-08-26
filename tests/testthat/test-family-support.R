@@ -55,7 +55,7 @@ test_that("all five survival families are refused at the family gate", {
 })
 
 # Integration -- the refusal fires through the real flexybayes()
-# dispatch path, before any backend code runs (so neither greta nor
+# dispatch path, before any backend code runs (so neither brms nor
 # INLA need be installed): .resolve_family() is reached inside
 # fb_from_asreml() at the top of flexybayes().
 

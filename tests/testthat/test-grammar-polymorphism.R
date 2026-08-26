@@ -29,11 +29,6 @@ test_that("a bar-free formula defaults to asreml grammar", {
   expect_identical(flexyBayes:::.detect_grammar(y ~ x + env), "asreml")
 })
 
-test_that("a greta_model object is detected as greta grammar", {
-  fake <- structure(list(), class = "greta_model")
-  expect_identical(flexyBayes:::.detect_grammar(fake), "greta")
-})
-
 test_that("an explicit syntax argument overrides shape detection", {
   expect_identical(flexyBayes:::.detect_grammar(y ~ x, syntax = "brms"), "brms")
   expect_identical(
@@ -150,121 +145,13 @@ test_that("brms grammar with known_matrices refuses", {
   )
 })
 
-test_that("a native greta_model with ASReml random/residual refuses", {
-  # v0.5.0: the universal entry now FITS a native greta_model (no longer
-  # deferred). But a native graph encodes its full structure itself, so
-  # combining it with the ASReml `random` / `residual` slots is a category
-  # error and refuses.
-  df <- mk_df()
-  fake <- structure(list(), class = "greta_model")
-  expect_error(
-    flexyBayes:::.build_ir_polymorphic(
-      fake,
-      ~g,
-      NULL,
-      df,
-      "gaussian",
-      NULL,
-      NULL,
-      list(),
-      NULL,
-      100,
-      1,
-      "auto"
-    ),
-    "cannot be combined with `random`"
-  )
-})
-
-test_that("a native greta_model on the universal entry builds a greta-source IR", {
-  skip_if_greta_backend_unusable()
-  # A real (fittable) graph lowers to a greta-source IR via fb_from_greta().
-  set.seed(3)
-  yy <- greta::as_data(rnorm(20))
-  xx <- greta::as_data(rnorm(20))
-  b0 <- greta::normal(0, 10)
-  b1 <- greta::normal(0, 10)
-  s <- greta::uniform(0, 5)
-  greta::distribution(yy) <- greta::normal(b0 + b1 * xx, s)
-  m <- greta::model(b0, b1, s)
-  ir <- suppressMessages(
-    flexyBayes:::.build_ir_polymorphic(
-      m,
-      NULL,
-      NULL,
-      NULL,
-      "gaussian",
-      NULL,
-      NULL,
-      list(),
-      NULL,
-      100,
-      1,
-      "auto"
-    )
-  )
-  expect_s3_class(ir, "fb_terms")
-  expect_identical(ir$source, "greta")
-  expect_true(inherits(ir$greta_meta$model, "greta_model"))
-})
-
-test_that("a prebuilt greta-source IR passes through the universal entry", {
-  skip_if_greta_backend_unusable()
-  set.seed(4)
-  yy <- greta::as_data(rnorm(20))
-  xx <- greta::as_data(rnorm(20))
-  b0 <- greta::normal(0, 10)
-  b1 <- greta::normal(0, 10)
-  s <- greta::uniform(0, 5)
-  greta::distribution(yy) <- greta::normal(b0 + b1 * xx, s)
-  m <- greta::model(b0, b1, s)
-  ir <- suppressMessages(
-    fb_from_greta(m, canonical_names = c(b0 = "(Intercept)", b1 = "x"))
-  )
-  out <- flexyBayes:::.build_ir_polymorphic(
-    ir,
-    NULL,
-    NULL,
-    NULL,
-    "gaussian",
-    NULL,
-    NULL,
-    list(),
-    NULL,
-    100,
-    1,
-    "auto"
-  )
-  expect_identical(out, ir)
-  # A prebuilt asreml IR is NOT accepted (its emit-display path needs the
-  # formula triple); only greta-source IRs pass through.
-  asreml_ir <- fb_from_asreml(y ~ x, random = ~g, data = mk_df())
-  expect_error(
-    flexyBayes:::.build_ir_polymorphic(
-      asreml_ir,
-      NULL,
-      NULL,
-      mk_df(),
-      "gaussian",
-      NULL,
-      NULL,
-      list(),
-      NULL,
-      100,
-      1,
-      "auto"
-    ),
-    "prebuilt IR only for the"
-  )
-})
-
 # ---------------------------------------------------------------- #
 # Exported ingest adapters                                          #
 # ---------------------------------------------------------------- #
 
-test_that("the three ingest adapters are exported and return fb_terms", {
+test_that("the two ingest adapters are exported and return fb_terms", {
   exports <- getNamespaceExports("flexyBayes")
-  for (fn in c("fb_from_asreml", "fb_from_brms", "fb_from_greta")) {
+  for (fn in c("fb_from_asreml", "fb_from_brms")) {
     expect_true(fn %in% exports, info = fn)
   }
   df <- mk_df()
@@ -276,7 +163,7 @@ test_that("the three ingest adapters are exported and return fb_terms", {
 })
 
 # ---------------------------------------------------------------- #
-# End-to-end: brms grammar through fb() reaches a non-greta backend #
+# End-to-end: brms grammar through fb() reaches an active backend    #
 # ---------------------------------------------------------------- #
 
 test_that("fb() fits a bar-grouped formula and (auto) reaches INLA", {

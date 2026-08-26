@@ -3,7 +3,7 @@
 \name{set_coef.flexybayes}
 \alias{set_coef.flexybayes}
 \alias{set_coef.flexybayes_inla}
-\title{marginaleffects support: set coefficients (greta backend)}
+\title{marginaleffects support: set coefficients (default method)}
 \usage{
 \method{set_coef}{flexybayes}(model, coefs, ...)
 
@@ -20,5 +20,5 @@
 The fit with a coefficient override attached.
 }
 \description{
-marginaleffects support: set coefficients (greta backend)
+marginaleffects support: set coefficients (default method)
 }

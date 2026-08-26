@@ -5,9 +5,9 @@
 #     resolving the backend-native parameter names to canonical
 #     (brms-style) names; transforms carry value-side conversions
 #     such as INLA's sqrt(1/prec) precision-to-SD mapping.
-#   - The greta mapper translates asreml-emit names: mu_atg ->
-#     (Intercept); tau_<tag>[i,1] -> <tag><lvl_i>; sigma_<group> ->
-#     sd_<group>; sigma_e_atg -> sigma.
+#   - The brms mapper translates raw Stan parameter names: b_Intercept ->
+#     (Intercept); b_<level> -> <level>; sd_<group>__Intercept ->
+#     sd_<group>; sigma stays sigma (already canonical).
 #   - The INLA mapper translates summary.fixed (identity) +
 #     summary.hyperpar (Precision for ... -> sd_<group> / sigma)
 #     with the precision-to-SD transform attached.
@@ -15,8 +15,16 @@
 #     the registry; user-supplied name_map / transform_a / transform_b
 #     win over the registry for any keys they carry.
 #   - register_canonical_mapper() round-trips a custom mapper.
-#   - fb_greta() user-supplied canonical_names argument wins over the
-#     verbatim-greta fallback (carried through ADR 0012 sec.1).
+#
+# A prior contract clause -- the withdrawn native engine's pin
+# accepting a user-supplied canonical_names argument that won over a
+# verbatim fallback -- is removed at 0.9.3, not ported (see NEWS.md):
+# it was specific to hand-built native model graphs, which needed a
+# user-supplied map because there was no formula to parse names from.
+# That capability has no successor -- fb_from_brms() / fb_from_asreml()
+# both parse a real formula and resolve canonical names from the
+# registry automatically, so no ingest path needs (or accepts) a
+# user-supplied canonical_names argument today.
 
 
 mk_canon_data <- function() {
@@ -29,47 +37,16 @@ mk_canon_data <- function() {
   )
 }
 
-
 # ---------------------------------------------------------------- #
-# (a) Greta canonical mapping per ADR 0005 mapping table            #
+# (a) [removed] canonical mapping for the withdrawn native engine   #
 # ---------------------------------------------------------------- #
-
-test_that("canonical_names() on a greta fit translates asreml-emit names", {
-  skip_if_no_greta()
-  d <- mk_canon_data()
-  fit <- suppressMessages(flexybayes(
-    yield ~ env,
-    random = ~geno,
-    data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
-    chains = 1L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  cn <- canonical_names(fit)
-
-  expect_true(is.list(cn))
-  expect_true(all(c("map", "transform", "source") %in% names(cn)))
-  expect_identical(cn$source, "registry")
-
-  # The mu_atg / sigma_e_atg / sigma_<group> renames are deterministic.
-  expect_identical(cn$map[["mu_atg"]], "(Intercept)")
-  expect_identical(cn$map[["sigma_e_atg"]], "sigma")
-  expect_identical(cn$map[["sigma_geno"]], "sd_geno")
-
-  # tau_env[*,1] -> "env<level-label>" -- factor lookup by IR levels.
-  tau_keys <- grep("^tau_env\\[", names(cn$map), value = TRUE)
-  expect_true(length(tau_keys) >= 1L)
-  for (k in tau_keys) {
-    canon <- cn$map[[k]]
-    expect_true(startsWith(canon, "env"))
-  }
-
-  # No transforms on the greta path.
-  expect_length(cn$transform, 0L)
-})
+#
+# Deleted (not rewritten): the withdrawn native engine's raw-name
+# mapping (mu_atg, sigma_e_atg, tau_<tag>[i,1], ...) has no successor
+# -- there is no active engine with that naming convention to map from
+# (see NEWS.md, 0.9.3). The equivalent registry coverage for the two
+# active engines is subtests (b) (INLA) below and the brms mapping
+# exercised throughout (c)/(d)/(g).
 
 
 # ---------------------------------------------------------------- #
@@ -127,22 +104,24 @@ test_that("canonical_names() on an INLA fit translates Precision-for and attache
 # ---------------------------------------------------------------- #
 # (c) triangulate(fit_a, fit_b) with name_map = NULL                #
 # ---------------------------------------------------------------- #
-# Two greta fits of the same model should auto-resolve common
+# Two brms fits of the same model should auto-resolve common
 # canonical parameters via the registry without a user-supplied
-# name_map. INLA-vs-greta cross-engine resolution lives behind the
-# skip_if_not_installed("INLA") guard.
+# name_map. Cross-engine (brms-vs-INLA) resolution lives behind the
+# skip_if_not_installed("INLA") guard in (d).
 
 test_that("triangulate() auto-resolves common parameters via the registry", {
-  skip_if_no_greta()
+  testthat::skip_if_not_installed("brms")
   d <- mk_canon_data()
   fit_a <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -150,10 +129,12 @@ test_that("triangulate() auto-resolves common parameters via the registry", {
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -171,21 +152,23 @@ test_that("triangulate() auto-resolves common parameters via the registry", {
 
 
 # ---------------------------------------------------------------- #
-# (d) Cross-engine triangulate(greta, inla) via the registry         #
+# (d) Cross-engine triangulate(brms, inla) via the registry          #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate() resolves greta vs INLA on a Gaussian random-intercept model", {
-  skip_if_no_greta()
+test_that("triangulate() resolves brms vs INLA on a Gaussian random-intercept model", {
+  testthat::skip_if_not_installed("brms")
   testthat::skip_if_not_installed("INLA")
   d <- mk_canon_data()
-  fit_g <- suppressMessages(flexybayes(
+  fit_b <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 100L,
-    warmup = 100L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -197,7 +180,7 @@ test_that("triangulate() resolves greta vs INLA on a Gaussian random-intercept m
     verbose = FALSE
   ))
 
-  tri <- triangulate(fit_g, fit_i)
+  tri <- triangulate(fit_b, fit_i)
   # Canonical names that survive in both fits' renames.
   expect_true("(Intercept)" %in% tri$common)
   expect_true("sd_geno" %in% tri$common)
@@ -259,52 +242,19 @@ test_that("register_canonical_mapper() round-trips a custom mapper", {
 
 
 # ---------------------------------------------------------------- #
-# (f) fb_greta() user-supplied canonical_names wins                  #
+# (f) [removed] withdrawn engine's pin: user-supplied              #
 # ---------------------------------------------------------------- #
-
-test_that("fb_greta(canonical_names = ...) takes precedence over the verbatim fallback", {
-  skip_if_no_greta()
-  d <- mk_canon_data()
-  y <- greta::as_data(d$yield)
-  b0 <- greta::normal(0, 100)
-  sigma <- greta::uniform(0, 50)
-  greta::distribution(y) <- greta::normal(b0, sigma)
-  m <- greta::model(b0, sigma)
-
-  # v0.5.0: a canonical-name map is attached at IR-build time via
-  # fb_from_greta(); the greta pin then fits the IR.
-  ir <- suppressMessages(fb_from_greta(
-    m,
-    data = d,
-    canonical_names = c(b0 = "(Intercept)", sigma = "sigma")
-  ))
-  fit <- suppressMessages(fb_greta(
-    ir,
-    n_samples = 50L,
-    warmup = 50L,
-    chains = 1L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  cn <- canonical_names(fit)
-  expect_identical(cn$source, "user")
-  expect_identical(cn$map[["b0"]], "(Intercept)")
-  expect_identical(cn$map[["sigma"]], "sigma")
-
-  # Without the user-supplied map, fb_greta() falls back to verbatim.
-  fit2 <- suppressMessages(fb_greta(
-    m,
-    data = d,
-    n_samples = 50L,
-    warmup = 50L,
-    chains = 1L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  cn2 <- canonical_names(fit2)
-  expect_identical(cn2$source, "registry_fallback_verbatim")
-  expect_identical(cn2$map[["b0"]], "b0")
-})
+#
+# Deleted (not rewritten): this test called the withdrawn engine's
+# pin and its native-model-graph ingest adapter directly, and the
+# setup code called that withdrawn package's own API to build the toy
+# model graph -- exactly the kind of call site the 0.9.3 withdrawal
+# removes (see NEWS.md). No successor: `fb_from_brms()` and
+# `fb_from_asreml()` both parse a real formula and resolve canonical
+# names from the registry automatically, so neither accepts (or
+# needs) a user-supplied `canonical_names` argument -- that capability
+# was specific to importing a hand-built native model graph, which no
+# longer exists as an ingest path.
 
 
 # ---------------------------------------------------------------- #
@@ -312,16 +262,18 @@ test_that("fb_greta(canonical_names = ...) takes precedence over the verbatim fa
 # ---------------------------------------------------------------- #
 
 test_that("triangulate() name_map overrides the registry for keyed parameters", {
-  skip_if_no_greta()
+  testthat::skip_if_not_installed("brms")
   d <- mk_canon_data()
   fit_a <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -329,18 +281,20 @@ test_that("triangulate() name_map overrides the registry for keyed parameters", 
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  # Override the registry's "sigma_e_atg -> sigma" rename for fit_b
-  # only; the canonical "sigma" stays present on fit_a but appears
-  # as "renamed_sigma" on fit_b -- so they should NOT intersect on
-  # sigma.
-  tri <- triangulate(fit_a, fit_b, name_map = c(sigma_e_atg = "renamed_sigma"))
+  # Override the registry's (identity) "sigma -> sigma" rename for
+  # fit_b only; the canonical "sigma" stays present on fit_a but
+  # appears as "renamed_sigma" on fit_b -- so they should NOT
+  # intersect on sigma.
+  tri <- triangulate(fit_a, fit_b, name_map = c(sigma = "renamed_sigma"))
   expect_false(
     "sigma" %in%
       intersect(

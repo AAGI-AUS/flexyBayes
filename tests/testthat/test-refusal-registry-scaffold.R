@@ -138,16 +138,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # two grammar-polymorphism guards on the universal entry from ADR 0031
   # Phase 3: grammar_brms_with_asreml_terms,
   # grammar_brms_known_matrices_unsupported (= 45). At v0.5.0 (ADR 0031
-  # Phase 3.6) the deferral code grammar_greta_via_fb_deferred is REMOVED
-  # (fb() now fits a native greta graph) and two genuine refusals are
-  # added: native_greta_requires_greta_backend (a native graph on a
-  # non-greta engine) and engine_pin_backend_conflict (a pin handed a
-  # conflicting backend) (= 47). At v0.6.0.9000 the gretaR backend is
-  # activated: six gretaR refusals are registered --
-  # gretaR_not_installed, gretaR_below_version_floor,
-  # gretaR_family_unsupported, gretaR_random_group_not_in_data,
-  # gretaR_random_term_type_unsupported,
-  # gretaR_cannot_represent_structured_cov (= 53). At v0.7.0 the
+  # Phase 3.6) a deferral code naming the third native engine (present
+  # through v0.9.2, withdrawn entirely at 0.9.3 -- see NEWS.md) is
+  # REMOVED (fb() now fits a native graph on that engine directly) and
+  # two genuine refusals are added: one naming a native graph handed to
+  # a different engine, and engine_pin_backend_conflict (a pin handed a
+  # conflicting backend) (= 47). At v0.6.0.9000 that engine's dormant
+  # sibling (also withdrawn at 0.9.3) is activated: six of its refusal
+  # codes are registered, covering package-not-installed, below the
+  # version floor, an unsupported family, a random-effect grouping
+  # factor absent from the data, an unsupported random-term type, and a
+  # structured-covariance term it cannot represent (= 53). At v0.7.0 the
   # data-aware factor-analytic rank upper bound is added:
   # fa_rank_exceeds_dim (fa(x, k) refused for k >= n_outer), the
   # identifiability complement of the data-free fa_rank_invalid floor
@@ -155,8 +156,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # dsum_structured_inner_unsupported is added (a structured dsum() inner
   # -- ar1/us/... -- is refused rather than silently reduced to a
   # per-region heteroscedastic variance) (= 55).
-  # At 0.9.0 the greta / gretaR quarantine adds three refusal codes
-  # (backend_quarantined, native_greta_fit_quarantined, auto_no_active_route)
+  # At 0.9.0 the (since fully withdrawn) native engine and its dormant
+  # sibling are quarantined, adding three refusal codes -- one naming
+  # each engine directly plus backend_quarantined -- and auto_no_active_route
   # (= 58), and WP16 adds ar1_spatial_requires_complete_grid (= 59). All
   # four shipped in the 0.9.0 tag and their `since_version` said 0.9.1,
   # which named a release that did not exist -- corrected here and in the
@@ -289,8 +291,26 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # represent (at_field_per_level_hyper_not_representable), and the
   # two weights refusals -- wrong family/link (weights_requires_
   # gaussian) and the aggregated route (weights_not_aggregatable)
-  # (= 121).
-  expect_equal(length(entries), 121L)
+  # (= 121). 0.9.3's WP-G withdraws a third native engine entirely (see
+  # NEWS.md): eleven codes are removed -- backend_quarantined; the six
+  # refusal codes belonging to that engine's dormant sibling (package-
+  # not-installed, below the version floor, unsupported family,
+  # random-effect grouping factor absent from the data, unsupported
+  # random-term type, and an unrepresentable structured-covariance term);
+  # the two codes naming the native engine directly (one for the fit
+  # path, one for a native graph handed to a different engine); one
+  # naming it as the sole consumer of the low_rank_smooth approximation
+  # scheme (renamed, not simply deleted -- see next); and one unrelated
+  # orphan, whose raising site (.predict_linear_draws()) was deleted the
+  # same session as an unreachable-code discovery, not as part of the
+  # withdrawal itself. Two are added: low_rank_smooth_unsupported (the
+  # renamed approximation-scheme code -- the low_rank_smooth scheme has
+  # no active-engine consumer at all now, rather than a since-withdrawn
+  # one) and unknown_backend (an explicit `backend` naming a value
+  # outside {"auto", "inla", "brms"} -- including the withdrawn engine's
+  # name -- refuses by this code rather than via match.arg()) (121 - 11 +
+  # 2 = 112).
+  expect_equal(length(entries), 112L)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)
@@ -333,26 +353,34 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("stan_cannot_represent_structured_residual" %in% entries)
   expect_true("weights_not_supported" %in% entries)
   expect_true("grammar_brms_with_asreml_terms" %in% entries)
-  expect_true("native_greta_requires_greta_backend" %in% entries)
   expect_true("engine_pin_backend_conflict" %in% entries)
   expect_true("fa_rank_exceeds_dim" %in% entries)
   expect_false("grammar_greta_via_fb_deferred" %in% entries)
+  # The native-graph-on-a-different-engine code (added alongside
+  # engine_pin_backend_conflict above, at v0.5.0) is withdrawn with the
+  # engine at 0.9.3 -- native model-graph ingestion no longer exists as
+  # a concept, so there is no successor code to spot-check in its place.
+  expect_false("native_greta_requires_greta_backend" %in% entries)
 
   # spot-check a representative new code from each family
   expect_true("precision_not_symmetric" %in% entries) # structured cov
-  expect_true("low_rank_requires_greta" %in% entries) # approximation
+  expect_true("low_rank_smooth_unsupported" %in% entries) # approximation
   expect_true("residual_type_unsupported_for_aggregation" %in% entries) # aggregate emit
-  expect_true("predict_kernel_invalid_include" %in% entries) # prediction
   expect_true("design_memory_exceeds_ceiling" %in% entries) # preflight
   expect_true("unsupported_family" %in% entries) # family gate
   expect_true("fb_cov_type_unknown" %in% entries) # fb_cov carrier
-  expect_true("gretaR_not_installed" %in% entries) # gretaR backend
-  expect_true("gretaR_cannot_represent_structured_cov" %in% entries) # gretaR gate
+  expect_true("unknown_backend" %in% entries) # backend name gate
 
   # control-flow / routing reasons must NOT be registered
   expect_false("non_gaussian_family" %in% entries)
   expect_false("smooth_term_not_aggregatable" %in% entries)
-  expect_false("policy_table_no_match_fallback_greta" %in% entries)
+  expect_false("policy_table_no_match_fallback_pending" %in% entries)
+  # The dormant sibling engine's refusal family (installation, version
+  # floor, family, random-group, random-term-type, structured-cov) is
+  # withdrawn with it at 0.9.3 -- none of its codes are registered any
+  # more, so there is no "gretaR gate" family left to spot-check.
+  expect_false("gretaR_not_installed" %in% entries)
+  expect_false("gretaR_cannot_represent_structured_cov" %in% entries)
 })
 
 # ---------------------------------------------------------------- #

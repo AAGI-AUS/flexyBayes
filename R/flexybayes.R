@@ -195,9 +195,9 @@
 #'   literature for regression coefficients (e.g. Gelman et al. 2008,
 #'   *Annals of Applied Statistics* 2(4):1360-1383). **Applied when you
 #'   supply it**, on every backend: brms receives one `normal(0, sd)`
-#'   row per fixed-effect class, INLA receives `control.fixed` with
-#'   `prec = 1 / sd^2` on the slopes and the intercept alike, and greta
-#'   has always used it. Left unsupplied, each engine keeps its own
+#'   row per fixed-effect class, and INLA receives `control.fixed` with
+#'   `prec = 1 / sd^2` on the slopes and the intercept alike. Left
+#'   unsupplied, each engine keeps its own
 #'   fixed-effect default -- brms's flat coefficients and
 #'   response-centred `student_t` intercept, INLA's `prec = 0.001` and
 #'   flat intercept -- because replacing a response-centred intercept
@@ -260,14 +260,12 @@
 #'   the call.  Default `FALSE` preserves the run-
 #'   immediately semantics.  Mutually exclusive with `return_code` and
 #'   `review_code`.
-#' @param backend Character: one of `"auto"` (**default**), `"inla"`,
-#'   `"brms"`, `"greta"`, or `"gretaR"`. Two engines are active. INLA is
-#'   the deterministic Laplace path over the latent-Gaussian model class;
-#'   brms is the Stan passthrough. greta and gretaR are **quarantined**:
-#'   their registry descriptors and emit code are retained as re-entry
-#'   candidates, but an explicit request for either refuses with
-#'   `backend_quarantined` before any emit, and `"auto"` never selects
-#'   them. See `NEWS.md` for the reshape.
+#' @param backend Character: one of `"auto"` (**default**), `"inla"`, or
+#'   `"brms"`. INLA is the deterministic Laplace path over the
+#'   latent-Gaussian model class; brms is the Stan passthrough. Any other
+#'   value -- including a formerly-registered engine name this package
+#'   withdrew entirely (see `NEWS.md`) -- refuses with `unknown_backend`
+#'   naming the two active engines.
 #'
 #'   **What `"auto"` does.** The call runs `lgm_gate()` and routes to INLA
 #'   when the model is latent-Gaussian feasible and INLA is installed.
@@ -341,14 +339,10 @@
 #'   `path` slot reads `"aggregated_gaussian"` (gaussian) or
 #'   `"aggregated_count"` (binomial / poisson). For out-of-core datasets
 #'   that do not fit in memory, see [flexybayes_stream()].
-#' @param syntax One of `"auto"` (default), `"asreml"`, `"brms"`, or
-#'   `"greta"`. Selects how `fixed` is interpreted. `"auto"` detects the
-#'   grammar from the call shape (a bar-grouped formula is read as brms,
-#'   otherwise ASReml); the other values force a grammar. `"greta"` reads
-#'   a native `greta_model` graph. That grammar still parses, but fitting
-#'   one is quarantined with the engine
-#'   (`native_greta_fit_quarantined`); use [fb_from_greta()] to lift an
-#'   already-fitted greta object into the shared accessor surface.
+#' @param syntax One of `"auto"` (default), `"asreml"`, or `"brms"`.
+#'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
+#'   from the call shape (a bar-grouped formula is read as brms,
+#'   otherwise ASReml); the other values force a grammar.
 #'
 #' @returns An object of class `"flexybayes"`, a list with three
 #'   components.
@@ -361,8 +355,7 @@
 #'   \item{`$brms` or `$inla`}{The native backend object --- a live `brmsfit`
 #'     on the brms path, or INLA's own fitted object on the INLA path. Use
 #'     with `bayesplot`, `posterior::as_draws()`, and each engine's own
-#'     accessors. There is no `$greta` slot: an explicit greta request
-#'     refuses before a fit object exists.}
+#'     accessors.}
 #'   \item{`$extras`}{Additional outputs: posterior `summary`, `convergence`
 #'     diagnostics, `variance_comps`, `blups`, `predictions`, generated `code`,
 #'     `param_names`, `parse_info`, `call_info`, `run_time`, `model_info`.}
@@ -421,10 +414,10 @@ flexybayes <- function(
   mcmc_verbose = TRUE,
   return_code = FALSE,
   review_code = FALSE,
-  backend = c("auto", "greta", "inla", "brms", "gretaR"),
+  backend = c("auto", "inla", "brms"),
   aggregate = "auto",
   plan = FALSE,
-  syntax = c("auto", "asreml", "brms", "greta"),
+  syntax = c("auto", "asreml", "brms"),
   rcov = lifecycle::deprecated()
 ) {
   # `rcov` was the ASReml 3 name for the residual-structure argument;
@@ -456,6 +449,7 @@ flexybayes <- function(
   engine_in <- backend
   backend <- .resolve_engine_string(engine_in)
   .check_approximate_scheme(backend)
+  .check_known_backend_name(backend, allowed = c("auto", "inla", "brms"))
   backend <- match.arg(backend)
   eng_opts <- .fb_engine_opts(engine_in)
   if (!is.null(eng_opts)) {
@@ -470,22 +464,6 @@ flexybayes <- function(
   aggregate <- .normalise_aggregate(aggregate)
   syntax <- match.arg(syntax)
 
-  # The universal entry accepts a native greta_model
-  # graph or a prebuilt greta-source IR (from fb_from_greta()) on the
-  # model slot. Those carry their own data into the greta graph, so
-  # `data` is optional on that path; the formula grammars still require
-  # it. Detect before `data` is forced below.
-  spec_is_greta_native <- inherits(fixed, "greta_model") ||
-    (inherits(fixed, "fb_terms") && identical(fixed$source, "greta"))
-  if (spec_is_greta_native && missing(data)) {
-    data <- NULL
-  }
-
-  # Defer the greta package check to the emit-greta branch. For
-  # backend = "inla" we don't need greta installed; for backend =
-  # "auto" we only require greta if the gate refuses (or INLA is
-  # unavailable) and we fall through to the greta emit.
-
   # Resolve session-level review-mode default BEFORE the unsupported-
   # backend guard, otherwise options(flexyBayes.review_code_default =
   # TRUE) would slip past the refusal on backend = "inla" / "auto".
@@ -494,22 +472,22 @@ flexybayes <- function(
     review_code <- isTRUE(getOption("flexyBayes.review_code_default", FALSE))
   }
 
-  # The code-inspection modes return generated backend code. Since the greta
-  # quarantine (§4.1) brms is the active code-producing engine, so when
-  # backend resolves to "auto" the code modes pick brms rather than a
-  # quarantined engine or a non-code INLA object. The pick is CONDITIONAL
-  # on brms being able to represent the model -- see the capability gate
-  # below, which runs once the IR exists. Rewriting unconditionally here
-  # would hand back code for a model the engine cannot express (an AR1xAR1
-  # residual lowered to an intercept-only iid Gaussian, say), which is the
-  # silent-substitution failure the quarantine exists to prevent.
+  # The code-inspection modes return generated backend code. brms is the
+  # only active code-producing engine, so when backend resolves to
+  # "auto" the code modes pick brms rather than a non-code INLA object.
+  # The pick is CONDITIONAL on brms being able to represent the model --
+  # see the capability gate below, which runs once the IR exists.
+  # Rewriting unconditionally here would hand back code for a model the
+  # engine cannot express (an AR1xAR1 residual lowered to an
+  # intercept-only iid Gaussian, say), which is the silent-substitution
+  # failure this guards against.
   code_mode_auto <- identical(backend, "auto") &&
     (isTRUE(return_code) || isTRUE(review_code))
 
-  # review_code = TRUE is scoped to the code-emitting engines: greta
-  # (greta source via the codegen path) and brms (Stan source via
-  # brms::make_stancode()). Under backend = "inla" review_code is
-  # deferred to a future release -- the deferred-execution token would need
+  # review_code = TRUE is scoped to the code-emitting engine: brms
+  # (Stan source via brms::make_stancode()). Under backend = "inla"
+  # review_code is deferred to a future release -- the deferred-execution
+  # token would need
   # an INLA-side `code` slot (the inla() formula + family + hyper list)
   # and a different proceed() target. Refuse cleanly rather than
   # silently emitting code for an engine that did not author it.
@@ -528,7 +506,7 @@ flexybayes <- function(
         backend,
         "\" ",
         "the inspect-then-fit token would need an INLA-side code slot ",
-        "(queued for a subsequent release); greta is quarantined. Pass ",
+        "(queued for a subsequent release). Pass ",
         "backend = \"brms\", or drop review_code."
       )
     ))
@@ -547,11 +525,7 @@ flexybayes <- function(
   }
 
   the_call <- match.call()
-  data_name <- if (spec_is_greta_native) {
-    "<greta-native>"
-  } else {
-    deparse(substitute(data))
-  }
+  data_name <- deparse(substitute(data))
 
   # Detect "all defaults" -- user supplied neither an fb_prior() nor
   # an explicit prior_vc_sd. In that case the v0.1 default fires:
@@ -584,8 +558,8 @@ flexybayes <- function(
 
   # Build the flexyBayes intermediate representation (IR). The universal
   # entry detects the grammar from the call shape -- ASReml
-  # fixed/random/residual, a brms-style bar-grouped formula, or (reserved) a
-  # greta_model -- and routes to the matching ingest adapter. ASReml
+  # fixed/random/residual, or a brms-style bar-grouped formula -- and
+  # routes to the matching ingest adapter. ASReml
   # ingest is byte-identical to the historical direct fb_from_asreml()
   # call; `syntax = ` forces a grammar. See .build_ir_polymorphic() in
   # R/fb.R.
@@ -643,7 +617,7 @@ flexybayes <- function(
         reason_code = "auto_no_active_route",
         message = paste0(
           "backend = \"auto\" with code inspection resolves to brms (the ",
-          "only active code-producing engine; greta is quarantined), but ",
+          "only active code-producing engine), but ",
           "brms cannot represent this model (",
           cap$reason_code,
           "). ",
@@ -656,31 +630,6 @@ flexybayes <- function(
       ))
     }
     backend <- "brms"
-  }
-
-  # A native greta model graph is fit directly by
-  # greta::mcmc() (no shared emit path, no formula-specific machinery).
-  # .dispatch_native_greta() pins the backend (greta only), refuses the
-  # code-inspection / plan modes that do not apply to a user-built graph,
-  # and assembles the flexybayes_direct_greta result. Everything below
-  # (default-prior expansion, plan, review, the formula emit dispatch) is
-  # formula-specific and bypassed.
-  if (identical(fb$source, "greta")) {
-    fit <- .dispatch_native_greta(
-      fb = fb,
-      backend = backend,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose,
-      return_code = return_code,
-      review_code = review_code,
-      plan = plan,
-      the_call = the_call
-    )
-    .fb_warn_poor_convergence(fit)
-    return(fit)
   }
 
   if (default_prior_active) {
@@ -733,24 +682,11 @@ flexybayes <- function(
   # produced at the same outer seed. verbose printing is suppressed
   # because the review object owns the code surface (cat_code(rev)).
   if (isTRUE(review_code)) {
-    # The emit engine for the review code: greta source on the greta
-    # path; Stan source (brms::make_stancode()) on the brms path.
-    review_emit_backend <- if (identical(backend, "brms")) "brms" else "greta"
-    if (
-      review_emit_backend == "greta" &&
-        !requireNamespace("greta", quietly = TRUE)
-    ) {
-      stop(
-        "Package 'greta' is required to generate the review-code ",
-        "string. Install with:\n",
-        "  install.packages('greta'); greta::install_greta_deps()",
-        call. = FALSE
-      )
-    }
-    if (
-      review_emit_backend == "brms" &&
-        !requireNamespace("brms", quietly = TRUE)
-    ) {
+    # The emit engine for the review code is always brms (Stan source via
+    # brms::make_stancode()): the guard above (review_code_backend_unsupported)
+    # ensures `backend` is already "brms" by the time this branch runs,
+    # whether explicitly requested or resolved here via code_mode_auto.
+    if (!requireNamespace("brms", quietly = TRUE)) {
       stop(
         "Package 'brms' is required to generate Stan review code. ",
         "Install with: install.packages('brms'). A working C++ ",
@@ -800,16 +736,10 @@ flexybayes <- function(
       the_call = the_call
     )
 
-    # Emit the review code from the engine the user
-    # pinned -- greta source (codegen) or Stan source (make_stancode()).
-    # Both emit paths derive the model from the IR on return_code = TRUE,
-    # so the fixed / random / residual args (display-only) pass through as-is.
-    emit_review_fn <- if (review_emit_backend == "brms") {
-      emit_brms
-    } else {
-      emit_greta
-    }
-    review_code_str <- emit_review_fn(
+    # Emit the review code (Stan source via make_stancode()). Derives the
+    # model from the IR on return_code = TRUE, so the fixed / random /
+    # residual args (display-only) pass through as-is.
+    review_code_str <- emit_brms(
       fb = fb,
       data = data,
       known_matrices = known_matrices,
@@ -833,11 +763,7 @@ flexybayes <- function(
 
     return(.new_flexybayes_review(
       code = review_code_str,
-      backend = if (review_emit_backend == "brms") {
-        "stan_via_brms"
-      } else {
-        "greta"
-      },
+      backend = "stan_via_brms",
       ir = fb,
       prior = prior,
       data_name = data_name,
@@ -870,10 +796,10 @@ flexybayes <- function(
 
   # Backend dispatch lives in R/dispatch.R as the shared helper
   # `.dispatch_backend()` (lifted so fb_brms() drives
-  # the same routing). Semantics: backend = "greta"
-  # skips the gate; backend = "inla" calls lgm_gate() and raises
-  # the refusal on non-LGM; backend = "auto" gate-then-route with
-  # silenceable fall-back notes.
+  # the same routing). Semantics: backend = "brms" skips the gate;
+  # backend = "inla" calls lgm_gate() and raises the refusal on
+  # non-LGM; backend = "auto" gate-then-route with silenceable
+  # fall-back notes.
   fit <- .dispatch_backend(
     fb = fb,
     data = data,

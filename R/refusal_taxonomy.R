@@ -603,20 +603,19 @@
   # -- approximation surface (parse_formula.R,
   #    validate_approximation.R, emit_smooth_low_rank.R, dispatch.R) -
   .register_refusal(
-    reason_code = "low_rank_requires_greta",
+    reason_code = "low_rank_smooth_unsupported",
     description = paste0(
-      "A smooth requesting the low_rank_smooth approximation was ",
-      "routed to a backend that cannot honour it. Since the greta ",
-      "quarantine that is every active engine, so the request refuses ",
-      "under `auto` as well as under an explicit `inla` / `brms`."
+      "A smooth requesting the low_rank_smooth approximation was routed ",
+      "to a backend that cannot honour it. No active engine represents ",
+      "the rank-K basis truncation, so the request refuses under `auto` ",
+      "as well as under an explicit `inla` / `brms`."
     ),
     message_template = paste0(
-      "A smooth requesting the low_rank_smooth approximation is ",
-      "honoured only by the greta backend, which is quarantined, so ",
-      "no active engine represents it: INLA fits a smooth via rw2 ",
-      "and brms via Stan spline bases, and neither can apply the ",
-      "rank-K basis truncation. Drop the representation = ... ",
-      "argument to fit the exact smooth on either active engine."
+      "A smooth requesting the low_rank_smooth approximation has no ",
+      "active emit path: INLA fits a smooth via rw2 and brms via Stan ",
+      "spline bases, and neither can apply the rank-K basis truncation. ",
+      "Drop the representation = ... argument to fit the exact smooth on ",
+      "either active engine."
     ),
     registered_in_adr = "ADR 0027",
     plan_field = NA_character_,
@@ -760,22 +759,6 @@
     since_version = "0.4.0"
   )
 
-  # -- prediction kernel (predict_kernel.R) ---------------
-  .register_refusal(
-    reason_code = "predict_kernel_invalid_include",
-    description = paste0(
-      "predict(): `include` is empty or carries values outside the ",
-      "prediction-kernel vocabulary."
-    ),
-    message_template = paste0(
-      ".predict_linear_draws(): `include` must be a non-empty ",
-      "character vector drawn from the kernel vocabulary."
-    ),
-    registered_in_adr = "ADR 0023",
-    plan_field = NA_character_,
-    since_version = "0.4.0"
-  )
-
   # -- preflight refusals (fb_preflight.R, dispatch.R) -----
   .register_refusal(
     reason_code = "design_memory_exceeds_ceiling",
@@ -841,7 +824,7 @@
   # parser. Migrated from raw stop() to the structured registry so
   # downstream tooling pattern-matches on the condition class rather
   # than the free-text message. Missing-suggested-package errors
-  # (mgcv, greta) and argument-combination guards stay as plain
+  # (mgcv) and argument-combination guards stay as plain
   # stop() --- they are environment / call-shape errors, not
   # model-scope refusals.
   .register_refusal(
@@ -1357,7 +1340,7 @@
 
   # -- grammar polymorphism on the universal entry --
   # fb() / flexybayes() detect the input grammar from the call shape.
-  # These three guard the brms-grammar and reserved-greta branches of
+  # These two guard the brms-grammar branch of
   # .build_ir_polymorphic() (R/fb.R).
   .register_refusal(
     reason_code = "grammar_brms_with_asreml_terms",
@@ -1390,32 +1373,10 @@
     plan_field = NA_character_,
     since_version = "0.4.1"
   )
-  # The universal entry now FITS a native greta model graph (v0.5.0).
-  # The deferral the v0.4.1 grammar_greta_via_fb_deferred code
-  # described is gone -- it is removed from the vocabulary. Two
-  # genuine refusals replace it: a native graph requested on a non-greta
-  # engine, and an engine pin handed a conflicting `backend`.
-  .register_refusal(
-    reason_code = "native_greta_requires_greta_backend",
-    description = paste0(
-      "A native greta model graph was passed to the universal entry / the ",
-      "greta pin with a non-greta backend. A native graph is greta-only ",
-      "by construction."
-    ),
-    message_template = paste0(
-      "A native greta model graph is fit by greta::mcmc() and is ",
-      "greta-only by construction; the requested backend cannot fit it, ",
-      "and greta is quarantined. Rebuild the model in the ASReml / brms ",
-      "formula grammar to reach an active engine."
-    ),
-    registered_in_adr = "ADR 0031",
-    plan_field = "rejected_routes",
-    since_version = "0.5.0"
-  )
   .register_refusal(
     reason_code = "engine_pin_backend_conflict",
     description = paste0(
-      "An engine pin (fb_greta / fb_inla / fb_brms) was given a `backend` ",
+      "An engine pin (fb_inla / fb_brms) was given a `backend` ",
       "argument that conflicts with the engine it pins."
     ),
     message_template = paste0(
@@ -1428,53 +1389,6 @@
     since_version = "0.5.0"
   )
 
-  invisible(NULL)
-}
-
-# gretaR backend activation: the refusal codes the gretaR
-# backend (R/emit_gretaR.R + the dispatch branch) can raise. Registered
-# alongside the others before the registry locks (see R/zzz.R).
-.populate_refusal_registry_gretaR <- function() {
-  reg <- function(code, desc, tmpl) {
-    .register_refusal(
-      reason_code = code,
-      description = desc,
-      message_template = tmpl,
-      registered_in_adr = "ADR 0013/0031",
-      plan_field = NA_character_,
-      since_version = "0.6.0.9000"
-    )
-  }
-  reg(
-    "gretaR_cannot_represent_structured_cov",
-    "gretaR backend: structured covariance (vm/ped/fa/us/ar1) unsupported.",
-    "backend = \"gretaR\" cannot fit this model (%s)."
-  )
-  reg(
-    "gretaR_random_term_type_unsupported",
-    "gretaR backend: only random-intercept-class random terms are supported.",
-    "backend = \"gretaR\" cannot fit this model (%s)."
-  )
-  reg(
-    "gretaR_family_unsupported",
-    "gretaR backend: family outside gaussian/binomial/poisson.",
-    "%s"
-  )
-  reg(
-    "gretaR_random_group_not_in_data",
-    "gretaR backend: random-intercept grouping factor absent from data.",
-    "%s"
-  )
-  reg(
-    "gretaR_below_version_floor",
-    "gretaR backend: the installed gretaR is older than the activation floor.",
-    "%s"
-  )
-  reg(
-    "gretaR_not_installed",
-    "gretaR backend: gretaR not installed and no source home set.",
-    "%s"
-  )
   invisible(NULL)
 }
 
@@ -1496,51 +1410,17 @@
     plan_field = NA_character_,
     since_version = "0.9.0"
   )
-  # Reshape R1 (2026-07-24): greta / gretaR quarantined as fitting engines.
-  .register_refusal(
-    reason_code = "backend_quarantined",
-    description = paste0(
-      "An explicit backend request named a quarantined engine (greta / ",
-      "gretaR). Quarantined engines are retained as re-entry candidates, ",
-      "not active fitting engines; the active backends are brms + INLA."
-    ),
-    message_template = paste0(
-      "backend = \"%s\" is quarantined: retained as a re-entry candidate, ",
-      "not an active fitting engine. Use backend = \"inla\" or ",
-      "\"brms\" (re-entry is repair + conform, section 4.1)."
-    ),
-    registered_in_adr = "Reshape R1 / S4.1",
-    plan_field = "rejected_routes",
-    since_version = "0.9.0"
-  )
-  .register_refusal(
-    reason_code = "native_greta_fit_quarantined",
-    description = paste0(
-      "A native greta model graph was submitted for fitting. greta::mcmc() ",
-      "is quarantined, so an unfitted native graph has no active fit path; ",
-      "the greta import grammar reads an already-fitted object's draws only."
-    ),
-    message_template = paste0(
-      "A native greta model graph is fit by greta::mcmc(), which is ",
-      "quarantined. Rebuild the model in the ASReml / brms formula grammar ",
-      "to fit via INLA or brms."
-    ),
-    registered_in_adr = "Reshape R1 / S4.1 / C1",
-    plan_field = NA_character_,
-    since_version = "0.9.0"
-  )
   .register_refusal(
     reason_code = "auto_no_active_route",
     description = paste0(
       "backend = \"auto\" found no active backend able to faithfully fit ",
-      "the model: INLA refused it and brms cannot represent it, and greta ",
-      "is quarantined. No silent fallback -- auto refuses."
+      "the model: INLA refused it and brms cannot represent it. No silent ",
+      "fallback -- auto refuses."
     ),
     message_template = paste0(
       "backend = \"auto\": no active backend can faithfully fit this model ",
-      "(INLA refused; brms cannot represent it; greta quarantined). ",
-      "Reformulate for INLA / brms, or fit a structure the active engines ",
-      "support."
+      "(INLA refused; brms cannot represent it). Reformulate for ",
+      "INLA / brms, or fit a structure the active engines support."
     ),
     registered_in_adr = "Reshape R1 / S4.1 / A3",
     plan_field = "rejected_routes",
@@ -1738,10 +1618,9 @@
   .register_refusal(
     reason_code = "met_summary_not_available",
     description = paste0(
-      "fb_met_summary() was called on a fit it cannot summarise: an ",
-      "active-engine fit (the breeder summary reads realised ",
-      "factor-analytic effects, which only the quarantined greta backend ",
-      "produces), a fit carrying no fa() term, or one carrying no draws."
+      "fb_met_summary() was called on a fit it cannot summarise: the ",
+      "breeder summary reads realised factor-analytic effects, and no ",
+      "active engine emits an fa() term, so this refusal is unconditional."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 5 A5.1",
@@ -2227,9 +2106,27 @@
 # .populate_refusal_registry_v093() --- the 0.9.3 scale-strategy
 # refusals (WP-C): the cell-count integer-cast sibling of the 0.9.0
 # row-count guard, typed engine-death wraps for INLA and brms, and the
-# per-level AR1-field boundary this release still refuses. Called from
-# .onLoad() before .lock_refusal_registry().
+# per-level AR1-field boundary this release still refuses; plus (WP-G)
+# the unknown-backend refusal that replaces the two engine names this
+# release withdraws entirely (see NEWS.md). Called from .onLoad() before
+# .lock_refusal_registry().
 .populate_refusal_registry_v093 <- function() {
+  .register_refusal(
+    reason_code = "unknown_backend",
+    description = paste0(
+      "An explicit `backend` request named a value that is not a ",
+      "registered engine -- including a name this release withdrew ",
+      "entirely (see NEWS.md). The active engines are inla and brms."
+    ),
+    message_template = paste0(
+      "backend = \"%s\" is not a recognised flexyBayes engine. The ",
+      "active engines are \"inla\" and \"brms\" (or \"auto\" to let ",
+      "flexyBayes choose)."
+    ),
+    registered_in_adr = "0.9.3 backend withdrawal",
+    plan_field = "rejected_routes",
+    since_version = "0.9.3"
+  )
   .register_refusal(
     reason_code = "cell_count_exceeds_integer",
     description = paste0(

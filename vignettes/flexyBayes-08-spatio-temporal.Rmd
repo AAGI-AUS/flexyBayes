@@ -1,14 +1,15 @@
 ---
-title: "Tutorial 09: Spatio-temporal models: AR1, spatial, temporal"
-date: "2026-08-17"
+title: "Tutorial 08: Spatio-temporal models: AR1, spatial, temporal"
+date: "2026-08-26"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 09: Spatio-temporal models}
+  %\VignetteIndexEntry{Tutorial 08: Spatio-temporal models: AR1, spatial, temporal}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -109,6 +110,7 @@ spelling of the same display refuses.
 
 ``` r
 library(flexyBayes)
+set.seed(1400)
 data(stroup.nin, package = "agridat")
 sn <- stroup.nin
 sn$row <- factor(sn$row)
@@ -208,7 +210,7 @@ fit_sn
 #>   Engine:         INLA Laplace
 #>   N        : 242 design rows, 224 observed responses
 #>   na_action: augment; 18 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2.7 sec
+#>   Runtime  : 2.3 sec
 #>   INLA formula: yield_z ~ 1 + f(row_id, model = "ar1", group = col_id, control.group = list(model = "ar1"))
 #>   Params   : 1 fixed, 1 random, 4 hyperparameter(s)
 #>   numerical confirm: PASS
@@ -284,7 +286,7 @@ data.frame(
   upper     = round(recovered$upper, 3)
 )
 #>                         parameter simulated recovered lower upper
-#> 1 correlation along row (rho_row)       0.7     0.652 0.478 0.773
+#> 1 correlation along row (rho_row)       0.7     0.652 0.479 0.773
 #> 2 correlation along col (rho_col)       0.5     0.501 0.314 0.647
 #> 3          field SD (sigma_field)       1.0     1.001 0.846 1.192
 #> 4             nugget SD (sigma_e)       0.5     0.461 0.323 0.633
@@ -319,7 +321,7 @@ ggplot(grid, aes(x = as.numeric(col), y = as.numeric(row), fill = resid)) +
        title = "Field residuals after the AR1 x AR1 field is removed")
 ```
 
-![plot of chunk residual-plot](flexyBayes-08-spatio-temporal-figs/residual-plot-1.png)
+![Spatial map of the fitted-model residuals, column on the x-axis and row on the y-axis, coloured from blue (negative) through white (zero) to firebrick (positive) -- an unstructured, salt-and-pepper pattern means the AR1 field has absorbed the spatial correlation, while large same-coloured patches would mean it has not.](flexyBayes-08-spatio-temporal-figs/residual-plot-1.png)
 
 A patchy map -- large red and blue regions -- would indicate spatial
 structure the field has not captured. The natural extensions are a
@@ -372,16 +374,16 @@ fit_temporal
 #>   Engine:         INLA Laplace
 #>   N        : 180 design rows, 180 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2.7 sec
+#>   Runtime  : 2.5 sec
 #>   INLA formula: Reaction ~ 1 + Days + f(Subject, model = "iid", <prior: uniform-SD(0, 281.6)>) + f(Days_f_id, model = "ar1", group = Subject_id, control.group = list(model = "iid"))
 #>   Params   : 2 fixed, 2 random, 4 hyperparameter(s)
 #>   numerical confirm: PASS
 #> 
 #> Separable AR1 field (posterior median, 95% interval):
 #>                              parameter  median    2.5%   97.5%
-#>  correlation along Days_f (rho_Days_f)  0.9666  0.9546  0.9779
-#>                 field SD (sigma_field)  0.0057  0.0046  0.0066
-#>                    nugget SD (sigma_e) 47.1446 43.2230 51.6585
+#>  correlation along Days_f (rho_Days_f)  0.8687  0.8126  0.9071
+#>                 field SD (sigma_field) 46.7930 38.7758 56.2115
+#>                    nugget SD (sigma_e) 15.3480 12.8126 18.5347
 #>   The field and the nugget are separate parameters: this is a latent
 #>   autoregressive field plus independent observation noise, not ASReml's
 #>   nugget-free separable residual. Variances are the squares of the SDs.
@@ -481,14 +483,15 @@ surfaces directly. Under `backend = "auto"` it becomes an
 `auto_no_active_route` refusal, because the only other active engine is
 brms and brms has no lowering for a Kronecker autoregressive precision.
 
-**greta is quarantined.** Prior releases fit `ar1(row):ar1(col)` on
-greta, because INLA refused it outright. Since the separable AR1 field
-landed on INLA, greta and gretaR have been withdrawn as active fitting
-engines entirely -- an explicit `backend = "greta"` or
-`backend = "gretaR"` now raises a structured `backend_quarantined`
-refusal, and `auto` never falls back to either, silently or otherwise.
-If you have older code that pinned `backend = "greta"` for a spatial or
-temporal AR1 fit, drop the pin and move the term to the random side.
+**A third native engine has been withdrawn.** Prior releases fit
+`ar1(row):ar1(col)` on that engine, because INLA refused it outright.
+Since the separable AR1 field landed on INLA, that engine has been
+withdrawn entirely (see `NEWS.md`, 0.9.3) -- naming it, or any other
+unrecognised backend, now raises a structured `unknown_backend`
+refusal, and `auto` never falls back to it, silently or otherwise. If
+you have older code that pinned `backend` to that engine for a spatial
+or temporal AR1 fit, drop the pin and move the term to the random
+side.
 
 # 7. Active prompts
 
@@ -529,36 +532,43 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3    flexyBayes_0.9.0
+#> [1] ggplot2_4.0.3    flexyBayes_0.9.2
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] gtable_0.3.6           tensorA_0.36.2.1       xfun_0.57             
-#>  [4] lattice_0.22-7         vctrs_0.7.3            tools_4.5.2           
-#>  [7] generics_0.1.4         sandwich_3.1-1         parallel_4.5.2        
-#> [10] tibble_3.3.1           proxy_0.4-29           pkgconfig_2.0.3       
-#> [13] brms_2.23.0            Matrix_1.7-4           KernSmooth_2.23-26    
-#> [16] data.table_1.18.2.1    checkmate_2.3.4        RColorBrewer_1.1-3    
-#> [19] S7_0.2.2               distributional_0.7.0   RcppParallel_5.1.11-2 
-#> [22] lifecycle_1.0.5        compiler_4.5.2         farver_2.1.2          
-#> [25] stringr_1.6.0          fmesher_0.7.0          MatrixModels_0.5-4    
-#> [28] Brobdingnag_1.2-9      agridat_1.26           codetools_0.2-20      
-#> [31] marginaleffects_0.32.0 class_7.3-23           bayesplot_1.15.0      
-#> [34] pillar_1.11.1          MASS_7.3-65            classInt_0.4-11       
-#> [37] bridgesampling_1.2-1   abind_1.4-8            multcomp_1.4-29       
-#> [40] nlme_3.1-168           parallelly_1.47.0      posterior_1.7.0       
-#> [43] tidyselect_1.2.1       digest_0.6.39          mvtnorm_1.3-6         
-#> [46] stringi_1.8.7          future_1.70.0          sf_1.1-0              
-#> [49] dplyr_1.2.1            listenv_0.10.1         labeling_0.4.3        
-#> [52] splines_4.5.2          grid_4.5.2             cli_3.6.6             
-#> [55] magrittr_2.0.5         loo_2.9.0              survival_3.8-3        
-#> [58] dichromat_2.0-0.1      TH.data_1.1-5          e1071_1.7-17          
-#> [61] withr_3.0.2            scales_1.4.0           backports_1.5.1       
-#> [64] estimability_1.5.1     matrixStats_1.5.0      emmeans_2.0.2         
-#> [67] globals_0.19.1         otel_0.2.0             zoo_1.8-15            
-#> [70] coda_0.19-4.1          evaluate_1.0.5         knitr_1.51            
-#> [73] rstantools_2.6.0       rlang_1.2.0            Rcpp_1.1.1-1.1        
-#> [76] xtable_1.8-8           glue_1.8.1             INLA_25.10.19         
-#> [79] DBI_1.3.0              R6_2.6.1               units_1.0-1
+#>   [1] tidyselect_1.2.1       viridisLite_0.4.3      dplyr_1.2.1           
+#>   [4] farver_2.1.2           loo_2.9.0              S7_0.2.2              
+#>   [7] INLA_25.10.19          TH.data_1.1-5          tensorA_0.36.2.1      
+#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
+#>  [13] sf_1.1-0               StanHeaders_2.32.10    agridat_1.26          
+#>  [16] processx_3.9.0         survival_3.8-3         magrittr_2.0.5        
+#>  [19] posterior_1.7.1        compiler_4.5.2         rlang_1.3.0           
+#>  [22] tools_4.5.2            data.table_1.18.2.1    sn_2.1.3              
+#>  [25] knitr_1.51             labeling_0.4.3         bridgesampling_1.2-1  
+#>  [28] mnormt_2.1.2           pkgbuild_1.4.8         classInt_0.4-11       
+#>  [31] curl_7.0.0             plyr_1.8.9             RColorBrewer_1.1-3    
+#>  [34] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
+#>  [37] numDeriv_2016.8-1.1    withr_3.0.3            grid_4.5.2            
+#>  [40] stats4_4.5.2           colorspace_2.1-2       xtable_1.8-8          
+#>  [43] e1071_1.7-17           future_1.70.0          inline_0.3.21         
+#>  [46] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
+#>  [49] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#>  [52] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
+#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
+#>  [58] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
+#>  [61] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
+#>  [64] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
+#>  [67] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
+#>  [70] sandwich_3.1-1         jsonlite_2.0.0         callr_3.8.0           
+#>  [73] listenv_0.10.1         units_1.0-1            glue_1.8.1            
+#>  [76] parallelly_1.47.0      codetools_0.2-20       distributional_0.8.1  
+#>  [79] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
+#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
+#>  [85] R6_2.6.1               fmesher_0.7.0          evaluate_1.0.5        
+#>  [88] lattice_0.22-7         backports_1.5.1        MatrixModels_0.5-4    
+#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.2            
+#>  [94] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
+#>  [97] checkmate_2.3.4        mgcv_1.9-3             xfun_0.57             
+#> [100] zoo_1.8-15             pkgconfig_2.0.3
 ```
 
 # References

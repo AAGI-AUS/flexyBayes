@@ -13,7 +13,7 @@
 # populate, surfaced on every report, snapshot-gated against silent
 # vocabulary drift.
 #
-# Independence is a *pair* property, not a *backend* property -- "greta
+# Independence is a *pair* property, not a *backend* property -- "brms
 # is HMC" tells you nothing about which other backend it is HMC-against
 # -- so the registry is keyed by the canonicalised (sorted) backend
 # pair. The vocabulary is closed; adding a fourth axis or splitting one
@@ -177,36 +177,12 @@
 
 # --- v0.4.0 population --------------------------------------------- #
 
-# .populate_backend_independence_registry_v0400() --- registers the
-# three pairs among the v0.3.x triangulatable backends (greta = HMC on
-# TensorFlow; inla = Laplace approximation on C; brms = HMC on Stan via
-# the fb_brms() surface). The axis assignments follow the authoritative
-# table: Laplace-vs-HMC pairs differ on BOTH paradigm and
-# code base (algorithmic + implementation); the two HMC backends differ
-# only on code base (implementation). The stan_brms backend
-# registers its own pairs when it lands at v0.4.1.
+# .populate_backend_independence_registry_v0400() --- registers the pair
+# between the two triangulatable backends (inla = Laplace approximation
+# on C; brms = HMC on Stan via the fb_brms() surface). The axis
+# assignment follows the authoritative table: a Laplace-vs-HMC pair
+# differs on BOTH paradigm and code base (algorithmic + implementation).
 .populate_backend_independence_registry_v0400 <- function() {
-  .register_pair_independence(
-    pair = c("greta", "inla"),
-    axes = c("algorithmic", "implementation"),
-    paradigms = list(greta = "hmc_nuts", inla = "laplace_approximation"),
-    justification = paste0(
-      "HMC (greta on TensorFlow) versus Laplace approximation (INLA on ",
-      "C): different inference paradigms and different code bases."
-    ),
-    registered_in_adr = "0029"
-  )
-  .register_pair_independence(
-    pair = c("greta", "brms"),
-    axes = "implementation",
-    paradigms = list(greta = "hmc_nuts", brms = "hmc_nuts"),
-    justification = paste0(
-      "HMC (greta on TensorFlow) versus HMC (brms on Stan): the same ",
-      "inference paradigm through different code bases (different AD ",
-      "framework, codegen, and numerical regime)."
-    ),
-    registered_in_adr = "0029"
-  )
   .register_pair_independence(
     pair = c("brms", "inla"),
     axes = c("algorithmic", "implementation"),

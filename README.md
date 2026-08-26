@@ -16,11 +16,11 @@ is evidence about the samplers, not about the model.
 
 > **Development release.** All exports are at the experimental
 > `lifecycle` stage and the API may change within the 0.x series. Not on CRAN.
-> **greta and gretaR are quarantined as fitting engines** -- the active
-> backends are brms and INLA. `backend = "greta"` / `"gretaR"` refuse with a
-> structured reason rather than fitting. See `NEWS.md` for the reshape and
-> `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the current
-> per-backend capability boundaries before relying on results.
+> **flexyBayes fits on two active engines: brms and INLA.** A third native
+> engine was withdrawn entirely in 0.9.3 (see `NEWS.md`); naming it, or any
+> other unrecognised backend, now raises an ordinary unknown-backend refusal.
+> See `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the
+> current per-backend capability boundaries before relying on results.
 
 ## Which entry point do I use?
 
@@ -36,23 +36,21 @@ universal entry that spans every backend.
 
 ## Which backend will I get?
 
-| Verb | `greta` | `inla` | `brms` (Stan) | `auto` |
-|---|:-:|:-:|:-:|:-:|
-| `fb()` / `flexybayes()` | refused (quarantined) | ✓ | ✓ | ✓ (INLA or brms via `lgm_gate()`) |
-| `fb_greta()` | refused (quarantined) | – | – | – |
-| `fb_inla()` | – | ✓ | – | – |
-| `fb_brms()` | – | – | ✓ | – |
+| Verb | `inla` | `brms` (Stan) | `auto` |
+|---|:-:|:-:|:-:|
+| `fb()` / `flexybayes()` | ✓ | ✓ | ✓ (INLA or brms via `lgm_gate()`) |
+| `fb_inla()` | ✓ | – | – |
+| `fb_brms()` | – | ✓ | – |
 
 The universal entry reaches any active backend: name one with
 `backend =`, or let `backend = "auto"` choose. Each `fb_<engine>()` pin
 fits exactly one engine and refuses a conflicting `backend`.
 `backend = "auto"` runs the LGM feasibility gate and routes to INLA on
-acceptance, otherwise to brms. There is no silent fallback to a
-quarantined engine, and a model neither can represent refuses with
-`auto_no_active_route` rather than fitting something else. Reach Stan
-explicitly with `fb_brms()` or `fb(..., backend = "brms")`.
-`backend = "greta"` / `fb_greta()` accept the request and then refuse
-with a structured `backend_quarantined` reason -- see *Backend support*
+acceptance, otherwise to brms. There is no silent fallback, and a model
+neither can represent refuses with `auto_no_active_route` rather than
+fitting something else. Reach Stan explicitly with `fb_brms()` or
+`fb(..., backend = "brms")`. Naming a withdrawn or otherwise
+unrecognised backend raises `unknown_backend` -- see *Backend support*
 below.
 
 ## Backend support
@@ -65,8 +63,8 @@ burden and in what they offer.
 |---|---|---|---|---|
 | INLA | No (own repository) | Moderate -- binary, no compiler | Approximate (nested Laplace) | Supported |
 | brms (Stan) | Yes | Heavy -- first-call Stan compile (~30--60 s) | MCMC (sampling error only) | Supported |
-| greta | No (greta-dev R-universe) | Heavy -- Python + TensorFlow stack | MCMC (sampling error only) | Quarantined -- refuses to fit |
-| gretaR | No (opt-in) | Heavy -- torch | MCMC (out-of-process NUTS) | Quarantined -- refuses to fit |
+
+A third native engine was withdrawn entirely in 0.9.3 -- see `NEWS.md`.
 
 All exports are at the **experimental** `lifecycle` stage. See
 `API_STABILITY.md` in the source repository for what that guarantees. The
@@ -83,8 +81,8 @@ gate and emit code by `tests/testthat/test-capability-matrix.R`. Editing it
 by hand fails that test. `fits` means the structure emits and a test
 exercises it -- it does not promise that every fit converges at small
 budgets, which is model-specific and always reported, so treat a high R-hat
-badge as a diagnostic rather than a result. greta and gretaR fit nothing in
-this release (see the callout above) and are therefore not columns.
+badge as a diagnostic rather than a result. Only the two active engines
+are columns; see the callout above.
 
 <!-- capability-matrix:begin -->
 | Model class | Spelling | INLA | brms | Notes |
@@ -92,7 +90,7 @@ this release (see the callout above) and are therefore not columns.
 | Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
 | Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms's own prior. INLA's likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
-| Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The INLA mapping named greta as one of its three verification arbitrators, so it stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
+| Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The three-arbitrator verification named a since-withdrawn engine as one arbitrator, so the INLA mapping stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent -- no local artefact lifts it. `auto` routes to brms. |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
 | Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
 | Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | refuses | fits | INLA collapses the finest strata, so it refuses rather than reporting a zero. brms emits `(1 \| a:b)`. |
@@ -149,12 +147,12 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 > per-engine reasons.
 
 **Breeder MET summaries.** `fb_met_summary()` (overall performance, stability,
-GxE BLUPs, factor loadings, environment genetic correlations) requires a
-**greta** factor-analytic (`fa(env, k):gen`) fit -- it is computed from the
-identified *realised* effects, which fit on greta. greta is quarantined, so
-no active backend currently produces this fit. On an INLA or brms fit it
-refuses with a pointer to the right path, and the INLA MET route gives
-variance components via `summary()` / `fb_structured_cov()`.
+GxE BLUPs, factor loadings, environment genetic correlations) was computed
+from a factor-analytic (`fa(env, k):gen`) fit's identified *realised*
+effects on the engine withdrawn in 0.9.3 (see `NEWS.md`); no active engine
+produces that fit shape, so the function now refuses unconditionally with a
+pointer to the right path. The INLA MET route gives variance components via
+`summary()` / `fb_structured_cov()`.
 
 ## Installation
 
@@ -171,10 +169,6 @@ install.packages("brms")
 # install.packages("remotes")
 remotes::install_github("AAGI-AUS/flexyBayes")
 ```
-
-greta is not part of the install instructions above: it is quarantined
-as a fitting engine (see *Backend support*), so installing it does not
-add fitting capability in this release.
 
 `flexyBayes` degrades gracefully when an optional engine is missing:
 each backend is detected at run time, and a model sent to an
@@ -342,8 +336,9 @@ fit$extras      # BLUPs, variance components, convergence diagnostics,
                 # generated code, parsed IR, run time, captured call
 ```
 
-There is no `fit$greta` slot: `backend = "greta"` refuses before a fit
-object exists (see *Backend support*).
+There is no third-engine slot on a fit object: naming a withdrawn or
+otherwise unrecognised `backend` refuses before a fit object exists (see
+*Backend support*).
 
 ## Supported ASReml syntax (reference)
 
@@ -404,8 +399,8 @@ Eleven vignettes ship with the package:
 Vignette 10 is the technical/internals reference, and the rest target a
 general audience. The numbering keeps gaps at 05 and 12--15, and the
 gaps record merges rather than missing pages. Vignettes 12--14 were
-folded into 11 when greta's quarantine collapsed several
-dispatch-internals topics into one. The structured-covariance vignette
+folded into 11 when the 0.9.3 engine withdrawal (see `NEWS.md`)
+collapsed several dispatch-internals topics into one. The structured-covariance vignette
 05 has been folded into 02 and the extending-backends vignette 15 into
 11, so one page now carries the whole formula surface and one page
 carries the whole dispatch-and-registry story. The retained numbers keep
@@ -454,13 +449,11 @@ per-family vignettes show clean reproducible checks.
 Continuous integration validates the INLA, brms, and engine-independent
 surface (the ASReml / brms parsers, the intermediate representation,
 `lgm_gate()`, the dispatch policy table, the refusal registry, the prior DSL,
-and the `triangulate()` metrics). greta and gretaR are quarantined as fitting
-engines (see *Backend support*), so the greta-specific tests skip cleanly on
-every run -- CI or local, greta installed or not -- via
-`skip_if_greta_backend_unusable()`, which checks the backend registry's
-lifecycle state rather than package availability. They stay on file to run
-again once greta is re-admitted (repair + conform, not a bare re-add -- see
-`NEWS.md`). Run the full suite locally with `devtools::test()`.
+and the `triangulate()` metrics). A third native engine was withdrawn
+entirely in 0.9.3 (see `NEWS.md`); its tests were deleted along with the
+engine rather than skipped, so the suite carries no dormant coverage for a
+capability the package no longer offers. Run the full suite locally with
+`devtools::test()`.
 
 ## Known limitations
 

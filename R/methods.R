@@ -56,9 +56,7 @@ print.flexybayes <- function(x, ...) {
   }
 
   # The component list is read off the object instead of being declared,
-  # so a fit only ever advertises a slot it actually carries. The former
-  # fixed block named `$greta` on every object printed through this
-  # method, including brms and INLA fits that have no such slot.
+  # so a fit only ever advertises a slot it actually carries.
   cat(strrep("-", 55), "\n")
   .print_fit_components(
     x,
@@ -66,7 +64,6 @@ print.flexybayes <- function(x, ...) {
       glm = "GLM-compatible (summary, emmeans, etc.)",
       brms = "live brmsfit (loo, posterior_predict, summary)",
       inla = "raw INLA fit (use INLA's summary, plot, etc.)",
-      greta = "native greta (draws, model, calculate)",
       extras = "diagnostics, BLUPs, variance components"
     ),
     width = 8L
@@ -313,16 +310,15 @@ print.flexybayes_aggregated <- function(x, ...) {
   if (!is.null(am$prior_parametrization)) {
     cat("  priors:    ", .agg_prior_label(am$prior_parametrization), "\n")
   }
-  # An aggregated fit carries `$inla` or `$greta` depending on the engine
-  # that ran it, so the component list is read off the object rather than
-  # assuming the INLA path.
+  # The aggregated path is INLA-only, so the component list carries the
+  # `$inla` slot; still read off the object rather than assumed, in case a
+  # future backend extends the aggregated path.
   cat(strrep("-", 60), "\n")
   .print_fit_components(
     x,
     c(
       glm = "per-row reconstructed fitted values + coef shim",
       inla = "raw aggregated INLA fit (use INLA's summary etc.)",
-      greta = "raw aggregated greta draws (coda mcmc.list)",
       extras = "summary, aggregation_meta, backend_decision"
     ),
     width = 10L
@@ -469,118 +465,36 @@ vcov.flexybayes <- function(object, ...) {
 #' Credible intervals for the fixed effects of a flexyBayes fit
 #'
 #' Returns posterior quantile-based credible intervals, not frequentist
-#' confidence intervals: the bounds are empirical quantiles of the
+#' confidence intervals: the bounds would be empirical quantiles of the
 #' fixed-effect posterior draws the fit carries.
 #'
-#' This method reads the draws slot written by the greta-shaped emits
-#' (`fit$greta$draws`). A fit from an engine that stores its posterior in
-#' another shape reaches its own method -- [confint.flexybayes_inla()] for
-#' INLA, [confint.flexybayes_brms()] for brms. An object that carries
-#' neither is refused by name rather than returned empty, because an empty
-#' interval matrix reads as "no fixed effects" and not as "this fit cannot
-#' answer the question".
+#' No active engine stores its posterior in the shape this bare fallback
+#' method reads. A fit from an active engine reaches its own method --
+#' [confint.flexybayes_inla()] for INLA, [confint.flexybayes_brms()] for
+#' brms -- so this method always refuses by name rather than returning an
+#' empty interval matrix, which would read as "no fixed effects" rather
+#' than "this fit cannot answer the question".
 #'
-#' @param object A `flexybayes` fit carrying a `$greta$draws` posterior
-#'   slot.
+#' @param object A flexybayes fit.
 #' @param parm Character vector of parameter names to return, or `NULL`
 #'   (the default) for every fixed effect.
 #' @param level Credible level for the interval, as a proportion. The
 #'   default `0.95` returns the 2.5th and 97.5th posterior percentiles.
 #' @param ... Ignored, present for compatibility with the generic.
-#' @returns A matrix with one row per fixed effect and two columns holding
-#'   the lower and upper credible bounds, named for the percentiles used.
+#' @returns Does not return: raises the classed `fit_lacks_posterior_draws`
+#'   refusal.
 #' @export
 confint.flexybayes <- function(object, parm = NULL, level = 0.95, ...) {
-  draws <- object$greta$draws
-  if (is.null(draws)) {
-    stop(.fb_refusal_condition(
-      reason_code = "fit_lacks_posterior_draws",
-      message = paste0(
-        "confint() cannot form credible intervals for this fit: it carries ",
-        "no posterior-draw slot (`$greta$draws`). The fit's class is <",
-        paste(class(object), collapse = ", "), ">. Fixed-effect intervals ",
-        "are available from summary() on every active engine, and an INLA ",
-        "fit answers confint() from its own marginals."
-      )
-    ))
-  }
-  all_draws <- do.call(rbind, lapply(draws, as.matrix))
-
-  # Get fixed effect column names
-  beta_names <- names(coef(object))
-  if (length(beta_names) == 0) {
-    return(matrix(nrow = 0, ncol = 2))
-  }
-
-  # Use the raw draw columns
-  col_names <- colnames(all_draws)
-
-  # Find the draws columns for fixed effects
-  fixed_info <- object$extras$parse_info$fixed
-  fixed_draw_cols <- .get_fixed_draw_columns(fixed_info, col_names)
-
-  if (length(fixed_draw_cols) == 0) {
-    return(matrix(nrow = 0, ncol = 2))
-  }
-
-  alpha <- 1 - level
-  probs <- c(alpha / 2, 1 - alpha / 2)
-
-  avail <- fixed_draw_cols[fixed_draw_cols %in% col_names]
-  ci_mat <- t(apply(
-    all_draws[, avail, drop = FALSE],
-    2,
-    quantile,
-    probs = probs
+  stop(.fb_refusal_condition(
+    reason_code = "fit_lacks_posterior_draws",
+    message = paste0(
+      "confint() cannot form credible intervals for this fit: it carries ",
+      "no posterior-draw slot. The fit's class is <",
+      paste(class(object), collapse = ", "), ">. Fixed-effect intervals ",
+      "are available from summary() on every active engine, and an INLA ",
+      "or brms fit answers confint() from its own method."
+    )
   ))
-  rownames(ci_mat) <- beta_names[seq_along(avail)]
-  colnames(ci_mat) <- paste0(round(probs * 100, 1), "%")
-
-  if (!is.null(parm)) {
-    ci_mat <- ci_mat[parm, , drop = FALSE]
-  }
-
-  ci_mat
-}
-
-# Helper: get draw column names for fixed effects
-.get_fixed_draw_columns <- function(fixed_info, col_names) {
-  result <- character(0)
-  if (fixed_info$intercept && "mu_atg" %in% col_names) {
-    result <- c(result, "mu_atg")
-  }
-  for (term in fixed_info$terms) {
-    if (term$type == "factor") {
-      prefix <- if (fixed_info$intercept) {
-        paste0("tau_", term$var)
-      } else {
-        paste0("alpha_", term$var)
-      }
-      matches <- grep(paste0("^", prefix), col_names, value = TRUE)
-      result <- c(result, matches)
-    } else if (term$type == "continuous") {
-      nm <- paste0("beta_", term$var)
-      if (nm %in% col_names) result <- c(result, nm)
-    } else if (term$type == "factor_interaction") {
-      tag <- paste(term$vars, collapse = "_x_")
-      prefix <- if (fixed_info$intercept) {
-        paste0("tau_", tag)
-      } else {
-        paste0("alpha_", tag)
-      }
-      matches <- grep(paste0("^", prefix), col_names, value = TRUE)
-      result <- c(result, matches)
-    } else if (term$type %in% c("interaction", "expression")) {
-      tag <- if (term$type == "interaction") {
-        paste0(term$vars[1], "_x_", term$vars[2])
-      } else {
-        gsub("[^A-Za-z0-9_]", "_", term$label)
-      }
-      nm <- paste0("beta_", tag)
-      if (nm %in% col_names) result <- c(result, nm)
-    }
-  }
-  result
 }
 
 #' Extract fitted values
@@ -607,393 +521,6 @@ residuals.flexybayes <- function(object, ...) {
   object$glm$residuals
 }
 
-#' Predict from a flexybayes model
-#'
-#' @param object A fitted `flexybayes` object of any backend.
-#' @param newdata Optional new data frame for prediction. If NULL, returns
-#'   fitted values from the original data.
-#' @param type `"link"` for linear predictor, `"response"` for response scale.
-#' @param se.fit A single logical. `TRUE` returns standard errors
-#'   alongside the predictions.
-#' @param ... Ignored. Present for compatibility with the generic.
-#' @param chunk_size Optional integer. When supplied, and when
-#'   `newdata` has more rows than `chunk_size`, prediction iterates
-#'   over chunks of this size and concatenates the results. Default
-#'   `NULL` preserves the single-pass behaviour. Per-chunk prediction
-#'   uses the same factor-level dictionary so `chunk_size` does not
-#'   change the numerical output -- only the wall-time and peak
-#'   memory profile. A typical setting at large `newdata` is
-#'   `chunk_size = 10000L`.
-#' @param allow_new_levels One of `"population"` (default), `"sample"`,
-#'   or `"refuse"`. Policy for handling factor levels in `newdata`
-#'   that are not in the fit-time dictionary. `"population"` sets
-#'   unknown-level rows to NA on the
-#'   affected column and emits a warning naming the count; downstream
-#'   prediction returns NA for these rows. `"refuse"` raises a
-#'   structured stop on the first unknown level. `"sample"` (active
-#'   since v0.3.5) layers a fresh `Normal(0, tau_<group>)`
-#'   random-effect realisation onto each unknown row per posterior
-#'   draw -- caller's `set.seed()` controls reproducibility. The
-#'   in-memory return reports the posterior-mean prediction
-#'   (sampled-RE contribution averages toward zero across draws);
-#'   the file-backed return (`output_file = ...`) captures the
-#'   proper per-row posterior interval reflecting sampled-RE
-#'   uncertainty. Only consulted when the fit carries an
-#'   `extras$fb_dataset` slot (fits produced under v0.3.4+); legacy
-#'   fits skip dictionary resolution entirely.
-#' @param output_file Optional character path. When supplied,
-#'   prediction is written to disk under the format resolved by
-#'   `format`. The file is a
-#'   tabular structure with columns `point`, `lower`, `upper`
-#'   (95\% posterior credible bounds), optional `se.fit`, plus the
-#'   columns of `newdata`. Refuses if `output_file` already exists
-#'   (no silent overwrite). Returns the path invisibly. Requires
-#'   a fit with posterior draws on `$greta$draws` (greta-backend
-#'   fits including `fb_brms(..., backend = "greta")`); INLA fits
-#'   do not currently expose per-draw access and route to a
-#'   structured refusal. Default `NULL` (in-memory return).
-#' @param format One of `"auto"` (default), `"csv"`, `"rds"`, `"fst"`.
-#'   Only consulted when `output_file` is supplied. `"auto"`
-#'   resolves to: `"csv"` when `interop = TRUE`; `"fst"` when
-#'   `nrow(newdata) >= 1e6` and `fst` is installed; `"rds"`
-#'   otherwise. `"fst"` requested without `fst` installed raises a
-#'   structured refusal naming the install command. The fst path
-#'   is substantially faster than rds at large N.
-#' @param interop Logical. When `TRUE`, the format-resolution rule
-#'   under `format = "auto"` prefers `"csv"` (universally readable)
-#'   over rds / fst (R-only / fst-only). Useful for handing the
-#'   prediction grid to a non-R consumer. Default `FALSE`. Only
-#'   consulted when `output_file` is supplied and `format = "auto"`.
-#' @param classify The factors to break a marginal-means table down by,
-#'   as ASReml spells it: a character value (`"Variety"`,
-#'   `"Variety:env"`) or a one-sided formula (`~ Variety`). `NULL` (the
-#'   default) leaves every other argument doing exactly what it did
-#'   before. See Details for how the two prediction paths differ.
-#' @param level Credible level for the classify table's interval, as a
-#'   proportion. Default `0.95`. Ignored when `classify` is `NULL`.
-#' @return If `classify` is supplied: a data frame of class
-#'   `fb_predict_classify` with the classify factors plus `estimate`,
-#'   `std.error`, `conf.low` and `conf.high`. If `output_file` is
-#'   supplied: invisibly returns the path that was written to.
-#'   Otherwise: if `se.fit = FALSE`, a numeric vector. If
-#'   `se.fit = TRUE`, a list with `fit` and `se.fit`.
-#'
-#' @details
-#' There are two prediction paths and they answer different questions.
-#'
-#' `newdata` predicts the rows the caller hands over, which is where an
-#' untested genotype belongs:
-#' `predict(fit, newdata = new_geno, allow_new_levels = "sample")`.
-#'
-#' `classify` averages the fitted model over the levels it was fitted to
-#' and returns the means table -- ASReml's `predict(..., classify = )`.
-#' It builds that table through \pkg{emmeans}, so `newdata` has nothing
-#' to contribute and is ignored with a warning if both are supplied.
-#' There is no `sed` argument and no pairwise block: the table carries
-#' marginal means and their credible intervals, and the print says so.
-#'
-#' On an INLA fit the standard errors and bounds are computed from a
-#' Monte-Carlo estimate of the joint fixed-effect posterior covariance
-#' (see [vcov.flexybayes_inla()]), so they move a little between calls
-#' on the same fit. The point estimates do not.
-#' @export
-predict.flexybayes <- function(
-  object,
-  newdata = NULL,
-  type = c("response", "link"),
-  se.fit = FALSE,
-  chunk_size = NULL,
-  allow_new_levels = c("population", "sample", "refuse"),
-  output_file = NULL,
-  format = c("auto", "csv", "rds", "fst"),
-  interop = FALSE,
-  classify = NULL,
-  level = 0.95,
-  ...
-) {
-  type <- match.arg(type)
-  allow_new_levels <- match.arg(allow_new_levels)
-  format <- match.arg(format)
-
-  # The classify table is a different question from the newdata one and
-  # routes before any of the newdata machinery.
-  if (!is.null(classify)) {
-    .fb_classify_newdata_note(newdata)
-    return(.fb_predict_classify(object, classify, level))
-  }
-
-  if (is.null(newdata)) {
-    if (!is.null(output_file)) {
-      stop(
-        "predict.flexybayes(): `output_file` is only supported ",
-        "with `newdata`. For fitted-value persistence, write the ",
-        "fit's $glm$fitted.values to disk directly.",
-        call. = FALSE
-      )
-    }
-    if (type == "link") {
-      pred <- object$glm$linear.predictors
-    } else {
-      pred <- object$glm$fitted.values
-    }
-    if (se.fit) {
-      return(list(fit = pred, se.fit = rep(NA_real_, length(pred))))
-    }
-    return(pred)
-  }
-
-  # Dictionary-backed factor handling. When the fit carries a
-  # persisted <fb_dataset> descriptor (v0.3.4+ fits), resolve factor
-  # levels in newdata against the fit-time codes per allow_new_levels
-  # policy. Legacy fits (no extras$fb_dataset slot) skip this step and
-  # fall through to the v0.3.3 behaviour.
-  # "sample" was reserved at v0.3.4 (deferred-stop); v0.3.5 activates
-  # the branch -- the resolver attaches `attr(newdata,
-  # "sample_re_summary")` so downstream paths can layer a sampled
-  # RE realisation onto each unknown row per draw.
-  fb_dataset_meta <- object$extras$fb_dataset
-  if (!is.null(fb_dataset_meta)) {
-    newdata <- .predict_resolve_factors(
-      newdata,
-      fb_dataset_meta,
-      allow_new_levels
-    )
-  }
-
-  # File-backed output path. Routes before the chunked-iteration
-  # branch because .predict_to_file()
-  # handles its own chunking with a per-chunk per-draw posterior
-  # interval computation, accumulates point/lower/upper vectors
-  # across chunks, and writes the result via .predict_write_file()
-  # under the format resolved from `format` / `interop` /
-  # `nrow(newdata)` / fst availability. Returns invisible(path).
-  if (!is.null(output_file)) {
-    return(.predict_to_file(
-      object = object,
-      newdata = newdata,
-      output_file = output_file,
-      format = format,
-      interop = interop,
-      type = type,
-      se.fit = se.fit,
-      chunk_size = chunk_size,
-      allow_new_levels = allow_new_levels
-    ))
-  }
-
-  # In-memory "sample" path: when the resolver tagged unknown rows
-  # via `sample_re_summary`, route through .predict_in_memory_sample()
-  # which uses per-draw computation to layer sampled-RE
-  # contributions onto unknown rows. Single-pass; sample mode does
-  # not chunk in the in-memory return path (sample + chunked
-  # iteration would re-sample per chunk and break bitwise
-  # equivalence; chunked sample is only supported via
-  # `output_file`).
-  if (
-    identical(allow_new_levels, "sample") &&
-      !is.null(attr(newdata, "sample_re_summary"))
-  ) {
-    return(.predict_in_memory_sample(
-      object = object,
-      newdata = newdata,
-      type = type,
-      se.fit = se.fit
-    ))
-  }
-
-  # Chunked iteration. Routes through the chunk iterator when
-  # chunk_size is supplied AND the row count exceeds
-  # it. Chunked path recurses into predict.flexybayes(chunk_size =
-  # NULL) per chunk so the chunked branch only fires once at the
-  # outer call. Dictionary resolution above has already happened on
-  # the full newdata; per-chunk recursion passes through unchanged
-  # factor columns. (The recursive call would re-resolve harmlessly
-  # since known-level factor columns round-trip as identity, but the
-  # outer-level resolution gives a single warning + single attribute
-  # rather than n_chunks worth.)
-  if (
-    !is.null(chunk_size) &&
-      is.numeric(chunk_size) &&
-      length(chunk_size) == 1L &&
-      chunk_size > 0L &&
-      nrow(newdata) > chunk_size
-  ) {
-    return(.predict_chunked_iterate(
-      object,
-      newdata,
-      chunk_size = as.integer(chunk_size),
-      type = type,
-      se.fit = se.fit,
-      allow_new_levels = allow_new_levels,
-      ...
-    ))
-  }
-
-  # Smooth-aware prediction on newdata. The smooth terms live on the
-  # IR's random_terms slot (asreml-style fits put s() in `random`, not
-  # in the fixed formula). The truth source is the IR's
-  # parse_info$random list plus the parse_info$smooths slot populated
-  # at codegen time. If the IR carries smooth_mgcv random terms but
-  # the smooths slot is empty/missing (legacy fits saved before smooth
-  # support shipped), refuse cleanly. If the smooths slot is
-  # populated, use mgcv::PredictMat() per smooth and column-bind to
-  # the linear-only design matrix.
-  fixed_formula <- object$glm$formula
-  random_terms <- object$extras$parse_info$random
-  smooths_slot <- object$extras$parse_info$smooths
-  has_smooth_in_ir <- !is.null(random_terms) &&
-    any(vapply(
-      random_terms,
-      function(t) !is.null(t$type) && t$type == "smooth_mgcv",
-      logical(1)
-    ))
-
-  if (
-    has_smooth_in_ir &&
-      (is.null(smooths_slot) || length(smooths_slot) == 0L)
-  ) {
-    stop(
-      "predict.flexybayes(): the fit was produced before smooth-",
-      "basis retention shipped (or via fb_greta() where smooth ",
-      "basis is user-managed). Refusing to use stats::model.matrix() ",
-      "on smooth terms -- it would produce silently wrong ",
-      "predictions on newdata. Re-fit via flexybayes() / fb_brms() ",
-      "on the current package version to enable predict() with ",
-      "newdata.",
-      call. = FALSE
-    )
-  }
-
-  tryCatch(
-    {
-      if (has_smooth_in_ir && length(smooths_slot) > 0L) {
-        # Route the smooth in-memory path through the shared kernel
-        # so it matches the file-backed (.predict_to_file) and
-        # sampled-RE
-        # (.predict_in_memory_sample) paths byte-for-byte. The kernel
-        # builds the linear-only design matrix via .linear_formula(),
-        # multiplies the fixed-effect per-draw beta block, layers the
-        # per-smooth Bnew %*% (raw * sigma) contribution per draw, and
-        # returns the n_rows x n_draws_eff linear predictor matrix.
-        # Posterior aggregation (mean point + Monte Carlo se.fit) is
-        # applied here so the kernel stays contract-neutral.
-        per_draw_lin <- .predict_linear_draws(
-          object = object,
-          newdata = newdata,
-          n_draws_cap = 4000L,
-          sampled_re = NULL,
-          include = c("fixed", "smooth")
-        )
-        fam_link <- object$extras$parse_info$family
-        per_draw <- if (identical(type, "response")) {
-          .apply_link_inverse(per_draw_lin, fam_link$link)
-        } else {
-          per_draw_lin
-        }
-        pred <- rowMeans(per_draw)
-        if (se.fit) {
-          se <- apply(per_draw, 1L, stats::sd)
-          return(list(fit = pred, se.fit = se))
-        }
-        return(pred)
-      }
-
-      # No-smooth path. Preserves the coef()-based posterior-mean
-      # computation so INLA fits (which do not currently expose
-      # per-draw access on $greta$draws) continue to predict() on
-      # newdata. The file-backed and sampled-RE paths remain
-      # greta-only; the kernel refuses cleanly there.
-      mm <- stats::model.matrix(
-        stats::delete.response(stats::terms(fixed_formula)),
-        data = newdata
-      )
-      beta <- coef(object)
-
-      common <- intersect(colnames(mm), names(beta))
-      if (length(common) == 0) {
-        warning("No matching coefficients for newdata prediction.")
-        pred <- rep(NA_real_, nrow(newdata))
-      } else {
-        pred <- as.numeric(mm[, common, drop = FALSE] %*% beta[common])
-      }
-
-      if (type == "response") {
-        fam_link <- object$extras$parse_info$family
-        pred <- switch(
-          fam_link$link,
-          "identity" = pred,
-          "log" = exp(pred),
-          "logit" = 1 / (1 + exp(-pred)),
-          "probit" = pnorm(pred),
-          pred
-        )
-      }
-
-      if (se.fit) {
-        V <- vcov(object)
-        common <- intersect(colnames(mm), names(beta))
-        if (length(common) > 0 && nrow(V) > 0) {
-          se <- sqrt(rowSums(
-            (mm[, common, drop = FALSE] %*% V[common, common]) *
-              mm[, common, drop = FALSE]
-          ))
-        } else {
-          se <- rep(NA_real_, nrow(newdata))
-        }
-        return(list(fit = pred, se.fit = se))
-      }
-
-      pred
-    },
-    error = function(e) {
-      # The legacy-fit correctness refusal above is a deliberate
-      # stop() with a structured message; re-raise it rather than
-      # swallow into a warning + NA vector.
-      msg <- conditionMessage(e)
-      if (grepl("smooth-basis retention", msg, fixed = TRUE)) {
-        stop(msg, call. = FALSE)
-      }
-      warning("Prediction with newdata failed: ", msg)
-      rep(NA_real_, nrow(newdata))
-    }
-  )
-}
-
-# Internal helper: TRUE when the rhs of `f` contains at least one
-# s() smooth specification. Used by predict.flexybayes() to drive
-# the smooth-aware branch + the legacy-fit refusal.
-.formula_has_smooth <- function(f) {
-  if (!inherits(f, "formula")) {
-    return(FALSE)
-  }
-  rhs <- f[[length(f)]]
-  any(grepl("\\bs\\(", deparse(rhs)))
-}
-
-# Internal helper: strip s() terms from the rhs of `f` and
-# return the linear-only formula. Preserves the lhs, the intercept
-# convention, and any non-s() terms (factor / continuous /
-# interaction / I() expressions). Used by predict.flexybayes() to
-# build the linear-only design matrix before column-binding the
-# per-smooth basis from mgcv::PredictMat().
-.linear_formula <- function(f) {
-  if (!inherits(f, "formula")) {
-    return(f)
-  }
-  tt <- stats::terms(f)
-  labs <- attr(tt, "term.labels")
-  keep <- !grepl("^s\\(", labs)
-  # Preserve intercept presence (attr(tt, "intercept") is 0 or 1).
-  intercept_str <- if (isTRUE(attr(tt, "intercept") == 1)) "1" else "0"
-  rhs_terms <- c(intercept_str, labs[keep])
-  rhs <- paste(rhs_terms, collapse = " + ")
-  lhs <- if (length(f) == 3L) deparse(f[[2]]) else NULL
-  stats::as.formula(
-    if (!is.null(lhs)) paste(lhs, "~", rhs) else paste("~", rhs),
-    env = environment(f)
-  )
-}
-
 #' Plug-in conditional log-likelihood of a flexyBayes fit
 #'
 #' Evaluates the conditional log-likelihood at the posterior-mean fitted
@@ -1004,16 +531,16 @@ predict.flexybayes <- function(
 #' The method computes what the object carries and refuses by name when it
 #' carries too little. Three requirements are checked before any arithmetic
 #' runs: the response vector in `$glm$y`, the fitted values from
-#' [fitted()], and a recorded family. A Gaussian fit additionally sharpens
-#' its residual scale from the posterior draws when they are present, and
-#' otherwise falls back to the residual root-mean-square. Families outside
-#' the Gaussian, binomial and Poisson set have no plug-in form here and are
-#' refused rather than reported as `NA`, because a silent `NA` propagates
-#' into `anova()` and `AIC()` as though the comparison had been made.
+#' [fitted()], and a recorded family. A Gaussian fit uses the residual
+#' root-mean-square as its plug-in scale. Families outside the Gaussian,
+#' binomial and Poisson set have no plug-in form here and are refused
+#' rather than reported as `NA`, because a silent `NA` propagates into
+#' `anova()` and `AIC()` as though the comparison had been made.
 #'
-#' INLA fits reach [logLik.flexybayes_inla()] instead, which states that
-#' INLA reports a marginal log-likelihood and returns `NA` with that
-#' message.
+#' brms fits reach [logLik.flexybayes_brms()] instead (brms's own
+#' `log_lik()`), and INLA fits reach [logLik.flexybayes_inla()], which
+#' states that INLA reports a marginal log-likelihood and returns `NA`
+#' with that message.
 #'
 #' @param object A `flexybayes` fit carrying a response vector, fitted
 #'   values, and a recorded response family.
@@ -1042,22 +569,8 @@ logLik.flexybayes <- function(object, ...) {
 
   # ---- Plug-in evaluation, one branch per supported family -------------
   if (identical(fam_link$family, "gaussian")) {
-    # The posterior draws sharpen the residual scale where they exist. A
-    # fit without them (an engine storing its posterior in another shape)
-    # still has a well-defined plug-in scale from the residuals, so this
-    # is a fallback rather than a refusal.
-    sigma_e <- NA_real_
-    draws <- object$greta$draws
-    if (!is.null(draws)) {
-      all_draws <- do.call(rbind, lapply(draws, as.matrix))
-      sigma_cols <- grep("^sigma_e_atg", colnames(all_draws), value = TRUE)
-      if (length(sigma_cols) > 0L) {
-        sigma_e <- mean(all_draws[, sigma_cols[1L]])
-      }
-    }
-    if (!is.finite(sigma_e)) {
-      sigma_e <- sqrt(mean((y - fitted_values)^2))
-    }
+    # The residual root-mean-square is the plug-in scale.
+    sigma_e <- sqrt(mean((y - fitted_values)^2))
     ll <- sum(stats::dnorm(y, mean = fitted_values, sd = sigma_e, log = TRUE))
   } else if (fam_link$family %in% c("binomial", "binary")) {
     p <- pmax(pmin(fitted_values, 1 - 1e-10), 1e-10)
@@ -1168,11 +681,11 @@ formula.flexybayes <- function(x, ...) {
 #' of it: this is the basis the fixed-effect coefficients are expressed in.
 #'
 #' The formula and data are resolved from whichever slots the object holds.
-#' The greta-shaped and brms-shaped emits keep both under `$glm`; an INLA
-#' fit keeps its data at `$data` and recovers its fixed-effect formula
-#' through [formula.flexybayes_inla()]. An object supplying neither is
-#' refused by name, since `model.matrix()` on a `NULL` formula silently
-#' returns the intercept-only matrix of the calling frame's data.
+#' The brms-shaped emit keeps both under `$glm`; an INLA fit keeps its data
+#' at `$data` and recovers its fixed-effect formula through
+#' [formula.flexybayes_inla()]. An object supplying neither is refused by
+#' name, since `model.matrix()` on a `NULL` formula silently returns the
+#' intercept-only matrix of the calling frame's data.
 #'
 #' @param object A `flexybayes` fit carrying a fixed-effect formula and the
 #'   data it was fitted to.
@@ -1431,9 +944,7 @@ update.flexybayes <- function(object, ...) {
   #
   # Dropping the scalars alongside the object is safe on both live
   # engines. INLA never reads `prior_fixed_sd`, and brms reads it only on
-  # the legacy bridge, which by construction is not this branch. The
-  # greta variants of the aggregated emits do read it, and greta is
-  # quarantined.
+  # the legacy bridge, which by construction is not this branch.
   #
   # A caller who writes a prior of their own outranks the record. Both
   # spellings are honoured, and only one of them is passed: re-issuing
@@ -1546,220 +1057,3 @@ anova.flexybayes <- function(object, ...) {
   invisible(result)
 }
 
-
-# ---------------------------------------------------------------- #
-# flexybayes_direct_greta -- subclass method overrides              #
-# ---------------------------------------------------------------- #
-# fb_greta() returns objects of class
-#   c("flexybayes_direct_greta", "flexybayes", "list")
-# (subclass first so S3 dispatch finds the direct-greta overrides
-# before the parent flexybayes methods). Three methods dispatch to
-# greta-direct-aware overrides; everything else (summary, vcov,
-# confint, prior_summary, posterior_samples) inherits verbatim from
-# the parent "flexybayes" class.
-
-#' Print a flexybayes object built via fb_greta() (direct greta entry)
-#'
-#' Distinguishes the direct-greta entry from the asreml-style /
-#' brms-style formula entries by listing target parameters and the
-#' inferred likelihood family.
-#'
-#' @param x A `flexybayes_direct_greta` object.
-#' @param ... Additional arguments (ignored).
-#' @return Invisibly returns `x`.
-#' @export
-print.flexybayes_direct_greta <- function(x, ...) {
-  ci <- x$extras$call_info
-  mi <- x$extras$model_info
-  cm <- mi$canonical_map
-
-  cat("Bayesian model  [flexyBayes / direct-greta entry]\n")
-  cat(strrep("-", 55), "\n")
-  cat("  Entry  : fb_greta() (user-built greta model)\n")
-  cat("  Family :", mi$family, "(likelihood:", mi$likelihood, ")\n")
-  cat(
-    "  MCMC   :",
-    ci$chains,
-    "chain(s) x",
-    ci$n_samples,
-    "samples",
-    "(warmup =",
-    ci$warmup,
-    ") --",
-    round(x$extras$run_time, 1),
-    "sec\n"
-  )
-  cat(
-    "  Params :",
-    mi$n_params,
-    "monitored",
-    "(",
-    length(cm),
-    "target greta_arrays)\n"
-  )
-
-  if (length(cm) > 0L) {
-    cat("  Targets:", paste(names(cm), collapse = ", "), "\n")
-    has_renames <- any(names(cm) != unname(cm))
-    if (has_renames) {
-      cat("  Canonical map:\n")
-      for (i in seq_along(cm)) {
-        if (names(cm)[i] != cm[i]) {
-          cat("    ", names(cm)[i], " -> ", cm[i], "\n", sep = "")
-        }
-      }
-    }
-  }
-
-  if (!is.null(x$extras$convergence$gelman)) {
-    rhat <- x$extras$convergence$gelman$psrf[, "Point est."]
-    max_rhat <- max(rhat, na.rm = TRUE)
-    flag <- if (max_rhat < 1.05) {
-      " [OK]"
-    } else if (max_rhat < 1.10) {
-      " [borderline]"
-    } else {
-      " [!]"
-    }
-    cat("  Max Rhat:", round(max_rhat, 3), flag, "\n")
-  }
-  min_eff <- if (!is.null(x$extras$convergence$n_eff)) {
-    min(x$extras$convergence$n_eff, na.rm = TRUE)
-  } else {
-    NA
-  }
-  if (!is.na(min_eff)) {
-    cat("  Min ESS:", round(min_eff, 0), "\n")
-  }
-
-  cat(strrep("-", 55), "\n")
-  cat(
-    "  $glm    -- minimal GLM-compatible shim ",
-    "(posterior means of target params)\n",
-    sep = ""
-  )
-  cat("  $greta  -- native greta (model, draws, greta_arrays)\n")
-  cat("  $extras -- diagnostics, canonical_map, backend_decision\n")
-
-  invisible(x)
-}
-
-#' Extract canonical-named posterior means from an fb_greta() fit
-#'
-#' Returns the posterior means of the target greta_arrays under
-#' their canonical names. Differs from `coef.flexybayes()` only in
-#' the source of the names (canonical map rather than fixed-effect
-#' formula terms).
-#'
-#' @param object A `flexybayes_direct_greta` object.
-#' @param ... Additional arguments (ignored).
-#' @return Named numeric vector of posterior mean target parameters.
-#' @export
-coef.flexybayes_direct_greta <- function(object, ...) {
-  # The parent class stores posterior means on object$glm$coefficients
-  # already keyed by canonical names (renamed at fit time in
-  # fb_greta()). Return that verbatim.
-  object$glm$coefficients
-}
-
-#' Predict from a flexybayes_direct_greta fit
-#'
-#' Direct-greta fits do not encode a Wilkinson-Rogers formula on the
-#' IR, so `predict()` cannot mechanically apply the model matrix to
-#' `newdata`. The user must supply an explicit predictor function
-#' `f(theta, newdata)` mapping a length-`p` named parameter vector
-#' and a data frame to a length-`nrow(newdata)` vector of predicted
-#' values. Posterior-mean prediction is computed by applying `f()`
-#' to each posterior draw and averaging.
-#'
-#' @param object A `flexybayes_direct_greta` object.
-#' @param newdata A data frame.
-#' @param predictor A function `function(theta, newdata) -> numeric`
-#'   where `theta` is a named vector of canonical-named target
-#'   parameters and `newdata` is the data frame passed in.
-#' @param type Character; `"response"` (default; on the response
-#'   scale) or `"link"` (on the linear-predictor scale). Currently
-#'   identity link only; non-Gaussian families queued for v0.3.
-#' @param n_draws Integer; number of posterior draws to use (default
-#'   500). The predictor function is applied to each draw and the
-#'   mean is returned.
-#' @param ... Additional arguments (ignored).
-#' @return Numeric vector of length `nrow(newdata)`.
-#' @export
-predict.flexybayes_direct_greta <- function(
-  object,
-  newdata,
-  predictor,
-  type = c("response", "link"),
-  n_draws = 500L,
-  ...
-) {
-  type <- match.arg(type)
-  if (missing(newdata) || is.null(newdata)) {
-    stop(
-      "`newdata` must be supplied to predict() on an fb_greta() ",
-      "fit (the IR does not encode a Wilkinson-Rogers formula ",
-      "that predict() can mechanically apply).",
-      call. = FALSE
-    )
-  }
-  if (missing(predictor) || !is.function(predictor)) {
-    stop(
-      "`predictor` must be a function `function(theta, newdata) ",
-      "-> numeric` mapping a named parameter vector and newdata to ",
-      "a vector of predictions. See ?predict.flexybayes_direct_greta ",
-      "for the contract.",
-      call. = FALSE
-    )
-  }
-
-  draws <- object$greta$draws
-  all_draws <- do.call(rbind, lapply(draws, as.matrix))
-
-  # Apply the canonical-name rename to the draw matrix so the
-  # predictor sees the canonical names (consistent with coef()).
-  cm <- object$extras$model_info$canonical_map
-  greta_names <- names(cm)
-  canon <- unname(cm)
-  for (i in seq_along(greta_names)) {
-    if (identical(greta_names[i], canon[i])) {
-      next
-    }
-    pat <- paste0("^", greta_names[i], "(\\[|$)")
-    repl <- paste0(canon[i], "\\1")
-    colnames(all_draws) <- sub(pat, repl, colnames(all_draws))
-  }
-
-  n_total <- nrow(all_draws)
-  if (n_draws >= n_total) {
-    idx <- seq_len(n_total)
-  } else {
-    idx <- sort(sample.int(n_total, n_draws, replace = FALSE))
-  }
-
-  preds_mat <- vapply(
-    idx,
-    function(k) {
-      theta <- setNames(as.numeric(all_draws[k, ]), colnames(all_draws))
-      out <- predictor(theta, newdata)
-      if (!is.numeric(out) || length(out) != nrow(newdata)) {
-        stop(
-          "`predictor(theta, newdata)` must return a numeric vector ",
-          "of length nrow(newdata) = ",
-          nrow(newdata),
-          "; got length ",
-          length(out),
-          ".",
-          call. = FALSE
-        )
-      }
-      out
-    },
-    numeric(nrow(newdata))
-  )
-
-  if (is.null(dim(preds_mat))) {
-    preds_mat <- matrix(preds_mat, nrow = 1L)
-  }
-  rowMeans(preds_mat)
-}

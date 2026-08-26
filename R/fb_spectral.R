@@ -24,8 +24,8 @@
 # correctness over magic; consumers hold the returned object (e.g. on
 # `fit$extras$spectral`).
 #
-# This file is engine-agnostic base R + `Matrix`: no greta / INLA /
-# brms dependency, so it is unit-testable to exact numerical tolerance
+# This file is engine-agnostic base R + `Matrix`: no INLA / brms
+# dependency, so it is unit-testable to exact numerical tolerance
 # without a backend. The user-facing fit routes that consume it
 # (vm() scaling, fb_gwas()) raise the typed structured-covariance
 # refusals; this internal primitive validates its own arguments with

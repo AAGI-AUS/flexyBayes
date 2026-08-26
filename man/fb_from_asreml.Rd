@@ -80,10 +80,9 @@ class(ir)
 }
 \seealso{
 \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal fitting entry;
-\code{\link[=fb_from_brms]{fb_from_brms()}} and \code{\link[=fb_from_greta]{fb_from_greta()}} for the other ingest dialects.
+\code{\link[=fb_from_brms]{fb_from_brms()}} for the other ingest dialect.
 
 Other flexyBayes ingest adapters: 
-\code{\link{fb_from_brms}()},
-\code{\link{fb_from_greta}()}
+\code{\link{fb_from_brms}()}
 }
 \concept{flexyBayes ingest adapters}

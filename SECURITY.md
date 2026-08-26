@@ -47,6 +47,5 @@ Likely areas of security interest:
   scripts;
 - handling of user-supplied numeric data in code-generation paths.
 
-Reports outside the package — e.g. issues in upstream `greta`,
-`INLA`, or `brms` — should be directed to those projects' security
-channels.
+Reports outside the package — e.g. issues in upstream `INLA` or
+`brms` — should be directed to those projects' security channels.

@@ -15,11 +15,13 @@
 # The exported verbs (ADR 0030 §3, roster grown by ADR 0031 Phase 3:
 # fb_inla() added as the INLA engine pin). Closed list; a further verb
 # requires an ADR amendment. fb_from_*() are ingest adapters, not verbs,
-# and are tracked separately.
+# and are tracked separately. A third engine pin existed briefly on this
+# list between ADR 0031 Phase 3 and the 0.9.3 withdrawal of its engine
+# entirely (see NEWS.md) -- the roster is back to six, which is also
+# what ADR 0030 §3 originally ratified.
 .FB_VERBS <- c(
   "flexybayes",
   "fb_brms",
-  "fb_greta",
   "fb_inla",
   "fb_plan",
   "triangulate",
@@ -44,7 +46,7 @@
     fb_prior = fb_prior(sigma ~ pc(upper = 2, prob = 0.05)),
     fb_cov = fb_cov(diag(3L), type = "dense"),
     fb_approx = fb_approx("low_rank_smooth", rank = 5L),
-    fb_engine = fb_engine("greta")
+    fb_engine = fb_engine("brms")
   )
 }
 
@@ -70,7 +72,7 @@ test_that("exactly six verbs are exported (ADR 0030 §3)", {
   for (v in .FB_VERBS) {
     expect_true(v %in% exports, info = paste("verb not exported:", v))
   }
-  expect_length(.FB_VERBS, 7L)
+  expect_length(.FB_VERBS, 6L)
 })
 
 test_that("the verb list is stable (snapshot)", {
@@ -105,7 +107,7 @@ test_that("fb_cov carries the ADR 0030 §2 attribute schema", {
 })
 
 test_that("fb_engine carries the ADR 0030 §2 element schema", {
-  e <- fb_engine("greta")
+  e <- fb_engine("brms")
   for (el in c("name", "paradigm", "toolchain_status", "opts")) {
     expect_true(
       el %in% names(e),

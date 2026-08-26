@@ -6,7 +6,7 @@ test_that("fb_backend_status() returns the documented shape", {
   st <- fb_backend_status()
   expect_s3_class(st, "fb_backend_status")
   expect_s3_class(st, "data.frame")
-  expect_setequal(st$backend, c("greta", "INLA", "brms"))
+  expect_setequal(st$backend, c("INLA", "brms"))
   expect_identical(names(st), c("backend", "installed", "usable", "note"))
   expect_type(st$installed, "logical")
   expect_type(st$usable, "logical")

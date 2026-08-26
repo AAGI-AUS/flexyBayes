@@ -93,7 +93,6 @@
 .fb_refuse_loo <- function(x) {
   engine <- .fb_fit_engine(x)
   has_posterior <- !is.null(x$inla) ||
-    !is.null(x$greta$draws) ||
     !is.null(x$draws)
 
   if (!has_posterior) {

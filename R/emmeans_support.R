@@ -1,7 +1,9 @@
 # emmeans integration for flexyBayes
 #
 # Provides recover_data() and emm_basis() methods so that
-# emmeans::emmeans(fit, ~ factor) works on greta- and INLA-backed fits.
+# emmeans::emmeans(fit, ~ factor) works on brms- and INLA-backed fits
+# (the bare `flexybayes` method is reached by a brms fit via S3
+# inheritance -- no `flexybayes_brms`-specific override exists here).
 # Both methods are registered for the foreign emmeans generics via
 # @exportS3Method (delayed S3 registration), so emmeans stays in
 # Suggests.
@@ -38,8 +40,12 @@
 
 # Shared emm_basis core. Builds X to match the fitted coefficient names,
 # carries the posterior covariance as V, and supplies a non-estimability
-# basis so emmeans rejects non-estimable combinations on the over-
-# parameterised (greta) basis. df = Inf -> z-based intervals.
+# basis so emmeans rejects non-estimable combinations should the fit's
+# coef() carry an over-parameterised (all-levels) basis for any factor
+# -- the case a since-withdrawn native engine produced (see NEWS.md,
+# 0.9.3). The active engines are treatment-coded (full rank), so the
+# check is defensive rather than load-bearing today. df = Inf ->
+# z-based intervals.
 .fb_emm_basis <- function(object, trms, xlev, grid, ...) {
   .check_installed(
     "emmeans",
@@ -62,7 +68,10 @@
 }
 
 
-#' emmeans support: recover model data (greta backend)
+#' emmeans support: recover model data (default method)
+#'
+#' The bare `flexybayes` method: reached by any fit whose engine has no
+#' more specific override, which today is the brms backend.
 #'
 #' @param object A `flexybayes` fit.
 #' @param ... Passed to [emmeans::recover_data()].
@@ -79,7 +88,10 @@ recover_data.flexybayes_inla <- function(object, ...) {
   .fb_recover_data(object, ...)
 }
 
-#' emmeans support: estimation basis (greta backend)
+#' emmeans support: estimation basis (default method)
+#'
+#' The bare `flexybayes` method: reached by any fit whose engine has no
+#' more specific override, which today is the brms backend.
 #'
 #' @param object A `flexybayes` fit.
 #' @param trms Fixed-effect terms supplied by emmeans.

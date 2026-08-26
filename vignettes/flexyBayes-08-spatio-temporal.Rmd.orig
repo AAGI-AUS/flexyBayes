@@ -412,14 +412,15 @@ surfaces directly. Under `backend = "auto"` it becomes an
 `auto_no_active_route` refusal, because the only other active engine is
 brms and brms has no lowering for a Kronecker autoregressive precision.
 
-**greta is quarantined.** Prior releases fit `ar1(row):ar1(col)` on
-greta, because INLA refused it outright. Since the separable AR1 field
-landed on INLA, greta and gretaR have been withdrawn as active fitting
-engines entirely -- an explicit `backend = "greta"` or
-`backend = "gretaR"` now raises a structured `backend_quarantined`
-refusal, and `auto` never falls back to either, silently or otherwise.
-If you have older code that pinned `backend = "greta"` for a spatial or
-temporal AR1 fit, drop the pin and move the term to the random side.
+**A third native engine has been withdrawn.** Prior releases fit
+`ar1(row):ar1(col)` on that engine, because INLA refused it outright.
+Since the separable AR1 field landed on INLA, that engine has been
+withdrawn entirely (see `NEWS.md`, 0.9.3) -- naming it, or any other
+unrecognised backend, now raises a structured `unknown_backend`
+refusal, and `auto` never falls back to it, silently or otherwise. If
+you have older code that pinned `backend` to that engine for a spatial
+or temporal AR1 fit, drop the pin and move the term to the random
+side.
 
 # 7. Active prompts
 

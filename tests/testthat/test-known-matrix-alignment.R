@@ -12,8 +12,8 @@
 #   reason_code = "known_matrix_level_mismatch"
 #     dimnames carry levels not in (or missing from) the factor, OR
 #     dimnames carry the correct levels but in a different order
-#     than levels(<group>) -- INLA's generic0 + greta's t(chol(V))
-#     both require positional alignment.
+#     than levels(<group>) -- INLA's generic0 and brms's known-
+#     covariance emit both require positional alignment.
 #
 # Plus the three happy paths:
 #

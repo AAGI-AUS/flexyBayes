@@ -3,8 +3,8 @@
 # breeding values, GWAS hits) need a genomics-aware comparison because the
 # backends name them differently and the breeding values must be matched
 # by genotype. These verbs harmonise via the same engine-agnostic
-# extraction genomic_summary() uses, so a GBLUP fit on greta, INLA, or
-# brms triangulates against another -- and against an external
+# extraction genomic_summary() uses, so a GBLUP fit on INLA or brms
+# triangulates against another -- and against an external
 # field-standard *lens* (a REML answer from sommer, a GWAS hit list from
 # GEMMA / rrBLUP) supplied as a plain list. flexyBayes core stays lean: it
 # never depends on the field tools; the companion (flexyBayesOrchestra)
@@ -107,7 +107,7 @@
 #'
 #' Compare two genomic analyses -- heritability, variance components, and
 #' genomic estimated breeding values -- on a common footing. Each argument
-#' is either a flexyBayes GBLUP / pedigree fit (greta, INLA, or brms) or a
+#' is either a flexyBayes GBLUP / pedigree fit (INLA or brms) or a
 #' generic *genomic lens* (`list(h2, var_g, var_e, gebv, label)`), the form
 #' a field-standard REML implementation such as sommer supplies.
 #' Cross-engine use checks that the Bayesian backends agree. The lens form

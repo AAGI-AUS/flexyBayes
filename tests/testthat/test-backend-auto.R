@@ -1,22 +1,23 @@
 # Tests for the backend argument on flexybayes() -- ADR 0006.
 #
-# Contract:
-#   - backend = "greta" (default) preserves the existing call shape;
-#     backend_decision(fit)$backend == "greta" with path
-#     "explicit_greta".
+# Contract (0.9.3: the third native engine ADR 0006 named was withdrawn
+# entirely -- see NEWS.md -- and its exports, code paths, and fallback
+# role were removed rather than repointed):
 #   - backend = "inla" calls lgm_gate(); on accept dispatches
 #     emit_inla() and returns a flexybayes_inla; on refuse raises a
 #     formatted refusal.
 #   - backend = "auto" calls lgm_gate(); on accept dispatches INLA
 #     (when installed) and records path "auto_accept"; on refuse
-#     falls back to greta with a one-time note and records path
-#     "auto_lgm_refuse" with the gate failure list.
-#   - Invalid backend value raises a clean match.arg error.
-#   - review_code = TRUE under backend != "greta" raises a clean
-#     refusal.
+#     falls back to brms, with the specific fallback path recorded
+#     (e.g. "auto_multistratum_to_brms" for a multi-stratum residual
+#     structure lgm_gate() cannot represent).
+#   - Invalid or unrecognised backend value raises a typed
+#     unknown_backend refusal naming the two active engines.
+#   - review_code = TRUE under backend = "inla" raises a clean refusal
+#     naming brms as the only code-producing engine.
 #
-# Greta is required for the dispatch-to-greta subtests; INLA is
-# required for the INLA-accept subtests (skip_if_not_installed
+# brms is required for the auto-fallback and explicit-brms subtests;
+# INLA is required for the INLA-accept subtests (skip_if_not_installed
 # guards in place).
 
 mk_lgm_data <- function() {
@@ -31,24 +32,27 @@ mk_lgm_data <- function() {
 
 
 # ---------------------------------------------------------------- #
-# (a) Invalid backend value raises match.arg error                  #
+# (a) Invalid backend value raises a typed unknown_backend refusal   #
 # ---------------------------------------------------------------- #
 
-test_that("invalid backend value raises match.arg error", {
+test_that("invalid backend value raises a typed unknown_backend refusal", {
   d <- mk_lgm_data()
   err <- tryCatch(
     flexybayes(yield ~ env, random = ~geno, data = d, backend = "stan"),
-    error = function(e) conditionMessage(e)
+    error = function(e) e
   )
-  expect_true(grepl("'arg'.*should be one of|match.arg", err, perl = TRUE))
+  expect_s3_class(err, "flexybayes_unknown_backend_refusal")
+  expect_identical(err$reason_code, "unknown_backend")
+  expect_match(conditionMessage(err), '"inla"', fixed = TRUE)
+  expect_match(conditionMessage(err), '"brms"', fixed = TRUE)
 })
 
 
 # ---------------------------------------------------------------- #
-# (b) review_code + backend != "greta" structured refusal           #
+# (b) review_code + backend = "inla" structured refusal             #
 # ---------------------------------------------------------------- #
 
-test_that("review_code = TRUE under backend != 'greta' raises a clean refusal", {
+test_that("review_code = TRUE under backend = 'inla' raises a clean refusal naming brms", {
   d <- mk_lgm_data()
   err <- tryCatch(
     flexybayes(
@@ -63,35 +67,34 @@ test_that("review_code = TRUE under backend != 'greta' raises a clean refusal", 
   expect_s3_class(err, "flexybayes_refusal_review_code_backend_unsupported")
   expect_s3_class(err, "flexybayes_refusal")
   expect_match(conditionMessage(err), "review_code", fixed = TRUE)
-  expect_match(conditionMessage(err), "greta", fixed = TRUE)
+  expect_match(conditionMessage(err), "brms", fixed = TRUE)
 })
 
 
 # ---------------------------------------------------------------- #
-# (c) backend = "greta" preserves the explicit-greta trace          #
+# (c) backend = "brms" records the explicit-brms trace              #
 # ---------------------------------------------------------------- #
 
-test_that("backend = 'greta' records the explicit-greta trace", {
-  skip_if_greta_backend_unusable()
+test_that("backend = 'brms' records the explicit-brms trace", {
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
-  testthat::skip_on_ci()
   d <- mk_lgm_data()
   fit <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes")
   bd <- backend_decision(fit)
-  expect_identical(bd$backend, "greta")
-  expect_identical(bd$path, "explicit_greta")
-  expect_null(bd$gate_checks)
+  expect_identical(bd$backend, "brms")
 })
 
 
@@ -135,7 +138,7 @@ test_that("backend = 'inla' surfaces the INLA-side refusal cleanly", {
   # at(env):units is rejected at emit_inla()'s feasibility check
   # (v0.1 does not support structured residual for INLA). Under backend
   # = "inla" the refusal surfaces as a clean error; under backend =
-  # "auto" the same refusal triggers the greta fallback (subtest f).
+  # "auto" the same refusal triggers the brms fallback (subtest f).
   err <- tryCatch(
     flexybayes(
       yield ~ env,
@@ -155,14 +158,13 @@ test_that("backend = 'inla' surfaces the INLA-side refusal cleanly", {
 
 
 # ---------------------------------------------------------------- #
-# (f) backend = "auto" on a non-LGM model falls back to greta with  #
-#     a logged note and records the gate failure trace               #
+# (f) backend = "auto" on a multi-stratum residual structure falls   #
+#     back to brms with a logged note and the specific fallback path #
 # ---------------------------------------------------------------- #
 
-test_that("backend = 'auto' on a non-LGM model falls back to greta with trace", {
-  skip_if_greta_backend_unusable()
+test_that("backend = 'auto' on a multi-stratum residual falls back to brms with trace", {
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
-  testthat::skip_on_ci()
   d <- mk_lgm_data()
   msgs <- character()
   fit <- withCallingHandlers(
@@ -172,9 +174,11 @@ test_that("backend = 'auto' on a non-LGM model falls back to greta with trace", 
       residual = ~ at(env):units,
       data = d,
       backend = "auto",
-      n_samples = 50L,
-      warmup = 50L,
+      n_samples = 500L,
+      warmup = 500L,
       chains = 1L,
+      seed = 20260523L,
+      control = list(adapt_delta = 0.97),
       verbose = FALSE,
       mcmc_verbose = FALSE
     )),
@@ -184,12 +188,13 @@ test_that("backend = 'auto' on a non-LGM model falls back to greta with trace", 
     }
   )
   bd <- backend_decision(fit)
-  expect_identical(bd$backend, "greta")
-  # ADR 0017: the gate's .lgm_check_residual_term_inla_support() now
-  # catches at(env):units at gate time, so the only valid fall-back
-  # path is auto_lgm_refuse. The pre-ADR-0017 emit-level path
-  # ("auto_inla_emit_refuse") is architecturally unreachable.
-  expect_identical(bd$path, "auto_lgm_refuse")
+  expect_identical(bd$backend, "brms")
+  # at(env):units is a multi-stratum designed-experiment residual
+  # structure: lgm_gate() refuses it (residual_term_type_inla) and
+  # dispatch routes it to brms by this specific path, distinct from
+  # the generic auto-fallback (INLA collapses these variance
+  # components; brms is the faithful full-HMC alternative).
+  expect_identical(bd$path, "auto_multistratum_to_brms")
   expect_true(!is.null(bd$gate_checks))
   expect_true(any(grepl("lgm_gate\\(\\) refused", msgs)))
 })
@@ -199,28 +204,31 @@ test_that("backend = 'auto' on a non-LGM model falls back to greta with trace", 
 # (g) ADR 0006 verification snippet runs end-to-end                  #
 # ---------------------------------------------------------------- #
 
-test_that("ADR 0006 verification: explicit-greta + auto-accept + non-LGM refusal", {
-  skip_if_greta_backend_unusable()
+test_that("ADR 0006 verification: explicit-brms + auto-accept + non-LGM refusal", {
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
-  testthat::skip_on_ci()
   d <- mk_lgm_data()
 
-  # Explicit greta -- existing behaviour preserved. (ADR 0031: the
-  # default is now "auto", so the explicit-greta path must be requested
-  # by name; an unpinned call here would take the aggregated-INLA path.)
-  fit_g <- suppressMessages(flexybayes(
+  # Explicit brms -- the withdrawn engine's role in this verification
+  # (existing behaviour preserved under an explicit engine request)
+  # moves to brms, the remaining full-HMC engine. (ADR 0031: the
+  # default is "auto", so an explicit engine request must be named; an
+  # unpinned call here would take the aggregated-INLA path.)
+  fit_b <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  expect_s3_class(fit_g, "flexybayes")
-  expect_identical(backend_decision(fit_g)$path, "explicit_greta")
+  expect_s3_class(fit_b, "flexybayes")
+  expect_identical(backend_decision(fit_b)$backend, "brms")
 
   # backend = "inla" on a non-LGM model: structured refusal.
   err <- tryCatch(

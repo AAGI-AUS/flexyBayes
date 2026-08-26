@@ -53,7 +53,7 @@
         {
           "type": "character",
           "attributes": {},
-          "value": ["sigma_g", "sigma_e_atg"]
+          "value": ["sd_g", "sigma"]
         }
       ]
     }

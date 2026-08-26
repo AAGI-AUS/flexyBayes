@@ -197,8 +197,7 @@ test_that("the legacy observed-versus-fitted panel is gone, not renamed", {
       glm = structure(
         list(y = rnorm(10L), fitted.values = rnorm(10L)),
         class = c("flexybayes_glm", "list")
-      ),
-      greta = list(draws = 1)
+      )
     ),
     class = c("flexybayes", "list")
   )

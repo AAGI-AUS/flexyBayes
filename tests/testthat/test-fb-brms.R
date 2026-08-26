@@ -7,14 +7,14 @@
 #   - Refuses everything outside the corpus at ingest with a
 #     structured message (random slopes, smoothers, GP, autocor,
 #     LHS-pipe addition forms).
-#   - Inherits ADR 0006 (backend = c("greta", "inla", "auto") +
+#   - Inherits ADR 0006 (backend = c("inla", "brms", "auto") +
 #     decision trace), ADR 0011 (review_code), ADR 0005 (canonical-
-#     name auto-resolution via the existing greta + INLA mappers).
-#   - Returns class "flexybayes" (greta or auto-fell-back) or
+#     name auto-resolution via the existing brms + INLA mappers).
+#   - Returns class "flexybayes_brms" (brms accepted) or
 #     "flexybayes_inla" (INLA accepted); per ADR 0014 sec.7 no
 #     subclass distinguishes brms-entry from asreml-entry fits.
 #
-# Greta is required for the greta-path fits; INLA for the auto-
+# brms is required for the brms-path fits; INLA for the auto-
 # accept + cross-engine subtests (skip_if_not_installed guards).
 
 # ---------------------------------------------------------------- #
@@ -59,7 +59,7 @@ mk_brms_poisson_data <- function() {
 # ---------------------------------------------------------------- #
 
 test_that("fb() corpus 1: fixed-only Gaussian (brms grammar forced)", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
@@ -68,11 +68,13 @@ test_that("fb() corpus 1: fixed-only Gaussian (brms grammar forced)", {
   fit <- suppressMessages(fb(
     y ~ x,
     data = d,
-    backend = "greta",
+    backend = "brms",
     syntax = "brms",
-    n_samples = 60L,
-    warmup = 60L,
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -88,17 +90,19 @@ test_that("fb() corpus 1: fixed-only Gaussian (brms grammar forced)", {
 # ---------------------------------------------------------------- #
 
 test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(fb(
     y ~ x + (1 | g1),
     data = d,
-    backend = "greta",
-    n_samples = 60L,
-    warmup = 60L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -114,17 +118,19 @@ test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
 # ---------------------------------------------------------------- #
 
 test_that("fb_brms() corpus 3: crossed random intercepts", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(fb(
     y ~ x + (1 | g1) + (1 | g2),
     data = d,
-    backend = "greta",
-    n_samples = 60L,
-    warmup = 60L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -144,7 +150,7 @@ test_that("fb_brms() corpus 3: crossed random intercepts", {
 # ---------------------------------------------------------------- #
 
 test_that("fb_brms() corpus 4: binomial RI as single-column Bernoulli", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_binomial_data()
@@ -152,10 +158,12 @@ test_that("fb_brms() corpus 4: binomial RI as single-column Bernoulli", {
     y ~ x + (1 | g),
     data = d,
     family = "binomial",
-    backend = "greta",
-    n_samples = 60L,
-    warmup = 60L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -170,7 +178,7 @@ test_that("fb_brms() corpus 4: binomial RI as single-column Bernoulli", {
 # ---------------------------------------------------------------- #
 
 test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_poisson_data()
@@ -178,10 +186,12 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
     y ~ x + (1 | g),
     data = d,
     family = "poisson",
-    backend = "greta",
-    n_samples = 60L,
-    warmup = 60L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -281,29 +291,36 @@ test_that("fb(..., backend = 'auto') routes to INLA when LGM-feasible", {
 # ---------------------------------------------------------------- #
 
 test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fits", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
   rev <- suppressMessages(fb(
     y ~ x + (1 | g1),
     data = d,
-    n_samples = 50L,
-    warmup = 50L,
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     review_code = TRUE,
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
   expect_s3_class(rev, "flexybayes_review")
   expect_true(is.character(rev$code) && nchar(rev$code) > 0L)
-  expect_identical(rev$backend, "greta")
+  expect_identical(rev$backend, "stan_via_brms")
   expect_identical(rev$ir$source, "brms")
-  fit <- suppressMessages(proceed(rev))
+  # Structural test (does proceed() fit and cache?) -- the 500-draw
+  # budget above still leaves residual ESS-only warnings (no R-hat /
+  # divergence) on this particular model, so muffle those specifically
+  # rather than push the budget even higher for a shape assertion.
+  fit <- .muffle_ess_warnings(suppressMessages(proceed(rev)))
   expect_s3_class(fit, "flexybayes")
   expect_true("(Intercept)" %in% names(coef(fit)))
-  # Second proceed() returns the cached fit.
-  fit2 <- proceed(rev)
+  # Second proceed() returns the cached fit (and prints a note to that
+  # effect -- suppress it, same as the first proceed() call above).
+  fit2 <- suppressMessages(proceed(rev))
   expect_identical(coef(fit), coef(fit2))
 })
 
@@ -313,17 +330,19 @@ test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fi
 # ---------------------------------------------------------------- #
 
 test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(fb(
     y ~ x + (1 | g1),
     data = d,
-    backend = "greta",
-    n_samples = 50L,
-    warmup = 50L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -341,8 +360,8 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
       "routing_policy_version"
     )
   )
-  expect_identical(bd$backend, "greta")
-  expect_identical(bd$path, "explicit_greta")
+  expect_identical(bd$backend, "brms")
+  expect_identical(bd$path, "explicit_brms")
   expect_null(bd$gate_checks)
   # ADR 0024 v0.3.6+ four new fields: NULL on the small-data fast
   # path (no preflight, no representation plan); empty list of
@@ -357,10 +376,10 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
 
 
 # ---------------------------------------------------------------- #
-# (12) review_code under backend != "greta" raises clean refusal   #
+# (12) review_code under backend = "inla" raises clean refusal      #
 # ---------------------------------------------------------------- #
 
-test_that("fb(review_code = TRUE, backend != 'greta') raises structured refusal", {
+test_that("fb(review_code = TRUE, backend = 'inla') raises structured refusal", {
   d <- mk_brms_gaussian_data()
   err <- tryCatch(
     fb(
@@ -370,41 +389,44 @@ test_that("fb(review_code = TRUE, backend != 'greta') raises structured refusal"
       review_code = TRUE,
       verbose = FALSE
     ),
-    error = function(e) conditionMessage(e)
+    error = function(e) e
   )
-  expect_true(grepl("review_code", err, fixed = TRUE))
-  expect_true(grepl("future ADR|greta", err))
+  expect_s3_class(err, "flexybayes_refusal_review_code_backend_unsupported")
+  expect_true(grepl("review_code", conditionMessage(err), fixed = TRUE))
+  expect_true(grepl("brms", conditionMessage(err), fixed = TRUE))
 })
 
 
 # ---------------------------------------------------------------- #
-# (13) triangulate(fit_greta, fit_inla) auto-resolves canonical    #
+# (13) triangulate(fit_brms, fit_inla) auto-resolves canonical     #
 #      names via the ADR 0005 registry (no name_map supplied)      #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate() on fb_brms() greta + INLA fits resolves canonical names automatically", {
-  skip_if_greta_backend_unusable()
+test_that("triangulate() on fb_brms() brms + INLA fits resolves canonical names automatically", {
+  testthat::skip_if_not_installed("brms")
   testthat::skip_if_not_installed("INLA")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit_g <- suppressMessages(fb(
+  fit_b <- suppressMessages(suppressWarnings(fb(
     y ~ x + (1 | g1),
     data = d,
-    backend = "greta",
-    n_samples = 80L,
-    warmup = 80L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
     chains = 1L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   fit_i <- suppressMessages(fb(
     y ~ x + (1 | g1),
     data = d,
     backend = "inla",
     verbose = FALSE
   ))
-  tri <- triangulate(fit_g, fit_i)
+  tri <- triangulate(fit_b, fit_i)
   expect_true(all(
     c("(Intercept)", "x", "sd_g1", "sigma") %in%
       tri$common
@@ -417,10 +439,14 @@ test_that("triangulate() on fb_brms() greta + INLA fits resolves canonical names
 # ---------------------------------------------------------------- #
 
 test_that("fb_brms() rejects invalid backend value", {
+  # 0.9.3: an unrecognised backend name is intercepted by
+  # .check_known_backend_name() before match.arg() runs, so the error is
+  # a typed flexyBayes refusal naming the active engines.
   d <- mk_brms_gaussian_data()
   err <- tryCatch(
     fb(y ~ x + (1 | g1), data = d, backend = "stan", verbose = FALSE),
-    error = function(e) conditionMessage(e)
+    error = function(e) e
   )
-  expect_true(grepl("'arg'.*should be one of|match.arg", err, perl = TRUE))
+  expect_s3_class(err, "flexybayes_unknown_backend_refusal")
+  expect_identical(err$reason_code, "unknown_backend")
 })

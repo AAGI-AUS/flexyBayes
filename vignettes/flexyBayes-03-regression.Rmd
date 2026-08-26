@@ -1,14 +1,15 @@
 ---
 title: "Tutorial 03: Foundational regression: linear models, random effects, and penalised splines"
-date: "2026-08-17"
+date: "2026-08-26"
 output:
   rmarkdown::html_vignette:
+    fig_caption: true
     includes:
       in_header: _mathjax-scale.html
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 03: Foundational regression}
+  %\VignetteIndexEntry{Tutorial 03: Foundational regression: linear models, random effects, and penalised splines}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -52,6 +53,7 @@ factor.
 
 ``` r
 library(flexyBayes)
+set.seed(900)
 data(PlantGrowth)
 str(PlantGrowth)
 #> 'data.frame':	30 obs. of  2 variables:
@@ -76,7 +78,7 @@ summary(fit_g)
 #>   Engine:         INLA Laplace
 #>   N        : 30 design rows, 30 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2.2 sec
+#>   Runtime  : 1.8 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
@@ -170,32 +172,32 @@ summary(fit_barley)
 #>   Engine:         INLA Laplace
 #>   N        : 60 design rows, 60 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 1.8 sec
+#>   Runtime  : 2 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>               term estimate std.error conf.low conf.high
-#>        (Intercept) 101.6928    7.1572  87.5994  115.7510
-#>        genPeatland   7.0710    7.3636  -7.4618   21.5109
-#>        genSvansota  -4.0060    7.3623 -18.5202   10.4473
-#>           genTrebi  22.2746    7.3664   7.7144   36.6979
-#>          genVelvet   3.8102    7.3632 -10.7170   18.2540
-#>          envDuluth -23.8293    7.9449 -39.3642   -8.1097
-#>     envGrandRapids -26.0303    7.9457 -41.5629  -10.3055
-#>          envMorris  -2.1376    7.9392 -17.6976   13.5343
-#>  envUniversityFarm -14.1274    7.9420 -29.6728    1.5702
-#>          envWaseca  27.5279    7.9359  11.9246   43.1436
+#>        (Intercept) 101.6944    7.1447  87.6259  115.7277
+#>        genPeatland   7.0748    7.3500  -7.4308   21.4878
+#>        genSvansota  -4.0035    7.3486 -18.4905   10.4228
+#>           genTrebi  22.2802    7.3527   7.7473   36.6767
+#>          genVelvet   3.8136    7.3495 -10.6864   18.2305
+#>          envDuluth -23.8371    7.9306 -39.3439   -8.1461
+#>     envGrandRapids -26.0384    7.9313 -41.5430  -10.3423
+#>          envMorris  -2.1424    7.9248 -17.6742   13.5010
+#>  envUniversityFarm -14.1338    7.9277 -29.6511    1.5352
+#>          envWaseca  27.5273    7.9216  11.9524   43.1147
 #> 
 #> -- Variance components (95% credible interval) ------------------
 #> Estimate = posterior mean (not REML). Prior column is the prior that was used.
 #>  component estimate std.error conf.low conf.high                         prior
-#>      sigma  18.9144    1.8783  15.6662    23.027 uniform(lower=0, upper=137.7)
+#>      sigma  18.9129    1.8783  15.6667   23.0276 uniform(lower=0, upper=137.7)
 #>  note
 #>      
 #> 
 #> -- Convergence -----------------------------------------------
 #>   Engine    : INLA nested Laplace approximation
 #>   Mode status: 0 (0 = converged)
-#>   Marginal log-likelihood: -125.774
+#>   Marginal log-likelihood: -125.771
 #>   Largest symmetric KLD between the Gaussian approximation and the
 #>   corrected marginal: 2.11e-08
 ```
@@ -222,7 +224,11 @@ ggplot(fisher.barley,
        title = "fisher.barley: genotype means per environment")
 ```
 
-![plot of chunk barley-plot](flexyBayes-03-regression-figs/barley-plot-1.png)
+![Mean yield per genotype at each environment in fisher.barley, one line per genotype -- near-parallel lines mean the genotype ranking is stable across environments, and crossing lines flag a genotype-by-environment interaction.](flexyBayes-03-regression-figs/barley-plot-1.png)
+
+The lines stay close to parallel across the six environments, which is
+consistent with the additive `gen + env` model fitted above: little of
+the genotype ranking changes from one environment to the next.
 
 # 4. Continuous predictors: pooled `sleepstudy`
 
@@ -247,7 +253,7 @@ summary(fit_pool)
 #>   Engine:         INLA Laplace
 #>   N        : 180 design rows, 180 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2.8 sec
+#>   Runtime  : 2.2 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
@@ -309,18 +315,18 @@ summary(fit_re)
 #>   N        : 180 design rows, 180 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
 #>   Sampler  : 4 chain(s) x 2000 samples (warmup 3000)
-#>   Runtime  : 18.6 sec
+#>   Runtime  : 17.7 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
-#>  (Intercept) 251.1189   10.3804 230.9727  272.4185
-#>         Days  10.4715    0.7953   8.8768   12.0252
+#>  (Intercept) 251.0778   10.4039 230.5398  271.5358
+#>         Days  10.4625    0.8253   8.8436   12.1150
 #> 
 #> -- Variance components (95% credible interval) ------------------
 #> Estimate = posterior mean (not REML). Prior column is the prior that was used.
 #>   component estimate std.error conf.low conf.high                         prior
-#>  sd_Subject  40.5211    8.3673  27.7156   60.3144 uniform(lower=0, upper=281.6)
-#>       sigma  31.2557    1.7590  28.0594   34.9644 uniform(lower=0, upper=281.6)
+#>  sd_Subject  40.0728    8.0304  27.8640   58.9809 uniform(lower=0, upper=281.6)
+#>       sigma  31.2371    1.7430  28.0795   34.9304 uniform(lower=0, upper=281.6)
 #>  note
 #>      
 #>      
@@ -328,8 +334,8 @@ summary(fit_re)
 #> -- Convergence -----------------------------------------------
 #>   Engine    : Stan HMC via brms
 #>   Max R-hat : 1.004
-#>   Min ESS (bulk): 1090
-#>   Min ESS (tail): 1839
+#>   Min ESS (bulk): 869
+#>   Min ESS (tail): 1738
 #>   Divergent transitions: 0
 ```
 
@@ -371,6 +377,7 @@ of how well a flexible smoother recovers the underlying signal.
 
 
 ``` r
+set.seed(930)
 n  <- 80
 x  <- sort(runif(n, 0, 10))
 y  <- sin(x) + rnorm(n, 0, 0.3)
@@ -397,35 +404,35 @@ summary(fit_smooth)
 #>   Engine:         INLA Laplace
 #>   N        : 80 design rows, 80 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 2.2 sec
+#>   Runtime  : 2.5 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
-#>  (Intercept)   0.3327     0.038   0.2581    0.4074
+#>  (Intercept)   0.0877    0.0349    0.019    0.1564
 #> 
 #> -- Variance components (95% credible interval) ------------------
 #> Estimate = posterior mean (not REML). Prior column is the prior that was used.
-#>  component estimate std.error conf.low conf.high                        prior
-#>      sigma   0.3388    0.0298   0.2849    0.4019 uniform(lower=0, upper=3.45)
-#>       sd_x   0.8523    0.2383   0.4910    1.4210               engine default
+#>  component estimate std.error conf.low conf.high                         prior
+#>      sigma   0.3117    0.0267   0.2635    0.3681 uniform(lower=0, upper=3.793)
+#>       sd_x   0.7562    0.1752   0.4792    1.1635                engine default
 #>  note
 #>      
 #>      
 #> 
 #> -- Hyperparameters (INLA, precision scale) ---------------------
-#>                                           mean     sd 0.025quant 0.5quant
-#> Precision for the Gaussian observations 8.9121 1.5691     6.1827   8.7904
-#> Precision for x                         1.7103 0.9657     0.4952   1.4971
-#>                                         0.975quant   mode
-#> Precision for the Gaussian observations    12.3399 8.5738
-#> Precision for x                             4.1668 1.1267
+#>                                            mean     sd 0.025quant 0.5quant
+#> Precision for the Gaussian observations 10.5157 1.7986     7.3707  10.3817
+#> Precision for x                          2.0352 0.9449     0.7373   1.8558
+#>                                         0.975quant    mode
+#> Precision for the Gaussian observations    14.4297 10.1463
+#> Precision for x                             4.3710  1.5312
 #> 
 #> -- Convergence -----------------------------------------------
 #>   Engine    : INLA nested Laplace approximation
 #>   Mode status: 0 (0 = converged)
-#>   Marginal log-likelihood: -375.275
+#>   Marginal log-likelihood: -349.179
 #>   Largest symmetric KLD between the Gaussian approximation and the
-#>   corrected marginal: 1.15e-07
+#>   corrected marginal: 2.74e-08
 #>   Numerical confirm: PASS
 ```
 
@@ -453,7 +460,7 @@ sigma_est <- c(
 )
 round(sigma_est, 4)
 #>   2.5% median  97.5% 
-#> 0.2847 0.3373 0.4022
+#> 0.2633 0.3104 0.3683
 
 # The simulation used sigma = 0.3. Does the interval cover it?
 0.3 > sigma_est[["2.5%"]] && 0.3 < sigma_est[["97.5%"]]
@@ -480,7 +487,7 @@ ggplot(sim_dat, aes(x = x, y = y)) +
        x = NULL, y = "y")
 ```
 
-![plot of chunk smooth-overlay](flexyBayes-03-regression-figs/smooth-overlay-1.png)
+![The spl() fitted curve (firebrick) against the simulated points and the true sin(x) curve (blue dashed) -- the closer the firebrick line tracks the dashed one, the better the spline has recovered the signal from noisy data.](flexyBayes-03-regression-figs/smooth-overlay-1.png)
 
 The fitted curve traces the underlying sinusoid, and the residual is
 unstructured noise. Choosing the basis dimension `df` is a trade-off
@@ -515,7 +522,7 @@ ggplot(newx, aes(x = x, y = fitted)) +
        x = NULL, y = "y")
 ```
 
-![plot of chunk smooth-predict-plot](flexyBayes-03-regression-figs/smooth-predict-plot-1.png)
+![predict() evaluated on a grid extending 10% past the training range on each side (firebrick line), with the original training points shown for context -- a curve that keeps a plausible shape past the training points, rather than diverging, is a well-behaved extrapolation.](flexyBayes-03-regression-figs/smooth-predict-plot-1.png)
 
 The fitted curve stays sensible on the extrapolation margin either
 side of the training range, tracking the penalty rather than
@@ -527,8 +534,8 @@ diverging.
 > an alternative spelling of the same idea
 > (basis via `mgcv::smoothCon()`, ingested as a `smooth_mgcv` random
 > term). That specific ingestion path is not yet representable by
-> either active engine (INLA or brms) -- it was greta-only, and greta
-> has been withdrawn as a fitting engine (see `NEWS.md`). Use `spl()`
+> either active engine (INLA or brms) -- it was specific to the engine
+> withdrawn entirely in 0.9.3 (see `NEWS.md`). Use `spl()`
 > until `smooth_mgcv` is re-routed. Tensor-product smooths `te()`,
 > `ti()`, and `t2()` remain deferred to a future release regardless.
 
@@ -589,42 +596,43 @@ sessionInfo()
 #> [1] stats     graphics  grDevices utils     datasets  methods   base     
 #> 
 #> other attached packages:
-#> [1] ggplot2_4.0.3    flexyBayes_0.9.0
+#> [1] ggplot2_4.0.3    flexyBayes_0.9.2
 #> 
 #> loaded via a namespace (and not attached):
-#>  [1] tidyselect_1.2.1       viridisLite_0.4.3      dplyr_1.2.1           
-#>  [4] farver_2.1.2           loo_2.9.0              S7_0.2.2              
-#>  [7] INLA_25.10.19          TH.data_1.1-5          tensorA_0.36.2.1      
-#> [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
-#> [13] sf_1.1-0               StanHeaders_2.32.10    processx_3.9.0        
-#> [16] survival_3.8-3         agridat_1.26           magrittr_2.0.5        
-#> [19] posterior_1.7.0        compiler_4.5.2         rlang_1.2.0           
-#> [22] tools_4.5.2            data.table_1.18.2.1    knitr_1.51            
-#> [25] labeling_0.4.3         bridgesampling_1.2-1   curl_7.0.0            
-#> [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
-#> [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
-#> [34] KernSmooth_2.23-26     withr_3.0.2            grid_4.5.2            
-#> [37] stats4_4.5.2           colorspace_2.1-2       xtable_1.8-8          
-#> [40] e1071_1.7-17           future_1.70.0          inline_0.3.21         
-#> [43] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
-#> [46] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
-#> [49] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
-#> [52] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
-#> [55] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
-#> [58] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
-#> [61] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
-#> [64] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
-#> [67] sandwich_3.1-1         jsonlite_2.0.0         callr_3.7.6           
-#> [70] listenv_0.10.1         units_1.0-1            glue_1.8.1            
-#> [73] parallelly_1.47.0      codetools_0.2-20       distributional_0.7.0  
-#> [76] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
-#> [79] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
-#> [82] R6_2.6.1               fmesher_0.7.0          evaluate_1.0.5        
-#> [85] lattice_0.22-7         backports_1.5.1        rstantools_2.6.0      
-#> [88] class_7.3-23           MatrixModels_0.5-4     Rcpp_1.1.1-1.1        
-#> [91] gridExtra_2.3          coda_0.19-4.1          nlme_3.1-168          
-#> [94] checkmate_2.3.4        mgcv_1.9-3             xfun_0.57             
-#> [97] zoo_1.8-15             pkgconfig_2.0.3
+#>   [1] tidyselect_1.2.1       viridisLite_0.4.3      dplyr_1.2.1           
+#>   [4] farver_2.1.2           loo_2.9.0              S7_0.2.2              
+#>   [7] INLA_25.10.19          TH.data_1.1-5          tensorA_0.36.2.1      
+#>  [10] digest_0.6.39          estimability_1.5.1     lifecycle_1.0.5       
+#>  [13] sf_1.1-0               StanHeaders_2.32.10    agridat_1.26          
+#>  [16] processx_3.9.0         survival_3.8-3         magrittr_2.0.5        
+#>  [19] posterior_1.7.1        compiler_4.5.2         rlang_1.3.0           
+#>  [22] tools_4.5.2            data.table_1.18.2.1    sn_2.1.3              
+#>  [25] knitr_1.51             labeling_0.4.3         bridgesampling_1.2-1  
+#>  [28] mnormt_2.1.2           pkgbuild_1.4.8         classInt_0.4-11       
+#>  [31] curl_7.0.0             plyr_1.8.9             RColorBrewer_1.1-3    
+#>  [34] multcomp_1.4-29        abind_1.4-8            KernSmooth_2.23-26    
+#>  [37] numDeriv_2016.8-1.1    withr_3.0.3            grid_4.5.2            
+#>  [40] stats4_4.5.2           colorspace_2.1-2       xtable_1.8-8          
+#>  [43] e1071_1.7-17           future_1.70.0          inline_0.3.21         
+#>  [46] globals_0.19.1         emmeans_2.0.2          scales_1.4.0          
+#>  [49] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#>  [52] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
+#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
+#>  [58] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
+#>  [61] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
+#>  [64] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
+#>  [67] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
+#>  [70] sandwich_3.1-1         jsonlite_2.0.0         callr_3.8.0           
+#>  [73] listenv_0.10.1         units_1.0-1            glue_1.8.1            
+#>  [76] parallelly_1.47.0      codetools_0.2-20       distributional_0.8.1  
+#>  [79] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
+#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
+#>  [85] R6_2.6.1               fmesher_0.7.0          evaluate_1.0.5        
+#>  [88] lattice_0.22-7         backports_1.5.1        MatrixModels_0.5-4    
+#>  [91] rstantools_2.6.0       class_7.3-23           Rcpp_1.1.2            
+#>  [94] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
+#>  [97] checkmate_2.3.4        mgcv_1.9-3             xfun_0.57             
+#> [100] zoo_1.8-15             pkgconfig_2.0.3
 ```
 
 # References

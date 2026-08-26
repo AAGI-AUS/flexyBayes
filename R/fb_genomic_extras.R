@@ -20,7 +20,7 @@
 #                    whole-genome marker regression (G4).
 #
 # It is engine-agnostic: it consumes draws (numeric vectors / matrices),
-# never a backend object, so the greta / INLA / brms emit paths all feed
+# never a backend object, so the INLA / brms emit paths both feed
 # the same constructor and the result is triangulatable. The fit-level
 # accessor that extracts the draws from a fitted model and populates
 # `fit$extras$genomic` lands with the GBLUP emit route (G1); this file
@@ -199,8 +199,8 @@ print.fb_genomic_summary <- function(x, ...) {
 #' heritability \eqn{h^2}, genomic estimated breeding values (GEBVs) with
 #' posterior reliability, and the genetic / residual variances -- from a
 #' fitted `vm()` (genomic / GBLUP) or `ped()` (pedigree) model. The
-#' quantities are read from the posterior draws engine-agnostically: a
-#' greta, INLA, or brms GBLUP fit returns the same summary object, so a
+#' quantities are read from the posterior draws engine-agnostically: an
+#' INLA or brms GBLUP fit returns the same summary object, so a
 #' multi-backend genomic analysis is directly triangulatable.
 #'
 #' The heritability is computed per draw as
@@ -208,9 +208,8 @@ print.fb_genomic_summary <- function(x, ...) {
 #' genotype-mean basis; the kinship scaling convention is the analyst's
 #' (state it when reporting). Reliability is
 #' \eqn{1 - \mathrm{PEV}_i / \sigma_g^2} from the posterior variance of
-#' each breeding value. GEBVs are available on the brms and INLA backends
-#' natively and on the greta backend (the breeding-value vector is
-#' monitored).
+#' each breeding value. GEBVs are available on both active backends
+#' (brms and INLA) natively.
 #'
 #' @param fit A fitted `flexybayes` object carrying at least one `vm()`
 #'   or `ped()` relationship term.
@@ -283,17 +282,17 @@ genomic_summary <- function(fit, term = NULL) {
 # Backend-aware extraction of the genetic / residual variance draws and
 # the breeding-value draw matrix from a fitted relationship model. Each
 # backend names these quantities differently; this is the one place that
-# knows the mapping (greta: sigma_<var> / sigma_e_atg / u_<var>[i,1];
-# brms: sd_<var>__Intercept / sigma / r_<var>[lev,Intercept]; INLA:
-# Precision for <var>_id / Precision for the Gaussian observations /
-# <var>_id:i). Variances are returned (SDs squared, precisions inverted).
+# knows the mapping (brms: sd_<var>__Intercept / sigma /
+# r_<var>[lev,Intercept]; INLA: Precision for <var>_id / Precision for
+# the Gaussian observations / <var>_id:i). Variances are returned (SDs
+# squared, precisions inverted).
 .fb_genomic_draws <- function(fit, var) {
   dr <- fb_as_draws_simple(fit)
   nm <- names(dr)
   # Canonical genotype labels = the relationship-matrix dimnames, which the
   # known-matrix alignment contract guarantees equal levels(<group>) in
-  # order. Using them makes GEBV labels identical across greta / INLA /
-  # brms, so triangulate_genomic() can match breeding values by genotype.
+  # order. Using them makes GEBV labels identical across INLA / brms, so
+  # triangulate_genomic() can match breeding values by genotype.
   lv <- .fb_genomic_levels(fit, var)
 
   collect <- function(cols) {
@@ -323,13 +322,13 @@ genomic_summary <- function(fit, term = NULL) {
     # brms already names breeding values by the factor level.
     labels <- sub(paste0("^r_", var, "\\[(.*),Intercept\\]$"), "\\1", gcols)
   } else {
-    sg <- dr[[paste0("sigma_", var)]]
-    se <- dr[["sigma_e_atg"]]
-    var_g <- if (!is.null(sg)) sg^2 else NULL
-    var_e <- if (!is.null(se)) se^2 else NULL
-    gcols <- grep(paste0("^u_", var, "\\["), nm, value = TRUE)
-    gcols <- gcols[order(as.integer(sub("^.*\\[([0-9]+).*", "\\1", gcols)))]
-    labels <- label_by_level(gcols, paste0(var, seq_along(gcols)))
+    # Neither active engine: fall through with nothing found so the
+    # "could not locate" refusal below fires with a typed message
+    # rather than an opaque "object not found" error.
+    var_g <- NULL
+    var_e <- NULL
+    gcols <- character(0)
+    labels <- character(0)
   }
 
   if (is.null(var_g) || is.null(var_e)) {

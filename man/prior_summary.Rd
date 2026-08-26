@@ -2,28 +2,21 @@
 % Please edit documentation in R/prior_summary.R
 \name{prior_summary}
 \alias{prior_summary}
-\alias{prior_summary.flexybayes}
 \alias{prior_summary.flexybayes_inla}
 \alias{prior_summary.flexybayes_brms}
-\alias{prior_summary.flexybayes_direct_greta}
 \alias{prior_summary.default}
 \title{Resolved-prior summary for a flexyBayes fit}
 \usage{
 prior_summary(object, ...)
 
-\method{prior_summary}{flexybayes}(object, ...)
-
 \method{prior_summary}{flexybayes_inla}(object, ...)
 
 \method{prior_summary}{flexybayes_brms}(object, ...)
 
-\method{prior_summary}{flexybayes_direct_greta}(object, ...)
-
 \method{prior_summary}{default}(object, ...)
 }
 \arguments{
-\item{object}{A \code{flexybayes}, \code{flexybayes_inla}, or
-\code{flexybayes_direct_greta} object.}
+\item{object}{A \code{flexybayes_inla} or \code{flexybayes_brms} object.}
 
 \item{...}{Ignored by current methods (reserved for future
 per-component selection).}
@@ -35,8 +28,8 @@ components below.
 \describe{
 \item{\code{kind}}{One of \code{"fb_prior"}, \code{"legacy_scalar"},
 \code{"no_prior_recorded"}.}
-\item{\code{backend}}{The backend the fit ran on:
-\code{"inla"}, \code{"brms"}, \code{"greta"}, or \code{"greta-direct"}.}
+\item{\code{backend}}{The backend the fit ran on: \code{"inla"} or
+\code{"brms"}.}
 \item{\code{fb_prior}}{The \code{fb_prior} object (when
 \code{kind == "fb_prior"}).}
 \item{\code{default_origin}}{\code{"auto"} when the prior was
@@ -60,9 +53,8 @@ empty when \code{prior_vc_sd} was not supplied.}
 \item{\code{not_applied}}{Named character: a prior this package
 declared that the engine has no parameter for -- a residual
 prior on a family whose dispersion is a function of the mean.}
-\item{\code{declaration_only}}{\code{TRUE} on \code{flexybayes_direct_greta}
-fits -- the prior is a declaration of the user's
-greta-built model, not an enforcement.}
+\item{\code{declaration_only}}{Reserved; always \code{FALSE} for every
+current backend.}
 }
 }
 \description{
@@ -73,11 +65,6 @@ legacy scalar bridge (\code{prior_fixed_sd} + \code{prior_vc_sd}). The
 return value is an S3 object with a \code{print()} method; the
 underlying \code{fb_prior} (when applicable) is exposed under
 \verb{$fb_prior} for programmatic access.
-}
-\details{
-For \code{flexybayes_direct_greta} fits the priors are a \emph{declaration}
-of what the user-built model graph encodes; the summary flags
-this with \code{declaration_only = TRUE}.
 }
 \examples{
 \dontrun{

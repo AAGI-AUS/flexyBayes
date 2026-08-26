@@ -84,7 +84,7 @@
 #'
 #' @family flexyBayes ingest adapters
 #' @seealso [fb()] and [flexybayes()] for the universal fitting entry;
-#'   [fb_from_asreml()] and [fb_from_greta()] for the other dialects.
+#'   [fb_from_asreml()] for the other active dialect.
 #' @examples
 #' df <- data.frame(
 #'   y = rnorm(30),

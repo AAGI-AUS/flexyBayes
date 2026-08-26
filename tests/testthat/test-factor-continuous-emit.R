@@ -6,7 +6,7 @@
 # eight (or more) acceptance criteria called out in the spec; the
 # first three are structural / linear-predictor (no fitting needed),
 # the fourth is the posterior-mean recovery vs lme4::lmer fit (skipped
-# without greta + lme4), the next four cover the unsupported-contrast
+# without brms + lme4), the next four cover the unsupported-contrast
 # refusal surface + the canonical-name registry + the dispatch trace
 # slot.
 
@@ -110,63 +110,44 @@ test_that("indexed emit equals model.matrix() at tolerance 1e-10", {
 })
 
 # ---------------------------------------------------------------- #
-# Subtest 3 -- generated greta code carries the indexed-slope idiom #
+# Subtest 3 (removed) -- withdrawn-engine codegen idiom, no active-  #
+# equivalent.                                                        #
 # ---------------------------------------------------------------- #
 #
-# Snapshot guard against the pre-fix idiom returning. The post-fix
-# code emits `slope_dev_<tag>_raw` + `slope_dev_<tag>` + an indexed
-# predictor contribution `as_data(<con>) * slope_dev_<tag>[<fac>_id]`.
-# The pre-fix idiom `beta_<tag> * as_data(<fac>) * as_data(<con>)`
-# must be gone.
-
-test_that("generated greta code uses indexed-slope idiom (Option C)", {
-  skip_if_greta_backend_unusable()
-  withr::local_options(list(
-    flexyBayes.silence_default_prior_note = TRUE
-  ))
-  set.seed(20260523L)
-  n <- 60L
-  d <- data.frame(
-    x = rnorm(n),
-    f = factor(rep(c("a", "b", "c"), length.out = n)),
-    y = rnorm(n)
-  )
-  code <- flexybayes(
-    y ~ f * x,
-    data = d,
-    backend = "greta",
-    return_code = TRUE,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )
-  expect_true(grepl("slope_dev_f_x_raw <- normal\\(", code))
-  expect_true(grepl("slope_dev_f_x <- c\\(zeros\\(1\\)", code))
-  expect_true(grepl(
-    "as_data\\(x\\) \\* slope_dev_f_x\\[f_id\\]",
-    code
-  ))
-  # Pre-fix idiom must not appear.
-  expect_false(grepl("beta_f_x_x \\* as_data\\(f\\)", code))
-})
+# 0.9.3: this subtest asserted on literal generated-code text
+# (`slope_dev_f_x_raw <- normal(...)`) specific to the indexed-slope
+# codegen idiom (Option C / Option D) the native engine withdrawn in
+# 0.9.3 used (see NEWS.md). Neither active engine needs that idiom at
+# all -- brms and INLA represent factor:continuous interactions
+# through their own native formula grammars -- so there is no
+# generated-code equivalent to assert on. Subtests 11 and 12 below
+# (the emit-path dispatch-trace slot and the Option D fallback) are
+# removed for the same reason: `factor_continuous_emit` is no longer
+# ever populated in R/ (confirmed via a full-source grep), and the
+# Option C/D toggle machinery has no consumer.
 
 # ---------------------------------------------------------------- #
 # Subtest 4 -- posterior-mean recovery vs lme4::lmer.               #
 # ---------------------------------------------------------------- #
 #
-# The full archetype-1 numerical validation cell. Requires greta +
+# The full archetype-1 numerical validation cell. Requires brms +
 # lme4; skipped on CRAN / CI per the validation-lmer convention. The
 # tolerance W_1 <= 0.10 * |beta_true| per the design spec + the
 # `1.0 * REML SE` working tolerance used by test-validation-lmer.R
 # absorb MCMC noise at the chosen budget while still catching the
-# >3-sigma regression that the v0.2 bug produced.
+# >3-sigma regression that the v0.2 bug produced. Reads coefficients
+# through coef() (canonical names) rather than raw draws by internal
+# parameter name -- the withdrawn engine's raw naming
+# (`slope_dev_f_x_raw[i,1]`) has no brms equivalent to read.
 
 test_that("posterior mean recovers lme4 fit on factor:continuous", {
-  skip_if_greta_backend_unusable()
+  skip_if_not_installed("brms")
   skip_if_not_installed("lme4")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   withr::local_options(list(
-    flexyBayes.silence_default_prior_note = TRUE
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_convergence_warning = TRUE
   ))
 
   set.seed(20260523L)
@@ -192,37 +173,27 @@ test_that("posterior mean recovers lme4 fit on factor:continuous", {
   d$y <- as.numeric(X %*% beta_true + rnorm(n, 0, 0.3))
 
   set.seed(20260523L)
-  fit <- flexybayes(
+  fit <- suppressWarnings(suppressMessages(flexybayes(
     y ~ f * x,
     data = d,
-    backend = "greta",
+    backend = "brms",
     n_samples = 2000,
     warmup = 2000,
     chains = 2,
     verbose = FALSE,
     mcmc_verbose = FALSE
-  )
+  )))
 
-  draws <- as.matrix(fit$greta$draws)
-  expect_true("mu_atg" %in% colnames(draws))
-  expect_true(any(grepl("^slope_dev_f_x_raw", colnames(draws))))
-
-  # Post-mean for the slope deviations + the main slope.
-  pm_beta_x <- mean(draws[, "beta_x"])
-  pm_slope_b <- mean(draws[, "slope_dev_f_x_raw[1,1]"])
-  pm_slope_c <- mean(draws[, "slope_dev_f_x_raw[2,1]"])
+  pm <- coef(fit)
+  expect_true(all(c("x", "fb:x", "fc:x") %in% names(pm)))
 
   ref <- lm(y ~ f * x, data = d)
   ref_coef <- coef(ref)
   # 1.0 . REML SE tolerance per test-validation-lmer.R convention.
   ref_se <- sqrt(diag(vcov(ref)))
-  expect_lt(abs(pm_beta_x - ref_coef[["x"]]), 1.0 * ref_se[["x"]])
-  expect_lt(abs(pm_slope_b - ref_coef[["fb:x"]]), 1.0 * ref_se[["fb:x"]])
-  expect_lt(abs(pm_slope_c - ref_coef[["fc:x"]]), 1.0 * ref_se[["fc:x"]])
-
-  # Dispatch-trace slot records the chosen emit path.
-  emit_path <- fit$extras$parse_info$factor_continuous_emit
-  expect_true(emit_path %in% c("option_c", "option_d"))
+  expect_lt(abs(pm[["x"]] - ref_coef[["x"]]), 1.0 * ref_se[["x"]])
+  expect_lt(abs(pm[["fb:x"]] - ref_coef[["fb:x"]]), 1.0 * ref_se[["fb:x"]])
+  expect_lt(abs(pm[["fc:x"]] - ref_coef[["fc:x"]]), 1.0 * ref_se[["fc:x"]])
 })
 
 # ---------------------------------------------------------------- #
@@ -327,38 +298,16 @@ test_that("custom contrast matrix raises flexybayes_contrast_unsupported", {
 })
 
 # ---------------------------------------------------------------- #
-# Subtest 9 -- canonical-name family slope_<f>_<x>[<lvl>] resolves. #
+# Subtest 9 (removed) -- .parse_slope_dev_raw() has no caller.      #
 # ---------------------------------------------------------------- #
 #
-# Confirms .parse_slope_dev_raw() correctly translates the greta-side
-# parameter name slope_dev_f_x_raw[i,1] to the canonical
-# slope_f_x[<level>] slot for the non-reference levels. The test
-# avoids running a full greta MCMC -- it exercises the parser
-# directly against a synthetic draw-name vector.
-
-test_that("canonical_names() resolves slope_<f>_<x>[<level>] family", {
-  set.seed(20260523L)
-  n <- 60L
-  d <- data.frame(
-    x = rnorm(n),
-    f = factor(rep(c("a", "b", "c"), length.out = n)),
-    y = rnorm(n)
-  )
-  fb <- flexyBayes:::fb_from_brms(y ~ f * x, data = d)
-  lookup <- list(f_x = c("a", "b", "c"))
-  # raw[1,1] -> non-reference level 1 -> level b ; raw[2,1] -> level c
-  r1 <- flexyBayes:::.parse_slope_dev_raw("slope_dev_f_x_raw[1,1]", lookup)
-  r2 <- flexyBayes:::.parse_slope_dev_raw("slope_dev_f_x_raw[2,1]", lookup)
-  expect_identical(r1$canonical, "slope_f_x[b]")
-  expect_identical(r2$canonical, "slope_f_x[c]")
-  # Names not matching the pattern return NULL.
-  expect_null(
-    flexyBayes:::.parse_slope_dev_raw("mu_atg", lookup)
-  )
-  expect_null(
-    flexyBayes:::.parse_slope_dev_raw("slope_dev_other_raw[1,1]", lookup)
-  )
-})
+# This subtest exercised .parse_slope_dev_raw() (R/canonical_names.R),
+# which translated the withdrawn native engine's raw parameter name
+# slope_dev_f_x_raw[i,1] to the canonical slope_f_x[<level>] slot. The
+# function itself is still present in R/canonical_names.R but has zero
+# remaining callers anywhere in R/ (its only caller was the deleted
+# the withdrawn engine-specific canonical-name mapper) -- an orphan this withdrawal
+# left behind, flagged for R/ cleanup rather than fixed here.
 
 # ---------------------------------------------------------------- #
 # Subtest 10 -- lgm_gate accepts factor_numeric_interaction         #
@@ -368,9 +317,10 @@ test_that("canonical_names() resolves slope_<f>_<x>[<level>] family", {
 # `factor_numeric_interaction` so the gate accepts structurally; the
 # §3.4 verification check (.lgm_check_factor_numeric_interaction_inla_verified)
 # is the term-class-specific INLA conditional, and since 0.9.0 it refuses
-# on every host -- its three-arbitrator criterion named greta, which is
-# quarantined. The host-independence of that refusal is the subject of
-# test-inla-verification-artefact-policy.R.
+# on every host -- its three-arbitrator verification named a since-
+# withdrawn engine as one arbitrator (see NEWS.md, 0.9.3), so the
+# criterion cannot be re-run as designed. The host-independence of that
+# refusal is the subject of test-inla-verification-artefact-policy.R.
 
 test_that("lgm_gate accepts factor_numeric_interaction structurally", {
   fb <- flexyBayes:::new_fb_terms(
@@ -413,76 +363,16 @@ test_that("lgm_gate accepts factor_numeric_interaction structurally", {
 })
 
 # ---------------------------------------------------------------- #
-# Subtest 11 -- dispatch trace records emit-path choice.            #
-# ---------------------------------------------------------------- #
-
-test_that("parse_info$factor_continuous_emit records the emit path", {
-  skip_if_greta_backend_unusable()
-  withr::local_options(list(
-    flexyBayes.silence_default_prior_note = TRUE
-  ))
-  set.seed(20260523L)
-  n <- 60L
-  d <- data.frame(
-    x = rnorm(n),
-    f = factor(rep(c("a", "b", "c"), length.out = n)),
-    y = rnorm(n)
-  )
-  # return_code = TRUE path: emit_greta() does not populate `extras`
-  # (it returns the code string). Use a minimal MCMC instead so the
-  # extras slot is built. Skip on CRAN / CI for the same reason
-  # subtest 4 does -- the MCMC time is non-trivial.
-  testthat::skip_on_cran()
-  testthat::skip_on_ci()
-  fit <- flexybayes(
-    y ~ f * x,
-    data = d,
-    backend = "greta",
-    n_samples = 200,
-    warmup = 200,
-    chains = 1,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )
-  expect_true(
-    fit$extras$parse_info$factor_continuous_emit %in%
-      c("option_c", "option_d")
-  )
-})
-
-# ---------------------------------------------------------------- #
-# Subtest 12 -- Option D fallback path emits valid code.            #
+# Subtests 11-12 (removed) -- Option C/D emit-strategy machinery has #
+# no active-engine consumer.                                        #
 # ---------------------------------------------------------------- #
 #
-# Force-trigger the Option D fallback via the option toggle and
-# confirm the emitted code carries the per-observation lookup
-# vectors and the reference-row mask. This catches regressions on
-# the fallback path even when Option C ships.
-
-test_that("Option D fallback emits per-observation lookup vectors", {
-  withr::local_options(list(
-    flexyBayes.force_option_d = TRUE,
-    flexyBayes.silence_default_prior_note = TRUE
-  ))
-  set.seed(20260523L)
-  n <- 60L
-  d <- data.frame(
-    x = rnorm(n),
-    f = factor(rep(c("a", "b", "c"), length.out = n)),
-    y = rnorm(n)
-  )
-  skip_if_greta_backend_unusable()
-  code <- flexybayes(
-    y ~ f * x,
-    data = d,
-    backend = "greta",
-    return_code = TRUE,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )
-  expect_true(grepl("slope_dev_f_x_per_obs", code))
-  expect_true(grepl("f_x_is_ref_obs", code))
-  expect_true(grepl("f_x_shifted_idx", code))
-  # Option D path should NOT call c(zeros(1), ...).
-  expect_false(grepl("c\\(zeros\\(1\\)", code))
-})
+# Both subtests asserted on `parse_info$factor_continuous_emit` (an
+# "option_c" / "option_d" emit-strategy label) and on Option D's
+# per-observation lookup-vector code text. Both were specific to the
+# native engine withdrawn in 0.9.3 (see NEWS.md): a full-source grep
+# confirms `factor_continuous_emit` is never populated anywhere in R/
+# any more, and the `flexyBayes.force_option_d` toggle has no reader.
+# brms and INLA never needed the indexed-slope-deviation trick this
+# machinery existed for -- they represent factor:continuous
+# interactions through their own native formula grammars.

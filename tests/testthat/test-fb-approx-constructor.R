@@ -63,7 +63,6 @@ test_that("print.fb_approx() shows scheme, kwargs, and bias bound", {
 # ---------------------------------------------------------------- #
 
 test_that("fb_approx() is accepted as a smooth representation spec", {
-  skip_if_greta_backend_unusable()
   skip_if_not_installed("mgcv")
   skip_on_cran()
   skip_on_ci()
@@ -71,22 +70,27 @@ test_that("fb_approx() is accepted as a smooth representation spec", {
   set.seed(1L)
   d <- data.frame(x = runif(80))
   d$y <- sin(2 * pi * d$x) + rnorm(80, 0, 0.3)
-  # plan = TRUE parses + codegens without fitting; the fb_approx form
-  # and the equivalent list form must both build a plan.
+  # plan = TRUE parses + resolves the approximation spec without fitting
+  # (and without needing an active engine -- the low_rank_smooth scheme
+  # has no consumer on either active engine, so this only checks that
+  # the fb_approx() form and the equivalent list form both build a
+  # plan; neither backend is asked to fit it). Smooths live in `random`,
+  # not `fixed` -- flexyBayes refuses a smoother written in the fixed
+  # part with fixed_smoother_not_supported.
   p_obj <- suppressMessages(flexybayes(
-    fixed = y ~ s(x, representation = fb_approx("low_rank_smooth", rank = 5L)),
+    fixed = y ~ 1,
+    random = ~ s(x, representation = fb_approx("low_rank_smooth", rank = 5L)),
     data = d,
-    backend = "greta",
     plan = TRUE,
     verbose = FALSE
   ))
   p_lst <- suppressMessages(flexybayes(
-    fixed = y ~ s(
+    fixed = y ~ 1,
+    random = ~ s(
       x,
       representation = list(scheme = "low_rank_smooth", rank = 5L)
     ),
     data = d,
-    backend = "greta",
     plan = TRUE,
     verbose = FALSE
   ))

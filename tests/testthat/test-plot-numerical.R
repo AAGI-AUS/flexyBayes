@@ -5,7 +5,7 @@
 # Rationale. plot.flexybayes() uses base R graphics, so the previous
 # vdiffr SVG diff path was tied to font metrics + margin defaults +
 # 0.5pt coordinate tolerance -- fragile against MCMC posterior-mean
-# drift of order 1e-6 from greta / TensorFlow non-determinism. The
+# drift of order 1e-6 from brms / Stan sampling non-determinism. The
 # Tier-1 replacement (per AMBITION_STAGE.md §1.1) snapshots the
 # numerical inputs that drive each plot: fixed-effect estimates +
 # credible-interval bounds for "effects", variance-component table
@@ -18,10 +18,10 @@
 # §1.1 remain on the future-work list); this file gives equivalent
 # coverage at the right level of abstraction.
 
-skip_if_no_greta_quiet <- function() {
+.check_brms_plot_prereqs <- function() {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
 }
 
 # Cache one tiny fit for all snapshot tests in this file. Cheap
@@ -36,21 +36,31 @@ skip_if_no_greta_quiet <- function() {
         x = stats::rnorm(40L),
         g = factor(rep(seq_len(5L), length.out = 40L))
       )
-      # backend = "greta" explicitly: these snapshots read the greta
-      # surface (MCMC draws, fitted / residuals, the variance-component
-      # table). A bare flexybayes(fixed, random) routes via auto to INLA,
-      # which does not expose those slots, so the backend is pinned here.
-      fit <<- flexybayes(
+      # backend = "brms" explicitly: these snapshots read the MCMC
+      # surface (posterior draws, fitted / residuals, the variance-
+      # component table). A bare flexybayes(fixed, random) routes via
+      # auto to INLA, which reports those quantities on a different
+      # basis, so the backend is pinned here for a deterministic shape.
+      #
+      # The unpinned `flexybayes()` seed (distinct from the data's
+      # set.seed() above) let Stan draw its own seed each run, which at
+      # the original 100-draw budget produced genuine low-ESS sampler
+      # warnings; pinning `seed=` and raising the budget cuts those down
+      # to a residual ESS-only warning, appropriate to muffle here since
+      # this cached fit backs structural/1-sig-fig snapshots only (see
+      # file header), never a numeric-agreement assertion.
+      fit <<- .muffle_ess_warnings(suppressMessages(flexybayes(
         fixed = y ~ x,
         random = ~g,
         data = d,
-        backend = "greta",
-        n_samples = 100L,
-        warmup = 100L,
+        backend = "brms",
+        n_samples = 300L,
+        warmup = 300L,
         chains = 1L,
+        seed = 20260427L,
         verbose = FALSE,
         mcmc_verbose = FALSE
-      )
+      )))
     }
     fit
   }
@@ -69,7 +79,7 @@ skip_if_no_greta_quiet <- function() {
 # ---------------------------------------------------------------- #
 
 test_that("plot.flexybayes(type = 'effects') numerical inputs are stable", {
-  skip_if_no_greta_quiet()
+  .check_brms_plot_prereqs()
   fit <- .cached_fit()
 
   # Capture the numerics the plot reads (coef + CI bounds).
@@ -102,7 +112,7 @@ test_that("plot.flexybayes(type = 'effects') numerical inputs are stable", {
 # ---------------------------------------------------------------- #
 
 test_that("plot.flexybayes(type = 'variance') numerical inputs are stable", {
-  skip_if_no_greta_quiet()
+  .check_brms_plot_prereqs()
   fit <- .cached_fit()
   vc <- fit$extras$variance_comps
 
@@ -123,7 +133,7 @@ test_that("plot.flexybayes(type = 'variance') numerical inputs are stable", {
 # ---------------------------------------------------------------- #
 
 test_that("plot.flexybayes(type = 'residuals') numerical inputs are stable", {
-  skip_if_no_greta_quiet()
+  .check_brms_plot_prereqs()
   fit <- .cached_fit()
   fitted_vals <- fitted(fit)
   resid_vals <- residuals(fit)
@@ -135,7 +145,7 @@ test_that("plot.flexybayes(type = 'residuals') numerical inputs are stable", {
     n_obs = length(resid_vals),
     n_finite = sum(is.finite(resid_vals)),
     fitted_len = length(fitted_vals),
-    # 1 sig fig: the greta/TF residual sd drifts ~1e-2 across sessions
+    # 1 sig fig: the brms/Stan residual sd drifts ~1e-2 across sessions
     # (0.89 <-> 0.90 flickered the old 2-sig-fig snapshot at the rounding
     # boundary); 1 sig fig still catches a structural scale regression.
     resid_round = .round_sig(stats::sd(resid_vals), digits = 1L)

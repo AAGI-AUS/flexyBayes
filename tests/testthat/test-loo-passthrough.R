@@ -91,8 +91,14 @@ suppressPackageStartupMessages(library(testthat))
 }
 
 .loo_shape_draws_only <- function() {
+  # `.fb_refuse_loo()`'s has_posterior check reads $inla or a top-level
+  # $draws -- a third branch reading the withdrawn native engine's own
+  # draws slot was removed with the engine at 0.9.3 (see NEWS.md);
+  # nest the fixture's draws directly under $draws so it still
+  # represents "has posterior, no log-likelihood" rather than "no
+  # posterior at all".
   structure(
-    list(greta = list(draws = 1)),
+    list(draws = 1),
     class = c("flexybayes", "list")
   )
 }

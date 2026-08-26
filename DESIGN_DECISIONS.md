@@ -16,11 +16,11 @@ decision references the one it replaces rather than editing it.
 |---|---|
 | 0003 | Imports budget and the PC-prior default |
 | 0004 | Uniform-on-SD default prior supersedes the PC-prior default |
-| 0005 | Canonical parameter-name registry across greta / INLA / brms |
+| 0005 | Canonical parameter-name registry across the fitting engines (three at the time; two are active today -- see `NEWS.md`, 0.9.3) |
 | 0006 | `backend = "auto"` argument and the backend decision trace |
 | 0011 | `review` / `code = FALSE` planning options on the entry points |
-| 0012 | `fb_greta()` and direct greta-model entry semantics |
-| 0013 | gretaR backend slot (scaffold / provision-only) |
+| 0012 | Direct native-model entry semantics for the engine withdrawn in 0.9.3 (see `NEWS.md`) |
+| 0013 | Backend slot for the engine withdrawn in 0.9.3 (scaffold / provision-only; see `NEWS.md`) |
 | 0014 | `fb_brms()` and brms-formula entry verb semantics |
 | 0015 | Stan passthrough emit on the `fb_brms()` backend |
 | 0017 | Gate-truth = emit-truth: fold INLA emit refusals into the feasibility gate |

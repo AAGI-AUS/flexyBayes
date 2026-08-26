@@ -7,14 +7,13 @@
 fb_engine(name, opts = list(), ...)
 }
 \arguments{
-\item{name}{Character(1): the engine, one of \code{"greta"}, \code{"inla"},
-\code{"brms"}.}
+\item{name}{Character(1): the engine, one of \code{"inla"}, \code{"brms"}.}
 
 \item{opts}{Named list of tuning options. Recognised names are
 \code{n_samples}, \code{warmup}, \code{chains}; an unrecognised name is an error.}
 
 \item{...}{Tuning options given individually, merged into \code{opts}
-(e.g. \code{fb_engine("greta", chains = 4L)}).}
+(e.g. \code{fb_engine("brms", chains = 4L)}).}
 }
 \value{
 An \code{fb_engine} object: a classed list with elements \code{name},
@@ -25,8 +24,8 @@ An \code{fb_engine} object: a classed list with elements \code{name},
 \description{
 Names a concrete inference engine and its tuning options. The result
 is passed as the \code{backend} argument of the fitting verbs:
-\code{flexybayes(..., backend = fb_engine("greta", chains = 4L))}. The bare
-string form (\code{backend = "greta"}) remains valid and is equivalent to
+\code{flexybayes(..., backend = fb_engine("brms", chains = 4L))}. The bare
+string form (\code{backend = "brms"}) remains valid and is equivalent to
 the default \code{fb_engine()} for that engine.
 }
 \details{
@@ -35,7 +34,7 @@ is a routing directive, not an engine; pass \code{backend = "auto"}
 directly for automatic routing.
 }
 \examples{
-e <- fb_engine("greta", chains = 4L)
+e <- fb_engine("brms", chains = 4L)
 e$paradigm
 e$toolchain_status
 }

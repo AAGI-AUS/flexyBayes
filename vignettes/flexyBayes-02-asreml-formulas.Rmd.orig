@@ -669,9 +669,9 @@ exported `spl` function. The correct invocation puts smoothers in
 `random`.
 
 **A factor-analytic GxE model has no active fitting route (Section 6).**
-This is the consequence of the greta quarantine most likely to affect a
-multi-environment-trial analysis. The diagonal and unstructured members
-of the family do fit, on brms.
+This is the consequence of the 0.9.3 engine withdrawal (see `NEWS.md`)
+most likely to affect a multi-environment-trial analysis. The diagonal
+and unstructured members of the family do fit, on brms.
 
 **Reading a sectioned residual off the coefficients.** `b_sigma_E2` is a
 coefficient on log sigma. Squaring it, or comparing it with an ASReml
@@ -765,9 +765,9 @@ Backend choice is orthogonal to grammar. The universal entries
 `flexybayes()` / `fb()` take a `backend = c("auto", "inla", "brms")`
 argument (see the *hierarchical models* vignette for the dispatch flow).
 The engine pins `fb_inla()` and `fb_brms()` fix the backend instead.
-`backend = "greta"` is still accepted as a value and raises a
-`backend_quarantined` refusal: greta is retained as a re-entry candidate,
-not an active engine. Either grammar reaches the same cross-engine
+Naming a withdrawn or otherwise unrecognised `backend` value raises an
+`unknown_backend` refusal naming the two active engines (see `NEWS.md`,
+0.9.3). Either grammar reaches the same cross-engine
 post-fit surface -- `triangulate()` and the registry-driven canonical
 parameter-name resolver (no `name_map` is needed for the common
 fixed-effect + random-intercept cases).

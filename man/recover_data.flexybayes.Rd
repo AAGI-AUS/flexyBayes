@@ -3,7 +3,7 @@
 \name{recover_data.flexybayes}
 \alias{recover_data.flexybayes}
 \alias{recover_data.flexybayes_inla}
-\title{emmeans support: recover model data (greta backend)}
+\title{emmeans support: recover model data (default method)}
 \usage{
 \method{recover_data}{flexybayes}(object, ...)
 
@@ -18,5 +18,6 @@
 A data frame of predictors for the reference grid.
 }
 \description{
-emmeans support: recover model data (greta backend)
+The bare \code{flexybayes} method: reached by any fit whose engine has no
+more specific override, which today is the brms backend.
 }

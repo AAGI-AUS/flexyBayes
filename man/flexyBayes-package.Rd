@@ -10,14 +10,15 @@
 you already know from ASReml or \code{lme4}/\code{brms}, dispatched through one of
 two active inference engines: INLA (integrated nested Laplace
 approximation, over the latent Gaussian model class) or brms (a Stan
-passthrough, full Hamiltonian Monte Carlo). greta and gretaR are
-quarantined as fitting engines --- their emit code and registry
-descriptors are retained as re-entry candidates, \code{backend = "auto"}
-never selects them, and an explicit request refuses with
-\code{backend_quarantined}. All current exports are at the experimental
-\code{lifecycle} stage. The same fitted object supports \code{summary()},
-\code{predict()}, \code{emmeans::emmeans()}, \code{marginaleffects::predictions()}, and
-the \verb{bayesplot::*} family.
+passthrough, full Hamiltonian Monte Carlo). A third native engine was
+withdrawn entirely in 0.9.3 (see \code{NEWS.md}): a \code{backend} request
+naming that withdrawn engine, or any other unrecognised name, now
+refuses with an ordinary unknown-backend error naming the two active
+engines; re-entry, should it ever be proposed, would be a fresh
+implementation, not a repair of retained code. All current exports
+are at the experimental \code{lifecycle} stage. The same fitted object
+supports \code{summary()}, \code{predict()}, \code{emmeans::emmeans()},
+\code{marginaleffects::predictions()}, and the \verb{bayesplot::*} family.
 }
 \details{
 The package's signature feature is \code{triangulate()}, a cross-engine
@@ -37,8 +38,7 @@ refused by name for any other family -- see \code{?flexybayes}'s
 \item \code{\link[=fb]{fb()}} / \code{\link[=flexybayes]{flexybayes()}} -- the universal entry. Accepts an ASReml
 (\code{fixed} / \code{random} / \code{residual}) or brms-style (\code{y ~ x + (1 | g)})
 formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).
-\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} -- single-engine pins. \code{\link[=fb_greta]{fb_greta()}} is
-retained and refuses.
+\item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} -- the two active single-engine pins.
 \item \code{\link[=fb_prior]{fb_prior()}} -- penalised-complexity-canonical prior DSL.
 \item \code{\link[=triangulate]{triangulate()}} -- cross-engine posterior comparison.
 }

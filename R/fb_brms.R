@@ -1,7 +1,7 @@
 # fb_brms() -- the brms (Stan) engine pin.
 #
 # v0.5.0 backend-axis recovery. `fb_brms()` is one
-# of the three engine pins (alongside `fb_inla()` and `fb_greta()`): sugar
+# of the two active engine pins (alongside `fb_inla()`): sugar
 # over the universal entry with the engine fixed --- `fb_brms(...)` ==
 # `fb(..., backend = "brms")`. It fits via Stan (through brms) and accepts
 # every grammar the universal entry does (an ASReml `fixed` / `random` /
@@ -9,7 +9,8 @@
 # is detected from the call shape, exactly as on `fb()`.
 #
 # Before v0.5.0 `fb_brms()` was the brms-GRAMMAR verb and carried a
-# `backend` argument spanning greta / inla / brms / auto. That
+# `backend` argument spanning a since-withdrawn native engine / inla /
+# brms / auto (see NEWS.md, 0.9.3). That
 # multi-backend role moved to the universal entry `fb()` / `flexybayes()`
 # (which now detects brms grammar and reaches every backend); the name is
 # reused here as the brms-ENGINE pin. The brms engine cannot represent an
@@ -36,11 +37,14 @@
 #' brms's own posterior tooling (`loo()`, `posterior_predict()`,
 #' `bayes_factor()`).
 #'
-#' The brms / Stan engine cannot represent an ASReml structured-covariance
-#' term (`vm`, `ped`, `fa`, `us`, `ar1`) or a `low_rank` smooth
-#' approximation; such a model raises a structured refusal naming the
-#' offending construct. Re-fit with [fb_greta()] (full MCMC) or, when the
-#' model is latent-Gaussian feasible, [fb_inla()].
+#' The brms / Stan engine cannot represent every ASReml structured-
+#' covariance term (`fa`, `us`, `ar1`, or a block-diagonal / low-rank
+#' `vm()` / `ped()` carrier) or a `low_rank` smooth approximation; such a
+#' model raises a structured refusal naming the offending construct.
+#' When the model is latent-Gaussian feasible, re-fit with [fb_inla()];
+#' flexyBayes has no active engine for a structured-covariance term
+#' that is neither brms-representable nor latent-Gaussian feasible
+#' (see `NEWS.md`, 0.9.3).
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `formula` / `fixed`,
 #'   `random`, `residual`, `data`, `family`, `prior`, `syntax`). The `backend`
@@ -55,7 +59,7 @@
 #'
 #' @family flexyBayes engine pins
 #' @seealso [flexybayes()] and [fb()] for the universal entry that picks a
-#'   backend; [fb_greta()] / [fb_inla()] for the other engine pins;
+#'   backend; [fb_inla()] for the other active engine pin;
 #'   [fb_from_brms()] for building a brms-grammar IR.
 #' @examples
 #' # Held back from the default example run because the brms route compiles

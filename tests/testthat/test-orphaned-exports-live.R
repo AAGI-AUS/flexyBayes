@@ -1,10 +1,11 @@
 # test-orphaned-exports-live.R -- the three exports with no live coverage.
 #
 # `prior_summary()`, `fb_met_summary()` and `fb_log_posterior()` were the
-# package's only exports whose behavioural tests were all gated by
-# skip_if_no_greta(), which skips unconditionally while greta is
-# quarantined -- or which pinned a stub's class rather than a fit's
-# behaviour. Each is exercised here on a live fit of an active engine.
+# package's only exports whose behavioural tests were all gated by a skip
+# on the engine withdrawn entirely in 0.9.3 (see NEWS.md), which skipped
+# unconditionally once that engine was quarantined -- or which pinned a
+# stub's class rather than a fit's behaviour. Each is exercised here on a
+# live fit of an active engine.
 #
 # prior_summary() also needed a correctness fix before a test was worth
 # writing: on a fit with a distributional residual it reported
@@ -192,8 +193,13 @@ test_that("fb_met_summary() abstains with a typed condition on INLA", {
   err <- tryCatch(fb_met_summary(fit), condition = function(e) e)
   expect_s3_class(err, "flexybayes_refusal_met_summary_not_available")
   expect_s3_class(err, "flexybayes_refusal")
-  expect_identical(err$backend, "inla")
-  expect_match(conditionMessage(err), "INLA backend")
+  # 0.9.3: the refusal is unconditional (no per-engine `$backend` field or
+  # wording any more -- the reason is identical on every active engine, so
+  # it is stated once rather than repeated per engine). Confirmed here on
+  # an actual INLA fit, not just a hand-built stub.
+  expect_null(err$backend)
+  expect_match(conditionMessage(err), "INLA")
+  expect_match(conditionMessage(err), "brms")
   # The pointer names something that works for an active engine. It used
   # to name fb_structured_cov(), which abstains for every structure an
   # active engine can fit.
@@ -221,8 +227,11 @@ test_that("fb_met_summary() abstains with a typed condition on brms", {
 
   err <- tryCatch(fb_met_summary(fit), condition = function(e) e)
   expect_s3_class(err, "flexybayes_refusal_met_summary_not_available")
-  expect_identical(err$backend, "brms")
-  expect_match(conditionMessage(err), "brms backend")
+  # Same unconditional refusal as the INLA fit above -- confirms an
+  # actual brms fit reaches the identical typed condition, not a
+  # brms-specific variant.
+  expect_null(err$backend)
+  expect_match(conditionMessage(err), "brms")
 })
 
 # ---------------------------------------------------------------- #

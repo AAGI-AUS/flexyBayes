@@ -23,9 +23,9 @@ of it: this is the basis the fixed-effect coefficients are expressed in.
 }
 \details{
 The formula and data are resolved from whichever slots the object holds.
-The greta-shaped and brms-shaped emits keep both under \verb{$glm}; an INLA
-fit keeps its data at \verb{$data} and recovers its fixed-effect formula
-through \code{\link[=formula.flexybayes_inla]{formula.flexybayes_inla()}}. An object supplying neither is
-refused by name, since \code{model.matrix()} on a \code{NULL} formula silently
-returns the intercept-only matrix of the calling frame's data.
+The brms-shaped emit keeps both under \verb{$glm}; an INLA fit keeps its data
+at \verb{$data} and recovers its fixed-effect formula through
+\code{\link[=formula.flexybayes_inla]{formula.flexybayes_inla()}}. An object supplying neither is refused by
+name, since \code{model.matrix()} on a \code{NULL} formula silently returns the
+intercept-only matrix of the calling frame's data.
 }

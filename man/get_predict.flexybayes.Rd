@@ -3,7 +3,7 @@
 \name{get_predict.flexybayes}
 \alias{get_predict.flexybayes}
 \alias{get_predict.flexybayes_inla}
-\title{marginaleffects support: population-level predictions (greta backend)}
+\title{marginaleffects support: population-level predictions (default method)}
 \usage{
 \method{get_predict}{flexybayes}(model, newdata = NULL, type = "response", ...)
 
@@ -22,5 +22,5 @@
 A data frame with \code{rowid} and \code{estimate}.
 }
 \description{
-marginaleffects support: population-level predictions (greta backend)
+marginaleffects support: population-level predictions (default method)
 }

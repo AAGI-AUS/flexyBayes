@@ -26,7 +26,7 @@
 # mapper. `drop = TRUE` discards backend-native nuisance nodes (e.g. INLA's
 # per-observation "Predictor:k") that map to no canonical parameter. When the
 # backend supplies no mapper (an empty map), the raw draws are returned
-# unchanged -- they are assumed already canonical (e.g. a gretaR fit).
+# unchanged -- they are assumed already canonical.
 #
 # Value transforms (e.g. INLA precision -> SD) key on the native name and
 # apply BEFORE any rename, matching triangulate()'s ordering, so a caller

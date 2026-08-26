@@ -15,12 +15,12 @@
 #   - Random walk / spline smoothers (term type "spline") emitted
 #     as `f(var, model = "rw2")`.
 #   - Heterogeneous residual via `at_units` -- v0.1 refused;
-#     re-route via lgm_gate or backend = "greta".
+#     re-route via lgm_gate or backend = "brms".
 #   - Spatial / GxE structured covariances -- v0.1 refused; route
-#     via greta.
+#     via brms.
 #
 # Anything not in the supported set raises an INLA-side refusal
-# pointing the user back to backend = "greta".
+# pointing the user back to backend = "brms".
 #
 # The post-fit numerical-confirm gate lives here: assert
 # mode.status == 0 and a finite marginal likelihood (mlik). Failures
@@ -1067,10 +1067,10 @@ emit_inla <- function(
         # mgcv::Predict.matrix() when smooths are present. The INLA
         # backend itself does not currently fit s() smooths via mgcv
         # (it uses INLA's own rw2 path), so this slot will normally be
-        # an empty list; threaded for shape uniformity with emit_greta.
+        # an empty list; threaded for shape uniformity with emit_brms.
         parse_info = list(
           smooths = .collect_smooths(fb$random_terms),
-          # Threaded for shape uniformity with emit_greta / emit_brms so
+          # Threaded for shape uniformity with emit_brms so
           # cross-backend accessors (genomic_summary(), fb_structured_cov())
           # can locate the random terms the same way on every engine.
           random = fb$random_terms
@@ -1156,8 +1156,8 @@ emit_inla <- function(
       # treatment-coded indexed-slope shape as base R model.matrix();
       # the verification gate
       # (.lgm_check_factor_numeric_interaction_inla_verified) confirmed
-      # posterior agreement with both greta and lme4 on a gaussian-
-      # identity fixture before this branch became reachable.
+      # posterior agreement with lme4 (and a since-withdrawn engine) on a
+      # gaussian-identity fixture before this branch became reachable.
       "factor_numeric_interaction" = paste(term$vars, collapse = ":"),
       "expression" = term$label,
       # This stop() is an internal contract-violation
@@ -1967,8 +1967,8 @@ emit_inla <- function(
 
 # Refuse the (x || g) INLA mapping, which is deferred on every host.
 #
-# The three-arbitrator verification named greta as one arbitrator and
-# greta is quarantined, so the criterion cannot be re-run as designed.
+# The three-arbitrator verification named a since-withdrawn engine as
+# one arbitrator, so the criterion cannot be re-run as designed.
 # The artefact at inst/extdata/inla-verification/simple_slope_uncor.rds
 # survives as a developer rehearsal hook: it is excluded from the build
 # and is consulted only when a developer sets
@@ -2001,12 +2001,11 @@ emit_inla <- function(
     "INLA mapping for uncorrelated random slopes (x || g) is ",
     "deferred to a future release.\n",
     "The INLA mapper is registered ",
-    "only when the\nthree-arbitrator verification test (INLA vs ",
-    "greta vs lme4 on a simple fixture\nat J = 20 groups) passes ",
-    "within the Wasserstein-1 \u2264 0.20 * tau_true\n",
-    "tolerance on both sd_<g> and sd_<x>_<g>. greta served as one of\n",
-    "the three arbitrators and has since been withdrawn as a fitting ",
-    "engine\n",
+    "only when the\nthree-arbitrator verification test (INLA vs an ",
+    "engine since withdrawn vs lme4 on a simple fixture\nat J = 20 ",
+    "groups) passes within the Wasserstein-1 \u2264 0.20 * tau_true\n",
+    "tolerance on both sd_<g> and sd_<x>_<g>. One of the three ",
+    "arbitrators has since been withdrawn as a fitting engine\n",
     "(see NEWS.md), so this INLA-native mapping stays deferred until ",
     "the\n",
     "verification is re-designed around active backends. The refusal ",

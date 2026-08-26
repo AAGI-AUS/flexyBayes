@@ -2,10 +2,9 @@
 #
 # Implements the cross-engine prior interlingua. v0.1 minimum subset:
 # user-facing constructor + S3 class + structured spec list +
-# print method. Cross-engine translation tables for greta /
-# brms / INLA emit are stubbed in priors_to_inla() and
-# priors_to_legacy() (the legacy-scalar bridge for emit_greta);
-# full translation lands in later releases.
+# print method. Cross-engine translation tables for brms / INLA emit
+# are in priors_to_inla() (this file) and priors_to_brms()
+# (R/priors_to_brms.R).
 #
 # Targets supported in v0.1:
 #   sigma             - residual standard deviation
@@ -79,12 +78,10 @@
 #' Supported distribution families: `pc`, `half_normal`, `half_cauchy`,
 #' `student_t`, `normal`, `exponential`, `lkj`, `cauchy`, `gamma`,
 #' `uniform`. Note that `uniform()` on a variance component sits
-#' outside the PC-canonical interlingua, but both backends represent it
-#' faithfully on the SD scale: the INLA backend via an expression-prior
-#' on the log-precision, and the greta backend as a bounded
-#' `greta::uniform()` on each simple random-effect (and residual) SD.
-#' Structured-covariance terms (`us`, `fa`, `ar1`, `vm`, `ped`) on greta
-#' fall back to the legacy scale prior.
+#' outside the PC-canonical interlingua, but both active backends
+#' represent it faithfully on the SD scale: the INLA backend via an
+#' expression-prior on the log-precision, and brms as a bounded
+#' `uniform()` prior on each simple random-effect (and residual) SD.
 #'
 #' @section What each backend can carry:
 #'
@@ -631,8 +628,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
   # Name positional arguments by the family's canonical parameter order
   # *before* evaluating, so that `normal(0, 50)` and `normal(0, sd = 50)`
-  # carry identical names downstream. Every emit path (legacy / greta,
-  # INLA, brms) reads these arguments by name; without this step a
+  # carry identical names downstream. Every emit path (INLA, brms)
+  # reads these arguments by name; without this step a
   # positional call silently drops to the default scale on the by-name
   # paths. Matching is delegated to base R via match.call() on a stub
   # with the canonical formals, so named and positional binding follow
@@ -1144,7 +1141,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # This is the exact representation of the package's uniform-on-SD default
 # (and any user-supplied uniform() prior), replacing the former lossy
 # PC-prior approximation that concentrated mass at sigma = 0 and so
-# disagreed with the greta backend's flat uniform on small group counts.
+# disagreed with brms's flat uniform on small group counts.
 .inla_uniform_sd_expr <- function(upper, lower = 0) {
   if (lower <= 0) {
     sprintf(
@@ -1191,9 +1188,9 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 }
 
 # Faithful INLA expression prior for the legacy `lognormal(0, s)`
-# variance-component prior on the SD scale -- the prior the greta path has
-# always used for `prior_vc_sd` and the brms path emits as a `lognormal`
-# row. INLA parameterises the hyperparameter as theta = log(precision), so
+# variance-component prior on the SD scale -- the brms path emits this
+# as a `lognormal` row for `prior_vc_sd`. INLA parameterises the
+# hyperparameter as theta = log(precision), so
 # sigma = exp(-theta / 2) and log sigma = -theta / 2. Transforming
 # p(sigma) = 1 / (sigma s sqrt(2 pi)) exp(-(log sigma)^2 / (2 s^2))
 # through that change of variables (Jacobian sigma / 2) gives
@@ -1328,109 +1325,6 @@ print.fb_prior <- function(x, ...) {
 # Translation helpers (cross-engine emit hooks)                    #
 # ---------------------------------------------------------------- #
 
-# Translate fb_prior -> legacy scalar priors used by emit_greta.
-# v0.1 minimum: extract sigma's pc/half_normal scale into a single
-# vc_sd legacy scalar; extract b()'s normal sd into a single
-# fixed_sd. If multiple sigma/b specs are given, the first wins
-# (and a warning is emitted). Future iterations expand this into
-# per-term emit_greta codegen.
-priors_to_legacy <- function(prior, fixed_sd_default = 10, vc_sd_default = 1) {
-  if (!inherits(prior, "fb_prior")) {
-    return(list(
-      fixed_sd = fixed_sd_default,
-      vc_sd = vc_sd_default,
-      legacy = TRUE
-    ))
-  }
-
-  fixed_sd <- fixed_sd_default
-  vc_sd <- vc_sd_default
-
-  # Per-VC PC specs (target = sigma / sd / smooth) keyed by the
-  # codegen tag the variance component carries: "__sigma__" for
-  # residual sigma; group / smooth-var name otherwise. codegen.R's
-  # .sigma_decl emits greta::exponential(rate) for these.
-  pc_per_vc <- list()
-
-  # Per-VC uniform specs, same keying. codegen.R's .sigma_decl emits
-  # greta::uniform(lower, upper) for these. Mirrors pc_per_vc; these
-  # are the v0.1 default for sigma + named random
-  # groups via .default_uniform_prior(). Structured-covariance
-  # branches (us, fa, ar1, vm, ped) bypass .sigma_decl and stay on
-  # the legacy lognormal pending v0.2 codegen broadening.
-  uniform_per_vc <- list()
-
-  for (s in prior$specs) {
-    if (s$target$type == "sigma" && s$spec$family == "pc") {
-      if (!is.null(s$spec$args$upper)) {
-        vc_sd <- as.numeric(s$spec$args$upper)
-      }
-      pc_per_vc[["__sigma__"]] <- list(
-        upper = as.numeric(s$spec$args$upper %||% 1),
-        prob = as.numeric(s$spec$args$prob %||% 0.05)
-      )
-    }
-    if (s$target$type == "sigma" && s$spec$family == "half_normal") {
-      if (!is.null(s$spec$args$scale)) {
-        vc_sd <- as.numeric(s$spec$args$scale)
-      }
-    }
-    if (
-      s$target$type %in% c("sd", "smooth") && s$spec$family == "half_normal"
-    ) {
-      if (!is.null(s$spec$args$scale)) {
-        vc_sd <- as.numeric(s$spec$args$scale)
-      }
-    }
-    if (s$target$type %in% c("sd", "smooth") && s$spec$family == "pc") {
-      key <- if (s$target$type == "sd") s$target$group else s$target$var
-      pc_per_vc[[key]] <- list(
-        upper = as.numeric(s$spec$args$upper %||% 1),
-        prob = as.numeric(s$spec$args$prob %||% 0.05)
-      )
-    }
-    if (s$target$type == "b" && s$spec$family == "normal") {
-      if (!is.null(s$spec$args$sd)) {
-        fixed_sd <- as.numeric(s$spec$args$sd)
-      }
-    }
-
-    # uniform on a variance component (target = sigma / sd / smooth):
-    # surface in uniform_per_vc; codegen .sigma_decl emits
-    # greta::uniform(lower, upper) directly.
-    if (
-      s$target$type %in%
-        c("sigma", "sd", "smooth") &&
-        s$spec$family == "uniform"
-    ) {
-      key <- switch(
-        s$target$type,
-        "sigma" = "__sigma__",
-        "sd" = s$target$group,
-        "smooth" = s$target$var
-      )
-      uniform_per_vc[[key]] <- list(
-        lower = as.numeric(s$spec$args$lower %||% 0),
-        upper = as.numeric(s$spec$args$upper)
-      )
-      # Fallback vc_sd legacy hyperparameter -- best-effort for
-      # structured-covariance branches that don't yet honour uniform.
-      if (s$target$type == "sigma" && !is.null(s$spec$args$upper)) {
-        vc_sd <- as.numeric(s$spec$args$upper)
-      }
-    }
-  }
-
-  list(
-    fixed_sd = fixed_sd,
-    vc_sd = vc_sd,
-    legacy = FALSE,
-    fb_prior = prior,
-    pc_per_vc = pc_per_vc,
-    uniform_per_vc = uniform_per_vc
-  )
-}
-
 # Translate fb_prior -> INLA hyperpar control list: a named list keyed
 # by f()-term group / smoother variable, with "sigma" for the residual,
 # mapping to the `hyper` body INLA takes on that term.
@@ -1498,7 +1392,7 @@ priors_to_inla <- function(prior) {
       # expression prior (.inla_uniform_sd_expr). This supersedes the
       # former lossy PC-prior approximation: the PC prior concentrated
       # mass at sigma = 0 and so shrank a small-group variance component
-      # more than the greta backend's flat uniform did, producing a
+      # more than brms's flat uniform did, producing a
       # cross-engine prior mismatch that surfaced as spurious
       # triangulation disagreement on the variance components. The
       # expression prior is the faithful representation, so the two

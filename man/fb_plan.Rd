@@ -9,7 +9,7 @@ fb_plan(
   data,
   random = NULL,
   residual = NULL,
-  backend = c("auto", "greta", "inla", "brms"),
+  backend = c("auto", "inla", "brms"),
   priors = NULL,
   known_matrices = list(),
   family = "gaussian",
@@ -41,7 +41,7 @@ structure formula (e.g. \code{~ dsum(~ units | env)}). \code{NULL} (default)
 for the ordinary independent-residual model.}
 
 \item{backend}{A single string, one of \code{"auto"} (the default),
-\code{"inla"}, \code{"brms"}, or \code{"greta"}. Chooses the engine the plan
+\code{"inla"}, or \code{"brms"}. Chooses the engine the plan
 reports on, with \code{"auto"} planning the route dispatch would take.}
 
 \item{priors}{An optional \code{fb_prior()} list. Defaults to the

@@ -31,11 +31,14 @@ brms's own posterior tooling (\code{loo()}, \code{posterior_predict()},
 \code{bayes_factor()}).
 }
 \details{
-The brms / Stan engine cannot represent an ASReml structured-covariance
-term (\code{vm}, \code{ped}, \code{fa}, \code{us}, \code{ar1}) or a \code{low_rank} smooth
-approximation; such a model raises a structured refusal naming the
-offending construct. Re-fit with \code{\link[=fb_greta]{fb_greta()}} (full MCMC) or, when the
-model is latent-Gaussian feasible, \code{\link[=fb_inla]{fb_inla()}}.
+The brms / Stan engine cannot represent every ASReml structured-
+covariance term (\code{fa}, \code{us}, \code{ar1}, or a block-diagonal / low-rank
+\code{vm()} / \code{ped()} carrier) or a \code{low_rank} smooth approximation; such a
+model raises a structured refusal naming the offending construct.
+When the model is latent-Gaussian feasible, re-fit with \code{\link[=fb_inla]{fb_inla()}};
+flexyBayes has no active engine for a structured-covariance term
+that is neither brms-representable nor latent-Gaussian feasible
+(see \code{NEWS.md}, 0.9.3).
 }
 \examples{
 # Held back from the default example run because the brms route compiles
@@ -56,11 +59,10 @@ if (requireNamespace("brms", quietly = TRUE) &&
 }
 \seealso{
 \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal entry that picks a
-backend; \code{\link[=fb_greta]{fb_greta()}} / \code{\link[=fb_inla]{fb_inla()}} for the other engine pins;
+backend; \code{\link[=fb_inla]{fb_inla()}} for the other active engine pin;
 \code{\link[=fb_from_brms]{fb_from_brms()}} for building a brms-grammar IR.
 
 Other flexyBayes engine pins: 
-\code{\link{fb_greta}()},
 \code{\link{fb_inla}()}
 }
 \concept{flexyBayes engine pins}

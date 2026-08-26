@@ -7,8 +7,7 @@
 \method{confint}{flexybayes}(object, parm = NULL, level = 0.95, ...)
 }
 \arguments{
-\item{object}{A \code{flexybayes} fit carrying a \verb{$greta$draws} posterior
-slot.}
+\item{object}{A flexybayes fit.}
 
 \item{parm}{Character vector of parameter names to return, or \code{NULL}
 (the default) for every fixed effect.}
@@ -19,20 +18,19 @@ default \code{0.95} returns the 2.5th and 97.5th posterior percentiles.}
 \item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-A matrix with one row per fixed effect and two columns holding
-the lower and upper credible bounds, named for the percentiles used.
+Does not return: raises the classed \code{fit_lacks_posterior_draws}
+refusal.
 }
 \description{
 Returns posterior quantile-based credible intervals, not frequentist
-confidence intervals: the bounds are empirical quantiles of the
+confidence intervals: the bounds would be empirical quantiles of the
 fixed-effect posterior draws the fit carries.
 }
 \details{
-This method reads the draws slot written by the greta-shaped emits
-(\code{fit$greta$draws}). A fit from an engine that stores its posterior in
-another shape reaches its own method -- \code{\link[=confint.flexybayes_inla]{confint.flexybayes_inla()}} for
-INLA, \code{\link[=confint.flexybayes_brms]{confint.flexybayes_brms()}} for brms. An object that carries
-neither is refused by name rather than returned empty, because an empty
-interval matrix reads as "no fixed effects" and not as "this fit cannot
-answer the question".
+No active engine stores its posterior in the shape this bare fallback
+method reads. A fit from an active engine reaches its own method --
+\code{\link[=confint.flexybayes_inla]{confint.flexybayes_inla()}} for INLA, \code{\link[=confint.flexybayes_brms]{confint.flexybayes_brms()}} for
+brms -- so this method always refuses by name rather than returning an
+empty interval matrix, which would read as "no fixed effects" rather
+than "this fit cannot answer the question".
 }

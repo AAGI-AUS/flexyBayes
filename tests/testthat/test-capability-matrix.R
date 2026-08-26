@@ -23,7 +23,7 @@
 #       on the message text.
 #
 # The staleness gate reads the source tree, so it skips on an installed
-# package (README.md is not installed) in the same way the greta-quarantine
+# package (README.md is not installed) in the same way the withdrawn-engine
 # source scan does.
 # =============================================================================
 

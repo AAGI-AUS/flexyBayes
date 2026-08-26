@@ -46,9 +46,6 @@
   if (!is.null(object$brms)) {
     return("brms")
   }
-  if (!is.null(object$greta)) {
-    return("greta")
-  }
   if (inherits(object, "flexybayes_inla")) {
     return("inla")
   }
@@ -67,7 +64,6 @@
     engine,
     inla = "INLA nested Laplace approximation",
     brms = "Stan HMC via brms",
-    greta = "greta MCMC",
     "unrecorded"
   )
 }
@@ -781,12 +777,15 @@
 # ---------------------------------------------------------------- #
 #
 # One data frame per grouping factor, in the same six columns on every
-# engine: group, level, estimate, std.error, conf.low, conf.high. The
-# engines record their random effects in three unrelated shapes -- INLA
-# a data frame per term keyed by `ID`, brms a three-dimensional array per
-# grouping factor, the greta-shaped record a bare named vector of
-# posterior means -- and a reader comparing two fits should not have to
-# learn all three.
+# engine: group, level, estimate, std.error, conf.low, conf.high. INLA
+# reports a data frame per term keyed by `ID`; brms a three-dimensional
+# array per grouping factor. A fit whose engine `.fb_fit_engine()`
+# cannot identify falls through to `.fb_random_blups()`, which reads
+# whatever `object$extras$blups` holds (a bare named vector of
+# posterior means, with no uncertainty columns, on the one record shape
+# that ever populated it -- see that function) -- and a reader
+# comparing two fits should not have to learn the engine-specific
+# shapes to use the table.
 #
 # A grouping factor carrying more than one effect (a random slope beside
 # its intercept) contributes one row per effect and level, with the
@@ -951,11 +950,17 @@
   out[!vapply(out, is.null, logical(1L))]
 }
 
-# .fb_random_blups() --- the greta-shaped record, lowered.
+# .fb_random_blups() --- the fallback `.fb_summary_random()` reaches
+# when `.fb_fit_engine()` cannot identify the fit as inla or brms.
 #
-# That record carries posterior means and nothing else, so the three
-# uncertainty columns are `NA` rather than filled with a number the
-# object never held.
+# Reads `object$extras$blups`, a bare named vector of posterior means
+# with no uncertainty attached (the shape a since-withdrawn native
+# engine populated; see NEWS.md, 0.9.3). Neither active engine
+# populates this slot, so on an inla/brms fit this path is never
+# reached; it remains as the typed no-op for a fit
+# `.fb_fit_engine()` cannot identify, returning `list()` rather than
+# erroring on a missing slot. The three uncertainty columns are `NA`
+# rather than filled with a number the object never held.
 #
 # @noRd
 # @keywords internal

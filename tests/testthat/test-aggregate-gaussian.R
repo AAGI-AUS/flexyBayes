@@ -5,11 +5,11 @@
 # These tests gate the core algebraic invariant of Stage 3A: the
 # aggregated form must produce a bit-exact log-likelihood (to within
 # floating-point reassociation tolerance) for every in-scope IR. If
-# this property holds, every downstream emit (greta, INLA) can be
+# this property holds, every downstream emit (INLA and, later, brms) can be
 # verified against the per-row form via the same identity.
 #
 # Out of scope for this test file (deferred to the Stage 3A backend
-# wiring commit): the greta + INLA emit paths, the dispatch branch
+# wiring commit): the emit paths for the active engines, the dispatch branch
 # that consumes the agg_candidate flag, the <flexybayes>$exactness
 # slot. This commit lands the math.
 

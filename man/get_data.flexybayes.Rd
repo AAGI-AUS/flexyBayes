@@ -3,7 +3,7 @@
 \name{get_data.flexybayes}
 \alias{get_data.flexybayes}
 \alias{get_data.flexybayes_inla}
-\title{Model data accessor (greta backend)}
+\title{Model data accessor (default method)}
 \usage{
 \method{get_data}{flexybayes}(x, ...)
 

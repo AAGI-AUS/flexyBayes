@@ -1,10 +1,14 @@
 # Tests for the low_rank_smooth approximation path --- ADR 0030 C5 +
 # ADR 0027 (v0.4.0 Wave 1 Phase 1B). Covers the rank-K PCA truncation
-# engine, the s(x, representation = ...) parse-time interception, the
-# codegen substitution of the truncated basis, the greta-only routing
-# guard, and (stress-gated) the end-to-end greta fit + predict
-# projection. The exact dense smooth path is unchanged --- regression
-# checks confirm a plain s(x) carries no approximation.
+# engine and the s(x, representation = ...) parse-time interception.
+# The scheme was built for a native engine withdrawn entirely in 0.9.3
+# (see NEWS.md); neither active engine consumes the truncated basis, so
+# the scheme now refuses unconditionally at dispatch
+# (low_rank_smooth_unsupported) rather than routing anywhere -- the
+# former codegen-substitution and end-to-end fit + predict sections are
+# removed, since there is no active engine left to emit or fit them.
+# The exact dense smooth path is unchanged --- regression checks
+# confirm a plain s(x) carries no approximation.
 
 skip_if_no_mgcv <- function() skip_if_not_installed("mgcv")
 mk_lr_data <- function() {
@@ -154,107 +158,38 @@ test_that("parse-time refuses bad rank / unknown scheme / bad spec", {
 })
 
 # ---------------------------------------------------------------- #
-# (e) codegen substitutes the truncated basis (dim = K)             #
-# ---------------------------------------------------------------- #
-
-test_that("codegen emits dim = K on the low-rank path", {
-  skip_if_no_greta()
-  skip_if_no_mgcv()
-  d <- mk_lr_data()
-  code <- flexybayes(
-    fixed = y ~ 1,
-    random = ~ s(
-      x,
-      k = 10L,
-      representation = list(scheme = "low_rank_smooth", rank = 4L)
-    ),
-    data = d,
-    verbose = FALSE,
-    return_code = TRUE
-  )
-  expect_match(code, "s_x_raw <- normal\\(0, 1, dim = 4\\)")
-  expect_match(code, "B_g_s_x <- as_data\\(B_s_x\\)")
-})
-
-# ---------------------------------------------------------------- #
-# (f) greta-only routing guard                                      #
-# ---------------------------------------------------------------- #
-
-test_that("low_rank smooth refuses on explicit inla / brms backends", {
-  skip_if_no_mgcv()
-  d <- mk_lr_data()
-  expect_error(
-    flexybayes(
-      fixed = y ~ 1,
-      random = ~ s(
-        x,
-        representation = list(scheme = "low_rank_smooth", rank = 4L)
-      ),
-      data = d,
-      backend = "inla",
-      verbose = FALSE
-    ),
-    class = "flexybayes_low_rank_requires_greta"
-  )
-})
-
-# ---------------------------------------------------------------- #
-# (g) end-to-end greta fit + predict projection (stress-gated)      #
+# (e) low_rank_smooth has no active-engine consumer                #
 # ---------------------------------------------------------------- #
 #
-# The full MCMC fit is gated behind FLEXYBAYES_RUN_STRESS to keep the
-# routine tally fast; it exercises the exactness label, the V_K slot,
-# validate_approximation() on a real fit, and the predict-side V_K
-# projection (the smooth must contribute, not collapse to flat zero).
+# 0.9.3: the scheme was built for a native engine withdrawn entirely
+# (see NEWS.md). Sections (e) "codegen substitutes the truncated
+# basis" and (g) "end-to-end fit + predict projection" from the
+# pre-0.9.3 file are removed here -- both asserted on that engine's own
+# generated-code text or fit shape, and neither active engine has an
+# emit path for the truncated basis at all (dispatch refuses before
+# either would run). The truncation itself still runs during formula
+# parsing (see R/emit_smooth_low_rank.R); section (c) above already
+# covers that it is intercepted at parse time, and (a)/(b) cover the
+# truncation engine's own numerics directly.
 
-test_that("end-to-end low-rank greta fit, validation, and prediction", {
-  skip_if_no_greta()
+test_that("low_rank smooth refuses on every backend -- no active engine consumes it", {
   skip_if_no_mgcv()
-  if (!identical(Sys.getenv("FLEXYBAYES_RUN_STRESS"), "true")) {
-    skip("stress-gated end-to-end greta fit (set FLEXYBAYES_RUN_STRESS=true)")
-  }
-
   d <- mk_lr_data()
-  fit <- flexybayes(
-    fixed = y ~ 1,
-    random = ~ s(
-      x,
-      k = 10L,
-      representation = list(scheme = "low_rank_smooth", rank = 4L)
-    ),
-    data = d,
-    backend = "greta",
-    n_samples = 200L,
-    warmup = 200L,
-    chains = 2L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )
-
-  expect_identical(fit$exactness, "approximate_low_rank_smooth")
-  ap <- fit$extras$parse_info$approx
-  expect_false(is.null(ap$x))
-  expect_identical(dim(ap$x$V_K), c(ap$x$k, 4L))
-
-  v <- validate_approximation(fit)
-  expect_s3_class(v, "fb_approximation_validation")
-  expect_identical(v$scheme, "low_rank_smooth")
-  expect_true(
-    v$per_smooth$x$frobenius_capture > 0 &&
-      v$per_smooth$x$frobenius_capture <= 1
-  )
-
-  nd <- data.frame(x = seq(0.5, 9.5, length.out = 25L))
-  pr <- predict(fit, newdata = nd)
-  pe <- as.numeric(
-    if (is.list(pr)) {
-      (pr$fit %||% pr$prediction %||% pr[[1L]])
-    } else {
-      pr
-    }
-  )
-  expect_length(pe, nrow(nd))
-  expect_true(all(is.finite(pe)))
-  # the projected smooth contributes -- not the silent flat-zero path
-  expect_gt(stats::sd(pe), 1e-6)
+  for (be in c("inla", "brms", "auto")) {
+    err <- tryCatch(
+      flexybayes(
+        fixed = y ~ 1,
+        random = ~ s(
+          x,
+          representation = list(scheme = "low_rank_smooth", rank = 4L)
+        ),
+        data = d,
+        backend = be,
+        verbose = FALSE
+      ),
+      error = function(e) e
+    )
+    expect_s3_class(err, "flexybayes_low_rank_smooth_unsupported_refusal")
+    expect_identical(err$reason_code, "low_rank_smooth_unsupported", label = be)
+  }
 })

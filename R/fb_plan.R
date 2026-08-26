@@ -1,10 +1,10 @@
 # fb_plan() --- plan-only dispatch surface
 #
 # Returns the dispatch + preflight + representation + memory decision
-# the routing layer would make, without firing the backend. The fifth
-# verb in the v0.3.8 API spine (flexybayes, fb_brms, fb_greta,
+# the routing layer would make, without firing the backend. One of the
+# verbs in the v0.3.8 API spine (flexybayes, fb_brms, fb_inla,
 # fb_plan, triangulate); validate_approximation lands at v0.4.0 as
-# the sixth.
+# another.
 #
 # Design notes:
 #
@@ -67,7 +67,7 @@
 #'   structure formula (e.g. `~ dsum(~ units | env)`). `NULL` (default)
 #'   for the ordinary independent-residual model.
 #' @param backend     A single string, one of `"auto"` (the default),
-#'   `"inla"`, `"brms"`, or `"greta"`. Chooses the engine the plan
+#'   `"inla"`, or `"brms"`. Chooses the engine the plan
 #'   reports on, with `"auto"` planning the route dispatch would take.
 #' @param priors      An optional `fb_prior()` list. Defaults to the
 #'   uniform-on-SD default the fit would inject.
@@ -102,7 +102,7 @@ fb_plan <- function(
   data,
   random = NULL,
   residual = NULL,
-  backend = c("auto", "greta", "inla", "brms"),
+  backend = c("auto", "inla", "brms"),
   priors = NULL,
   known_matrices = list(),
   family = "gaussian",
@@ -115,6 +115,7 @@ fb_plan <- function(
   ...
 ) {
   .check_approximate_scheme(backend)
+  .check_known_backend_name(backend, allowed = c("auto", "inla", "brms"))
   backend <- match.arg(backend)
   aggregate <- .normalise_aggregate(aggregate)
   syntax <- match.arg(syntax)
@@ -248,7 +249,6 @@ fb_plan <- function(
 
   # ---- gate (when backend in {inla, auto}) ---------------------- #
   inla_installed <- requireNamespace("INLA", quietly = TRUE)
-  gretaR_activated <- isTRUE(getOption("flexyBayes.gretaR_activated", FALSE))
 
   gate_outcome <- NA_character_
   gate_checks <- NULL
@@ -303,7 +303,6 @@ fb_plan <- function(
       NA_character_
     },
     inla_installed = inla_installed,
-    gretaR_activated = gretaR_activated,
     fb = fb
   )
 
@@ -371,8 +370,8 @@ fb_plan <- function(
   # multi-environment-trial model would not fit and then fitted it under
   # the same call without `plan = TRUE`.
   #
-  # A route is resolved when the policy table (plus the greta-quarantine
-  # fallback) named a backend. Where it named none, `chosen_reason`
+  # A route is resolved when the policy table (plus the pending-fallback
+  # resolution) named a backend. Where it named none, `chosen_reason`
   # carries which dead end it was, and the printed line says so instead
   # of blaming the preflight for every refusal.
   route_resolved <- !is.na(chosen_backend)
@@ -550,9 +549,6 @@ fb_plan <- function(
 # Representation:/Engine: print surface. The label disambiguates
 # inference engine + approximation regime in one phrase.
 .engine_label_for <- function(backend, path) {
-  if (identical(backend, "greta")) {
-    return("greta MCMC")
-  }
   if (identical(backend, "brms")) {
     return("brms / Stan HMC")
   }
@@ -561,9 +557,6 @@ fb_plan <- function(
       return("INLA Laplace (aggregated)")
     }
     return("INLA Laplace")
-  }
-  if (identical(backend, "gretaR")) {
-    return("gretaR (R-native; dormant)")
   }
   backend
 }

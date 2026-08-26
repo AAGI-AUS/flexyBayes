@@ -13,13 +13,13 @@
 #       "flexybayes", "list") dispatch order lets the parent S3
 #       methods (coef, vcov, fitted, residuals, formula, family,
 #       nobs, model.matrix, summary) work on a populated $glm shim.
-#       Methods that read $greta$draws (confint, logLik) are
-#       overridden in this file to read brms posterior draws via
-#       posterior::as_draws_matrix() instead.
+#       confint and logLik are overridden in this file to read brms
+#       posterior draws via posterior::as_draws_matrix() instead of
+#       the bare parent method (which no active engine reaches).
 #
 #   (2) backend_decision() uniformity. $extras$backend_decision is
 #       populated by .dispatch_backend() after this emit returns;
-#       the slot's shape mirrors the greta / INLA path.
+#       the slot's shape mirrors the INLA path.
 #
 #   (3) triangulate() peer status. The new class is the dispatch
 #       key for fb_as_draws_simple.flexybayes_brms (defined in
@@ -889,11 +889,17 @@ emit_brms <- function(
       ") with backend = \"inla\"."
     ),
     "smooth_mgcv" = paste0(
-      "An mgcv smooth basis has no brms lowering in the ASReml grammar. ",
-      "Fit s(",
+      "An mgcv smooth basis has no brms lowering in the ASReml grammar, ",
+      "and no active engine fits s(",
       var_name,
-      ") with backend = \"inla\", which carries it as ",
-      "a second-order random walk."
+      ") at all: INLA's rw2 route is spl(",
+      var_name,
+      "), a different term type built on an ASReml-style basis, not a ",
+      "lowering of the mgcv smooth. Use spl(",
+      var_name,
+      ") with backend = \"inla\" instead of s(",
+      var_name,
+      ")."
     ),
     "polynomial" = paste0(
       "Fit pol(",
@@ -1038,8 +1044,8 @@ emit_brms <- function(
 # so each carrier is densified to K -- dense as-is, chol -> L L',
 # precision -> solve(Q). When the supplied matrix has no dimnames they
 # are set from the grouping factor's levels so brms aligns the matrix
-# positionally (the same level-alignment contract the greta / INLA
-# paths enforce); existing dimnames are preserved so brms aligns by
+# positionally (the same level-alignment contract the INLA
+# path enforces); existing dimnames are preserved so brms aligns by
 # name.
 .fb_brms_data2 <- function(fb, known_matrices, data) {
   d2 <- list()
@@ -1473,7 +1479,7 @@ emit_brms <- function(
   )
 }
 
-# Build the variance_comps table -- same shape as the greta path
+# Build the variance_comps table -- same shape as the INLA path
 # (component, estimate, sd, q2.5, q97.5).
 .brms_variance_comps <- function(brmsfit, draws_mat) {
   cn <- colnames(draws_mat)
@@ -1736,7 +1742,7 @@ emit_brms <- function(
 #' Opens with the header every engine's print shares, then adds the
 #' sampler diagnostics and a brms-specific footer (the live `brmsfit`
 #' lives at `$brms`; the GLM shim at `$glm`; `$extras` carries the same
-#' diagnostics as the greta path).
+#' diagnostics as the INLA path).
 #'
 #' @param x A `flexybayes_brms` object.
 #' @param ... Ignored. Present for compatibility with the generic.
@@ -1790,8 +1796,9 @@ print.flexybayes_brms <- function(x, ...) {
 #' Credible intervals on the brms path
 #'
 #' Uses the brms posterior draws directly (the parent
-#' `confint.flexybayes` reads `$greta$draws`, which is `NULL` on
-#' the brms-passthrough path). Returns quantile-based credible
+#' `confint.flexybayes` refuses unconditionally with
+#' `fit_lacks_posterior_draws`, since no active engine reaches it
+#' without its own override). Returns quantile-based credible
 #' bounds over the `b_<term>` rows; row names are stripped of the
 #' brms `b_` prefix to align with `coef()`.
 #'
@@ -1873,8 +1880,8 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #' @param classify The factors to break a marginal-means table down by:
 #'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
 #'   formula (`~ Variety`). `NULL` (the default) is the historical
-#'   behaviour. See [predict.flexybayes()] for how the two prediction
-#'   paths differ.
+#'   behaviour. See [predict.flexybayes_inla()] for how the two active
+#'   engines' prediction paths differ.
 #' @param level Credible level for the classify table's interval, as a
 #'   proportion. Default `0.95`.
 #' @param ... Forwarded to `brms::posterior_epred()` /

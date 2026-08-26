@@ -9,8 +9,15 @@
 #   - .routing_policy_table() invariants -- every (gate_outcome,
 #     preflight_outcome, user_request) tuple maps to at most one row.
 #   - Approximate-scheme entry-function refusal.
-#   - Dormant gretaR slot appearing in rejected_routes.
 #   - Reproducibility of the trace across two identical calls.
+
+# 0.9.3: a third native engine and its dormant sibling were withdrawn
+# entirely (see NEWS.md). Neither is registered any more, so the
+# routing-policy table carries no row naming either, and the auto
+# path's rejected_routes no longer carries a dormant-sibling entry
+# (ADR 0024 (i), below, is removed rather than ported for exactly this
+# reason). The fixture default backend and every explicit-request
+# subtest move to brms, the remaining full-HMC engine.
 
 suppressPackageStartupMessages({
   library(testthat)
@@ -25,22 +32,39 @@ old_opts <- options(
 on.exit(options(old_opts), add = TRUE)
 
 
-# Test fixture -- small greta-backend fit on a 4-level RI model.
+# Test fixture -- small brms-backend fit on a 4-level RI model.
 # Used by most subtests to keep wall-time bounded.
-mk_routing_fit <- function(seed = 2026L, N = 60L, J = 4L, backend = "greta") {
+mk_routing_fit <- function(seed = 2026L, N = 60L, J = 4L, backend = "brms") {
   set.seed(seed)
   dat <- data.frame(
     x = rnorm(N),
     g = factor(sample(letters[seq_len(J)], N, replace = TRUE)),
     y = rnorm(N)
   )
+  # Structural fixture (backend_decision() trace shape, not numeric
+  # agreement) shared by most subtests in this file. The property
+  # under test does not depend on sampler convergence, but a chains=1L
+  # / 30-draw budget produces genuine R-hat (not just ESS) warnings on
+  # this 4-level random intercept, which .muffle_ess_warnings() does
+  # not (and should not) catch -- rather than widen the muffle pattern
+  # to hide a real convergence signal, the budget is raised until the
+  # fit actually converges (chains=2L, more draws, higher adapt_delta).
+  # fb()'s own `seed` argument (distinct from the `set.seed(seed)`
+  # call above, which only fixes the *data*) must also be pinned --
+  # left at the fb() default of NULL, brms passes Stan `seed = NA`
+  # (draw-your-own), so the sampler's convergence was observed to vary
+  # run to run at identical data and settings. Pinning it makes the
+  # already-verified-clean draw reproducible instead of leaving it to
+  # chance.
   fit <- suppressMessages(fb(
     y ~ x + (1 | g),
     data = dat,
     backend = backend,
-    n_samples = 30L,
-    warmup = 20L,
-    chains = 1L,
+    n_samples = 500L,
+    warmup = 500L,
+    chains = 2L,
+    seed = seed,
+    control = list(adapt_delta = 0.97),
     prior_fixed_sd = 10,
     prior_vc_sd = 1,
     verbose = FALSE,
@@ -55,7 +79,7 @@ mk_routing_fit <- function(seed = 2026L, N = 60L, J = 4L, backend = "greta") {
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (a): backend_decision() carries preflight_summary slot (NULL on small N)", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   fx <- mk_routing_fit()
   bd <- backend_decision(fx$fit)
   expect_true("preflight_summary" %in% names(bd))
@@ -69,7 +93,7 @@ test_that("ADR 0024 (a): backend_decision() carries preflight_summary slot (NULL
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (b): backend_decision() carries representation_plan slot (NULL on small N)", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   fx <- mk_routing_fit()
   bd <- backend_decision(fx$fit)
   expect_true("representation_plan" %in% names(bd))
@@ -82,13 +106,16 @@ test_that("ADR 0024 (b): backend_decision() carries representation_plan slot (NU
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (c): backend_decision()$rejected_routes lists non-chosen backends with reason codes", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("INLA")
   # backend = "auto" exercises the rejected_routes population path.
   fx <- mk_routing_fit(backend = "auto")
   bd <- backend_decision(fx$fit)
   expect_true("rejected_routes" %in% names(bd))
   expect_type(bd$rejected_routes, "list")
-  # auto path enumerates non-chosen candidates from {inla, greta, gretaR}.
+  # With only two active engines, auto's rejected_routes is typically
+  # empty (INLA accepts, or the fallback to brms is a route taken, not
+  # rejected) -- the shape check below still holds for whichever rows,
+  # if any, a future third engine would add.
   if (length(bd$rejected_routes) > 0L) {
     for (rr in bd$rejected_routes) {
       expect_true(all(c("backend", "reason") %in% names(rr)))
@@ -104,7 +131,7 @@ test_that("ADR 0024 (c): backend_decision()$rejected_routes lists non-chosen bac
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (d): routing_policy_version is 'stage5a_v1' on fresh fits", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   fx <- mk_routing_fit()
   bd <- backend_decision(fx$fit)
   expect_identical(bd$routing_policy_version, "stage5a_v1")
@@ -116,7 +143,6 @@ test_that("ADR 0024 (d): routing_policy_version is 'stage5a_v1' on fresh fits", 
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (e): memory_feasibility_inla rule fires when INLA 3x ceiling exceeded", {
-  skip_if_greta_backend_unusable()
   # Direct rule-level test -- the dispatch-level memory-infeasibility
   # path requires a >1e5-row preflight; we test the gate rule in
   # isolation with a synthetic preflight result that crosses the
@@ -172,7 +198,6 @@ test_that("ADR 0024 (e+): structural-vs-memory refusal distinguishable from reje
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (f): structural LGM-infeasible model surfaces structural reason on auto", {
-  skip_if_greta_backend_unusable()
   # vm() carries random_term_type_inla refusal (per .inla_random_term_type_allowlist).
   # We build a synthetic IR directly to bypass requiring a vm() ingest path.
   fb <- fb_from_brms(
@@ -231,13 +256,12 @@ test_that("ADR 0024 (g): explicit backend='brms' bypasses policy (rejected_route
 })
 
 test_that("ADR 0024 (g+): .resolve_routing() returns empty rejected_routes for explicit user requests", {
-  for (req in c("greta", "brms", "inla")) {
+  for (req in c("brms", "inla")) {
     out <- flexyBayes:::.resolve_routing(
       user_request = req,
       gate_outcome = "accept",
       preflight_outcome = "clear",
-      inla_installed = TRUE,
-      gretaR_activated = FALSE
+      inla_installed = TRUE
     )
     expect_length(out$rejected_routes, 0L)
   }
@@ -246,8 +270,8 @@ test_that("ADR 0024 (g+): .resolve_routing() returns empty rejected_routes for e
 
 # ---------------------------------------------------------------- #
 # Multi-stratum designs route to brms (the faithful full-HMC path). #
-# INLA collapses these variance components to zero and greta under- #
-# mixes them; brms recovers them (agridat::besag.met).              #
+# INLA collapses these variance components to zero; brms recovers   #
+# them (agridat::besag.met).                                        #
 # ---------------------------------------------------------------- #
 
 test_that(".has_interaction_random_term() detects nested / combo terms", {
@@ -277,14 +301,13 @@ test_that("auto routes a structurally-refused multi-stratum design to brms", {
     gate_outcome = "refuse_structural",
     preflight_outcome = NA_character_,
     inla_installed = TRUE,
-    gretaR_activated = FALSE,
     fb = fb_multi
   )
   expect_equal(out$chosen_backend, "brms")
   expect_equal(out$reason_code, "auto_multistratum_to_brms")
 })
 
-test_that("auto reroutes a structural refusal to brms when greta is quarantined", {
+test_that("auto reroutes a generic structural refusal to brms", {
   skip_if_not_installed("brms")
   d <- data.frame(y = rnorm(24), g = factor(rep(1:4, 6)))
   fb_simple <- fb_from_asreml(y ~ 1, random = ~ g, data = d)
@@ -293,26 +316,25 @@ test_that("auto reroutes a structural refusal to brms when greta is quarantined"
     gate_outcome = "refuse_structural",
     preflight_outcome = NA_character_,
     inla_installed = TRUE,
-    gretaR_activated = FALSE,
     fb = fb_simple
   )
-  # greta is quarantined; brms can fit the simple random-intercept model, so
-  # the auto structural-refusal path reroutes to brms (not the interaction
-  # multi-stratum reason, as there is no interaction term).
+  # brms can fit the simple random-intercept model, so the auto
+  # structural-refusal path reroutes to brms via the generic fallback
+  # reason (not the interaction multi-stratum reason above, as there
+  # is no interaction term here).
   expect_equal(out$chosen_backend, "brms")
-  expect_equal(out$reason_code, "auto_greta_quarantined_to_brms")
+  expect_equal(out$reason_code, "auto_fallback_to_brms")
 })
 
-test_that(".resolve_routing() without fb refuses (no active route; greta quarantined)", {
+test_that(".resolve_routing() without fb refuses (no active route)", {
   out <- flexyBayes:::.resolve_routing(
     user_request = "auto",
     gate_outcome = "refuse_structural",
     preflight_outcome = NA_character_,
-    inla_installed = TRUE,
-    gretaR_activated = FALSE
+    inla_installed = TRUE
   )
-  # Without an fb the fallback engine cannot be resolved; greta is
-  # quarantined, so there is no active route -> refuse (NA chosen backend).
+  # Without an fb the fallback engine cannot be resolved -- there is no
+  # active route -> refuse (NA chosen backend).
   expect_true(is.na(out$chosen_backend))
   expect_equal(out$reason_code, "auto_no_active_route")
 })
@@ -351,20 +373,15 @@ test_that("ADR 0024 (h++): approximate-scheme refusal works on fb_brms too", {
 
 
 # ---------------------------------------------------------------- #
-# ADR §6 (i) -- dormant gretaR slot in rejected_routes              #
+# ADR §6 (i) -- [removed] dormant sibling-engine slot in rejected_routes #
 # ---------------------------------------------------------------- #
-
-test_that("ADR 0024 (i): rejected_routes on auto-path carries (gretaR, backend_not_activated)", {
-  skip_if_greta_backend_unusable()
-  fx <- mk_routing_fit(backend = "auto")
-  bd <- backend_decision(fx$fit)
-  gretaR_entry <- Filter(
-    function(rr) identical(rr$backend, "gretaR"),
-    bd$rejected_routes
-  )
-  expect_length(gretaR_entry, 1L)
-  expect_identical(gretaR_entry[[1L]]$reason, "backend_not_activated")
-})
+#
+# Deleted (not rewritten): the dormant sibling engine this pinned was
+# withdrawn entirely at 0.9.3 (see NEWS.md) -- it is not registered at
+# all any more, so `rejected_routes` never carries an entry for it.
+# There is no successor: with only two active engines and no
+# provisioned-but-dormant third slot, auto's rejected_routes is empty
+# on the accept path this fixture exercises (see (c) above).
 
 
 # ---------------------------------------------------------------- #
@@ -372,7 +389,7 @@ test_that("ADR 0024 (i): rejected_routes on auto-path carries (gretaR, backend_n
 # ---------------------------------------------------------------- #
 
 test_that("ADR 0024 (j): two identical calls produce identical backend_decision traces (modulo draws)", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   fx1 <- mk_routing_fit(seed = 7L)
   fx2 <- mk_routing_fit(seed = 7L)
   bd1 <- backend_decision(fx1$fit)
@@ -433,13 +450,13 @@ test_that("lgm_gate() with preflight: rule 11 trivially passes when INLA 3x with
 })
 
 test_that("Legacy fit (no Stage 4 fields) accessor surfaces 8-field shape with NULL defaults", {
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("brms")
   fx <- mk_routing_fit()
   # Simulate a v0.3.5 fit by stripping the new fields.
   legacy <- fx$fit
   legacy$extras$backend_decision <- list(
-    backend = "greta",
-    path = "explicit_greta",
+    backend = "brms",
+    path = "explicit_brms",
     gate_checks = NULL,
     reason = "legacy 4-field shape"
   )
@@ -480,7 +497,7 @@ test_that(".routing_policy_table() invariants: every row carries valid columns",
   expect_true(nrow(table) >= 7L)
   # Every non-NA user_request value is in the expected vocabulary.
   reqs <- na.omit(unique(table$user_request))
-  expect_true(all(reqs %in% c("greta", "brms", "inla", "auto", "gretaR")))
+  expect_true(all(reqs %in% c("brms", "inla", "auto")))
   # Every non-NA gate_outcome is in the expected vocabulary.
   outs <- na.omit(unique(table$gate_outcome))
   expect_true(all(

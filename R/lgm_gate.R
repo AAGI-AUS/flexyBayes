@@ -112,12 +112,6 @@ lgm_gate <- function(
     for (w in warnings) {
       caps <- c(caps, paste0("lgm_warning:", w$rule_id, ":", w$warning))
     }
-    # gretaR slot capability: informational at v0.2 (slot dormant);
-    # at v0.3 the flag value flips to "gretaR_dispatch_eligible"
-    # when the activation boolean + audit mechanism both agree.
-    # Sole consumer at v0.2 is the gretaR_slot test suite + a future
-    # v0.3 dispatch path; no v0.2 dispatch consults the flag.
-    caps <- c(caps, .gretaR_slot_capability())
     fb$capabilities <- caps
     return(fb)
   }
@@ -215,7 +209,7 @@ print.lgm_refusal <- function(x, ...) {
     "\"brms\"\n  (or call fb_brms()) when it can represent the model. ",
     "Under the\n  default backend = \"auto\" that re-route is already ",
     "attempted, and\n  auto refuses when brms cannot represent the model ",
-    "either. greta and\n  gretaR are quarantined and are never selected.\n",
+    "either.\n",
     sep = ""
   )
   cat(
@@ -688,8 +682,8 @@ print.lgm_refusal <- function(x, ...) {
 # `factor_numeric_interaction` -- treatment-coded indexed slopes for
 # factor x continuous interactions -- to the allowlist. INLA's
 # native `f:x` notation handles this term shape directly for the
-# gaussian-identity case; non-gaussian cases re-route to greta per
-# the INLA verification policy (see
+# gaussian-identity case; non-gaussian cases have no active-engine
+# route per the INLA verification policy (see
 # .lgm_check_factor_numeric_interaction_inla_verified() below).
 .inla_fixed_term_type_allowlist <- function() {
   c(
@@ -704,7 +698,7 @@ print.lgm_refusal <- function(x, ...) {
 
 # Allowlist: random-term types that emit_inla()'s random-effect
 # switch() accepts. The refused set (vm/ped/at/us/fa/ar1 +
-# variants) maps to greta's broader formula path; the refusal
+# variants) has no INLA representation; the refusal
 # text names the structured-covariance class.
 .inla_random_term_type_allowlist <- function() {
   # "simple_slope_uncor" enters the allowlist
@@ -720,7 +714,7 @@ print.lgm_refusal <- function(x, ...) {
 
 # Allowlist: residual-term types that emit_inla()'s residual-term guard
 # accepts. INLA folds residual variance into the likelihood and
-# does not represent structured-residual forms; those refit via greta.
+# does not represent structured-residual forms.
 .inla_residual_term_type_allowlist <- function() {
   # 0.9.0: the separable AR1 field moved to the random side. INLA emits it
   # as a latent autoregressive field plus the observation-level Gaussian
@@ -749,7 +743,7 @@ print.lgm_refusal <- function(x, ...) {
   }
   paste0(
     "brms cannot represent it either, so no active backend can fit it ",
-    "faithfully (greta, which could, has been withdrawn -- see NEWS.md)."
+    "faithfully."
   )
 }
 
@@ -840,7 +834,7 @@ print.lgm_refusal <- function(x, ...) {
 # native interface for a user-supplied dense covariance or
 # Cholesky factor) and the user is pointed to the actionable
 # workaround (re-express as precision via solve(V), or route via
-# backend = "greta").
+# backend = "brms").
 .lgm_check_random_term_inla_support <- function(fb) {
   bad_terms <- list()
   for (term in fb$random_terms) {
@@ -990,11 +984,11 @@ print.lgm_refusal <- function(x, ...) {
 #
 # The fixed-term allowlist (check 7) accepts the new term class
 # structurally, but the INLA mapper for this class is not admitted on
-# the shipped surface: the three-arbitrator verification (INLA vs greta
-# vs lme4 on a gaussian-identity fixture) named greta as one of its
-# arbitrators, and greta has since been withdrawn as a fitting engine,
-# so the criterion cannot be re-run as designed. The check therefore
-# refuses on every host, and `auto` routes the term class to brms.
+# the shipped surface: the three-arbitrator verification (INLA vs an
+# engine since withdrawn vs lme4 on a gaussian-identity fixture) named
+# a now-withdrawn engine as one of its arbitrators, so the criterion
+# cannot be re-run as designed. The check therefore refuses on every
+# host, and `auto` routes the term class to brms.
 #
 # The artefact at
 # `inst/extdata/inla-verification/factor_numeric_interaction.rds`
@@ -1033,8 +1027,8 @@ print.lgm_refusal <- function(x, ...) {
     rule_id,
     paste0(
       "factor:continuous indexed interaction INLA mapping is not ",
-      "admitted: its three-arbitrator verification named greta as one ",
-      "arbitrator, and greta is quarantined (see NEWS.md), so the ",
+      "admitted: its three-arbitrator verification named a since-",
+      "withdrawn engine as one arbitrator (see NEWS.md), so the ",
       "criterion cannot be re-run as designed. Pass ",
       "backend = \"brms\", or leave backend = \"auto\", which routes ",
       "there when INLA refuses."
@@ -1241,8 +1235,8 @@ print.lgm_refusal <- function(x, ...) {
         "INLA path's projected design memory (%.2f GB; ",
         "~%.0fx the indexed estimate) exceeds the active ",
         "ceiling (%.2f GB). The indexed representation that would ",
-        "avoid this ceiling was greta-only; greta has been withdrawn ",
-        "as a fitting engine (see NEWS.md). Reduce the model or data ",
+        "avoid this ceiling has no active-engine emit path (see ",
+        "NEWS.md). Reduce the model or data ",
         "scale, or raise the memory ceiling if the projection is ",
         "conservative for your hardware."
       ),

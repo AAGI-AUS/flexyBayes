@@ -13,8 +13,8 @@
 )
 }
 \arguments{
-\item{x}{A flexyBayes fit: \code{flexybayes} (greta backend) or
-\code{flexybayes_brms} (brms backend, which inherits this method).}
+\item{x}{A flexyBayes fit: \code{flexybayes_brms} (brms backend, which
+inherits this method via the bare \code{flexybayes} class).}
 
 \item{conf.int}{Logical. Whether to attach credible intervals. Defaults to
 \code{TRUE}.}
@@ -50,10 +50,10 @@ against the \code{tidy()} generic (re-exported by \code{broom}), so
 }
 \details{
 This is the supported accessor for cross-engine summaries. The hub returns
-backend-specific objects -- \code{flexybayes} (greta), \code{flexybayes_brms}
-(brms), \code{flexybayes_inla} (INLA) -- whose internal layouts differ. Tidying
-through this generic yields the same columns across all three, so a
-greta-versus-INLA triangulation table can be assembled by \code{rbind}-ing two
+backend-specific objects -- \code{flexybayes_brms} (brms) and
+\code{flexybayes_inla} (INLA) -- whose internal layouts differ. Tidying
+through this generic yields the same columns across both, so a
+brms-versus-INLA triangulation table can be assembled by \code{rbind}-ing two
 \code{tidy()} outputs rather than reaching into each backend's slots by hand.
 
 The credible intervals are posterior quantile-based intervals, not

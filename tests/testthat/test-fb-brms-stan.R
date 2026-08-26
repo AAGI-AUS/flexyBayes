@@ -307,12 +307,12 @@ test_that("fb(backend='brms'): Bernoulli RI fits cleanly", {
 
 
 # ---------------------------------------------------------------- #
-# (11) triangulate() across greta and brms: auto-resolve via registry #
+# (11) triangulate() across INLA and brms: auto-resolve via registry #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate(): brms + greta align via the identity registry", {
+test_that("triangulate(): brms + INLA align via the identity registry", {
   testthat::skip_if_not_installed("brms")
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("INLA")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
 
@@ -329,23 +329,20 @@ test_that("triangulate(): brms + greta align via the identity registry", {
       mcmc_verbose = FALSE
     )
   ))
-  fit_g <- suppressMessages(suppressWarnings(
+  fit_i <- suppressMessages(suppressWarnings(
     fb(
       y ~ x + (1 | g),
       data = d,
-      backend = "greta",
-      n_samples = 100L,
-      warmup = 100L,
-      chains = 1L,
+      backend = "inla",
       verbose = FALSE,
       mcmc_verbose = FALSE
     )
   ))
 
-  tri <- triangulate(fit_b, fit_g)
+  tri <- triangulate(fit_b, fit_i)
   expect_s3_class(tri, "triangulate_result")
   expect_identical(tri$source_a, "brms")
-  expect_identical(tri$source_b, "greta")
+  expect_identical(tri$source_b, "inla")
   # Auto-resolve canonical names: (Intercept) and x must be in the
   # common set without a user-supplied name_map.
   expect_true(any(c("(Intercept)", "x") %in% tri$common))
@@ -358,7 +355,7 @@ test_that("triangulate(): brms + greta align via the identity registry", {
 
 test_that("fb(backend='auto') does NOT route to Stan", {
   testthat::skip_if_not_installed("brms")
-  skip_if_greta_backend_unusable()
+  testthat::skip_if_not_installed("INLA")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
 
@@ -376,8 +373,7 @@ test_that("fb(backend='auto') does NOT route to Stan", {
     )
   ))
   bd <- backend_decision(fit_a)
-  expect_true(bd$backend %in% c("greta", "inla"))
-  expect_false(identical(bd$backend, "brms"))
+  expect_identical(bd$backend, "inla")
 })
 
 
@@ -385,14 +381,19 @@ test_that("fb(backend='auto') does NOT route to Stan", {
 # (13) fb(backend='stan' or anything else) match.arg refusal   #
 # ---------------------------------------------------------------- #
 
-test_that("fb(backend='stan') raises the standard match.arg error", {
+test_that("fb(backend='stan') raises the typed unknown-backend refusal", {
+  # 0.9.3: an unrecognised backend name is now intercepted by
+  # .check_known_backend_name() before match.arg() runs, so the error is
+  # a typed flexyBayes refusal naming the active engines rather than a
+  # bare match.arg() message.
   d <- mk_brms_stan_gaussian_data()
   err <- tryCatch(
     fb(y ~ x + (1 | g), data = d, backend = "stan"),
-    error = function(e) conditionMessage(e)
+    error = function(e) e
   )
-  expect_match(err, "'arg' should be one of")
-  expect_match(err, "brms")
+  expect_s3_class(err, "flexybayes_unknown_backend_refusal")
+  expect_identical(err$reason_code, "unknown_backend")
+  expect_match(conditionMessage(err), "brms")
 })
 
 

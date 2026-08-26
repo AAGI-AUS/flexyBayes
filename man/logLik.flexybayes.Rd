@@ -26,14 +26,14 @@ from the same engine have something to read.
 The method computes what the object carries and refuses by name when it
 carries too little. Three requirements are checked before any arithmetic
 runs: the response vector in \verb{$glm$y}, the fitted values from
-\code{\link[=fitted]{fitted()}}, and a recorded family. A Gaussian fit additionally sharpens
-its residual scale from the posterior draws when they are present, and
-otherwise falls back to the residual root-mean-square. Families outside
-the Gaussian, binomial and Poisson set have no plug-in form here and are
-refused rather than reported as \code{NA}, because a silent \code{NA} propagates
-into \code{anova()} and \code{AIC()} as though the comparison had been made.
+\code{\link[=fitted]{fitted()}}, and a recorded family. A Gaussian fit uses the residual
+root-mean-square as its plug-in scale. Families outside the Gaussian,
+binomial and Poisson set have no plug-in form here and are refused
+rather than reported as \code{NA}, because a silent \code{NA} propagates into
+\code{anova()} and \code{AIC()} as though the comparison had been made.
 
-INLA fits reach \code{\link[=logLik.flexybayes_inla]{logLik.flexybayes_inla()}} instead, which states that
-INLA reports a marginal log-likelihood and returns \code{NA} with that
-message.
+brms fits reach \code{\link[=logLik.flexybayes_brms]{logLik.flexybayes_brms()}} instead (brms's own
+\code{log_lik()}), and INLA fits reach \code{\link[=logLik.flexybayes_inla]{logLik.flexybayes_inla()}}, which
+states that INLA reports a marginal log-likelihood and returns \code{NA}
+with that message.
 }

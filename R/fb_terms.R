@@ -2,8 +2,8 @@
 #
 # An S3 class that bridges asreml-format ingest (via parse_formula.R)
 # and brms-formula ingest (via brms::brmsterms()) to
-# the three v0.1 emit backends: greta (existing), brms / Stan (new),
-# and INLA -- Integrated Nested Laplace Approximations (new).
+# the two active emit backends: brms / Stan and
+# INLA -- Integrated Nested Laplace Approximations.
 #
 # Internal for v0.1. Constructed inside `flexybayes()` (the asreml
 # entry, retained) or `fb()` (the brms entry) -- not
@@ -14,8 +14,6 @@
 # Scope of this file: class skeleton, constructor,
 # validator, predicate, accessors, print, format. No ingest, no
 # backend logic, no semantic interpretation of term descriptors.
-# The ingest layers wire this into the existing asreml -> greta
-# pathway without altering codegen.R.
 
 # ---------------------------------------------------------------- #
 # Constructor                                                      #
@@ -64,8 +62,7 @@ new_fb_terms <- function(
   priors = NULL,
   data_summary = list(),
   capabilities = character(),
-  source = c("asreml", "brms", "greta"),
-  greta_meta = NULL
+  source = c("asreml", "brms")
 ) {
   source <- match.arg(source)
 
@@ -81,10 +78,22 @@ new_fb_terms <- function(
     priors = priors,
     data_summary = data_summary,
     capabilities = capabilities,
-    source = source,
-    greta_meta = greta_meta
+    source = source
   )
   class(obj) <- c("fb_terms", "list")
+  # Reserved-scheme guard for every vm()/ped() term (see
+  # .check_low_rank_cov_reserved(), R/structured_cov.R): runs here,
+  # once the full random_terms list is assembled from either grammar,
+  # rather than during .parse_formula() itself -- a bare .parse_formula()
+  # call (used directly in a handful of tests that check parsing/
+  # deprecation behaviour in isolation) must stay refusal-free; the
+  # refusal belongs to "this IR is going somewhere", which is what
+  # new_fb_terms() represents for both ingest grammars.
+  for (term in random_terms) {
+    if ((term$type %||% "") %in% c("vm", "ped")) {
+      .check_low_rank_cov_reserved(term$cov_representation, term$var)
+    }
+  }
   validate_fb_terms(obj)
   obj
 }
@@ -129,19 +138,12 @@ validate_fb_terms <- function(x) {
     stop("`link` must be NULL or a length-1 character vector.", call. = FALSE)
   }
 
-  if (!is.logical(x$intercept) || length(x$intercept) != 1L) {
+  if (
+    !is.logical(x$intercept) ||
+      length(x$intercept) != 1L ||
+      is.na(x$intercept)
+  ) {
     stop("`intercept` must be TRUE or FALSE.", call. = FALSE)
-  }
-  # NA permitted only when source = "greta": greta-direct
-  # models do not declare an intercept syntactically. Otherwise the
-  # original "TRUE or FALSE" contract holds.
-  if (is.na(x$intercept) && !identical(x$source, "greta")) {
-    stop(
-      "`intercept` must be TRUE or FALSE (NA only permitted on ",
-      "the greta-direct entry, where the IR carries ",
-      "`source = \"greta\"`).",
-      call. = FALSE
-    )
   }
 
   for (slot in c(
@@ -183,37 +185,8 @@ validate_fb_terms <- function(x) {
     stop("`capabilities` must be a character vector.", call. = FALSE)
   }
 
-  if (!x$source %in% c("asreml", "brms", "greta")) {
-    stop('`source` must be "asreml", "brms", or "greta".', call. = FALSE)
-  }
-
-  # greta_meta is required when source = "greta" and forbidden otherwise.
-  # The slot holds the post-hoc IR built from a
-  # user-supplied greta_model object.
-  if (identical(x$source, "greta")) {
-    if (!is.list(x$greta_meta)) {
-      stop(
-        "`greta_meta` must be a list when `source = \"greta\"`.",
-        call. = FALSE
-      )
-    }
-    for (req in c("arrays", "canonical_map", "model_dim", "n_data")) {
-      if (is.null(x$greta_meta[[req]])) {
-        stop(
-          "`greta_meta$",
-          req,
-          "` is required when source = \"greta\".",
-          call. = FALSE
-        )
-      }
-    }
-  } else {
-    if (!is.null(x$greta_meta)) {
-      stop(
-        "`greta_meta` is only valid when `source = \"greta\"`.",
-        call. = FALSE
-      )
-    }
+  if (!x$source %in% c("asreml", "brms")) {
+    stop('`source` must be "asreml" or "brms".', call. = FALSE)
   }
 
   invisible(x)

@@ -52,7 +52,7 @@
 #'
 #' @family flexyBayes ingest adapters
 #' @seealso [flexybayes()] and [fb()] for the universal fitting entry;
-#'   [fb_from_brms()] and [fb_from_greta()] for the other ingest dialects.
+#'   [fb_from_brms()] for the other ingest dialect.
 #' @examples
 #' df <- data.frame(
 #'   yield = rnorm(20),
@@ -157,14 +157,13 @@ fb_from_asreml <- function(
 # universal entry (fb() / flexybayes()). The rule is by SHAPE, never by
 # guessing intent:
 #   - a forced `syntax` (anything but "auto") wins outright;
-#   - a greta_model object -> "greta" (native graph);
 #   - a brmsformula object  -> "brms";
 #   - a formula whose terms carry lme4 / brms bar-grouping ("(... | g)")
 #     -> "brms" (ASReml `fixed` formulae never contain a bar);
 #   - any other formula      -> "asreml" (the long-standing default; a
 #     bar-free `y ~ x` is identical under either grammar, so the safe
 #     default matches historical behaviour).
-# A non-formula, non-greta `spec` falls through to "asreml" so the
+# A non-formula `spec` falls through to "asreml" so the
 # established fb_from_asreml() validation owns the error message
 # (behaviour-preserving for malformed input).
 .detect_grammar <- function(
@@ -175,9 +174,6 @@ fb_from_asreml <- function(
 ) {
   if (!identical(syntax, "auto")) {
     return(syntax)
-  }
-  if (inherits(spec, "greta_model")) {
-    return("greta")
   }
   if (inherits(spec, "brmsformula")) {
     return("brms")
@@ -193,20 +189,7 @@ fb_from_asreml <- function(
 # the grammar from the call shape and routes to the matching exported
 # adapter, producing the backend-agnostic fb_terms IR. ASReml ingest is
 # byte-identical to the historical direct fb_from_asreml() call;
-# brms-grammar ingest was added later; native-greta ingest
-# lands here at v0.5.0.
-#
-# Two non-formula model-spec shapes are accepted on the model slot
-# (`fixed`):
-#   - a native `greta_model` graph  -> lowered to a greta-source IR via
-#     fb_from_greta() (verbatim canonical names + one-time note). The
-#     graph is fit directly by greta::mcmc() downstream, not through the
-#     shared emit path.
-#   - a prebuilt greta-source IR (from fb_from_greta(), carrying a
-#     canonical-name map) -> passed through unchanged. Prebuilt asreml /
-#     brms IRs are NOT accepted here: their emit-display path still needs
-#     the original formula triple, so those route through the formula
-#     entry instead.
+# brms-grammar ingest was added later.
 .build_ir_polymorphic <- function(
   fixed,
   random,
@@ -221,29 +204,6 @@ fb_from_asreml <- function(
   prior_vc_sd,
   syntax = "auto"
 ) {
-  # Prebuilt-IR passthrough (greta-source only).
-  if (inherits(fixed, "fb_terms")) {
-    if (!identical(fixed$source, "greta")) {
-      stop(
-        "fb() / flexybayes() accept a prebuilt IR only for the ",
-        "greta-native source (fb_from_greta()). For an asreml / brms ",
-        "IR, pass the original formula to flexybayes() / fb() (or call ",
-        "the matching engine pin) so the emit-display path has the ",
-        "formula triple.",
-        call. = FALSE
-      )
-    }
-    if (!is.null(random) || !is.null(residual) || length(known_matrices)) {
-      stop(
-        "A prebuilt greta-source IR already encodes the full model ",
-        "graph; it cannot be combined with `random`, `residual`, or ",
-        "`known_matrices`.",
-        call. = FALSE
-      )
-    }
-    return(fixed)
-  }
-
   grammar <- .detect_grammar(fixed, random, residual, syntax)
   switch(
     grammar,
@@ -294,26 +254,6 @@ fb_from_asreml <- function(
         weights = weights,
         prior_fixed_sd = prior_fixed_sd,
         prior_vc_sd = prior_vc_sd
-      )
-    },
-    greta = {
-      # A native greta_model graph. It carries its own data and priors,
-      # so the ASReml `random` / `residual` arguments are a category error
-      # here -- the structure lives in the graph, not in formula terms.
-      if (!is.null(random) || !is.null(residual)) {
-        stop(
-          "A native greta_model encodes its full structure in the ",
-          "graph; it cannot be combined with `random` / `residual`. Build ",
-          "the model with greta primitives, or use the ASReml / brms ",
-          "formula grammar.",
-          call. = FALSE
-        )
-      }
-      fb_from_greta(
-        model = fixed,
-        data = data,
-        prior = prior,
-        known_matrices = known_matrices
       )
     }
   )

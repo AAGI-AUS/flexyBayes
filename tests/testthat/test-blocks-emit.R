@@ -1,5 +1,5 @@
 # test-blocks-emit.R --- ADR 0025 Decision 3 (v0.3.10) block-diagonal
-# carrier on greta + INLA, plus the upgraded low_rank refusal-stub
+# carrier on INLA, plus the upgraded low_rank refusal-stub
 # (Decision 4) and the three first-migration entries into the v0.3.8
 # C7 refusal-registry scaffold.
 #
@@ -121,31 +121,20 @@ test_that(".validate_blocks_input() refuses with blocks_empty_list", {
 })
 
 # ---------------------------------------------------------------- #
-# (d) greta codegen: Matrix::bdiag() in the sqrt expression          #
+# (d) [removed] codegen: Matrix::bdiag() in the sqrt expression      #
 # ---------------------------------------------------------------- #
-
-test_that("codegen: blocks path emits t(chol(as.matrix(Matrix::bdiag(...)))) sqrt expression", {
-  skip_if_greta_backend_unusable() # greta codegen quarantined -- re-entry guard
-  dat <- data.frame(
-    geno = factor(rep(seq_len(5L), length.out = 60L)),
-    yield = rnorm(60L, 50, 5)
-  )
-  Bs <- list(diag(2), diag(3) + 0.1)
-  code <- flexybayes(
-    yield ~ 1,
-    random = ~ vm(geno, cov = fb_cov(Bs, type = "blocks")),
-    data = dat,
-    known_matrices = list(Bs = Bs),
-    return_code = TRUE,
-    verbose = FALSE
-  )
-  expect_true(grepl(
-    "t(chol(as.matrix(Matrix::bdiag(Bs))))",
-    code,
-    fixed = TRUE
-  ))
-  expect_false(grepl("Bs %*%", code, fixed = TRUE))
-})
+#
+# Deleted (not rewritten): this test checked the Cholesky-square-root
+# code text the withdrawn native engine's codegen produced for a
+# block-diagonal carrier (see NEWS.md, 0.9.3). No active engine has a
+# successor -- brms refuses a block-diagonal vm() carrier outright
+# (stan_cannot_represent_structured_cov via `.capability_brms()`), and
+# `return_code = TRUE` on `backend = "auto"` resolves only to brms
+# ("the only active code-producing engine"; verified live: the auto
+# path raises `auto_no_active_route` for this exact call). INLA
+# represents the carrier (see subtest (e) below) but has no
+# code-generation stage to inspect via `return_code` at all -- it
+# builds an R formula/call object directly, not a text blob.
 
 # ---------------------------------------------------------------- #
 # (e) INLA formula build: K f() calls with per-block Cmatrix         #
@@ -198,7 +187,7 @@ test_that("flexybayes(plan = TRUE) Representation label renders 'exact (block-di
     random = ~ vm(geno, cov = fb_cov(Bs, type = "blocks")),
     data = dat,
     known_matrices = list(Bs = Bs),
-    backend = "greta",
+    backend = "inla",
     plan = TRUE,
     verbose = FALSE
   )
@@ -223,7 +212,7 @@ test_that("flexybayes(plan = TRUE) representation_plan carries block_diagonal cl
     random = ~ vm(geno, cov = fb_cov(Bs, type = "blocks")),
     data = dat,
     known_matrices = list(Bs = Bs),
-    backend = "greta",
+    backend = "inla",
     plan = TRUE,
     verbose = FALSE
   )
@@ -261,37 +250,18 @@ test_that("lgm_gate accepts vm() with cov_representation$format = 'blocks'", {
 })
 
 # ---------------------------------------------------------------- #
-# (i) low_rank refusal upgrade names the registry + workaround      #
+# (i) [removed] low_rank refusal upgrade names the registry + workaround #
 # ---------------------------------------------------------------- #
-
-test_that("low_rank refusal message names the reserved fb_cov() carrier, v0.4.0, and the dense materialisation workaround", {
-  # Legacy keyword carrier (deprecated v0.4.0); quiet the lifecycle
-  # warning -- the deprecation itself is asserted in
-  # test-fb-cov-constructor.R.
-  withr::local_options(lifecycle_verbosity = "quiet")
-  dat <- data.frame(geno = factor(1:5))
-  random_terms <- flexyBayes:::.parse_formula(
-    ~ vm(geno, low_rank_factor = U, low_rank_scheme = "pca"),
-    dat
-  )
-  fixed_info <- flexyBayes:::.parse_fixed(V1 ~ 1, cbind(dat, V1 = 1))
-  ev <- new.env(parent = emptyenv())
-  err <- tryCatch(
-    flexyBayes:::.setup_env(
-      ev,
-      fixed_info,
-      random_terms,
-      list(list(type = "units")),
-      dat,
-      list(U = matrix(0, 5, 2)),
-      NULL
-    ),
-    flexybayes_structured_cov_refusal = identity
-  )
-  expect_match(err$message, "reserved type")
-  expect_match(err$message, "fb_cov\\(")
-  expect_match(err$message, "U %\\*% t\\(U\\)")
-})
+#
+# Deleted (not rewritten): this test called `.setup_env()` directly to
+# exercise a "reserved type" refusal on the legacy
+# `vm(low_rank_factor =, low_rank_scheme =)` keyword spelling.
+# `.setup_env()` was the withdrawn native engine's model-environment
+# builder (see NEWS.md, 0.9.3) and had zero callers from any other
+# emit path even before the withdrawal -- confirmed via a caller sweep
+# of R/*.R during this session's orphan-detection pass -- so this
+# refusal never fired for an INLA or brms fit and is not a capability
+# either active engine ever had.
 
 # ---------------------------------------------------------------- #
 # (j) Refusal registry: the three v0.3.10 first-migration entries    #

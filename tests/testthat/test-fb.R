@@ -25,7 +25,6 @@ test_that("fb is identical to flexybayes (ADR 0004 D1)", {
 })
 
 test_that("fb() and flexybayes() byte-identical on the same call", {
-  skip_if_no_greta()
   d <- mk_fb_data()
 
   via_fb <- fb(
@@ -46,12 +45,12 @@ test_that("fb() and flexybayes() byte-identical on the same call", {
 })
 
 # ---------------------------------------------------------------- #
-# Code generation via greta backend (the v0.1 default and only      #
-# fitting path; INLA emit and brms passthrough deferred to v0.2)    #
+# Code generation (auto routes return_code = TRUE to brms/Stan --   #
+# the v0.1 default fitting path was the native engine withdrawn     #
+# entirely in 0.9.3, see NEWS.md; INLA has no return_code text form)#
 # ---------------------------------------------------------------- #
 
-test_that("fb() generates greta code for fixed-only model", {
-  skip_if_no_greta()
+test_that("fb() generates brms/Stan code for fixed-only model", {
   d <- mk_fb_data()
   code <- fb(
     fixed = y ~ x,
@@ -61,11 +60,10 @@ test_that("fb() generates greta code for fixed-only model", {
   )
   expect_type(code, "character")
   expect_true(nzchar(code))
-  expect_match(code, "normal\\(")
+  expect_match(code, "sigma")
 })
 
 test_that("fb() generates RE code for asreml-style random intercept", {
-  skip_if_no_greta()
   d <- mk_fb_data()
   code <- fb(
     fixed = y ~ x,
@@ -75,6 +73,6 @@ test_that("fb() generates RE code for asreml-style random intercept", {
     return_code = TRUE
   )
   expect_type(code, "character")
-  expect_match(code, "sigma_g")
-  expect_match(code, "g_raw")
+  expect_match(code, "sd_1")
+  expect_match(code, "z_1")
 })

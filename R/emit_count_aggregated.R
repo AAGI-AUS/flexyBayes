@@ -15,8 +15,7 @@
 #               posterior is unchanged.
 #
 # Both are therefore exact compression, not approximation: INLA is given
-# the cell totals with `Ntrials` (binomial) or `E` (poisson), and greta
-# attaches the matching count distribution to the cell-total data. Unlike
+# the cell totals with `Ntrials` (binomial) or `E` (poisson). Unlike
 # the gaussian path (emit_gaussian_aggregated.R) there is no within-cell
 # sum-of-squares term and no custom-prior correction -- the only
 # hyperparameters are the random-intercept precisions, identical to the
@@ -29,7 +28,7 @@ emit_count_aggregated <- function(
   fb,
   fb_aggregated,
   data,
-  backend = c("inla", "greta"),
+  backend = "inla",
   n_samples = 1000L,
   warmup = 500L,
   chains = 4L,
@@ -55,19 +54,6 @@ emit_count_aggregated <- function(
   backend <- match.arg(backend)
   fam <- fb$family
 
-  if (identical(backend, "greta") && .backend_is_quarantined("greta")) {
-    stop(.fb_refusal_condition(
-      reason_code = "backend_quarantined",
-      message = paste0(
-        "backend = \"greta\" is quarantined: retained as a re-entry ",
-        "candidate, not an active fitting engine. Use backend = ",
-        "\"inla\" (re-entry is repair + conform, section 4.1)."
-      ),
-      family_class = "flexybayes_backend_quarantined_refusal",
-      backend = "greta"
-    ))
-  }
-
   .check_fb_terms(fb, "emit_count_aggregated() requires an <fb_terms> IR.")
   .check_fb_aggregated(
     fb_aggregated,
@@ -86,22 +72,7 @@ emit_count_aggregated <- function(
   ri_plan <- .agg_emit_ri_plan(fb, fb_aggregated)
 
   t0 <- Sys.time()
-  engine_out <- if (identical(backend, "inla")) {
-    .emit_count_aggregated_inla(fb, fb_aggregated, ri_plan, verbose)
-  } else {
-    .emit_count_aggregated_greta(
-      fb,
-      fb_aggregated,
-      ri_plan,
-      n_samples,
-      warmup,
-      chains,
-      prior_fixed_sd,
-      prior_vc_sd,
-      verbose,
-      mcmc_verbose
-    )
-  }
+  engine_out <- .emit_count_aggregated_inla(fb, fb_aggregated, ri_plan, verbose)
   elapsed <- as.numeric(Sys.time() - t0, units = "secs")
 
   .agg_count_build_fit(
@@ -284,117 +255,6 @@ emit_count_aggregated <- function(
 
 
 # ---------------------------------------------------------------- #
-# greta path                                                        #
-# ---------------------------------------------------------------- #
-.emit_count_aggregated_greta <- function(
-  fb,
-  fb_aggregated,
-  ri_plan,
-  n_samples,
-  warmup,
-  chains,
-  prior_fixed_sd,
-  prior_vc_sd,
-  verbose,
-  mcmc_verbose
-) {
-  .check_installed(
-    "greta",
-    "Package 'greta' is required for the greta-backed aggregated ",
-    "count emit."
-  )
-
-  fam <- fb$family
-  cell_design <- fb_aggregated$cell_design
-  agg <- fb_aggregated$sufficient_stats
-  K <- fb_aggregated$K
-  p <- ncol(cell_design)
-
-  # Cell-level linear predictor by a single matrix multiply (the same
-  # S3-dispatch-safe construction the gaussian greta path uses).
-  Z_per_term <- lapply(ri_plan, function(r) {
-    Z <- matrix(0, K, r$n_levels)
-    Z[cbind(seq_len(K), r$level_idx)] <- 1
-    Z
-  })
-  M_combined <- if (length(Z_per_term)) {
-    do.call(cbind, c(list(cell_design), Z_per_term))
-  } else {
-    cell_design
-  }
-
-  greta_ns <- asNamespace("greta")
-  g <- greta_ns
-  M_g <- g$as_data(M_combined)
-  beta_g <- g$normal(0, prior_fixed_sd, dim = p)
-
-  tau_per_term <- vector("list", length(ri_plan))
-  u_per_term <- vector("list", length(ri_plan))
-  for (i in seq_along(ri_plan)) {
-    nL <- ri_plan[[i]]$n_levels
-    tau <- g$normal(0, prior_vc_sd, truncation = c(0, Inf))
-    u_ <- g$normal(0, tau, dim = nL)
-    tau_per_term[[i]] <- tau
-    u_per_term[[i]] <- u_
-  }
-
-  c_method <- get("c.greta_array", envir = greta_ns)
-  matmul_method <- get("%*%.greta_array", envir = greta_ns)
-  theta <- beta_g
-  for (u_ in u_per_term) {
-    theta <- c_method(theta, u_)
-  }
-  eta_cell <- matmul_method(M_g, theta)
-
-  if (identical(fam, "binomial")) {
-    prob_cell <- g$ilogit(eta_cell)
-    succ_g <- g$as_data(as.integer(agg$succ_k))
-    trials_g <- g$as_data(as.integer(agg$trials_k))
-    g$`distribution<-`(succ_g, g$binomial(trials_g, prob_cell))
-  } else {
-    # `exp()` dispatches through greta's Math group-generic on the
-    # greta array (greta exports no `exp` namespace function); `*`
-    # dispatches through the Ops group-generic, as in the gaussian path.
-    expo_g <- g$as_data(agg$expo_k)
-    rate <- expo_g * exp(eta_cell)
-    count_g <- g$as_data(as.integer(agg$count_k))
-    g$`distribution<-`(count_g, g$poisson(rate))
-  }
-
-  model_env <- new.env(parent = greta_ns)
-  model_env$beta <- beta_g
-  tau_names <- character(length(tau_per_term))
-  for (i in seq_along(tau_per_term)) {
-    nm <- paste0("tau_", i)
-    model_env[[nm]] <- tau_per_term[[i]]
-    tau_names[[i]] <- nm
-  }
-  call_args <- c(list(quote(beta)), lapply(tau_names, as.name))
-  model_call <- as.call(c(list(quote(model)), call_args))
-  m <- base::eval(model_call, envir = model_env)
-  draws <- g$mcmc(
-    m,
-    n_samples = n_samples,
-    warmup = warmup,
-    chains = chains,
-    verbose = isTRUE(mcmc_verbose)
-  )
-
-  list(
-    backend = "greta",
-    draws = draws,
-    model = m,
-    beta = beta_g,
-    tau_per_term = tau_per_term,
-    cell_design = cell_design,
-    K = K,
-    N = fb_aggregated$N,
-    p = p
-  )
-}
-
-
-# ---------------------------------------------------------------- #
 # Posterior summary                                                 #
 # ---------------------------------------------------------------- #
 .agg_count_inla_summarise <- function(engine_out, fb_aggregated, ri_plan) {
@@ -428,48 +288,6 @@ emit_count_aggregated <- function(
     variance_comps = list(sigma = numeric(0), tau = tau_means)
   )
 }
-
-.agg_count_greta_summarise <- function(engine_out, fb_aggregated, ri_plan) {
-  draws <- engine_out$draws
-  m <- do.call(rbind, draws)
-
-  beta_idx <- seq_len(engine_out$p)
-  tau_idx <- if (length(ri_plan)) {
-    (engine_out$p + 1L):(engine_out$p + length(ri_plan))
-  } else {
-    integer(0)
-  }
-
-  beta_means <- colMeans(m[, beta_idx, drop = FALSE])
-  names(beta_means) <- colnames(fb_aggregated$cell_design)
-  beta_vcov <- stats::cov(m[, beta_idx, drop = FALSE])
-  dimnames(beta_vcov) <- list(names(beta_means), names(beta_means))
-  tau_means <- if (length(tau_idx)) {
-    colMeans(m[, tau_idx, drop = FALSE])
-  } else {
-    numeric(0)
-  }
-
-  psrf_mat <- tryCatch(
-    {
-      coda_ns <- asNamespace("coda")
-      gd <- coda_ns$gelman.diag(draws, multivariate = FALSE, autoburnin = FALSE)
-      gd$psrf
-    },
-    error = function(e) NULL
-  )
-
-  list(
-    backend = "greta",
-    beta_means = beta_means,
-    beta_vcov = beta_vcov,
-    sigma_means = numeric(0),
-    tau_means = tau_means,
-    convergence = list(gelman = list(psrf = psrf_mat)),
-    variance_comps = list(sigma = numeric(0), tau = tau_means)
-  )
-}
-
 
 # ---------------------------------------------------------------- #
 # Fit-object constructor                                            #
@@ -507,11 +325,9 @@ emit_count_aggregated <- function(
   requested_backend = NULL,
   requested_aggregate = NULL
 ) {
-  posterior_summary <- if (identical(backend, "inla")) {
-    .agg_count_inla_summarise(engine_out, fb_aggregated, ri_plan)
-  } else {
-    .agg_count_greta_summarise(engine_out, fb_aggregated, ri_plan)
-  }
+  posterior_summary <- .agg_count_inla_summarise(
+    engine_out, fb_aggregated, ri_plan
+  )
 
   eta_row <- .agg_reconstruct_fitted_row(
     fb,
@@ -624,18 +440,14 @@ emit_count_aggregated <- function(
     class = "flexybayes_extras"
   )
 
-  raw_slot <- if (identical(backend, "greta")) {
-    list(draws = engine_out$draws)
-  } else {
-    engine_out$inla
-  }
-  raw_name <- if (identical(backend, "greta")) "greta" else "inla"
+  raw_slot <- engine_out$inla
+  raw_name <- "inla"
 
   fit <- structure(
     list(glm = glm_obj, extras = extras),
     class = c(
       "flexybayes_aggregated",
-      if (identical(backend, "inla")) "flexybayes_inla",
+      "flexybayes_inla",
       "flexybayes"
     )
   )

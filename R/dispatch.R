@@ -2,10 +2,10 @@
 #
 # Shared so that both flexybayes() (asreml entry) and fb_brms()
 # (brms entry) drive the same backend dispatch. Byte-equivalent
-# under snapshot guard (test-emit-greta.md + test-backend-auto.R).
+# under snapshot guard (test-backend-auto.R).
 #
-# Routes to emit_inla() or emit_greta() per backend = c("greta",
-# "inla", "auto"), populates fit$extras$backend_decision with the
+# Routes to emit_inla() or emit_brms() per backend = c("inla", "brms",
+# "auto"), populates fit$extras$backend_decision with the
 # uniform-shape trace, and attaches the fb_terms IR for downstream
 # canonical_names() resolution.
 #
@@ -39,11 +39,10 @@
 #
 # NA values in the key columns mean "any value" (a wildcard match
 # for that input). For example, explicit user requests bypass the
-# gate / preflight columns -- a "greta" / "brms" request matches
-# regardless of gate / preflight outcomes.
+# gate / preflight columns -- a "brms" request matches regardless of
+# gate / preflight outcomes.
 #
 # Reason-code vocabulary:
-#   explicit_greta               -- user requested greta directly.
 #   explicit_brms                -- user requested brms (Stan via brms).
 #   explicit_inla_accept         -- user requested inla; gate accepted.
 #   explicit_inla_gate_refused   -- user requested inla; gate refused
@@ -56,10 +55,6 @@
 #                                   or the verification rule).
 #   auto_gate_refuse_memory      -- auto + gate refuse on the
 #                                   memory_feasibility_inla rule.
-#   backend_not_activated        -- gretaR slot rejected because the
-#                                   backend is a dormant opt-in (enable with
-#                                   options(flexyBayes.gretaR_activated = TRUE);
-#                                   see R/backend_registry.R for lifecycle).
 #
 # The table is consulted by `.resolve_routing()`; the actual
 # backend invocation lives in `.dispatch_backend()` below. A
@@ -95,7 +90,6 @@
 .routing_policy_table <- function() {
   data.frame(
     user_request = c(
-      "greta",
       "brms",
       "inla",
       "inla",
@@ -106,7 +100,6 @@
       "auto"
     ),
     gate_outcome = c(
-      NA_character_,
       NA_character_,
       "accept",
       "refuse",
@@ -120,27 +113,24 @@
       NA_character_,
       NA_character_,
       NA_character_,
-      NA_character_,
       "clear",
       "clear",
       NA_character_,
       NA_character_,
       NA_character_
     ),
-    inla_installed = c(NA, NA, NA, NA, TRUE, FALSE, NA, NA, NA),
+    inla_installed = c(NA, NA, NA, TRUE, FALSE, NA, NA, NA),
     chosen_backend = c(
-      "greta",
       "brms",
       "inla",
       NA_character_, # explicit-inla refusal raises
       "inla",
-      "greta",
-      "greta",
-      "greta",
-      "greta"
+      "pending_fallback",
+      "pending_fallback",
+      "pending_fallback",
+      "pending_fallback"
     ), # auto + accept + skipped preflight
     reason_code = c(
-      "explicit_greta",
       "explicit_brms",
       "explicit_inla_accept",
       "explicit_inla_gate_refused",
@@ -155,12 +145,11 @@
 }
 
 
-# .resolve_routing() -- given the three input keys and the
-# environmental flags (INLA install + gretaR activation), returns
-# the canonical chosen_backend + rejected_routes per the
-# `.routing_policy_table`. Used to populate the trace at dispatch
-# time; the actual backend invocation lives in `.dispatch_backend()`
-# below.
+# .resolve_routing() -- given the three input keys and the INLA-install
+# environmental flag, returns the canonical chosen_backend +
+# rejected_routes per the `.routing_policy_table`. Used to populate the
+# trace at dispatch time; the actual backend invocation lives in
+# `.dispatch_backend()` below.
 #
 # Returns list with:
 #   $chosen_backend   character(1)
@@ -172,10 +161,9 @@
   gate_outcome,
   preflight_outcome,
   inla_installed,
-  gretaR_activated,
   fb = NULL
 ) {
-  is_explicit <- user_request %in% c("greta", "brms", "inla")
+  is_explicit <- user_request %in% c("brms", "inla")
   table <- .routing_policy_table()
 
   # Find the matching row -- columns with NA are wildcards.
@@ -194,8 +182,8 @@
     logical(1L)
   )
   if (!any(hits)) {
-    # No policy row matches -- refuse rather than fall back to a
-    # quarantined engine. This branch should never fire in production
+    # No policy row matches -- refuse rather than fall back to an
+    # unrepresented engine. This branch should never fire in production
     # (the table covers every conceivable tuple); if it does, the
     # test suite catches it via subtest (n).
     return(list(
@@ -208,12 +196,14 @@
   chosen_backend <- row$chosen_backend
   reason_code <- row$reason_code
 
-  # greta is quarantined (S4.1): any auto path the policy table resolved to
-  # greta re-resolves to the faithful active fallback -- brms when it can
-  # represent the model (the multi-stratum designed-experiment case keeps
-  # its specific reason for the trace), otherwise no active route and the
-  # caller refuses (A3). Explicit requests bypass this (is_explicit).
-  if (!is_explicit && identical(chosen_backend, "greta")) {
+  # "pending_fallback" is a sentinel, never a real backend name: every
+  # auto row that reaches it (INLA refused / unavailable) re-resolves to
+  # the faithful active fallback -- brms when it can represent the model
+  # (the multi-stratum designed-experiment case keeps its specific
+  # reason for the trace), otherwise no active route and the caller
+  # refuses (A3). Explicit requests bypass this (is_explicit); by
+  # construction no explicit row ever produces this sentinel.
+  if (!is_explicit && identical(chosen_backend, "pending_fallback")) {
     fallback <- if (!is.null(fb)) {
       .resolve_auto_fallback_backend(fb)
     } else {
@@ -224,7 +214,7 @@
       reason_code <- if (!is.null(fb) && .has_interaction_random_term(fb)) {
         "auto_multistratum_to_brms"
       } else {
-        "auto_greta_quarantined_to_brms"
+        "auto_fallback_to_brms"
       }
     } else {
       chosen_backend <- NA_character_
@@ -239,13 +229,11 @@
   rejected <- list()
   if (!is_explicit) {
     chosen <- chosen_backend
-    candidates <- c("inla", "greta", "gretaR")
+    candidates <- c("inla")
     for (cand in setdiff(candidates, chosen)) {
       cand_reason <- switch(
         cand,
-        "inla" = .inla_rejection_reason(gate_outcome, inla_installed),
-        "greta" = "backend_quarantined",
-        "gretaR" = "backend_quarantined"
+        "inla" = .inla_rejection_reason(gate_outcome, inla_installed)
       )
       rejected[[length(rejected) + 1L]] <- list(
         backend = cand,
@@ -364,7 +352,7 @@
   if (!is.character(backend) || length(backend) == 0L) {
     return(invisible(NULL))
   }
-  # User may pass `c("greta", "inla", "auto")` (the default arg
+  # User may pass `c("inla", "brms", "auto")` (the default arg
   # list) -- only the actual single-value selection matters.
   # Inspect every element defensively.
   for (b in backend) {
@@ -406,93 +394,34 @@
 }
 
 
-# ---------------------------------------------------------------- #
-# Native-greta dispatch                                             #
-# ---------------------------------------------------------------- #
-# .dispatch_native_greta() -- route a greta-source IR (a native model
-# graph wrapped by fb_from_greta()) to the direct greta::mcmc() fit. A
-# native graph is greta-only by construction (greta built it), so:
-#   - any backend other than "greta" / "auto" is a structured refusal
-#     (the registered native_greta_requires_greta_backend code);
-#   - the code-inspection (return_code / review_code) and planning
-#     (plan) modes do not apply (there is no flexyBayes-generated code,
-#     and no formula triple to plan over) -- they raise a clear,
-#     forward-pointing error, preserving the pre-v0.5.0 fb_greta()
-#     deferrals.
-# On the accepted path it delegates to .fit_native_greta() (R/fb_greta.R).
-.dispatch_native_greta <- function(
-  fb,
-  backend,
-  n_samples,
-  warmup,
-  chains,
-  verbose,
-  mcmc_verbose,
-  return_code,
-  review_code,
-  plan,
-  the_call
-) {
-  if (!backend %in% c("greta", "auto")) {
-    stop(.fb_refusal_condition(
-      reason_code = "native_greta_requires_greta_backend",
-      message = paste0(
-        "A native greta model graph is fit by greta::mcmc() and is ",
-        "greta-only by construction; backend = \"",
-        backend,
-        "\" cannot fit it, and greta is quarantined (see NEWS.md). ",
-        "Rebuild the model in the ASReml / brms formula grammar to ",
-        "reach the ",
-        backend,
-        " engine."
-      ),
-      backend = backend
-    ))
+# .check_known_backend_name() -- entry-function guard called from
+# `flexybayes()`, `fb_plan()`, and `flexybayes_stream()` BEFORE
+# match.arg(backend) so an unrecognised backend name -- including a
+# formerly-registered engine name this package has withdrawn entirely --
+# refuses with the structured `unknown_backend` reason naming the active
+# engines, rather than match.arg()'s generic "should be one of" error.
+#
+# Tolerates a multi-value `backend` (the unmodified default arg vector,
+# e.g. `c("auto", "inla", "brms")`): only a genuine single-value
+# selection is checked, mirroring `.check_approximate_scheme()`'s own
+# defensive pattern.
+.check_known_backend_name <- function(backend, allowed) {
+  if (!is.character(backend) || length(backend) != 1L) {
+    return(invisible(NULL))
   }
-
-  if (isTRUE(return_code)) {
-    stop(
-      "`return_code = TRUE` is not available for a native greta model: ",
-      "the graph is already greta-side, so there is no ",
-      "flexyBayes-generated code string to return.",
-      call. = FALSE
-    )
+  if (is.na(backend) || !nzchar(backend) || backend %in% allowed) {
+    return(invisible(NULL))
   }
-
-  if (isTRUE(review_code)) {
-    stop(
-      "`review_code = TRUE` is not available for a native greta model: ",
-      "the inspect-then-fit token reflects flexyBayes-generated code, ",
-      "and the graph is user-authored. Fit it directly with fb() / ",
-      "fb_greta().",
-      call. = FALSE
-    )
-  }
-
-  if (isTRUE(plan)) {
-    stop(
-      "`plan = TRUE` is not available for a native greta model: the ",
-      "planning object summarises a parsed formula triple, which a ",
-      "native graph does not carry.",
-      call. = FALSE
-    )
-  }
-
-  # Native-greta-graph FITTING is quarantined with the engine (S4.1 / C1):
-  # greta::mcmc() is no longer an active fit path. The greta import grammar
-  # is retained for reading an already-fitted object's draws (Phase B), but
-  # an unfitted native graph has no active backend to fit it.
   stop(.fb_refusal_condition(
-    reason_code = "native_greta_fit_quarantined",
+    reason_code = "unknown_backend",
     message = paste0(
-      "A native greta model graph is fit by greta::mcmc(), which is ",
-      "quarantined (greta is no longer an active fitting engine). ",
-      "flexyBayes retains the greta import grammar for reading an ",
-      "already-fitted greta object's draws, but cannot fit an unfitted ",
-      "native graph. Rebuild the model in the ASReml / brms formula grammar ",
-      "to fit via INLA or brms."
+      "backend = \"",
+      backend,
+      "\" is not a recognised flexyBayes engine. The active engines are ",
+      "\"inla\" and \"brms\" (or \"auto\" to let flexyBayes choose)."
     ),
-    family_class = "flexybayes_native_greta_refusal"
+    family_class = "flexybayes_unknown_backend_refusal",
+    backend = backend
   ))
 }
 
@@ -511,9 +440,9 @@
 }
 
 # .resolve_auto_fallback_backend() -- when the routing policy would place an
-# auto request on greta (INLA refused / unavailable), pick the faithful
-# active fallback. greta is quarantined (S4.1), so the fallback is brms when
-# it is installed AND can represent the model -- otherwise NA, meaning no
+# auto request on the pending-fallback sentinel (INLA refused /
+# unavailable), pick the faithful active fallback: brms when it is
+# installed AND can represent the model -- otherwise NA, meaning no
 # active backend can faithfully fit it and the caller refuses (A3: "no
 # faithful route => refuse"). A structured-covariance term (fa / us / ar1)
 # has no lossless brms translation, so those models return NA here (a named
@@ -870,27 +799,6 @@
 ) {
   aggregate <- .normalise_aggregate(aggregate)
 
-  # greta / gretaR are quarantined (S4.1): an explicit request for either
-  # refuses here by name, before any emit. The descriptor + emit code are
-  # retained as a re-entry candidate; the active fitting engines are brms +
-  # INLA. (backend = "auto" never reaches here for a quarantined engine --
-  # the routing policy re-resolves it to brms or a no-active-route refusal.)
-  if (backend %in% c("greta", "gretaR") && .backend_is_quarantined(backend)) {
-    stop(.fb_refusal_condition(
-      reason_code = "backend_quarantined",
-      message = sprintf(
-        paste0(
-          "backend = \"%s\" is quarantined: retained as a re-entry ",
-          "candidate, not an active fitting engine. Use backend = ",
-          "\"inla\" or \"brms\" (re-entry is repair + conform, section 4.1)."
-        ),
-        backend
-      ),
-      family_class = "flexybayes_backend_quarantined_refusal",
-      backend = backend
-    ))
-  }
-
   # Observation weights are parsed into an addition term by every ingest
   # adapter, and consumed by no active emitter -- brms and INLA generate
   # identical code with and without them. Refuse here, at the single
@@ -917,54 +825,6 @@
     .fb_dataset_metadata(.fb_dataset(data)),
     error = function(e) NULL
   )
-
-  # gretaR backend (activated): an explicit opt-in backend driven out of
-  # process (greta + gretaR share symbols, cannot co-load). The capability
-  # predicate refuses model classes gretaR cannot express (structured
-  # covariance) before the worker is launched. See R/emit_gretaR.R +
-  # inst/backend_contract.md.
-  if (identical(backend, "gretaR")) {
-    cap <- .capability_gretaR(fb)
-    if (!isTRUE(cap)) {
-      stop(.fb_refusal_condition(
-        reason_code = cap,
-        message = paste0(
-          "backend = \"gretaR\" cannot fit this model (",
-          cap,
-          "). Use backend = \"inla\" or \"brms\"."
-        ),
-        family_class = "flexybayes_gretaR_refusal"
-      ))
-    }
-    fit <- .backend_emit_fn("gretaR")(
-      fb = fb,
-      data = data,
-      known_matrices = known_matrices,
-      weights = weights,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      prior_fixed_sd = prior_fixed_sd,
-      prior_vc_sd = prior_vc_sd,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose,
-      return_code = return_code,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      residual = residual,
-      family = family,
-      link = link,
-      data_name = data_name
-    )
-    if (!isTRUE(return_code) && !is.null(fit$extras)) {
-      fit$extras$fb_terms <- fb
-      if (!is.null(fb_dataset_meta_for_fit)) {
-        fit$extras$fb_dataset <- fb_dataset_meta_for_fit
-      }
-    }
-    return(fit)
-  }
 
   # Design-memory preflight. Runs only above the 1e5-row threshold
   # so the v0.2 user surface is unchanged at small scales -- the
@@ -1029,32 +889,22 @@
     }
   }
 
-  # low_rank_smooth is a greta-backend approximation (v0.4.0). It
-  # truncates the dense mgcv smooth basis, which only the greta emit
-  # path materialises; INLA represents smooths via rw2 and brms via Stan
-  # spline bases, so neither can honour the truncation. greta is
-  # quarantined, so no ACTIVE engine produces it and every non-greta
-  # request refuses -- including `auto`, which previously resolved here
-  # to greta on the reasoning that the approximation dictated the engine.
-  # That reasoning stopped holding when the engine was withdrawn, and
-  # `auto` silently selecting a quarantined backend is the failure the
-  # refusal exists to prevent.
+  # low_rank_smooth truncates the dense mgcv smooth basis; INLA
+  # represents smooths via rw2 and brms via Stan spline bases, and
+  # neither can honour the truncation, so no active engine produces it --
+  # unconditionally, including `auto`.
   if (length(.collect_approx(fb$random_terms)) > 0L) {
-    if (!identical(backend, "greta")) {
-      stop(.fb_refusal_condition(
-        reason_code = "low_rank_requires_greta",
-        message = paste0(
-          "A smooth requesting the low_rank_smooth approximation is ",
-          "honoured only by the greta backend, which is quarantined ",
-          "(see NEWS.md), so no active engine represents it: INLA fits ",
-          "a smooth via rw2 and brms via Stan spline bases, and neither ",
-          "can apply the rank-K basis truncation. Drop the ",
-          "representation = ... argument to fit the exact smooth on ",
-          "either active engine."
-        ),
-        family_class = "flexybayes_low_rank_requires_greta"
-      ))
-    }
+    stop(.fb_refusal_condition(
+      reason_code = "low_rank_smooth_unsupported",
+      message = paste0(
+        "A smooth requesting the low_rank_smooth approximation has no ",
+        "active emit path: INLA fits a smooth via rw2 and brms via Stan ",
+        "spline bases, and neither can apply the rank-K basis ",
+        "truncation. Drop the representation = ... argument to fit the ",
+        "exact smooth on either active engine."
+      ),
+      family_class = "flexybayes_low_rank_smooth_unsupported_refusal"
+    ))
   }
 
   # Stan passthrough via brms. Opt-in only -- backend = "auto" never
@@ -1161,7 +1011,6 @@
   # namespace check, so this is behaviour-equivalent while sourcing
   # the fact from the single registry authority.
   inla_installed <- "inla" %in% .available_backend_names()
-  gretaR_activated <- isTRUE(getOption("flexyBayes.gretaR_activated", FALSE))
   if (backend %in% c("inla", "auto")) {
     # Gate receives preflight so the memory_feasibility_inla rule
     # can fire on INLA-specific memory infeasibility. preflight is
@@ -1202,15 +1051,14 @@
       gate_outcome <- if (is_memory) "refuse_memory" else "refuse_structural"
       # Resolve the fallback engine through the single routing brain
       # (.resolve_routing), passing fb so a multi-stratum designed
-      # experiment routes to brms -- the faithful full-HMC path -- rather
-      # than greta. Passing fb also makes the plan (fb_plan) and the fit
-      # agree on the chosen backend.
+      # experiment routes to brms -- the faithful full-HMC path. Passing
+      # fb also makes the plan (fb_plan) and the fit agree on the chosen
+      # backend.
       routing <- .resolve_routing(
         user_request = "auto",
         gate_outcome = gate_outcome,
         preflight_outcome = NA_character_,
         inla_installed = inla_installed,
-        gretaR_activated = gretaR_activated,
         fb = fb
       )
       fallback_backend <- routing$chosen_backend
@@ -1239,9 +1087,9 @@
             "backend = \"auto\": lgm_gate() refused (",
             primary$rule_id,
             "); this is a multi-stratum designed experiment and brms (the ",
-            "faithful backend) is unavailable or cannot represent it, and ",
-            "greta is quarantined, so no active backend can faithfully fit ",
-            "this model. Install brms for the faithful path."
+            "faithful backend) is unavailable or cannot represent it, so ",
+            "no active backend can faithfully fit this model. Install ",
+            "brms for the faithful path."
           )
         } else {
           message(
@@ -1250,8 +1098,8 @@
             ": ",
             primary$reason,
             "); brms cannot represent this model either, so no active ",
-            "backend can faithfully fit it (greta is quarantined). Pass ",
-            "backend = \"inla\" to surface the refusal as an error."
+            "backend can faithfully fit it. Pass backend = \"inla\" to ",
+            "surface the refusal as an error."
           )
         }
         .emit_state_set("auto_fallback_note", TRUE)
@@ -1285,10 +1133,7 @@
           # The gate accepted, but the engine it accepted for is not on
           # this host. Resolve through the same brain the structural
           # refusal path uses -- brms when it can represent the model,
-          # otherwise no active route. Before the greta quarantine this
-          # branch announced "routing to greta" and built a greta
-          # decision, which on a host without INLA meant every `auto`
-          # call advertised a quarantined engine and then refused.
+          # otherwise no active route.
           fallback_backend <- .resolve_auto_fallback_backend(gated)
           if (
             !isTRUE(getOption(
@@ -1304,8 +1149,7 @@
               } else {
                 paste0(
                   "brms cannot represent this model either, so no ",
-                  "active backend can faithfully fit it (greta is ",
-                  "quarantined). "
+                  "active backend can faithfully fit it. "
                 )
               },
               "Install INLA from ",
@@ -1320,8 +1164,7 @@
             user_request = "auto",
             gate_outcome = "accept",
             preflight_outcome = "clear",
-            inla_installed = FALSE,
-            gretaR_activated = gretaR_activated
+            inla_installed = FALSE
           )
           decision <- .build_routing_decision(
             backend = fallback_backend,
@@ -1353,8 +1196,8 @@
         # an INLA-side numerical / runtime failure on a model the gate
         # accepted structurally (e.g. ar1_spatial_requires_complete_grid)
         # resolves through .resolve_auto_fallback_backend() to brms, or an
-        # auto_no_active_route refusal -- greta is quarantined (S4.1), so
-        # this path must never silently substitute it either.
+        # auto_no_active_route refusal -- this path must never silently
+        # substitute an unrepresented engine.
         inla_fit <- tryCatch(
           .backend_emit_fn("inla")(
             fb = gated,
@@ -1392,10 +1235,10 @@
 
         if (inherits(inla_fit, "fb_auto_inla_failure")) {
           # Fallback: numerical/runtime INLA failure on the auto path.
-          # greta is quarantined (S4.1); resolve through the same brain the
-          # structural-refusal path uses -- brms if it can represent the
-          # model, otherwise no active backend can faithfully fit it and
-          # auto refuses (A3), never a silent greta substitution.
+          # Resolve through the same brain the structural-refusal path
+          # uses -- brms if it can represent the model, otherwise no
+          # active backend can faithfully fit it and auto refuses (A3),
+          # never a silent substitution of an unrepresented engine.
           fallback_backend <- .resolve_auto_fallback_backend(gated)
           if (
             !isTRUE(getOption(
@@ -1417,8 +1260,8 @@
                 "backend = \"auto\": INLA failed numerically (",
                 conditionMessage(inla_fit$cond),
                 "); brms cannot represent this model either, so no active ",
-                "backend can faithfully fit it (greta is quarantined). ",
-                "Pass backend = \"inla\" to surface the error as such."
+                "backend can faithfully fit it. Pass backend = \"inla\" ",
+                "to surface the error as such."
               )
             }
             .emit_state_set("auto_inla_numerical_fallback_note", TRUE)
@@ -1439,20 +1282,20 @@
               } else {
                 "no active backend"
               },
-              " (greta is quarantined)."
+              "."
             ),
             preflight_summary = preflight_result,
             representation_plan = .representation_plan_from_preflight(
               preflight_result
             ),
             rejected_routes = list(list(
-              backend = "greta",
-              reason = "backend_quarantined"
+              backend = "inla",
+              reason = "inla_numerical_failure"
             ))
           )
           # fall through to the resolved backend emit below (brms, or an
           # auto_no_active_route refusal when brms cannot represent the
-          # model either -- never greta).
+          # model either).
         } else {
           fit <- inla_fit
           if (return_code) {
@@ -1464,8 +1307,7 @@
                 user_request = "auto",
                 gate_outcome = "accept",
                 preflight_outcome = "clear",
-                inla_installed = TRUE,
-                gretaR_activated = gretaR_activated
+                inla_installed = TRUE
               )
             } else {
               list(rejected_routes = list())
@@ -1495,33 +1337,26 @@
         }
       }
     }
-  } else {
-    # Explicit greta request -- policy bypassed.
-    decision <- .build_routing_decision(
-      backend = "greta",
-      path = "explicit_greta",
-      gate_checks = NULL,
-      reason = "user requested greta explicitly (no gate run).",
-      preflight_summary = preflight_result,
-      representation_plan = .representation_plan_from_preflight(
-        preflight_result
-      ),
-      rejected_routes = list()
-    )
   }
+  # By construction `backend` is "inla", "auto", or "brms" (match.arg);
+  # the "brms" branch above always returns before this point, so the
+  # `if` above is the only place `decision` is assigned. `decision`
+  # stays NULL only if that reachability invariant is ever broken, and
+  # the NULL -> NA fallback below still refuses cleanly (auto_no_active_route)
+  # rather than dereferencing a NULL `decision`.
 
   # The auto path resolves the fallback engine into decision$backend (inla,
-  # or brms for a model brms can fit); a quarantined-greta auto path leaves
-  # it NA -- no active backend can faithfully fit the model, so refuse (A3),
-  # never silently substitute.
+  # or brms for a model brms can fit); when no active backend can
+  # faithfully fit the model it leaves it NA, so refuse (A3), never
+  # silently substitute.
   fit_backend <- decision$backend
   if (is.null(fit_backend) || is.na(fit_backend)) {
     stop(.fb_refusal_condition(
       reason_code = "auto_no_active_route",
       message = paste0(
         "backend = \"auto\": no active backend can faithfully fit this ",
-        "model (INLA refused it and brms cannot represent it; greta is ",
-        "quarantined). Reformulate for INLA / brms, or fit a structure the ",
+        "model (INLA refused it and brms cannot represent it). ",
+        "Reformulate for INLA / brms, or fit a structure the ",
         "active engines support."
       ),
       family_class = "flexybayes_auto_no_route_refusal",
@@ -1599,7 +1434,7 @@
       fit$extras$fb_dataset <- fb_dataset_meta_for_fit
     }
   }
-  # Three-tier exactness vocabulary (v0.4.0). A greta fit carrying
+  # Three-tier exactness vocabulary (v0.4.0). A fit carrying
   # a registered approximation scheme
   # is labelled "approximate_<scheme>"; an exact fit keeps "exact"
   # (aggregated paths set "aggregated_exact" upstream). The label is
@@ -1642,7 +1477,7 @@
 # emit ran) or NULL (gate declined; caller falls through to per-row).
 # Refuses (raises a typed condition) when aggregate = TRUE but the
 # plan declares ineligibility, or when aggregate = TRUE on a backend
-# that does not support the aggregated path (brms, gretaR, stan).
+# that does not support the aggregated path (brms, Stan).
 .maybe_aggregate_gaussian <- function(
   fb,
   data,
@@ -1736,8 +1571,8 @@
   }
 
   # Aggregation only defined for backends with a flexyBayes-side
-  # aggregated emit path. v0.3.3 supports greta + inla; brms / gretaR
-  # / stan have no aggregated path in scope.
+  # aggregated emit path. INLA supports it; brms / Stan have no
+  # aggregated path in scope.
   agg_capable_backend <- backend %in% c("inla", "auto")
   if (!agg_capable_backend) {
     if (isTRUE(aggregate)) {
@@ -1746,9 +1581,8 @@
         message = paste0(
           "`aggregate = TRUE` is not supported on backend = \"",
           backend,
-          "\" (the aggregated path is wired for inla only ",
-          "since the greta quarantine). Pass aggregate = FALSE or ",
-          "switch backend."
+          "\" (the aggregated path is wired for inla only). Pass ",
+          "aggregate = FALSE or switch backend."
         ),
         family_class = "flexybayes_aggregate_refusal",
         backend = backend
@@ -1762,23 +1596,20 @@
   fb_dataset_meta <- .fb_dataset(data)
   plan <- .fb_aggregation_plan(fb, fb_dataset_meta)
 
-  # Resolve the effective backend for the aggregated emit. v0.3.3
-  # supports both INLA and greta on the aggregated path; the greta
-  # path uses the call-construct-in-env workaround in
-  # .emit_gaussian_aggregated_greta() to bypass greta::model()'s
-  # substitute()-deparse trap under do.call().
+  # Resolve the effective backend for the aggregated emit. INLA is the
+  # only backend with an aggregated path.
   eff_backend <- .agg_resolve_backend(backend, fb)
   if (is.na(eff_backend)) {
-    # No active aggregated backend (INLA refused / unavailable; the greta
-    # aggregated path is quarantined). aggregate = TRUE cannot be honoured
-    # -> refuse; otherwise fall through to the per-row path (main dispatch).
+    # No active aggregated backend (INLA refused / unavailable).
+    # aggregate = TRUE cannot be honoured -> refuse; otherwise fall
+    # through to the per-row path (main dispatch).
     if (isTRUE(aggregate)) {
       stop(.fb_refusal_condition(
         reason_code = "aggregation_route_unavailable",
         message = paste0(
           "`aggregate = TRUE` refused: no active aggregated backend (INLA ",
-          "refused or unavailable; the greta aggregated path is ",
-          "quarantined). Pass aggregate = FALSE for the per-row path."
+          "refused or unavailable). Pass aggregate = FALSE for the ",
+          "per-row path."
         ),
         family_class = "flexybayes_aggregate_refusal",
         backend = backend
@@ -1787,22 +1618,17 @@
     return(NULL)
   }
 
-  # at_units on INLA: the multi-likelihood INLA stack is still
-  # deferred at v0.3.3 (queued for a later minor). If we'd otherwise
-  # route to INLA AND the residual uses at_units, force the eff_backend
-  # down to greta (which supports the heterogeneous-residual aggregated
-  # path) or fall through to per-row when greta isn't an option.
+  # Heterogeneous residual (at_units) on the aggregated path: INLA needs
+  # the (deferred) multi-likelihood stack, and no active engine has an
+  # alternative aggregated route. A named transitional loss (spike 1 /
+  # S13): refuse aggregate = TRUE, else fall through to the per-row path.
   uses_at_units <- length(fb$residual_terms) > 0L &&
     any(vapply(
       fb$residual_terms,
       function(t) identical(t$type %||% "", "at_units"),
       logical(1L)
     ))
-  if (identical(eff_backend, "inla") && uses_at_units) {
-    # Heterogeneous residual at_units on the aggregated path was greta-only;
-    # greta is quarantined and INLA needs the (deferred) multi-likelihood
-    # stack. A named transitional loss (spike 1 / S13): refuse aggregate =
-    # TRUE, else fall through to the per-row path.
+  if (uses_at_units) {
     if (isTRUE(aggregate)) {
       # Carries the same condition class as the plan-ineligibility refusal
       # a few lines below, so a caller pattern-matching on
@@ -1813,8 +1639,8 @@
         list(
           message = paste0(
             "`aggregate = TRUE` refused: heterogeneous residual at_units ",
-            "on the aggregated path was greta-only (now quarantined) and ",
-            "INLA requires the multi-likelihood stack (deferred). Pass ",
+            "on the aggregated path has no active route -- INLA requires ",
+            "the multi-likelihood stack (deferred). Pass ",
             "aggregate = FALSE for the per-row path."
           ),
           call = the_call,
@@ -1982,11 +1808,10 @@
 }
 
 
-# Choose the effective aggregated-emit backend. Only INLA is active on the
-# aggregated path since the greta quarantine: an explicit inla passes
-# through; auto consults lgm_gate -- INLA if LGM-compatible and installed,
-# else NA (no active aggregated route). The greta aggregated path is
-# quarantined.
+# Choose the effective aggregated-emit backend. Only INLA has an
+# aggregated path: an explicit inla passes through; auto consults
+# lgm_gate -- INLA if LGM-compatible and installed, else NA (no active
+# aggregated route).
 .agg_resolve_backend <- function(backend, fb) {
   if (identical(backend, "inla")) {
     return("inla")
@@ -1995,15 +1820,15 @@
     # Let a genuine lgm_gate() fault propagate (charter: never swallow an
     # error into a silent fallback). A refusal is a normal return value (an
     # `lgm_refusal` object), not an error; INLA is the only active aggregated
-    # backend since the greta quarantine, so a refusal / missing INLA leaves
-    # NA (no active aggregated route) and the caller falls through / refuses.
+    # backend, so a refusal / missing INLA leaves NA (no active aggregated
+    # route) and the caller falls through / refuses.
     gated <- lgm_gate(fb)
     if (!is_lgm_refusal(gated) && requireNamespace("INLA", quietly = TRUE)) {
       return("inla")
     }
     return(NA_character_)
   }
-  # Unknown / quarantined backend -- caller already filtered, defensive NA.
+  # Unknown backend -- caller already filtered, defensive NA.
   NA_character_
 }
 
@@ -2093,4 +1918,99 @@
     binding_term = refusal$binding_term,
     ceiling_bytes = refusal$ceiling_bytes
   ))
+}
+
+
+# ---------------------------------------------------------------- #
+# backend_decision() -- dispatch-trace reader                       #
+# ---------------------------------------------------------------- #
+
+#' Backend dispatch trace for a flexyBayes fit
+#'
+#' Returns the dispatch trace recorded at fit time: which backend was
+#' selected, which gate checks ran, and why. Engine-agnostic -- works
+#' on an `flexybayes_inla` or `flexybayes_brms` fit alike, reading
+#' `fit$extras$backend_decision` as populated by `.build_routing_decision()`
+#' during dispatch (see the top of this file).
+#'
+#' @param fit A `flexybayes` object.
+#' @returns A list holding the recorded dispatch trace. The first four
+#'   components are present on every fit. The four routing-trace fields
+#'   are present on fits from v0.3.6 onwards and `NULL` on earlier ones,
+#'   for backward compatibility.
+#'
+#'   \describe{
+#'     \item{`backend`}{Character; one of `"inla"`, `"brms"`.}
+#'     \item{`path`}{Character; the dispatch path token.}
+#'     \item{`gate_checks`}{List or NULL; the `lgm_gate()` check
+#'       trail (failures on refusal; capabilities on accept).}
+#'     \item{`reason`}{Character; the dispatch-decision rationale.}
+#'     \item{`preflight_summary`}{An `<fb_preflight>` object or
+#'       NULL. Populated when `.fb_preflight()` ran (>1e5-row
+#'       path); NULL on the small-data fast path.}
+#'     \item{`representation_plan`}{Named list of slim per-term
+#'       entries `(term_id, representation_class, justification)`
+#'       derived from `preflight_summary`; NULL when no preflight.}
+#'     \item{`rejected_routes`}{List of `(backend, reason)` pairs
+#'       for the backends considered but not chosen. Empty for
+#'       explicit user requests (the routing policy is bypassed
+#'       when the backend is named directly).}
+#'     \item{`routing_policy_version`}{Character; e.g.
+#'       `"stage5a_v1"`. The audit-anchor for reproducibility -- a
+#'       policy change bumps this string.}
+#'   }
+#' @export
+backend_decision <- function(fit) {
+  if (!inherits(fit, "flexybayes") && !inherits(fit, "flexybayes_inla")) {
+    stop(
+      "`fit` must be a `flexybayes` (or `flexybayes_inla`) object.",
+      call. = FALSE
+    )
+  }
+  decision <- fit$extras$backend_decision
+  if (is.null(decision)) {
+    # Older fit (predates dispatch-trace recording, v0.3.6): synthesise
+    # a minimal legacy trace so downstream tooling never sees NULL.
+    # Any fit reaching this branch is either flexybayes_inla or (by
+    # elimination, since those are the only two active engine classes)
+    # flexybayes_brms.
+    return(list(
+      backend = if (inherits(fit, "flexybayes_inla")) "inla" else "brms",
+      path = "legacy_no_recorded_decision",
+      gate_checks = NULL,
+      reason = paste0(
+        "fit predates dispatch-trace recording; ",
+        "backend inferred from class."
+      ),
+      preflight_summary = NULL,
+      representation_plan = NULL,
+      rejected_routes = list(),
+      routing_policy_version = NA_character_
+    ))
+  }
+  # v0.3.6+: surface the four new fields with
+  # NULL defaults so earlier fits (those that recorded the
+  # 4-field trace before v0.3.6 landed) read out with the
+  # same shape downstream tooling sees on v0.3.6+ fits. Construct
+  # a fresh canonical 8-field list with explicit NULL values --
+  # `decision[["x"]] <- NULL` removes the slot rather than setting
+  # it to NULL, which would silently drop the field on every read.
+  rejected <- decision$rejected_routes
+  if (is.null(rejected)) {
+    rejected <- list()
+  }
+  version <- decision$routing_policy_version
+  if (is.null(version)) {
+    version <- NA_character_
+  }
+  list(
+    backend = decision$backend,
+    path = decision$path,
+    gate_checks = decision$gate_checks,
+    reason = decision$reason,
+    preflight_summary = decision$preflight_summary,
+    representation_plan = decision$representation_plan,
+    rejected_routes = rejected,
+    routing_policy_version = version
+  )
 }

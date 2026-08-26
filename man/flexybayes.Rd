@@ -27,10 +27,10 @@ flexybayes(
   mcmc_verbose = TRUE,
   return_code = FALSE,
   review_code = FALSE,
-  backend = c("auto", "greta", "inla", "brms", "gretaR"),
+  backend = c("auto", "inla", "brms"),
   aggregate = "auto",
   plan = FALSE,
-  syntax = c("auto", "asreml", "brms", "greta"),
+  syntax = c("auto", "asreml", "brms"),
   rcov = lifecycle::deprecated()
 )
 
@@ -56,10 +56,10 @@ fb(
   mcmc_verbose = TRUE,
   return_code = FALSE,
   review_code = FALSE,
-  backend = c("auto", "greta", "inla", "brms", "gretaR"),
+  backend = c("auto", "inla", "brms"),
   aggregate = "auto",
   plan = FALSE,
-  syntax = c("auto", "asreml", "brms", "greta"),
+  syntax = c("auto", "asreml", "brms"),
   rcov = lifecycle::deprecated()
 )
 }
@@ -262,9 +262,9 @@ on the data scale, in the spirit of the weakly-informative-prior
 literature for regression coefficients (e.g. Gelman et al. 2008,
 \emph{Annals of Applied Statistics} 2(4):1360-1383). \strong{Applied when you
 supply it}, on every backend: brms receives one \code{normal(0, sd)}
-row per fixed-effect class, INLA receives \code{control.fixed} with
-\code{prec = 1 / sd^2} on the slopes and the intercept alike, and greta
-has always used it. Left unsupplied, each engine keeps its own
+row per fixed-effect class, and INLA receives \code{control.fixed} with
+\code{prec = 1 / sd^2} on the slopes and the intercept alike. Left
+unsupplied, each engine keeps its own
 fixed-effect default -- brms's flat coefficients and
 response-centred \code{student_t} intercept, INLA's \code{prec = 0.001} and
 flat intercept -- because replacing a response-centred intercept
@@ -323,14 +323,12 @@ to brms). Under \code{backend = "inla"} it refuses with
 \code{review_code_backend_unsupported}: the deferred-execution token would
 need an INLA-side code slot, which is queued for a later release.}
 
-\item{backend}{Character: one of \code{"auto"} (\strong{default}), \code{"inla"},
-\code{"brms"}, \code{"greta"}, or \code{"gretaR"}. Two engines are active. INLA is
-the deterministic Laplace path over the latent-Gaussian model class;
-brms is the Stan passthrough. greta and gretaR are \strong{quarantined}:
-their registry descriptors and emit code are retained as re-entry
-candidates, but an explicit request for either refuses with
-\code{backend_quarantined} before any emit, and \code{"auto"} never selects
-them. See \code{NEWS.md} for the reshape.
+\item{backend}{Character: one of \code{"auto"} (\strong{default}), \code{"inla"}, or
+\code{"brms"}. INLA is the deterministic Laplace path over the
+latent-Gaussian model class; brms is the Stan passthrough. Any other
+value -- including a formerly-registered engine name this package
+withdrew entirely (see \code{NEWS.md}) -- refuses with \code{unknown_backend}
+naming the two active engines.
 
 \strong{What \code{"auto"} does.} The call runs \code{lgm_gate()} and routes to INLA
 when the model is latent-Gaussian feasible and INLA is installed.
@@ -414,14 +412,10 @@ the call.  Default \code{FALSE} preserves the run-
 immediately semantics.  Mutually exclusive with \code{return_code} and
 \code{review_code}.}
 
-\item{syntax}{One of \code{"auto"} (default), \code{"asreml"}, \code{"brms"}, or
-\code{"greta"}. Selects how \code{fixed} is interpreted. \code{"auto"} detects the
-grammar from the call shape (a bar-grouped formula is read as brms,
-otherwise ASReml); the other values force a grammar. \code{"greta"} reads
-a native \code{greta_model} graph. That grammar still parses, but fitting
-one is quarantined with the engine
-(\code{native_greta_fit_quarantined}); use \code{\link[=fb_from_greta]{fb_from_greta()}} to lift an
-already-fitted greta object into the shared accessor surface.}
+\item{syntax}{One of \code{"auto"} (default), \code{"asreml"}, or \code{"brms"}.
+Selects how \code{fixed} is interpreted. \code{"auto"} detects the grammar
+from the call shape (a bar-grouped formula is read as brms,
+otherwise ASReml); the other values force a grammar.}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and
@@ -439,8 +433,7 @@ etc. Works with \code{summary()}, \code{emmeans()}, \code{marginaleffects()},
 \item{\verb{$brms} or \verb{$inla}}{The native backend object --- a live \code{brmsfit}
 on the brms path, or INLA's own fitted object on the INLA path. Use
 with \code{bayesplot}, \code{posterior::as_draws()}, and each engine's own
-accessors. There is no \verb{$greta} slot: an explicit greta request
-refuses before a fit object exists.}
+accessors.}
 \item{\verb{$extras}}{Additional outputs: posterior \code{summary}, \code{convergence}
 diagnostics, \code{variance_comps}, \code{blups}, \code{predictions}, generated \code{code},
 \code{param_names}, \code{parse_info}, \code{call_info}, \code{run_time}, \code{model_info}.}

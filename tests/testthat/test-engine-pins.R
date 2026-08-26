@@ -1,9 +1,10 @@
 # Engine pins (ADR 0031 Phase 3 + 3.6).
 #
-# fb_inla(), fb_brms(), and fb_greta() are the three single-engine pins,
-# each sugar over fb(backend = "<engine>"). At v0.5.0 the v0.4.1
-# deprecation windows are closed: fb_brms() / fb_greta() no longer carry
-# their old multi-backend / native-graph signatures, so a conflicting
+# fb_inla() and fb_brms() are the two active single-engine pins, each
+# sugar over fb(backend = "<engine>"). A third pin, for the native
+# engine withdrawn entirely in 0.9.3 (see NEWS.md), no longer exists.
+# At v0.5.0 the v0.4.1 deprecation windows are closed: fb_brms() no
+# longer carries its old multi-backend signature, so a conflicting
 # `backend` is a structured refusal rather than a deprecation warning.
 
 mk_pin_df <- function(n = 40) {
@@ -85,10 +86,10 @@ test_that(".fb_engine_pin() rewrites the call with the backend pinned", {
 
 test_that("an engine pin refuses a conflicting backend argument", {
   df <- mk_pin_df()
-  # fb_inla() pins INLA; backend = "greta" is a contradiction. Refuse
+  # fb_inla() pins INLA; backend = "brms" is a contradiction. Refuse
   # structurally rather than silently overwrite (the pre-v0.5.0 bug).
   expect_error(
-    fb_inla(yield ~ env, data = df, backend = "greta"),
+    fb_inla(yield ~ env, data = df, backend = "brms"),
     class = "flexybayes_refusal_engine_pin_backend_conflict"
   )
   expect_error(
@@ -115,50 +116,3 @@ test_that("a redundant self-pin (fb_brms(backend = 'brms')) is accepted", {
   )
 })
 
-test_that("fb_greta() fits a formula via the greta engine", {
-  skip_on_cran()
-  skip_if_greta_backend_unusable()
-  skip_on_ci()
-  df <- mk_pin_df()
-  fit <- suppressMessages(
-    fb_greta(
-      yield ~ env + (1 | geno),
-      data = df,
-      n_samples = 50L,
-      warmup = 50L,
-      chains = 1L,
-      verbose = FALSE,
-      mcmc_verbose = FALSE
-    )
-  )
-  expect_s3_class(fit, "flexybayes")
-  expect_identical(fit$extras$backend_decision$backend, "greta")
-})
-
-test_that("fb_greta(model = <native graph>) still fits the native graph", {
-  skip_on_cran()
-  skip_if_greta_backend_unusable()
-  skip_on_ci()
-  # The removed `model = ` argument is remapped to the model-spec slot for
-  # call-compatibility, so a native graph passed as `model = ` reaches the
-  # direct greta::mcmc() fit and returns a flexybayes_direct_greta object.
-  set.seed(7)
-  yy <- greta::as_data(rnorm(30))
-  xx <- greta::as_data(rnorm(30))
-  b0 <- greta::normal(0, 10)
-  b1 <- greta::normal(0, 10)
-  s <- greta::uniform(0, 5)
-  greta::distribution(yy) <- greta::normal(b0 + b1 * xx, s)
-  m <- greta::model(b0, b1, s)
-  fit <- suppressMessages(
-    fb_greta(
-      model = m,
-      n_samples = 50L,
-      warmup = 50L,
-      chains = 1L,
-      verbose = FALSE,
-      mcmc_verbose = FALSE
-    )
-  )
-  expect_s3_class(fit, "flexybayes_direct_greta")
-})

@@ -3,7 +3,7 @@
 \name{emm_basis.flexybayes}
 \alias{emm_basis.flexybayes}
 \alias{emm_basis.flexybayes_inla}
-\title{emmeans support: estimation basis (greta backend)}
+\title{emmeans support: estimation basis (default method)}
 \usage{
 \method{emm_basis}{flexybayes}(object, trms, xlev, grid, ...)
 
@@ -24,5 +24,6 @@
 A list with \code{X}, \code{bhat}, \code{nbasis}, \code{V}, \code{dffun}, \code{dfargs}.
 }
 \description{
-emmeans support: estimation basis (greta backend)
+The bare \code{flexybayes} method: reached by any fit whose engine has no
+more specific override, which today is the brms backend.
 }

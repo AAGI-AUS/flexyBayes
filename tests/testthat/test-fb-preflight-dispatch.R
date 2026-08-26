@@ -15,8 +15,9 @@ test_that("dispatch: small-n path bypasses preflight (existing behaviour intact)
     g = factor(rep(letters[1:5], 10))
   )
   # review_code = TRUE returns the <flexybayes_review> token without
-  # invoking the backend; exercises dispatch's branching. Since the greta
-  # quarantine, auto review-code emits brms (Stan) source, so this needs brms.
+  # invoking the backend; exercises dispatch's branching. With only two
+  # active engines, auto review-code emits brms (Stan) source, so this
+  # needs brms.
   skip_if_not_installed("brms")
   rev <- flexybayes(y ~ x, random = ~g, data = df, review_code = TRUE)
   expect_s3_class(rev, "flexybayes_review")
@@ -78,7 +79,7 @@ test_that("dispatch: large-n path triggers preflight refusal with tight ceiling"
 })
 
 test_that("dispatch: large-n path with generous ceiling passes through preflight", {
-  skip_if_not_installed("brms") # greta quarantined -> return_code via brms
+  skip_if_not_installed("brms") # return_code on this path emits via brms
   # Direct dispatch call (review path covered separately in commit 7
   # tests). On a normal-RAM host the default ceiling (0.8 x RAM)
   # accepts the modest design and dispatch reaches return_code = TRUE

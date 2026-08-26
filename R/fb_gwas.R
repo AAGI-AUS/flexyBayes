@@ -9,8 +9,8 @@
 # the relationship matrix --- the rotated model has a diagonal residual
 # covariance, so the per-marker GLS is an exact weighted least squares.
 #
-# This file is engine-agnostic base R: the scan needs no greta / INLA /
-# brms backend (the backends enter only at the optional top-hit Bayesian
+# This file is engine-agnostic base R: the scan needs no INLA / brms
+# backend (the backends enter only at the optional top-hit Bayesian
 # refinement, where the genome has been reduced to a handful of loci and a
 # full multi-backend fit is affordable). It composes `.fb_spectral()`,
 # `.fb_reml_vc()` (REML variance components via the rotated restricted

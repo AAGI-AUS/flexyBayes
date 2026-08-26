@@ -337,9 +337,9 @@ test_that("auto refuses (never silently drops the residual) on an incomplete gri
   # an intercept-only iid Gaussian -- the requested AR1xAR1 residual vanished
   # with no error. Checking the wrapper class could never have caught it.
   #
-  # The correct outcome is a refusal: INLA will not fit an incomplete grid,
-  # brms cannot represent the residual, and greta is quarantined, so no
-  # active backend can faithfully fit the model.
+  # The correct outcome is a refusal: INLA will not fit an incomplete grid
+  # and brms cannot represent the residual, so no active backend can
+  # faithfully fit the model.
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)

@@ -597,7 +597,8 @@ scenarios:
   # V3 floor on three counts, all of them stated in README.md and waived
   # there rather than glossed here: 10 replicates per cell against the
   # tier's 1,000, a 0.7.0.9000 candidate rather than this release, and a
-  # backend set that still included greta.
+  # backend set that still included the native engine withdrawn entirely
+  # in 0.9.3 (see NEWS.md).
 
   - id: calibration-interval-coverage-recovery
     estimator: flexybayes

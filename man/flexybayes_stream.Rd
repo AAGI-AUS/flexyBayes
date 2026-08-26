@@ -45,8 +45,8 @@ offset column, or \code{NULL} for unit exposure.}
 
 \item{backend}{The estimation backend. \code{"inla"} is the default and the
 only active choice: INLA is the one engine with an aggregated emit.
-\code{"greta"} is still recognised so that passing it refuses by name
-(\code{backend_quarantined}) rather than failing on argument matching.}
+Any other value -- including a formerly-registered engine name this
+package withdrew entirely -- refuses with \code{unknown_backend}.}
 
 \item{chunk_rows}{The number of rows to read per chunk. Larger chunks
 read faster but use more peak memory; the default 5e6 keeps peak
@@ -63,8 +63,7 @@ useful for inspecting the compression a design will achieve.}
 \item{verbose}{When \code{TRUE}, report streaming progress and the
 compression achieved.}
 
-\item{...}{Further arguments passed to the aggregated emit (for
-example \code{n_samples}, \code{warmup}, \code{chains} for the greta backend).}
+\item{...}{Further arguments passed to the aggregated emit.}
 }
 \value{
 When \code{fit = TRUE}, a \verb{<flexybayes>} fit object carrying
@@ -75,7 +74,7 @@ When \code{fit = TRUE}, a \verb{<flexybayes>} fit object carrying
 \code{flexybayes_stream()} is the large-data entry point: it reads the data
 a chunk at a time from \code{source}, accumulates additive sufficient
 statistics per design cell, and fits the resulting aggregated model
-through the same greta or INLA emit path as \code{\link[=flexybayes]{flexybayes()}}. The
+through the same INLA emit path as \code{\link[=flexybayes]{flexybayes()}}. The
 aggregated likelihood is algebraically identical to the per-row
 likelihood, so the posterior is the full-data posterior, not an
 approximation.

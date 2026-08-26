@@ -28,7 +28,7 @@
 #
 # What stays EXPLICIT, by design: the per-paradigm routing ORDER and
 # fallback policy (INLA Laplace fast-path; brms/Stan compile-latency
-# opt-out from auto; greta universal HMC fallback) is genuine policy, not
+# opt-out from auto) is genuine policy, not
 # mechanical iteration, so dispatch keeps it as code rather than deriving
 # it. Consequence, and the limit of the extensibility claim: a new
 # same-paradigm
@@ -37,11 +37,10 @@
 #
 # NAMING. The proposed user-facing "brms" -> "stan" engine rename was
 # REVERSED (2026-05-31): brms is retained as the engine label so the
-# backend axis stays consistent (greta / inla / brms are all front-ends)
-# and gretaR is a natural front-end sibling; the Stan/HMC sampler is
-# recorded as the paradigm attribute (paradigm = "hmc_nuts") so
-# triangulate() / the backend-independence registry grade pairs on what
-# the engines actually share.
+# backend axis stays consistent (inla / brms are both front-ends); the
+# Stan/HMC sampler is recorded as the paradigm attribute
+# (paradigm = "hmc_nuts") so triangulate() / the backend-independence
+# registry grade pairs on what the engines actually share.
 # `rename_to` is therefore NA for every backend.
 #
 # Internal -- not exported.
@@ -50,25 +49,18 @@
 
 # A backend entry is one of these lifecycle states. `active` backends are
 # reachable today; `dormant` backends have a provisioned but inactive
-# slot and refuse at dispatch until activated; `quarantined` backends were
-# active and have been deliberately withdrawn as fitting engines (greta /
-# gretaR, 2026-07-24 reshape R1) -- their descriptor + emit code are
-# RETAINED as a re-entry candidate but dispatch refuses them and `auto`
-# never selects them, and re-entry is repair + conform to the backend
-# conformance battery, never a bare re-add (§4.1). `reserved` is
+# slot and refuse at dispatch until activated. `reserved` is
 # documentation-only and not registered here (NIMBLE is the reserved next
 # slot; it has no slot yet, so registering it would be a stub -- it is
 # named in this comment instead). The vocabulary is closed; a new state
-# requires a deliberate amendment (this file adds `quarantined`, 2026-07-24).
-.BACKEND_STATUS_VOCABULARY <- c("active", "dormant", "quarantined")
+# requires a deliberate amendment.
+.BACKEND_STATUS_VOCABULARY <- c("active", "dormant")
 
 # The grammars a backend can ingest-and-fit. A formula model (asreml or
 # brms/lme4 dialect) lowers to the shared fb_terms IR and can target any
-# formula-capable engine subject to capability; a native greta model
-# graph (the "greta" grammar) is greta-only by construction. Closed
-# vocabulary mirrored from the ingest-adapter family (fb_from_asreml /
-# fb_from_brms / fb_from_greta).
-.BACKEND_GRAMMAR_VOCABULARY <- c("asreml", "brms", "greta")
+# formula-capable engine subject to capability. Closed vocabulary
+# mirrored from the ingest-adapter family (fb_from_asreml / fb_from_brms).
+.BACKEND_GRAMMAR_VOCABULARY <- c("asreml", "brms")
 
 # --- container ---------------------------------------------------- #
 
@@ -236,16 +228,6 @@
   out
 }
 
-# .backend_is_quarantined() --- TRUE iff `name` is a registered backend
-# whose lifecycle status is `quarantined` (a deliberately-withdrawn fitting
-# engine; dispatch refuses it and `auto` never selects it -- §4.1).
-# Consulted by dispatch (the explicit-request refusal) and the test
-# skip-guards (a greta-fitting test skips as a re-entry guard, not fails).
-.backend_is_quarantined <- function(name) {
-  e <- .lookup_backend(name)
-  !is.null(e) && identical(e$status, "quarantined")
-}
-
 # .auto_default_backend_names() --- registered backends flagged for
 # auto's default candidate set AND currently `active`. A non-active
 # (dormant / quarantined) backend can never be an auto candidate, so the
@@ -277,12 +259,9 @@
 # represent the model) or a single reason-code string naming why it
 # cannot. The registry stores them; .backend_can_fit() is the
 # dispatch-facing accessor. The predicates are the systematic
-# replacement for the special-cased gates (low_rank_requires_greta,
+# replacement for the special-cased gates (low_rank_smooth_unsupported,
 # lgm_gate) -- they delegate to the existing authorities rather than
 # duplicate them, so refusal semantics do not drift.
-
-# greta fits every model currently in scope -- the universal fallback.
-.capability_greta <- function(fb) TRUE
 
 # inla is capable iff lgm_gate() accepts the model. The 11-rule gate is
 # INLA's capability predicate; the closure delegates to it (single
@@ -305,7 +284,8 @@
 # its native known-covariance group term, (1 | gr(var, cov = K)) -- brms
 # Cholesky-factors the supplied covariance internally (the K = L L'
 # decorrelation Stan fits directly), so GBLUP / pedigree BLUP become
-# three-engine triangulatable. This holds only for an exact dense-able
+# two-engine triangulatable (against INLA). This holds only for an exact
+# dense-able
 # carrier (dense / chol / precision / pedigree sparse precision); the
 # remaining asreml structured-covariance terms (fa / us / ar1), a
 # block-diagonal or low-rank vm() carrier, and a low_rank_smooth
@@ -378,8 +358,7 @@
 # .backend_can_fit() --- dispatch-facing capability check. Returns
 # list(ok = TRUE) or list(ok = FALSE, reason_code = <chr>). An
 # unregistered backend or one without a predicate returns ok = TRUE
-# (its own dispatch-side handling owns the outcome -- e.g. the gretaR
-# dormant refusal).
+# (its own dispatch-side handling owns the outcome).
 .backend_can_fit <- function(backend, fb) {
   e <- .lookup_backend(backend)
   pred <- if (!is.null(e)) e$capability_predicate else NULL
@@ -396,11 +375,11 @@
 
 # .backend_emit_fn() --- dispatch-facing resolver for a backend's emit
 # entry-point. The registry stores the emit function by NAME (a string,
-# e.g. "emit_greta") rather than as a closure, so a load-time reference
+# e.g. "emit_inla") rather than as a closure, so a load-time reference
 # cannot fail; this resolves the name to the function within the package
 # namespace at dispatch time. Errors loudly on an unregistered backend or
 # one whose engine is NA (a dormant slot reached in error) -- the caller
-# is expected to have handled dormancy upstream (.gretaR_dormant_refusal).
+# is expected to have handled dormancy upstream.
 # This is the seam that lets a newly-registered same-paradigm engine be
 # dispatched without hard-coding its emit symbol at the call site.
 .backend_emit_fn <- function(name) {
@@ -429,29 +408,15 @@
 
 # --- v0.5.0 population --------------------------------------------- #
 
-# .populate_backend_registry_v050() --- registers the three active
-# backends reachable today plus the dormant gretaR slot. brms is retained
-# as the engine label (the brms -> stan rename was reversed 2026-05-31);
-# the Stan/HMC sampler is the paradigm attribute, not the name.
-# `default_in_auto` encodes the auto candidate set
-# c("greta", "gretaR", "inla"): greta + inla + gretaR are auto-considered,
-# brms is opt-in only (its 30--60 s Stan compile would break the auto
-# fast-path promise). Dispatch reads this set via
-# .available_backend_names() / .auto_default_backend_names().
+# .populate_backend_registry_v050() --- registers the two active
+# backends. brms is retained as the engine label (the brms -> stan
+# rename was reversed 2026-05-31); the Stan/HMC sampler is the paradigm
+# attribute, not the name. `default_in_auto` encodes the auto candidate
+# set c("inla"): INLA is auto-considered, brms is opt-in only (its
+# 30--60 s Stan compile would break the auto fast-path promise).
+# Dispatch reads this set via .available_backend_names() /
+# .auto_default_backend_names().
 .populate_backend_registry_v050 <- function() {
-  # greta: QUARANTINED 2026-07-24 (reshape R1). Descriptor + emit code are
-  # RETAINED as a re-entry candidate; dispatch refuses it and `auto` never
-  # selects it. Re-entry is repair + conform (§4.1), never a bare re-add.
-  .register_backend(
-    name = "greta",
-    status = "quarantined",
-    engine = "emit_greta",
-    grammars = c("asreml", "brms", "greta"),
-    paradigm = "hmc_nuts",
-    available_pkg = "greta",
-    default_in_auto = FALSE,
-    capability_predicate = .capability_greta
-  )
   .register_backend(
     name = "inla",
     status = "active",
@@ -471,20 +436,6 @@
     available_pkg = "brms",
     default_in_auto = FALSE,
     capability_predicate = .capability_brms
-  )
-  # gretaR: QUARANTINED 2026-07-24 (reshape R1). Registered `active` with a
-  # runtime option-gate before the reshape; now a retained re-entry
-  # descriptor like greta -- dispatch refuses it, `auto` never selects it.
-  .register_backend(
-    name = "gretaR",
-    status = "quarantined",
-    engine = "emit_gretaR",
-    grammars = c("asreml", "brms", "greta"),
-    paradigm = "hmc_nuts",
-    available_pkg = "gretaR",
-    default_in_auto = FALSE,
-    capability_predicate = .capability_gretaR,
-    registered_in_adr = "0013/0031"
   )
   # (koine, the dormant synthesis fourth-opinion slot, moved to
   # flexyBayesOrchestra in the lean-core split, 2026-06-06. The backend

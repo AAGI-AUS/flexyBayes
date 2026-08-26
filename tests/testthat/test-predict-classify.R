@@ -319,9 +319,13 @@ test_that("the brms print carries no INLA approximation line", {
 test_that("there is no sed argument and no pairwise block", {
   # D-5: the means table only. A pairwise standard error of a difference
   # is a separate object and is not smuggled in under another name.
-  expect_false("sed" %in% names(formals(predict.flexybayes)))
-  expect_false("pairwise" %in% names(formals(predict.flexybayes)))
+  # (predict.flexybayes(), the bare parent method, was deleted entirely
+  # at 0.9.3 -- both active engines fully override it, so the two
+  # engine-specific methods are the only formals left to guard.)
   expect_false("sed" %in% names(formals(predict.flexybayes_inla)))
+  expect_false("pairwise" %in% names(formals(predict.flexybayes_inla)))
+  expect_false("sed" %in% names(formals(predict.flexybayes_brms)))
+  expect_false("pairwise" %in% names(formals(predict.flexybayes_brms)))
 })
 
 

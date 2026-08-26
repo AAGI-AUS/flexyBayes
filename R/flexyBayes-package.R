@@ -4,14 +4,15 @@
 #' you already know from ASReml or `lme4`/`brms`, dispatched through one of
 #' two active inference engines: INLA (integrated nested Laplace
 #' approximation, over the latent Gaussian model class) or brms (a Stan
-#' passthrough, full Hamiltonian Monte Carlo). greta and gretaR are
-#' quarantined as fitting engines --- their emit code and registry
-#' descriptors are retained as re-entry candidates, `backend = "auto"`
-#' never selects them, and an explicit request refuses with
-#' `backend_quarantined`. All current exports are at the experimental
-#' `lifecycle` stage. The same fitted object supports `summary()`,
-#' `predict()`, `emmeans::emmeans()`, `marginaleffects::predictions()`, and
-#' the `bayesplot::*` family.
+#' passthrough, full Hamiltonian Monte Carlo). A third native engine was
+#' withdrawn entirely in 0.9.3 (see `NEWS.md`): a `backend` request
+#' naming that withdrawn engine, or any other unrecognised name, now
+#' refuses with an ordinary unknown-backend error naming the two active
+#' engines; re-entry, should it ever be proposed, would be a fresh
+#' implementation, not a repair of retained code. All current exports
+#' are at the experimental `lifecycle` stage. The same fitted object
+#' supports `summary()`, `predict()`, `emmeans::emmeans()`,
+#' `marginaleffects::predictions()`, and the `bayesplot::*` family.
 #'
 #' The package's signature feature is `triangulate()`, a cross-engine
 #' posterior comparison that quantifies disagreement between two fits of
@@ -29,8 +30,7 @@
 #' * [fb()] / [flexybayes()] -- the universal entry. Accepts an ASReml
 #'   (`fixed` / `random` / `residual`) or brms-style (`y ~ x + (1 | g)`)
 #'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).
-#' * [fb_inla()] / [fb_brms()] -- single-engine pins. [fb_greta()] is
-#'   retained and refuses.
+#' * [fb_inla()] / [fb_brms()] -- the two active single-engine pins.
 #' * [fb_prior()] -- penalised-complexity-canonical prior DSL.
 #' * [triangulate()] -- cross-engine posterior comparison.
 #'

@@ -38,8 +38,8 @@ computed from the fitted parameters and reported on \code{fit$return_levels}
 for the requested return periods.
 
 A scalable Bayesian GEV belongs on INLA's native \code{gev} / \code{bgev} family
-and is planned for a future release; the greta backend ships no GEV
-distribution.
+and is planned for a future release; no active engine has a turnkey
+GEV route today.
 }
 \examples{
 set.seed(1)

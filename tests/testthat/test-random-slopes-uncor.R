@@ -6,7 +6,7 @@
 #
 #   (a) fb(y ~ x + (x || g)) parses to type = "simple_slope_uncor"
 #       with slope_var = "x", with_intercept = FALSE, and does NOT
-#       raise stop() on the greta path.
+#       raise stop() on the brms path.
 #   (b) fb(y ~ x + (1 + x || g)) parses to type =
 #       "simple_slope_uncor" with with_intercept = TRUE; fits both
 #       intercept- and slope-variance components.
@@ -21,11 +21,14 @@
 #   (f) Posterior matches lme4::lmer(REML = FALSE) on sleepstudy
 #       within W_1 <= 0.20 * tau_true on the slope SD (loosened per
 #       the design spec) and 0.15 on the intercept SD.
-#   (g) Canonical name sd_<x>_<g> resolves on a greta fit.
-#   (h) Canonical name sd_<x>_<g> resolves on a brms-passthrough fit.
-#   (i) triangulate() between fb(backend = "brms") and
-#       fb(backend = "greta") on the slope-variance posterior
-#       reports agreement (W_1 within tolerance) on common params.
+#   (g) Canonical name sd_<x>_<g> resolves on a brms fit.
+#   (h) The brms-side raw-name-to-canonical mapper rule, unit-tested
+#       directly (the regex split (g) exercises end to end).
+#   (i) [removed at 0.9.3, see NEWS.md] triangulate() used to compare
+#       fb(backend = "brms") against the since-withdrawn native
+#       engine on the slope-variance posterior; that engine is
+#       withdrawn entirely and INLA cannot represent (x || g) at
+#       all, so no 2-engine pairing remains for this structure.
 #   (j) Minimum-group guard: triangulation cell uses J >= 10 by
 #       construction (sleepstudy has J = 18).
 #   (k) prior_summary() lists the slope-variance prior row.
@@ -159,26 +162,36 @@ test_that("(x | g) refusal carries workaround + grouping_factor + slope_variable
 # (f) Posterior matches lme4::lmer on the slope SD                  #
 # ---------------------------------------------------------------- #
 
-test_that("greta posterior matches lme4 on slope + intercept SD within loosened tolerance", {
-  skip_if_no_greta()
+test_that("brms posterior matches lme4 on slope + intercept SD within loosened tolerance", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
   testthat::skip_if_not_installed("lme4")
   d <- mk_slope_data()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_convergence_warning = TRUE
+  )
   # 2000 samples + 2000 warmup per ADR 0020 §Verification. Slope-
   # variance posteriors are intrinsically less identified than
   # intercept-variance ones at modest J (per the design spec)
   # and shorter chains yield posterior means outside the 0.20 *
   # tau_true tolerance even on the J = 18 sleepstudy-style fixture.
-  fit <- suppressMessages(fb(
+  # Slope-variance posteriors are intrinsically less identified (see
+  # the comment above), so even this generous 2000+2000 budget can
+  # still trip Stan's low-ESS sampler warning; the test's own 0.20 *
+  # tau_true tolerance already absorbs the same MC noise the warning
+  # is about, so muffle rather than raise the budget further.
+  fit <- .muffle_ess_warnings(suppressMessages(fb(
     Reaction ~ Days + (1 + Days || Subject),
     data = d,
-    backend = "greta",
+    backend = "brms",
     n_samples = 2000L,
     warmup = 2000L,
     chains = 2L,
+    seed = 20260523L,
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   ref <- lme4::lmer(
     Reaction ~ Days + (1 + Days || Subject),
     data = d,
@@ -194,7 +207,7 @@ test_that("greta posterior matches lme4 on slope + intercept SD within loosened 
   sd_Days_lme4 <- re_rows$sdcor[re_rows$var1 == "Days"]
   sd_Subject_lme4 <- re_rows$sdcor[re_rows$var1 == "(Intercept)"]
 
-  draws <- as.matrix(fit$greta$draws)
+  draws <- as.matrix(posterior::as_draws_matrix(fit$brms))
 
   # Hardened 2026-05-30 (ADR 0031). The previous assertion compared the
   # posterior MEAN of a weakly-identified variance-component SD (J = 18
@@ -204,18 +217,18 @@ test_that("greta posterior matches lme4 on slope + intercept SD within loosened 
   # frequentist ML point -- the gap exceeds 20% on ~1/3 of runs from MC
   # + skew + prior influence, not from under-sampling (this is already
   # 2000 x 2 chains). The statistically-principled, non-flaky check is
-  # that lme4's estimate falls within the greta posterior's central
+  # that lme4's estimate falls within the brms posterior's central
   # credible interval -- the correct notion of Bayesian/frequentist
   # agreement, robust to MC error and skew by construction. A 99%
   # interval is used for a comfortable robustness margin on the
   # poorly-identified slope SD.
   ci_Days <- stats::quantile(
-    draws[, "sigma_Days_Subject"],
+    draws[, "sd_Subject__Days"],
     c(0.005, 0.995),
     names = FALSE
   )
   ci_Subject <- stats::quantile(
-    draws[, "sigma_Subject"],
+    draws[, "sd_Subject__Intercept"],
     c(0.005, 0.995),
     names = FALSE
   )
@@ -228,50 +241,62 @@ test_that("greta posterior matches lme4 on slope + intercept SD within loosened 
   # the posterior median diverges grossly from lme4 (a real bug), without
   # the tight-tolerance flakiness. Median is the stable centre for a
   # skewed variance posterior.
-  med_Days <- stats::median(draws[, "sigma_Days_Subject"])
-  med_Subject <- stats::median(draws[, "sigma_Subject"])
+  med_Days <- stats::median(draws[, "sd_Subject__Days"])
+  med_Subject <- stats::median(draws[, "sd_Subject__Intercept"])
   expect_lt(abs(med_Days - sd_Days_lme4), 0.60 * sd_Days_lme4)
   expect_lt(abs(med_Subject - sd_Subject_lme4), 0.60 * sd_Subject_lme4)
 })
 
 
 # ---------------------------------------------------------------- #
-# (g) Canonical name sd_<x>_<g> resolves on a greta fit             #
+# (g) Canonical name sd_<x>_<g> resolves on a brms fit              #
 # ---------------------------------------------------------------- #
 
-test_that("canonical_names() on a greta (x || g) fit resolves sd_<x>_<g> AND sd_<g>", {
-  skip_if_no_greta()
+test_that("canonical_names() on a brms (x || g) fit resolves sd_<x>_<g> AND sd_<g>", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
   d <- mk_slope_data()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_convergence_warning = TRUE
+  )
   # (Days || Subject) carries BOTH the intercept-variance (sd_Subject)
   # and slope-variance (sd_Days_Subject) hyperparameters per lme4 /
-  # brms semantics. canonical_names() must surface both.
-  fit <- suppressMessages(fb(
+  # brms semantics. canonical_names() must surface both. This is the
+  # full-pipeline counterpart to the isolated regex-split unit test in
+  # subtest (h) below.
+  # Structural test (does canonical_names() surface both hyperparameter
+  # names?), not numeric agreement -- muffle at this tiny budget.
+  fit <- .muffle_ess_warnings(suppressMessages(fb(
     Reaction ~ Days + (Days || Subject),
     data = d,
-    backend = "greta",
-    n_samples = 80L,
-    warmup = 80L,
-    chains = 1L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
+    chains = 2L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   cn <- canonical_names(fit)
   expect_true(all(c("sd_Subject", "sd_Days_Subject") %in% cn$map))
-  expect_identical(cn$map[["sigma_Days_Subject"]], "sd_Days_Subject")
-  expect_identical(cn$map[["sigma_Subject"]], "sd_Subject")
+  expect_identical(cn$map[["sd_Subject__Days"]], "sd_Days_Subject")
+  expect_identical(cn$map[["sd_Subject__Intercept"]], "sd_Subject")
 
   # The (0 + Days || Subject) form drops the intercept-variance.
-  fit2 <- suppressMessages(fb(
+  fit2 <- .muffle_ess_warnings(suppressMessages(fb(
     Reaction ~ Days + (0 + Days || Subject),
     data = d,
-    backend = "greta",
-    n_samples = 80L,
-    warmup = 80L,
-    chains = 1L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
+    chains = 2L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   cn2 <- canonical_names(fit2)
   expect_true("sd_Days_Subject" %in% cn2$map)
   expect_false("sd_Subject" %in% cn2$map)
@@ -287,7 +312,8 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
   # that .mapper_brms_via_stan uses. This keeps the test fast and
   # independent of the (slow + heavy-toolchain) brms install: the
   # mapping logic itself is what ADR 0020 §Decision 3 names; the
-  # full brms-backend integration is covered by subtest (i) below.
+  # full brms-backend integration is covered by subtest (g) above,
+  # on a live fit.
   split_brms <- function(brms_name) {
     bare <- sub("^sd_", "", brms_name)
     if (grepl("__Intercept$", bare)) {
@@ -308,49 +334,16 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
 
 
 # ---------------------------------------------------------------- #
-# (i) Triangulation cell brms vs greta on slope variance            #
+# (i) [removed] Triangulation on slope variance -- 0.9.3            #
 # ---------------------------------------------------------------- #
-
-test_that("triangulate() agrees on sd_<x>_<g> within loosened tolerance (brms vs greta)", {
-  skip_if_no_greta()
-  testthat::skip_if_not_installed("brms")
-  # Slow path: brms compile + sample + greta fit. Marked as Tier-3
-  # via skip_on_cran + skip_on_ci. Local-developer rehearsal only.
-  d <- mk_slope_data()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  fit_g <- suppressMessages(fb(
-    Reaction ~ Days + (Days || Subject),
-    data = d,
-    backend = "greta",
-    n_samples = 2000L,
-    warmup = 2000L,
-    chains = 2L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  fit_b <- suppressMessages(fb(
-    Reaction ~ Days + (Days || Subject),
-    data = d,
-    backend = "brms",
-    n_samples = 2000L,
-    warmup = 2000L,
-    chains = 2L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  tri <- triangulate(fit_g, fit_b)
-  # Per ADR 0020 §Decision 4 / the design spec: tolerance
-  # 0.20 * tau_true on slope variance (loosened from the standard
-  # 0.15). Use the lme4 ML estimate as tau_true.
-  ref <- lme4::lmer(Reaction ~ Days + (Days || Subject), data = d, REML = FALSE)
-  vc <- as.data.frame(lme4::VarCorr(ref))
-  re_rows <- vc[!is.na(vc$var1) & vc$grp != "Residual", , drop = FALSE]
-  tau_true <- re_rows$sdcor[re_rows$var1 == "Days"]
-  expect_true("sd_Days_Subject" %in% tri$common)
-  row <- tri$metrics[tri$metrics$param == "sd_Days_Subject", , drop = FALSE]
-  expect_true(nrow(row) == 1L)
-  expect_lt(row$wasserstein_1, 0.20 * tau_true)
-})
+#
+# This cell triangulated a since-withdrawn native engine against brms
+# on (x || g) (see NEWS.md, 0.9.3). No 2-engine pairing exists any more
+# for this structure: INLA refuses an uncorrelated random slope outright
+# (see the capability-matrix row for "Uncorrelated random slope"; the
+# INLA-side deferral is exercised at the foot of this file), so brms is
+# now the only active engine that can fit (x || g) at all, and there is
+# nothing left to triangulate it against.
 
 
 # ---------------------------------------------------------------- #
@@ -377,19 +370,28 @@ test_that("triangulation fixture honours J >= 10 minimum-group guard", {
 # ---------------------------------------------------------------- #
 
 test_that("prior_summary() lists the slope-variance prior row for (x || g)", {
-  skip_if_no_greta()
+  skip_on_cran()
+  skip_if_not_installed("brms")
   d <- mk_slope_data()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  fit <- suppressMessages(fb(
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_convergence_warning = TRUE
+  )
+  # Structural test (does the printed prior_summary() mention the
+  # slope-variance parameter?), not numeric agreement -- muffle at
+  # this tiny budget.
+  fit <- .muffle_ess_warnings(suppressMessages(fb(
     Reaction ~ Days + (Days || Subject),
     data = d,
-    backend = "greta",
-    n_samples = 60L,
-    warmup = 60L,
-    chains = 1L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
+    chains = 2L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
+  )))
   ps <- prior_summary(fit)
   # The slope-variance row carries the canonical sd_<x>_<g> name in
   # the parameter column; printed shape may be either a data.frame
@@ -408,26 +410,34 @@ test_that("prior_summary() lists the slope-variance prior row for (x || g)", {
 # ---------------------------------------------------------------- #
 
 test_that("fit object exposes the slope-variance hyperparameter via draws + variance_comps", {
-  skip_if_no_greta()
+  skip_on_cran()
+  skip_if_not_installed("brms")
   d <- mk_slope_data()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  fit <- suppressMessages(fb(
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_convergence_warning = TRUE
+  )
+  # Structural test (does the parameter name appear in the draws
+  # matrix?), not numeric agreement -- muffle at this tiny budget.
+  fit <- .muffle_ess_warnings(suppressMessages(fb(
     Reaction ~ Days + (Days || Subject),
     data = d,
-    backend = "greta",
-    n_samples = 60L,
-    warmup = 60L,
-    chains = 1L,
+    backend = "brms",
+    n_samples = 500L,
+    warmup = 500L,
+    chains = 2L,
+    seed = 20260523L,
+    control = list(adapt_delta = 0.97),
     verbose = FALSE,
     mcmc_verbose = FALSE
-  ))
-  # The slope-variance hyperparameter must appear in the greta draws
-  # matrix (greta-native name) so downstream tooling -- coef(),
+  )))
+  # The slope-variance hyperparameter must appear in the brms draws
+  # matrix (brms-native name) so downstream tooling -- coef(),
   # canonical_names(), prior_summary(), triangulate() -- can resolve
   # it. print() output is brief by design and lists term-level
   # summaries only.
-  draws <- as.matrix(fit$greta$draws)
-  expect_true("sigma_Days_Subject" %in% colnames(draws))
+  draws <- as.matrix(posterior::as_draws_matrix(fit$brms))
+  expect_true("sd_Subject__Days" %in% colnames(draws))
   # The print method should at least name the grouping factor so the
   # user sees that a random-effect block was monitored.
   txt <- paste(utils::capture.output(print(fit)), collapse = "\n")

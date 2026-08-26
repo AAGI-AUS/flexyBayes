@@ -1,7 +1,7 @@
 # Integration tests for the emmeans support (recover_data / emm_basis).
 #
 # emmeans(fit, ~ f) and contrast() are exercised end-to-end on real
-# greta- and INLA-backed fits, with numeric sanity against the known
+# brms- and INLA-backed fits, with numeric sanity against the known
 # data-generating process. Closes the E-emmeans coverage gap: before
 # these, the exported methods had no standalone test and were in fact
 # non-functional (no nbasis on the basis, no INLA model interface).
@@ -91,11 +91,11 @@ test_that("emmeans pairwise contrasts on an INLA fit recover the DGP gaps", {
 
 
 # ---------------------------------------------------------------- #
-# greta backend (MCMC -- gated)                                     #
+# brms backend (MCMC -- gated)                                      #
 # ---------------------------------------------------------------- #
 
-test_that("emmeans(fit, ~ f) works on a greta fit (over-parameterised basis)", {
-  skip_if_greta_backend_unusable()
+test_that("emmeans(fit, ~ f) works on a brms fit (bare-method inheritance)", {
+  skip_if_not_installed("brms")
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
@@ -104,7 +104,7 @@ test_that("emmeans(fit, ~ f) works on a greta fit (over-parameterised basis)", {
   fit <- suppressMessages(flexybayes(
     fixed = y ~ f + x,
     data = d,
-    backend = "greta",
+    backend = "brms",
     n_samples = 400L,
     warmup = 400L,
     chains = 2L,
@@ -112,13 +112,18 @@ test_that("emmeans(fit, ~ f) works on a greta fit (over-parameterised basis)", {
     mcmc_verbose = FALSE
   ))
 
+  # recover_data.flexybayes() / emm_basis.flexybayes() are bare methods
+  # with no flexybayes_brms-specific override -- reached by a brms fit
+  # via S3 inheritance (see R/emmeans_support.R). brms is treatment-
+  # coded (full rank), unlike the since-withdrawn native engine's
+  # over-parameterised basis this section exercised through v0.9.2 (see
+  # NEWS.md), so the non-estimability basis this integration builds is
+  # defensive here rather than load-bearing -- the EMMs are estimable
+  # by construction.
   emm <- emmeans::emmeans(fit, ~f)
   s <- as.data.frame(summary(emm))
   expect_identical(nrow(s), 3L)
   m <- stats::setNames(s$emmean, s$f)
-  # The over-parameterised (intercept + all levels) greta basis is
-  # rank-deficient; emmeans must still return finite, estimable EMMs
-  # via the non-estimability basis.
   expect_true(all(is.finite(m)))
   expect_true(m["b"] > m["a"] && m["a"] > m["c"])
   expect_true(all(abs(m - c(a = 1, b = 1.8, c = 0.5)) < 0.5))

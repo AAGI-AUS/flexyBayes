@@ -29,7 +29,7 @@ values and the number in common), the lens labels, and the caveat.
 \description{
 Compare two genomic analyses -- heritability, variance components, and
 genomic estimated breeding values -- on a common footing. Each argument
-is either a flexyBayes GBLUP / pedigree fit (greta, INLA, or brms) or a
+is either a flexyBayes GBLUP / pedigree fit (INLA or brms) or a
 generic \emph{genomic lens} (\code{list(h2, var_g, var_e, gebv, label)}), the form
 a field-standard REML implementation such as sommer supplies.
 Cross-engine use checks that the Bayesian backends agree. The lens form

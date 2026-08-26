@@ -10,7 +10,7 @@
 # it true sugar: arguments the user did not supply stay unsupplied, so
 # flexybayes()'s missing()-based defaults (the default-prior note) and its
 # deparse(substitute(data)) data-name capture behave exactly as on a
-# direct call. fb_greta() and fb_brms() are recast onto the same
+# direct call. fb_brms() is recast onto the same
 # .fb_engine_pin() seam at v0.5.0.
 
 # .fb_engine_pin() -- rewrite a pin verb's own call into a flexybayes()

@@ -45,7 +45,7 @@
       brms = "fits",
       note = "The certified overlap class, which both engines emit and
         `triangulate()` compares.",
-      anchor = "test-backend-conformance.R"
+      anchor = "test-backend-conformance-open-oracle.R"
     ),
     list(
       model_class = paste(
@@ -75,11 +75,11 @@
       spelling = "`(x || g)`",
       inla = "refuses",
       brms = "fits",
-      note = "The INLA mapping named greta as one of its three
-        verification arbitrators, so it stays deferred until the criterion
-        is rebuilt around the active engines. The deferral is
-        host-independent -- no local artefact lifts it. `auto` routes to
-        brms.",
+      note = "The three-arbitrator verification named a since-withdrawn
+        engine as one arbitrator, so the INLA mapping stays deferred until
+        the criterion is rebuilt around the active engines. The deferral
+        is host-independent -- no local artefact lifts it. `auto` routes
+        to brms.",
       anchor = "test-random-slopes-uncor.R"
     ),
     list(

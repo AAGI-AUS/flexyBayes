@@ -1,5 +1,5 @@
 # Tests for S3 methods — these test the method dispatch and output structure
-# without requiring greta (use mock objects where needed)
+# without requiring a live backend fit (use mock objects where needed)
 
 # Create a mock flexybayes object for testing methods
 make_mock_flexybayes <- function() {
@@ -44,15 +44,17 @@ make_mock_flexybayes <- function() {
   attr(glm_obj, "posterior_vcov") <- V
   class(glm_obj) <- c("flexybayes_glm", "glm", "lm")
 
-  # Build greta component (mock)
-  greta_out <- structure(
+  # Build a mock brms-shaped MCMC component. The print footer's
+  # component-label table is a closed vocabulary (glm / brms / inla /
+  # extras -- see .print_fit_components() in R/methods.R), so the mock
+  # uses a real recognised label rather than an invented one.
+  brms_out <- structure(
     list(
       model = NULL,
       draws = draws,
-      greta_arrays = list(),
       env = new.env(parent = emptyenv())
     ),
-    class = "flexybayes_greta"
+    class = "flexybayes_brms_component"
   )
 
   # Build extras
@@ -116,7 +118,7 @@ make_mock_flexybayes <- function() {
   )
 
   structure(
-    list(glm = glm_obj, greta = greta_out, extras = extras),
+    list(glm = glm_obj, brms = brms_out, extras = extras),
     class = "flexybayes"
   )
 }
@@ -126,25 +128,27 @@ test_that("print.flexybayes produces output", {
   fit <- make_mock_flexybayes()
   expect_output(print(fit), "flexyBayes")
   expect_output(print(fit), "Fixed")
-  expect_output(print(fit), "MCMC")
+  expect_output(print(fit), "Sampler")
 })
 
 test_that("print.flexybayes lists only the slots the fit carries", {
-  # The component footer used to name `$greta` unconditionally, so a fit
-  # from an engine that never builds a greta model still advertised one.
+  # The component footer used to name a fixed slot unconditionally, so
+  # a fit shape lacking it still advertised one -- this fixture proves
+  # the footer follows the object instead (within the closed glm / brms
+  # / inla / extras label vocabulary).
   fit <- make_mock_flexybayes()
-  greta_lines <- utils::capture.output(print(fit))
-  expect_true(any(grepl("$greta", greta_lines, fixed = TRUE)))
-
-  # Same object with the greta slot replaced by a brms slot: the footer
-  # follows the object, not the historical default.
-  brms_shaped <- fit
-  brms_shaped$greta <- NULL
-  brms_shaped$brms <- list()
-  brms_lines <- utils::capture.output(print(brms_shaped))
-  expect_false(any(grepl("$greta", brms_lines, fixed = TRUE)))
+  brms_lines <- utils::capture.output(print(fit))
   expect_true(any(grepl("$brms", brms_lines, fixed = TRUE)))
-  expect_true(any(grepl("$extras", brms_lines, fixed = TRUE)))
+
+  # Same object with the brms slot replaced by an inla slot: the
+  # footer follows the object, not a hardcoded default.
+  inla_shaped <- fit
+  inla_shaped$brms <- NULL
+  inla_shaped$inla <- list()
+  inla_lines <- utils::capture.output(print(inla_shaped))
+  expect_false(any(grepl("$brms", inla_lines, fixed = TRUE)))
+  expect_true(any(grepl("$inla", inla_lines, fixed = TRUE)))
+  expect_true(any(grepl("$extras", inla_lines, fixed = TRUE)))
 })
 
 test_that("summary.flexybayes produces output", {
@@ -169,12 +173,15 @@ test_that("vcov.flexybayes returns matrix", {
   expect_equal(ncol(V), length(coef(fit)))
 })
 
-test_that("confint.flexybayes returns matrix with bounds", {
+test_that("confint.flexybayes refuses unconditionally on a bare-class fit", {
+  # The bare method (no flexybayes_inla / flexybayes_brms override) now
+  # abstains unconditionally with fit_lacks_posterior_draws -- it used
+  # to compute a credible-interval matrix from the withdrawn native
+  # engine's posterior draws (see NEWS.md, 0.9.3); neither active
+  # engine reaches the parent, each has its own confint() method.
   fit <- make_mock_flexybayes()
-  ci <- confint(fit)
-  expect_true(is.matrix(ci))
-  expect_equal(ncol(ci), 2)
-  expect_true(all(ci[, 1] < ci[, 2]))
+  err <- tryCatch(confint(fit), error = function(e) e)
+  expect_identical(err$reason_code, "fit_lacks_posterior_draws")
 })
 
 test_that("fitted.flexybayes returns numeric vector", {
@@ -216,19 +223,13 @@ test_that("logLik.flexybayes returns logLik object", {
   expect_true(is.numeric(as.numeric(ll)))
 })
 
-test_that("predict.flexybayes returns fitted values when newdata is NULL", {
-  fit <- make_mock_flexybayes()
-  p <- predict(fit)
-  expect_equal(length(p), nobs(fit))
-})
-
-test_that("predict.flexybayes with se.fit returns list", {
-  fit <- make_mock_flexybayes()
-  p <- predict(fit, se.fit = TRUE)
-  expect_true(is.list(p))
-  expect_true("fit" %in% names(p))
-  expect_true("se.fit" %in% names(p))
-})
+# predict.flexybayes() (the bare method) was deleted entirely at 0.9.3
+# (see NEWS.md) -- both active engines have their own predict method
+# (predict.flexybayes_inla, predict.flexybayes_brms, tested against
+# real fits in test-fb-brms-stan.R and the INLA equivalent), and a
+# bare-class mock like this one has no applicable predict() method any
+# more. The two tests that used to live here are removed rather than
+# adapted, since this fixture cannot exercise a class-specific method.
 
 test_that("model.matrix.flexybayes returns matrix", {
   fit <- make_mock_flexybayes()
@@ -238,8 +239,12 @@ test_that("model.matrix.flexybayes returns matrix", {
 })
 
 test_that("tidy.flexybayes returns data frame", {
+  # conf.int = FALSE: the default TRUE would call confint(), which
+  # refuses unconditionally on this bare-class mock (see the
+  # confint.flexybayes test above) -- this test checks the tidy()
+  # output shape, not the CI columns.
   fit <- make_mock_flexybayes()
-  td <- tidy.flexybayes(fit)
+  td <- tidy.flexybayes(fit, conf.int = FALSE)
   expect_true(is.data.frame(td))
   expect_true("term" %in% names(td))
   expect_true("estimate" %in% names(td))
@@ -340,7 +345,7 @@ test_that("flexybayes object has correct class", {
   expect_true(inherits(fit$glm, "flexybayes_glm"))
   expect_true(inherits(fit$glm, "glm"))
   expect_true(inherits(fit$glm, "lm"))
-  expect_true(inherits(fit$greta, "flexybayes_greta"))
+  expect_true(inherits(fit$brms, "flexybayes_brms_component"))
   expect_true(inherits(fit$extras, "flexybayes_extras"))
 })
 

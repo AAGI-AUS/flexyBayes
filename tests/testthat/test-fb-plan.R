@@ -245,10 +245,10 @@ test_that("backend_decision() backward-compat: legacy fits return 8-field shape"
     list(
       extras = list(
         backend_decision = list(
-          backend = "greta",
-          path = "explicit_greta",
+          backend = "inla",
+          path = "explicit_inla",
           gate_checks = NULL,
-          reason = "user requested greta explicitly",
+          reason = "user requested inla explicitly",
           preflight_summary = NULL,
           representation_plan = NULL,
           rejected_routes = list(),

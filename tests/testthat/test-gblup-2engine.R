@@ -1,10 +1,12 @@
-# GBLUP across three engines (G1). The genomic relationship random
-# effect vm(geno, G) now reaches all three backends: greta and brms via
-# the dense covariance (brms's native gr(cov = K) = the K = L L'
-# decorrelation), INLA via the precision carrier (generic0). GBLUP is
-# therefore three-engine triangulatable. The fast tests pin the emit /
-# gate behaviour; the gated recovery test fits all three engines on a
-# simulated known-heritability dataset and checks recovery + agreement.
+# GBLUP across the active engines (G1). The genomic relationship random
+# effect vm(geno, G) reaches both active backends: brms via the dense
+# covariance (brms's native gr(cov = K) = the K = L L' decorrelation),
+# INLA via the precision carrier (generic0). GBLUP is therefore
+# two-engine triangulatable (a third native engine, withdrawn entirely
+# in 0.9.3, once made this a three-engine comparison -- see NEWS.md).
+# The fast tests pin the emit / gate behaviour; the gated recovery test
+# fits both engines on a simulated known-heritability dataset and checks
+# recovery + agreement.
 
 # ---------------------------------------------------------------- #
 # (a) Fast: brms vm() emit + the relaxed capability gate.           #
@@ -98,20 +100,17 @@ test_that("genomic_summary() refuses a non-flexybayes object", {
 })
 
 # ---------------------------------------------------------------- #
-# (b) Gated: three-engine recovery on a simulated GBLUP.            #
+# (b) Gated: two-engine recovery on a simulated GBLUP.              #
 # ---------------------------------------------------------------- #
 
-test_that("GBLUP recovers heritability and breeding values across three engines", {
-  skip_if_greta_backend_unusable() # greta arm quarantined -- re-entry guard
+test_that("GBLUP recovers heritability and breeding values across both active engines", {
   skip_on_cran()
-  skip_if_not_installed("greta")
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_convergence_warning = TRUE
   )
-  local_tf_seed(2026L)
 
   G <- sim_kinship(n_geno = 30L, n_markers = 300L, seed = 21L)
   sim <- sim_gblup_pheno(G, var_g = 1, var_e = 1, n_rep = 4L, seed = 22L)
@@ -120,12 +119,6 @@ test_that("GBLUP recovers heritability and breeding values across three engines"
   Q <- solve(G)
   dimnames(Q) <- dimnames(G)
 
-  fit_greta <- flexybayes(
-    y ~ 1, random = ~ vm(geno, Gmat), data = dat,
-    known_matrices = list(Gmat = G), backend = "greta",
-    n_samples = 700L, warmup = 700L, chains = 2L,
-    verbose = FALSE, mcmc_verbose = FALSE
-  )
   fit_brms <- flexybayes(
     y ~ 1, random = ~ vm(geno, Gmat), data = dat,
     known_matrices = list(Gmat = G), backend = "brms",
@@ -138,29 +131,27 @@ test_that("GBLUP recovers heritability and breeding values across three engines"
     verbose = FALSE
   )
 
-  gs_greta <- genomic_summary(fit_greta)
   gs_brms <- genomic_summary(fit_brms)
   gs_inla <- genomic_summary(fit_inla)
 
   # Every engine's heritability credible interval contains the truth.
-  for (gs in list(gs_greta, gs_brms, gs_inla)) {
+  for (gs in list(gs_brms, gs_inla)) {
     expect_s3_class(gs, "fb_genomic_summary")
     expect_gte(true_h2, gs$heritability[["q2.5"]])
     expect_lte(true_h2, gs$heritability[["q97.5"]])
   }
 
-  # Cross-engine agreement (the triangulation thesis): the three
+  # Cross-engine agreement (the triangulation thesis): the two
   # posterior-mean heritabilities are mutually close.
   h2_means <- c(
-    gs_greta$heritability[["mean"]],
     gs_brms$heritability[["mean"]],
     gs_inla$heritability[["mean"]]
   )
   expect_lt(max(h2_means) - min(h2_means), 0.2)
 
-  # GEBVs are present on all three engines and track the true breeding
+  # GEBVs are present on both engines and track the true breeding
   # values (positive rank correlation well clear of zero).
-  for (gs in list(gs_greta, gs_brms, gs_inla)) {
+  for (gs in list(gs_brms, gs_inla)) {
     expect_false(is.null(gs$gebv))
     expect_equal(nrow(gs$gebv), 30L)
     rho <- stats::cor(gs$gebv$mean, sim$u_true, method = "spearman")

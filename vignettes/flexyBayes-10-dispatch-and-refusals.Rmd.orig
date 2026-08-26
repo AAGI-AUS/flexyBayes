@@ -57,7 +57,7 @@ user call
        ├ pass    → emit_inla()
        └ refuse  → resolve_auto_fallback:
                      brms if it can represent the model,
-                     otherwise a typed refusal (never greta)
+                     otherwise a typed refusal
   → fitted-model object (class flexybayes_inla or flexybayes_brms)
 ```
 
@@ -66,8 +66,9 @@ the package. Everything downstream -- `lgm_gate()`, the emit shims,
 the posterior unification -- operates on `fb_terms`, not on the
 user's formulas. This separation is what lets two ingest paths
 (asreml-format and brms-format) share one dispatch infrastructure,
-and what let the backend roster change (greta and gretaR quarantined,
-see Section 10) without touching the ingest or gate layers.
+and what let the backend roster change when a native engine was later
+withdrawn entirely (see `NEWS.md`, 0.9.3) without touching the ingest
+or gate layers.
 
 # 3. The `fb_terms` intermediate representation
 
@@ -121,7 +122,8 @@ fb_a$random_terms[[1]]$k         # number of factor-analytic loadings
 uses `backend = "auto"`: it consults `lgm_gate()` and routes to INLA
 when the model is latent-Gaussian feasible, to brms otherwise (when
 brms can represent it), or refuses by name when neither can --
-**never** to greta or gretaR, which are quarantined (Section 10).
+**never** to a withdrawn or otherwise unrecognised backend (see
+`NEWS.md`, 0.9.3).
 
 ```{r decision, eval = inla_ok}
 fit <- flexybayes(Reaction ~ Days + (1 | Subject), data = sleepstudy,
@@ -140,7 +142,6 @@ When you want a specific engine, the pins make the intent explicit:
 |---|---|---|
 | `fb_inla()`  | `fb(..., backend = "inla")`  | Laplace approximation |
 | `fb_brms()`  | `fb(..., backend = "brms")`  | Stan via brms (HMC) |
-| `fb_greta()` | `fb(..., backend = "greta")` | refuses -- quarantined |
 
 A pin fits via one engine only, so a conflicting `backend` argument
 is a clear error rather than a silent override:
@@ -335,8 +336,8 @@ Three ways to resolve it:
    the headroom and the per-term breakdown are read from the same count.
 
 The indexed representation that would let a model bypass the ceiling
-entirely via MCMC was greta-only, and greta has been withdrawn as a
-fitting engine (Section 10) -- routing to brms is the current
+entirely via MCMC was specific to the native engine withdrawn entirely
+in 0.9.3 (see `NEWS.md`) -- routing to brms is the current
 alternative, subject to brms being able to represent the model at
 all.
 
@@ -355,8 +356,6 @@ dispatch as a structured trail of evidence:
 - soft warnings (`"lgm_warning:hyperparam_budget:soft"`).
 - override audit (`"lgm_force_bypassed:family_allowlist"`,
   `"lgm_force_reason:..."`).
-- `"gretaR_slot_dormant"` -- every LGM-compatible IR carries this
-  informational flag (Section 10).
 
 Every `triangulate()` print scans for these markers and surfaces them
 prominently so a cross-engine comparison discloses the dispatch
@@ -389,8 +388,9 @@ The backend registry is the home for backend facts: the legitimate
 backend names, what grammars each can ingest, which inference paradigm
 each uses, which R package makes each usable, whether each is in the
 `auto` candidate set, which models each can represent, and its
-*lifecycle state* (`active` / `dormant` / `quarantined`). Dispatch
-*consumes* these facts. It does not restate them.
+*lifecycle state* (`active` / `dormant` -- a slot can be provisioned
+before its emit path is ready; see Section 10). Dispatch *consumes*
+these facts. It does not restate them.
 
 The roster below is read out of the live registry at build time, so
 what you see is what the installed package holds rather than a list
@@ -403,20 +403,16 @@ flexyBayes:::.available_backend_names()
 # The candidate set that `auto` considers by default.
 flexyBayes:::.auto_default_backend_names()
 
-# Every registered backend, and which of them are quarantined -- the
-# quarantine is one field, not a sweep through the call sites.
+# Every registered backend, regardless of whether its package is
+# installed on this machine -- the set `.available_backend_names()`
+# filters down from.
 flexyBayes:::.registered_backend_names()
-vapply(
-  flexyBayes:::.registered_backend_names(),
-  flexyBayes:::.backend_is_quarantined,
-  logical(1)
-)
 ```
 
 The design rule is *extend by registration, not by API growth*: new
 capability enters by adding a row to a registry, not by widening the
 public verb surface. The everyday surface -- `fb()` / `flexybayes()`
-plus the three engine pins -- does not change when a backend is added.
+plus the two engine pins -- does not change when a backend is added.
 
 ## 9.1 What an entry records
 
@@ -446,9 +442,12 @@ collection of special cases.
 ## 9.2 Availability is not capability
 
 The capability predicate answers "could this engine represent the
-model", a purely structural question. greta's predicate still says
-`TRUE` for a plain random intercept even though greta is quarantined.
-Availability is what actually stops dispatch from choosing it:
+model", a purely structural question -- it does not check whether the
+engine's R package is installed. `.capability_inla()`, for instance,
+only calls `lgm_gate()`, which is plain R logic with no dependency on
+the `INLA` package itself. Availability is the separate, install-
+dependent question that actually stops dispatch from choosing an
+engine whose package is missing:
 
 ```{r capability, eval = TRUE}
 d <- data.frame(
@@ -458,23 +457,23 @@ d <- data.frame(
 )
 ir <- fb_from_asreml(y ~ env, random = ~ geno, data = d)
 
-flexyBayes:::.backend_can_fit("greta", ir)$ok
-flexyBayes:::.backend_can_fit("brms",  ir)$ok
+flexyBayes:::.backend_can_fit("inla", ir)$ok
+flexyBayes:::.backend_can_fit("brms", ir)$ok
 ```
 
-Note what is *not* in `.available_backend_names()` above: `"greta"`.
-greta and gretaR carry the `quarantined` lifecycle state (Section 10),
-a fact the availability query respects even though the capability
-predicate still answers the structural question when asked directly.
-Keeping the two apart is exactly the registry design that let a
-quarantine be added as one state-field flip rather than a sweep through
-every call site.
+Both answer `TRUE` here regardless of whether `INLA` or `brms` happens
+to be installed on this machine -- that is the point: a "yes,
+structurally" from the predicate is not the same claim as "and I can
+actually run it", which `.available_backend_names()` (Section 9)
+answers separately by checking `requireNamespace()`. Keeping the two
+apart is what let the backend roster change (Section 10) as a registry
+edit rather than a sweep through every call site.
 
 A predicate delegates to the existing authority for its decision rather
 than duplicating it -- the INLA predicate, for instance, asks the
 latent-Gaussian gate of Section 5 -- so a model can never be judged
 feasible by one part of the package and infeasible by another. Dispatch
-checks availability *before* consulting capability, so a quarantined
+checks availability *before* consulting capability, so an uninstalled
 backend's "yes, structurally" is never reached during a real fitting
 call.
 
@@ -497,53 +496,7 @@ On the `auto` path, the engines that were considered and rejected are
 recorded on the fit and surfaced by `backend_decision()`, so a user can
 always see why a particular backend was chosen.
 
-# 10. The quarantined engines and the gretaR slot
-
-greta and gretaR are **quarantined**, not deleted. A backend registry
-lifecycle state (`active` / `dormant` / `quarantined`) tracks this: an
-explicit `backend = "greta"` or `"gretaR"` request raises a
-structured `backend_quarantined` refusal, and `auto` never falls back
-to either, silently or otherwise. The registry descriptors, the emit
-code, and the legacy greta *import* grammar (`fb_from_greta()`,
-reading an already-fitted object's draws) are retained -- re-entry is
-repair-and-conform against the backend conformance battery, never a
-bare re-activation.
-
-## 10.1 Reading draws from a previously-fitted greta object
-
-If you have a `greta::model()` object fit in an earlier session (or
-under an older package version), `fb_from_greta()` still builds an
-`fb_terms`-compatible wrapper around its *already-sampled* draws, so
-the standard post-fit surface (`summary()`, `coef()`, `vcov()`,
-`triangulate()`) works without refitting:
-
-```r
-ir <- fb_from_greta(
-  m,  # an already-fitted greta::model() object
-  canonical_names = c(b0 = "(Intercept)", b1 = "Days", sigma = "sigma")
-)
-```
-
-`canonical_names` maps each greta target-array name to the canonical
-name `flexyBayes` uses elsewhere (`(Intercept)`, `Days`, `sigma`,
-`sd_<group>`, ...), which is what lets `triangulate()` compare it
-against an INLA or brms fit without a user-supplied `name_map`. This
-path reads existing draws. It does not fit new models -- `greta::mcmc()`
-itself is quarantined (`native_greta_fit_quarantined`).
-
-## 10.2 The gretaR slot
-
-The package separately carries a provisioned, dormant slot for a
-*gretaR* backend (torch-based NUTS). It was never activated before
-the A2 quarantine landed, and quarantine now applies to it too --
-`gretaR_status()` remains the canonical discoverability surface:
-
-```{r gretaR-status, eval=TRUE}
-gs <- gretaR_status()
-gs$dormancy_reason
-```
-
-# 11. Adding a new backend
+# 10. Adding a new backend
 
 The architecture is wrap-don't-rewrite: each backend is an
 `emit_<backend>()` function consuming an `fb_terms` IR and returning
@@ -583,10 +536,9 @@ keeps it as explicit code rather than deriving it from the registry.
 The roster has room for growth by design. A backend slot can be
 provisioned in a dormant state -- registered but not yet active, so it
 refuses cleanly at dispatch until activated -- which is how a new
-front end can be reserved before its emit path is ready. The gretaR
-slot in Section 10.2 is exactly that construction.
+front end can be reserved before its emit path is ready.
 
-# 12. Pitfalls
+# 11. Pitfalls
 
 **`flexyBayes:::` is internal API.** The `:::` accessor reaches
 non-exported functions. They are stable across patch releases but not
@@ -611,7 +563,7 @@ prevents silent approximation. The right response is one of: route to
 brms if it can represent the model, reduce model complexity, or -- if
 you understand the risk -- invoke the override.
 
-# 13. Active prompts
+# 12. Active prompts
 
 1. Construct an `fb_terms` object with `family = "tweedie"` (a real
    distribution INLA supports) and run `lgm_gate()`. Does it pass?
@@ -621,7 +573,7 @@ you understand the risk -- invoke the override.
    number of grouping-factor levels, then resolve it via the sparse-
    precision route in Section 6.
 
-# 14. Session information
+# 13. Session information
 
 ```{r session-info}
 sessionInfo()

@@ -961,9 +961,6 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
   if (inherits(fit, "flexybayes_inla")) {
     return("inla")
   }
-  if (inherits(fit, "flexybayes")) {
-    return("greta")
-  }
   paste(class(fit), collapse = "/")
 }
 
@@ -975,10 +972,7 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
 #'
 #' S3 generic used by `triangulate()` to extract a named list of
 #' numeric posterior-draw vectors from each fit. The methods that reach
-#' an active engine are `flexybayes_brms` and `flexybayes_inla`; the
-#' `flexybayes` and `flexybayes_gretaR` methods read the greta-shaped
-#' draws slot and are retained for objects lifted in by
-#' [fb_from_greta()], since greta is quarantined as a fitting engine.
+#' an active engine are `flexybayes_brms` and `flexybayes_inla`.
 #' User-defined methods can extend the generic.
 #'
 #' @param fit A model fit object carrying a posterior, dispatched on by
@@ -989,28 +983,6 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
 #'   each element holding that parameter's posterior draws.
 #' @export
 fb_as_draws_simple <- function(fit, ...) UseMethod("fb_as_draws_simple")
-
-#' @rdname fb_as_draws_simple
-#' @keywords internal
-#' @export
-fb_as_draws_simple.flexybayes <- function(fit, ...) {
-  if (is.null(fit$greta) || is.null(fit$greta$draws)) {
-    stop(
-      "Cannot extract draws: fit$greta$draws is missing. This method ",
-      "reads the greta slot, which a fit on an active engine does not ",
-      "carry -- a brms fit dispatches on `flexybayes_brms` and an INLA ",
-      "fit on `flexybayes_inla`. Check the fit completed ",
-      "(return_code = FALSE) and carries the slot its engine writes.",
-      call. = FALSE
-    )
-  }
-  m <- as.matrix(fit$greta$draws)
-  cols <- colnames(m)
-  if (is.null(cols)) {
-    cols <- paste0("V", seq_len(ncol(m)))
-  }
-  setNames(lapply(seq_len(ncol(m)), function(j) as.numeric(m[, j])), cols)
-}
 
 #' @rdname fb_as_draws_simple
 #' @keywords internal

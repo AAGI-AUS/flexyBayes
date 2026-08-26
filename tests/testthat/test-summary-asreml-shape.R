@@ -950,9 +950,10 @@ test_that("an aggregated count fit carries the table too", {
 
 test_that("a route that recorded only means says so rather than inventing", {
   # No live fixture reaches this branch: the aggregated INLA route always
-  # carries marginals, and the greta route that does not is quarantined.
-  # The contract is still the one that matters -- a point estimate with
-  # no interval is reported as a point estimate with no interval.
+  # carries marginals, and the only route that did not is a since-withdrawn
+  # engine (see NEWS.md). The contract is still the one that matters -- a
+  # point estimate with no interval is reported as a point estimate with
+  # no interval.
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()

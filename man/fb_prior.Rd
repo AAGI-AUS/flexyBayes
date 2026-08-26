@@ -23,12 +23,10 @@ Examples:
 Supported distribution families: \code{pc}, \code{half_normal}, \code{half_cauchy},
 \code{student_t}, \code{normal}, \code{exponential}, \code{lkj}, \code{cauchy}, \code{gamma},
 \code{uniform}. Note that \code{uniform()} on a variance component sits
-outside the PC-canonical interlingua, but both backends represent it
-faithfully on the SD scale: the INLA backend via an expression-prior
-on the log-precision, and the greta backend as a bounded
-\code{greta::uniform()} on each simple random-effect (and residual) SD.
-Structured-covariance terms (\code{us}, \code{fa}, \code{ar1}, \code{vm}, \code{ped}) on greta
-fall back to the legacy scale prior.}
+outside the PC-canonical interlingua, but both active backends
+represent it faithfully on the SD scale: the INLA backend via an
+expression-prior on the log-precision, and brms as a bounded
+\code{uniform()} prior on each simple random-effect (and residual) SD.}
 }
 \value{
 An \code{fb_prior} object, an S3 class inheriting from list,

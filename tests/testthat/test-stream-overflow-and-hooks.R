@@ -1,20 +1,25 @@
-# test-stream-overflow-and-hooks.R -- three small structural guards.
+# test-stream-overflow-and-hooks.R -- two small structural guards.
 #
-# (a) flexybayes_stream() no longer offers greta as a backend choice, and
-#     a caller who passes it gets the quarantine refusal by name rather
-#     than match.arg's "'arg' should be one of".
+# (a) flexybayes_stream() offers only inla as a backend choice, and a
+#     caller who names a withdrawn or otherwise unrecognised backend gets
+#     the unknown-backend refusal by name rather than match.arg's
+#     "'arg' should be one of".
 # (b) The single-file and in-memory streaming sources refuse a row count
 #     past R's integer limit instead of recording it as NA. The row count
 #     is mocked; nothing here allocates billions of rows.
-# (c) The greta S3 shim registers on a later greta load as well as on an
-#     earlier one, so the registration is not order-dependent. greta is
-#     never loaded by this file.
+#
+# (0.9.3: a third section here tested the S3 shim that registered
+# flexyBayes methods on a later load of the withdrawn native engine's
+# package -- that shim registrar and its two .onLoad() hook
+# registrations are deleted entirely (see NEWS.md), so that section is
+# removed rather than rewritten; there is no successor mechanism, since
+# no active engine needs a deferred-load S3 shim.)
 
 # ---------------------------------------------------------------- #
-# (a) The streaming entry point drops greta                         #
+# (a) The streaming entry point takes only inla                     #
 # ---------------------------------------------------------------- #
 
-test_that("flexybayes_stream() defaults to inla and refuses greta by name", {
+test_that("flexybayes_stream() defaults to inla and refuses an unrecognised backend by name", {
   expect_identical(
     eval(formals(flexybayes_stream)$backend),
     "inla"
@@ -28,11 +33,11 @@ test_that("flexybayes_stream() defaults to inla and refuses greta by name", {
     ),
     condition = function(e) e
   )
-  expect_s3_class(err, "flexybayes_refusal_backend_quarantined")
-  expect_s3_class(err, "flexybayes_backend_quarantined_refusal")
+  expect_s3_class(err, "flexybayes_refusal_unknown_backend")
+  expect_s3_class(err, "flexybayes_unknown_backend_refusal")
   expect_identical(err$backend, "greta")
-  expect_match(conditionMessage(err), "quarantined")
-  expect_match(conditionMessage(err), "aggregated emit")
+  expect_match(conditionMessage(err), "not a recognised flexyBayes engine")
+  expect_match(conditionMessage(err), '"inla"', fixed = TRUE)
   # The failure must not be argument matching -- that is the untyped
   # outcome this change exists to avoid.
   expect_false(grepl("should be one of", conditionMessage(err)))
@@ -103,46 +108,3 @@ test_that("the aggregation plan routes its row count through the guard", {
   expect_false(any(grepl("as.integer(fb_dataset$n_rows)", src, fixed = TRUE)))
 })
 
-# ---------------------------------------------------------------- #
-# (c) The greta shim registers whichever order the loads happen in  #
-# ---------------------------------------------------------------- #
-
-test_that("a greta onLoad hook is registered so a later load gets the shim", {
-  # isNamespaceLoaded() answers only for the instant .onLoad() ran, so a
-  # user loading greta after flexyBayes would never have got the shim.
-  # The hook covers that direction. greta is not loaded here: the test
-  # asserts the registration, not the shim's effect.
-  hooks <- getHook(packageEvent("greta", "onLoad"))
-  expect_true(length(hooks) >= 1L)
-  expect_true(any(vapply(hooks, is.function, logical(1))))
-
-  # The hook body calls the shared registrar, so both routes register the
-  # same methods.
-  bodies <- vapply(
-    hooks,
-    function(h) paste(deparse(body(h)), collapse = " "),
-    character(1)
-  )
-  expect_true(any(grepl(".register_greta_shim", bodies, fixed = TRUE)))
-})
-
-test_that("the shim registrar refuses to load greta itself", {
-  # asNamespace() LOADS a namespace that is not already loaded, so
-  # without its own guard the registrar would pull in greta, reticulate
-  # and TensorFlow -- the exact cost the isNamespaceLoaded() policy
-  # exists to avoid. The guard is asserted at the source, because a
-  # runtime assertion depends on whether some earlier test file in the
-  # suite has loaded greta already.
-  src <- paste(
-    deparse(body(flexyBayes:::.register_greta_shim)),
-    collapse = " "
-  )
-  expect_true(grepl("isNamespaceLoaded(\"greta\")", src, fixed = TRUE))
-  expect_false(grepl("requireNamespace(\"greta\")", src, fixed = TRUE))
-  # The guard precedes the asNamespace() call it protects.
-  expect_lt(
-    regexpr("isNamespaceLoaded", src, fixed = TRUE),
-    regexpr("asNamespace(\"greta\")", src, fixed = TRUE)
-  )
-  expect_silent(flexyBayes:::.register_greta_shim("flexyBayes"))
-})

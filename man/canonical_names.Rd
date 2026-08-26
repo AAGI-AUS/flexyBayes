@@ -2,24 +2,18 @@
 % Please edit documentation in R/canonical_names.R
 \name{canonical_names}
 \alias{canonical_names}
-\alias{canonical_names.flexybayes}
 \alias{canonical_names.flexybayes_inla}
 \alias{canonical_names.flexybayes_brms}
-\alias{canonical_names.flexybayes_direct_greta}
 \title{Canonical parameter-name view for a flexyBayes fit}
 \usage{
 canonical_names(fit, drop = FALSE, ...)
 
-\method{canonical_names}{flexybayes}(fit, drop = FALSE, ...)
-
 \method{canonical_names}{flexybayes_inla}(fit, drop = FALSE, ...)
 
 \method{canonical_names}{flexybayes_brms}(fit, drop = FALSE, ...)
-
-\method{canonical_names}{flexybayes_direct_greta}(fit, drop = FALSE, ...)
 }
 \arguments{
-\item{fit}{A \code{flexybayes} (or \code{flexybayes_inla}) object.}
+\item{fit}{A \code{flexybayes_inla} or \code{flexybayes_brms} object.}
 
 \item{drop}{Logical: if \code{TRUE} (default \code{FALSE}), drop
 backend-native names that are not in the registered map
@@ -62,11 +56,8 @@ follows brms (\code{(Intercept)}, \verb{<term>}, \verb{sd_<group>}, \code{sigma}
 \verb{r_<group>[<level>]}).
 }
 \details{
-On \code{flexybayes} and \code{flexybayes_inla} fits, the per-backend
-mapper registered at package load (\code{greta} or \code{inla}) drives the
+On \code{flexybayes_inla} and \code{flexybayes_brms} fits, the per-backend
+mapper registered at package load (\code{inla} or \code{brms}) drives the
 resolution; the returned map is cached on
-\code{fit$extras$canonical_map} for fast repeated access. On
-\code{flexybayes_direct_greta} fits (built via \code{\link[=fb_greta]{fb_greta()}}) the map
-comes from the user-supplied \code{canonical_names} argument, with a
-verbatim-greta-name fallback when the argument is omitted.
+\code{fit$extras$canonical_map} for fast repeated access.
 }

@@ -13,20 +13,17 @@
 # v0.2; exported in v0.3+ when third-party backend authors might use
 # it).
 #
-# The greta-side mapping derives from the asreml-emit conventions
-# (mu_atg = intercept, tau_<tag>[i,1] = factor level i of <tag>,
-# sigma_<group> = SD of <group>, sigma_e_atg = residual SD). The
-# INLA-side mapping uses summary.fixed rownames for fixed effects
+# The INLA-side mapping uses summary.fixed rownames for fixed effects
 # (already brms-canonical) and translates the "Precision for ..."
-# hyperparameter names plus the precision-to-SD value transform.
+# hyperparameter names plus the precision-to-SD value transform. The
+# brms-side mapping delegates to Stan's own canonical naming.
 
 # ---------------------------------------------------------------- #
 # Internal registry                                                  #
 # ---------------------------------------------------------------- #
-# Populated at the bottom of this file with the v0.2 backend
-# mappers (greta + inla). Additional mappers (e.g., for a future
-# stan_via_brms triangulate-peer backend or NIMBLE) register via
-# `register_canonical_mapper(backend, mapper)`.
+# Populated at the bottom of this file with the active-engine mappers
+# (inla + brms). Additional mappers (e.g., for a future NIMBLE backend)
+# register via `register_canonical_mapper(backend, mapper)`.
 
 .canonical_mappers <- new.env(parent = emptyenv())
 
@@ -51,15 +48,12 @@
 #' follows brms (`(Intercept)`, `<term>`, `sd_<group>`, `sigma`,
 #' `r_<group>[<level>]`).
 #'
-#' On `flexybayes` and `flexybayes_inla` fits, the per-backend
-#' mapper registered at package load (`greta` or `inla`) drives the
+#' On `flexybayes_inla` and `flexybayes_brms` fits, the per-backend
+#' mapper registered at package load (`inla` or `brms`) drives the
 #' resolution; the returned map is cached on
-#' `fit$extras$canonical_map` for fast repeated access. On
-#' `flexybayes_direct_greta` fits (built via [fb_greta()]) the map
-#' comes from the user-supplied `canonical_names` argument, with a
-#' verbatim-greta-name fallback when the argument is omitted.
+#' `fit$extras$canonical_map` for fast repeated access.
 #'
-#' @param fit A `flexybayes` (or `flexybayes_inla`) object.
+#' @param fit A `flexybayes_inla` or `flexybayes_brms` object.
 #' @param drop Logical: if `TRUE` (default `FALSE`), drop
 #'   backend-native names that are not in the registered map
 #'   (e.g., INLA's `Predictor.<i>` latent-predictor draws). When
@@ -91,27 +85,6 @@
 #' @export
 canonical_names <- function(fit, drop = FALSE, ...) {
   UseMethod("canonical_names")
-}
-
-#' @rdname canonical_names
-#' @export
-canonical_names.flexybayes <- function(fit, drop = FALSE, ...) {
-  if (!is.null(fit$extras$canonical_map)) {
-    return(.maybe_attach_unmapped(
-      fit$extras$canonical_map,
-      fit,
-      drop,
-      backend = "greta"
-    ))
-  }
-  fb <- fit$extras$fb_terms %||% .parse_info_as_pseudo_fb(fit)
-  mapper <- .canonical_mappers$greta
-  if (is.null(mapper)) {
-    return(list(map = character(0), transform = list(), source = "no_mapper"))
-  }
-  res <- mapper(fit, fb)
-  res$source <- res$source %||% "registry"
-  .maybe_attach_unmapped(res, fit, drop, backend = "greta")
 }
 
 #' @rdname canonical_names
@@ -156,28 +129,6 @@ canonical_names.flexybayes_brms <- function(fit, drop = FALSE, ...) {
   .maybe_attach_unmapped(res, fit, drop, backend = "brms")
 }
 
-#' @rdname canonical_names
-#' @export
-canonical_names.flexybayes_direct_greta <- function(fit, drop = FALSE, ...) {
-  cm <- fit$extras$model_info$canonical_map
-  if (is.null(cm)) {
-    return(list(
-      map = character(0),
-      transform = list(),
-      source = "no_canonical_map"
-    ))
-  }
-  # When user supplied canonical_names, at least one name->canonical
-  # pair differs from the identity; otherwise it's the verbatim
-  # fallback.
-  has_renames <- any(names(cm) != unname(cm))
-  list(
-    map = cm,
-    transform = list(),
-    source = if (has_renames) "user" else "registry_fallback_verbatim"
-  )
-}
-
 
 # ---------------------------------------------------------------- #
 # Registration helper                                               #
@@ -209,31 +160,12 @@ register_canonical_mapper <- function(backend, mapper) {
 # Helpers                                                            #
 # ---------------------------------------------------------------- #
 
-# Build a pseudo-fb_terms shape from the parse_info structure on a
-# greta fit when the full IR was not attached (legacy fits + the
-# pre-ADR-0005 emit_greta path). Returns a list with the slots the
-# greta mapper needs: response, intercept, fixed_terms,
-# random_terms.
-.parse_info_as_pseudo_fb <- function(fit) {
-  pi <- fit$extras$parse_info
-  if (is.null(pi)) {
-    return(NULL)
-  }
-  list(
-    response = pi$fixed$response,
-    intercept = pi$fixed$intercept %||% TRUE,
-    fixed_terms = pi$fixed$terms %||% list(),
-    random_terms = pi$random %||% list(),
-    residual_terms = pi$residual %||% list()
-  )
-}
-
 # Attach an `$unmapped` element to the canonical-names result when
 # requested. The `unmapped` set is the difference between (the
 # names present in the fit's posterior draws) and (the keys of the
 # canonical map). This surfaces backend-side draws (e.g., INLA's
-# Predictor.* linear-predictor samples, or greta-side tracked-
-# latent BLUPs) that the registry doesn't translate.
+# Predictor.* linear-predictor samples) that the registry doesn't
+# translate.
 .maybe_attach_unmapped <- function(res, fit, drop, backend) {
   # Surface the aggregated-fit prior parametrization on the result so a
   # consumer can tell whether the matched-prior (per-row-equivalent)
@@ -260,17 +192,11 @@ register_canonical_mapper <- function(backend, mapper) {
   res
 }
 
-# Backend-native draw names for the unmapped set. Greta fits expose
-# them via the mcmc.list at fit$greta$draws; INLA fits via
-# rownames(summary.fixed) + rownames(summary.hyperpar).
+# Backend-native draw names for the unmapped set. INLA fits expose them
+# via rownames(summary.fixed) + rownames(summary.hyperpar); brms fits via
+# posterior::as_draws_matrix().
 .backend_draw_names <- function(fit, backend) {
-  if (identical(backend, "greta")) {
-    if (is.null(fit$greta) || is.null(fit$greta$draws)) {
-      return(character(0))
-    }
-    m <- as.matrix(fit$greta$draws)
-    if (is.null(colnames(m))) character(0) else colnames(m)
-  } else if (identical(backend, "inla")) {
+  if (identical(backend, "inla")) {
     if (is.null(fit$inla)) {
       return(character(0))
     }
@@ -341,160 +267,6 @@ register_canonical_mapper <- function(backend, mapper) {
     raw_idx = raw_idx,
     level_label = level_label
   )
-}
-
-
-# ---------------------------------------------------------------- #
-# v0.2 mapper: greta backend                                        #
-# ---------------------------------------------------------------- #
-# asreml-emit-side names produced by emit_greta.R:
-#   mu_atg                  -- intercept
-#   tau_<tag>[<i>,1]        -- factor-level <i> of factor <tag>
-#   <continuous_term>       -- raw column name for continuous slopes
-#   sigma_<group>           -- SD of random-effect group <group>
-#   sigma_e_atg             -- residual SD on the gaussian path
-
-.mapper_greta <- function(fit, fb_terms) {
-  if (is.null(fit$greta) || is.null(fit$greta$draws)) {
-    return(list(map = character(0), transform = list()))
-  }
-
-  m <- as.matrix(fit$greta$draws)
-  draw_names <- colnames(m) %||% character(0)
-  if (length(draw_names) == 0L) {
-    return(list(map = character(0), transform = list()))
-  }
-
-  fixed_terms <- fb_terms$fixed_terms %||% list()
-
-  # Build a lookup of canonical factor-level labels from the IR.
-  # For each fixed term of type "factor" / "factor_interaction" we
-  # know the levels in order; tau_<tag>[i,1] -> "<tag><lvl_i>".
-  factor_lookup <- list()
-  for (t in fixed_terms) {
-    if (is.null(t$type)) {
-      next
-    }
-    if (t$type %in% c("factor")) {
-      tag <- t$var %||% t$label %||% NA_character_
-      if (is.na(tag)) {
-        next
-      }
-      lvls <- t$levels %||% NULL
-      if (is.null(lvls)) {
-        next
-      }
-      factor_lookup[[tag]] <- as.character(lvls)
-    }
-  }
-
-  # Factor:continuous indexed slopes (v0.2.6). Build a lookup keyed
-  # by `<factor>_<continuous>` carrying the
-  # ordered level vector so the per-level slot
-  # `slope_dev_<f>_<c>_raw[i,1]` -> `slope_<f>_<c>[<level_{i+1}>]`
-  # renaming can run below (note the L-1-vs-L offset: the raw
-  # parameter vector has L-1 entries, one per non-reference level,
-  # so raw index `i` maps to level `i + 1`).
-  slope_dev_lookup <- list()
-  for (t in fixed_terms) {
-    if (!identical(t$type, "factor_numeric_interaction")) {
-      next
-    }
-    fac <- t$factor
-    con <- t$continuous
-    if (is.null(fac) || is.null(con)) {
-      next
-    }
-    lvls <- t$levels %||% NULL
-    if (is.null(lvls)) {
-      next
-    }
-    slope_dev_lookup[[paste0(fac, "_", con)]] <- as.character(lvls)
-  }
-
-  # Walk the draw names; map each to canonical where recognized.
-  map <- character(0)
-  for (nm in draw_names) {
-    if (identical(nm, "mu_atg")) {
-      map[nm] <- "(Intercept)"
-      next
-    }
-    if (identical(nm, "sigma_e_atg")) {
-      map[nm] <- "sigma"
-      next
-    }
-    if (startsWith(nm, "sigma_")) {
-      # sigma_<group> -- SD of random group; canonical = sd_<group>.
-      grp <- sub("^sigma_", "", nm)
-      if (nzchar(grp) && !identical(grp, "e_atg")) {
-        map[nm] <- paste0("sd_", grp)
-      }
-      next
-    }
-    if (startsWith(nm, "beta_")) {
-      # beta_<term> -- continuous-slope / interaction coefficient on
-      # emit_greta.R's continuous-fixed-effect surface. Canonical =
-      # bare term name (brms convention). The mapping table
-      # documented "b_<term>" -> "<term>" but the live emit prefix is
-      # "beta_"; surfaced by fb_brms() test 13 on continuous slopes
-      # (asreml entries are factor-heavy and miss this row).
-      term <- sub("^beta_", "", nm)
-      if (
-        nzchar(term) &&
-          any(vapply(
-            fixed_terms,
-            function(t) {
-              identical(t$label, term) || identical(t$var, term)
-            },
-            logical(1)
-          ))
-      ) {
-        map[nm] <- term
-      }
-      next
-    }
-    # tau_<tag>[i,1] -- factor-level coefficient.
-    parsed <- .parse_tau_factor(nm)
-    if (!is.null(parsed)) {
-      tag <- parsed$tag
-      lvls <- factor_lookup[[tag]]
-      lvl <- if (!is.null(lvls) && parsed$level <= length(lvls)) {
-        lvls[parsed$level]
-      } else {
-        as.character(parsed$level)
-      }
-      map[nm] <- paste0(tag, lvl)
-      next
-    }
-    # slope_dev_<fac>_<con>_raw[i,1] -- per-level slope
-    # deviation for a factor:continuous interaction. raw[i] indexes
-    # into the L-1 non-reference levels; canonical is
-    # `slope_<fac>_<con>[<level_{i+1}>]` (skip the reference level
-    # because it is fixed at zero by the indexed-emit construction).
-    slope_parsed <- .parse_slope_dev_raw(nm, slope_dev_lookup)
-    if (!is.null(slope_parsed)) {
-      map[nm] <- slope_parsed$canonical
-      next
-    }
-    # Continuous-slope column (raw term name in fixed_terms).
-    if (
-      nm %in%
-        draw_names &&
-        any(vapply(
-          fixed_terms,
-          function(t) {
-            identical(t$label, nm) || identical(t$var, nm)
-          },
-          logical(1)
-        ))
-    ) {
-      map[nm] <- nm
-      next
-    }
-    # Unknown -- leave un-mapped; surfaces via $unmapped.
-  }
-
-  list(map = map, transform = list())
 }
 
 
@@ -768,9 +540,5 @@ register_canonical_mapper <- function(backend, mapper) {
 # triangulate.R (the consumer), so the registry is populated by the
 # time triangulate() runs.
 
-register_canonical_mapper("greta", .mapper_greta)
 register_canonical_mapper("inla", .mapper_inla)
 register_canonical_mapper("brms", .mapper_brms_via_stan)
-# The gretaR mapper stub registers from R/gretaR_slot.R (sourced
-# later in alphabetical order); kept with its definition for
-# v0.3-activation diff cleanliness.

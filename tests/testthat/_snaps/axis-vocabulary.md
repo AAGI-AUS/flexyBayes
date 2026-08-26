@@ -7,7 +7,5 @@
           entry$axes), "\n", sep = "")
       }
     Output
-      brms--greta: implementation
       brms--inla: algorithmic + implementation
-      greta--inla: algorithmic + implementation
 

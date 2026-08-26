@@ -415,8 +415,8 @@ that the data leave unidentified, while preserving large effects.
 The horseshoe is *not* a Gaussian prior on the latent field, so it
 falls outside the latent Gaussian model class -- INLA cannot fit it
 directly. brms and Stan can express a horseshoe hierarchy natively,
-so this is not blocked by the greta quarantine the way the
-genotype-by-environment structured-covariance family is (the
+so this is not blocked by the 0.9.3 engine withdrawal (see `NEWS.md`)
+the way the genotype-by-environment structured-covariance family is (the
 genotype-by-environment section of the *formula surface* vignette) -- it is not yet wired into
 `fb_prior()` yet.
 

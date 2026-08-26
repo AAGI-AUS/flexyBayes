@@ -3,8 +3,8 @@
 # One of the four flexyBayes constructor nouns. `fb_engine(name, opts)`
 # names a concrete inference engine and carries its tuning options. It
 # is consumed as the `backend` argument of the fitting verbs:
-# `flexybayes(..., backend = fb_engine("greta", chains = 4L))`. The bare
-# string shorthand (`backend = "greta"`) continues to work and resolves
+# `flexybayes(..., backend = fb_engine("brms", chains = 4L))`. The bare
+# string shorthand (`backend = "brms"`) continues to work and resolves
 # to the default engine via `.resolve_engine_string()` in dispatch.R.
 #
 # `name` and `paradigm` are closed vocabularies at this release: new
@@ -17,12 +17,10 @@
 # the package that provides it, and (for toolchain status) that
 # package's installability.
 .fb_engine_paradigm <- c(
-  greta = "mcmc",
   inla = "laplace",
   brms = "mcmc"
 )
 .fb_engine_package <- c(
-  greta = "greta",
   inla = "INLA",
   brms = "brms"
 )
@@ -37,27 +35,26 @@
 #'
 #' Names a concrete inference engine and its tuning options. The result
 #' is passed as the `backend` argument of the fitting verbs:
-#' `flexybayes(..., backend = fb_engine("greta", chains = 4L))`. The bare
-#' string form (`backend = "greta"`) remains valid and is equivalent to
+#' `flexybayes(..., backend = fb_engine("brms", chains = 4L))`. The bare
+#' string form (`backend = "brms"`) remains valid and is equivalent to
 #' the default `fb_engine()` for that engine.
 #'
 #' `name` and the derived `paradigm` are closed vocabularies. `"auto"`
 #' is a routing directive, not an engine; pass `backend = "auto"`
 #' directly for automatic routing.
 #'
-#' @param name Character(1): the engine, one of `"greta"`, `"inla"`,
-#'   `"brms"`.
+#' @param name Character(1): the engine, one of `"inla"`, `"brms"`.
 #' @param opts Named list of tuning options. Recognised names are
 #'   `n_samples`, `warmup`, `chains`; an unrecognised name is an error.
 #' @param ... Tuning options given individually, merged into `opts`
-#'   (e.g. `fb_engine("greta", chains = 4L)`).
+#'   (e.g. `fb_engine("brms", chains = 4L)`).
 #' @return An `fb_engine` object: a classed list with elements `name`,
 #'   `paradigm` (one of `mcmc`, `laplace`, `vb`, `map`),
 #'   `toolchain_status` (one of `ready`, `requires_install`,
 #'   `unavailable`), and `opts`.
 #' @seealso [fb_approx()]
 #' @examples
-#' e <- fb_engine("greta", chains = 4L)
+#' e <- fb_engine("brms", chains = 4L)
 #' e$paradigm
 #' e$toolchain_status
 #' @export

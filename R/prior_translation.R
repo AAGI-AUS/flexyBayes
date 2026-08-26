@@ -164,9 +164,9 @@
   tbl[!duplicated(key, fromLast = TRUE), , drop = FALSE]
 }
 
-# The verdict for one triple. An unknown engine is "translate" so that a
-# backend outside the table (greta, gretaR -- both quarantined) is not
-# refused by a table that never described it.
+# The verdict for one triple. An unknown engine is "translate" so that
+# any backend outside the table -- past or future -- is not refused by
+# a table that never described it.
 .fb_prior_translation_lookup <- function(engine, target_type, family) {
   if (!engine %in% c("inla", "brms")) {
     return("translate")

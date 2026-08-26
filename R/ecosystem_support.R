@@ -1,23 +1,26 @@
 # Shared helpers for the downstream-ecosystem integrations
-# (emmeans, marginaleffects). These reconcile the two backends' fixed-
+# (emmeans, marginaleffects). These reconcile the active backends' fixed-
 # effect parametrisations onto a single design-matrix contract:
 #
-#   * greta fits carry an over-parameterised (cell-means + intercept)
-#     fixed-effect basis -- coef() names include every factor level
-#     (e.g. (Intercept), fa, fb, fc). The design matrix must use
-#     all-levels coding to match, and emmeans handles the resulting
-#     rank deficiency through a non-estimability basis.
-#   * INLA fits carry a treatment-contrast basis (e.g. (Intercept),
-#     fb, fc) read from summary.fixed -- full rank.
+#   * brms and INLA fits both carry a treatment-contrast basis
+#     (e.g. (Intercept), fb, fc) -- full rank. A since-withdrawn native
+#     engine (see NEWS.md, 0.9.3) carried an over-parameterised
+#     (cell-means + intercept) fixed-effect basis instead -- coef()
+#     names included every factor level (e.g. (Intercept), fa, fb, fc),
+#     needing all-levels coding to match, with emmeans handling the
+#     resulting rank deficiency through a non-estimability basis.
 #
 # Rather than hard-code per backend, the design matrix is built to match
 # the names of the fit's own coef() vector, detecting per factor whether
 # the reference level is present (all-levels coding) or absent
-# (treatment coding). Structures whose model matrix cannot be reconciled
-# with the coefficient names (e.g. factor interactions on the over-
-# parameterised greta basis) are refused rather than silently mis-mapped.
+# (treatment coding). This keeps the reconciliation general -- both
+# active engines are full rank today, but the per-factor detection is a
+# defensive contract, not an assumption baked in for two backends.
+# Structures whose model matrix cannot be reconciled with the
+# coefficient names (e.g. factor interactions on an over-parameterised
+# basis) are refused rather than silently mis-mapped.
 
-# Data frame a fit was trained on (greta keeps it on the glm shim;
+# Data frame a fit was trained on (brms keeps it on the glm shim;
 # INLA keeps it at the top level).
 #
 # C4/FS-26: an INLA fit's `$data` is the level-legalised copy

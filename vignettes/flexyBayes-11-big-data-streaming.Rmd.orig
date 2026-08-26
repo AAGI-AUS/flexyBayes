@@ -76,11 +76,10 @@ distinct cells $K$, not the number of rows $N$.
 The realistic delivery format is a columnar file on disk.
 `flexybayes_stream()` reads it in row-range chunks, accumulates the
 sufficient statistics, and fits the $K$-cell model through INLA --
-the only active fitting engine for the aggregated path (`backend =
-"greta"` is accepted at the argument level but refuses with a
-structured `backend_quarantined` message, because greta has been withdrawn
-as a fitting engine, see `NEWS.md`). Peak memory is one chunk plus
-the small cell accumulator, never the full table.
+the only active fitting engine for the aggregated path (naming a
+withdrawn or otherwise unrecognised backend refuses with a structured
+`unknown_backend` message -- see `NEWS.md`, 0.9.3). Peak memory is one
+chunk plus the small cell accumulator, never the full table.
 
 ```{r stream-setup, eval = inla_ok && fst_ok}
 library(flexyBayes)

@@ -322,8 +322,8 @@ diverging.
 > an alternative spelling of the same idea
 > (basis via `mgcv::smoothCon()`, ingested as a `smooth_mgcv` random
 > term). That specific ingestion path is not yet representable by
-> either active engine (INLA or brms) -- it was greta-only, and greta
-> has been withdrawn as a fitting engine (see `NEWS.md`). Use `spl()`
+> either active engine (INLA or brms) -- it was specific to the engine
+> withdrawn entirely in 0.9.3 (see `NEWS.md`). Use `spl()`
 > until `smooth_mgcv` is re-routed. Tensor-product smooths `te()`,
 > `ti()`, and `t2()` remain deferred to a future release regardless.
 

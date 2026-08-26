@@ -68,10 +68,6 @@ reach INLA is guarded, so on a machine without it the examples run, the
 INLA-dependent tests skip, and the vignettes build. brms is on CRAN, so
 a reviewer always has one installable engine.
 
-`greta` is in `Suggests` as a dormant engine and installs from CRAN:
-it fits nothing in this version, `backend = "auto"` never selects it,
-and an explicit request for it is refused by name.
-
 **A 404 URL.** The documentation site declared in `DESCRIPTION` does not
 resolve yet, because the repository it is built from is not yet public.
 The maintainer will not submit until that URL resolves. It is quoted

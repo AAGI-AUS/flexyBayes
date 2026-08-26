@@ -2,7 +2,7 @@
 # (deliverable 4).
 #
 # Pure-numeric tests (Wasserstein-1, R-hat-on-means, name alignment)
-# run always. Live cross-engine triangulation tests skip when greta
+# run always. Live cross-engine triangulation tests skip when brms
 # or INLA isn't installed.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
@@ -148,11 +148,19 @@ test_that("triangulate() rejects fb_as_draws_simple returning non-list", {
 # Source detection                                                 #
 # ---------------------------------------------------------------- #
 
-test_that(".triangulate_source() distinguishes greta vs INLA fits", {
-  greta_fit <- structure(list(), class = "flexybayes")
-  inla_fit <- structure(list(), class = c("flexybayes_inla", "list"))
-  expect_identical(flexyBayes:::.triangulate_source(greta_fit), "greta")
+test_that(".triangulate_source() distinguishes brms vs INLA fits, and falls back to the class vector for anything else", {
+  brms_fit <- structure(list(), class = c("flexybayes_brms", "flexybayes", "list"))
+  inla_fit <- structure(list(), class = c("flexybayes_inla", "flexybayes", "list"))
+  other_fit <- structure(list(), class = c("some_other_fit", "list"))
+  expect_identical(flexyBayes:::.triangulate_source(brms_fit), "brms")
   expect_identical(flexyBayes:::.triangulate_source(inla_fit), "inla")
+  # Neither active-engine class: falls back to the class vector joined
+  # by "/", so a caller can always see what it actually got instead of
+  # a silently wrong guess.
+  expect_identical(
+    flexyBayes:::.triangulate_source(other_fit),
+    "some_other_fit/list"
+  )
 })
 
 # ---------------------------------------------------------------- #
@@ -189,51 +197,69 @@ test_that("print.triangulate_result handles zero common parameters", {
 })
 
 # ---------------------------------------------------------------- #
-# Live cross-engine: greta vs INLA -- skip when not installed       #
+# Live cross-engine: brms vs INLA -- skip when not installed        #
 # ---------------------------------------------------------------- #
 
-test_that("fb_as_draws_simple.flexybayes extracts greta draws", {
-  skip_if_no_greta()
+test_that("fb_as_draws_simple.flexybayes_brms extracts posterior draws", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  set.seed(20260523L)
   d <- data.frame(
     y = rnorm(40),
     x = rnorm(40),
     g = factor(rep(1:5, length.out = 40))
   )
-  fit <- flexybayes(
+  # Structural test (draws extraction mechanics, not numeric agreement).
+  # The original unseeded 50-draw / chains=1 budget produced a genuine
+  # R-hat warning (not just ESS, which .muffle_ess_warnings() does not
+  # catch by design) -- fixed via a seeded, larger budget rather than
+  # widening the muffle pattern to hide a real convergence signal.
+  # suppressMessages() also silences the default-prior notice this
+  # call previously leaked to the console unmuffled.
+  fit <- suppressMessages(flexybayes(
     fixed = y ~ x,
     data = d,
-    n_samples = 50,
-    warmup = 50,
+    backend = "brms",
+    n_samples = 300,
+    warmup = 300,
     chains = 1,
+    seed = 20260523L,
     verbose = FALSE,
     mcmc_verbose = FALSE
-  )
+  ))
   draws <- flexyBayes:::fb_as_draws_simple(fit)
   expect_true(is.list(draws))
   expect_true(length(draws) >= 1L)
   expect_true(all(vapply(draws, is.numeric, logical(1))))
 })
 
-test_that("triangulate() runs end-to-end on greta vs INLA", {
+test_that("triangulate() runs end-to-end on brms vs INLA", {
   # End-to-end triangulation with the user-facing flexybayes() API
-  # dispatching to both backends -- greta explicitly + INLA via
+  # dispatching to both active backends -- brms explicitly + INLA via
   # `backend = "inla"`. Canonical-name resolution is registry-driven
   # so triangulate() works without a user-supplied `name_map`.
   skip_on_cran()
-  skip_if_no_greta()
+  skip_if_not_installed("brms")
   skip_if_no_inla()
+  set.seed(20260523L)
   d <- data.frame(
     y = rnorm(40),
     x = rnorm(40),
     g = factor(rep(1:5, length.out = 40))
   )
-  fit_g <- suppressMessages(flexybayes(
+  # Structural test (does end-to-end triangulation run and align names?).
+  # The original unseeded 50-draw / chains=1 budget produced a genuine
+  # R-hat warning (not just ESS, which .muffle_ess_warnings() does not
+  # catch by design) -- fixed via a seeded, larger budget rather than
+  # widening the muffle pattern to hide a real convergence signal.
+  fit_b <- suppressMessages(flexybayes(
     fixed = y ~ x,
     data = d,
-    backend = "greta",
-    n_samples = 50,
-    warmup = 50,
+    backend = "brms",
+    n_samples = 300,
+    warmup = 300,
     chains = 1,
+    seed = 20260523L,
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -243,10 +269,10 @@ test_that("triangulate() runs end-to-end on greta vs INLA", {
     backend = "inla",
     verbose = FALSE
   ))
-  tri <- triangulate(fit_g, fit_i, n_samples = 200L)
+  tri <- triangulate(fit_b, fit_i, n_samples = 200L)
   expect_s3_class(tri, "triangulate_result")
   expect_true(is.numeric(tri$n_common))
-  expect_identical(tri$source_a, "greta")
+  expect_identical(tri$source_a, "brms")
   expect_identical(tri$source_b, "inla")
   # Registry-driven canonical resolution must align at least
   # (Intercept) and x across the two engines.
@@ -268,9 +294,7 @@ test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row 
   # live confirmation of that equivalence and of the aggregated fit's
   # draw-extraction path (the class-vector design that routes the
   # aggregated INLA fit to fb_as_draws_simple.flexybayes_inla). Kept
-  # same-engine so the comparison is deterministic and MCMC-free; the
-  # cross-engine greta-aggregated extractor is guarded in
-  # test-emit-gaussian-aggregated.R.
+  # same-engine so the comparison is deterministic and MCMC-free.
   skip_on_cran()
   skip_if_no_inla()
   withr::local_options(

@@ -152,7 +152,7 @@ test_that("the no-route refusal keeps the family class and its wording", {
   expect_s3_class(err, "flexybayes_aggregate_refusal")
   expect_match(conditionMessage(err), "no active aggregated backend",
                fixed = TRUE)
-  expect_match(conditionMessage(err), "greta aggregated path is quarantined",
+  expect_match(conditionMessage(err), "INLA refused or unavailable",
                fixed = TRUE)
   expect_identical(err$reason_code, "aggregation_route_unavailable")
 })
@@ -164,9 +164,12 @@ test_that("the no-route refusal keeps the family class and its wording", {
 # Typing these refusals is an additive change: the condition class is new,
 # the message body is the pre-0.9.2 text verbatim. Callers already in the
 # field match on the text, so the whole string is pinned here rather than a
-# fragment of it. A deliberate re-wording must edit this test.
+# fragment of it. A deliberate re-wording must edit this test -- 0.9.3's
+# withdrawal of a third native engine (see NEWS.md) is exactly such a
+# rewording: both messages named that engine's quarantine status, which no
+# longer exists, so the pinned text below moved with it.
 
-test_that("the two route refusals carry their pre-0.9.2 message verbatim", {
+test_that("the two route refusals carry their 0.9.3 message verbatim", {
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .agg_route_trial()
@@ -182,8 +185,8 @@ test_that("the two route refusals carry their pre-0.9.2 message verbatim", {
     conditionMessage(err_brms),
     paste0(
       "`aggregate = TRUE` is not supported on backend = \"brms\" (the ",
-      "aggregated path is wired for inla only since the greta ",
-      "quarantine). Pass aggregate = FALSE or switch backend."
+      "aggregated path is wired for inla only). Pass ",
+      "aggregate = FALSE or switch backend."
     )
   )
 
@@ -198,8 +201,8 @@ test_that("the two route refusals carry their pre-0.9.2 message verbatim", {
     conditionMessage(err_route),
     paste0(
       "`aggregate = TRUE` refused: no active aggregated backend (INLA ",
-      "refused or unavailable; the greta aggregated path is quarantined). ",
-      "Pass aggregate = FALSE for the per-row path."
+      "refused or unavailable). Pass aggregate = FALSE for the ",
+      "per-row path."
     )
   )
 })

@@ -11,10 +11,8 @@
 # against the family system so `family = "dirichlet"` is recognised and the
 # user routed here rather than refused generically.
 #
-# The default method is dependency-free maximum likelihood (base `optim` on
-# the log concentrations); an optional Bayesian route uses greta's native
-# `dirichlet` distribution (already in the package's Suggests). Both routes
-# return the same `fb_dirichlet_fit` shape.
+# The method is dependency-free maximum likelihood (base `optim` on the log
+# concentrations).
 # Reference: Minka (2000), *Estimating a Dirichlet distribution*.
 
 # ---- Family-object constructor -----------------------------------------
@@ -108,41 +106,31 @@ rdirichlet <- function(n, alpha) {
 #' Estimates the concentration vector \eqn{\alpha} of a Dirichlet
 #' distribution
 #' from a matrix of compositional rows (each row a composition on the
-#' simplex). The default method is maximum likelihood via base `optim()`
-#' (dependency-free, deterministic); a Bayesian alternative uses greta's
-#' native `dirichlet` distribution. Both routes return the same
-#' `fb_dirichlet_fit` shape, so a `tidy()` summary is identical across
-#' methods.
+#' simplex), by maximum likelihood via base `optim()` (dependency-free,
+#' deterministic).
 #'
 #' Rows are renormalised to sum to one, and exact zeros or ones are nudged
 #' inside the open simplex by a small `eps` (a Dirichlet density is `-Inf` on
-#' the simplex boundary). The maximum-likelihood route optimises the log
-#' concentrations to keep them positive and recovers standard errors from the
-#' Hessian by the delta method. The Bayesian route places independent
-#' half-normal priors on the concentrations and reports posterior means with
-#' quantile-based credible intervals.
+#' the simplex boundary). The concentrations are optimised on the log scale
+#' to keep them positive, and standard errors are recovered from the Hessian
+#' by the delta method.
 #'
 #' The fitted mean composition (`alpha / sum(alpha)`) is reported on
 #' `fit$mean_composition`.
 #'
 #' @param x A numeric matrix or `data.frame` of compositional rows: at least
 #'   two columns, all entries non-negative, with at least four rows.
-#' @param method Character. `"ml"` for maximum likelihood (the default) or
-#'   `"greta"` for the Bayesian route.
+#' @param method Character. Currently only `"ml"` (maximum likelihood).
 #' @param conf_level Numeric in `(0, 1)`. The interval level for the parameter
 #'   summary. Defaults to `0.95`.
 #' @param eps Numeric. The boundary nudge applied to exact zeros / ones.
 #'   Defaults to `1e-06`.
-#' @param n_samples,warmup,chains Integer MCMC controls for the `"greta"`
-#'   method (ignored by `"ml"`). Default to `2000`, `1000`, and `4`.
-#' @param verbose Logical. Whether the greta route prints sampler progress.
-#'   Defaults to `FALSE`.
 #'
 #' @returns An object of class `c("fb_dirichlet_fit", "fb_family_fit")`: a
 #'   list with `estimates` (a `data.frame` of `term` / `estimate` /
 #'   `std.error` / `conf.low` / `conf.high`, one row per component),
 #'   `mean_composition` (numeric, summing to one), `method`, `n_obs`,
-#'   `n_components`, `logLik` (ML only), and `draws` (greta only).
+#'   `n_components`, and `logLik`.
 #'
 #' @seealso [fb_family_dirichlet()], [rdirichlet()], [tidy.fb_dirichlet_fit()]
 #' @examples
@@ -153,53 +141,16 @@ rdirichlet <- function(n, alpha) {
 #' @export
 fb_dirichlet <- function(
   x,
-  method = c("ml", "greta"),
+  method = "ml",
   conf_level = 0.95,
-  eps = 1e-06,
-  n_samples = 2000L,
-  warmup = 1000L,
-  chains = 4L,
-  verbose = FALSE
+  eps = 1e-06
 ) {
   method <- match.arg(method)
-
-  # The greta quarantine is a statement about what fits models in this
-  # package, and it has to hold at every fitting entry point or it is not a
-  # statement at all. This one bypassed the backend registry entirely and
-  # called greta directly, so `backend = "greta"` refused while
-  # `fb_dirichlet(method = "greta")` quietly fitted -- and initialised
-  # TensorFlow doing it.
-  #
-  # Refused rather than deprecated, to match every other route: the same
-  # reason code, the same message shape. The maximum-likelihood method is
-  # unaffected and remains the default. The greta implementation is retained
-  # in the source, like the other quarantined emitters, so re-entry is repair
-  # and conformance rather than a rewrite.
-  if (identical(method, "greta") && .backend_is_quarantined("greta")) {
-    stop(.fb_refusal_condition(
-      reason_code = "backend_quarantined",
-      message = paste0(
-        "fb_dirichlet(method = \"greta\") is quarantined: greta is retained ",
-        "as a re-entry candidate, not an active fitting engine, and that ",
-        "applies to every fitting entry point in the package rather than to ",
-        "the mixed-model backends alone. Use method = \"ml\" (the default) ",
-        "for the maximum-likelihood fit."
-      ),
-      family_class = "flexybayes_backend_quarantined_refusal",
-      backend = "greta"
-    ))
-  }
 
   x <- .check_composition(x, eps)
   labels <- colnames(x)
 
-  fit <- if (method == "ml") {
-    .fb_dirichlet_ml(x, conf_level, labels)
-  } else {
-    .fb_dirichlet_greta(
-      x, conf_level, labels, n_samples, warmup, chains, verbose
-    )
-  }
+  fit <- .fb_dirichlet_ml(x, conf_level, labels)
 
   alpha <- fit$estimates$estimate
   fit$mean_composition <- stats::setNames(alpha / sum(alpha), labels)
@@ -254,86 +205,6 @@ fb_dirichlet <- function(
   )
 
   list(estimates = estimates, logLik = -opt$value)
-}
-
-# Bayesian Dirichlet fit via greta's native `dirichlet` distribution. The
-# concentration vector is a positive variable; the simplex rows are observed
-# as `dirichlet(alpha, n_realisations = nrow(x))`.
-.fb_dirichlet_greta <- function(
-  x,
-  conf_level,
-  labels,
-  n_samples,
-  warmup,
-  chains,
-  verbose
-) {
-  .check_installed(
-    "greta",
-    "fb_dirichlet(method = \"greta\") needs the greta package. Install it ",
-    "with install.packages(\"greta\", repos = c(\"https://greta-dev.r-univ",
-    "erse.dev\", getOption(\"repos\"))) and run greta::install_greta_deps",
-    "(), or use method = \"ml\"."
-  )
-
-  draws <- .dirichlet_greta_sample(x, n_samples, warmup, chains, verbose)
-  probs <- c((1 - conf_level) / 2, 1 - (1 - conf_level) / 2)
-  est <- vapply(
-    seq_len(ncol(draws)),
-    function(j) {
-      col <- draws[, j]
-      c(
-        mean(col),
-        stats::sd(col),
-        stats::quantile(col, probs[1L]),
-        stats::quantile(col, probs[2L])
-      )
-    },
-    numeric(4L)
-  )
-  estimates <- data.frame(
-    term = labels,
-    estimate = est[1L, ],
-    std.error = est[2L, ],
-    conf.low = est[3L, ],
-    conf.high = est[4L, ],
-    stringsAsFactors = FALSE
-  )
-
-  list(estimates = estimates, draws = draws)
-}
-
-# Build and sample the greta Dirichlet model. Kept separate so the
-# parameterisation is testable in isolation.
-.dirichlet_greta_sample <- function(x, n_samples, warmup, chains, verbose) {
-  ge <- asNamespace("greta")
-  variable <- get("variable", envir = ge)
-  dirichlet_dist <- get("dirichlet", envir = ge)
-  as_data <- get("as_data", envir = ge)
-  mcmc <- get("mcmc", envir = ge)
-  model <- get("model", envir = ge)
-  distribution_setter <- get("distribution<-", envir = ge)
-
-  k <- ncol(x)
-  alpha <- variable(lower = 0, dim = c(1L, k))
-  x_data <- as_data(x)
-  distribution_setter(x_data, value = dirichlet_dist(
-    alpha,
-    n_realisations = nrow(x)
-  ))
-  m <- model(alpha)
-  sims <- mcmc(
-    m,
-    n_samples = n_samples,
-    warmup = warmup,
-    chains = chains,
-    verbose = isTRUE(verbose)
-  )
-  mat <- as.matrix(sims)
-  # greta names the alpha columns alpha[1,1], alpha[1,2], ...; order is
-  # column-major and stable, so the K trailing columns are the K
-  # concentrations in component order.
-  mat[, seq_len(k), drop = FALSE]
 }
 
 # ---- tidy / print -------------------------------------------------------

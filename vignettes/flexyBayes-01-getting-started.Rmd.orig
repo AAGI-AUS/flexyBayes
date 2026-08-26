@@ -122,11 +122,11 @@ gracefully: INLA-only paths (the fast LGM route, `triangulate()`
 cross-checks that need a second engine) emit clear messages, and brms
 covers everything else.
 
-> **greta and gretaR.** Earlier releases fit models via greta
-> (TensorFlow-backed HMC). greta and gretaR have since been
-> withdrawn as fitting engines -- `backend = "greta"` now refuses with
-> a structured message rather than fitting. If you have older code
-> pinned to `fb_greta()` or `backend = "greta"`, drop the pin. `"auto"`
+> **A third native engine, withdrawn.** Earlier releases fit models via
+> a TensorFlow-backed HMC engine. That engine has since been withdrawn
+> entirely (see `NEWS.md`) -- naming it, or any other unrecognised
+> backend, now refuses with a structured message rather than fitting.
+> If you have older code pinned to that engine, drop the pin. `"auto"`
 > (or an explicit `"inla"` / `"brms"`) now covers the same ground on
 > the two active engines. See `NEWS.md` for the full rationale.
 

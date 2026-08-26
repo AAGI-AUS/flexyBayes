@@ -3,14 +3,14 @@
 #
 # The truncation engine behind the `low_rank_smooth` approximation
 # scheme. An s() smooth contributes an n x k dense basis matrix B
-# (built by mgcv::smoothCon() at parse time and bound into the greta
-# model as `B_s_<var>` --- see R/codegen.R). For a large basis
+# (built by mgcv::smoothCon() at parse time). For a large basis
 # dimension k the exact dense path costs k coefficients and an n x k
 # design block; the low-rank scheme replaces B with its rank-K
 # principal-component truncation B_K = B V_K, where V_K holds the top
-# K right singular vectors of B. The model then carries K (rather than
-# k) basis coefficients, and prediction projects the newdata basis
-# through the same V_K (see R/predict_kernel.R).
+# K right singular vectors of B. An emit path carrying K (rather than
+# k) basis coefficients would project newdata through the same V_K at
+# predict time -- see the Backend scope note below for why no active
+# engine currently consumes B_K.
 #
 # This file ships three things:
 #
@@ -41,13 +41,18 @@
 # pass/fail verdict, and the fallback hint --- the user keeps the
 # judgement, the contract surfaces the number.
 #
-# Backend scope. The mgcv dense basis B exists only on the greta
-# emit path; the INLA backend represents smooths via its own rw2
-# random-walk path and exposes no truncatable dense basis (see
-# R/emit_inla.R). The `low_rank_smooth` scheme is therefore a
-# greta-backend approximation; routing a low-rank smooth to INLA
-# refuses upstream in dispatch rather than silently fitting an
-# unrelated rw2 smooth.
+# Backend scope. The mgcv dense truncated basis B_K this file builds
+# has no active consumer: the INLA backend represents smooths via its
+# own rw2 random-walk path and exposes no truncatable dense basis (see
+# R/emit_inla.R), and brms has no emit path reading `term$X_K` either.
+# The `low_rank_smooth` scheme was built for the since-withdrawn
+# native engine (see NEWS.md, 0.9.3); requesting it now refuses at
+# dispatch with `low_rank_smooth_unsupported` rather than silently
+# fitting an unrelated rw2 smooth or dropping the truncation on the
+# floor. The truncation in this file still runs during formula
+# parsing (before dispatch decides the backend) -- see
+# R/parse_formula.R -- so `approx_spec` is available for inspection
+# even though no emit path reads it.
 
 # --- rank refusal contract ---------------------------------------- #
 
@@ -149,8 +154,8 @@
 #   var    optional smooth variable name, threaded into refusal text.
 #
 # Returns a list with elements
-#   B_K                n x K truncated basis (the design block the
-#                      greta model carries).
+#   B_K                n x K truncated basis (the design block a
+#                      consuming emit path would carry).
 #   V_K                k x K projection (newdata basis projects through
 #                      this at predict time).
 #   singular_values    the full singular-value spectrum of X (length

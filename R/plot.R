@@ -17,8 +17,8 @@
 #' chains to trace, so an INLA fit gets `"residuals"` instead of a
 #' message declining to draw the display it was asked for.
 #'
-#' @param x A fitted `flexybayes` object of any backend. Aggregated,
-#'   generalised-linear and direct-greta fits reach the same method
+#' @param x A fitted `flexybayes` object of any backend. Aggregated and
+#'   generalised-linear fits reach the same method
 #'   through their own registrations.
 #' @param type A single string naming the display to draw. One of:
 #'   `"diagnostics"`, trace plots and marginal densities per parameter
@@ -78,18 +78,12 @@ plot.flexybayes <- function(x, type = NULL, ...) {
 
 # .fb_has_sampler_draws() --- did an engine draw samples for this fit?
 #
-# Written fresh rather than lifted from .plot_diagnostics(), which tested
-# `x$greta$draws` alone: that slot is NULL on a brms fit, so plot() on
-# one declined to draw its diagnostics and named brms as a supported
-# backend in the same sentence. A brms fit keeps its draws inside the
-# brmsfit at `$brms`, and a nested Laplace approximation has none at all.
+# A brms fit keeps its draws inside the brmsfit at `$brms`; a nested
+# Laplace approximation has none at all.
 #
 # @noRd
 # @keywords internal
 .fb_has_sampler_draws <- function(x) {
-  if (!is.null(x$greta$draws)) {
-    return(TRUE)
-  }
   inherits(x$brms, "brmsfit")
 }
 
@@ -106,8 +100,8 @@ plot.flexybayes <- function(x, type = NULL, ...) {
 
 # Registered for each fit class rather than relying on inheritance. The
 # brms and INLA fits do share the "flexybayes" parent as of 0.9.0, so the
-# parent registration would reach them, but the aggregated, glm and
-# direct-greta classes carry their own dispatch order and an explicit
+# parent registration would reach them, but the aggregated and glm
+# classes carry their own dispatch order and an explicit
 # registration keeps the set visible in one place. The shared body above
 # is backend-aware: a display that reads a slot a given backend does not
 # populate (MCMC draws on an INLA fit, for instance) degrades to an
@@ -128,16 +122,12 @@ plot.flexybayes_aggregated <- function(x, ...) plot.flexybayes(x, ...)
 
 #' @rdname plot.flexybayes
 #' @export
-plot.flexybayes_direct_greta <- function(x, ...) plot.flexybayes(x, ...)
-
-#' @rdname plot.flexybayes
-#' @export
 plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 
 # Emit a non-silent, non-erroring notice that a plot type is not
 # available for this fit's backend, then return invisibly. Backends
-# differ in which slots they expose (greta carries MCMC draws, fitted
-# values and a variance-component table; INLA does not), so a plot type
+# differ in which slots they expose (brms carries MCMC draws inside its
+# brmsfit; INLA does not), so a plot type
 # that reads a slot the backend never populates degrades to a message
 # rather than crashing through to graphics::plot.default().
 .plot_unavailable <- function(type, reason) {
@@ -162,65 +152,27 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 
   # A brms fit keeps its draws inside the brmsfit, and brms draws its own
   # panels from them. Forwarding is what makes plot(brms_fit) show the
-  # trace and density it always claimed to.
-  if (is.null(x$greta$draws)) {
-    if (!requireNamespace("brms", quietly = TRUE)) {
-      return(.plot_unavailable(
-        "diagnostics",
-        "the fit's draws live in a brmsfit and brms is not installed."
-      ))
-    }
-    dots <- list(...)
-    if (is.null(dots$combo)) {
-      dots$combo <- c("dens", "trace")
-    }
-    if (is.null(dots$ask)) {
-      dots$ask <- FALSE
-    }
-    return(invisible(do.call(
-      graphics::plot,
-      c(list(x = x$brms), dots)
-    )))
+  # trace and density it always claimed to. This is the only sampler
+  # this branch can reach (.fb_has_sampler_draws() already confirmed
+  # `x$brms` is a `brmsfit`), so brms is required here, not merely
+  # preferred.
+  if (!requireNamespace("brms", quietly = TRUE)) {
+    return(.plot_unavailable(
+      "diagnostics",
+      "the fit's draws live in a brmsfit and brms is not installed."
+    ))
   }
-
-  if (requireNamespace("bayesplot", quietly = TRUE)) {
-    draws <- x$greta$draws
-    p1 <- bayesplot::mcmc_trace(draws, ...)
-    print(p1)
-  } else {
-    # Base R fallback
-    draws <- x$greta$draws
-    all_draws <- do.call(rbind, lapply(draws, as.matrix))
-    n_params <- min(ncol(all_draws), 6)
-    par_names <- colnames(all_draws)[seq_len(n_params)]
-
-    old_par <- par(mfrow = c(n_params, 2), mar = c(3, 3, 2, 1))
-    on.exit(par(old_par))
-
-    for (i in seq_len(n_params)) {
-      nm <- par_names[i]
-      # Trace
-      for (ch in seq_along(draws)) {
-        vals <- as.matrix(draws[[ch]])[, nm]
-        if (ch == 1) {
-          plot(
-            vals,
-            type = "l",
-            main = paste("Trace:", nm),
-            xlab = "",
-            ylab = "",
-            col = ch
-          )
-        } else {
-          lines(vals, col = ch)
-        }
-      }
-      # Density
-      vals <- all_draws[, nm]
-      plot(density(vals), main = paste("Density:", nm), xlab = "", ylab = "")
-    }
+  dots <- list(...)
+  if (is.null(dots$combo)) {
+    dots$combo <- c("dens", "trace")
   }
-  invisible(NULL)
+  if (is.null(dots$ask)) {
+    dots$ask <- FALSE
+  }
+  invisible(do.call(
+    graphics::plot,
+    c(list(x = x$brms), dots)
+  ))
 }
 
 # Residual diagnostics

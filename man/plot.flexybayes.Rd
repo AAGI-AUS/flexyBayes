@@ -5,7 +5,6 @@
 \alias{plot.flexybayes_inla}
 \alias{plot.flexybayes_brms}
 \alias{plot.flexybayes_aggregated}
-\alias{plot.flexybayes_direct_greta}
 \alias{plot.flexybayes_glm}
 \title{Plot diagnostics for a flexyBayes model}
 \usage{
@@ -17,13 +16,11 @@
 
 \method{plot}{flexybayes_aggregated}(x, ...)
 
-\method{plot}{flexybayes_direct_greta}(x, ...)
-
 \method{plot}{flexybayes_glm}(x, ...)
 }
 \arguments{
-\item{x}{A fitted \code{flexybayes} object of any backend. Aggregated,
-generalised-linear and direct-greta fits reach the same method
+\item{x}{A fitted \code{flexybayes} object of any backend. Aggregated and
+generalised-linear fits reach the same method
 through their own registrations.}
 
 \item{type}{A single string naming the display to draw. One of:

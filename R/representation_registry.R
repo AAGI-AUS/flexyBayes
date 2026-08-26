@@ -383,8 +383,9 @@
   # approximation registry.
   # Classifies an s() smooth whose dense mgcv basis is replaced by its
   # rank-K principal-component truncation B_K = B V_K (the
-  # low_rank_smooth approximation scheme); the design block the greta
-  # model carries is n x K rather than n x k.
+  # low_rank_smooth approximation scheme); a consuming emit path would
+  # carry a design block of n x K rather than n x k (no active engine
+  # consumes it today -- see R/emit_smooth_low_rank.R).
   .register_representation(
     name = "low_rank",
     description = paste0(

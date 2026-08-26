@@ -5,23 +5,8 @@
 # likelihood. The aggregated form is algebraically identical to the
 # per-row form (not an approximation).
 #
-# Two implementation patterns -- one per backend:
-#
-# (1) greta path. Combines two greta `distribution()` attachments:
-#
-#       distribution(ybar_k)  <- normal(mu_cell, sigma / sqrt(n_k))
-#       distribution(WSS)     <- gamma((N - K) / 2, 1 / (2 * sigma^2))
-#
-#     The cell-mean weighted gaussian contributes the cell-level
-#     residual sum-of-squares to the log-likelihood; the gamma
-#     observation on the data-only scalar `WSS = sum_k (S2_k - S1_k^2 /
-#     n_k)` contributes the within-cell sum-of-squares term. Together
-#     they recover the full-data log-likelihood up to sigma-independent
-#     data constants (which do not affect the posterior shape). The
-#     gamma observation is skipped when N == K (single-obs cells) or
-#     WSS <= machine eps (no within-cell scatter).
-#
-# (2) INLA path. Cell-mean weighted gaussian with a custom-prior
+# INLA path (the only active aggregated backend). Cell-mean weighted
+# gaussian with a custom-prior
 #     correction on the log-precision hyperparameter that absorbs the
 #     sigma-dependent within-cell SS term:
 #
@@ -54,7 +39,7 @@ emit_gaussian_aggregated <- function(
   fb,
   fb_aggregated,
   data,
-  backend = c("greta", "inla"),
+  backend = "inla",
   n_samples = 1000L,
   warmup = 500L,
   chains = 4L,
@@ -79,19 +64,6 @@ emit_gaussian_aggregated <- function(
   requested_aggregate = NULL
 ) {
   backend <- match.arg(backend)
-
-  if (identical(backend, "greta") && .backend_is_quarantined("greta")) {
-    stop(.fb_refusal_condition(
-      reason_code = "backend_quarantined",
-      message = paste0(
-        "backend = \"greta\" is quarantined: retained as a re-entry ",
-        "candidate, not an active fitting engine. Use backend = ",
-        "\"inla\" (re-entry is repair + conform, section 4.1)."
-      ),
-      family_class = "flexybayes_backend_quarantined_refusal",
-      backend = "greta"
-    ))
-  }
 
   .check_fb_terms(fb, "emit_gaussian_aggregated() requires an <fb_terms> IR.")
   .check_fb_aggregated(
@@ -162,41 +134,22 @@ emit_gaussian_aggregated <- function(
       "emit_gaussian_aggregated(): return_code = TRUE is not yet ",
       "supported on the aggregated path (deferred to a follow-on ",
       "release). Pass aggregate = FALSE if you need the per-row ",
-      "Stan / greta source.",
+      "Stan source.",
       call. = FALSE
     )
   }
 
   t0 <- Sys.time()
-  if (identical(backend, "greta")) {
-    fit_engine_out <- .emit_gaussian_aggregated_greta(
-      fb = fb,
-      fb_aggregated = fb_aggregated,
-      data = data,
-      wss_per_cell = wss_per_cell,
-      WSS_total = WSS_total,
-      ri_plan = ri_plan,
-      residual_plan = residual_plan,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      prior_fixed_sd = prior_fixed_sd,
-      prior_vc_sd = prior_vc_sd,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose
-    )
-  } else {
-    fit_engine_out <- .emit_gaussian_aggregated_inla(
-      fb = fb,
-      fb_aggregated = fb_aggregated,
-      data = data,
-      wss_per_cell = wss_per_cell,
-      WSS_total = WSS_total,
-      ri_plan = ri_plan,
-      residual_plan = residual_plan,
-      verbose = verbose
-    )
-  }
+  fit_engine_out <- .emit_gaussian_aggregated_inla(
+    fb = fb,
+    fb_aggregated = fb_aggregated,
+    data = data,
+    wss_per_cell = wss_per_cell,
+    WSS_total = WSS_total,
+    ri_plan = ri_plan,
+    residual_plan = residual_plan,
+    verbose = verbose
+  )
   elapsed <- as.numeric(Sys.time() - t0, units = "secs")
 
   .agg_emit_build_fit(
@@ -239,8 +192,7 @@ emit_gaussian_aggregated <- function(
 #   $kind        "homogeneous" | "at_units"
 #   $factor      NULL (homogeneous) | <character> column name (at_units)
 #   $level_col   NULL | <integer vector length K> mapping cell -> level
-#                of $factor. Used to index per-level sigma in greta and
-#                to attach per-level scales in INLA.
+#                of $factor. Used to attach per-level scales in INLA.
 #   $n_levels    NULL | integer count of distinct residual levels.
 #   $levels      NULL | character vector of level labels.
 #
@@ -354,203 +306,6 @@ emit_gaussian_aggregated <- function(
 }
 
 
-# ---------------------------------------------------------------- #
-# greta path                                                        #
-# ---------------------------------------------------------------- #
-.emit_gaussian_aggregated_greta <- function(
-  fb,
-  fb_aggregated,
-  data,
-  wss_per_cell,
-  WSS_total,
-  ri_plan,
-  residual_plan,
-  n_samples,
-  warmup,
-  chains,
-  prior_fixed_sd,
-  prior_vc_sd,
-  verbose,
-  mcmc_verbose
-) {
-  .check_installed(
-    "greta",
-    "Package 'greta' is required for the greta-backed aggregated ",
-    "emit. Install with install.packages('greta'); ",
-    "greta::install_greta_deps()."
-  )
-
-  cell_design <- fb_aggregated$cell_design
-  agg <- fb_aggregated$sufficient_stats
-  K <- fb_aggregated$K
-  N <- fb_aggregated$N
-  p <- ncol(cell_design)
-  ybar_k <- agg$S1_k / agg$n_k
-  n_k <- agg$n_k
-
-  # Single-matrix-multiply formulation of the cell-level linear
-  # predictor. Avoids `+` between greta_array operands -- which
-  # triggers greta's `check_dims` -> `as.greta_array(...)` dispatch
-  # that fails to find the greta_array identity coercion when the
-  # call is made from inside flexyBayes's package namespace (the
-  # S3 method table is partially populated; `as.greta_array.matrix`
-  # fires on greta_array operands and surfaces as a spurious
-  # missing/infinite-values error). The existing per-row
-  # emit_greta() works around this via a codegen-then-eval-in-greta-
-  # namespace pattern; the aggregated path achieves the same end by
-  # construction.
-  #
-  # Algebra:
-  #   M_combined <- [ cell_design | Z_1 | Z_2 | ... ]   K x (p + sum_i nL_i)
-  #   theta      <- c(beta, u_1, u_2, ...)              length p + sum_i nL_i
-  #   mu_cell    <- M_combined %*% theta                K x 1
-  # Each Z_i is a K x nL_i one-hot matrix selecting the cell's level
-  # for RI term i, so `Z_i %*% u_i` equals the per-cell RI
-  # contribution that `u_i[ri_plan[[i]]$level_idx]` would produce.
-  Z_per_term <- lapply(ri_plan, function(r) {
-    Z <- matrix(0, K, r$n_levels)
-    Z[cbind(seq_len(K), r$level_idx)] <- 1
-    Z
-  })
-  M_combined <- if (length(Z_per_term)) {
-    do.call(cbind, c(list(cell_design), Z_per_term))
-  } else {
-    cell_design
-  }
-
-  greta_ns <- asNamespace("greta")
-  g <- greta_ns
-
-  M_g <- g$as_data(M_combined)
-  ybar_g <- g$as_data(ybar_k)
-  n_k_g <- g$as_data(n_k)
-
-  beta_g <- g$normal(0, prior_fixed_sd, dim = p)
-
-  tau_per_term <- vector("list", length(ri_plan))
-  u_per_term <- vector("list", length(ri_plan))
-  for (i in seq_along(ri_plan)) {
-    nL <- ri_plan[[i]]$n_levels
-    tau <- g$normal(0, prior_vc_sd, truncation = c(0, Inf))
-    u_ <- g$normal(0, tau, dim = nL)
-    tau_per_term[[i]] <- tau
-    u_per_term[[i]] <- u_
-  }
-
-  # Concatenate beta + u_1 + u_2 + ... into a single greta vector and
-  # compute the cell-level linear predictor `M_combined %*% theta`.
-  # Both the `c()` concatenation and the `%*%` matrix-multiply are
-  # called by DIRECT METHOD LOOKUP into greta's namespace so we
-  # bypass R's S3 dispatch, which from inside flexyBayes's package
-  # namespace routes greta_array operands to base-R's `c()` /
-  # `%*%` (returning a non-greta_array result that subsequently
-  # fails greta's downstream `as.greta_array` coercion). The
-  # alternative (codegen + eval-in-greta-ns-env, as in emit_greta())
-  # is blocked by the local shell harness's eval() guard.
-  c_method <- get("c.greta_array", envir = greta_ns)
-  matmul_method <- get("%*%.greta_array", envir = greta_ns)
-
-  # Iterative two-arg concatenation: `do.call(c_method, ...)` synthesises
-  # a call object whose first element deparses to multiple lines (the
-  # c_method function body), tripping greta's internal
-  # `vapply(names, deparse, "")` length-check inside c.greta_array.
-  # Calling c_method with explicit two-arg form avoids the issue.
-  theta <- beta_g
-  for (u_ in u_per_term) {
-    theta <- c_method(theta, u_)
-  }
-
-  mu_cell <- matmul_method(M_g, theta)
-
-  # Residual sigma: scalar (homogeneous) or per-level (at_units).
-  if (identical(residual_plan$kind, "homogeneous")) {
-    sigma_g <- g$normal(0, prior_vc_sd, truncation = c(0, Inf))
-    sigma_cell_g <- sigma_g
-  } else {
-    sigma_g <- g$normal(
-      0,
-      prior_vc_sd,
-      truncation = c(0, Inf),
-      dim = residual_plan$n_levels
-    )
-    sigma_cell_g <- sigma_g[residual_plan$level_col]
-  }
-
-  # (i) cell-mean weighted gaussian.
-  g$`distribution<-`(ybar_g, g$normal(mu_cell, sigma_cell_g / sqrt(n_k_g)))
-
-  # (ii) within-cell SS gamma observation -- one per residual level
-  # for at_units, one global for homogeneous. Skipped when degrees of
-  # freedom <= 0 or WSS <= machine eps (single-obs cells).
-  if (identical(residual_plan$kind, "homogeneous")) {
-    df_total <- N - K
-    if (df_total > 0L && WSS_total > .Machine$double.eps) {
-      WSS_g <- g$as_data(WSS_total)
-      g$`distribution<-`(WSS_g, g$gamma(df_total / 2, 1 / (2 * sigma_g^2)))
-    }
-  } else {
-    for (lv in seq_len(residual_plan$n_levels)) {
-      idx <- which(residual_plan$level_col == lv)
-      n_level <- sum(n_k[idx])
-      k_level <- length(idx)
-      WSS_lv <- sum(wss_per_cell[idx])
-      df_lv <- n_level - k_level
-      if (df_lv > 0L && WSS_lv > .Machine$double.eps) {
-        WSS_lv_g <- g$as_data(WSS_lv)
-        g$`distribution<-`(
-          WSS_lv_g,
-          g$gamma(df_lv / 2, 1 / (2 * sigma_g[lv]^2))
-        )
-      }
-    }
-  }
-
-  # Build model + run MCMC.
-  #
-  # greta::model() internally does `substitute(list(...))[-1]` then
-  # `vapply(names, deparse, "")` to label its target greta_arrays.
-  # Under `do.call(g$model, list_of_greta_arrays)` the substituted
-  # arguments deparse to the FULL multi-line greta_array printout
-  # (not to symbol names), and the vapply length-1 check fails with
-  # "values must be length 1, but FUN(X[[1]]) result is length 2".
-  # The workaround: bind each greta_array under a short symbol name
-  # in a fresh environment whose parent is the greta namespace, then
-  # build and run a model() call expression in that environment so
-  # substitute() captures the short symbols rather than the values.
-  model_env <- new.env(parent = greta_ns)
-  model_env$beta <- beta_g
-  model_env$sigma <- sigma_g
-  tau_names <- character(length(tau_per_term))
-  for (i in seq_along(tau_per_term)) {
-    nm <- paste0("tau_", i)
-    model_env[[nm]] <- tau_per_term[[i]]
-    tau_names[[i]] <- nm
-  }
-  call_args <- c(list(quote(beta), quote(sigma)), lapply(tau_names, as.name))
-  model_call <- as.call(c(list(quote(model)), call_args))
-  m <- base::eval(model_call, envir = model_env)
-  draws <- g$mcmc(
-    m,
-    n_samples = n_samples,
-    warmup = warmup,
-    chains = chains,
-    verbose = isTRUE(mcmc_verbose)
-  )
-
-  list(
-    backend = "greta",
-    draws = draws,
-    model = m,
-    beta = beta_g,
-    sigma = sigma_g,
-    tau_per_term = tau_per_term,
-    cell_design = cell_design,
-    K = K,
-    N = N,
-    p = p
-  )
-}
-
 
 # ---------------------------------------------------------------- #
 # INLA path                                                         #
@@ -575,9 +330,9 @@ emit_gaussian_aggregated <- function(
     stop(
       "emit_gaussian_aggregated() INLA: heterogeneous residual ",
       "at_units on INLA requires the multi-likelihood INLA stack ",
-      "API (deferred). The aggregated heterogeneous-residual path was ",
-      "greta-only and greta is quarantined, so pass aggregate = FALSE ",
-      "for the per-row path -- on INLA, or on brms, which represents ",
+      "API (deferred), and no other active backend has an aggregated ",
+      "heterogeneous-residual path, so pass aggregate = FALSE for the ",
+      "per-row path -- on INLA, or on brms, which represents ",
       "the sectioned residual as a distributional predictor.",
       call. = FALSE
     )
@@ -595,8 +350,7 @@ emit_gaussian_aggregated <- function(
   # composes Delta with INLA's default loggamma(1, 5e-5) base. A user-
   # supplied residual prior on `sigma` is therefore ignored on the
   # aggregated INLA path -- documented limitation; matched-prior
-  # composition is a v0.3.3 follow-on. The greta aggregated path does
-  # honor the flexyBayes prior via .priors_to_legacy() naturally.
+  # composition is a v0.3.3 follow-on.
   hyper_ctrl <- if (inherits(fb$priors, "fb_prior")) {
     priors_to_inla(fb$priors)
   } else if (.fb_prior_scalar_supplied(fb, "vc_sd")) {
@@ -763,8 +517,8 @@ emit_gaussian_aggregated <- function(
 # Shared fit-object constructor                                     #
 # ---------------------------------------------------------------- #
 # Builds the `<flexybayes>` fit shape that downstream methods
-# (print/summary/predict/triangulate) consume. Mirrors emit_greta() /
-# emit_inla() construction so the new aggregated fits are
+# (print/summary/predict/triangulate) consume. Mirrors emit_inla()
+# construction so the new aggregated fits are
 # byte-interchangeable for the existing method surface.
 .agg_emit_build_fit <- function(
   fb,
@@ -796,15 +550,12 @@ emit_gaussian_aggregated <- function(
   requested_backend = NULL,
   requested_aggregate = NULL
 ) {
-  # Posterior summary: pull the engine-side draws / marginals into a
-  # uniform shape. greta: collapse mcmc.list across chains, summarise
-  # mean/sd/q025/q975 per parameter. INLA: read summary.fixed +
+  # Posterior summary: pull the engine-side marginals into a uniform
+  # shape (mean/sd/q025/q975 per parameter) from summary.fixed +
   # summary.hyperpar.
-  posterior_summary <- if (identical(backend, "greta")) {
-    .agg_greta_summarise(engine_out, fb_aggregated, ri_plan, residual_plan)
-  } else {
-    .agg_inla_summarise(engine_out, fb_aggregated, ri_plan, residual_plan)
-  }
+  posterior_summary <- .agg_inla_summarise(
+    engine_out, fb_aggregated, ri_plan, residual_plan
+  )
 
   # Per-row reconstructed fitted values for the $glm shim.
   fitted_row <- .agg_reconstruct_fitted_row(
@@ -844,7 +595,7 @@ emit_gaussian_aggregated <- function(
       # as comparable to triangulate(). See R/model_fingerprint.R.
       fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
       parse_info = list(
-        # Mirror emit_greta()'s fixed-info shape so confint /
+        # Mirror emit_inla()'s fixed-info shape so confint /
         # summary / methods.R downstream consumers see the same
         # `list(response, intercept, terms)` structure.
         fixed = list(
@@ -924,29 +675,16 @@ emit_gaussian_aggregated <- function(
     class = "flexybayes_extras"
   )
 
-  # The greta raw slot mirrors the per-row emit_greta() shape --
-  # `$greta$draws` holding the coda mcmc object -- so every consumer
-  # that reads `fit$greta$draws` (fb_as_draws_simple / canonical_names /
-  # confint / plot / predict) works identically on the aggregated greta
-  # path. Storing the draws bare at `fit$greta` (the pre-v0.4.0 layout)
-  # left `fit$greta$draws` NULL, so triangulate() and canonical_names()
-  # on a greta-aggregated fit failed with "fit$greta$draws is missing".
   # The INLA slot holds the raw inla fit object directly, matching
   # fb_as_draws_simple.flexybayes_inla()'s `fit$inla` contract.
-  raw_slot <- if (identical(backend, "greta")) {
-    list(draws = engine_out$draws)
-  } else {
-    engine_out$inla
-  }
-  raw_name <- if (identical(backend, "greta")) "greta" else "inla"
+  raw_slot <- engine_out$inla
+  raw_name <- "inla"
 
   # Backend identity in the class vector so generics that have no
   # `.flexybayes_aggregated` method (e.g., fb_as_draws_simple()) fall
   # through to the correct backend-specific method via S3 dispatch.
-  # Without `flexybayes_inla` in the vector, aggregated INLA fits
-  # dispatched to fb_as_draws_simple.flexybayes (the greta extractor)
-  # and failed with "fit$greta$draws is missing" -- breaking
-  # triangulate(fit_g, fit_i) on the aggregated path.
+  # `flexybayes_inla` in the vector routes aggregated fits to the same
+  # methods as per-row INLA fits.
   fit <- structure(
     list(
       glm = glm_obj,
@@ -954,72 +692,12 @@ emit_gaussian_aggregated <- function(
     ),
     class = c(
       "flexybayes_aggregated",
-      if (identical(backend, "inla")) "flexybayes_inla",
+      "flexybayes_inla",
       "flexybayes"
     )
   )
   fit[[raw_name]] <- raw_slot
   fit
-}
-
-
-# ---------------------------------------------------------------- #
-# Posterior-summarisation helpers                                   #
-# ---------------------------------------------------------------- #
-.agg_greta_summarise <- function(
-  engine_out,
-  fb_aggregated,
-  ri_plan,
-  residual_plan
-) {
-  draws <- engine_out$draws
-  m <- do.call(rbind, draws)
-
-  beta_idx <- seq_len(engine_out$p)
-  sigma_idx <- if (identical(residual_plan$kind, "homogeneous")) {
-    engine_out$p + 1L
-  } else {
-    engine_out$p + seq_len(residual_plan$n_levels)
-  }
-  tau_start <- max(sigma_idx) + 1L
-  tau_idx <- if (length(ri_plan)) {
-    tau_start:(tau_start + length(ri_plan) - 1L)
-  } else {
-    integer(0)
-  }
-
-  beta_means <- colMeans(m[, beta_idx, drop = FALSE])
-  names(beta_means) <- colnames(fb_aggregated$cell_design)
-  beta_vcov <- stats::cov(m[, beta_idx, drop = FALSE])
-  dimnames(beta_vcov) <- list(names(beta_means), names(beta_means))
-
-  sigma_means <- colMeans(m[, sigma_idx, drop = FALSE])
-  tau_means <- if (length(tau_idx)) {
-    colMeans(m[, tau_idx, drop = FALSE])
-  } else {
-    numeric(0)
-  }
-
-  # R-hat approximation: split-chain variance ratio per param. greta's
-  # draws is a coda mcmc.list; reuse coda's gelman.diag when available.
-  psrf_mat <- tryCatch(
-    {
-      coda_ns <- asNamespace("coda")
-      gd <- coda_ns$gelman.diag(draws, multivariate = FALSE, autoburnin = FALSE)
-      gd$psrf
-    },
-    error = function(e) NULL
-  )
-
-  list(
-    backend = "greta",
-    beta_means = beta_means,
-    beta_vcov = beta_vcov,
-    sigma_means = sigma_means,
-    tau_means = tau_means,
-    convergence = list(gelman = list(psrf = psrf_mat)),
-    variance_comps = list(sigma = sigma_means, tau = tau_means)
-  )
 }
 
 

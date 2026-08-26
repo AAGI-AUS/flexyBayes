@@ -16,12 +16,12 @@
   .flexybayes_emit_state$default_prior_note <- FALSE
   .flexybayes_emit_state$uniform_inla_approx <- FALSE
   # With backend = "auto" now the default, the
-  # auto-fallback notes (lgm_gate refused -> greta; INLA not installed ->
-  # greta) fire once per session rather than on every default call.
+  # auto-fallback notes (lgm_gate refused -> brms; INLA not installed ->
+  # brms) fire once per session rather than on every default call.
   .flexybayes_emit_state$auto_fallback_note <- FALSE
   .flexybayes_emit_state$auto_inla_missing_note <- FALSE
   # One-time note when the auto path's INLA fit
-  # fails numerically and falls back to greta.
+  # fails numerically and falls back to brms.
   .flexybayes_emit_state$auto_inla_numerical_fallback_note <- FALSE
   # One-time warning when the augment path carries more than roughly a
   # third of the fitted rows as unobserved responses; the estimand, not

@@ -1,54 +1,45 @@
 # =============================================================================
-# The greta quarantine is an invariant, not a property of one code path.
+# 0.9.3: the native engine formerly named here was withdrawn entirely, not
+# quarantined -- no code path, export, registry row, or `Suggests` entry
+# remains (see NEWS.md). The invariant this file pins therefore changed
+# shape: it used to be "every fitting entry point refuses a quarantined
+# name"; it is now "the name is unknown to every fitting entry point, and
+# the engine it used to name has no trace left in R/ at all".
 #
-# "greta is quarantined" was true of the backend registry and false of
-# fb_dirichlet(), which called greta directly and initialised TensorFlow while
-# `backend = "greta"` refused two lines away. A quarantine that holds at the
-# entry points someone remembered to check is not a quarantine.
-#
-# These tests are therefore written to fail when a NEW fitting route is added
-# without the guard, rather than to enumerate the routes known today. The
-# source scan is the part that does that work; the behavioural tests pin the
-# routes already known.
-#
-# What is deliberately NOT quarantined: reading a greta model that was fitted
-# elsewhere. fb_from_greta() imports an existing object's draws, and
-# fb_log_posterior() operates on one. Neither fits anything, and dropping them
-# would strand saved work. Re-entry for the fitting side is repair plus
-# conformance, so the emit sources stay in the tree.
+# These tests are written to fail when a NEW fitting route is added without
+# going through the shared unknown-backend check, rather than to enumerate
+# the routes known today. The source scan is the part that does that work;
+# the behavioural tests pin the routes already known.
 # =============================================================================
 
-test_that("greta and gretaR are quarantined in the registry", {
-  for (b in c("greta", "gretaR")) {
-    expect_true(flexyBayes:::.backend_is_quarantined(b), label = b)
-  }
-  for (b in c("inla", "brms")) {
-    expect_false(flexyBayes:::.backend_is_quarantined(b), label = b)
-  }
-})
-
-test_that("every known fitting entry point refuses greta", {
+test_that("naming the withdrawn engine (or its dormant sibling) raises unknown_backend at every known fitting entry point", {
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(1L)
   d <- data.frame(y = stats::rnorm(20L), x = stats::rnorm(20L))
 
-  # The mixed-model surface.
-  expect_error(
-    suppressMessages(flexybayes(y ~ x, data = d, backend = "greta")),
-    class = "flexybayes_refusal_backend_quarantined"
-  )
-  expect_error(
-    suppressMessages(flexybayes(y ~ x, data = d, backend = "gretaR")),
-    class = "flexybayes_refusal_backend_quarantined"
-  )
+  # The mixed-model surface. Both names raise the same reason code and both
+  # active engines are named in the message.
+  for (nm in c("greta", "gretaR")) {
+    err <- tryCatch(
+      suppressMessages(flexybayes(y ~ x, data = d, backend = nm)),
+      error = function(e) e
+    )
+    expect_s3_class(err, "flexybayes_unknown_backend_refusal")
+    expect_identical(err$reason_code, "unknown_backend", label = nm)
+    expect_match(conditionMessage(err), '"inla"', fixed = TRUE, label = nm)
+    expect_match(conditionMessage(err), '"brms"', fixed = TRUE, label = nm)
+  }
 
-  # The specialist estimator that used to bypass the registry entirely.
+  # The specialist estimator that, before 0.9.3, called the native engine
+  # directly rather than going through the backend registry: fb_dirichlet()
+  # no longer offers a method by that name at all, so the request fails
+  # `match.arg()` before any fitting code runs.
   m <- matrix(stats::rgamma(60L, 2), 20L, 3L)
   m <- m / rowSums(m)
-  expect_error(
-    fb_dirichlet(m, method = "greta"),
-    class = "flexybayes_refusal_backend_quarantined"
-  )
+  err <- tryCatch(fb_dirichlet(m, method = "greta"), error = function(e) e)
+  expect_s3_class(err, "error")
+  expect_false(inherits(err, "flexybayes_refusal"))
+  expect_match(conditionMessage(err), "ml", fixed = TRUE)
 })
 
 test_that("the maximum-likelihood Dirichlet fit is unaffected", {
@@ -61,35 +52,26 @@ test_that("the maximum-likelihood Dirichlet fit is unaffected", {
   expect_equal(sum(fit$mean_composition), 1, tolerance = 1e-8)
 })
 
-test_that("no NEW fitting route reaches greta without the quarantine guard", {
-  # Source scan, so that adding a fitting route which calls greta fails here
-  # rather than being found by an audit months later. Files that hold the
-  # retained emitters and the import path are exempt by name: they are
-  # unreachable while the registry says quarantined, and that unreachability
-  # is what the behavioural tests above pin.
+test_that("no R source calls the withdrawn engine's package at all", {
+  # 0.9.3 strengthens the old exempt-list source scan (which allowed the
+  # retained emitters to call greta::) into an unconditional invariant:
+  # nothing under R/ may call greta:: any more, because nothing that ever
+  # did still exists. This is the source-level twin of the goal-grep
+  # acceptance criterion (WP-G spec) -- it runs from the installed
+  # package's perspective rather than the source tree's.
   skip_on_cran()
-  # Sources are present under load_all() and during development, and absent
-  # from an installed package, where R/ has been byte-compiled away. Skip
-  # rather than reach for a root-finder: the behavioural tests above cover
-  # the routes that exist, and this scan exists to catch a route added
-  # during development, which is exactly when the sources are there.
+  # Sources are present under load_all() and during development, and
+  # absent from an installed package, where R/ has been byte-compiled
+  # away. Skip rather than reach for a root-finder: this scan exists to
+  # catch a route added during development, which is exactly when the
+  # sources are there.
   r_dir <- system.file("..", "R", package = "flexyBayes")
   skip_if_not(
     length(r_dir) == 1L && nzchar(r_dir) && dir.exists(r_dir),
     "package sources not available (installed package)"
   )
 
-  exempt <- c(
-    "emit_greta.R", "emit_gretaR.R", "codegen.R",
-    "fb_from_greta.R", "fb_greta.R", "gretaR_slot.R",
-    # Operates on an already-fitted greta object; imports, does not fit.
-    "fb_log_posterior.R",
-    # Holds the quarantine machinery and its message text.
-    "backend_registry.R", "refusal_taxonomy.R", "dispatch.R",
-    "backend_status.R", "flexybayes.R", "emit_gaussian_aggregated.R",
-    "fb_dirichlet.R"
-  )
-  files <- setdiff(basename(list.files(r_dir, pattern = "\\.R$")), exempt)
+  files <- list.files(r_dir, pattern = "\\.R$")
   offenders <- character(0)
   for (f in files) {
     lines <- readLines(file.path(r_dir, f), warn = FALSE)
@@ -101,9 +83,9 @@ test_that("no NEW fitting route reaches greta without the quarantine guard", {
   expect_identical(
     offenders, character(0),
     info = paste0(
-      "These files call greta:: outside the retained set. If a new fitting ",
-      "route was added, guard it with .backend_is_quarantined(\"greta\"); ",
-      "if it only reads an existing fit, add it to `exempt` with a reason."
+      "These files call greta:: after the 0.9.3 withdrawal. The engine ",
+      "was removed entirely, not quarantined -- there is no longer an ",
+      "exempt set of retained emitters to call it from."
     )
   )
 })

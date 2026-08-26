@@ -17,8 +17,9 @@
 }
 \description{
 Uses the brms posterior draws directly (the parent
-\code{confint.flexybayes} reads \verb{$greta$draws}, which is \code{NULL} on
-the brms-passthrough path). Returns quantile-based credible
+\code{confint.flexybayes} refuses unconditionally with
+\code{fit_lacks_posterior_draws}, since no active engine reaches it
+without its own override). Returns quantile-based credible
 bounds over the \verb{b_<term>} rows; row names are stripped of the
 brms \code{b_} prefix to align with \code{coef()}.
 }

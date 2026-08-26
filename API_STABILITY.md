@@ -31,7 +31,7 @@ engine:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style and greta-source grammar via `syntax = "auto"`. `backend = c("auto", "greta", "inla", "brms", "gretaR")`, default `"auto"`. The two quarantined values stay in the vocabulary so that requesting one refuses by name rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. There is no silent fallback and no quarantined engine is ever selected. `prior` accepts an `fb_prior()` object. |
+| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. There is no silent fallback. `prior` accepts an `fb_prior()` object. |
 | `fb()` | experimental | Literal alias for `flexybayes()`; documented but not promoted. |
 
 **Engine pins** fix one engine and therefore take **no** `backend` argument --
@@ -40,7 +40,6 @@ refusal:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_greta()` | experimental | Pins greta, which is quarantined: the call refuses with `backend_quarantined` before any code is emitted, and a native greta model graph passed to it refuses with `native_greta_fit_quarantined`. The entry point is kept so a re-entry restores one call path rather than a released signature. |
 | `fb_inla()` | experimental | Pins the INLA engine (approximate inference -- see "Inference semantics"). |
 | `fb_brms()` | experimental | Pins the Stan/brms engine via `brms::brm()`. |
 
@@ -57,7 +56,6 @@ object so the shared diagnostics, prediction, and interop methods apply:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_from_greta()` | experimental | Wrap a native greta model graph in the intermediate representation; carries `canonical_names`. The adapter still builds the representation, but fitting the wrapped graph is quarantined with the engine (`native_greta_fit_quarantined`). |
 | `fb_from_brms()` | experimental | Wrap a fitted `brmsfit`. |
 | `fb_from_asreml()` | experimental | Wrap a fitted `asreml` object. |
 
@@ -87,7 +85,7 @@ object so the shared diagnostics, prediction, and interop methods apply:
 | Export | Stage | Notes |
 |---|---|---|
 | `fb_plan()` | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
-| `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, for `family = "gaussian"`, `"binomial"` or `"poisson"` (the count families take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit, and `backend = "greta"` refuses with `backend_quarantined`. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
+| `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, for `family = "gaussian"`, `"binomial"` or `"poisson"` (the count families take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
 
 ## Diagnostics and introspection
 
@@ -98,7 +96,6 @@ object so the shared diagnostics, prediction, and interop methods apply:
 | `fb_refusals()` | experimental | The refusal vocabulary as a table (code, message template, since-version). The registry is the count -- no document quotes a number of refusal codes. |
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
 | `fb_structured_cov()` | experimental | The identified covariance of a factor-analytic structured-covariance term. |
-| `gretaR_status()` | experimental | Reports whether the quarantined `gretaR` engine is present at run time, and the reason it is not dispatchable (see "Backends"). |
 | `proceed()`, `cat_code()` | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. |
 
 ## Interoperability contract
@@ -140,17 +137,17 @@ neither a response vector nor a recorded family refuses instead of letting
 
 ## Backends
 
-Two engines are active. `greta` and `gretaR` are quarantined: their registry
-descriptors and emit code are retained as re-entry candidates, `backend =
-"auto"` never selects them, and an explicit request refuses with
-`backend_quarantined`. Installing them adds no fitting capability.
+Two engines are active. A third native engine was withdrawn entirely in
+0.9.3 (see `NEWS.md`): no code path, export, registry row, or `Suggests`
+entry remains, and naming it (or any other unrecognised backend) raises
+an ordinary `unknown_backend` refusal. Re-entry, should it ever be
+proposed, would be a fresh implementation, not a repair of retained
+code.
 
 | Backend | Status | Availability | Inference |
 |---|---|---|---|
 | `INLA` | active | from its own repository (`Additional_repositories`) | Integrated nested Laplace approximation (**approximate**) |
 | `brms` | active | CRAN; needs a Stan toolchain | Hamiltonian Monte Carlo via Stan |
-| `greta` | quarantined | greta-dev R-universe (archived from CRAN); needs a working Python/TensorFlow stack at run time | Hamiltonian Monte Carlo -- refuses rather than fitting |
-| `gretaR` | quarantined | **not a declared dependency** -- install it yourself | torch-native MCMC; detected at run time via `gretaR_status()`, refuses rather than fitting |
 
 ## Inference semantics -- read this
 
@@ -180,7 +177,7 @@ On the auto-default path -- when neither an `fb_prior()` nor a legacy
 | `us(f):g` level correlations | brms's own LKJ | recorded as engine-default |
 | AR1 field hyperparameters (`ar1()`, `ar1(row):ar1(col)`) | INLA's own hyperpriors | recorded as engine-default |
 | Any other random-term type (a multi-way interaction, `spl()`, `fa()`) | the engine's own default | recorded as engine-default |
-| Fixed-effect coefficients | each engine's own default -- brms: flat on the population-level coefficients and a response-centred `student_t` on the intercept; INLA: `prec = 0.001` on the slopes and a flat intercept; greta: `normal(0, 100)` | `prior_fixed_sd` is applied when it is supplied, on every backend; unsupplied, the engine's default stands and `prior_summary()` names it |
+| Fixed-effect coefficients | each engine's own default -- brms: flat on the population-level coefficients and a response-centred `student_t` on the intercept; INLA: `prec = 0.001` on the slopes and a flat intercept | `prior_fixed_sd` is applied when it is supplied, on every backend; unsupplied, the engine's default stands and `prior_summary()` names it |
 
 "Recorded as engine-default" is a contract, not a shrug: the parameter and the
 reason are written into the fit's prior provenance, so `triangulate()`'s
@@ -228,10 +225,10 @@ fitting / triangulation surface.
 | Export | Added | Notes |
 |---|---|---|
 | `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. |
-| `fb_met_summary()` | 0.8.0 | Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only greta produced, so with greta quarantined it abstains on an INLA or brms fit with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
+| `fb_met_summary()` | 0.8.0 | Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
 | `fb_gblup_cv()` | 0.8.0 | Genomic-prediction accuracy by cross-validation. |
 | `fb_gwas()` | 0.8.0 | EMMAX / P3D whole-genome scan. |
 | `tidy()` / `glance()` / `augment()` | 0.8.1 | broom-style accessors (re-exported from `generics`). `tidy()` has a method for every fit subclass. `glance()` / `augment()` describe a sampled fit and refuse by name on an INLA fit. |
 | `fb_gev()` / `fb_dirichlet()` | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). |
-| `fb_log_posterior()` | 0.8.2 | Constellation C4 producer. greta was the only engine that evaluated the log density, so on every other object class the method abstains with a typed message rather than returning a number. |
+| `fb_log_posterior()` | 0.8.2 | Constellation C4 producer. The engine withdrawn in 0.9.3 was the only one that evaluated the log density, so the method now abstains unconditionally with a typed message (`fb_c4_unavailable`) rather than returning a number. |
 | `glance.flexybayes_inla()` / `augment.flexybayes_inla()` | 0.8.3 | Explicit, classed refusals for INLA fits, pointing users to `tidy()`, `summary()`, and `fb_structured_cov()` (an INLA fit previously raised a bare "no applicable method" error). |

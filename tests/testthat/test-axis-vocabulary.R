@@ -2,24 +2,25 @@
 # Phase 2B).
 #
 # Coverage: closed-vocabulary enforcement, per-pair registry symmetry +
-# shape + lock, the three v0.4.0 backend pairs, and the triangulate()
-# report-shape extension (independence + axis_justification) wired
-# end-to-end through synthetic fits whose source resolves to a real
-# backend label.
+# shape + lock, the one remaining backend pair (0.9.3 withdraws two of
+# the original three v0.4.0 pairs along with the engine they named --
+# see NEWS.md), and the triangulate() report-shape extension
+# (independence + axis_justification) wired end-to-end through
+# synthetic fits whose source resolves to a real backend label.
 
 # ---------------------------------------------------------------- #
 # Synthetic fits: dispatch fb_as_draws_simple on a leading synthetic  #
 # class while .triangulate_source() reads the trailing real backend   #
-# class. So triangulate() sees a registered (greta, inla) pair without #
+# class. So triangulate() sees a registered (brms, inla) pair without #
 # running a real backend.                                              #
 # ---------------------------------------------------------------- #
 
-fb_as_draws_simple.synthetic_greta <- function(fit, ...) fit$draws
+fb_as_draws_simple.synthetic_brms <- function(fit, ...) fit$draws
 fb_as_draws_simple.synthetic_inla <- function(fit, ...) fit$draws
 .S3method(
   "fb_as_draws_simple",
-  "synthetic_greta",
-  fb_as_draws_simple.synthetic_greta
+  "synthetic_brms",
+  fb_as_draws_simple.synthetic_brms
 )
 .S3method(
   "fb_as_draws_simple",
@@ -27,8 +28,8 @@ fb_as_draws_simple.synthetic_inla <- function(fit, ...) fit$draws
   fb_as_draws_simple.synthetic_inla
 )
 
-.mk_greta_fit <- function(draws) {
-  structure(list(draws = draws), class = c("synthetic_greta", "flexybayes"))
+.mk_brms_fit <- function(draws) {
+  structure(list(draws = draws), class = c("synthetic_brms", "flexybayes_brms"))
 }
 .mk_inla_fit <- function(draws) {
   structure(list(draws = draws), class = c("synthetic_inla", "flexybayes_inla"))
@@ -86,13 +87,13 @@ test_that(".pair_key canonicalises by sorting", {
 })
 
 test_that(".pair_key rejects a malformed pair", {
-  expect_error(flexyBayes:::.pair_key("greta"))
+  expect_error(flexyBayes:::.pair_key("solo"))
   expect_error(flexyBayes:::.pair_key(c("a", "b", "c")))
 })
 
 test_that("pair lookup is symmetric in argument order", {
-  r1 <- flexyBayes:::.lookup_pair_independence(c("greta", "inla"))
-  r2 <- flexyBayes:::.lookup_pair_independence(c("inla", "greta"))
+  r1 <- flexyBayes:::.lookup_pair_independence(c("brms", "inla"))
+  r2 <- flexyBayes:::.lookup_pair_independence(c("inla", "brms"))
   expect_identical(r1, r2)
 })
 
@@ -107,17 +108,18 @@ test_that("every registry entry carries the five required fields", {
   }
 })
 
-test_that("the three v0.4.0 backend pairs register with the ADR 0029 axes", {
-  gi <- flexyBayes:::.lookup_pair_independence(c("greta", "inla"))
-  gb <- flexyBayes:::.lookup_pair_independence(c("greta", "brms"))
+test_that("the one remaining backend pair registers with the ADR 0029 axes", {
+  # v0.4.0 registered three pairs: the withdrawn native engine paired
+  # with inla, that same engine paired with brms, and (brms, inla).
+  # 0.9.3 withdraws that engine entirely (see NEWS.md); only
+  # (brms, inla) survives.
   bi <- flexyBayes:::.lookup_pair_independence(c("brms", "inla"))
-  expect_setequal(gi$axes, c("algorithmic", "implementation"))
-  expect_setequal(gb$axes, "implementation")
   expect_setequal(bi$axes, c("algorithmic", "implementation"))
+  expect_length(ls(flexyBayes:::.backend_independence_registry), 1L)
 })
 
 test_that("an unregistered or same-backend pair looks up to NULL", {
-  expect_null(flexyBayes:::.lookup_pair_independence(c("greta", "greta")))
+  expect_null(flexyBayes:::.lookup_pair_independence(c("inla", "inla")))
   expect_null(flexyBayes:::.lookup_pair_independence(c("greta", "nimble")))
 })
 
@@ -133,9 +135,9 @@ test_that("the backend-independence registry is locked after .onLoad()", {
 
 test_that("triangulate() labels a registered pair with its independence axes", {
   set.seed(1L)
-  d_g <- list(beta = rnorm(200L), sigma = abs(rnorm(200L)))
+  d_b <- list(beta = rnorm(200L), sigma = abs(rnorm(200L)))
   d_i <- list(beta = rnorm(200L), sigma = abs(rnorm(200L)))
-  tri <- triangulate(.mk_greta_fit(d_g), .mk_inla_fit(d_i))
+  tri <- triangulate(.mk_brms_fit(d_b), .mk_inla_fit(d_i))
   expect_setequal(tri$independence, c("algorithmic", "implementation"))
   expect_type(tri$axis_justification, "character")
   expect_match(tri$axis_justification, "Laplace")
@@ -160,9 +162,9 @@ test_that("triangulate() on an unregistered pair leaves the axis fields empty (b
 
 test_that("print.triangulate_result shows the independence line for a registered pair", {
   set.seed(3L)
-  d_g <- list(beta = rnorm(150L))
+  d_b <- list(beta = rnorm(150L))
   d_i <- list(beta = rnorm(150L))
-  tri <- triangulate(.mk_greta_fit(d_g), .mk_inla_fit(d_i))
+  tri <- triangulate(.mk_brms_fit(d_b), .mk_inla_fit(d_i))
   out <- utils::capture.output(print(tri))
   expect_true(any(grepl("independence:", out, fixed = TRUE)))
   expect_true(any(grepl("algorithmic", out, fixed = TRUE)))

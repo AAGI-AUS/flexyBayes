@@ -3,8 +3,7 @@
 # aggregated likelihood is algebraically identical to the per-row
 # likelihood, so under matched priors INLA's deterministic Laplace
 # engine recovers the same fixed-effect coefficients and variance
-# components to numerical precision. greta is cross-checked against the
-# exact INLA fit within Monte-Carlo tolerance.
+# components to numerical precision.
 
 # Posterior-summary extractors that read the raw INLA fit on both the
 # per-row and the aggregated fit objects (both carry `$inla`).
@@ -173,41 +172,3 @@ test_that("a non-Bernoulli binomial response is not auto-aggregated", {
   )
 })
 
-test_that("greta streamed-aggregated matches exact INLA within MC error", {
-  skip_on_ci()
-  skip_if_not_installed("INLA")
-  skip_if_greta_backend_unusable()
-  withr::local_options(flexyBayes.silence_uniform_inla_approx = TRUE)
-
-  df <- .eq_make_data("gaussian", n = 3e4L, ng = 20L, seed = 111L)
-  pr <- .eq_prior("gaussian")
-
-  f_inla <- flexybayes_stream(
-    y ~ env,
-    random = ~geno,
-    source = df,
-    family = "gaussian",
-    backend = "inla",
-    prior = pr,
-    verbose = FALSE
-  )
-  set.seed(2024L)
-  f_greta <- flexybayes_stream(
-    y ~ env,
-    random = ~geno,
-    source = df,
-    family = "gaussian",
-    backend = "greta",
-    n_samples = 600L,
-    warmup = 600L,
-    chains = 2L,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )
-
-  bi <- coef(f_inla)
-  bg <- coef(f_greta)
-  # Two engines, one exact aggregated likelihood: agree within a loose
-  # Monte-Carlo tolerance on the fixed effects.
-  expect_equal(bg[names(bi)], bi, tolerance = 0.1)
-})

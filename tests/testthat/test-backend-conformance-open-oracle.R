@@ -2,8 +2,9 @@
 # test-backend-conformance-open-oracle.R
 #
 # The re-pointed backend-conformance battery for the two active engines
-# (brms + INLA), the v6-I13 gate that must exist before greta/gretaR are
-# quarantined. It differs from the legacy test-backend-conformance.R in the
+# (brms + INLA), the v6-I13 gate that predates the eventual 0.9.3 withdrawal
+# of the other two once-registered engines (see NEWS.md). It differs from
+# the legacy test-backend-conformance.R in the
 # reference tier: each engine is tested as a CANDIDATE against an INDEPENDENT
 # OPEN ORACLE (base `lm` for a Gaussian GLM, `lme4` REML for a Gaussian LMM),
 # not against a peer engine -- so fidelity is proven against something neither

@@ -3,7 +3,7 @@
 # A per-row INLA fit carries class
 # `c("flexybayes_inla", "flexybayes", "list")`. Before 0.9.0 it stood
 # outside the `flexybayes` parent, because its internal shape differs from
-# the greta fit -- it has no `$glm` shim -- and that left it without the
+# the brms fit -- it has no `$glm` shim -- and that left it without the
 # coef() / vcov() / predict() / formula() / family() interface the rest
 # of the R modelling ecosystem (emmeans, marginaleffects) dispatches on.
 # The methods below are the INLA-specific half of that interface and win
@@ -338,7 +338,7 @@ residuals.flexybayes_inla <- function(object, ...) {
 #'
 #' INLA reports a *marginal* log-likelihood (the model evidence, available
 #' through [summary()]), not the *conditional* model log-likelihood that the
-#' `logLik()` generic denotes and that the greta / brms backends expose.
+#' `logLik()` generic denotes and that the brms backend exposes.
 #' Returning the marginal quantity under the `logLik` name would conflate two
 #' different things, so this method returns `NA` (with the degrees of
 #' freedom and observation count filled in) and a one-line note. This also
@@ -374,11 +374,11 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' coincide. This is the prediction surface \pkg{marginaleffects} uses
 #' for average predictions and slopes.
 #'
-#' The `classify` path is the same one [predict.flexybayes()] takes: a
-#' marginal-means table built through the emmeans seam, whose interval on
-#' this engine comes from the Gaussian approximation of the joint
-#' fixed-effect posterior rather than from INLA's own marginals. The
-#' printed table names that.
+#' The `classify` path builds a marginal-means table through the emmeans
+#' seam (the same construction [predict.flexybayes_brms()] uses), whose
+#' interval on this engine comes from the Gaussian approximation of the
+#' joint fixed-effect posterior rather than from INLA's own marginals.
+#' The printed table names that.
 #'
 #' @param object A `flexybayes_inla` fit.
 #' @param newdata Optional data frame; defaults to the fit data. Ignored,

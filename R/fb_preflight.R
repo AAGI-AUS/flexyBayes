@@ -599,15 +599,15 @@
   }
 
   # nested (A:B) and combo (A:B:C) interaction random intercepts. The
-  # greta codegen emits these exactly like a "simple" random intercept:
-  # a single integer index column (combo_id / nested_id) into a k-length
-  # latent vector, where k is the number of distinct observed
-  # combinations. The memory shape is therefore identical to the "simple"
-  # branch (4N index + 8k latent) with no under-estimation, so they are
-  # sized here rather than escalated to representation_unknown. This lets
-  # an explicit greta request preflight-clear (the greta emit handles the
-  # gather); an inla/auto request is still refused downstream by the LGM
-  # gate (random_term_type_inla), so the INLA boundary is intact.
+  # brms emit (see R/emit_brms.R) builds these exactly like a "simple"
+  # random intercept: a single integer index column (combo_id /
+  # nested_id) into a k-length latent vector, where k is the number of
+  # distinct observed combinations. The memory shape is therefore
+  # identical to the "simple" branch (4N index + 8k latent) with no
+  # under-estimation, so they are sized here rather than escalated to
+  # representation_unknown. This lets a brms request preflight-clear;
+  # an inla/auto request is still refused downstream by the LGM gate
+  # (random_term_type_inla), so the INLA boundary is intact.
   if (rtype %in% c("nested", "combo")) {
     kk <- if (!is.na(k)) {
       k

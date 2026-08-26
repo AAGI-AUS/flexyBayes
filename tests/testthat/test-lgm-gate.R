@@ -277,11 +277,16 @@ test_that(".lgm_check_random_term_inla_support() refuses vm (GBLUP / kinship)", 
 })
 
 test_that(".lgm_check_random_term_inla_support() says so when brms cannot", {
+  # 0.9.3: the message no longer names any specific engine as the
+  # reason brms cannot represent this term either (a since-withdrawn
+  # native engine used to be the exception the older wording carved
+  # out) -- it states the fact plainly and engine-free: no active
+  # backend can fit it.
   fb <- mk_fb(random_terms = list(list(type = "fa", var = "env", k = 2L)))
   r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
   expect_false(r$pass)
   expect_match(r$reason, "brms cannot represent it either", fixed = TRUE)
-  expect_match(r$reason, "withdrawn")
+  expect_match(r$reason, "no active backend can fit it faithfully", fixed = TRUE)
 })
 
 test_that(".lgm_check_random_term_inla_support() refuses ped (pedigree)", {

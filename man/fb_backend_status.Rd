@@ -7,11 +7,8 @@
 fb_backend_status(deep = TRUE)
 }
 \arguments{
-\item{deep}{Logical; if \code{TRUE} (default) greta's readiness is probed by
-initialising its Python / TensorFlow stack (the probe's output is captured,
-never leaked). If \code{FALSE}, greta is reported as installed without touching
-Python -- a fast, non-invasive check whose \code{usable} value is \code{NA}
-("installed, not probed").}
+\item{deep}{Logical; currently unused (reserved for a future backend whose
+readiness probe is expensive enough to need an opt-out). Default \code{TRUE}.}
 }
 \value{
 A data frame of class \code{fb_backend_status} with one row per backend
@@ -22,27 +19,18 @@ backend is absent). A \code{print} method renders it as a readiness table.
 \description{
 Checks which inference backends flexyBayes can route to are installed and
 usable in the current session, returning a small table you can inspect
-before fitting. The check is read-only: it probes package availability and,
-for greta, the reachability of its Python / TensorFlow stack, without
-building a model or starting a fit.
+before fitting. The check is read-only: it probes package availability
+without building a model or starting a fit.
 }
 \details{
 \code{installed} records whether the backend's R package is present. \code{usable}
-records whether the backend can actually run a fit now -- for greta this
-additionally requires a working Python / TensorFlow stack, so a greta that
-is \code{installed} but not \code{usable} needs \code{greta::install_greta_deps()}. The
-dormant opt-in \code{gretaR} engine is reported separately by \code{\link[=gretaR_status]{gretaR_status()}}.
+records whether the backend can actually run a fit now.
 }
 \examples{
-\donttest{
-# Probing greta initialises its Python / TensorFlow stack, so the first
-# call can be slow; wrapped in \donttest{} for that reason.
 fb_backend_status()
-}
 
 }
 \seealso{
-\code{\link[=flexybayes]{flexybayes()}} for the universal entry, the \code{fb_greta()} /
-\code{fb_inla()} / \code{fb_brms()} single-engine pins, and \code{\link[=gretaR_status]{gretaR_status()}} for
-the dormant gretaR slot.
+\code{\link[=flexybayes]{flexybayes()}} for the universal entry, and the \code{fb_inla()} /
+\code{fb_brms()} single-engine pins.
 }

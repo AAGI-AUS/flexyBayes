@@ -3,7 +3,7 @@
 \name{get_coef.flexybayes}
 \alias{get_coef.flexybayes}
 \alias{get_coef.flexybayes_inla}
-\title{marginaleffects support: fixed-effect coefficients (greta backend)}
+\title{marginaleffects support: fixed-effect coefficients (default method)}
 \usage{
 \method{get_coef}{flexybayes}(model, ...)
 
@@ -18,5 +18,5 @@
 Named numeric vector of coefficients.
 }
 \description{
-marginaleffects support: fixed-effect coefficients (greta backend)
+marginaleffects support: fixed-effect coefficients (default method)
 }

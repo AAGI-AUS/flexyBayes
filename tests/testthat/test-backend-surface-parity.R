@@ -3,15 +3,26 @@
 # re-introduces it fails here rather than shipping silently.
 #
 #   1. triangulate() must compare variance components on a common (SD)
-#      scale across greta and INLA -- the INLA precision -> SD transform
+#      scale across brms and INLA -- the INLA precision -> SD transform
 #      must fire (was silently no-op: precision compared against SD).
 #   2. plot() must dispatch on every backend fit class -- "effects"
 #      works everywhere; MCMC-only types degrade to a message on a
 #      backend that has no draws (was: plot.default crash on INLA).
 #   3. Positional and named prior arguments must parse identically (was:
 #      positional scale silently dropped to the default on by-name emit).
-#   4. A non-binary binomial response must be refused on greta, not
-#      silently fitted as Bernoulli.
+#
+# Guard 4 (a non-binary binomial response must be refused, not silently
+# fitted as Bernoulli) is removed at 0.9.3, not ported: it
+# guarded a data-validation check inside the withdrawn native engine's
+# own emit path (see NEWS.md). Neither active engine has an equivalent
+# pre-flight check today -- a non-binary response with
+# family = "binomial" reaches the engine itself and fails there
+# (brms: an untyped Stan sampling error; INLA: an inla_program_failed
+# engine-death classification, with noisy console output from the INLA
+# binary) rather than being refused cleanly before any backend code
+# runs. This is a pre-existing gap the 0.9.3 withdrawal surfaces
+# rather than causes; adding a pre-flight check for it is a separate
+# piece of work, out of scope here.
 
 silence_notes <- function() {
   withr::local_options(
@@ -30,7 +41,7 @@ silence_notes <- function() {
 
 test_that("triangulate() puts INLA variance components on the SD scale, not precision", {
   skip_on_cran()
-  skip_if_greta_backend_unusable()
+  skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
   silence_notes()
 
@@ -47,13 +58,20 @@ test_that("triangulate() puts INLA variance components on the SD scale, not prec
   y <- 2 + 0.8 * x + u[as.integer(g)] + stats::rnorm(N, 0, 2.0)
   d <- data.frame(y, x, g)
 
-  fg <- suppressMessages(fb(
+  # Quantitative test (checks the transformed posterior mean's scale
+  # against a numeric threshold, not just structure) -- the original
+  # 400-draw budget left a residual low-ESS warning; raised (with a
+  # pinned seed + higher adapt_delta) until the fit converges cleanly,
+  # per policy, rather than muffled.
+  fb_fit <- suppressMessages(fb(
     y ~ x + (1 | g),
     data = d,
-    backend = "greta",
-    n_samples = 400L,
-    warmup = 400L,
+    backend = "brms",
+    n_samples = 800L,
+    warmup = 800L,
     chains = 2L,
+    seed = 101L,
+    control = list(adapt_delta = 0.95),
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
@@ -65,7 +83,7 @@ test_that("triangulate() puts INLA variance components on the SD scale, not prec
     mcmc_verbose = FALSE
   ))
 
-  tri <- triangulate(fg, fi, n_samples = 1000L)
+  tri <- triangulate(fb_fit, fi, n_samples = 1000L)
 
   expect_true(all(c("sigma", "sd_g") %in% tri$common))
   m <- tri$metrics
@@ -206,33 +224,4 @@ test_that("predict() works on an INLA mixed model (brms-grammar bar term strippe
 })
 
 
-# ---------------------------------------------------------------- #
-# 4. Non-binary binomial is refused on greta                        #
-# ---------------------------------------------------------------- #
 
-test_that("a non-binary binomial response is refused on greta, not silently Bernoulli-fit", {
-  skip_on_cran()
-  skip_if_greta_backend_unusable()
-  silence_notes()
-
-  set.seed(303L)
-  d <- data.frame(
-    y = sample(0:5, 50L, replace = TRUE), # counts, not 0/1
-    x = stats::rnorm(50L)
-  )
-
-  expect_error(
-    suppressMessages(fb(
-      y ~ x,
-      data = d,
-      family = "binomial",
-      backend = "greta",
-      n_samples = 10L,
-      warmup = 10L,
-      chains = 1L,
-      verbose = FALSE,
-      mcmc_verbose = FALSE
-    )),
-    "binary"
-  )
-})

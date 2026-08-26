@@ -3,7 +3,7 @@
 \name{get_vcov.flexybayes}
 \alias{get_vcov.flexybayes}
 \alias{get_vcov.flexybayes_inla}
-\title{marginaleffects support: covariance (greta backend)}
+\title{marginaleffects support: covariance (default method)}
 \usage{
 \method{get_vcov}{flexybayes}(model, ...)
 
@@ -18,5 +18,5 @@
 Fixed-effect covariance matrix.
 }
 \description{
-marginaleffects support: covariance (greta backend)
+marginaleffects support: covariance (default method)
 }

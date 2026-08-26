@@ -65,7 +65,6 @@ reference:
       - flexybayes
       - flexybayes_stream
       - fb
-      - fb_greta
       - fb_inla
       - fb_brms
       - fb_plan
@@ -77,7 +76,6 @@ reference:
     contents:
       - fb_from_asreml
       - fb_from_brms
-      - fb_from_greta
   - title: Constructor nouns
     desc: >
       The four classed input constructors: priors, covariance carriers,
@@ -99,7 +97,6 @@ reference:
       - fb_structured_cov
       - fb_refusals
       - prior_summary
-      - gretaR_status
       - cat_code
   - title: Cross-package interop
     desc: Tidiers, emmeans, marginaleffects, and draws conversion.
@@ -129,22 +126,18 @@ reference:
       - print.flexybayes
       - print.flexybayes_aggregated
       - print.flexybayes_brms
-      - print.flexybayes_direct_greta
       - print.fb_approx
       - print.fb_cov
       - print.fb_engine
       - print.fb_plan
       - coef.flexybayes
       - coef.flexybayes_inla
-      - coef.flexybayes_direct_greta
       - confint.flexybayes
       - confint.flexybayes_brms
       - confint.flexybayes_glm
       - vcov.flexybayes
       - vcov.flexybayes_inla
-      - predict.flexybayes
       - predict.flexybayes_brms
-      - predict.flexybayes_direct_greta
       - predict.flexybayes_inla
       - fitted.flexybayes
       - fitted.flexybayes_inla

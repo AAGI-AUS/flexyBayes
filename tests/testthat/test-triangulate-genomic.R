@@ -106,34 +106,33 @@ test_that("triangulate_gwas() reports hit-set Jaccard, top-K overlap, and effect
 # (c) Real cross-backend genomic triangulation.                    #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate_genomic() agrees across greta and brms GBLUP fits", {
-  skip_if_greta_backend_unusable() # greta arm quarantined -- re-entry guard
+test_that("triangulate_genomic() agrees across brms and INLA GBLUP fits", {
   skip_on_cran()
-  skip_if_not_installed("greta")
   skip_if_not_installed("brms")
+  skip_if_not_installed("INLA")
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_convergence_warning = TRUE
   )
-  local_tf_seed(2026L)
   G <- sim_kinship(n_geno = 30L, n_markers = 300L, seed = 31L)
   sim <- sim_gblup_pheno(G, var_g = 1, var_e = 1, n_rep = 4L, seed = 32L)
   dat <- sim$data
+  Q <- solve(G)
+  dimnames(Q) <- dimnames(G)
 
-  fit_greta <- flexybayes(
-    y ~ 1, random = ~ vm(geno, Gmat), data = dat,
-    known_matrices = list(Gmat = G), backend = "greta",
-    n_samples = 600L, warmup = 600L, chains = 2L,
-    verbose = FALSE, mcmc_verbose = FALSE
-  )
   fit_brms <- flexybayes(
     y ~ 1, random = ~ vm(geno, Gmat), data = dat,
     known_matrices = list(Gmat = G), backend = "brms",
     n_samples = 600L, warmup = 600L, chains = 2L,
     verbose = FALSE, mcmc_verbose = FALSE
   )
+  fit_inla <- flexybayes(
+    y ~ 1, random = ~ vm(geno, cov = fb_cov(Qprec, type = "precision")),
+    data = dat, known_matrices = list(Qprec = Q), backend = "inla",
+    verbose = FALSE
+  )
 
-  tg <- triangulate_genomic(fit_greta, fit_brms)
+  tg <- triangulate_genomic(fit_brms, fit_inla)
   h2_row <- tg$components[tg$components$quantity == "heritability", ]
   expect_true(h2_row$intervals_overlap)
   expect_gt(tg$gebv$n_common, 25L)

@@ -102,7 +102,7 @@
   # ----------------------- Fixed-effects design --------------------- #
   # Reconstruct a formula-like RHS for model.matrix. We build it from
   # the IR's fixed_terms labels so that the byte-identity contract
-  # with the per-row emit is preserved: emit_greta() and emit_inla()
+  # with the per-row emit is preserved: emit_brms() and emit_inla()
   # both feed model.matrix(<same formula>, data) into the backend.
   fixed_form <- .fb_aggregate_fixed_formula(fb_ir)
   if (is.null(fixed_form)) {

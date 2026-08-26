@@ -31,20 +31,21 @@ test_that("grep gate: no un-allowlisted as.integer(prod/nrow/length( cast", {
   # Sites verified safe and exempt from the double-cast fix, each with a
   # one-line reason kept HERE (not only in the source comment) so the
   # gate and its justification cannot drift apart. Every other site the
-  # audit found (R/aggregate_plan.R:242, R/fb_preflight.R:781,
-  # R/fb_from_greta.R:255) was fixed to carry the product as a double
-  # before casting, and no longer matches these patterns.
-  allowlist <- c(
-    "fb_log_posterior.R" = paste0(
-      "n_elem sizes the coord_names / lower / upper vectors the next few ",
-      "lines build via expand.grid() and rep_len(); on overflow ",
-      "rep_len(x, NA) already raises a loud R error (verified: ",
-      "'invalid length.out value') rather than continuing on a silent ",
-      "NA, and a target this large already exhausts memory materialising ",
-      "those vectors regardless of how the count was cast -- not a ",
-      "silent-NA site, so outside the class this gate guards."
-    )
-  )
+  # audit found (R/aggregate_plan.R:242, R/fb_preflight.R:781, and a
+  # third in the native-model ingest adapter withdrawn entirely at
+  # 0.9.3 -- see NEWS.md) was fixed to carry the product as a double
+  # before casting, and no longer matches these patterns (the withdrawn
+  # file is simply gone, so the grep gate below no longer scans it at
+  # all).
+  #
+  # The one exemption this allowlist used to carry (fb_log_posterior.R's
+  # n_elem sizing of the coord_names / lower / upper vectors) was
+  # removed at 0.9.3 along with the log-density producer for the
+  # withdrawn native engine that owned it -- the surviving
+  # fb_log_posterior() abstains unconditionally and carries no cast in
+  # this class. No exemption is currently needed; the allowlist is
+  # empty rather than stale.
+  allowlist <- character(0)
 
   r_files <- list.files(r_dir, pattern = "\\.R$", full.names = TRUE)
   hits <- list()
@@ -186,9 +187,11 @@ test_that("aggregation planner does not refuse below the integer cell-count limi
 
 
 # ---------------------------------------------------------------- #
-# (c) the two other class members fixed without a dedicated         #
-# behavioural test (F6): .preflight_factor_interaction_dummies()    #
-# and fb_from_greta()'s model_dim                                   #
+# (c) the other class member fixed without a dedicated behavioural  #
+# test (F6): .preflight_factor_interaction_dummies(). (A second      #
+# member, the native-model ingest adapter's model_dim reducer, was   #
+# withdrawn entirely with that adapter at 0.9.3 -- see NEWS.md -- so  #
+# its regression test is deleted rather than kept unreachable.)     #
 # ---------------------------------------------------------------- #
 
 test_that(paste(
@@ -249,69 +252,4 @@ test_that(paste(
     "NAs introduced by coercion to integer range"
   )
   expect_identical(bad, NA_integer_)
-})
-
-test_that(paste(
-  "fb_from_greta() carries an overflowing target dimension as a",
-  "double, not NA"
-), {
-  # fb_from_greta() reads model$target_greta_arrays and dim() on each
-  # element -- a real TensorFlow-backed greta_array is not needed to
-  # exercise this arithmetic, only its symbolic shape, so this fixture
-  # does not need greta or TensorFlow installed. `dim.icc_huge_target()`
-  # reports an 80,000 x 80,000 shape (product 6.4e9, past 2^31 - 1)
-  # without materialising anything; the model carries an empty
-  # `dag$node_list`, which fb_from_greta()'s likelihood detection
-  # already treats as a valid pure-prior (no observed data) model.
-  #
-  # `dim()` is an internal generic that base R also resolves against
-  # .GlobalEnv for old-style S3 classes; a method assigned inside this
-  # test_that()'s own local environment is invisible to that lookup
-  # from code running inside the package namespace, so the method is
-  # installed in .GlobalEnv explicitly and removed on exit.
-  assign(
-    "dim.icc_huge_target",
-    function(x) c(80000L, 80000L),
-    envir = .GlobalEnv
-  )
-  on.exit(rm("dim.icc_huge_target", envir = .GlobalEnv), add = TRUE)
-  huge <- structure(list(), class = "icc_huge_target")
-  model <- structure(
-    list(
-      target_greta_arrays = list(theta = huge),
-      dag = local({
-        e <- new.env()
-        assign("node_list", list(), envir = e)
-        e
-      })
-    ),
-    class = "greta_model"
-  )
-
-  # Passes on the fix: the real fb_from_greta() carries the true
-  # product as a double, no warning.
-  expect_no_warning(
-    ir <- suppressMessages(fb_from_greta(model))
-  )
-  expect_identical(unname(ir$greta_meta$model_dim[["theta"]]), 6.4e9)
-
-  # Induced defect: the pre-fix per-target reducer,
-  # `as.integer(prod(d))` with no double carry (R/fb_from_greta.R:255
-  # before this fix), restored here as a scratch copy of the inline
-  # `vapply()` body fb_from_greta() runs.
-  .icc_unfixed_model_dim <- function(targets) {
-    vapply(
-      targets,
-      function(a) {
-        d <- dim(a)
-        if (is.null(d)) 1L else as.integer(prod(d)) # the pre-fix cast
-      },
-      numeric(1)
-    )
-  }
-  expect_warning(
-    bad <- .icc_unfixed_model_dim(model$target_greta_arrays),
-    "NAs introduced by coercion to integer range"
-  )
-  expect_true(is.na(unname(bad[["theta"]])))
 })

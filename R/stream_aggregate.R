@@ -36,7 +36,7 @@
 #' `flexybayes_stream()` is the large-data entry point: it reads the data
 #' a chunk at a time from `source`, accumulates additive sufficient
 #' statistics per design cell, and fits the resulting aggregated model
-#' through the same greta or INLA emit path as [flexybayes()]. The
+#' through the same INLA emit path as [flexybayes()]. The
 #' aggregated likelihood is algebraically identical to the per-row
 #' likelihood, so the posterior is the full-data posterior, not an
 #' approximation.
@@ -76,8 +76,8 @@
 #'   offset column, or `NULL` for unit exposure.
 #' @param backend The estimation backend. `"inla"` is the default and the
 #'   only active choice: INLA is the one engine with an aggregated emit.
-#'   `"greta"` is still recognised so that passing it refuses by name
-#'   (`backend_quarantined`) rather than failing on argument matching.
+#'   Any other value -- including a formerly-registered engine name this
+#'   package withdrew entirely -- refuses with `unknown_backend`.
 #' @param chunk_rows The number of rows to read per chunk. Larger chunks
 #'   read faster but use more peak memory; the default 5e6 keeps peak
 #'   memory modest while amortising read overhead.
@@ -89,8 +89,7 @@
 #'   useful for inspecting the compression a design will achieve.
 #' @param verbose When `TRUE`, report streaming progress and the
 #'   compression achieved.
-#' @param ... Further arguments passed to the aggregated emit (for
-#'   example `n_samples`, `warmup`, `chains` for the greta backend).
+#' @param ... Further arguments passed to the aggregated emit.
 #'
 #' @returns When `fit = TRUE`, a `<flexybayes>` fit object carrying
 #'   `extras$aggregation_meta$streamed == TRUE`. When `fit = FALSE`, an
@@ -134,24 +133,12 @@ flexybayes_stream <- function(
   verbose = TRUE,
   ...
 ) {
-  # "greta" stays in the recognised vocabulary so a caller who passes it
-  # gets the quarantine refusal by name rather than match.arg's "should be
-  # one of" -- but it is no longer an active choice and no longer the
-  # fallback default. INLA is the only engine with an aggregated emit.
-  backend <- match.arg(backend, c("inla", "greta"))
-  if (identical(backend, "greta")) {
-    stop(.fb_refusal_condition(
-      reason_code = "backend_quarantined",
-      message = paste0(
-        "flexybayes_stream(backend = \"greta\") is quarantined: greta is ",
-        "retained as a re-entry candidate, not an active fitting engine. ",
-        "INLA is the only backend with an aggregated emit, and it is the ",
-        "default -- drop the argument, or pass backend = \"inla\"."
-      ),
-      family_class = "flexybayes_backend_quarantined_refusal",
-      backend = "greta"
-    ))
-  }
+  # An unrecognised backend name -- including a formerly-registered
+  # engine name this package withdrew entirely -- refuses by name rather
+  # than failing on match.arg's "should be one of". INLA is the only
+  # engine with an aggregated emit.
+  .check_known_backend_name(backend, allowed = "inla")
+  backend <- match.arg(backend, "inla")
   the_call <- match.call()
   .check_stream_family(family)
   .check_stream_chunk_rows(chunk_rows)

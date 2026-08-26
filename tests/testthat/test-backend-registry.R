@@ -63,17 +63,19 @@ test_that("every backend entry carries the full field schema", {
   }
 })
 
-test_that("the v0.5.0 population registers the expected backends", {
+test_that("the 0.9.3 population registers the expected backends", {
+  # A third native engine, present through v0.9.2, was withdrawn entirely
+  # in 0.9.3 (see NEWS.md): no registry row, export, code path, or
+  # `Suggests` entry remains -- re-entry, if ever proposed, is a fresh
+  # implementation, not a repair of a retained descriptor.
   expect_setequal(
     flexyBayes:::.registered_backend_names(),
-    c("greta", "inla", "brms", "gretaR")
+    c("inla", "brms")
   )
-  # greta / gretaR were QUARANTINED 2026-07-24 (reshape R1): retained as
-  # re-entry descriptors, not active fitting engines.
-  expect_identical(flexyBayes:::.lookup_backend("greta")$status, "quarantined")
   expect_identical(flexyBayes:::.lookup_backend("inla")$status, "active")
   expect_identical(flexyBayes:::.lookup_backend("brms")$status, "active")
-  expect_identical(flexyBayes:::.lookup_backend("gretaR")$status, "quarantined")
+  expect_null(flexyBayes:::.lookup_backend("greta"))
+  expect_null(flexyBayes:::.lookup_backend("gretaR"))
   # (koine, the dormant 4th-backend slot, moved to flexyBayesOrchestra in the
   # lean-core split, 2026-06-06; it is no longer registered in the core.)
   # brms is retained as the engine label (the brms -> stan rename was
@@ -93,8 +95,13 @@ test_that("CONSISTENCY: routing-policy-table engines are all registered", {
       paste(setdiff(ureq, reg), collapse = ", ")
     )
   )
-  # chosen_backend values (drop the NA explicit-inla-refusal row).
+  # chosen_backend values (drop the NA explicit-inla-refusal row and the
+  # "pending_fallback" sentinel, which the dispatch.R comment documents as
+  # "never a real backend name" -- it means resolution is deferred to
+  # .resolve_auto_fallback(), not that dispatch chose a backend by that
+  # name).
   chosen <- stats::na.omit(unique(tbl$chosen_backend))
+  chosen <- setdiff(chosen, "pending_fallback")
   expect_true(
     all(chosen %in% reg),
     info = paste(
@@ -120,9 +127,10 @@ test_that("CONSISTENCY: verb match.arg vocabularies are all registered", {
 
 test_that("CONSISTENCY: auto candidate set matches default_in_auto flags", {
   # The current dispatch candidate list lives in .resolve_routing(); the
-  # registry's default_in_auto-TRUE AND active names must equal it. Since the
-  # greta / gretaR quarantine (2026-07-24) only inla is an auto default (brms
-  # is opt-in; greta / gretaR are quarantined, never auto candidates).
+  # registry's default_in_auto-TRUE AND active names must equal it. Only
+  # inla is an auto default (brms is opt-in; the withdrawn third engine,
+  # see NEWS.md 0.9.3, is not registered at all any more, so it is not a
+  # candidate by construction rather than by a quarantine flag).
   expect_setequal(
     flexyBayes:::.auto_default_backend_names(),
     "inla"
@@ -141,13 +149,13 @@ test_that(".available_backend_names() are active and installed", {
       expect_true(requireNamespace(e$available_pkg, quietly = TRUE), info = nm)
     }
   }
-  # gretaR is QUARANTINED (2026-07-24): never "available" even when the
-  # gretaR package is installed -- .available_backend_names() lists only
-  # active backends.
+  # The dormant sibling engine withdrawn in 0.9.3 (see NEWS.md) is not
+  # registered at all any more, so it can never appear here regardless
+  # of whether its package happens to be installed.
   expect_false("gretaR" %in% avail)
 })
 
-test_that("capability predicates: greta universal, brms refuses structured-cov", {
+test_that("capability predicates: both active engines universal on a plain model, brms refuses structured-cov", {
   d <- data.frame(
     y = rnorm(40),
     env = factor(rep(letters[1:4], each = 10L)),
@@ -156,15 +164,14 @@ test_that("capability predicates: greta universal, brms refuses structured-cov",
   fb_ri <- flexyBayes:::fb_from_asreml(y ~ env, random = ~geno, data = d)
 
   # A plain Gaussian random-intercept model: every active backend capable.
-  expect_true(flexyBayes:::.capability_greta(fb_ri))
   expect_true(flexyBayes:::.capability_brms(fb_ri))
   expect_true(flexyBayes:::.capability_inla(fb_ri))
-  expect_true(flexyBayes:::.backend_can_fit("greta", fb_ri)$ok)
   expect_true(flexyBayes:::.backend_can_fit("brms", fb_ri)$ok)
   expect_true(flexyBayes:::.backend_can_fit("inla", fb_ri)$ok)
 
   # Inject an asreml structured-covariance term: brms/Stan cannot
-  # represent it; greta still can.
+  # represent an fa() term (no lossless translation; see
+  # .STRUCTURED_COV_TYPES in R/backend_registry.R).
   fb_struct <- fb_ri
   fb_struct$random_terms <- c(
     fb_struct$random_terms,
@@ -174,7 +181,6 @@ test_that("capability predicates: greta universal, brms refuses structured-cov",
     flexyBayes:::.capability_brms(fb_struct),
     "stan_cannot_represent_structured_cov"
   )
-  expect_true(flexyBayes:::.capability_greta(fb_struct))
   cf <- flexyBayes:::.backend_can_fit("brms", fb_struct)
   expect_false(cf$ok)
   expect_identical(cf$reason_code, "stan_cannot_represent_structured_cov")
@@ -196,7 +202,6 @@ test_that("capability predicates: greta universal, brms refuses structured-cov",
     flexyBayes:::.backend_can_fit("brms", fb_lr)$reason_code,
     "stan_cannot_represent_low_rank_approx"
   )
-  expect_true(flexyBayes:::.capability_greta(fb_lr))
 })
 
 test_that("flexybayes(backend='brms') allows dense vm/ped but refuses non-dense-able structured carriers", {

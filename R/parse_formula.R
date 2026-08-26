@@ -1203,3 +1203,43 @@
   }
   "<custom_matrix>"
 }
+
+# Collect non-NULL `smooth_obj` slots from the IR's random_terms list
+# into a named list keyed by the smooth-term variable name (e.g.,
+# `s(x)` -> `smooths[["x"]] <- <Smooth>`). Returns an empty named list
+# when no smooths are present, so the downstream `parse_info$smooths`
+# slot has a uniform shape. Reused by emit_inla() for the IR slot.
+.collect_smooths <- function(random_terms) {
+  out <- list()
+  if (length(random_terms) == 0L) {
+    return(out)
+  }
+  for (t in random_terms) {
+    if (!is.null(t$smooth_obj)) {
+      key <- t$var %||% t$smooth_label %||% paste0("s_", length(out) + 1L)
+      out[[key]] <- t$smooth_obj
+    }
+  }
+  out
+}
+
+# Collect the per-smooth approximation metadata recorded by .enrich()
+# above into a named list keyed by smooth-term variable name. Each
+# entry carries the scheme, the truncation rank, the projection V_K
+# (the predict path projects the newdata basis through it), the full
+# singular spectrum, and the realised Frobenius capture. Returns an
+# empty named list when no smooth was routed through an approximation
+# scheme, so the parse_info$approx slot has a uniform shape.
+.collect_approx <- function(random_terms) {
+  out <- list()
+  if (length(random_terms) == 0L) {
+    return(out)
+  }
+  for (t in random_terms) {
+    if (!is.null(t$approx_spec)) {
+      key <- t$var %||% t$smooth_label %||% paste0("s_", length(out) + 1L)
+      out[[key]] <- t$approx_spec
+    }
+  }
+  out
+}
