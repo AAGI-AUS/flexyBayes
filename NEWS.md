@@ -1,3 +1,159 @@
+# flexyBayes 0.9.3
+
+This is the first public release of the 0.9 line. Versions 0.9.0 to 0.9.2
+were staged locally and never published; their sections below stand as
+the record of what changed between 0.8.3 and this release.
+
+## Breaking changes
+
+* **The third native fitting engine, quarantined since 0.9.0, is withdrawn
+  from the package entirely.** No code path, export, S3 method, backend
+  registry row, refusal code, worker script or `Suggests` entry for it
+  remains. `fb_greta()`, `fb_from_greta()` and `gretaR_status()` are
+  removed, and a call to any of them now fails with "could not find
+  function" rather than a typed refusal. 0.9.2 was the last version whose
+  code could read draws from an object fitted by that engine. Re-entry,
+  should it ever be proposed, is a fresh implementation, not a repair of
+  retained code. `greta` and `tensorflow` leave `Suggests`.
+* **`backend = "greta"`, `backend = "gretaR"`, or any other unrecognised
+  backend name now raises an ordinary `unknown_backend` refusal** naming
+  the two active engines, `"inla"` and `"brms"`, before `match.arg()`
+  could report a less specific error.
+* **`fb_backend_status()` reports the two active engines only** (INLA,
+  brms). The rows for the withdrawn engine and its dormant sibling are
+  gone, with the Python/TensorFlow discovery probe that populated them.
+* **The refusal-code registry drops eleven codes and adds five** (net
+  114). Removed: `backend_quarantined`, the six codes of the dormant
+  sibling engine's refusal family, the two codes naming the withdrawn
+  engine directly, `low_rank_requires_greta` (renamed, below) and the
+  stale `predict_kernel_invalid_include`, which had no live raise site.
+  Added: `unknown_backend`, `low_rank_smooth_unsupported`,
+  `cell_count_exceeds_integer`, `inla_program_failed`,
+  `weights_requires_gaussian`, `weights_not_aggregatable`,
+  `binomial_response_not_binary`, `update_unnamed_argument_not_supported`
+  and `at_field_per_level_hyper_not_representable` (net of the renames
+  the registry holds 114 codes; `fb_refusals()` is the authority).
+* **`fb_met_summary()` abstains unconditionally** (`met_summary_not_
+  available`). Its breeder summaries were derived from the withdrawn
+  engine's realised factor-analytic effects, and neither active engine
+  emits an `fa(env, k):gen` term. `summary()` and, on a `diag()` or
+  `us()` covariance, `brms::VarCorr()` remain the way to read a
+  multi-environment trial's genotype-by-environment structure.
+* **`fb_log_posterior()` abstains unconditionally** (`fb_c4_unavailable`):
+  neither active engine exposes an equivalent producer.
+* **`update()` refuses the unnamed-formula idiom by name**
+  (`update_unnamed_argument_not_supported`). `update(fit, . ~ . + z)`
+  previously discarded the formula silently and re-fitted the unchanged
+  model; named arguments (`fixed =`, `random =`, `residual =`) are
+  unaffected.
+* **GBLUP and pedigree-BLUP cross-engine comparison is two-engine**
+  (INLA, brms); `triangulate_genomic()` and `genomic_summary()` keep
+  their shape.
+* The unreachable streaming `predict(..., output_file = )` path is
+  removed; the engine-specific `predict()` methods had shadowed it since
+  before this release.
+
+## New features
+
+* **A per-trial separable spatial field.** `random = ~
+  at(trial):ar1(row):ar1(col)` fits one AR1 x AR1 field per level of
+  `trial` on INLA, sharing the row correlation, column correlation and
+  field variance across levels (INLA `replicate`), with the
+  complete-lattice check run per level. brms has no lowering for it, as
+  for the single-field spelling; a level-conditioned `at()` on this
+  spelling refuses by name (`at_field_per_level_hyper_not_representable`).
+* **`weights =` is lowered for the Gaussian family** (identity link) in
+  the precision sense `Var(y_i) = sigma^2 / w_i` on both engines: INLA's
+  per-observation `scale`, and on brms a known offset on the sigma
+  distributional parameter that reproduces the same precision-weighted
+  likelihood (brms's own `weights()` addition term is a likelihood-power
+  quantity and was not used). Both engines match `lme4::lmer(weights = )`
+  closely; doubling every weight leaves the fixed effects unchanged and
+  doubles the fitted residual variance. Any other family, a non-identity
+  Gaussian link, or `aggregate = TRUE` with weights refuses by name
+  (`weights_requires_gaussian`, `weights_not_aggregatable`).
+* **`fb_plan()` accepts the ASReml `fixed` / `random` / `residual`
+  grammar**, auto-detected as `flexybayes()` does. Before, `random` and
+  `residual` were silently dropped, so the plan could name a backend for a
+  fixed-effects-only reading of the model (FS-22). `print.fb_plan()` and
+  `print.fb_aggregation_plan()` print the row count, cell count, rows per
+  cell and a plain verdict on whether aggregation will pay, with the
+  threshold stated.
+* **A non-syntactic factor level** (a level containing a space) no longer
+  kills the INLA emit untyped: levels are legalised inside the emit and
+  the user's own labels are printed back by `summary()`, `coef()`,
+  `ranef()`, `predict(classify = )` and `confint()`; `backend = "auto"`
+  now routes such models to INLA where it fell through to brms (FS-26).
+  Purely numeric levels are left alone.
+* **`glance()` returns its one-row summary on INLA and aggregated fits**
+  as it did on brms fits, with sampler-specific columns `NA`.
+* **A `family = "binomial"` response outside {0, 1}** refuses before any
+  engine runs (`binomial_response_not_binary`), naming the column, the
+  offending values and the remedy, on all three routes.
+* `fb_plan()`, `backend_decision()` and `validate_approximation()` carry
+  runnable examples.
+
+## Bug fixes
+
+* **An INLA engine death surfaces as a typed refusal**
+  (`inla_program_failed`) naming the design size, the largest design this
+  package has verified an INLA per-row fit to complete, the binding
+  random-effect term and the remedies, instead of a raw engine message
+  after tens of minutes (FS-25).
+* **The aggregation planner's cell count is carried as a double** and
+  refused by name past R's integer limit (`cell_count_exceeds_integer`)
+  instead of becoming `NA` (FS-24); a grep gate keeps the cast class
+  closed.
+* A streamed fit's `print()` banner names its engine and route instead of
+  `(unknown engine)`.
+* Gate labels spell `GxE` in ASCII; a gate message that named a
+  pre-renumber vignette filename is corrected, and a test now requires
+  every vignette filename named in `R/` to exist.
+* `triangulate()`'s `transform_b` is exercised at a non-`NULL` value.
+* The `low_rank_smooth` refusal is renamed `low_rank_smooth_unsupported`
+  and says what is true: no active engine consumes a rank-truncated
+  smooth basis.
+
+## Documentation
+
+* **The tutorial deck is eleven contiguous pages.** The page *From an
+  ASReml call* is removed; its accessor tour (variance components, random
+  effects, predicted means, observation counts, missing plots, the
+  empirical variogram) lives in *Getting started*, section 6, with no
+  `asreml()` call anywhere in the deck. Pages 06 to 11 and 16 are
+  renumbered 05 to 11; the pkgdown site redirects every old address.
+* **Every figure carries a caption and a reading sentence.** `html_
+  vignette` leaves captions off by default, so a `fig.cap` reached the
+  page only as alt text; every page now sets `fig_caption: true`.
+* **Every page is copy-paste runnable**: `library(flexyBayes)` is the
+  first visible line, seeds are visible, and no code depends on a hidden
+  chunk. *Streaming exact aggregation* runs end to end on temporary
+  `.fst` files (single file, shards, `fit = FALSE` inspection, binomial
+  with `trials =`, poisson with `exposure =`), states how the Gaussian
+  case stays exact as the emit implements it, and cites its methods.
+* *Getting started* lists the four verbs one per row. *The formula
+  surface* shows `weights =` fitting on Gaussian and refusing elsewhere;
+  *Spatio-temporal models* shows the per-trial field. The kinship comment
+  in *Multi-environment trials* attributes the marker-count normalisation
+  to Astle and Balding (2009), which is what the code does.
+* `@param random` separates terms that parse and fit from terms that
+  parse and refuse by name (`fa()` on both engines). README carries a
+  short paragraph on the accessor surface downstream tools read.
+
+## Validation record
+
+* `inst/validation/benchmark_scaling.{md,csv}` carry the 2026-08-22
+  ceilings study on a realistic multi-term MET design. The flexyBayes/INLA
+  ceiling on that design family is bracketed between 911,808 rows (the
+  preflight refuses) and 1,823,616 rows (the engine dies after 41.6
+  minutes) and has not been measured or bisected. A previously recorded
+  340.9-second success at 911,808 rows was found unsupported by any run
+  artefact and was corrected rather than carried forward.
+* The execution grid gains cells for the space-level factor, Gaussian
+  weights on both engines, and the per-trial field.
+* `cran-comments.md` names the check artefacts this release produces and
+  states the dormant log-posterior contract's oracle gap.
+
 # flexyBayes 0.9.2
 
 ## Bug fixes
