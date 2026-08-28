@@ -70,14 +70,17 @@ not shipped in the tarball.
   bound and the residual scale, with three routes out. Silence with
   `options(flexyBayes.silence_boundary_collapse_warning = TRUE)`.
 
-  The threshold is 0.005 of the residual SD, and it is calibrated against
-  a measured floor. A sweep of 112 INLA fits with the group SD set to
-  exactly zero, crossing n in {30, 60, 120, 240, 480} with 5, 10 and 20
-  groups, puts the upper credible bound of a genuinely null component at
-  0.0228 of the residual SD at the lowest, and the ratio is flat in both
-  n and the group count because it is a floor set by the prior. The
-  degenerate mode sits two orders of magnitude below that: 2.5e-04 on the
-  `besag.met` fit this was built from. The threshold sits in the gap.
+  The threshold is 0.01 of the residual SD, and it is calibrated against
+  a measured floor rather than chosen. A sweep of 112 INLA fits with the
+  group SD set to exactly zero, crossing n in {30, 60, 120, 240, 480}
+  with 5, 10 and 20 groups, puts the upper credible bound of a genuinely
+  null component at 0.0228 of the residual SD at the lowest, and the
+  ratio is flat in both n and the group count because it is a floor set
+  by the prior. The degenerate mode sits two orders of magnitude below
+  that: 2.5e-04 on the `besag.met` fit this was built from. The
+  threshold sits in the gap, and it is the constant the `varcomp` table
+  already used to mark a row `collapsed`, so the warning and the table
+  agree rather than differing by a band.
 
   Two limits on its reach, both structural. It compares against a
   residual SD, so it reads Gaussian-scale fits and is silent on families

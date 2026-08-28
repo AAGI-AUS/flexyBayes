@@ -4,15 +4,6 @@
 # term type: `sd_spatial` running to its floor against the nugget. Every
 # other variance component can do the same thing, and did so silently.
 #
-# Measured 2026-08-28 on `agridat::besag.met` county C1,
-# `yield ~ rep, random = ~ gen` on INLA. Three runs of the identical
-# call returned an `sd_gen` upper credible bound of 0.00396, 0.0176 and
-# 11.75 against a residual SD near 15: the fit is bistable, landing
-# either on a degenerate mode with the component pinned at zero or on a
-# well-identified one, and which it finds is not reproducible. This is
-# the INLA degenerate-mode non-reproducibility the getting-started and
-# dispatch vignettes already teach, reaching a plain iid random effect.
-#
 # On a collapsed run `summary(fit)$varcomp` does mark the row
 # `note = "collapsed"`. What was missing is a warning: a note in a table
 # column is easy to read past, and a zero genotype variance read as a
@@ -44,11 +35,16 @@
 # INLA degenerate-mode non-reproducibility the getting-started and
 # dispatch vignettes already teach, reaching a plain iid random effect.
 #
-# 0.005 therefore sits about 4.6 times below the lowest null ratio
-# measured and about 20 times above the highest degenerate one, and the
-# gap either side is what makes the reading defensible. The floor is a
-# property of the default prior; a user who sets a very different prior
-# on the component moves it.
+# The threshold is `.FB_COLLAPSE_FRACTION` (0.01), reused rather than
+# redefined. That is the same constant, against the same residual
+# reference, that `.fb_varcomp_notes()` uses to mark a row
+# `note = "collapsed"` in `summary(fit)$varcomp`, and its comment there
+# says the two surfaces agreeing is the point of having both. A separate
+# number here would have opened a band where the table says collapsed
+# and the warning stays silent. 0.01 sits about 2.3 times below the
+# lowest null ratio measured and about 40 times above the degenerate
+# one. The floor is a property of the default prior; a user who sets a
+# very different prior on the component moves it.
 #
 # On a collapsed run `summary(fit)$varcomp` does mark the row
 # `note = "collapsed"`. What was missing is a warning: a note in a table
@@ -71,10 +67,6 @@
 # says only what the table shows: an upper credible bound that is a
 # negligible fraction of the residual scale. It does not claim to know
 # whether the component is truly zero.
-
-# Measured floor (see the header): a null component bottoms out near
-# 0.023 of the residual SD, a degenerate one at 2.5e-4 or below.
-.FB_BOUNDARY_COLLAPSE_FRACTION <- 0.005
 
 # Residual scale for the fit, on the SD scale. Prefer the posterior
 # median attribute the canonical table carries; fall back to the table's
@@ -124,7 +116,7 @@
       is.finite(vc$q97.5)
   )
   hit <- candidates[
-    vc$q97.5[candidates] < .FB_BOUNDARY_COLLAPSE_FRACTION * sigma
+    vc$q97.5[candidates] < .FB_COLLAPSE_FRACTION * sigma
   ]
   if (length(hit) == 0L) {
     return(character(0L))
