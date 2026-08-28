@@ -235,6 +235,7 @@ test_that("brms absent refuses with a written message", {
 })
 
 test_that("bayesplot absent refuses with a written message", {
+  skip_if_not_installed("brms")
   # Defensive rather than reachable in an ordinary install -- brms
   # imports bayesplot, so a fit that can be delegated normally arrives
   # with both. The guard exists because plot(fit, type = "pp_check")

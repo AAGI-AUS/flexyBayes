@@ -317,6 +317,7 @@ test_that("flexybayes(): option-driven review default, backend = 'inla' refuses"
 })
 
 test_that("flexybayes(): option-driven review default, backend = 'auto' resolves to brms", {
+  skip_if_not_installed("brms")
   d <- mk_review_data()
   prev_opt <- options(flexyBayes.review_code_default = TRUE)
   on.exit(options(prev_opt), add = TRUE)
@@ -348,6 +349,7 @@ test_that("fb_brms(): explicit review_code = TRUE, backend = 'inla' refuses", {
 })
 
 test_that("fb_brms(): review_code = TRUE, backend = 'auto' resolves to brms (ADR 0031 Q1)", {
+  skip_if_not_installed("brms")
   d <- mk_review_data()
   rev <- fb(
     yield ~ env + (1 | geno),
@@ -378,6 +380,7 @@ test_that("fb_brms(): option-driven review default, backend = 'inla' refuses", {
 })
 
 test_that("fb_brms(): option-driven review default, backend = 'auto' resolves to brms", {
+  skip_if_not_installed("brms")
   d <- mk_review_data()
   prev_opt <- options(flexyBayes.review_code_default = TRUE)
   on.exit(options(prev_opt), add = TRUE)

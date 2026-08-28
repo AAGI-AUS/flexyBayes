@@ -156,6 +156,7 @@ test_that("planning refuses it too, on both grammars", {
 # ---------------------------------------------------------------- #
 
 test_that("a well-posed randomised block model is untouched", {
+  skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .aliased_trial()
 
@@ -169,6 +170,7 @@ test_that("a well-posed randomised block model is untouched", {
 })
 
 test_that("a random interaction involving a fixed main effect is untouched", {
+  skip_if_not_installed("brms")
   # `random = ~ Variety:Block` is not aliased with the Variety main effect
   # -- it is the interaction stratum, and refusing it would be wrong.
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)

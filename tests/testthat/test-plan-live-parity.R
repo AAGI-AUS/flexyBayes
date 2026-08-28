@@ -49,6 +49,7 @@
 # ---------------------------------------------------------------- #
 
 test_that("plan for a dsum residual names brms, never aggregated_inla", {
+  skip_if_not_installed("brms")
   d <- .parity_dsum_data()
   p <- flexybayes(
     y ~ env,

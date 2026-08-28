@@ -803,7 +803,16 @@ MAX_EXPORTS <- 34L
        command = "act, or a scratch private repo; none has ever executed"),
   list(id = "D9", cost = "full", owner = "claude", blocking = FALSE,
        what = "coverage measured once with INLA and brms present (recorded)",
-       command = "Rscript -e 'covr::package_coverage()'")
+       command = "Rscript -e 'covr::package_coverage()'"),
+  # The gate that would have caught the first push going red. The
+  # maintainer's machine has brms and INLA installed, so the suite here
+  # exercises every engine path; CI has neither reliably. On 2026-08-28
+  # a locally-green suite produced 20 failures on the first CI run, all
+  # of them tests that reached an engine without guarding on it, and
+  # R CMD check failed on all six platforms for the same reason.
+  list(id = "D10", cost = "full", owner = "claude", blocking = TRUE,
+       what = "suite green with the heavy Suggests absent, as CI runs it",
+       command = "tools/check_suggests_absent.sh")
 )
 
 # ---------------------------------------------------------------------

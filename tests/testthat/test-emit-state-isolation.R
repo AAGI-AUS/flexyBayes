@@ -74,6 +74,7 @@ test_that("local_clean_emit_state() resets on entry + restores on exit", {
 })
 
 test_that("default-prior-note re-emits in a back-to-back call pattern", {
+  skip_if_not_installed("brms")
   # The v0.3.8 flake reproduced when an earlier caller (e.g.
   # fb_plan(plan = TRUE)) flipped the option-keyed flag and the test's
   # reset was no-op'd by an intervening evaluation. Under the v0.3.9
@@ -116,6 +117,7 @@ test_that("default-prior-note re-emits in a back-to-back call pattern", {
 })
 
 test_that("silence option short-circuits the latch", {
+  skip_if_not_installed("brms")
   # The public-API silence toggle remains options()-keyed and must
   # still suppress the message even when the env-latch is FALSE.
   d <- mk_emit_data()

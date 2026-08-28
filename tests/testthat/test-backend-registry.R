@@ -151,10 +151,12 @@ test_that(".available_backend_names() are active and installed", {
   # NEWS.md); only the two active engines are ever registered.
   # Only the engines whose packages are installed are available, so the
   # expectation follows the machine (the INLA-absent check has no INLA).
-  expected <- c(
+  # as.character() so that a machine with neither engine installed gives
+  # character(0) rather than NULL, which expect_setequal() rejects.
+  expected <- as.character(c(
     if (requireNamespace("INLA", quietly = TRUE)) "inla",
     if (requireNamespace("brms", quietly = TRUE)) "brms"
-  )
+  ))
   expect_setequal(avail, expected)
 })
 

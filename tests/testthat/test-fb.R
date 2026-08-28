@@ -25,6 +25,7 @@ test_that("fb is identical to flexybayes (ADR 0004 D1)", {
 })
 
 test_that("fb() and flexybayes() byte-identical on the same call", {
+  skip_if_not_installed("brms")
   d <- mk_fb_data()
 
   via_fb <- fb(
@@ -51,6 +52,7 @@ test_that("fb() and flexybayes() byte-identical on the same call", {
 # ---------------------------------------------------------------- #
 
 test_that("fb() generates brms/Stan code for fixed-only model", {
+  skip_if_not_installed("brms")
   d <- mk_fb_data()
   code <- fb(
     fixed = y ~ x,
@@ -64,6 +66,7 @@ test_that("fb() generates brms/Stan code for fixed-only model", {
 })
 
 test_that("fb() generates RE code for asreml-style random intercept", {
+  skip_if_not_installed("brms")
   d <- mk_fb_data()
   code <- fb(
     fixed = y ~ x,

@@ -10,6 +10,7 @@
 #     before any backend code runs.
 
 test_that("review small-n: preflight slot is NULL; print unchanged", {
+  skip_if_not_installed("brms")
   df <- data.frame(
     y = rnorm(50),
     x = rnorm(50),
@@ -26,6 +27,7 @@ test_that("review small-n: preflight slot is NULL; print unchanged", {
 })
 
 test_that("review large-n: preflight attaches; print shows the summary", {
+  skip_if_not_installed("brms")
   N <- 2e5L
   df <- data.frame(
     y = rnorm(N),
@@ -44,6 +46,7 @@ test_that("review large-n: preflight attaches; print shows the summary", {
 })
 
 test_that("review large-n: tight ceiling raises preflight refusal before code emit", {
+  skip_if_not_installed("brms")
   N <- 2e5L
   df <- data.frame(
     y = rnorm(N),
@@ -61,6 +64,7 @@ test_that("review large-n: tight ceiling raises preflight refusal before code em
 })
 
 test_that("review small-n via fb_brms: preflight slot stays NULL", {
+  skip_if_not_installed("brms")
   df <- data.frame(
     y = rnorm(50),
     x = rnorm(50),

@@ -3,7 +3,8 @@ linters: linters_with_defaults(
     object_name_linter = NULL,         # snake_case verified manually; legacy ASReml tokens
     indentation_linter = NULL,         # `air format` is the source of truth for indentation
     object_length_linter = NULL,       # long descriptive domain names are intentional (cf. object_name_linter)
-    commented_code_linter = NULL       # high false-positive rate on dash-banner headers + name-mapping docs
+    commented_code_linter = NULL,      # high false-positive rate on dash-banner headers + name-mapping docs
+    assignment_linter = assignment_linter(operator = c("<-", "<<-"))  # `<<-` allowed explicitly: 4 uses, each accumulating into the enclosing function from a callback. Stated rather than left to a default, which differs between lintr versions and cost a red CI run
   )
 exclusions: list(
     "tests/testthat/_snaps",
