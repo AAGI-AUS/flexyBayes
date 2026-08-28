@@ -161,6 +161,51 @@ the lint workflow if it recurs.
   in comments and the package name inside message strings, which is how
   `splines` stayed in `Imports` unused. It now requires an imported
   symbol to be called.
+* `fb_plan()`'s own documentation showed `fb_plan(fixed = ...)`, which
+  errors: the fixed part is the first argument, `formula`, and `fixed`
+  fell into `...`. The guard that checks documented arguments against
+  `formals()` skips any function taking `...`, so nothing could see it.
+* The ignorability caveat was missing from `?flexybayes`, the most-read
+  of the four places the identity is stated. The guard that exists to
+  prevent exactly this read a hand-written list of files, and the list
+  was short by the entry point. It now derives the surface set, and its
+  patterns tolerate the words a writer puts between "posterior" and "is
+  the same" -- a literal phrase match had been reading past the entry
+  point's wording even once the file was in scope.
+* `README.md` pointed at `?na_action`, which is not a help page. The
+  argument is documented on `?flexybayes`.
+* `API_STABILITY.md` described `fb_from_brms()` and `fb_from_asreml()` as
+  wrapping a fitted object. They parse a formula and return the internal
+  representation; passing a `brmsfit` fails.
+* `API_STABILITY.md` still said `glance()` refuses on an INLA fit in its
+  interoperability section, having been corrected in its own 0.8.x table
+  in this same release -- the identical claim, twice in one file. It also
+  documented `predict.flexybayes()`, removed at 0.9.3, and omitted
+  `fb_complete_grid()`, `genomic_summary()` and `ranef()` from what
+  presents itself as the export inventory. A new guard fails when an
+  export is not named there.
+* "There is no silent fallback" appeared on three surfaces while
+  `backend = "auto"` does re-route to brms when the INLA program fails.
+  The re-route is reported by a message, so it is not silent, but the
+  sentence read as a promise that `auto` never changes engine. All three
+  now name the numerical-fallback path. The routing message itself
+  asserted "this is a multi-stratum designed experiment" for every gate
+  refusal it handled, which is false for most of them; it names the
+  refusal reason instead.
+* `inst/validation/scenarios.yaml` shipped inside the tarball declaring
+  `tier: V3` and `0.9.3`, the tier this release explicitly steps down
+  from. It is now in the version-coherence gate with the other metadata
+  surfaces.
+* The boundary-collapse floor was asserted in prose and restated as a
+  literal in its own test, so a wrong threshold that still sat below the
+  literal would have passed. The 112-fit sweep is recorded at
+  `inst/validation/boundary_calibration.csv`, regenerable through
+  `tools/calibrate_boundary_collapse.R`, and the test reads the floor
+  from it. Restoring the original 0.05 threshold now fails three tests.
+* The guard asserting that every advertised structure spelling is
+  executed read the grid *source*, which declares cells, rather than the
+  record of what ran. It reads the `code` column of the recorded run.
+
 
 # flexyBayes 0.9.3
 

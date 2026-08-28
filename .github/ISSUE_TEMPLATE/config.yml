@@ -1,0 +1,15 @@
+# Issue chooser configuration.
+#
+# Blank issues are off so that every report arrives through one of the two
+# templates: a bug report carries a reprex and session info, a feature
+# request carries the model class it is asking for. Both are what a
+# maintainer needs before the first reply.
+#
+# `contact_links:` (a discussions board, a mailing list) is deliberately
+# absent rather than guessed. It takes absolute URLs, and the canonical
+# public home for this package is still an open governance question, so
+# any URL written here today would be a claim about a decision that has
+# not been made. Add the block when the home is settled. Security reports
+# already have a route: GitHub surfaces SECURITY.md on the issue chooser
+# by itself.
+blank_issues_enabled: false
