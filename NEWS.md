@@ -45,6 +45,30 @@ blocking criterion is unmet.
   `gelman.diag()` was called there. The test suite does use it, so it is
   demoted rather than dropped.
 
+## Diagnostics
+
+* **A variance component pinned at the boundary now warns, on any term
+  type.** The existing detector covered one case, `sd_spatial` running to
+  its floor against the nugget. Any other component could reach the same
+  state reporting only a `note = "collapsed"` cell in
+  `summary(fit)$varcomp`, which is easy to read past, while the
+  convergence block reported a converged mode. Both engines now raise a
+  warning naming the component, its upper credible bound and the residual
+  scale, with three routes out. Silence with
+  `options(flexyBayes.silence_boundary_collapse_warning = TRUE)`.
+
+  The threshold is calibrated for a degenerate mode, not for a small
+  variance: 240 rows simulated with no group effect at all return an
+  upper bound near 0.43 of the residual SD and do not trigger it.
+
+* **`na_action` documentation now separates the identity from the
+  arithmetic.** Under ignorability the posterior is the same whether a
+  missing cell is augmented or omitted. That is a statement about the
+  posterior and not a promise about what an optimiser returns: the two
+  settings hand the engine an intact design and a ragged one, and on a
+  weakly identified mode they can land in different places. `augment`
+  remains the default and the recommendation.
+
 ## Corrections to the package's own claims
 
 Each of these was a statement the code did not support. They are recorded

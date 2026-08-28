@@ -30,7 +30,13 @@
 
 TARGET_VERSION <- "0.10.0"
 TARGET_TIER <- "V2"
-MAX_EXPORTS <- 31L
+# 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
+# Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
+# three of those eleven were wrongly grouped: fb_gblup_cv() is taught and
+# executed in the met-and-genomics vignette, and genomic_summary() and
+# triangulate_genomic() operate on posterior draws. The /rpkg E1 cap of 30
+# is therefore missed by four, deliberately and on the record.
+MAX_EXPORTS <- 34L
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -498,14 +504,22 @@ MAX_EXPORTS <- 31L
     id = "C5", cost = "quick", owner = "claude", blocking = TRUE,
     what = "na_action documented behaviour matches the measured behaviour",
     check = function() {
+      # Measurement revised 2026-08-28. The original check demanded the
+      # "same posterior" sentence be deleted. It should not be: the
+      # identity is a correct statement about the posterior. What the
+      # measurement showed is that it is not a promise about what an
+      # optimiser returns, so the claim must travel with that caveat.
       txt <- .dod_prose("R/na_action.R")
       claims_same <- grepl(
         "posterior for the model parameters is then the same", txt
       )
-      .dod_ok(!claims_same,
-              if (claims_same)
-                paste("claims augment and omit give the same posterior;",
-                      "measured MCAR sd_gen 6.96 vs 0.0013")
+      has_caveat <- grepl(
+        "not a promise about what an optimiser returns", txt
+      )
+      .dod_ok(!claims_same || has_caveat,
+              if (claims_same && !has_caveat)
+                paste("the same-posterior identity is stated without the",
+                      "caveat that it does not bind the optimiser")
               else "clean")
     }
   )
@@ -530,7 +544,10 @@ MAX_EXPORTS <- 31L
        command = "Rscript tools/execution_grid.R"),
   list(id = "D5", cost = "full", owner = "claude", blocking = TRUE,
        what = "lintr::lint_package() returns 0 lints (lint.yaml hard-gates)",
-       command = "Rscript -e 'print(length(lintr::lint_package()))'"),
+       # with the dev tree loaded, as CI does via local::. -- against a
+       # stale installed build object_usage_linter reports phantoms
+       command = paste("Rscript -e 'pkgload::load_all(quiet=TRUE);",
+                       "print(length(lintr::lint_package()))'")),
   list(id = "D6", cost = "full", owner = "claude", blocking = TRUE,
        what = "pkgdown builds clean",
        command = "Rscript -e 'pkgdown::build_site()'"),

@@ -405,7 +405,7 @@ emit_brms <- function(
     class = "flexybayes_extras"
   )
 
-  structure(
+  out <- structure(
     list(
       glm = glm_obj,
       brms = brmsfit,
@@ -413,6 +413,12 @@ emit_brms <- function(
     ),
     class = c("flexybayes_brms", "flexybayes", "list")
   )
+
+  # Read off the same canonical table the INLA path warns from, so a
+  # component at the boundary is reported identically on both engines.
+  .fb_warn_boundary_collapse(out)
+
+  out
 }
 
 

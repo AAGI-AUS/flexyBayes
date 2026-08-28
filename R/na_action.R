@@ -21,6 +21,19 @@
 # omitted from the likelihood -- what augmentation preserves is the
 # REPRESENTATION, not information.
 #
+# That identity is a statement about the posterior, not a promise about
+# what an optimiser returns. The two settings hand the engine different
+# index sets -- an intact design against a ragged one -- and on a fit
+# whose mode is weakly identified they can land in different places.
+# Measured 2026-08-28 on besag.met C1: `augment` and `omit` returned
+# genotype-variance summaries that differed by orders of magnitude on
+# data whose missingness was ignorable by construction, on a model that
+# also returned different answers across repeated runs of the identical
+# call. Prefer `augment`: it is the default, it is the only setting a
+# structured covariance can be fitted under at all, and it gives the
+# engine the better-conditioned problem. Do not read agreement between
+# the two as a check, or disagreement as evidence about the data.
+#
 # That is why this layer adds no inference machinery. INLA already
 # treats an NA response as a latent prediction target, and marginalises
 # it; brms reaches the same object through `mi()`. The work here is

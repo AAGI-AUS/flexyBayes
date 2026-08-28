@@ -1131,6 +1131,7 @@ emit_inla <- function(
   # nothing else on the printed surface states. Raised after the
   # variance-component table is built, because it is read off that table.
   .fb_warn_spatial_field_collapsed(out)
+  .fb_warn_boundary_collapse(out)
 
   out
 }
