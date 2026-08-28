@@ -1,6 +1,6 @@
 Package: flexyBayes
 Title: Flexible Bayesian Mixed Models with 'ASReml' and 'brms' Syntax
-Version: 0.9.3
+Version: 0.10.0
 Authors@R: c(
     person("Max", "Moldovan", email = "max.moldovan@adelaide.edu.au",
            role = c("aut", "cre"),
@@ -15,7 +15,7 @@ Authors@R: c(
 Description: Specify mixed models using familiar 'ASReml' or 'brms'-style
     formula syntax and estimate them via 'INLA' or 'brms' ('Stan'). Returns
     results in formats compatible with the standard R modelling ecosystem
-    including 'summary()', 'emmeans', 'marginaleffects', and 'effectsize'.
+    including 'summary()', 'emmeans' and 'marginaleffects'.
     The package translates 'ASReml'-style formulas (fixed, random, residual)
     to backend-specific code ('INLA' or 'brms') using an indexing approach,
     scales to large agricultural datasets by accumulating exact per-cell
@@ -36,7 +36,6 @@ Depends:
     R (>= 4.1.0)
 Imports:
     cli,
-    coda,
     data.table,
     generics,
     lifecycle,
@@ -52,6 +51,7 @@ Suggests:
     INLA,
     fst (>= 0.9.0),
     benchmarkme,
+    coda,
     memuse,
     bayesplot,
     posterior,
@@ -60,7 +60,6 @@ Suggests:
     estimability,
     marginaleffects,
     insight,
-    effectsize,
     loo,
     testthat (>= 3.0.0),
     knitr,
@@ -93,5 +92,5 @@ VignetteBuilder: knitr
 LazyData: true
 Config/testthat/edition: 3
 Config/testthat/parallel: true
-Config/rpkg/validationTier: V3
+Config/rpkg/validationTier: V2
 Config/rpkg/fittingBackends: INLA, brms

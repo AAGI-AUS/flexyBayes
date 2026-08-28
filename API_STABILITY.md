@@ -1,7 +1,7 @@
 # API stability -- flexyBayes
 
-`flexyBayes` is in the **0.9.3** development line. Every public export carries
-a `lifecycle::badge("experimental")`, so the guarantees below are deliberately
+`flexyBayes` is in the **0.10.0** development line. Every public export is at
+the experimental `lifecycle` stage, so the guarantees below are deliberately
 weaker than they will be at v1.0: bug fixes and additions never break callers,
 but renamings, default changes, and shape changes are permitted within 0.x
 through a one-minor-release `lifecycle::deprecate_warn()` cycle.

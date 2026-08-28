@@ -129,7 +129,7 @@ cores, R 4.5.2, INLA 25.10.19, fst 0.9.8.
 clock: the per-row path's memory grows with the row count and stops between
 one and five million rows, while the streamed path holds one chunk plus the
 cell accumulator, so 708 MB at ten million rows becomes 846 MB at five
-billion. The `intercept` column is the honesty check on the other half --
+billion. The `intercept` column is the cross-check on the other half --
 the aggregated path recovers the per-row estimate to five decimal places at
 every size where both were run, so the scaling is not bought with an
 approximation. One run per cell on one machine: this is an
@@ -140,7 +140,7 @@ package's two paths against each other rather than against another package.
 
 **What.** The numerical-validation registry: one row per validation
 scenario, in the schema the validation ladder reads
-(`Config/rpkg/validationTier` in `DESCRIPTION`, `V3` for this package).
+(`Config/rpkg/validationTier` in `DESCRIPTION`, `V2` for this package).
 Forty-five rows across five studies, plus three stability cells and one
 calibration study. Every row is an existing study. Nothing was simulated
 to reach a floor, and where a floor is not reached the shortfall is
@@ -196,13 +196,19 @@ cell.
 of `error_untyped` and the count of `DIVERGENT`, and both are meant to
 be zero.
 
-## Validation tier V3: what is declared, and what is waived
+## Validation tier V2: what is declared, and what V3 would add
 
-`DESCRIPTION` declares `Config/rpkg/validationTier: V3`. The tier is
-assigned because the outputs feed agronomic decisions, which is the
-ladder's V3 rule, not because the evidence is complete. Four things the
-tier asks for are not met by the studies registered above, and they are
-waived here rather than left to be discovered.
+`DESCRIPTION` declares `Config/rpkg/validationTier: V2`. V2 is what the
+studies registered above actually support.
+
+An earlier line of this package declared V3 -- the tier the ladder
+assigns when outputs feed agronomic decisions -- and waived four of its
+floors. That waiver was written for 0.9.2 and expired at the next
+release. It is not re-issued: a second consecutive waiver on the same
+four floors is the pattern a waiver exists to prevent, and declaring the
+tier the evidence supports is better than declaring one above it and
+carrying an exception. The four floors below are the next validation
+arc, and they are recorded here rather than left to be discovered.
 
 - Reason (F21, stochastic calibration): the registry carries one
   calibration scenario, `calibration-interval-coverage-recovery`. It is
@@ -251,11 +257,9 @@ waived here rather than left to be discovered.
   which is the self-oracle failure the register exists to prevent. A
   document that fails its own gate is worse than a recorded absence.
 
-- Version: this waiver applies to **0.9.2** and expires at the next
-  release.
 - Owner: Max Moldovan
 
-The waived floors are the next validation arc, not a permanent state:
+These four floors are the next validation arc, not a permanent state:
 a simulation-based calibration and an interval-coverage study of at
 least 1,000 replicates, run through `flexybayes()` on the two active
 engines and including a null-recovery cell at two sample sizes, is what

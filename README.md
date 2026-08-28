@@ -2,8 +2,9 @@
 
 Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax
 
-Licence: MIT. Version 0.9.3 is a stable release of the supported
-capability set.
+Licence: MIT. Version 0.10.0 is an experimental release: every export
+is at the experimental `lifecycle` stage and the API may change within
+the 0.x series.
 
 `flexyBayes` is a multi-backend Bayesian mixed-model framework. It
 routes one model specification to INLA (integrated nested Laplace
@@ -335,7 +336,7 @@ Every fit carries three top-level slots:
 
 ```r
 fit$glm         # GLM-compatible shim -- works with summary(), emmeans,
-                # marginaleffects, effectsize, broom
+                # marginaleffects, broom
 
 fit$inla        # native INLA output (when backend = "inla")
 fit$brms        # live brmsfit (when backend = "brms")

@@ -3,6 +3,9 @@
 
 # Create a mock flexybayes object for testing methods
 make_mock_flexybayes <- function() {
+  # coda is Suggests: it builds the mock draws below and is not used by
+  # R/ at all, so every test resting on this mock skips without it
+  testthat::skip_if_not_installed("coda")
   n <- 50
   dat <- data.frame(
     y = rnorm(n, 50, 5),

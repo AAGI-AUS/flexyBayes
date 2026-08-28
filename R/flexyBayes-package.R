@@ -35,8 +35,8 @@
 #' * [triangulate()] -- cross-engine posterior comparison.
 #'
 #' @section Vignettes:
-#' Twelve vignettes ship with the package, covering: arriving from an
-#' ASReml call, getting started, the formula surface (the asreml term
+#' Eleven vignettes ship with the package, covering:
+#' getting started, the formula surface (the asreml term
 #' catalogue together with structured covariance), foundational
 #' regression, hierarchical models, priors and regularisation,
 #' multi-environment trials and genomics, downstream analysis,

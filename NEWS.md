@@ -1,3 +1,50 @@
+# flexyBayes 0.10.0 (in development)
+
+The first release prepared for CRAN. Its criteria are frozen in
+`tools/definition_of_done.R`, which is a runnable contract rather than a
+document: "is it ready" is a command that exits non-zero while any
+blocking criterion is unmet.
+
+## Breaking changes
+
+* **The declared validation tier is now V2, not V3.** 0.9.2 declared V3
+  and waived four of its floors (F20, F21, F24, F25); that waiver expired
+  at the next release and is not re-issued. V2 is what the registered
+  evidence supports. The four floors are recorded in
+  `inst/validation/README.md` as the next validation arc, and a second
+  consecutive waiver on the same floors is the pattern a waiver exists to
+  prevent.
+
+* **`effectsize` is no longer listed as a supported downstream package.**
+  It was named in the `DESCRIPTION` Description and `Suggests` and in
+  `README.md`, and no method for it existed. Removed from all three
+  rather than left as a promise.
+
+* **`coda` moves from `Imports` to `Suggests`.** The only trace of it in
+  `R/` was a roxygen `@importFrom` tag, and neither `effectiveSize()` nor
+  `gelman.diag()` was called there. The test suite does use it, so it is
+  demoted rather than dropped.
+
+## Corrections to the package's own claims
+
+Each of these was a statement the code did not support. They are recorded
+as fixes rather than dropped silently, and each now has a guard in
+`tools/definition_of_done.R` that fails the lint workflow if it recurs.
+
+* The package-level help said **twelve** vignettes ship, including one on
+  arriving from an ASReml call. Eleven ship, and that page was folded into
+  the getting-started vignette at 0.9.3.
+* `API_STABILITY.md` said every public export carries a
+  `lifecycle::badge("experimental")`. None did. The document now states
+  the lifecycle stage without claiming a badge that is not there.
+* `README.md` described the release as "a stable release of the supported
+  capability set" six lines above a block stating that every export is
+  experimental.
+* `CITATION.cff` carried a `date-released` eight days earlier than the
+  tree it described.
+* An internal flag word reached a shipped surface in
+  `inst/validation/README.md`.
+
 # flexyBayes 0.9.3
 
 This is the first public release of the 0.9 line. Versions 0.9.0 to 0.9.2

@@ -453,8 +453,8 @@ components.
 
 \describe{
 \item{\verb{$glm}}{A GLM-compatible object (class \code{c("flexybayes_glm", "glm", "lm")}) with posterior mean coefficients, vcov, residuals, fitted values,
-etc. Works with \code{summary()}, \code{emmeans()}, \code{marginaleffects()},
-\code{effectsize()}.}
+etc. Works with \code{summary()}, \code{emmeans()} and
+\code{marginaleffects()}.}
 \item{\verb{$brms} or \verb{$inla}}{The native backend object --- a live \code{brmsfit}
 on the brms path, or INLA's own fitted object on the INLA path. Use
 with \code{bayesplot}, \code{posterior::as_draws()}, and each engine's own

@@ -375,8 +375,8 @@
 #' \describe{
 #'   \item{`$glm`}{A GLM-compatible object (class `c("flexybayes_glm", "glm",
 #'     "lm")`) with posterior mean coefficients, vcov, residuals, fitted values,
-#'     etc. Works with `summary()`, `emmeans()`, `marginaleffects()`,
-#'     `effectsize()`.}
+#'     etc. Works with `summary()`, `emmeans()` and
+#'     `marginaleffects()`.}
 #'   \item{`$brms` or `$inla`}{The native backend object --- a live `brmsfit`
 #'     on the brms path, or INLA's own fitted object on the INLA path. Use
 #'     with `bayesplot`, `posterior::as_draws()`, and each engine's own
@@ -414,7 +414,6 @@
 #'   printCoefmat qqline qqnorm runif
 #' @importFrom graphics abline axis hist legend lines par segments
 #' @importFrom methods is
-#' @importFrom coda effectiveSize gelman.diag
 #' @importFrom splines bs
 #' @export
 flexybayes <- function(
