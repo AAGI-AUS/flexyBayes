@@ -73,6 +73,15 @@ blocking criterion is unmet.
   none. The four that need a fitted model are wrapped in `\donttest{}` and
   guarded on the engine, so they do not fire where it is absent.
 
+* **`Config/testthat/parallel` is now `false`.** It was `true`, and the
+  parallel runner stalls: workers spawn, orphan, and sit at 0 per cent CPU
+  indefinitely once the suite reaches the brms and INLA tests. Every
+  release run so far has worked around it by forcing sequential execution
+  from the outside, and `TESTTHAT_PARALLEL=false` does not reliably
+  prevent the workers from spawning. A declared setting that hangs the
+  suite is a defect for anyone who runs `devtools::test()`, so it is
+  fixed rather than worked around.
+
 ## Corrections to the package's own claims
 
 Each of these was a statement the code did not support. They are recorded
