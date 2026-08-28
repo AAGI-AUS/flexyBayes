@@ -201,6 +201,21 @@ the lint workflow if it recurs.
   full tier exits non-zero while one is outstanding. The criterion
   asserting that a boundary-pinned component warns was satisfied by the
   existence of its test file; it runs the tests now.
+* `inst/KNOWN_ISSUES.md` item 7 still said the INLA-crash re-route to brms
+  was silent and that "what is ours to fix is the silence around it". The
+  re-route emits a one-shot message and the fit's class records the engine,
+  so the silence had already been fixed and the note had not followed. This
+  file ships in the tarball and the startup message points at it, so the
+  stale text was user-facing. An earlier pass recorded this same finding as
+  not reproducing, on a search for "silent" and "fallback" against a
+  document that says "silence" and "falls back" -- the rejection was wrong
+  and is corrected in the release record.
+* `API_STABILITY.md` advertised `output_file`, `format` and
+  `allow_new_levels` on the two `predict()` methods. None is a formal of
+  either; `...` swallowed them. `output_file` belongs to `fb_plan()` and
+  `allow_new_levels` to the classify path. The paragraph naming the methods
+  had been corrected once already without its argument list being checked.
+
 * The guard asserting that every declared import is used counted mentions
   in comments and the package name inside message strings, which is how
   `splines` stayed in `Imports` unused. It now requires an imported

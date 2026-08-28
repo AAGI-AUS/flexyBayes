@@ -218,8 +218,23 @@ MAX_EXPORTS <- 34L
       for (one in .dod_prose_call_args()) {
         fmls <- .dod_formals_of(one$fun)
         if (is.null(fmls)) next
-        # a function taking `...` accepts arbitrary names, so nothing
-        # static can be concluded about them
+        # A function taking `...` accepts arbitrary names, and this
+        # check cannot decide them. Three attempts were made and each
+        # produced false positives on valid pass-through: `...` is
+        # forwarded (fb_inla -> flexybayes), or captured into a list and
+        # its keys validated at run time (fb_approx), so neither the
+        # body text nor the forwarding target's formals is the accepted
+        # set. Flagging valid code would be worse than the gap, because
+        # a guard that cries wolf stops being read.
+        #
+        # Known cost, recorded rather than papered over. Two documented
+        # arguments have shipped that did not exist: `fb_plan(fixed = )`,
+        # which errors, and three predict arguments advertised in
+        # API_STABILITY.md that `...` silently swallowed. Neither was
+        # caught here -- the first because of this skip, the second
+        # because this check reads roxygen in R/ and that claim lived in
+        # a markdown file. Markdown claim surfaces are not guarded for
+        # argument names at all; that is the larger of the two gaps.
         if ("..." %in% fmls) {
           n_dots <- n_dots + 1L
           next

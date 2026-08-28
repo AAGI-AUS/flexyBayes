@@ -131,11 +131,13 @@ as stable as that contract:
   `anova()`, `update()`, `plot()`.
 
 `predict.flexybayes_inla()` and `predict.flexybayes_brms()` accept a `newdata`
-interface mirroring `stats::predict()`, with `output_file` /
-`format = c("auto", "csv", "rds", "fst")` for chunked output and
-`allow_new_levels = c("population", "sample", "refuse")`. There is no parent
-`predict.flexybayes()` method: it was removed at 0.9.3 so that each engine
-states its own prediction contract.
+interface mirroring `stats::predict()`. Both take `type`, `se.fit`, `classify`
+and `level`; the brms method additionally takes `re_formula` and `summary`.
+There is no parent `predict.flexybayes()` method: it was removed at 0.9.3 so
+that each engine states its own prediction contract. Chunked output and
+new-level policy are not arguments of these methods -- `output_file` belongs
+to `fb_plan()` and `allow_new_levels` to the classify path -- and naming them
+here previously advertised three arguments that `...` silently swallowed.
 Interval semantics are *posterior expected-response* (no residual observation
 noise), not posterior-predictive.
 

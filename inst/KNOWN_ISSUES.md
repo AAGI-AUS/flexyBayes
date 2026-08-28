@@ -167,10 +167,14 @@ Each is reproducible on this release. Priority is for the MET use case.
    `sd(group = "Block") ~ half_normal(scale = 3)`, which expresses the same
    scale belief without a hard edge. The package's own auto-default is a
    bounded uniform, so a user narrowing that bound is an ordinary path into
-   this rather than an exotic one. On `backend = "auto"` the crash is not
-   surfaced as a refusal: dispatch falls back to brms and the user reads a
-   Stan fit where an INLA failure happened. *The crash is upstream. What is
-   ours to fix is the silence around it.*
+   this rather than an exotic one. On `backend = "auto"` the crash is
+   still not a typed refusal: dispatch re-routes to brms and returns a
+   Stan fit where an INLA failure happened. It is no longer silent --
+   the re-route emits a one-shot message naming the numerical fallback,
+   and the returned object's class and `backend` field record which
+   engine produced it, so a fit can always be traced to its engine.
+   *The crash is upstream. What remains ours is that the re-route is a
+   message rather than a refusal you have to acknowledge.*
 8. **The autoregressive field can lose its signal on an incomplete grid.**
    *Symptom*: the field standard deviation runs to a floor near 0.01, both
    correlations sit at approximately zero with credible intervals spanning
