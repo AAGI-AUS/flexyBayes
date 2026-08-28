@@ -180,10 +180,13 @@
 #'
 #'   Under ignorability the posterior for the model parameters is the
 #'   same whether a missing response is augmented or omitted --
-#'   augmentation preserves the representation, not information. Where
-#'   missingness depends on the unobserved response itself, both are
-#'   biased and neither this argument nor any diagnostic here will tell
-#'   you so.
+#'   augmentation preserves the representation, not information. That
+#'   identity is a statement about the posterior and not a promise about
+#'   what an optimiser returns: the two settings hand the engine an
+#'   intact design and a ragged one, and on a weakly identified mode they
+#'   can land in different places. Where missingness depends on the
+#'   unobserved response itself, both are biased and neither this
+#'   argument nor any diagnostic here will tell you so.
 #' @param n_samples Integer: number of posterior samples per chain.
 #' @param warmup Integer: number of warmup (burn-in) iterations per chain.
 #' @param chains Integer: number of MCMC chains.
@@ -297,7 +300,11 @@
 #'   Otherwise it routes to brms when brms is installed *and* its
 #'   capability predicate accepts the model. When neither can represent
 #'   the model, the call refuses with `auto_no_active_route` rather than
-#'   fitting something else. There is no silent fallback.
+#'   fitting something else. Nothing is translated silently. `auto` does
+#'   change engine in one case after starting -- an INLA program failure
+#'   is caught and re-routed to brms -- and that is reported by a message,
+#'   never silently; the fit's class and `backend` field always record
+#'   which engine produced it.
 #'   [backend_decision()] surfaces the full dispatch trace (including
 #'   `rejected_routes`) post-fit, and [fb_backend_status()] reports which
 #'   engines are usable. The one-time notes on the auto path are

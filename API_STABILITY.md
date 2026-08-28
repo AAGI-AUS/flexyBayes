@@ -31,7 +31,7 @@ engine:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. There is no silent fallback. `prior` accepts an `fb_prior()` object. |
+| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. Nothing is translated silently. `auto` does change engine in one case after starting -- an INLA program failure is caught and re-routed to brms -- and that is reported by a message, never silently; the fit's class and `backend` field record which engine produced it. `prior` accepts an `fb_prior()` object. |
 | `fb()` | experimental | Literal alias for `flexybayes()`; documented but not promoted. |
 
 **Engine pins** fix one engine and therefore take **no** `backend` argument --
@@ -51,13 +51,15 @@ own defaults (`seed = NA`, `control = NULL`) rather than being passed through,
 and `update()` repeats whatever the fit recorded. Both are no-ops on the
 deterministic INLA path, which says so once per session.
 
-**Native-model adapters** lift a model fitted elsewhere into the flexyBayes
-object so the shared diagnostics, prediction, and interop methods apply:
+**Grammar adapters** ingest a model *specification* written in another
+package's syntax and return the flexyBayes internal representation
+(`fb_terms`), which the entry points then fit. They do not take a fitted
+object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_from_brms()` | experimental | Wrap a fitted `brmsfit`. |
-| `fb_from_asreml()` | experimental | Wrap a fitted `asreml` object. |
+| `fb_from_brms()` | experimental | Parse brms-style syntax: `fb_from_brms(formula, data, family, ...)`. |
+| `fb_from_asreml()` | experimental | Parse ASReml-style syntax into the same representation. |
 
 ## Cross-engine comparison
 
@@ -97,6 +99,9 @@ object so the shared diagnostics, prediction, and interop methods apply:
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
 | `fb_structured_cov()` | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
 | `proceed()`, `cat_code()` | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. |
+| `fb_complete_grid()` | experimental | Completes a design grid (`index = ~ row * col`) before fitting, so a structured covariance is built over the intended index set rather than over the observed rows only. |
+| `genomic_summary()` | experimental | Turns the posterior draws of a relationship-matrix term into genomic quantities for a fitted model. |
+| `ranef()` | experimental | S3 generic returning random-effect predictions -- posterior summaries of the group-level effects -- from a fit. |
 
 ## Interoperability contract
 
@@ -113,9 +118,11 @@ as stable as that contract:
   `posterior`-compatible path.
 - **broom**: `tidy()`, `glance()`, `augment()` -- column names follow broom
   convention, and new columns are non-breaking. `tidy()` has a method for
-  every fit subclass. `glance()` and `augment()` describe a sampled fit, so
-  on an INLA fit they refuse by name and point at `tidy()`, `summary()` and
-  `predict()` instead.
+  every fit subclass. `glance()` returns its one-row summary on an INLA fit
+  with the sampler-specific columns (`chains`, `samples`, `max_rhat`,
+  `min_ess`) `NA`, since a deterministic Laplace fit has no sampler to
+  report. `augment()` has no INLA-side answer and refuses by name, pointing
+  at `tidy()` and `predict()` instead.
 - **emmeans**: `recover_data()`, `emm_basis()`.
 - **marginaleffects**: `get_coef()`, `get_predict()`, `get_vcov()`, `set_coef()`.
 - **insight**: `get_data()`.
@@ -123,9 +130,12 @@ as stable as that contract:
   `residuals()`, `family()`, `formula()`, `logLik()`, `nobs()`, `summary()`,
   `anova()`, `update()`, `plot()`.
 
-`predict.flexybayes()` accepts a `newdata` interface mirroring
-`stats::predict()`, with `output_file` / `format = c("auto", "csv", "rds", "fst")`
-for chunked output and `allow_new_levels = c("population", "sample", "refuse")`.
+`predict.flexybayes_inla()` and `predict.flexybayes_brms()` accept a `newdata`
+interface mirroring `stats::predict()`, with `output_file` /
+`format = c("auto", "csv", "rds", "fst")` for chunked output and
+`allow_new_levels = c("population", "sample", "refuse")`. There is no parent
+`predict.flexybayes()` method: it was removed at 0.9.3 so that each engine
+states its own prediction contract.
 Interval semantics are *posterior expected-response* (no residual observation
 noise), not posterior-predictive.
 

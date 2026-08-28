@@ -49,9 +49,11 @@
 #' a backend the full model would not reach live (FS-22). Both
 #' spellings now route through the same grammar detection
 #' `flexybayes()` uses (`syntax = "auto"` by default), so
-#' `fb_plan(fixed = ..., random = ..., residual = ..., data = ...)` and
-#' `flexybayes(fixed = ..., random = ..., residual = ..., data = ...,
-#' plan = TRUE)` plan the identical model.
+#' `fb_plan(y ~ x, random = ..., residual = ..., data = ...)` and
+#' `flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ...,
+#' plan = TRUE)` plan the identical model. Note the two spellings of the
+#' fixed part: `fb_plan()` takes it positionally as `formula`, the entry
+#' point takes it as `fixed`.
 #'
 #' @param formula     Either a brms-style two-sided formula such as
 #'   `y ~ x + s(z) + (1 | g)`, or (when `random` and/or `residual` are

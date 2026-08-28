@@ -1151,9 +1151,9 @@
           message(
             "backend = \"auto\": lgm_gate() refused (",
             primary$rule_id,
-            "); this is a multi-stratum designed experiment, so routing ",
-            "to brms -- the faithful full-HMC backend (INLA collapses ",
-            "these variance components). Pass backend = \"brms\" to silence."
+            "), so routing to brms -- the full-HMC backend, which ",
+            "represents this model where INLA does not. Pass ",
+            "backend = \"brms\" to silence."
           )
         } else if (is_multistratum) {
           message(

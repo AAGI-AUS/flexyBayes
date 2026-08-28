@@ -19,9 +19,9 @@
 # What this registry does NOT yet cover at the declared tier is written
 # down in README.md rather than papered over here.
 
-tier: V3
-package_version: "0.9.3"
-generated_on: 2026-08-19
+tier: V2
+package_version: "0.10.0"
+generated_on: 2026-08-28
 
 scenarios:
 

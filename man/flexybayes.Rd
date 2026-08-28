@@ -240,10 +240,13 @@ its first element, which is the policy ASReml itself would use.
 
 Under ignorability the posterior for the model parameters is the
 same whether a missing response is augmented or omitted --
-augmentation preserves the representation, not information. Where
-missingness depends on the unobserved response itself, both are
-biased and neither this argument nor any diagnostic here will tell
-you so.}
+augmentation preserves the representation, not information. That
+identity is a statement about the posterior and not a promise about
+what an optimiser returns: the two settings hand the engine an
+intact design and a ragged one, and on a weakly identified mode they
+can land in different places. Where missingness depends on the
+unobserved response itself, both are biased and neither this
+argument nor any diagnostic here will tell you so.}
 
 \item{n_samples}{Integer: number of posterior samples per chain.}
 
@@ -360,7 +363,11 @@ when the model is latent-Gaussian feasible and INLA is installed.
 Otherwise it routes to brms when brms is installed \emph{and} its
 capability predicate accepts the model. When neither can represent
 the model, the call refuses with \code{auto_no_active_route} rather than
-fitting something else. There is no silent fallback.
+fitting something else. Nothing is translated silently. \code{auto} does
+change engine in one case after starting -- an INLA program failure
+is caught and re-routed to brms -- and that is reported by a message,
+never silently; the fit's class and \code{backend} field always record
+which engine produced it.
 \code{\link[=backend_decision]{backend_decision()}} surfaces the full dispatch trace (including
 \code{rejected_routes}) post-fit, and \code{\link[=fb_backend_status]{fb_backend_status()}} reports which
 engines are usable. The one-time notes on the auto path are

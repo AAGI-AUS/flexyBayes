@@ -47,9 +47,12 @@ The universal entry reaches any active backend: name one with
 `backend =`, or let `backend = "auto"` choose. Each `fb_<engine>()` pin
 fits exactly one engine and refuses a conflicting `backend`.
 `backend = "auto"` runs the LGM feasibility gate and routes to INLA on
-acceptance, otherwise to brms. There is no silent fallback, and a model
-neither can represent refuses with `auto_no_active_route` rather than
-fitting something else. Reach Stan explicitly with `fb_brms()` or
+acceptance, otherwise to brms. A model neither can represent refuses with
+`auto_no_active_route` rather than fitting something else, and nothing is
+translated silently. `auto` does change engine in one case after starting:
+an INLA program failure is caught and re-routed to brms, reported by a
+message rather than silently, and the fit's class and `backend` field
+always say which engine produced it. Reach Stan explicitly with `fb_brms()` or
 `fb(..., backend = "brms")`. Naming a withdrawn or otherwise
 unrecognised backend raises `unknown_backend` -- see *Backend support*
 below.
@@ -525,7 +528,7 @@ structured refusal naming the gap, not a quiet wrong answer.
   identity is a statement about the posterior and not a promise about what
   an optimiser returns -- the two settings hand the engine an intact design
   and a ragged one, and on a weakly identified mode they can land in
-  different places. See `?na_action`. Non-Gaussian missing responses on
+  different places. See `?flexybayes`. Non-Gaussian missing responses on
   brms are refused.
 
 ## Requirements
