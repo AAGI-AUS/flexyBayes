@@ -1,0 +1,369 @@
+---
+title: "5. Multi-environment trials and genomics"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{5. Multi-environment trials and genomics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Varieties do not rank the same everywhere. Separating a variety's
+general merit from its response to environment is the central question
+of a breeding programme.</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ env, random = ~ gen + diag(env):gen)</code></dd>
+<dt>In flexyBayes</dt>
+<dd>The same, with <code>backend = "brms"</code>: the structured
+genotype-by-environment terms are a brms capability.</dd>
+<dt>What the posterior adds</dt>
+<dd>Heritability, a ratio of variance components, is computed on the
+draws rather than through the delta method.</dd>
+<dt>What it costs</dt>
+<dd>The factor-analytic model, the workhorse of large METs, is refused
+by both engines. Section 5 says what that means in practice.</dd>
+</dl>
+</div>
+
+# 1. The MET question
+
+`agridat::yan.winterwheat` is 18 winter wheat genotypes across 9 Ontario
+environments, one yield per combination.
+
+
+``` r
+library(flexyBayes)
+yw <- agridat::yan.winterwheat
+table(nlevels(yw$gen), nlevels(yw$env))
+#>     
+#>      9
+#>   18 1
+```
+
+Three models answer three different questions, and they nest.
+
+**Main effect only.** `random = ~ gen` says varieties differ but rank
+the same everywhere. One variance component.
+
+**Plus interaction.** `random = ~ gen + gen:env` says varieties also
+respond differently to environment, and measures that with a second
+component. The ratio of the two is the question a breeder asks: how much
+of the varietal signal survives across sites.
+
+**Heterogeneous by environment.** `random = ~ diag(env):gen` says the
+genotype spread itself differs between environments -- a high-yielding
+site may separate varieties more than a stressed one.
+
+# 2. Main effect plus interaction
+
+
+``` r
+fit <- flexybayes(yield ~ env, random = ~ gen + gen:env, data = yw,
+                  backend = "brms", chains = 2L, n_samples = 1500L,
+                  warmup = 750L, seed = 1L, verbose = FALSE,
+                  mcmc_verbose = FALSE)
+#> Warning: There were 163 divergent transitions after warmup. See
+#> https://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup
+#> to find out why this is a problem and how to eliminate them.
+#> Warning: There were 8 transitions after warmup that exceeded the maximum treedepth. Increase max_treedepth above 10. See
+#> https://mc-stan.org/misc/warnings.html#maximum-treedepth-exceeded
+#> Warning: There were 1 chains where the estimated Bayesian Fraction of Missing Information was low. See
+#> https://mc-stan.org/misc/warnings.html#bfmi-low
+#> Warning: Examine the pairs() plot to diagnose sampling problems
+#> Warning: The largest R-hat is 1.64, indicating chains have not mixed.
+#> Running the chains for more iterations may help. See
+#> https://mc-stan.org/misc/warnings.html#r-hat
+#> Warning: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+#> Running the chains for more iterations may help. See
+#> https://mc-stan.org/misc/warnings.html#bulk-ess
+#> Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+#> Running the chains for more iterations may help. See
+#> https://mc-stan.org/misc/warnings.html#tail-ess
+#> Warning: Parts of the model have not converged (some Rhats are > 1.05). Be
+#> careful when analysing the results! We recommend running more iterations and/or
+#> setting stronger priors.
+#> Warning: There were 163 divergent transitions after warmup. Increasing
+#> adapt_delta above 0.8 may help. See
+#> http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup
+#> Warning: flexyBayes: the sampler may not have converged -- 82 parameters with
+#> Rhat >= 1.10 (max 1.64); min effective sample size 3. Treat the posterior with
+#> caution: increase `warmup` / `n_samples`, raise `control = list(adapt_delta =
+#> 0.95)` where the run reported divergent transitions, simplify the model, or
+#> supply a more informative prior. Inspect the full diagnostics with summary().
+#> Silence this warning via options(flexyBayes.silence_convergence_warning =
+#> TRUE).
+tidy(fit, effects = "random")
+#>         term  estimate  std.error   conf.low conf.high
+#> 1     sd_gen 0.4039935 0.09089507 0.26661810 0.6089082
+#> 2 sd_gen:env 0.2559709 0.12131913 0.01657049 0.4170231
+#> 3      sigma 0.2426789 0.11766439 0.06811196 0.4099759
+```
+
+`sd_gen` is the spread of general merit, `sd_gen:env` the spread of
+environment-specific deviation. When the second is comparable to the
+first, selecting on an overall mean discards real information.
+
+Heritability on an entry-mean basis follows from the components:
+
+
+``` r
+vc <- tidy(fit, effects = "random")
+g  <- function(nm) vc$estimate[vc$term == nm]
+n_env <- nlevels(yw$env)
+g("sd_gen")^2 /
+  (g("sd_gen")^2 + g("sd_gen:env")^2 / n_env + g("sigma")^2 / n_env)
+#> [1] 0.9219147
+```
+
+Under REML this ratio needs the delta method for an interval. Under a
+posterior the same computation done draw by draw gives one directly.
+
+# 3. Heterogeneous genotype variance
+
+`diag(env):gen` gives each environment its own genotype variance and no
+correlation between them.
+
+
+``` r
+fit_d <- flexybayes(yield ~ env, random = ~ diag(env):gen, data = yw,
+                    backend = "brms", chains = 2L, n_samples = 1500L,
+                    warmup = 750L, seed = 1L, verbose = FALSE,
+                    mcmc_verbose = FALSE)
+#> Warning: There were 1 divergent transitions after warmup. See
+#> https://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup
+#> to find out why this is a problem and how to eliminate them.
+#> Warning: There were 2 chains where the estimated Bayesian Fraction of Missing Information was low. See
+#> https://mc-stan.org/misc/warnings.html#bfmi-low
+#> Warning: Examine the pairs() plot to diagnose sampling problems
+#> Warning: Bulk Effective Samples Size (ESS) is too low, indicating posterior means and medians may be unreliable.
+#> Running the chains for more iterations may help. See
+#> https://mc-stan.org/misc/warnings.html#bulk-ess
+#> Warning: Tail Effective Samples Size (ESS) is too low, indicating posterior variances and tail quantiles may be unreliable.
+#> Running the chains for more iterations may help. See
+#> https://mc-stan.org/misc/warnings.html#tail-ess
+#> Warning: There were 1 divergent transitions after warmup. Increasing
+#> adapt_delta above 0.8 may help. See
+#> http://mc-stan.org/misc/warnings.html#divergent-transitions-after-warmup
+#> Warning: flexyBayes: the sampler may not have converged -- min effective sample
+#> size 85. Treat the posterior with caution: increase `warmup` / `n_samples`,
+#> raise `control = list(adapt_delta = 0.95)` where the run reported divergent
+#> transitions, simplify the model, or supply a more informative prior. Inspect
+#> the full diagnostics with summary(). Silence this warning via
+#> options(flexyBayes.silence_convergence_warning = TRUE).
+head(tidy(fit_d, effects = "random"), 5)
+#>              term  estimate std.error   conf.low conf.high
+#> 1 sd_gen__envBH93 0.5342711 0.1621136 0.23094362 0.8780886
+#> 2 sd_gen__envEA93 0.3054336 0.1544874 0.01734686 0.6259545
+#> 3 sd_gen__envHW93 0.4195316 0.1657817 0.08295558 0.7453970
+#> 4 sd_gen__envID93 0.2524538 0.1477405 0.01362567 0.5497107
+#> 5 sd_gen__envKE93 0.6555202 0.1714498 0.36326968 1.0337423
+```
+
+One standard deviation per environment. Environments with a larger value
+discriminate between varieties more strongly.
+
+`us(env):gen` goes further and estimates the correlations between
+environments as well, which is what tells you whether two sites are
+effectively repeats of each other. It costs a parameter for every pair.
+
+# 4. Known relationship matrices
+
+Genomic selection replaces "genotypes are independent draws" with
+"genotypes are related, and the relationship matrix says how".
+`vm(gen, K)` supplies that matrix; `ped(animal, A)` is the same term
+spelled for a pedigree.
+
+
+``` r
+set.seed(4)
+n_g  <- 40
+M    <- matrix(rbinom(n_g * 200, 2, 0.3), nrow = n_g)
+Ks   <- scale(M)
+K    <- tcrossprod(Ks) / ncol(Ks)
+diag(K) <- diag(K) + 1e-6
+dimnames(K) <- list(paste0("g", 1:n_g), paste0("g", 1:n_g))
+
+dg <- data.frame(gen = factor(rep(paste0("g", 1:n_g), each = 3),
+                              levels = paste0("g", 1:n_g)),
+                 env = factor(rep(1:3, times = n_g)))
+u  <- as.numeric(crossprod(chol(K), rnorm(n_g)))
+dg$yield <- 5 + u[as.integer(dg$gen)] + rnorm(nrow(dg), 0, 0.4)
+
+# INLA is given the precision, its documented carrier for this term
+Q <- solve(K)
+fit_g <- flexybayes(yield ~ env,
+                    random = ~ vm(gen, cov = fb_cov(Q, type = "precision")),
+                    data = dg, known_matrices = list(Q = Q),
+                    backend = "inla", verbose = FALSE)
+tidy(fit_g, effects = "random")
+#>        term  estimate  std.error  conf.low conf.high
+#> 1     sigma 0.4234619 0.03438988 0.3610958 0.4958863
+#> 2 sd_gen_id 0.9634456 0.12168364 0.7507251 1.2273814
+```
+
+The two engines take the relationship in different forms, and naming the
+wrong one refuses rather than converting silently. INLA works from the
+**precision** -- the inverse of the relationship matrix -- because its
+latent field is parameterised that way and a sparse precision is what
+makes the fit affordable. brms takes the **covariance** directly:
+
+
+``` r
+flexybayes(yield ~ env, random = ~ vm(gen, K), data = dg,
+           known_matrices = list(K = K), backend = "brms")
+```
+
+`fb_cov()` names the carrier: `covariance`, `precision`, `chol`,
+`blocks` or `low_rank`. `backend = "auto"` picks an engine that accepts
+the carrier you supplied.
+
+The random effect is now correlated across genotypes according to `K`,
+so a genotype with no phenotype of its own still receives a prediction
+through its relatives. That is genomic prediction.
+
+# 5. What is refused, and what to do instead
+
+<table>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Model class </th>
+   <th style="text-align:left;"> Spelling </th>
+   <th style="text-align:left;"> INLA </th>
+   <th style="text-align:left;"> brms </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;"> Factor-analytic genotype-by-environment covariance </td>
+   <td style="text-align:left;"> <code>~ fa(env, k):gen</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Heterogeneous variances with one shared correlation </td>
+   <td style="text-align:left;"> <code>~ corh(f):g</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Multi-trait covariance </td>
+   <td style="text-align:left;"> <code>~ us(trait):vm(gen)</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Unstructured genotype-by-environment covariance </td>
+   <td style="text-align:left;"> <code>~ us(f):g</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Known-covariance genomic / pedigree random effect </td>
+   <td style="text-align:left;"> <code>~ vm(g, K)</code>, <code>~ ped(a, A)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+</tbody>
+</table>
+
+
+
+The factor-analytic model is the significant gap. `fa(env, k):gen`
+approximates the environment covariance by a rank-`k` loading matrix
+plus a diagonal, and it is the standard tool for a MET with many sites,
+because `us()` becomes unaffordable. Neither engine emits it.
+
+Where a MET is small enough, `us(env):gen` gives the full covariance and
+`diag(env):gen` the heterogeneous-variance approximation. Where it is
+not, ASReml remains the tool for the factor-analytic fit, and a
+flexyBayes fit of a reduced model can be compared against it.
+
+# 6. Pitfalls
+
+**The relationship matrix must match the factor levels.** Row and column
+order of `K` has to correspond to `levels(gen)`. A mismatch is a silent
+reordering of the genotypes.
+
+**Positive definiteness.** A genomic relationship matrix built from
+markers is often singular. Adding a small ridge to the diagonal, as
+above, is the usual remedy and the validator will refuse without it.
+
+**Interaction terms are brms-only.** `gen:env` refuses on INLA, which
+collapses the finest stratum. `auto` routes it.
+
+**Heritability needs its basis stated.** Entry-mean and plot basis
+differ by the divisors in the denominator. Report which one.
+
+# 7. Session information
+
+
+```
+#> R version 4.5.2 (2025-10-31)
+#> Platform: aarch64-apple-darwin20
+#> Running under: macOS Tahoe 26.5.2
+#> 
+#> Matrix products: default
+#> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+#> 
+#> time zone: Australia/Adelaide
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] flexyBayes_0.10.0
+#> 
+#> loaded via a namespace (and not attached):
+#>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+#>   [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
+#>   [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
+#>  [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
+#>  [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
+#>  [16] agridat_1.26           magrittr_2.0.5         posterior_1.7.1       
+#>  [19] compiler_4.5.2         rlang_1.3.0            tools_4.5.2           
+#>  [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
+#>  [25] bridgesampling_1.2-1   mnormt_2.1.2           curl_7.0.0            
+#>  [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
+#>  [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+#>  [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
+#>  [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
+#>  [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
+#>  [43] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
+#>  [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
+#>  [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
+#>  [52] reformulas_0.4.4       generics_0.1.4         otel_0.2.0            
+#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         minqa_1.2.8           
+#>  [58] DBI_1.3.0              proxy_0.4-29           rstan_2.32.7          
+#>  [61] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
+#>  [64] parallel_4.5.2         matrixStats_1.5.0      marginaleffects_0.32.0
+#>  [67] brms_2.23.0            vctrs_0.7.3            boot_1.3-32           
+#>  [70] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
+#>  [73] jsonlite_2.0.0         callr_3.8.0            listenv_0.10.1        
+#>  [76] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
+#>  [79] nloptr_2.2.1           codetools_0.2-20       distributional_0.8.1  
+#>  [82] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
+#>  [85] lme4_2.0-1             tibble_3.3.1           pillar_1.11.1         
+#>  [88] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
+#>  [91] Rdpack_2.6.6           evaluate_1.0.5         lattice_0.22-7        
+#>  [94] rbibutils_2.4.1        backports_1.5.1        rstantools_2.6.0      
+#>  [97] class_7.3-23           MatrixModels_0.5-4     Rcpp_1.1.2            
+#> [100] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
+#> [103] checkmate_2.3.4        xfun_0.57              zoo_1.8-15            
+#> [106] pkgconfig_2.0.3
+```

@@ -1,0 +1,204 @@
+---
+title: "2. The formula surface, and what is not supported"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{2. The formula surface, and what is not supported}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+agri_ok <- requireNamespace("agridat", quietly = TRUE)
+options(flexyBayes.silence_default_prior_note = TRUE)
+
+# knitr::kable(format = "markdown") escapes a pipe to &#124; so it cannot
+# break the table, and pandoc then prints that entity literally inside a
+# code span, so `(x | g)` renders as `(x &#124; g)`. Emitting HTML
+# directly, with backticks turned into <code> here, keeps the pipe.
+.md_code <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;",  x, fixed = TRUE)
+  x <- gsub(">", "&gt;",  x, fixed = TRUE)
+  gsub("`([^`]+)`", "<code>\\1</code>", x)
+}
+.cap_table <- function(df) {
+  df[] <- lapply(df, .md_code)
+  knitr::kable(df, format = "html", escape = FALSE)
+}
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Writing the model down, and knowing in advance which structures will
+be fitted and which will be turned away.</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ env, random = ~ gen + diag(env):gen,
+residual = ~ id(units))</code></dd>
+<dt>In flexyBayes</dt>
+<dd>The same three arguments, the same term spellings.</dd>
+<dt>What the posterior adds</dt>
+<dd>Nothing here. This page is about grammar, and the grammar is
+deliberately ASReml's.</dd>
+<dt>What it costs</dt>
+<dd>A narrower set of structures. Anything outside it is refused by name
+rather than silently replaced, and Section 4 is the full list.</dd>
+</dl>
+</div>
+
+# 1. Four arguments
+
+A model is written with the arguments an ASReml user already uses.
+
+| Argument | Holds | Example |
+|---|---|---|
+| `fixed` | the mean model | `yield ~ env` |
+| `random` | random effects and their covariance | `~ gen + gen:env` |
+| `residual` | the residual covariance | `~ dsum(~ units | env)` |
+| `family` / `link` | the response distribution | `family = "poisson"` |
+
+The first argument is positional, so `flexybayes(yield ~ env, ...)` and
+`flexybayes(fixed = yield ~ env, ...)` are the same call.
+
+brms-style syntax is accepted in the same slot: `yield ~ env + (1 | gen)`
+is read as the ASReml pair above. The grammar is detected, not
+declared.
+
+# 2. Term spellings
+
+These are the constructions the parser recognises on the random side.
+
+| Spelling | Reads as |
+|---|---|
+| `~ gen` | independent random effect, one variance |
+| `~ gen:env` | interaction random effect |
+| `~ diag(env):gen` | a separate variance per level of `env`, no correlation |
+| `~ us(env):gen` | unstructured covariance across levels of `env` |
+| `~ vm(gen, K)` | random effect with a known covariance `K` |
+| `~ ped(animal, A)` | the same, spelled for a pedigree |
+| `~ ar1(row):ar1(col)` | separable autoregressive field on a grid |
+| `~ spl(x)` | penalised spline on a numeric covariate |
+| `~ at(trial):ar1(row):ar1(col)` | one field per level of `trial` |
+
+`idh()` is accepted as a synonym for `diag()`, and `id(units)` for
+`units`, so a translated ASReml script usually runs unchanged.
+
+# 3. A worked model
+
+```{r fit, eval = agri_ok && inla_ok}
+library(flexyBayes)
+dat <- agridat::yan.winterwheat
+fit <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                  backend = "inla", verbose = FALSE)
+tidy(fit, effects = "random")
+```
+
+`fb_plan()` reports what a call would do without fitting it, which is
+the cheapest way to find out whether a structure is supported.
+
+```{r plan, eval = agri_ok}
+fb_plan(yield ~ env, random = ~ gen, data = dat)$backend
+```
+
+# 4. What is not supported
+
+Two kinds of gap. The first is a structure **neither engine** can
+represent. These are refused whatever backend is named, and there is no
+workaround inside the package.
+
+```{r gaps-both, echo = FALSE}
+m <- flexyBayes:::.fb_capability_matrix()
+both <- m[m$inla == "refuses" & m$brms == "refuses", ]
+.cap_table(data.frame(`Model class` = both$model_class,
+                      Spelling = both$spelling, check.names = FALSE))
+```
+
+The second is a structure **one engine** fits and the other refuses.
+Naming the wrong backend refuses; `backend = "auto"` routes to the one
+that works.
+
+```{r gaps-one, echo = FALSE}
+one <- m[xor(m$inla == "refuses", m$brms == "refuses"), ]
+.cap_table(data.frame(`Model class` = one$model_class,
+                      Spelling = one$spelling, INLA = one$inla,
+                      brms = one$brms, check.names = FALSE))
+```
+
+Both tables are generated from the package's capability record, so they
+cannot drift from what the code does. `fb_refusals()` prints the full
+vocabulary of refusal codes with the message each one carries.
+
+# 5. What a refusal looks like
+
+A refused structure raises an error that names the structure, says why,
+and gives the nearest thing that does work.
+
+```{r refusal, eval = agri_ok}
+refused <- tryCatch(
+  flexybayes(yield ~ env, random = ~ fa(env, 2):gen, data = dat,
+             backend = "inla", verbose = FALSE),
+  error = function(e) e
+)
+cat(conditionMessage(refused))
+```
+
+Refusals carry a class as well as a message, so a script can catch a
+specific one:
+
+```{r refusal-class, eval = agri_ok}
+class(refused)[1:3]
+```
+
+The design rule behind this is that a structure the engines cannot
+represent is never approximated by a structure they can. A model that
+returns a fit is the model that was asked for.
+
+# 6. Dispatch
+
+`backend = "auto"` is the default. It runs a feasibility gate, and
+routes to INLA when the model is latent-Gaussian feasible and INLA is
+installed, otherwise to brms when brms can represent it, otherwise it
+refuses with `auto_no_active_route`.
+
+```{r dispatch, eval = agri_ok && inla_ok}
+backend_decision(fit)$backend
+```
+
+One case changes engine after starting: if the INLA program itself
+fails numerically, the call re-routes to brms and says so in a message.
+The fit's class always records which engine produced it.
+
+```{r class, eval = agri_ok && inla_ok}
+class(fit)[1]
+```
+
+# 7. Pitfalls
+
+**A term on both sides.** `yield ~ env` with `random = ~ env` is refused.
+The fixed part already estimates a mean per level, so the random copy
+has no information left to describe and its variance component would
+report the prior. ASReml accepts this spelling and fits it, so a
+translated script can arrive here unchanged.
+
+**Factor order matters for `ar1()`.** Correlation is read along the
+levels of the factor in their stored order. Row labels that sort
+lexically rather than numerically give the wrong neighbour structure.
+
+**`residual` is not `rcov`.** ASReml 4 renamed it; flexyBayes uses the
+current name.
+
+# 8. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

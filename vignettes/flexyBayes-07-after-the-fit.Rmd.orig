@@ -1,0 +1,184 @@
+---
+title: "7. After the fit: summaries, comparison, triangulation"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{7. After the fit: summaries, comparison, triangulation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+agri_ok <- requireNamespace("agridat", quietly = TRUE)
+options(flexyBayes.silence_default_prior_note = TRUE)
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>The fit is done. Getting the numbers out, comparing two models, and
+checking that the answer is a property of the data rather than of the
+engine.</dd>
+<dt>In ASReml</dt>
+<dd><code>summary()</code>, <code>predict()</code>, <code>wald()</code>,
+and a change in REML log-likelihood.</dd>
+<dt>In flexyBayes</dt>
+<dd><code>tidy()</code>, <code>predict()</code>, <code>loo()</code>, and
+<code>triangulate()</code>.</dd>
+<dt>What the posterior adds</dt>
+<dd>Any function of the parameters is computed on the draws. And with
+two engines, a check no single fit can perform on itself.</dd>
+<dt>What it costs</dt>
+<dd>Model comparison is predictive rather than a test, and it needs a
+sampled fit.</dd>
+</dl>
+</div>
+
+# 1. Getting the numbers out
+
+```{r fit, eval = agri_ok && inla_ok}
+library(flexyBayes)
+yw  <- agridat::yan.winterwheat
+fit <- flexybayes(yield ~ env, random = ~ gen, data = yw,
+                  backend = "inla", verbose = FALSE)
+```
+
+`tidy()` follows broom convention: one row per term, columns that do not
+change name between engines.
+
+```{r tidy, eval = agri_ok && inla_ok}
+head(tidy(fit), 3)
+tidy(fit, effects = "random")
+```
+
+`ranef()` gives the random-effect predictions -- REML's BLUPs, with
+intervals.
+
+```{r ranef, eval = agri_ok && inla_ok}
+head(ranef(fit)$gen, 3)
+```
+
+`glance()` gives one row of fit-level information. On an INLA fit the
+sampler-specific columns are `NA`, because a deterministic Laplace
+approximation has no chains to report:
+
+```{r glance, eval = agri_ok && inla_ok}
+glance(fit)
+```
+
+# 2. Anything that is a function of the parameters
+
+This is where a posterior is simply more convenient than a point
+estimate. `fb_as_draws_simple()` returns the draws as a named list, and
+any derived quantity is computed on them directly.
+
+```{r draws, eval = agri_ok && inla_ok}
+d <- fb_as_draws_simple(fit)
+names(d)[1:4]
+```
+
+A ratio, a difference, a probability -- each is one line, and each
+arrives with its own uncertainty rather than needing a delta-method
+approximation.
+
+# 3. Comparing two models
+
+Model comparison under a posterior is predictive: which model would
+better predict a new observation. `loo::loo()` estimates that by
+approximate leave-one-out cross-validation. It needs pointwise
+likelihoods, so it needs a sampled fit. flexyBayes registers a method on
+`loo`'s generic rather than exporting one of its own, so the call is
+qualified or `library(loo)` is attached first.
+
+```{r loo, eval = agri_ok && brms_ok}
+m1 <- flexybayes(yield ~ env, random = ~ gen, data = yw,
+                 backend = "brms", chains = 2L, n_samples = 1500L,
+                 warmup = 750L, seed = 1L, verbose = FALSE,
+                 mcmc_verbose = FALSE)
+m2 <- flexybayes(yield ~ env, random = ~ gen + gen:env, data = yw,
+                 backend = "brms", chains = 2L, n_samples = 1500L,
+                 warmup = 750L, seed = 1L, verbose = FALSE,
+                 mcmc_verbose = FALSE)
+loo::loo_compare(loo::loo(m1), loo::loo(m2))
+```
+
+The first row is the better-predicting model. `elpd_diff` is the
+expected log predictive density difference and `se_diff` its standard
+error. A difference smaller than about twice its standard error is not
+a distinction worth acting on.
+
+This is not a hypothesis test and there is no p-value. The question it
+answers is "which predicts better", not "is the extra term significant".
+
+# 4. Triangulation
+
+A single fit cannot tell you whether its answer is a property of the
+data or of the algorithm that produced it. Two engines can.
+
+```{r tri, eval = agri_ok && inla_ok && brms_ok}
+tri <- triangulate(fit, m1)
+tri$status
+table(tri$metrics$verdict)
+```
+
+Three gates run before any comparison. A **fingerprint** gate refuses to
+compare fits of different models, data or priors. A **diagnostics** gate
+returns `inconclusive` rather than a verdict when either fit has not
+converged. A **matched-prior** gate marks a parameter `not_compared`
+when the two fits did not use the same prior for it.
+
+```{r tri-detail, eval = agri_ok && inla_ok && brms_ok}
+tri$metrics[tri$metrics$verdict != "concordant",
+            c("param", "mean_a", "mean_b", "sd_ratio", "verdict")]
+```
+
+Where the two disagree here it is on `sd_ratio` -- the ratio of posterior
+widths -- not on location. INLA's approximation reports a narrower
+posterior for the variance components than the sampler does. Both fits
+report clean convergence on their own; only the comparison shows it.
+
+The reading is not that one engine is wrong. It is that for a quoted
+interval on a variance component the sampler's is the more conservative,
+and that is worth knowing before the number goes into a paper.
+
+# 5. Downstream packages
+
+A fit works with the standard ecosystem: `emmeans` for estimated
+marginal means, `marginaleffects` for contrasts and predictions,
+`bayesplot` and `posterior` for draws, `loo` for comparison. Where a
+method has no meaning on an engine it says so rather than returning
+something misleading -- `augment()` on an INLA fit refuses by name,
+because there is no retained per-row model frame to append fitted values
+to.
+
+# 6. Pitfalls
+
+**`loo::loo()` needs a sampled fit.** An INLA fit has no pointwise
+log-likelihood draws, so comparison runs on the brms side.
+
+**Triangulation compares parameters, not conclusions.** Two fits can
+agree on every component and still support different decisions if the
+decision depends on a tail.
+
+**`inconclusive` is not `discordant`.** It means a gate stopped the
+comparison, usually because one fit had not converged. Fix the fit, then
+compare.
+
+**Interval semantics.** `predict()` returns posterior expected-response
+intervals, not posterior-predictive ones: they exclude residual
+observation noise.
+
+# 7. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

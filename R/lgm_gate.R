@@ -224,7 +224,7 @@ print.lgm_refusal <- function(x, ...) {
     "reason>\")\n",
     sep = ""
   )
-  cat("Docs: vignette(\"flexyBayes-10-dispatch-and-refusals\").\n")
+  cat("Docs: vignette(\"flexyBayes-02-formulas-and-dispatch\").\n")
   invisible(x)
 }
 

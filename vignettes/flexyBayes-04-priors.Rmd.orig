@@ -1,0 +1,156 @@
+---
+title: "4. Priors, and what they do to your answer"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{4. Priors, and what they do to your answer}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+lme4_ok <- requireNamespace("lme4", quietly = TRUE)
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>A Bayesian fit has a prior whether or not you chose one. Knowing
+what it is, and when it is doing work, is part of reporting the
+analysis.</dd>
+<dt>In ASReml</dt>
+<dd>No equivalent. REML has no prior, which is exactly why a variance
+component at the boundary has no well-behaved interval.</dd>
+<dt>In flexyBayes</dt>
+<dd><code>prior_summary(fit)</code> to see it,
+<code>fb_prior(...)</code> to change it.</dd>
+<dt>What the posterior adds</dt>
+<dd>Somewhere to put what you already know. With few levels that is the
+difference between an interval and a shrug.</dd>
+<dt>What it costs</dt>
+<dd>An assumption you have to state.</dd>
+</dl>
+</div>
+
+# 1. There is always a prior
+
+flexyBayes does not ask you to pick one before you can fit anything. It
+picks a weakly informative default, tells you at fit time, and records
+it on the fit.
+
+The default is a bounded uniform on each standard deviation, with the
+upper bound scaled to the response. Working on the standard-deviation
+scale rather than the variance or precision scale is deliberate: it is
+the scale the quantity is reported on, so a bound is a statement you can
+reason about.
+
+```{r fit, eval = lme4_ok && inla_ok}
+library(flexyBayes)
+data(sleepstudy, package = "lme4")
+fit <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                  data = sleepstudy, backend = "inla", verbose = FALSE)
+prior_summary(fit)
+```
+
+Every component is listed with the prior that was actually used, not the
+prior that was requested. On a fit where an engine substituted its own
+default, that is what appears.
+
+# 2. When the prior is doing work
+
+With plenty of levels the data dominate and the default is invisible.
+With few levels it is not. The comparison below fits the same model to
+all eighteen subjects and then to four.
+
+```{r few, eval = lme4_ok && inla_ok}
+small <- sleepstudy[sleepstudy$Subject %in% levels(sleepstudy$Subject)[1:4], ]
+small$Subject <- droplevels(small$Subject)
+
+fit_small <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                        data = small, backend = "inla", verbose = FALSE)
+
+rbind(
+  `18 subjects` = tidy(fit, effects = "random")[2, 2:5],
+  `4 subjects`  = tidy(fit_small, effects = "random")[2, 2:5]
+)
+```
+
+The point estimate moves a little. The interval widens a great deal.
+That width is the honest report: four levels carry little information
+about the spread of a population, and nothing in the arithmetic can
+manufacture more.
+
+# 3. Changing it
+
+`fb_prior()` takes one-sided formulas, each naming a target on the left
+and a distribution on the right.
+
+```{r dsl}
+p <- fb_prior(
+  sigma                 ~ pc(upper = 2, prob = 0.05),
+  sd(group = "Subject") ~ half_normal(scale = 30)
+)
+p
+```
+
+Three targets are addressable: `sigma` for the residual, `sd(group =)`
+for a named random-effect group, and `b()` for a fixed-effect
+coefficient.
+
+`pc(upper, prob)` is a penalised-complexity prior (Simpson and others,
+2017), read as "the probability that this standard deviation exceeds
+`upper` is `prob`". It shrinks toward zero unless the data pull it away,
+which is a defensible default for a component that may not be there at
+all.
+
+```{r fit-prior, eval = lme4_ok && inla_ok}
+fit_p <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                    data = small, prior = p,
+                    backend = "inla", verbose = FALSE)
+tidy(fit_p, effects = "random")
+```
+
+# 4. Reporting
+
+Two rules make a Bayesian analysis reproducible by someone else.
+
+State the prior. `prior_summary()` produces it in a form that can be
+pasted into a methods section, and it reports what ran rather than what
+was asked for.
+
+Say whether it mattered. Refitting under a different reasonable prior
+and reporting both is the standard check. Where the two agree, the data
+are doing the work. Where they do not, the prior is part of the result
+and belongs in the write-up.
+
+# 5. Pitfalls
+
+**A prior on the wrong scale.** The DSL is on the standard-deviation
+scale throughout. A bound of 2 means two units of the response, not two
+units of variance.
+
+**An engine default is not silence.** Rows marked `engine default` in
+`prior_summary()` carry whatever INLA or Stan chose. Those are priors
+too, and they are not always weak.
+
+**Bounded uniform has a bound.** The default's upper limit is scaled to
+the response, and a component genuinely larger than the bound cannot be
+recovered. `prior_summary()` shows the number.
+
+**A prior cannot rescue an unidentified component.** If a term carries
+no signal, an informative prior returns the prior. That is the intended
+behaviour, and the boundary warning is the flag that it happened.
+
+# 6. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

@@ -35,15 +35,15 @@
 #' * [triangulate()] -- cross-engine posterior comparison.
 #'
 #' @section Vignettes:
-#' Eleven vignettes ship with the package, covering:
-#' getting started, the formula surface (the asreml term
-#' catalogue together with structured covariance), foundational
-#' regression, hierarchical models, priors and regularisation,
-#' multi-environment trials and genomics, downstream analysis,
-#' spatio-temporal models, cross-engine triangulation, dispatch and
-#' refusals with the backend registry, and big-data streaming (exact
-#' aggregation). The dispatch-and-refusals page is the technical /
-#' internals reference; the rest target a general audience.
+#' Eight vignettes ship with the package, covering:
+#' getting started and what changes under a posterior, the formula
+#' surface together with dispatch and the inventory of unsupported
+#' structures, regression and hierarchical models, priors,
+#' multi-environment trials and genomics, spatial and temporal
+#' structure, reading and comparing a fit including cross-engine
+#' triangulation, and fitting from sufficient statistics when the data
+#' do not fit in memory. Each opens with a panel giving the ASReml line,
+#' the flexyBayes line, and what the posterior adds.
 #'
 #' @section Capability:
 #' What each active engine fits, emits, or refuses by model class is

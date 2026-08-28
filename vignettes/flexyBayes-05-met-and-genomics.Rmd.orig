@@ -1,0 +1,223 @@
+---
+title: "5. Multi-environment trials and genomics"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{5. Multi-environment trials and genomics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+agri_ok <- requireNamespace("agridat", quietly = TRUE)
+options(flexyBayes.silence_default_prior_note = TRUE)
+.md_code <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;",  x, fixed = TRUE)
+  x <- gsub(">", "&gt;",  x, fixed = TRUE)
+  gsub("`([^`]+)`", "<code>\\1</code>", x)
+}
+.cap_table <- function(df) {
+  df[] <- lapply(df, .md_code)
+  knitr::kable(df, format = "html", escape = FALSE)
+}
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Varieties do not rank the same everywhere. Separating a variety's
+general merit from its response to environment is the central question
+of a breeding programme.</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ env, random = ~ gen + diag(env):gen)</code></dd>
+<dt>In flexyBayes</dt>
+<dd>The same, with <code>backend = "brms"</code>: the structured
+genotype-by-environment terms are a brms capability.</dd>
+<dt>What the posterior adds</dt>
+<dd>Heritability, a ratio of variance components, is computed on the
+draws rather than through the delta method.</dd>
+<dt>What it costs</dt>
+<dd>The factor-analytic model, the workhorse of large METs, is refused
+by both engines. Section 5 says what that means in practice.</dd>
+</dl>
+</div>
+
+# 1. The MET question
+
+`agridat::yan.winterwheat` is 18 winter wheat genotypes across 9 Ontario
+environments, one yield per combination.
+
+```{r data, eval = agri_ok}
+library(flexyBayes)
+yw <- agridat::yan.winterwheat
+table(nlevels(yw$gen), nlevels(yw$env))
+```
+
+Three models answer three different questions, and they nest.
+
+**Main effect only.** `random = ~ gen` says varieties differ but rank
+the same everywhere. One variance component.
+
+**Plus interaction.** `random = ~ gen + gen:env` says varieties also
+respond differently to environment, and measures that with a second
+component. The ratio of the two is the question a breeder asks: how much
+of the varietal signal survives across sites.
+
+**Heterogeneous by environment.** `random = ~ diag(env):gen` says the
+genotype spread itself differs between environments -- a high-yielding
+site may separate varieties more than a stressed one.
+
+# 2. Main effect plus interaction
+
+```{r met, eval = agri_ok && brms_ok}
+fit <- flexybayes(yield ~ env, random = ~ gen + gen:env, data = yw,
+                  backend = "brms", chains = 2L, n_samples = 1500L,
+                  warmup = 750L, seed = 1L, verbose = FALSE,
+                  mcmc_verbose = FALSE)
+tidy(fit, effects = "random")
+```
+
+`sd_gen` is the spread of general merit, `sd_gen:env` the spread of
+environment-specific deviation. When the second is comparable to the
+first, selecting on an overall mean discards real information.
+
+Heritability on an entry-mean basis follows from the components:
+
+```{r h2, eval = agri_ok && brms_ok}
+vc <- tidy(fit, effects = "random")
+g  <- function(nm) vc$estimate[vc$term == nm]
+n_env <- nlevels(yw$env)
+g("sd_gen")^2 /
+  (g("sd_gen")^2 + g("sd_gen:env")^2 / n_env + g("sigma")^2 / n_env)
+```
+
+Under REML this ratio needs the delta method for an interval. Under a
+posterior the same computation done draw by draw gives one directly.
+
+# 3. Heterogeneous genotype variance
+
+`diag(env):gen` gives each environment its own genotype variance and no
+correlation between them.
+
+```{r diag, eval = agri_ok && brms_ok}
+fit_d <- flexybayes(yield ~ env, random = ~ diag(env):gen, data = yw,
+                    backend = "brms", chains = 2L, n_samples = 1500L,
+                    warmup = 750L, seed = 1L, verbose = FALSE,
+                    mcmc_verbose = FALSE)
+head(tidy(fit_d, effects = "random"), 5)
+```
+
+One standard deviation per environment. Environments with a larger value
+discriminate between varieties more strongly.
+
+`us(env):gen` goes further and estimates the correlations between
+environments as well, which is what tells you whether two sites are
+effectively repeats of each other. It costs a parameter for every pair.
+
+# 4. Known relationship matrices
+
+Genomic selection replaces "genotypes are independent draws" with
+"genotypes are related, and the relationship matrix says how".
+`vm(gen, K)` supplies that matrix; `ped(animal, A)` is the same term
+spelled for a pedigree.
+
+```{r vm, eval = inla_ok}
+set.seed(4)
+n_g  <- 40
+M    <- matrix(rbinom(n_g * 200, 2, 0.3), nrow = n_g)
+Ks   <- scale(M)
+K    <- tcrossprod(Ks) / ncol(Ks)
+diag(K) <- diag(K) + 1e-6
+dimnames(K) <- list(paste0("g", 1:n_g), paste0("g", 1:n_g))
+
+dg <- data.frame(gen = factor(rep(paste0("g", 1:n_g), each = 3),
+                              levels = paste0("g", 1:n_g)),
+                 env = factor(rep(1:3, times = n_g)))
+u  <- as.numeric(crossprod(chol(K), rnorm(n_g)))
+dg$yield <- 5 + u[as.integer(dg$gen)] + rnorm(nrow(dg), 0, 0.4)
+
+# INLA is given the precision, its documented carrier for this term
+Q <- solve(K)
+fit_g <- flexybayes(yield ~ env,
+                    random = ~ vm(gen, cov = fb_cov(Q, type = "precision")),
+                    data = dg, known_matrices = list(Q = Q),
+                    backend = "inla", verbose = FALSE)
+tidy(fit_g, effects = "random")
+```
+
+The two engines take the relationship in different forms, and naming the
+wrong one refuses rather than converting silently. INLA works from the
+**precision** -- the inverse of the relationship matrix -- because its
+latent field is parameterised that way and a sparse precision is what
+makes the fit affordable. brms takes the **covariance** directly:
+
+```{r vm-brms, eval = FALSE}
+flexybayes(yield ~ env, random = ~ vm(gen, K), data = dg,
+           known_matrices = list(K = K), backend = "brms")
+```
+
+`fb_cov()` names the carrier: `covariance`, `precision`, `chol`,
+`blocks` or `low_rank`. `backend = "auto"` picks an engine that accepts
+the carrier you supplied.
+
+The random effect is now correlated across genotypes according to `K`,
+so a genotype with no phenotype of its own still receives a prediction
+through its relatives. That is genomic prediction.
+
+# 5. What is refused, and what to do instead
+
+```{r refused, echo = FALSE}
+m <- flexyBayes:::.fb_capability_matrix()
+want <- c("Factor-analytic genotype-by-environment covariance",
+          "Heterogeneous variances with one shared correlation",
+          "Multi-trait covariance",
+          "Unstructured genotype-by-environment covariance",
+          "Known-covariance genomic / pedigree random effect")
+sel <- m[match(want, m$model_class), ]
+sel <- sel[!is.na(sel$model_class), ]
+.cap_table(data.frame(`Model class` = sel$model_class,
+                      Spelling = sel$spelling, INLA = sel$inla,
+                      brms = sel$brms, check.names = FALSE))
+```
+
+The factor-analytic model is the significant gap. `fa(env, k):gen`
+approximates the environment covariance by a rank-`k` loading matrix
+plus a diagonal, and it is the standard tool for a MET with many sites,
+because `us()` becomes unaffordable. Neither engine emits it.
+
+Where a MET is small enough, `us(env):gen` gives the full covariance and
+`diag(env):gen` the heterogeneous-variance approximation. Where it is
+not, ASReml remains the tool for the factor-analytic fit, and a
+flexyBayes fit of a reduced model can be compared against it.
+
+# 6. Pitfalls
+
+**The relationship matrix must match the factor levels.** Row and column
+order of `K` has to correspond to `levels(gen)`. A mismatch is a silent
+reordering of the genotypes.
+
+**Positive definiteness.** A genomic relationship matrix built from
+markers is often singular. Adding a small ridge to the diagonal, as
+above, is the usual remedy and the validator will refuse without it.
+
+**Interaction terms are brms-only.** `gen:env` refuses on INLA, which
+collapses the finest stratum. `auto` routes it.
+
+**Heritability needs its basis stated.** Entry-mean and plot basis
+differ by the divisors in the denominator. Report which one.
+
+# 7. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

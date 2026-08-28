@@ -1,6 +1,5 @@
 ---
-title: "Tutorial 01: Getting started with flexyBayes"
-date: "`r Sys.Date()`"
+title: "1. Getting started: what changes when you go Bayesian"
 output:
   rmarkdown::html_vignette:
     fig_caption: true
@@ -9,715 +8,282 @@ output:
     toc: true
     toc_depth: 2
 vignette: >
-  %\VignetteIndexEntry{Tutorial 01: Getting started with flexyBayes}
+  %\VignetteIndexEntry{1. Getting started: what changes when you go Bayesian}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(
-  collapse  = TRUE,
-  comment   = "#>",
-  fig.width = 6,
-  fig.height = 4,
-  dpi       = 150,
-  warning   = FALSE,
-  message   = FALSE
-)
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
+                      fig.height = 4, dpi = 150)
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+agri_ok <- requireNamespace("agridat", quietly = TRUE)
 options(flexyBayes.silence_default_prior_note = TRUE)
-inla_ok  <- requireNamespace("INLA",  quietly = TRUE)
-brms_ok  <- requireNamespace("brms",  quietly = TRUE)
+
+# knitr::kable(format = "markdown") escapes a pipe to &#124; so it cannot
+# break the table, and pandoc then prints that entity literally inside a
+# code span, so `(x | g)` renders as `(x &#124; g)`. Emitting HTML
+# directly, with backticks turned into <code> here, keeps the pipe.
+.md_code <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;",  x, fixed = TRUE)
+  x <- gsub(">", "&gt;",  x, fixed = TRUE)
+  gsub("`([^`]+)`", "<code>\\1</code>", x)
+}
+.cap_table <- function(df) {
+  df[] <- lapply(df, .md_code)
+  knitr::kable(df, format = "html", escape = FALSE)
+}
 ```
 
-# 1. Why Bayesian mixed models?
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Yield of 18 wheat genotypes across 9 environments. Which genotypes
+are good, and how sure are we?</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ env, random = ~ gen, data = dat)</code></dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(yield ~ env, random = ~ gen, data = dat)</code></dd>
+<dt>What the posterior adds</dt>
+<dd>Every quantity arrives as a distribution rather than an estimate and
+a standard error, so an interval for a variance component needs no
+appeal to large-sample theory, and "how sure are we" is answered by
+counting draws.</dd>
+<dt>What it costs</dt>
+<dd>Seconds instead of milliseconds, a prior you can inspect, and a
+smaller set of model structures than ASReml offers.</dd>
+</dl>
+</div>
 
-Restricted maximum likelihood (REML) -- the workhorse behind `lme4`,
-`nlme`, and ASReml -- returns a single point estimate of each variance
-component plus a Wald-style standard error. Two situations make this
-summary uncomfortable.
+# 1. What changes when you go Bayesian
 
-- **Small group counts.** When the number of clusters is modest
-  (fewer than roughly thirty), the sampling distribution of the
-  variance-component estimator has a long right tail. The Wald
-  interval is informative only near the centre, where the restricted
-  log-likelihood is approximately quadratic.
-- **Boundary problems.** A maximum-likelihood variance estimate can
-  land on zero. That is *uninformative*: the data may not have ruled
-  out a small-but-nonzero variance, but the boundary collapses both
-  the estimate and the uncertainty.
+A REML fit answers with a number and an uncertainty attached to it: the
+genotype variance is 0.11, with a standard error. A Bayesian fit answers
+with a distribution over that variance, and the number you quote is a
+summary of it.
 
-A Bayesian fit replaces the point estimate with the *full posterior
-distribution*. You see directly how much mass the data place near
-zero, and you can propagate that uncertainty into derived quantities
--- predictions, contrasts, best linear unbiased predictors (BLUPs) --
-without leaning on quadratic approximations.
+That difference matters in three practical places.
 
-`flexyBayes` is built around one principle: switching from REML to
-Bayesian inference should not change the formula you write. Write the
-model in ASReml-style syntax and `flexybayes()` either fits it on an
-active engine or refuses it by name, telling you which structure has
-no representation and what the nearest supported model is. Write it in
-brms-style notation and `fb()` does the same with the same
-guarantee (it auto-detects which grammar you used). The refusal is the
-point: the alternative to refusing is fitting a neighbouring model
-under the requested model's name, which is the failure mode a formula
-translator has to be built against. What fits and what refuses,
-per engine and per model class, is tabulated in the package README
-and in `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
+**Variance components near zero.** REML puts the estimate at the
+boundary and the standard error becomes hard to interpret, because the
+sampling theory behind it assumes the estimate is not sitting on the
+edge of the parameter space. A posterior has no boundary problem: it is
+simply concentrated near zero, and its upper credible bound is a real
+statement about how large the component could plausibly be.
 
-Both routes go through a shared internal representation, and the same
-fitted object supports `summary()`, `predict()`,
-`emmeans::emmeans()`, `marginaleffects::predictions()`, and the
-`bayesplot::*` family.
+**Small numbers of levels.** With nine environments, asymptotic
+intervals for the between-environment variance are optimistic. The
+posterior is whatever the data and the prior support, at any sample
+size.
 
-If you arrive from ASReml with last season's call in hand, Section 6 of
-this page is the shorter door onto this material: it fits one field trial
-and then walks the accessors you would reach for next -- variance
-components, random effects, predicted means, observation counts, missing
-plots and the empirical variogram -- before returning to the full Bayesian
-on-ramp.
+**Functions of parameters.** Heritability, a ratio of variance
+components, needs the delta method under REML. Under a posterior it is
+one line: compute the ratio on every draw and summarise.
 
-# 2. Installation
+Against that, three things are genuinely harder. Fitting takes seconds
+to minutes rather than milliseconds. A prior exists whether or not you
+choose it, so it has to be reported. And the structures on offer are
+narrower than ASReml's, which is the subject of Section 2 and of the
+*formula surface* vignette.
 
-`flexyBayes` requires R 4.1.0 or later. Inference happens through one of
-two active engines.
+# 2. Two engines, one grammar
 
-- **brms** (Stan). A Hamiltonian Monte Carlo (HMC) sampler covering
-  most of the term-type surface, including structures INLA cannot
-  represent.
-- **INLA** -- integrated nested Laplace approximation (Rue et al.,
-  2009). A deterministic approximation over the latent Gaussian model
-  (LGM) class. Substantially faster than HMC, over a narrower scope,
-  and *approximate*: representing a model exactly and inferring it
-  exactly are separate claims, and INLA's nested Laplace is
-  approximate inference even where the representation is faithful.
-  Section 4 returns to this.
+flexyBayes does not implement an inference algorithm. It parses a model
+written in ASReml-style or brms-style syntax and hands it to one of two
+established engines.
 
-Install both:
+**INLA** approximates the posterior deterministically, by nested Laplace
+approximation. It is fast, it has no chains to converge, and it is built
+around latent Gaussian models -- which is why the structured terms
+(autoregressive fields, splines, known covariance matrices) live here.
+
+**brms** writes a Stan program and samples it with Hamiltonian Monte
+Carlo. It is slower and its answer carries Monte Carlo error, but it is
+not restricted to the latent Gaussian class, which is why the flexible
+likelihoods and the interaction structures live there.
+
+They are complementary rather than interchangeable. The table below is
+generated from the package's own capability record, so it cannot drift
+from what the code does.
+
+```{r capability, echo = FALSE, results = "asis"}
+m <- flexyBayes:::.fb_capability_matrix()
+.cap_table(data.frame(
+  `Model class` = m$model_class, Spelling = m$spelling,
+  INLA = m$inla, brms = m$brms, check.names = FALSE
+))
+```
+
+Three readings of that table are worth having before you fit anything.
+
+*`fits`* means an active engine emits the structure and a test exercises
+it. *`refuses`* means the request raises an error naming the structure
+and pointing at the nearest thing that does work -- it does not mean the
+model is quietly approximated by something else. Four classes are
+refused by both engines: correlated random slopes, `corh()`,
+factor-analytic covariance, and multi-trait covariance. Those are
+genuine gaps, not omissions from this page.
+
+The default `backend = "auto"` runs a feasibility gate and picks the
+engine that can represent the model, so most of the time the choice is
+made for you.
+
+# 3. Installation
+
+brms is on CRAN and needs a working C++ toolchain for Stan. INLA is
+distributed from its own repository.
 
 ```r
-# brms and its Stan backend
 install.packages("brms")
-
-# INLA -- not on CRAN; from the INLA team's repository
 install.packages(
   "INLA",
-  repos = c(getOption("repos"),
-            INLA = "https://inla.r-inla-download.org/R/stable")
+  repos = c(INLA = "https://inla.r-inla-download.org/R/stable")
 )
-
-# flexyBayes itself -- not yet on CRAN, so install from the repository
-# install.packages("remotes")
-remotes::install_github("AAGI-AUS/flexyBayes")
 ```
 
-A handful of companion packages enrich the post-fit experience and are
-introduced in subsequent vignettes:
-
-```r
-install.packages(c("emmeans", "marginaleffects", "bayesplot",
-                   "posterior", "loo", "agridat"))
-```
-
-If INLA cannot be installed on your platform, the package degrades
-gracefully: INLA-only paths (the fast LGM route, `triangulate()`
-cross-checks that need a second engine) emit clear messages, and brms
-covers everything else.
-
-> **A third native engine, withdrawn.** Earlier releases fit models via
-> a TensorFlow-backed HMC engine. That engine has since been withdrawn
-> entirely (see `NEWS.md`) -- naming it, or any other unrecognised
-> backend, now refuses with a structured message rather than fitting.
-> If you have older code pinned to that engine, drop the pin. `"auto"`
-> (or an explicit `"inla"` / `"brms"`) now covers the same ground on
-> the two active engines. See `NEWS.md` for the full rationale.
-
-# 3. The four-verb API
-
-`flexyBayes` exposes four user-facing entry points -- one universal
-entry, two engine pins, and the comparison verb (`fb()` is an alias of
-`flexybayes()`). Pick the verb that matches how the model is expressed. The choice of entry never
-implicitly changes the choice of backend.
-
-| Verb | When to use |
-|---|---|
-| `flexybayes()` / `fb()` | Principal / universal entry. ASReml-style (`fixed = ..., random = ~ g, residual = ~ ...`) or brms-style (`response ~ x + (1 \| g)`) formulas. It auto-detects the grammar and takes a `backend` argument to choose the engine. The ASReml term vocabulary it *parses* is wider than the set either engine emits -- `fa()`, `corh()` and an AR1 residual parse and then refuse -- so consult the capability table before assuming a term fits. |
-| `fb_inla()` | Engine pin: fix the backend to INLA (Laplace). Accepts the same two formula grammars, and refuses by name any model INLA cannot represent. |
-| `fb_brms()` | Engine pin: fix the backend to Stan through brms (Hamiltonian Monte Carlo). Accepts the same two formula grammars. |
-| `triangulate()` | Cross-engine posterior comparison. Takes two fits from different backends and reports per-parameter agreement metrics. |
-
-The universal entries `flexybayes()` / `fb()` take a `backend`
-argument: `"auto"` (the default -- gate-driven routing: INLA when the
-model is LGM-eligible, brms otherwise, and a typed refusal when
-neither can represent the model -- never a silent fallback to a
-quarantined engine), `"inla"` (explicit LGM fast path, refusing
-non-LGM models with a structured message), and `"brms"` (Stan). The
-engine pins `fb_inla()` / `fb_brms()` fix the backend instead of
-taking the argument. The dispatch trace is available post-fit via
-`backend_decision()`. The *understanding dispatch and refusals*
-vignette walks through the dispatch flow end-to-end.
+Neither is required to load flexyBayes. A model that needs an absent
+engine refuses with an installation message rather than an error from
+somewhere inside the call stack.
 
 # 4. Your first model
 
-We use `lme4::sleepstudy` (Belenky et al., 2003): reaction times for
-eighteen subjects across ten days of restricted sleep. The natural
-mixed model has a fixed linear time trend and a random subject
-intercept.
+`agridat::yan.winterwheat` is a multi-environment trial: 18 winter wheat
+genotypes, 9 Ontario environments, one yield per combination.
 
-```{r sleepstudy-data}
+```{r data, eval = agri_ok}
 library(flexyBayes)
-set.seed(100)
-data(sleepstudy, package = "lme4")
-str(sleepstudy)
+dat <- agridat::yan.winterwheat
+str(dat)
 ```
 
-We start with a brms-style formula -- it reads exactly as in
-`lme4::lmer()` or `brms::brm()`: `Reaction ~ Days + (1 | Subject)` --
-and fit it with the brms (Stan) engine pin `fb_brms()`, which samples
-this small hierarchical model to clean convergence. `seed` is passed
-to Stan through brms, so the draws below are the draws a reader who
-runs the same call gets:
+Environments are the conditions of the trial, so they enter as fixed
+effects. Genotypes are a sample from a breeding population and the
+question is about the population, so they enter as random. That is the
+same reasoning an ASReml user applies, and the formula is the same
+formula.
 
-```{r sleepstudy-fb-brms, eval=brms_ok}
-fit_brms <- fb_brms(
-  Reaction ~ Days + (1 | Subject),
-  data         = sleepstudy,
-  n_samples    = 2000,
-  warmup       = 2000,
-  chains       = 4,
-  seed         = 20260815L,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
-)
-fit_brms
-```
-
-The printed summary includes a `Representation: exact (model, not inference)`
-line. This reports that
-the model was emitted to the backend without structural approximation: every
-term in the formula is represented as written, with no low-rank or sparse
-truncation. It describes the model *representation*, not the *inference*. The
-brms (Stan) backend draws from the posterior by MCMC, so its only inferential
-error is Monte Carlo sampling error, whereas the INLA backend always performs
-*approximate* inference (integrated nested Laplace approximation) whether or
-not its representation is exact. flexyBayes treats "exact representation" and
-"exact inference" as separate claims and makes only the first (see
-`API_STABILITY.md`, section "Inference semantics").
-
-### A note on random *intercepts* versus random *slopes*
-
-The same data also supports a per-subject slope on `Days` on top of the
-intercept. There are two spellings, and they are different models.
-
-The **uncorrelated** form, `(Days || Subject)`, gives each subject its
-own intercept deviation and its own slope deviation, each with its own
-variance and no correlation parameter between them. It is supported and
-emits on brms:
-
-```{r sleepstudy-slope-uncor, eval = brms_ok}
-fit_slope <- fb_brms(
-  Reaction ~ Days + (Days || Subject),
-  data         = sleepstudy,
-  n_samples    = 1000,
-  warmup       = 1000,
-  chains       = 4,
-  seed         = 20260815L,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
-)
-fit_slope
-```
-
-The **correlated** form, `(Days | Subject)`, adds a free correlation
-between a subject's intercept and slope. No active engine represents it,
-so it refuses rather than quietly fitting the uncorrelated model in its
-place:
-
-```{r sleepstudy-slope-cor, eval = brms_ok}
-refused <- tryCatch(
-  fb_brms(Reaction ~ Days + (Days | Subject), data = sleepstudy),
-  error = function(e) e
-)
-cat(conditionMessage(refused))
-```
-
-Read the last paragraph of that message carefully, because it names a
-trap. The ASReml crossing `random = ~ Subject + Subject:Days` looks like
-the asreml way to write a random slope and is not one: with a *numeric*
-`Days` the crossing is one independent deviation per Subject-by-Day
-cell -- 180 of them on `sleepstudy` -- rather than eighteen per-subject
-slopes. The *hierarchical models* vignette works through both spellings
-side by side. For the remainder of this introduction we keep the random
-intercept.
-
-# 5. What is inside a fit?
-
-`fit_brms` is an object of class `flexybayes`. The default print method
-is concise. `summary()` gives the full posterior digest:
-
-```{r sleepstudy-summary, eval = brms_ok}
-summary(fit_brms)
-```
-
-The output is laid out in three blocks.
-
-1. **Fixed effects.** Posterior mean, posterior standard deviation
-   (SD), and equal-tailed 95 % credible interval for each design-
-   matrix column. Here `(Intercept)` is the baseline reaction time
-   and `Days` is the per-day slope.
-2. **Variance components.** The Subject-level SD and the residual SD,
-   both on the response scale.
-3. **Sampler diagnostics.** Effective sample size (ESS) and the
-   rank-normalised $\widehat{R}$ (Vehtari et al., 2021). The targets
-   for a trustworthy fit are ESS $\ge 400$ and $\widehat{R} \le 1.01$
-   on every parameter. The Subject-level variance component and its
-   latent per-subject deviations mix more slowly than the fixed effects
-   -- variance components are among the slowest-mixing quantities in
-   hierarchical MCMC -- and at a shorter budget than the one used here
-   the worst of them does not reach the strict bar, which is why the
-   budget is what it is. The call above passes `seed = 20260815L`
-   through to Stan, so a repeat run reproduces these numbers on the
-   same machine and toolchain -- across machines, or when Stan runs its
-   chains under threading, the reduction order can move the last
-   digits. Read the block as printed: the quantities you
-   interpret are at the bar, and any parameter that is not says so on
-   its own row. Two moves address a short one -- run longer (more
-   warmup and draws), or cross-check against a different algorithm,
-   which the next section does with INLA.
-
-A coefficient plot of the fixed effects is one line:
-
-```{r sleepstudy-plot, eval = brms_ok, fig.height = 3.5, fig.cap = "Posterior mean and 95 % credible interval for each fixed-effect coefficient of fit_brms -- an interval clear of zero is a coefficient the data pins down."}
-plot(fit_brms, type = "effects")
-```
-
-Each row is one design-matrix column: the interval on `Days` excludes
-zero, so the fitted slope is resolved from noise at this sampling
-budget, and the interval on `(Intercept)` sits far from zero because it
-is the baseline reaction time in milliseconds, not a centred effect.
-
-### Variance-component priors
-
-When you call any entry (`flexybayes()` / `fb()` or an engine pin)
-without specifying a prior, `flexyBayes` announces the default it uses on every
-random-effect SD and the residual SD: a **bounded uniform on the SD
-scale**, $\sigma \sim \mathrm{Uniform}(0, U)$, with a family-aware
-upper bound (Gelman, 2006). The announcement names $U$, the scale
-basis, and the override knobs, and fires once per session. Passing
-`prior_vc_sd = m` opts back into the legacy
-$\sigma \sim \mathrm{Lognormal}(0, m)$ default. Passing a structured
-`prior = fb_prior(...)` overrides both. The *priors and
-regularisation* vignette articulates the choice in detail and shows
-how to set priors deliberately.
-
-Fixed-effect coefficients are handled the other way round: the engine's
-own default stands until you ask for something else. Supply
-`prior_fixed_sd = s` and every fixed effect -- the intercept, contrast
-levels, continuous slopes, factor-by-continuous interactions, and
-`I()`-expression terms -- carries $\mathcal{N}(0, s)$ on both engines,
-weakly informative in the sense of Gelman et al. (2008). Leave the
-argument out and brms keeps its flat coefficients and its
-response-centred `student_t` intercept, while INLA keeps `prec = 0.001`
-on the slopes and a flat intercept. Neither is replaced by a prior
-nobody asked for, because putting $\mathcal{N}(0, 100)$ where a
-response-centred intercept prior was is a different model for any
-response far from zero, and `sleepstudy` at a mean near 300 ms is the
-ordinary case rather than the exotic one. `prior_summary()` names which
-of the two a fit ran under. Individual coefficients are set with
-`b("name") ~ normal(...)` in `fb_prior()`.
-
-# 6. Reading a fit the way a REML user does
-
-A reader arriving from ASReml, `lme4`, or `nlme` starts from a fitted
-object and reaches for a small, fixed accessor set -- the variance-
-component table, random effects, predicted means, observation counts,
-and the machinery around a missing plot, each with a flexyBayes
-spelling. This section is a compact tour of it on a simulated field
-trial -- six rows by eight columns, twelve varieties in four blocks --
-read through the ASReml-style grammar -- no `asreml()` call runs
-anywhere on this page.
-
-```{r reml-trial-data}
-set.seed(20260817L)
-trial <- expand.grid(row = factor(1:6), col = factor(1:8))
-attr(trial, "out.attrs") <- NULL
-trial$Block   <- factor(rep(1:4, each = 12))
-trial$Variety <- factor(paste0("V", rep(1:12, times = 4)))
-
-v_eff <- rnorm(12, 0, 0.6)
-b_eff <- rnorm(4, 0, 0.4)
-trial$yield <- 5 +
-  v_eff[as.integer(trial$Variety)] +
-  b_eff[as.integer(trial$Block)] +
-  rnorm(nrow(trial), 0, 0.5)
-```
-
-```{r reml-fit-block, eval = inla_ok}
-fit <- flexybayes(
-  fixed = yield ~ Variety, random = ~ Block, data = trial,
-  verbose = FALSE
-)
+```{r fit, eval = agri_ok && inla_ok}
+fit <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                  backend = "inla", verbose = FALSE)
 fit
 ```
 
-`summary()` prints its report and returns the object behind it, so
-the table read on screen is the table returned, each row a posterior
-mean and credible interval where ASReml reports a point estimate and
-a standard error:
+# 5. Reading the fit as a REML user
 
-```{r reml-varcomp, eval = inla_ok}
-fb_sum <- summary(fit)
-fb_sum$varcomp
+`summary()` gives the two blocks an ASReml user reads first: the
+variance components and the fixed effects.
+
+```{r summ, eval = agri_ok && inla_ok}
+tidy(fit, effects = "random")
 ```
 
-`coef(fit, what = "random")` and `ranef(fit)` return the same object
--- `flexyBayes::ranef(fit)` is the collision-proof spelling where
-`nlme` or `lme4` is also attached:
+`estimate` is the posterior median on the standard-deviation scale.
+`conf.low` and `conf.high` are the 2.5% and 97.5% quantiles of the
+posterior -- not a normal approximation around the estimate, so they
+need not be symmetric, and for a component near zero they will not be.
 
-```{r reml-coef-random, eval = inla_ok}
-coef(fit, what = "random")$Block
-identical(ranef(fit), coef(fit, what = "random"))
+```{r fixed, eval = agri_ok && inla_ok}
+head(tidy(fit), 4)
 ```
 
-`predict(fit, classify = "Variety")` averages the fitted model over
-the levels of the named factors, built on `emmeans`:
+The genotype effects themselves are predictions of random effects, the
+BLUPs of REML, and they arrive with intervals:
 
-```{r reml-classify, eval = inla_ok}
-head(predict(fit, classify = "Variety"), 4)
+```{r ranef, eval = agri_ok && inla_ok}
+head(ranef(fit)$gen, 4)
 ```
 
-The design and observed counts differ only on an augmented fit --
-`update()` re-fits with the recorded `na_action` carried forward --
-here adding the field's row stratum on top of `Block`:
+Because the fit carries draws rather than point estimates, a function of
+the parameters is computed directly. Heritability on an entry-mean basis
+is a ratio of variance components, and under a posterior it is a ratio
+taken draw by draw:
 
-```{r reml-nobs-update, eval = inla_ok}
-c(design = nobs(fit), observed = nobs(fit, type = "observed"))
-fit_row <- update(fit, random = ~ Block + row)
+```{r h2, eval = agri_ok && inla_ok}
+vc <- tidy(fit, effects = "random")
+sd_gen   <- vc$estimate[vc$term == "sd_gen"]
+sd_resid <- vc$estimate[vc$term == "sigma"]
+n_env    <- nlevels(dat$env)
+sd_gen^2 / (sd_gen^2 + sd_resid^2 / n_env)
 ```
 
-### Missing plots
+# 6. The same model on the other engine
 
-A lost plot is a row with the design columns filled in and the
-response `NA`, never an absent row. `na_action` accepts ASReml's own
-vocabulary, by shape rather than by class.
+The point of two engines is that they disagree informatively. Fitting the
+same model on brms and comparing takes one call. The sampler is given
+four chains here because `triangulate()` refuses to compare a fit whose
+own diagnostics have not converged.
 
-| flexyBayes value | Behaviour |
+```{r brms, eval = agri_ok && brms_ok}
+fit_b <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                    backend = "brms", chains = 4L, n_samples = 2000L,
+                    warmup = 1000L, seed = 1L, verbose = FALSE,
+                    mcmc_verbose = FALSE)
+```
+
+```{r tri, eval = agri_ok && inla_ok && brms_ok}
+tri <- triangulate(fit, fit_b)
+tri$status
+table(tri$metrics$verdict)
+```
+
+The nine fixed effects agree. The two variance components do not, and
+the way they disagree is the useful part:
+
+```{r tri-vc, eval = agri_ok && inla_ok && brms_ok}
+vc_rows <- tri$metrics$param %in% c("sigma", "sd_gen")
+tri$metrics[vc_rows, c("param", "mean_a", "mean_b", "sd_ratio", "verdict")]
+```
+
+`mean_a` and `mean_b` are the posterior means from INLA and from brms.
+They match to three decimal places. `sd_ratio` is the ratio of the two
+posterior standard deviations, and it is below one: INLA's posterior for
+each variance component is *narrower* than the sampler's.
+
+That is the Laplace approximation showing its edge. It places the
+variance components in the same location as full Hamiltonian Monte
+Carlo and reports slightly more confidence about them than the sampler
+does. For deciding which genotypes are good, the two engines give the
+same answer. For quoting an interval on the genotype variance, the
+sampler's is the more conservative one.
+
+Neither engine is wrong here, and nothing in either fit alone would have
+revealed this. A single fit on either engine reports a converged model
+with clean diagnostics. The comparison is what surfaces the difference,
+which is the argument for having two engines behind one grammar.
+
+# 7. The rest of the deck
+
+| Vignette | When you need it |
 |---|---|
-| `"augment"` (the default) | The missing response is kept as a latent quantity the engine marginalises, and the design grid is completed where the absent cells are determinable. |
-| `"omit"` | The rows are deleted. A structured covariance over the resulting broken grid then refuses downstream. |
-| `"fail"` | A missing response is refused, and the design grid is left alone. |
-| `list(x = "fail")` (the default on both sides) | A missing predictor is refused. |
-| `list(x = "omit")` | The affected rows are dropped, with a warning naming the count and the columns. |
-| `list(x = "include")` | Refused by name -- a zero is a value the plot did not have, and nothing downstream would say so. |
+| 2. The formula surface | Writing the model, and what is refused |
+| 3. Regression and hierarchical models | Fixed effects, random effects, GLMMs |
+| 4. Priors | What the defaults are and when to change them |
+| 5. MET and genomics | Genotype-by-environment, relationship matrices |
+| 6. Spatial and temporal structure | Field trials, autoregressive correlation |
+| 7. After the fit | Summaries, comparison, triangulation |
+| 8. Big data | Fitting without holding the data in memory |
 
-```{r reml-holed-fit, eval = inla_ok}
-holed <- trial
-holed$yield[c(5, 9)] <- NA
-fit_holed <- flexybayes(
-  fixed = yield ~ Variety, random = ~ Block, data = holed,
-  na_action = list(y = "include", x = "fail"), verbose = FALSE
-)
-coef(fit_holed, what = "missing")
-```
+# 8. Pitfalls
 
-The two unobserved cells are a table of their own, on the response
-scale. `fb_complete_grid()` reinstates plots absent from the file
-altogether, with the response `NA`, provided every other column at
-the reinstated cells is determined:
+**A prior is always present.** The default is a bounded uniform on each
+standard deviation, scaled to the response. It is reported at fit time
+and by `prior_summary()`. Reporting a Bayesian analysis without stating
+its prior is incomplete.
 
-```{r reml-complete-grid}
-absent <- trial[-c(3, 17), c("row", "col", "yield")]
-padded <- fb_complete_grid(absent, ~ row * col, response = "yield")
-c(rows = nrow(padded), missing = sum(is.na(padded$yield)))
-```
+**`backend = "auto"` can change engine.** If the feasibility gate
+refuses INLA, the model routes to brms, and a message says so. The
+fit's class records which engine produced it.
 
-Add the variety and the block back, and it refuses -- a variety label
-at an unsown plot is a real quantity nobody recorded, and every table
-downstream would report it as data:
+**Variance components can pin at zero.** A component whose upper
+credible bound is a negligible fraction of the residual scale raises a
+warning: the term carries no signal the data can separate from noise.
+That is a statement about identification, not a result.
 
-```{r reml-complete-grid-refusal}
-refused <- tryCatch(
-  fb_complete_grid(trial[-c(3, 17), ], ~ row * col, response = "yield"),
-  error = function(e) e
-)
-cat(conditionMessage(refused))
-```
+# 9. Session information
 
-The door is open, and it has a name on it -- the warning names every
-column that was filled in:
-
-```{r reml-complete-grid-hatch, warning = TRUE}
-padded_named <- fb_complete_grid(
-  trial[-c(3, 17), ], ~ row * col,
-  response = "yield", unused_level = "UNSOWN"
-)
-nrow(padded_named)
-```
-
-### The separable field
-
-```{r reml-field-fit, eval = inla_ok}
-fit_field <- flexybayes(
-  fixed = yield ~ Variety, random = ~ ar1(row):ar1(col), data = trial,
-  verbose = FALSE
-)
-```
-
-The respelled field is a latent Gaussian field with independent plot
-noise beside it -- four parameters, not ASReml's three-parameter
-separable AR1 residual:
-
-```{r reml-variogram, eval = inla_ok, fig.height = 4.5, fig.cap = "Empirical residual semivariance of the fitted field against row-by-column separation -- a curve that rises and flattens is spatial correlation, a flat curve near the noise floor is a field with little to model."}
-plot(fit_field, type = "variogram")
-```
-
-The curve is the empirical semivariance on the observed rows only --
-augmented rows carry no residual by construction -- and nothing is
-fitted to it -- a flat curve near the noise floor says little spatial
-structure remains unexplained.
-
-Variance components are posterior means with credible intervals, not
-REML point estimates. There is no Wald test, by decision -- read the
-credible interval in `summary(fit)$fixed` instead. *The formula
-surface* vignette is the term catalogue: what parses, what emits per
-engine, and what refuses.
-
-# 7. The same model on a second engine
-
-`fit_brms` is a Markov chain Monte Carlo (MCMC) fit. INLA runs a
-fundamentally different algorithm -- a Laplace approximation over a
-small set of hyperparameters -- and finishes almost instantly:
-
-```{r sleepstudy-fb-inla, eval=inla_ok}
-fit_inla <- fb_inla(
-  Reaction ~ Days + (1 | Subject),
-  data    = sleepstudy,
-  verbose = FALSE
-)
-summary(fit_inla)
-```
-
-```{r sleepstudy-inla-subject-sd, eval = inla_ok}
-hp <- fit_inla$inla$summary.hyperpar
-1 / sqrt(hp["Precision for Subject", "mean"])
-```
-
-> **Read that number before going further.** On this dataset the
-> `Subject`-level standard deviation collapses to a numerically
-> near-zero value under the package's auto-default prior, the bounded
-> uniform on the SD scale named in the `prior` column above -- not a
-> modest shrinkage, a genuine degeneracy (`sd_Subject` many orders of
-> magnitude below anything physically plausible). This is a known
-> instability specific to this model on this dataset, not a general
-> property of INLA. It is shown deliberately, not patched away, because
-> it is exactly the failure mode the next paragraph exists to catch.
->
-> The collapsed value does not reproduce either. Repeated runs of this
-> same call return `Precision for Subject` many orders of magnitude
-> apart, because nothing in the data fixes where a degenerate mode
-> sits, and the fixed effects move in the last decimals with it. A
-> `seed` cannot help: the Laplace approximation draws no random
-> numbers, so the movement is in the optimiser's landing point rather
-> than in a sampler. The brms block above is seeded and reproduces on
-> the same machine and toolchain. Treat instability across re-runs of a
-> *deterministic* engine as the same signal as a failed convergence
-> diagnostic on a sampler.
-
-Both engines were given the same model. Stan's Hamiltonian Monte Carlo
-and INLA's Laplace approximation are two routes to the posterior of
-that model, and on this dataset they do not arrive at the same place --
-the INLA Subject variance collapsed, the brms one did not. *How far
-apart are they?* That is the question `triangulate()` answers. The canonical
-parameter-name registry reconciles each engine's internal names -- brms's
-`b_Intercept`, `b_Days`, `sd_Subject__Intercept`, `sigma`, and INLA's
-`(Intercept)`, `Days`, `Precision for Subject`,
-`Precision for the Gaussian observations` -- automatically, so no
-`name_map` is needed for the common cases.
-
-```{r sleepstudy-triangulate, eval=brms_ok && inla_ok}
-# INLA's posterior sampler can be flaky under restricted-process
-# environments (e.g., CRAN's vignette re-render). Wrap so a failure
-# is informative rather than fatal.
-tri <- tryCatch(
-  triangulate(fit_brms, fit_inla),
-  error = function(e) {
-    message("triangulate() unavailable in this session: ",
-            conditionMessage(e))
-    NULL
-  }
-)
-if (!is.null(tri)) tri
-```
-
-The output opens with an overall status -- `concordant`, `discordant` or
-`inconclusive` -- and then gives a per-parameter readout with a verdict
-on each. The columns to read are `mean_shift_sd` and `w1_sd`, the mean
-difference and the Wasserstein-1 distance expressed in posterior-SD
-units, alongside the SD ratio. Values near zero and a ratio near one
-indicate agreement.
-
-Before any of that is reported, `triangulate()` checks that the two fits
-answered the same question (same model, same data, same recorded prior
-on each variance component) and that each passed its own convergence
-diagnostics. A fit at too small a sampling budget returns
-`inconclusive` rather than a verdict, which is why this one is sampled
-at a production budget.
-
-The Subject variance component is where an approximate engine earns
-scrutiny: `sd_ratio` on that row reads as an enormous, unmissable
-divergence -- exactly what a collapsed INLA estimate looks like next
-to a working MCMC one. It does not stay in that row either: the
-between-subject variation has to go somewhere, so the residual SD
-absorbs it and the fixed effects inherit the wrong uncertainty. INLA's integrated nested Laplace approximation
-is fast and accurate for the fixed-effect structure of a latent
-Gaussian model, but its estimate of a *small-group* variance
-component -- here there are only eighteen subjects -- can be fragile
-under the default prior on some datasets, this one included. That
-fragility is the lesson, not a detail to hide: a single approximate
-fit of a small-group variance component is not trustworthy on its
-own. Triangulate it against MCMC, or supply an explicit
-penalised-complexity prior on the SD (the *default priors*
-vignette shows how). The *cross-engine triangulation* vignette
-catalogues this and the other common disagreement patterns and the
-protocol for diagnosing each. A divergence this large on a parameter
-you care about is a *finding*, not something to average away.
-
-### Letting the package choose the backend
-
-`backend = "auto"` runs the model through `lgm_gate()` and routes to
-INLA on accept, brms otherwise -- refusing outright, never silently,
-when neither can represent the model:
-
-```{r sleepstudy-auto, eval=inla_ok}
-fit_auto <- flexybayes(
-  Reaction ~ Days + (1 | Subject),
-  data         = sleepstudy,
-  backend      = "auto",
-  n_samples    = 200,
-  warmup       = 200,
-  chains       = 1,
-  verbose      = FALSE,
-  mcmc_verbose = FALSE
-)
-backend_decision(fit_auto)
-```
-
-`backend_decision()` returns the dispatch trace: which backend ran,
-which gate checks were evaluated, and the reason. On a Gaussian
-random-intercept model the gate accepts and (when INLA is installed)
-the auto path lands on INLA -- which is exactly the fit whose
-Subject-level variance collapsed above. `"auto"` optimises for speed
-first. Pin `backend = "brms"` explicitly whenever a small-group
-variance component is itself the quantity you care about.
-
-# 8. Where to next?
-
-Section 6 above is the compact REML-accessor tour. The remaining
-vignettes are organised by topic, not by engine. A suggested reading
-order:
-
-| Vignette | What it covers |
-|---|---|
-| Foundational regression | one- and two-way fixed effects, univariate smooths, comparison with `lm()` |
-| Hierarchical models | random intercepts, nested and crossed effects, the two random-slope spellings, Poisson and binomial generalised linear mixed models (GLMMs) |
-| The formula surface | the term-type catalogue -- what parses, what emits, what refuses -- and the structured-covariance machinery: `diag`, `us`, per-level residual variances, known-covariance carriers |
-| Default priors | the `fb_prior()` DSL, the uniform-on-SD default, the fixed-effect default, prior-predictive checks |
-| Multi-environment trials and genomic selection | MET, genotype-by-environment interaction (GxE), GBLUP (genomic BLUP) |
-| Downstream analysis | `emmeans`, `marginaleffects`, `bayesplot`, `loo` |
-| Spatio-temporal | the separable AR1 field, the complete-grid requirement, missing plots |
-| Cross-engine triangulation | when engines disagree, what it means, what to do |
-| Understanding dispatch and refusals | how `lgm_gate()` and the capability predicates choose an engine, how to read a refusal, and the backend registry a new engine registers into |
-| Streaming exact aggregation | exact sufficient-statistic aggregation for datasets that do not fit in memory |
-
-# 9. Pitfalls
-
-**Never `R CMD INSTALL` while `flexyBayes` is loaded.** R's lazy-load
-database can be corrupted when a package is overwritten under a live
-session. Restart R first.
-
-**Convergence is not correctness.** A passing $\widehat{R}$ tells you
-that the chains explored the same posterior. It does not tell you
-whether that posterior is the right one for the problem. Posterior-
-predictive checks (Gelman, Meng, & Stern, 1996) and the cross-engine
-triangulation vignette address that distinction.
-
-**The uniform default is not always what you want.** The default
-scales the prior to the observed response. If you have strong
-external information about a variance component (for example a known
-measurement-error magnitude), set it explicitly via `fb_prior()`. If
-you are reproducing a published analysis that used a different prior,
-use that prior.
-
-**INLA's scope is narrower than brms's, and each has terms the other
-refuses.** Random slopes, interaction random effects, heterogeneous
-genotype variances and heterogeneous residuals are outside what the
-INLA emit represents, and `lgm_gate()` refuses them structurally,
-so `"auto"` routes those models to brms. The traffic runs the other way
-too -- the separable AR1 spatial field and the P-spline emit on INLA
-and refuse on brms. Neither engine covers the whole ASReml term
-vocabulary, and a term outside both refuses rather than being
-approximated. The capability table in the README says which is which.
-
-**A collapsed variance component from INLA is not always visible in
-`summary()`.** Print the derived SD explicitly (`1 / sqrt(precision)`)
-rather than trusting a glance at the hyperparameter table -- an
-astronomically large precision reads as a small number next to
-plausible-looking fixed effects. Section 7 shows the pattern.
-
-# 10. Active prompts
-
-Try the following while the package is loaded:
-
-1. Re-fit `fit_brms` at a much shorter `warmup = 300` and then a much
-   longer `warmup = 12000`. How do the ESS and $\widehat{R}$ of
-   `sd_Subject__Intercept` respond, and which parameters are most
-   sensitive to the warmup budget? Does the posterior mean of `Days`
-   shift at all?
-2. Pass `return_code = TRUE` to `fb_brms()` and inspect the returned
-   Stan code -- this is the literal program `flexyBayes` generated.
-   Compare it with the program generated by the asreml-style call
-   `flexybayes(fixed = Reaction ~ Days, random = ~ Subject,
-   data = sleepstudy, return_code = TRUE)`.
-3. Pass `prior_vc_sd = 1` to `fb_brms()` and refit. The default-prior
-   announcement disappears (you have opted into the legacy
-   lognormal). Does the posterior on `sd_Subject__Intercept` change
-   appreciably?
-
-# 11. Session information
-
-```{r session-info}
+```{r session, echo = FALSE}
 sessionInfo()
 ```
-
-# References
-
-Belenky, G., Wesensten, N. J., Thorne, D. R., Thomas, M. L., Sing,
-H. C., Redmond, D. P., Russo, M. B., & Balkin, T. J. (2003). Patterns
-of performance degradation and restoration during sleep restriction
-and subsequent recovery: A sleep dose-response study. *Journal of
-Sleep Research*, 12(1), 1--12.
-
-Bates, D., Mächler, M., Bolker, B., & Walker, S. (2015). Fitting
-linear mixed-effects models using lme4. *Journal of Statistical
-Software*, 67(1), 1--48.
-
-Gelman, A. (2006). Prior distributions for variance parameters in
-hierarchical models. *Bayesian Analysis*, 1(3), 515--534.
-
-Gelman, A., Jakulin, A., Pittau, M. G., & Su, Y.-S. (2008). A weakly
-informative default prior distribution for logistic and other
-regression models. *Annals of Applied Statistics*, 2(4), 1360--1383.
-
-Gelman, A., Meng, X.-L., & Stern, H. (1996). Posterior predictive
-assessment of model fitness via realized discrepancies. *Statistica
-Sinica*, 6(4), 733--760.
-
-Rue, H., Martino, S., & Chopin, N. (2009). Approximate Bayesian
-inference for latent Gaussian models by using integrated nested
-Laplace approximations. *Journal of the Royal Statistical Society:
-Series B*, 71(2), 319--392.
-
-Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., & Bürkner, P.-C.
-(2021). Rank-normalization, folding, and localization: An improved
-$\widehat{R}$ for assessing convergence of MCMC. *Bayesian Analysis*,
-16(2), 667--718.

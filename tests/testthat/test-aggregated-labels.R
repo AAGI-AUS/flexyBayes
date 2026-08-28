@@ -109,7 +109,7 @@ test_that("print on a flexybayes_stream() fit names the backend and the aggregat
   # aggregate = TRUE route) -- the banner read "backend:    (path = )"
   # and "Engine:         (unknown engine)" instead of naming INLA and
   # the aggregated path. Reproduces the bare-print evidence recorded in
-  # logs/flexyBayes-11-big-data-streaming.copy_paste.log.
+  # logs/flexyBayes-08-big-data.copy_paste.log.
   skip_on_cran()
   skip_if_not_installed("INLA")
   set.seed(20260826L)

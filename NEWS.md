@@ -114,6 +114,50 @@ not shipped in the tarball.
   suite is a defect for anyone who runs `devtools::test()`, so it is
   fixed rather than worked around.
 
+## Documentation
+
+* **The vignette deck is rebuilt: eleven pages become eight, and 8,591
+  lines become 1,651.** The structure follows the grouping the
+  co-authors approved, and the standing brief with it -- concise,
+  grounded in open-source data, "reproducibility and insightful
+  commentary over exhaustive coverage". The old deck had inverted that
+  last line.
+
+  The merges: the formula surface absorbs dispatch and refusals, because
+  the grammar and the machinery that turns a term away are one subject;
+  regression and hierarchical models become one foundational page; and
+  summaries, model comparison and triangulation become one "after the
+  fit" page. Nothing was dropped. Old article URLs redirect.
+
+  Every page opens with a panel giving the problem, the ASReml line, the
+  flexyBayes line, what the posterior adds and what it costs, so a
+  reader can tell from the first screen whether the page is the one they
+  want. Every capability and refusal table is generated from the
+  package's own capability record rather than typed, so a table cannot
+  drift from the code.
+
+* **The unsupported structures are inventoried in one place.** They were
+  scattered across five points of the old formula vignette with no list.
+  The formula page now carries two generated tables: structures neither
+  engine represents, and structures one engine fits and the other
+  refuses.
+
+* **Section headings are sized correctly.** `html_vignette` sets body
+  text at 14px and `h1` at 35px, because `h1` is meant to be the
+  document title -- and every numbered section in the deck was an `h1`,
+  so sections rendered at two and a half times the body and competed
+  with the title, while inline code in a heading landed near 30px. The
+  shared header include now sets a normal document hierarchy and sizes
+  code in a heading against its heading.
+
+* **The spline section of the spatial vignette runs.** It was an
+  unevaluated block with `data = ...` as a literal placeholder: it could
+  not be executed, produced no output, and read as though it worked.
+  It now fits the composite on `stroup.nin` and reports the result --
+  the splines collapse because the autoregressive field is already
+  carrying the gradient, which the boundary warning flags rather than
+  leaving to be read as a zero trend.
+
 ## Corrections to the package's own claims
 
 Each of these was a statement the code did not support. They are recorded

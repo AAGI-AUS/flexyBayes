@@ -23,3 +23,59 @@ MathJax.Hub.Config({
   SVG:         { scale: 90 }
 });
 </script>
+
+<!-- Heading scale.
+
+     html_vignette sets body text at 14px and h1 at 35px, because h1 is
+     meant to be the document title. Every numbered section in this deck
+     is an h1, so a section heading renders at two and a half times the
+     body and competes with the title above it. Worse, inline code in a
+     heading inherits the monospace face at 85% of 35px, so `vm()` in a
+     section title lands near 30px.
+
+     The title keeps a title's prominence; sections step down to a normal
+     document hierarchy, and code in a heading is sized against the
+     heading rather than against the page. Tune these here, never
+     per-page -- the same rule as the MathJax scale above. -->
+<style type="text/css">
+  h1.title           { font-size: 28px; }
+  h1:not(.title)     { font-size: 22px; margin-top: 1.6em; }
+  h2                 { font-size: 128%; margin-top: 1.4em; }
+  h3                 { font-size: 112%; }
+  h1 code, h2 code, h3 code, h4 code {
+    font-size: 0.86em;
+    font-weight: inherit;
+  }
+</style>
+
+<!-- The orientation box each vignette opens with. Fixed shape: what is
+     being modelled, the ASReml line, the flexyBayes line, what the
+     posterior adds, and what it costs. Kept to one panel so a reader
+     deciding whether this page is the one they want can decide from the
+     first screen. -->
+<style type="text/css">
+  div.fb-box {
+    border: 1px solid #c8ccd0;
+    border-left: 4px solid #4a6785;
+    background: #f7f9fa;
+    border-radius: 3px;
+    padding: 0.9em 1.1em 0.7em 1.1em;
+    margin: 1.3em 0 1.8em 0;
+    font-size: 95%;
+  }
+  div.fb-box p:first-child { margin-top: 0; }
+  div.fb-box p:last-child  { margin-bottom: 0; }
+  div.fb-box code { background: #eef1f3; }
+  div.fb-box .fb-box-title {
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-size: 82%;
+    color: #4a6785;
+    display: block;
+    margin-bottom: 0.5em;
+  }
+  div.fb-box dl { margin: 0; }
+  div.fb-box dt { font-weight: 600; margin-top: 0.45em; }
+  div.fb-box dd { margin: 0.1em 0 0 1.2em; }
+</style>

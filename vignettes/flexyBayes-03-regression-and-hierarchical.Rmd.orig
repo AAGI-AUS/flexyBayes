@@ -1,0 +1,204 @@
+---
+title: "3. Regression and hierarchical models"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{3. Regression and hierarchical models}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+lme4_ok <- requireNamespace("lme4", quietly = TRUE)
+options(flexyBayes.silence_default_prior_note = TRUE)
+
+# A pipe inside a markdown table cell has to be escaped, and the
+# backslash then shows inside a code span: `(x \|\| g)`. Emitting the
+# table as HTML avoids both the escape and the entity that
+# kable(format = "markdown") would substitute.
+.md_code <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;",  x, fixed = TRUE)
+  x <- gsub(">", "&gt;",  x, fixed = TRUE)
+  gsub("`([^`]+)`", "<code>\\1</code>", x)
+}
+.cap_table <- function(df) {
+  df[] <- lapply(df, .md_code)
+  knitr::kable(df, format = "html", escape = FALSE)
+}
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Reaction time under sleep deprivation, measured on the same subjects
+over ten days. Subjects differ, and the measurements within a subject
+are not independent.</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(Reaction ~ Days, random = ~ Subject, data = sleepstudy)</code></dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(Reaction ~ Days, random = ~ Subject, data = sleepstudy)</code></dd>
+<dt>What the posterior adds</dt>
+<dd>The between-subject standard deviation gets an interval that holds
+at eighteen subjects, where an asymptotic one does not.</dd>
+<dt>What it costs</dt>
+<dd>A correlated random slope is refused by both engines. The
+uncorrelated form fits on brms.</dd>
+</dl>
+</div>
+
+# 1. Fixed and random, and why the split matters
+
+A fixed effect estimates one number per level, and those numbers are the
+target. A random effect assumes the levels are draws from a population,
+estimates the spread of that population, and shrinks each level's
+estimate toward the mean.
+
+The practical test is the question being asked. *Is variety A better
+than variety B in this trial?* is fixed. *How variable are varieties in
+this population?* is random. Nine environments chosen because they were
+the ones available are fixed; nine environments treated as a sample of
+growing conditions are random.
+
+Shrinkage is the visible consequence. A subject with an extreme mean and
+few observations is pulled toward the population mean, because the model
+treats part of that extremity as noise. This is the same behaviour as
+REML's BLUPs, and for the same reason.
+
+# 2. A random intercept
+
+`lme4::sleepstudy` is 180 reaction times: 18 subjects, 10 days each.
+
+```{r data, eval = lme4_ok}
+library(flexyBayes)
+data(sleepstudy, package = "lme4")
+str(sleepstudy)
+```
+
+```{r fit1, eval = lme4_ok && inla_ok}
+fit <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                  data = sleepstudy, backend = "inla", verbose = FALSE)
+tidy(fit, effects = "random")
+```
+
+Two standard deviations: `sd_Subject` is how much subjects differ from
+one another, `sigma` is how much a measurement varies within a subject.
+Their ratio is the intraclass correlation, and here the between-subject
+spread is the larger of the two.
+
+```{r fixed1, eval = lme4_ok && inla_ok}
+tidy(fit)
+```
+
+The `Days` coefficient is the average slope across subjects: reaction
+time rises by about ten milliseconds per day of deprivation.
+
+# 3. Letting the slope vary
+
+A single average slope assumes deprivation affects everyone equally. It
+does not. Allowing the slope to vary by subject needs a second variance
+component.
+
+The correlated form -- `(Days | Subject)`, which estimates the
+correlation between a subject's intercept and their slope -- is refused
+by both engines. The uncorrelated form fits on brms.
+
+```{r fit2, eval = lme4_ok && brms_ok}
+fit_s <- flexybayes(Reaction ~ Days + (Days || Subject),
+                    data = sleepstudy, backend = "brms",
+                    chains = 2L, n_samples = 1000L, warmup = 500L,
+                    seed = 1L, verbose = FALSE, mcmc_verbose = FALSE)
+tidy(fit_s, effects = "random")
+```
+
+Three components now: spread of intercepts, spread of slopes, and
+residual. The slope standard deviation is the answer to "how much does
+the effect of deprivation differ between people".
+
+```{r refuse-slope, eval = lme4_ok}
+refused <- tryCatch(
+  flexybayes(Reaction ~ Days + (Days | Subject), data = sleepstudy,
+             verbose = FALSE),
+  error = function(e) e
+)
+cat(strwrap(conditionMessage(refused), 72)[1:3], sep = "\n")
+```
+
+# 4. Non-Gaussian responses
+
+`family` and `link` work as they do in `glm()`. Counts are the common
+case in field work.
+
+```{r glmm, eval = inla_ok}
+set.seed(2)
+n  <- 300
+dp <- data.frame(g = factor(rep(1:15, each = 20)), x = rnorm(n))
+dp$y <- rpois(n, exp(1 + 0.4 * dp$x +
+                     rnorm(15, 0, 0.5)[as.integer(dp$g)]))
+
+fit_p <- flexybayes(y ~ x, random = ~ g, data = dp,
+                    family = "poisson", backend = "inla", verbose = FALSE)
+tidy(fit_p, effects = "random")
+```
+
+The data were generated with a group standard deviation of 0.5 and a
+slope of 0.4, and the posterior covers both.
+
+```{r glmm-fixed, eval = inla_ok}
+tidy(fit_p)
+```
+
+On the log link the coefficient is multiplicative: `exp(0.4)` is a 49
+per cent increase in the expected count per unit of `x`.
+
+# 5. Which engine fits what
+
+```{r which-engine, echo = FALSE}
+m <- flexyBayes:::.fb_capability_matrix()
+want <- c("Gaussian LMM, simple random intercept",
+          "Uncorrelated random slope",
+          "Correlated random slope",
+          "Factor-by-numeric fixed interaction",
+          "Nested / interaction random effects, multi-stratum")
+sel <- m[match(want, m$model_class), ]
+sel <- sel[!is.na(sel$model_class), ]
+.cap_table(data.frame(Structure = sel$model_class, Spelling = sel$spelling,
+                      INLA = sel$inla, brms = sel$brms, check.names = FALSE))
+```
+
+`backend = "auto"` picks the engine that can represent the model, so
+most of these need no decision.
+
+# 6. Pitfalls
+
+**Too few levels.** A random effect over three or four levels cannot
+identify its variance well. The posterior will be wide and lean on the
+prior, which is honest but not informative. Five is a common rule of
+thumb and it is only that.
+
+**A term on both sides.** `y ~ g` with `random = ~ g` is refused: the
+fixed part already estimates a mean per level.
+
+**LHS addition forms are not ingested.** brms spellings such as
+`y | trials(n) ~ ...` and `y | cens(c) ~ ...` are not yet parsed, so a
+binomial model specified with a trials term refuses. Aggregate the
+response or use brms directly for those.
+
+**Shrinkage is not a bug.** Group estimates that differ from their raw
+means are the model working. The amount of shrinkage falls as a group
+gains observations.
+
+# 7. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

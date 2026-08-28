@@ -1,0 +1,240 @@
+---
+title: "8. Big data: fitting without holding the data"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{8. Big data: fitting without holding the data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Millions of rows over a design with a modest number of distinct
+cells. The model is small; the data are not.</dd>
+<dt>In ASReml</dt>
+<dd>No direct equivalent. The usual answer is to pre-aggregate by hand
+and accept the approximation.</dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(..., aggregate = TRUE)</code>, or
+<code>flexybayes_stream()</code> for data that never fit in memory.</dd>
+<dt>What the posterior adds</dt>
+<dd>Nothing different here. The point is that the aggregated fit is
+<em>exact</em>, not an approximation, for the models it accepts.</dd>
+<dt>What it costs</dt>
+<dd>Gaussian identity-link models over factor designs only, and no
+per-row quantities afterwards.</dd>
+</dl>
+</div>
+
+# 1. When the design is small and the data are large
+
+A model over factor predictors partitions the rows into cells. Once the
+response is Gaussian with an identity link, everything the likelihood
+needs from a cell is three numbers: how many rows, their sum, and their
+sum of squares. Those are sufficient statistics.
+
+Two million rows over four hundred cells carry exactly the same
+information for that model as four hundred rows of sufficient
+statistics. Compressing them is not an approximation and does not
+change the posterior -- it changes what has to be held in memory.
+
+This is why the restriction is narrow. Sufficiency of that kind holds
+for the Gaussian identity-link case, and the package refuses rather
+than compressing where it does not.
+
+# 2. Aggregating in memory
+
+
+``` r
+library(flexyBayes)
+set.seed(3)
+m  <- 4000
+da <- data.frame(f1 = factor(sample(letters[1:6], m, TRUE)),
+                 f2 = factor(sample(LETTERS[1:5], m, TRUE)))
+da$y <- rnorm(m, 2 + as.integer(da$f1) * 0.3)
+
+fit_a <- flexybayes(y ~ f1 + f2, data = da, backend = "inla",
+                    aggregate = TRUE, verbose = FALSE)
+class(fit_a)[1]
+#> [1] "flexybayes_aggregated"
+```
+
+The fit reports how far the compression went:
+
+
+``` r
+fit_a$extras$model_info$n_obs
+#> [1] 4000
+nrow(da)
+#> [1] 4000
+```
+
+Against the same model fitted on every row:
+
+
+``` r
+fit_full <- flexybayes(y ~ f1 + f2, data = da, backend = "inla",
+                       verbose = FALSE)
+round(cbind(aggregated = tidy(fit_a)$estimate,
+            full_rows  = tidy(fit_full)$estimate), 6)
+#>       aggregated full_rows
+#>  [1,]   2.287881  2.287881
+#>  [2,]   0.279553  0.279553
+#>  [3,]   0.644471  0.644471
+#>  [4,]   0.975879  0.975879
+#>  [5,]   1.222659  1.222659
+#>  [6,]   1.553251  1.553251
+#>  [7,]  -0.077070 -0.077070
+#>  [8,]   0.030843  0.030843
+#>  [9,]   0.017906  0.017906
+#> [10,]   0.005919  0.005919
+```
+
+The coefficients agree to the printed precision, because the aggregated
+likelihood is the same likelihood.
+
+# 3. When it refuses
+
+`aggregate = TRUE` is a request, and it is declined rather than silently
+downgraded when the compression would not be exact or would not be
+worth doing.
+
+
+``` r
+refused <- tryCatch(
+  flexybayes(y ~ f1 + f2, data = da[1:40, ], backend = "inla",
+             aggregate = TRUE, verbose = FALSE),
+  error = function(e) e
+)
+cat(strwrap(conditionMessage(refused), 72)[1:3], sep = "\n")
+#> `aggregate = TRUE` refused by .fb_aggregation_plan():
+#> compression_unproductive. Pass aggregate = FALSE for the per-row path.
+#> NA
+```
+
+The common refusals are a non-Gaussian family, a non-identity link, a
+continuous predictor (which gives one cell per row, so nothing
+compresses), missing responses (sufficient statistics are not defined
+for them), and a design where compression buys too little to be worth
+the change of code path.
+
+# 4. Data that never fit in memory
+
+`flexybayes_stream()` takes a file rather than a data frame, reads it in
+chunks, accumulates the same per-cell sufficient statistics, and fits
+from the accumulator. Peak memory is set by the number of cells, not by
+the number of rows.
+
+
+``` r
+flexybayes_stream(
+  y ~ f1 + f2,
+  file       = "trial_data.csv",
+  chunk_size = 1e6,
+  backend    = "inla"
+)
+```
+
+The arithmetic is the same as Section 2. The difference is that the rows
+are never all present at once, so a file larger than RAM is fitted
+without a database or a sampling step.
+
+# 5. What you give up
+
+An aggregated fit has no rows, so anything defined per row is gone.
+There are no residuals against individual observations, no per-row
+fitted values, and `augment()` has nothing to append to. Population-level
+prediction at the level of the design cells still works.
+
+The fixed-effect and variance-component inference is exactly what the
+per-row fit gives. Diagnostics that need per-row quantities are what the
+compression costs.
+
+# 6. Pitfalls
+
+**Continuous predictors defeat it.** One distinct value per row means
+one cell per row. Bin the covariate first, or fit per-row.
+
+**Missing responses are refused.** Sufficient statistics are not defined
+for a missing value, so the aggregated path declines rather than
+dropping rows silently.
+
+**Check the compression ratio.** If cells are nearly as numerous as
+rows, aggregation adds a code path for no gain, and the package says so
+rather than proceeding.
+
+**It is not a sampling method.** No rows are discarded and no subsample
+is taken. The whole dataset informs the fit.
+
+# 7. Session information
+
+
+```
+#> R version 4.5.2 (2025-10-31)
+#> Platform: aarch64-apple-darwin20
+#> Running under: macOS Tahoe 26.5.2
+#> 
+#> Matrix products: default
+#> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+#> 
+#> time zone: Australia/Adelaide
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] flexyBayes_0.10.0
+#> 
+#> loaded via a namespace (and not attached):
+#>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+#>   [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
+#>   [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
+#>  [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
+#>  [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
+#>  [16] agridat_1.26           magrittr_2.0.5         posterior_1.7.1       
+#>  [19] compiler_4.5.2         rlang_1.3.0            tools_4.5.2           
+#>  [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
+#>  [25] bridgesampling_1.2-1   mnormt_2.1.2           curl_7.0.0            
+#>  [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
+#>  [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+#>  [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
+#>  [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
+#>  [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
+#>  [43] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
+#>  [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
+#>  [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
+#>  [52] reformulas_0.4.4       generics_0.1.4         otel_0.2.0            
+#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         minqa_1.2.8           
+#>  [58] DBI_1.3.0              proxy_0.4-29           rstan_2.32.7          
+#>  [61] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
+#>  [64] parallel_4.5.2         matrixStats_1.5.0      marginaleffects_0.32.0
+#>  [67] brms_2.23.0            vctrs_0.7.3            boot_1.3-32           
+#>  [70] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
+#>  [73] jsonlite_2.0.0         callr_3.8.0            listenv_0.10.1        
+#>  [76] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
+#>  [79] nloptr_2.2.1           codetools_0.2-20       distributional_0.8.1  
+#>  [82] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
+#>  [85] lme4_2.0-1             tibble_3.3.1           pillar_1.11.1         
+#>  [88] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
+#>  [91] Rdpack_2.6.6           evaluate_1.0.5         lattice_0.22-7        
+#>  [94] rbibutils_2.4.1        backports_1.5.1        rstantools_2.6.0      
+#>  [97] class_7.3-23           MatrixModels_0.5-4     Rcpp_1.1.2            
+#> [100] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
+#> [103] checkmate_2.3.4        xfun_0.57              zoo_1.8-15            
+#> [106] pkgconfig_2.0.3
+```

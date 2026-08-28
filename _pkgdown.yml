@@ -26,36 +26,23 @@ navbar:
     articles:
       text: Tutorials
       menu:
-        - text: "Foundations"
         - text: 01 — Getting started
           href: articles/flexyBayes-01-getting-started.html
         - text: 02 — The formula surface
-          href: articles/flexyBayes-02-asreml-formulas.html
-        - text: 03 — Foundational regression
-          href: articles/flexyBayes-03-regression.html
+          href: articles/flexyBayes-02-formulas-and-dispatch.html
+        - text: 03 — Regression and hierarchical models
+          href: articles/flexyBayes-03-regression-and-hierarchical.html
+        - text: 04 — Priors
+          href: articles/flexyBayes-04-priors.html
         - text: "---"
-        - text: "Core mixed-model concepts"
-        - text: 04 — Hierarchical models
-          href: articles/flexyBayes-04-hierarchical.html
-        - text: 05 — Default priors
-          href: articles/flexyBayes-05-priors.html
-        - text: "---"
-        - text: "Applied workflows"
-        - text: 06 — METs and genomic selection
-          href: articles/flexyBayes-06-met-and-genomics.html
-        - text: 07 — Downstream analysis
-          href: articles/flexyBayes-07-downstream-analysis.html
-        - text: 08 — Spatio-temporal models
-          href: articles/flexyBayes-08-spatio-temporal.html
-        - text: "---"
-        - text: "Advanced & internals"
-        - text: 09 — Cross-engine triangulation
-          href: articles/flexyBayes-09-triangulation.html
-        - text: 10 — Dispatch, refusals, and the backend registry
-          href: articles/flexyBayes-10-dispatch-and-refusals.html
-        - text: 11 — Streaming exact aggregation
-          href: articles/flexyBayes-11-big-data-streaming.html
-
+        - text: 05 — METs and genomics
+          href: articles/flexyBayes-05-met-and-genomics.html
+        - text: 06 — Spatial and temporal
+          href: articles/flexyBayes-06-spatial-and-temporal.html
+        - text: 07 — After the fit
+          href: articles/flexyBayes-07-after-the-fit.html
+        - text: 08 — Big data
+          href: articles/flexyBayes-08-big-data.html
 reference:
   - title: Verbs
     desc: >
@@ -180,32 +167,28 @@ reference:
 
 articles:
   - title: Foundations
-    navbar: ~
     contents:
       - flexyBayes-01-getting-started
-      - flexyBayes-02-asreml-formulas
-      - flexyBayes-03-regression
-  - title: Core mixed-model concepts
-    contents:
-      - flexyBayes-04-hierarchical
-      - flexyBayes-05-priors
+      - flexyBayes-02-formulas-and-dispatch
+      - flexyBayes-03-regression-and-hierarchical
+      - flexyBayes-04-priors
   - title: Applied workflows
     contents:
-      - flexyBayes-06-met-and-genomics
-      - flexyBayes-07-downstream-analysis
-      - flexyBayes-08-spatio-temporal
-  - title: Advanced and internals
+      - flexyBayes-05-met-and-genomics
+      - flexyBayes-06-spatial-and-temporal
+  - title: After the fit, and scale
     contents:
-      - flexyBayes-09-triangulation
-      - flexyBayes-10-dispatch-and-refusals
-      - flexyBayes-11-big-data-streaming
+      - flexyBayes-07-after-the-fit
+      - flexyBayes-08-big-data
 
 redirects:
-  - ["articles/flexyBayes-00-from-asreml.html", "articles/flexyBayes-01-getting-started.html"]
-  - ["articles/flexyBayes-06-priors.html", "articles/flexyBayes-05-priors.html"]
-  - ["articles/flexyBayes-07-met-and-genomics.html", "articles/flexyBayes-06-met-and-genomics.html"]
-  - ["articles/flexyBayes-08-downstream-analysis.html", "articles/flexyBayes-07-downstream-analysis.html"]
-  - ["articles/flexyBayes-09-spatio-temporal.html", "articles/flexyBayes-08-spatio-temporal.html"]
-  - ["articles/flexyBayes-10-triangulation.html", "articles/flexyBayes-09-triangulation.html"]
-  - ["articles/flexyBayes-11-dispatch-and-refusals.html", "articles/flexyBayes-10-dispatch-and-refusals.html"]
-  - ["articles/flexyBayes-16-big-data-streaming.html", "articles/flexyBayes-11-big-data-streaming.html"]
+  - ["articles/flexyBayes-02-asreml-formulas.html", "articles/flexyBayes-02-formulas-and-dispatch.html"]
+  - ["articles/flexyBayes-10-dispatch-and-refusals.html", "articles/flexyBayes-02-formulas-and-dispatch.html"]
+  - ["articles/flexyBayes-03-regression.html", "articles/flexyBayes-03-regression-and-hierarchical.html"]
+  - ["articles/flexyBayes-04-hierarchical.html", "articles/flexyBayes-03-regression-and-hierarchical.html"]
+  - ["articles/flexyBayes-05-priors.html", "articles/flexyBayes-04-priors.html"]
+  - ["articles/flexyBayes-06-met-and-genomics.html", "articles/flexyBayes-05-met-and-genomics.html"]
+  - ["articles/flexyBayes-08-spatio-temporal.html", "articles/flexyBayes-06-spatial-and-temporal.html"]
+  - ["articles/flexyBayes-07-downstream-analysis.html", "articles/flexyBayes-07-after-the-fit.html"]
+  - ["articles/flexyBayes-09-triangulation.html", "articles/flexyBayes-07-after-the-fit.html"]
+  - ["articles/flexyBayes-11-big-data-streaming.html", "articles/flexyBayes-08-big-data.html"]

@@ -392,25 +392,23 @@ family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |
 
 ## Vignettes
 
-Eleven vignettes ship with the package:
+Eight vignettes ship with the package:
 
 | # | Vignette |
 |---|---|
-| 01 | Getting started |
-| 02 | The formula surface: ASReml-shaped terms and structured covariance |
-| 03 | Foundational regression |
-| 04 | Hierarchical models |
-| 05 | Default priors and the `fb_prior()` DSL |
-| 06 | METs and genomic selection |
-| 07 | Downstream analysis |
-| 08 | Spatio-temporal models |
-| 09 | Cross-engine triangulation |
-| 10 | Dispatch, refusals, and the backend registry |
-| 11 | Streaming exact aggregation |
+| 01 | Getting started: what changes when you go Bayesian |
+| 02 | The formula surface, and what is not supported |
+| 03 | Regression and hierarchical models |
+| 04 | Priors, and what they do to your answer |
+| 05 | Multi-environment trials and genomics |
+| 06 | Spatial and temporal structure |
+| 07 | After the fit: summaries, comparison, triangulation |
+| 08 | Big data: fitting without holding the data |
 
-Vignette 10 is the technical/internals reference, and the rest target a
-general audience. The deck is contiguous 01--11 as of the 0.9.3 renumber
-(see `NEWS.md`): the pre-0.9.3 deck ran 00 and 06--16 with gaps at 05 and
+Each opens with a panel giving the problem, the ASReml line, the
+flexyBayes line, what the posterior adds, and what it costs. Every code
+block is executed at build time, so the numbers on a page came from the
+fit above them.
 12--15 recording earlier merges, and *From an ASReml call* (page 00) was
 folded into *Getting started*'s new accessor section rather than kept as
 its own page. Every number in the table above is the page's current,
