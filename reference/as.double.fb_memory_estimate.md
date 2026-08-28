@@ -17,12 +17,14 @@ as.double(x, ...)
 
 - x:
 
-  an `<fb_memory_estimate>` carrier.
+  An `<fb_memory_estimate>` carrier holding the per-term breakdown and
+  its `total`.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-numeric(1L) total bytes.
+A numeric scalar, the estimated total in bytes, or `NA_real_` when the
+carrier holds no total.

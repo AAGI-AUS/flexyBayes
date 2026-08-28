@@ -1,0 +1,244 @@
+# 2. The formula surface, and what is not supported
+
+This page in one panel
+
+- The problem : Writing the model down, and knowing in advance which
+  structures will be fitted and which will be turned away.
+
+- In ASReml :
+
+  `asreml(yield ~ env, random = ~ gen + diag(env):gen, residual = ~ id(units))`
+
+- In flexyBayes : The same three arguments, the same term spellings.
+
+- What the posterior adds : Nothing here. This page is about grammar,
+  and the grammar is deliberately ASReml’s.
+
+- What it costs : A narrower set of structures. Anything outside it is
+  refused by name rather than silently replaced, and Section 4 is the
+  full list.
+
+## 1. Four arguments
+
+A model is written with the arguments an ASReml user already uses.
+
+| Argument | Holds | Example |
+|----|----|----|
+| `fixed` | the mean model | `yield ~ env` |
+| `random` | random effects and their covariance | `~ gen + gen:env` |
+| `residual` | the residual covariance | `~ dsum(~ units | env)` |
+| `family` / `link` | the response distribution | `family = "poisson"` |
+
+The first argument is positional, so `flexybayes(yield ~ env, ...)` and
+`flexybayes(fixed = yield ~ env, ...)` are the same call.
+
+brms-style syntax is accepted in the same slot:
+`yield ~ env + (1 | gen)` is read as the ASReml pair above. The grammar
+is detected, not declared.
+
+## 2. Term spellings
+
+These are the constructions the parser recognises on the random side.
+
+| Spelling | Reads as |
+|----|----|
+| `~ gen` | independent random effect, one variance |
+| `~ gen:env` | interaction random effect |
+| `~ diag(env):gen` | a separate variance per level of `env`, no correlation |
+| `~ us(env):gen` | unstructured covariance across levels of `env` |
+| `~ vm(gen, K)` | random effect with a known covariance `K` |
+| `~ ped(animal, A)` | the same, spelled for a pedigree |
+| `~ ar1(row):ar1(col)` | separable autoregressive field on a grid |
+| `~ spl(x)` | penalised spline on a numeric covariate |
+| `~ at(trial):ar1(row):ar1(col)` | one field per level of `trial` |
+
+`idh()` is accepted as a synonym for
+[`diag()`](https://rdrr.io/r/base/diag.html), and `id(units)` for
+`units`, so a translated ASReml script usually runs unchanged.
+
+## 3. A worked model
+
+``` r
+
+library(flexyBayes)
+dat <- agridat::yan.winterwheat
+fit <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                  backend = "inla", verbose = FALSE)
+tidy(fit, effects = "random")
+#>     term  estimate  std.error  conf.low conf.high
+#> 1  sigma 0.3861116 0.02352686 0.3426333 0.4348665
+#> 2 sd_gen 0.3910168 0.07876752 0.2625319 0.5705424
+```
+
+[`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+reports what a call would do without fitting it, which is the cheapest
+way to find out whether a structure is supported.
+
+``` r
+
+fb_plan(yield ~ env, random = ~ gen, data = dat)$backend
+#> NULL
+```
+
+## 4. What is not supported
+
+Two kinds of gap. The first is a structure **neither engine** can
+represent. These are refused whatever backend is named, and there is no
+workaround inside the package.
+
+| Model class                                         | Spelling              |
+|:----------------------------------------------------|:----------------------|
+| Correlated random slope                             | `(x | g)`             |
+| Heterogeneous variances with one shared correlation | `~ corh(f):g`         |
+| Factor-analytic genotype-by-environment covariance  | `~ fa(env, k):gen`    |
+| Multi-trait covariance                              | `~ us(trait):vm(gen)` |
+
+The second is a structure **one engine** fits and the other refuses.
+Naming the wrong backend refuses; `backend = "auto"` routes to the one
+that works.
+
+| Model class | Spelling | INLA | brms |
+|:---|:---|:---|:---|
+| Hurdle gamma (zero mass plus a positive gamma part) | `family = “hurdle_gamma”` | refuses | fits |
+| Uncorrelated random slope | `(x || g)` | refuses | fits |
+| Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits |
+| Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | refuses | fits |
+| Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | refuses | fits |
+| Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits |
+| Heterogeneous residual by factor level | `residual = ~ dsum(~ units | f)` / `~ at(f):units` | refuses | fits |
+| Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | refuses | fits |
+| Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses |
+| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses |
+| Univariate P-spline | `~ spl(x)` | fits | refuses |
+
+Both tables are generated from the package’s capability record, so they
+cannot drift from what the code does.
+[`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md)
+prints the full vocabulary of refusal codes with the message each one
+carries.
+
+## 5. What a refusal looks like
+
+A refused structure raises an error that names the structure, says why,
+and gives the nearest thing that does work.
+
+``` r
+
+refused <- tryCatch(
+  flexybayes(yield ~ env, random = ~ fa(env, 2):gen, data = dat,
+             backend = "inla", verbose = FALSE),
+  error = function(e) e
+)
+cat(conditionMessage(refused))
+#> fa(env, 2):gen requests a factor-analytic covariance -- a rank-k loading matrix plus a diagonal. Neither active engine emits one: INLA's f() has no factor-analytic latent model, and brms group-level effects are either uncorrelated or fully unstructured. Use us(env):gen for the full unstructured covariance, diag(env):gen for heterogeneous variances with no correlation, or ASReml for the factor-analytic model itself. The term still parses, so fb_terms() will describe it.
+```
+
+Refusals carry a class as well as a message, so a script can catch a
+specific one:
+
+``` r
+
+class(refused)[1:3]
+#> [1] "flexybayes_refusal_fa_not_representable"
+#> [2] "flexybayes_refusal"                     
+#> [3] "error"
+```
+
+The design rule behind this is that a structure the engines cannot
+represent is never approximated by a structure they can. A model that
+returns a fit is the model that was asked for.
+
+## 6. Dispatch
+
+`backend = "auto"` is the default. It runs a feasibility gate, and
+routes to INLA when the model is latent-Gaussian feasible and INLA is
+installed, otherwise to brms when brms can represent it, otherwise it
+refuses with `auto_no_active_route`.
+
+``` r
+
+backend_decision(fit)$backend
+#> [1] "inla"
+```
+
+One case changes engine after starting: if the INLA program itself fails
+numerically, the call re-routes to brms and says so in a message. The
+fit’s class always records which engine produced it.
+
+``` r
+
+class(fit)[1]
+#> [1] "flexybayes_inla"
+```
+
+## 7. Pitfalls
+
+**A term on both sides.** `yield ~ env` with `random = ~ env` is
+refused. The fixed part already estimates a mean per level, so the
+random copy has no information left to describe and its variance
+component would report the prior. ASReml accepts this spelling and fits
+it, so a translated script can arrive here unchanged.
+
+**Factor order matters for `ar1()`.** Correlation is read along the
+levels of the factor in their stored order. Row labels that sort
+lexically rather than numerically give the wrong neighbour structure.
+
+**`residual` is not `rcov`.** ASReml 4 renamed it; flexyBayes uses the
+current name.
+
+## 8. Session information
+
+    #> R version 4.5.2 (2025-10-31)
+    #> Platform: aarch64-apple-darwin20
+    #> Running under: macOS Tahoe 26.5.2
+    #> 
+    #> Matrix products: default
+    #> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+    #> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+    #> 
+    #> locale:
+    #> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+    #> 
+    #> time zone: Australia/Adelaide
+    #> tzcode source: internal
+    #> 
+    #> attached base packages:
+    #> [1] stats     graphics  grDevices utils     datasets  methods   base     
+    #> 
+    #> other attached packages:
+    #> [1] flexyBayes_0.10.0
+    #> 
+    #> loaded via a namespace (and not attached):
+    #>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+    #>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
+    #>  [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
+    #> [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
+    #> [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
+    #> [16] agridat_1.26           magrittr_2.0.5         posterior_1.7.1       
+    #> [19] compiler_4.5.2         rlang_1.3.0            tools_4.5.2           
+    #> [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
+    #> [25] bridgesampling_1.2-1   mnormt_2.1.2           curl_7.0.0            
+    #> [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
+    #> [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+    #> [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
+    #> [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
+    #> [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
+    #> [43] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
+    #> [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
+    #> [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
+    #> [52] generics_0.1.4         otel_0.2.0             RcppParallel_5.1.11-2 
+    #> [55] reshape2_1.4.5         DBI_1.3.0              proxy_0.4-29          
+    #> [58] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
+    #> [61] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
+    #> [64] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
+    #> [67] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
+    #> [70] jsonlite_2.0.0         callr_3.8.0            listenv_0.10.1        
+    #> [73] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
+    #> [76] codetools_0.2-20       distributional_0.8.1   stringi_1.8.7         
+    #> [79] gtable_0.3.6           QuickJSR_1.9.0         tibble_3.3.1          
+    #> [82] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
+    #> [85] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
+    #> [88] backports_1.5.1        rstantools_2.6.0       class_7.3-23          
+    #> [91] MatrixModels_0.5-4     Rcpp_1.1.2             coda_0.19-4.1         
+    #> [94] gridExtra_2.3          nlme_3.1-168           checkmate_2.3.4       
+    #> [97] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3

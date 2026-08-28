@@ -36,7 +36,7 @@ clustered around the mean), and the normalised vector \\\alpha / \sum_k
 ## Examples
 
 ``` r
-fam <- fb_family_dirichlet()
+fam <- flexyBayes:::fb_family_dirichlet()
 fam$family
 #> [1] "dirichlet"
 ```

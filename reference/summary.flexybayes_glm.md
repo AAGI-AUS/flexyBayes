@@ -14,8 +14,14 @@ summary(object, ...)
 
 - object:
 
-  A flexybayes_glm object (accessed via `fit$glm`)
+  A `flexybayes_glm` object, reached as `fit$glm` on any fitted
+  `flexybayes` object.
 
 - ...:
 
-  Additional arguments (ignored)
+  Ignored. Present for compatibility with the generic.
+
+## Value
+
+Invisibly, the printed coefficient table as a data.frame, or `NULL` when
+the object carries no fixed effects.

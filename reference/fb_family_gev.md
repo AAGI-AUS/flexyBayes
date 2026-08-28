@@ -38,7 +38,7 @@ limit.
 ## Examples
 
 ``` r
-fam <- fb_family_gev()
+fam <- flexyBayes:::fb_family_gev()
 fam$parameters
 #> [1] "location" "scale"    "shape"   
 ```

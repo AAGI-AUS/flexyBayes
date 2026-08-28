@@ -26,7 +26,7 @@ vcov(object, n_samples = 2000L, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

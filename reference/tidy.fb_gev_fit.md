@@ -35,7 +35,7 @@ A `data.frame` with `term`, `estimate`, `std.error`, `conf.low`, and
 
 ``` r
 set.seed(1)
-fit <- fb_gev(rgev(200L, 10, 2, 0.1))
+fit <- flexyBayes:::fb_gev(flexyBayes:::rgev(200L, 10, 2, 0.1))
 tidy(fit)
 #>       term    estimate std.error    conf.low  conf.high
 #> 1 location 10.19181337 0.1453225  9.90698659 10.4766402

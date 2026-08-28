@@ -11,16 +11,10 @@ before triangulation). The canonical convention follows brms
 ``` r
 canonical_names(fit, drop = FALSE, ...)
 
-# S3 method for class 'flexybayes'
-canonical_names(fit, drop = FALSE, ...)
-
 # S3 method for class 'flexybayes_inla'
 canonical_names(fit, drop = FALSE, ...)
 
 # S3 method for class 'flexybayes_brms'
-canonical_names(fit, drop = FALSE, ...)
-
-# S3 method for class 'flexybayes_direct_greta'
 canonical_names(fit, drop = FALSE, ...)
 ```
 
@@ -28,7 +22,7 @@ canonical_names(fit, drop = FALSE, ...)
 
 - fit:
 
-  A `flexybayes` (or `flexybayes_inla`) object.
+  A `flexybayes_inla` or `flexybayes_brms` object.
 
 - drop:
 
@@ -43,7 +37,7 @@ canonical_names(fit, drop = FALSE, ...)
 
 ## Value
 
-A list with components:
+A list holding the canonical-name map and its provenance.
 
 - `map`:
 
@@ -67,19 +61,34 @@ A list with components:
 
 - `prior_parametrization`:
 
-  Character, present only on aggregated-gaussian fits:
-  `"per_row_equivalent"` when the default precision prior is in force
-  (the aggregated posterior then matches the per-row posterior to
-  numerical precision) or `"custom"` when an explicit prior was supplied
-  (see the "Matched priors" note on
+  Character, present only on aggregated fits, naming which prior the fit
+  ran under. `"per_row_equivalent"` is the legacy scalar bridge, whose
+  precision prior makes the aggregated posterior match the per-row
+  posterior to numerical precision. `"package_default"` is the automatic
+  bounded-uniform-on-SD prior, which claims no such equivalence on this
+  route. `"custom"` is an explicit prior from the caller (see the
+  "Matched priors" note on
   [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)).
 
 ## Details
 
-On `flexybayes` and `flexybayes_inla` fits, the per-backend mapper
-registered at package load (`greta` or `inla`) drives the resolution;
-the returned map is cached on `fit$extras$canonical_map` for fast
-repeated access. On `flexybayes_direct_greta` fits (built via
-[`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md))
-the map comes from the user-supplied `canonical_names` argument, with a
-verbatim-greta-name fallback when the argument is omitted.
+On `flexybayes_inla` and `flexybayes_brms` fits, the per-backend mapper
+registered at package load (`inla` or `brms`) drives the resolution; the
+returned map is cached on `fit$extras$canonical_map` for fast repeated
+access.
+
+## Examples
+
+``` r
+# The map is engine-specific, so it needs a fit to read.
+# \donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                    verbose = FALSE)
+  cn <- canonical_names(fit)
+  head(cn$map)
+}
+# }
+```

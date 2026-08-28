@@ -13,12 +13,13 @@ print(x, ...)
 
 - x:
 
-  an `<fb_memory_estimate>` object.
+  An `<fb_memory_estimate>` object holding the per-term INLA memory
+  breakdown.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the breakdown it prints.

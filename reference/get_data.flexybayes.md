@@ -1,4 +1,4 @@
-# Model data accessor (greta backend)
+# Model data accessor (default method)
 
 Registered for `insight::get_data()` so marginaleffects (which discovers
 a model's data through insight) can build reference grids and average
@@ -22,7 +22,7 @@ get_data(x, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

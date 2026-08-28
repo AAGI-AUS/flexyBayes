@@ -19,7 +19,7 @@ formula(x, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

@@ -15,12 +15,14 @@ print(x, ...)
 
 - x:
 
-  an `<fb_dataset>` object.
+  An `<fb_dataset>` object, the wrapper the preflight layer carries in
+  place of the raw data.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the header and the per-column rows
+it prints.

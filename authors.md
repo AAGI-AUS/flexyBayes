@@ -20,12 +20,12 @@ Source:
 
 Moldovan M, Tanaka E, Hui F, Forte Deltell A (2026). *flexyBayes:
 Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax*. R
-package version 0.8.3, <https://github.com/AAGI-AUS/flexyBayes>.
+package version 0.10.0, <https://github.com/AAGI-AUS/flexyBayes>.
 
     @Manual{,
       title = {flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax},
       author = {Max Moldovan and Emi Tanaka and Francis K.C. Hui and Anabel {Forte Deltell}},
       year = {2026},
-      note = {R package version 0.8.3},
+      note = {R package version 0.10.0},
       url = {https://github.com/AAGI-AUS/flexyBayes},
     }

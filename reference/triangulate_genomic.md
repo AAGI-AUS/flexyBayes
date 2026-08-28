@@ -2,13 +2,12 @@
 
 Compare two genomic analyses – heritability, variance components, and
 genomic estimated breeding values – on a common footing. Each argument
-is either a flexyBayes GBLUP / pedigree fit (greta, INLA, or brms) or a
-generic *genomic lens* (`list(h2, var_g, var_e, gebv, label)`), the form
-a field-standard oracle such as sommer's REML supplies. Cross-engine use
-checks that the Bayesian backends agree; the lens form lets the koine
-fourth opinion (REML / established tools) cross-check the Bayesian
-answer – the orchestra's signature value in a field with decades of
-established methods.
+is either a flexyBayes GBLUP / pedigree fit (INLA or brms) or a generic
+*genomic lens* (`list(h2, var_g, var_e, gebv, label)`), the form a
+field-standard REML implementation such as sommer supplies. Cross-engine
+use checks that the Bayesian backends agree. The lens form lets an
+established REML tool cross-check the Bayesian answer, which is what
+matters in a field with decades of established methods.
 
 ## Usage
 
@@ -54,8 +53,11 @@ carries a shared-upstream caveat unless `data_independence = TRUE`.
 ## See also
 
 [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md),
-[`genomic_summary()`](https://aagi-aus.github.io/flexyBayes/reference/genomic_summary.md),
-[`triangulate_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_gwas.md).
+[`genomic_summary()`](https://aagi-aus.github.io/flexyBayes/reference/genomic_summary.md).
+The GWAS counterpart
+[`triangulate_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_gwas.md)
+is internal from 0.10.0 and is reached as
+`flexyBayes:::triangulate_gwas()`.
 
 ## Examples
 

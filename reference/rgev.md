@@ -40,7 +40,7 @@ A numeric vector of length `n`.
 
 ``` r
 set.seed(1)
-y <- rgev(100L, location = 10, scale = 2, shape = 0.15)
+y <- flexyBayes:::rgev(100L, location = 10, scale = 2, shape = 0.15)
 summary(y)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
 #>   7.375   9.758  10.680  11.417  12.939  24.111 

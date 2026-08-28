@@ -1,6 +1,7 @@
-# emmeans support: estimation basis (greta backend)
+# emmeans support: estimation basis (default method)
 
-emmeans support: estimation basis (greta backend)
+The bare `flexybayes` method: reached by any fit whose engine has no
+more specific override, which today is the brms backend.
 
 ## Usage
 
@@ -32,7 +33,7 @@ emm_basis(object, trms, xlev, grid, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

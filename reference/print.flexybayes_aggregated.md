@@ -1,9 +1,11 @@
 # Print a flexybayes_aggregated object
 
-Brief one-screen summary of an aggregated-gaussian fit produced by
+Brief one-screen summary of a fit produced by
 `flexybayes(..., aggregate = "auto"/TRUE)` or
-`fb_brms(..., aggregate = ...)`. Includes the `exactness` field and the
-cell compression ratio (when N/K \>= 2).
+`fb_brms(..., aggregate = ...)`. The header names the fit's own family
+(`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`).
+Includes the `exactness` field and the cell compression ratio (when N/K
+\>= 2).
 
 ## Usage
 
@@ -16,12 +18,13 @@ print(x, ...)
 
 - x:
 
-  a `<flexybayes_aggregated>` object.
+  A `<flexybayes_aggregated>` object, as returned by a fit run on the
+  aggregated representation.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the one-screen summary it prints.

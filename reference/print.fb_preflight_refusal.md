@@ -14,12 +14,14 @@ print(x, ...)
 
 - x:
 
-  an `<fb_preflight_refusal>` object.
+  An `<fb_preflight_refusal>` object, carrying the reason code and the
+  binding term.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the three diagnostic lines it
+prints.

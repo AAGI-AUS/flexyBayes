@@ -20,18 +20,15 @@ fb_log_posterior(fit, ...)
 
 # S3 method for class 'flexybayes_inla'
 fb_log_posterior(fit, ...)
-
-# S3 method for class 'flexybayes'
-fb_log_posterior(fit, ...)
 ```
 
 ## Arguments
 
 - fit:
 
-  A fitted flexyBayes object. The greta classes (`flexybayes` /
-  `flexybayes_direct_greta`) produce a real callable; the brms and INLA
-  classes abstain.
+  A fitted flexyBayes object. Every current backend class abstains; the
+  generic and its methods are retained so a consumer can dispatch on the
+  abstention rather than discovering the gap by a missing method.
 
 - ...:
 
@@ -39,10 +36,8 @@ fb_log_posterior(fit, ...)
 
 ## Value
 
-For a greta fit, a bare callable `function(theta_matrix)` with the
-attributes described above, ready to pass to
-`proxymix::from_fb_posterior()`. For a brms or INLA fit, the function
-does not return: it raises a classed `fb_c4_unavailable` condition.
+Does not return on any current backend: it raises a classed
+`fb_c4_unavailable` condition naming the backend and the reason.
 
 ## Details
 
@@ -66,8 +61,8 @@ consumer probes it at construction). It carries, as attributes:
 
   The additive correction that would normalise the density, i.e.
   `-log Z`. For a posterior the marginal likelihood is generally
-  unknown, so this is `NA_real_` – honest, and the consumer reports a
-  shifted (not absolute) divergence.
+  unknown, so this is `NA_real_` and the consumer reports a shifted (not
+  absolute) divergence.
 
 - `support_lower`, `support_upper`:
 
@@ -82,15 +77,12 @@ consumer probes it at construction). It carries, as attributes:
   natural scale, column-aligned to `parameter_names`. Used only to seed
   the consumer's default proposal; never required.
 
-Backend support. The **greta** backend is the canonical real producer:
-it evaluates the model graph's unadjusted joint density at the
-free-state image of the supplied natural-scale parameters, which is the
-unnormalised natural-scale log-posterior exactly. The **brms** and
-**INLA** backends abstain with an informative condition – brms's
-log-density lives on the Stan unconstrained scale with a version-fragile
-name mapping, and INLA's posterior is a deterministic approximation, not
-a sampling log-density; an honest abstain is preferred to a
-plausible-but-wrong log-density.
+Backend support. No active backend produces a real C4 log-density today.
+The **brms** and **INLA** backends both abstain with an informative
+condition – brms's log-density lives on the Stan unconstrained scale
+with a version-fragile name mapping, and INLA's posterior is a
+deterministic approximation, not a sampling log-density. Abstaining is
+preferred to emitting a plausible-but-wrong log-density.
 
 Acyclic note. A consumer such as proxymix uses this callable without
 depending on flexyBayes; flexyBayes does not list proxymix in `Imports`
@@ -98,29 +90,15 @@ or `Suggests`. The cross-package demonstration lives in a separate
 integration harness, not in this package, preserving the acyclic
 dependency graph.
 
+## Lifecycle
+
+No active backend produces a real C4 log-density; both `flexybayes_brms`
+and `flexybayes_inla` fits abstain with the classed condition
+`fb_c4_unavailable`, for the reasons given above. The generic and its
+methods are retained so a consumer can dispatch on the abstention rather
+than discovering the gap by a missing method.
+
 ## See also
 
 `proxymix::from_fb_posterior()` for the consumer (compresses the
 returned callable into a Gaussian-mixture proxy).
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-library(greta)
-n <- 30
-y <- rnorm(n, 1.5, 2)
-mu <- normal(0, 5)
-sigma <- normal(0, 5, truncation = c(0, Inf))
-yd <- as_data(y)
-distribution(yd) <- normal(mu, sigma)
-m <- model(mu, sigma)
-fit <- fb_greta(fb_from_greta(m), n_samples = 500, warmup = 500,
-                chains = 2, verbose = FALSE, mcmc_verbose = FALSE)
-producer <- fb_log_posterior(fit)
-attr(producer, "parameter_names")
-producer(matrix(c(1.5, 2.0), nrow = 1)) # natural-scale log-posterior
-## Compress with proxymix (in a separate integration harness):
-## proxymix::from_fb_posterior(producer, N = 2)
-} # }
-```

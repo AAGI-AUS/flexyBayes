@@ -14,12 +14,14 @@ print(x, ...)
 
 - x:
 
-  a `triangulate_result` object.
+  A `triangulate_result` object as returned by
+  [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md).
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the header and metrics table it
+prints.

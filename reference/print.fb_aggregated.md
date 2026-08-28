@@ -14,12 +14,14 @@ print(x, ...)
 
 - x:
 
-  an `<fb_aggregated>` object.
+  An `<fb_aggregated>` object, the sufficient-statistics carrier the
+  aggregation layer builds.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the compression and cell-key lines
+it prints.

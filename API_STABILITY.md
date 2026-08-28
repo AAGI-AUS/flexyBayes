@@ -1,10 +1,10 @@
-# API stability — flexyBayes
+# API stability – flexyBayes
 
-`flexyBayes` is in the **0.8.x** development line. Every public export
-carries a `lifecycle::badge("experimental")`, so the guarantees below
-are deliberately weaker than they will be at v1.0: bug fixes and
-additions never break callers, but renamings, default changes, and shape
-changes are permitted within 0.x through a one-minor-release
+`flexyBayes` is in the **0.10.0** development line. Every public export
+is at the experimental `lifecycle` stage, so the guarantees below are
+deliberately weaker than they will be at v1.0: bug fixes and additions
+never break callers, but renamings, default changes, and shape changes
+are permitted within 0.x through a one-minor-release
 [`lifecycle::deprecate_warn()`](https://lifecycle.r-lib.org/reference/deprecate_soft.html)
 cycle.
 
@@ -33,41 +33,50 @@ an engine:
 
 | Export | Stage | Notes |
 |----|----|----|
-| [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | experimental | The asreml-style entry (`fixed`, `random`, `rcov`); also accepts brms-style and greta-style grammar via `syntax = "auto"`. `backend = c("auto", "greta", "inla", "brms", "gretaR")`, default `"auto"`. `"auto"` never routes to Stan/brms. `prior` accepts an [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md) object. |
+| [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by [`match.arg()`](https://rdrr.io/r/base/match.arg.html). `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. Nothing is translated silently. `auto` does change engine in one case after starting – an INLA program failure is caught and re-routed to brms – and that is reported by a message, never silently; the fit’s class and `backend` field record which engine produced it. `prior` accepts an [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md) object. |
 | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | experimental | Literal alias for [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md); documented but not promoted. |
 
 **Engine pins** fix one engine and therefore take **no** `backend`
-argument — passing a conflicting `backend` raises an
+argument – passing a conflicting `backend` raises an
 `engine_pin_backend_conflict` refusal:
 
 | Export | Stage | Notes |
 |----|----|----|
-| [`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md) | experimental | Pins the greta (Hamiltonian Monte Carlo) engine. Also accepts a user-built native greta model (optionally wrapped with [`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md) to set `canonical_names`). |
-| [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) | experimental | Pins the INLA engine (approximate inference — see “Inference semantics”). |
+| [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) | experimental | Pins the INLA engine (approximate inference – see “Inference semantics”). |
 | [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | experimental | Pins the Stan/brms engine via `brms::brm()`. |
 
-**Native-model adapters** lift a model fitted elsewhere into the
-flexyBayes object so the shared diagnostics, prediction, and interop
-methods apply:
+**Sampler arguments.** `seed` and `control` are part of the universal
+signature and reach `brms::brm()` unchanged, so a brms posterior is
+reproducible from the call alone: `control = list(adapt_delta = 0.95)`
+is the route to `adapt_delta` and `max_treedepth`. Left `NULL` they map
+onto brms’s own defaults (`seed = NA`, `control = NULL`) rather than
+being passed through, and
+[`update()`](https://rdrr.io/r/stats/update.html) repeats whatever the
+fit recorded. Both are no-ops on the deterministic INLA path, which says
+so once per session.
+
+**Grammar adapters** ingest a model *specification* written in another
+package’s syntax and return the flexyBayes internal representation
+(`fb_terms`), which the entry points then fit. They do not take a fitted
+object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |----|----|----|
-| [`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md) | experimental | Wrap a native greta model; carries `canonical_names`. |
-| [`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md) | experimental | Wrap a fitted `brmsfit`. |
-| [`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md) | experimental | Wrap a fitted `asreml` object. |
+| [`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md) | experimental | Parse brms-style syntax: `fb_from_brms(formula, data, family, ...)`. |
+| [`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md) | experimental | Parse ASReml-style syntax into the same representation. |
 
 ## Cross-engine comparison
 
 | Export | Stage | Notes |
 |----|----|----|
-| [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md) | experimental | Pairwise comparison of two posteriors from different engines on shared parameters. Metric set for 0.8.x: Wasserstein-1 distance, tail drift, SD ratio, mean difference. *(The earlier cross-engine R-hat-on-means metric was removed — R-hat across independent engines is not a valid convergence statistic; per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
+| [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md) | experimental | Pairwise comparison of two posteriors from different engines on shared parameters, behind three gates. A model fingerprint (formula triple, family and link, data digest, recorded priors) refuses mismatched fits with `triangulate_incomparable_fits`. A per-fit diagnostics gate returns status `inconclusive` instead of a parameter verdict. A matched-prior gate marks a parameter `not_compared` when the two fits do not record the same prior for it. Metric set for 0.9.x: mean difference, SD ratio, quantile (tail) drift, Wasserstein-1 distance, and the SD-scaled forms of the last two. Overall `status` is `concordant`, `discordant`, or `inconclusive`, and the thresholds are documented heuristics on a gated overlap rather than calibrated tests. *(The earlier cross-engine R-hat-on-means metric was removed – R-hat across independent engines is not a valid convergence statistic, and per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
 
 ## Priors
 
 | Export | Stage | Notes |
 |----|----|----|
-| [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md) | experimental | Prior DSL on the standard-deviation scale. Targets: `sigma`, `sd(group)`, `b(name)`, `cor(group)`, `smooth(var)`. Families: `pc`, `normal`, `student_t`, `half_normal`, `half_cauchy`, `cauchy`, `gamma`, `exponential`, `lkj`, `uniform`. The penalised-complexity (PC) family is the cross-engine interlingua (Simpson et al. 2017) for translating a prior across greta, INLA, and brms. |
-| [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md) | experimental | S3 generic returning the resolved-prior view for a fit; reports which resolution path fired (`auto-default`, `user-supplied`, `legacy-scalar`). Methods for every fit subclass. |
+| [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md) | experimental | Prior DSL on the standard-deviation scale. Targets: `sigma`, `sd(group)`, `b(name)`, `cor(group)`, `smooth(var)`. Families: `pc`, `normal`, `student_t`, `half_normal`, `half_cauchy`, `cauchy`, `gamma`, `exponential`, `lkj`, `uniform`. The penalised-complexity (PC) family is the cross-engine interlingua (Simpson et al. 2017) for translating one prior specification into each engine’s own parameterisation. |
+| [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md) | experimental | S3 generic returning the resolved-prior view for a fit, reporting which resolution path fired (auto-default bounded uniform on SD, user-supplied [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md), or the legacy scalar bridge). Methods for every fit subclass. |
 
 ## Covariance, engine, and approximation helpers
 
@@ -82,19 +91,29 @@ methods apply:
 | Export | Stage | Notes |
 |----|----|----|
 | [`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md) | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
-| [`flexybayes_stream()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes_stream.md) | experimental | Streaming Gaussian sufficient-statistic aggregation for data too large to hold in memory; `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
+| [`flexybayes_stream()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes_stream.md) | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, for `family = "gaussian"`, `"binomial"` or `"poisson"` (the count families take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
 
 ## Diagnostics and introspection
 
 | Export | Stage | Notes |
 |----|----|----|
-| [`backend_decision()`](https://aagi-aus.github.io/flexyBayes/reference/backend_decision.md) | experimental | The captured dispatch trace: `backend`, `path`, `gate_checks`, `reason`. Shape stable across 0.8.x. |
+| [`backend_decision()`](https://aagi-aus.github.io/flexyBayes/reference/backend_decision.md) | experimental | The captured dispatch trace, eight fields: `backend`, `path`, `gate_checks`, `reason`, `preflight_summary`, `representation_plan`, `rejected_routes`, `routing_policy_version`. Shape stable across 0.9.x. |
 | [`canonical_names()`](https://aagi-aus.github.io/flexyBayes/reference/canonical_names.md) | experimental | S3 generic returning the canonical-name registry view for a fit. Methods for every fit subclass. |
-| [`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md) | experimental | The refusal vocabulary as a table (code, message template, since-version). |
-| [`gretaR_status()`](https://aagi-aus.github.io/flexyBayes/reference/gretaR_status.md) | experimental | Reports whether the dormant `gretaR` R-native engine is detected at run time (see “Backends”). |
-| [`proceed()`](https://aagi-aus.github.io/flexyBayes/reference/proceed.md), [`cat_code()`](https://aagi-aus.github.io/flexyBayes/reference/cat_code.md) | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). |
+| [`fb_refusals()`](https://aagi-aus.github.io/flexyBayes/reference/fb_refusals.md) | experimental | The refusal vocabulary as a table (code, message template, since-version). The registry is the count – no document quotes a number of refusal codes. |
+| [`fb_backend_status()`](https://aagi-aus.github.io/flexyBayes/reference/fb_backend_status.md) | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
+| [`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md) | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
+| [`proceed()`](https://aagi-aus.github.io/flexyBayes/reference/proceed.md), [`cat_code()`](https://aagi-aus.github.io/flexyBayes/reference/cat_code.md) | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. |
+| [`fb_complete_grid()`](https://aagi-aus.github.io/flexyBayes/reference/fb_complete_grid.md) | experimental | Completes a design grid (`index = ~ row * col`) before fitting, so a structured covariance is built over the intended index set rather than over the observed rows only. |
+| [`genomic_summary()`](https://aagi-aus.github.io/flexyBayes/reference/genomic_summary.md) | experimental | Turns the posterior draws of a relationship-matrix term into genomic quantities for a fitted model. |
+| [`ranef()`](https://aagi-aus.github.io/flexyBayes/reference/ranef.md) | experimental | S3 generic returning random-effect predictions – posterior summaries of the group-level effects – from a fit. |
 
 ## Interoperability contract
+
+Every fit carries its engine’s class first and `"flexybayes"` second
+(`c("flexybayes_brms", "flexybayes", "list")`,
+`c("flexybayes_inla", "flexybayes", "list")`), so a method written for
+the shared class reaches both engines and an engine-specific method
+still wins.
 
 flexyBayes fits plug into the wider ecosystem through registered S3
 methods, whose signatures are dictated by the host package’s contract
@@ -106,8 +125,19 @@ and are therefore as stable as that contract:
   path.
 - **broom**: [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
   [`glance()`](https://generics.r-lib.org/reference/glance.html),
-  [`augment()`](https://generics.r-lib.org/reference/augment.html) —
-  column names follow broom convention; new columns are non-breaking.
+  [`augment()`](https://generics.r-lib.org/reference/augment.html) –
+  column names follow broom convention, and new columns are
+  non-breaking.
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html) has a
+  method for every fit subclass.
+  [`glance()`](https://generics.r-lib.org/reference/glance.html) returns
+  its one-row summary on an INLA fit with the sampler-specific columns
+  (`chains`, `samples`, `max_rhat`, `min_ess`) `NA`, since a
+  deterministic Laplace fit has no sampler to report.
+  [`augment()`](https://generics.r-lib.org/reference/augment.html) has
+  no INLA-side answer and refuses by name, pointing at
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and
+  [`predict()`](https://rdrr.io/r/stats/predict.html) instead.
 - **emmeans**: `recover_data()`, `emm_basis()`.
 - **marginaleffects**: `get_coef()`, `get_predict()`, `get_vcov()`,
   `set_coef()`.
@@ -127,50 +157,82 @@ and are therefore as stable as that contract:
   [`update()`](https://rdrr.io/r/stats/update.html),
   [`plot()`](https://rdrr.io/r/graphics/plot.default.html).
 
-[`predict.flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes.md)
-accepts a `newdata` interface mirroring
-[`stats::predict()`](https://rdrr.io/r/stats/predict.html), with
-`output_file` / `format = c("auto", "csv", "rds", "fst")` for chunked
-output and `allow_new_levels = c("population", "sample", "refuse")`.
+[`predict.flexybayes_inla()`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_inla.md)
+and
+[`predict.flexybayes_brms()`](https://aagi-aus.github.io/flexyBayes/reference/predict.flexybayes_brms.md)
+accept a `newdata` interface mirroring
+[`stats::predict()`](https://rdrr.io/r/stats/predict.html). Both take
+`type`, `se.fit`, `classify` and `level`; the brms method additionally
+takes `re_formula` and `summary`. There is no parent
+`predict.flexybayes()` method: it was removed at 0.9.3 so that each
+engine states its own prediction contract. Chunked output and new-level
+policy are not arguments of these methods – `output_file` belongs to
+[`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+and `allow_new_levels` to the classify path – and naming them here
+previously advertised three arguments that `...` silently swallowed.
 Interval semantics are *posterior expected-response* (no residual
 observation noise), not posterior-predictive.
 
+Where a method has no meaning on an engine it states that rather than
+returning a number. [`logLik()`](https://rdrr.io/r/stats/logLik.html) on
+an INLA fit reports that INLA returns a marginal log-likelihood and
+yields `NA` with that message, and a fit carrying neither a response
+vector nor a recorded family refuses instead of letting
+[`AIC()`](https://rdrr.io/r/stats/AIC.html) or
+[`anova()`](https://rdrr.io/r/stats/anova.html) report a comparison that
+was never made.
+
 ## Backends
 
-| Backend | Availability | Inference |
-|----|----|----|
-| `greta` | greta-dev R-universe (archived from CRAN); needs a working Python/TensorFlow stack at run time | Hamiltonian Monte Carlo (exact up to Monte Carlo error) |
-| `INLA` | from its own repository (`Additional_repositories`) | Integrated nested Laplace approximation (**approximate**) |
-| `brms` | CRAN; needs a Stan toolchain | Hamiltonian Monte Carlo via Stan |
-| `gretaR` | **not a declared dependency** — install it yourself | torch-native MCMC; dormant, opt-in, detected at run time via [`gretaR_status()`](https://aagi-aus.github.io/flexyBayes/reference/gretaR_status.md) |
+Two engines are active. A third native engine was withdrawn entirely in
+0.9.3 (see `NEWS.md`): no code path, export, registry row, or `Suggests`
+entry remains, and naming it (or any other unrecognised backend) raises
+an ordinary `unknown_backend` refusal. Re-entry, should it ever be
+proposed, would be a fresh implementation, not a repair of retained
+code.
 
-## Inference semantics — read this
+| Backend | Status | Availability | Inference |
+|----|----|----|----|
+| `INLA` | active | from its own repository (`Additional_repositories`) | Integrated nested Laplace approximation (**approximate**) |
+| `brms` | active | CRAN; needs a Stan toolchain | Hamiltonian Monte Carlo via Stan |
+
+## Inference semantics – read this
 
 flexyBayes is *formula-preserving*: the model emitted to a backend
 faithfully represents the formula you wrote. That is distinct from the
-*inference* being exact. The greta and brms backends draw from the
-posterior by MCMC (exact up to Monte Carlo error, subject to convergence
-diagnostics). The **INLA backend is approximate inference** — integrated
-nested Laplace approximation — even when the emitted model is a faithful
+*inference* being exact. The brms backend draws from the posterior by
+MCMC (exact up to Monte Carlo error, subject to convergence
+diagnostics). The **INLA backend is approximate inference** – integrated
+nested Laplace approximation – even when the emitted model is a faithful
 translation of the formula. Treat “formula-preserving” and “exact
 inference” as different claims; flexyBayes makes the first everywhere
 and the second only on the MCMC backends.
 
 ## Default-prior contract
 
-On the auto-default path — when neither an
+On the auto-default path – when neither an
 [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md)
 nor a legacy `prior_vc_sd` scalar is supplied:
 
 | Target | Default | Basis |
 |----|----|----|
 | Residual `sigma` (Gaussian, identity link) | `uniform(0, 5 * sd(y))` | flexyBayes heuristic (weakly-informative bounded SD prior) |
-| Residual `sigma` (log link) | `uniform(0, 5 * sd(log(y + 0.5)))` | flexyBayes heuristic |
-| Residual `sigma` (logit link) | `uniform(0, 5)` | flexyBayes heuristic |
+| Residual `sigma` (log link – Poisson, negative binomial, gamma) | `uniform(0, 3)` on the log scale | flexyBayes heuristic |
+| Residual `sigma` (logit link – binomial, beta) | `uniform(0, 5)` on the logit scale | flexyBayes heuristic |
 | `sd(group)` for `simple` / `ide` / `id` random terms | `uniform(0, U)`, `U` by family as above | flexyBayes heuristic |
+| `sd(group)` and `sd(slope)` for an uncorrelated slope `(x \|\| g)` | `uniform(0, U)`, `U` by family | flexyBayes heuristic |
 | `sd(group)` for `vm()`, `ped()` structured-cov terms | `uniform(0, U)`, `U` by family | flexyBayes heuristic |
-| `sd(group)` for `at()`, `us()`, `fa()`, `ar1()`, `spl()` terms | legacy `lognormal(0, prior_vc_sd)` (per-form uniform default deferred) | flexyBayes legacy |
-| Fixed-effect coefficients | `normal(0, prior_fixed_sd)`, `prior_fixed_sd = 100` | weakly-informative on the natural data scale |
+| `sd(group)` for a `gen:env` interaction intercept, and the per-level SDs of [`diag()`](https://rdrr.io/r/base/diag.html) / `idh()` / `at()` and `us()` | `uniform(0, U)`, `U` by family | flexyBayes heuristic (added at 0.9.0) |
+| `us(f):g` level correlations | brms’s own LKJ | recorded as engine-default |
+| AR1 field hyperparameters (`ar1()`, `ar1(row):ar1(col)`) | INLA’s own hyperpriors | recorded as engine-default |
+| Any other random-term type (a multi-way interaction, `spl()`, `fa()`) | the engine’s own default | recorded as engine-default |
+| Fixed-effect coefficients | each engine’s own default – brms: flat on the population-level coefficients and a response-centred `student_t` on the intercept; INLA: `prec = 0.001` on the slopes and a flat intercept | `prior_fixed_sd` is applied when it is supplied, on every backend; unsupplied, the engine’s default stands and [`prior_summary()`](https://aagi-aus.github.io/flexyBayes/reference/prior_summary.md) names it |
+
+“Recorded as engine-default” is a contract, not a shrug: the parameter
+and the reason are written into the fit’s prior provenance, so
+[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)’s
+matched-prior gate reports it as `not_compared` rather than comparing
+two engines that were never asked the same question.
 
 The bounded-uniform-on-SD default is a flexyBayes heuristic in the
 spirit of Gelman (2006), which argues for bounded / weakly-informative
@@ -181,18 +243,30 @@ and the PC prior remains the recommended explicit choice
 (`fb_prior(sigma ~ pc(upper = U, prob = p))`) when the number of groups
 is small. The legacy scalar bridge (`prior_fixed_sd`, `prior_vc_sd`)
 preserves the original `lognormal(0, prior_vc_sd)` semantics verbatim
-when `prior_vc_sd` is passed explicitly.
+when `prior_vc_sd` is passed explicitly, and does so on both active
+engines: brms receives a `lognormal(0, prior_vc_sd)` prior row and INLA
+the expression prior that writes the same density on the
+standard-deviation scale, so the two carry one prior and
+[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
+compares the components rather than excluding them.
 
 ## Deprecation policy
 
 When an experimental export is renamed, restructured, or removed:
+
+**0.10.0 did not follow this cycle.** Eleven exports were withdrawn in
+one step with no `deprecate_warn()` release ahead of them, on the ground
+that the package has never been published and so has no installed base
+to warn. The policy below governs from the first public release onward,
+and a withdrawal without a cycle after that is a break of it, not a
+precedent set by this one.
 
 1.  The old call path emits
     [`lifecycle::deprecate_warn()`](https://lifecycle.r-lib.org/reference/deprecate_soft.html)
     for at least one minor release.
 2.  The next minor release moves it to
     [`lifecycle::deprecate_stop()`](https://lifecycle.r-lib.org/reference/deprecate_soft.html)
-    — the function still exists but signals a hard error directing
+    – the function still exists but signals a hard error directing
     callers to the replacement.
 3.  The minor release after that removes the old export.
 
@@ -201,22 +275,25 @@ explicit argument for the rest of the 0.x series.
 
 ## Pinning
 
-Production users who need stability should pin to a specific 0.8.x patch
-via `renv::snapshot()` until v1.0 lands.
+Production users who need stability should pin to a specific 0.10.x
+patch via `renv::snapshot()` until v1.0 lands.
 
-## New in the 0.8.x line (all experimental)
+## Added on the 0.8.x line (all experimental)
 
-The 0.8.x line adds the exports below. All are **experimental** under
-the ladder above; none changes the stability posture of the lean-core
-fitting / triangulation surface.
+The 0.8.x line added the entries below. All were **experimental** under
+the ladder above; none changed the stability posture of the lean-core
+fitting / triangulation surface. **Rows marked withdrawn are no longer
+exported as of 0.10.0** (see `NEWS.md`); the functions remain in the
+package as internals, so a caller reaching one now gets “could not find
+function” rather than the behaviour described.
 
 | Export | Added | Notes |
 |----|----|----|
-| [`triangulate_genomic()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_genomic.md) / [`triangulate_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_gwas.md) | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. |
-| [`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md) | 0.8.0 | Breeder summary of a greta factor-analytic G×E fit (greta-only). |
+| [`triangulate_genomic()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_genomic.md) / [`triangulate_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_gwas.md) | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. [`triangulate_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate_gwas.md) **withdrawn at 0.10.0**. |
+| [`fb_met_summary()`](https://aagi-aus.github.io/flexyBayes/reference/fb_met_summary.md) | 0.8.0 | **Withdrawn at 0.10.0.** Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead ([`summary()`](https://rdrr.io/r/base/summary.html) for the components, `brms::VarCorr()` for a [`diag()`](https://rdrr.io/r/base/diag.html) or `us()` covariance). |
 | [`fb_gblup_cv()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gblup_cv.md) | 0.8.0 | Genomic-prediction accuracy by cross-validation. |
-| [`fb_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gwas.md) | 0.8.0 | EMMAX / P3D whole-genome scan. |
-| [`tidy()`](https://generics.r-lib.org/reference/tidy.html) / [`glance()`](https://generics.r-lib.org/reference/glance.html) / [`augment()`](https://generics.r-lib.org/reference/augment.html) | 0.8.1 | broom-style accessors (re-exported from `generics`). [`tidy()`](https://generics.r-lib.org/reference/tidy.html) covers all three backends; [`glance()`](https://generics.r-lib.org/reference/glance.html) / [`augment()`](https://generics.r-lib.org/reference/augment.html) cover greta + brms. |
-| [`fb_gev()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gev.md) / [`fb_dirichlet()`](https://aagi-aus.github.io/flexyBayes/reference/fb_dirichlet.md) | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). |
-| [`fb_log_posterior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_log_posterior.md) | 0.8.2 | Constellation C4 producer; greta is the real producer, brms / INLA honestly abstain. |
-| [`glance.flexybayes_inla()`](https://aagi-aus.github.io/flexyBayes/reference/glance.flexybayes.md) / [`augment.flexybayes_inla()`](https://aagi-aus.github.io/flexyBayes/reference/augment.flexybayes.md) | 0.8.3 | Explicit, classed refusals for INLA fits, pointing users to [`tidy()`](https://generics.r-lib.org/reference/tidy.html), [`summary()`](https://rdrr.io/r/base/summary.html), and [`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md) (an INLA fit previously raised a bare “no applicable method” error). |
+| [`fb_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gwas.md) | 0.8.0 | EMMAX / P3D whole-genome scan. **Withdrawn at 0.10.0.** |
+| [`tidy()`](https://generics.r-lib.org/reference/tidy.html) / [`glance()`](https://generics.r-lib.org/reference/glance.html) / [`augment()`](https://generics.r-lib.org/reference/augment.html) | 0.8.1 | broom-style accessors (re-exported from `generics`). [`tidy()`](https://generics.r-lib.org/reference/tidy.html) has a method for every fit subclass. [`glance()`](https://generics.r-lib.org/reference/glance.html) returns a row for an INLA fit with the sampler-specific columns `NA`; [`augment()`](https://generics.r-lib.org/reference/augment.html) refuses by name on one. |
+| [`fb_gev()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gev.md) / [`fb_dirichlet()`](https://aagi-aus.github.io/flexyBayes/reference/fb_dirichlet.md) | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). **All six withdrawn at 0.10.0.** |
+| [`fb_log_posterior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_log_posterior.md) | 0.8.2 | **Withdrawn at 0.10.0.** Constellation C4 producer. The engine withdrawn in 0.9.3 was the only one that evaluated the log density, so the method now abstains unconditionally with a typed message (`fb_c4_unavailable`) rather than returning a number. |
+| [`glance.flexybayes_inla()`](https://aagi-aus.github.io/flexyBayes/reference/glance.flexybayes.md) / [`augment.flexybayes_inla()`](https://aagi-aus.github.io/flexyBayes/reference/augment.flexybayes.md) | 0.8.3 | Added so an INLA fit stops raising a bare “no applicable method” error. [`glance()`](https://generics.r-lib.org/reference/glance.html) has since returned a one-row summary with the sampler columns `NA` rather than refusing (0.9.3, D15); [`augment()`](https://generics.r-lib.org/reference/augment.html) still refuses by name and points at [`tidy()`](https://generics.r-lib.org/reference/tidy.html) and [`predict()`](https://rdrr.io/r/stats/predict.html). |

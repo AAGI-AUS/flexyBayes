@@ -13,8 +13,14 @@ summary(object, ...)
 
 - object:
 
-  an `<fb_plan>` object.
+  An `<fb_plan>` object as returned by
+  [`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md).
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
+
+## Value
+
+Invisibly, `object` unchanged. Called for the preflight and
+representation tables it prints.

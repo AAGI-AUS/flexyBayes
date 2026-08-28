@@ -1,8 +1,9 @@
 # Print method for the brms-passthrough flexybayes subclass
 
-Mirrors `print.flexybayes` (call info + run time + diagnostics) with a
-brms-specific footer (the live `brmsfit` lives at `$brms`; the GLM shim
-at `$glm`; `$extras` carries the same diagnostics as the greta path).
+Opens with the header every engine's print shares, then adds the sampler
+diagnostics and a brms-specific footer (the live `brmsfit` lives at
+`$brms`; the GLM shim at `$glm`; `$extras` carries the same diagnostics
+as the INLA path).
 
 ## Usage
 
@@ -19,4 +20,8 @@ print(x, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
+
+## Value
+
+Invisibly, `x` unchanged. Called for the description it prints.

@@ -19,7 +19,7 @@ $fb_prior for programmatic access."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,28 +31,15 @@ $fb_prior for programmatic access."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><h6 class="dropdown-header" data-toc-skip>Foundations</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-asreml-formulas.html">02 — asreml-shaped formulas</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression.html">03 — Foundational regression</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core mixed-model concepts</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-hierarchical.html">04 — Hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-structured-covariance.html">05 — Structured covariance</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-priors.html">06 — Priors and regularisation</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Applied workflows</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-met-and-genomics.html">07 — METs and genomic selection</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-downstream-analysis.html">08 — Downstream analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-09-spatio-temporal.html">09 — Spatio-temporal models</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced &amp; internals</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-10-triangulation.html">10 — Cross-engine triangulation</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-11-lgm-feasibility.html">11 — LGM feasibility filter</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-12-backend-internals.html">12 — Backend internals</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-14-engine-selection.html">14 — Choosing an engine</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-15-extending-backends.html">15 — Extending with a backend</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-16-big-data-streaming.html">16 — Big data — streaming aggregation</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -85,16 +72,10 @@ underlying <code>fb_prior</code> (when applicable) is exposed under
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prior_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># S3 method for class 'flexybayes'</span></span>
-<span><span class="fu">prior_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
 <span><span class="co"># S3 method for class 'flexybayes_inla'</span></span>
 <span><span class="fu">prior_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'flexybayes_brms'</span></span>
-<span><span class="fu">prior_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for class 'flexybayes_direct_greta'</span></span>
 <span><span class="fu">prior_summary</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Default S3 method</span></span>
@@ -106,8 +87,7 @@ underlying <code>fb_prior</code> (when applicable) is exposed under
 
 
 <dl><dt id="arg-object">object<a class="anchor" aria-label="anchor" href="#arg-object"></a></dt>
-<dd><p>A <code>flexybayes</code>, <code>flexybayes_inla</code>, or
-<code>flexybayes_direct_greta</code> object.</p></dd>
+<dd><p>A <code>flexybayes_inla</code> or <code>flexybayes_brms</code> object.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -117,13 +97,15 @@ per-component selection).</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>prior_summary_flexybayes</code> object (list). Components:</p><dl><dt><code>kind</code></dt>
+    <p>A <code>prior_summary_flexybayes</code> object, a list carrying the
+components below.</p>
+<dl><dt><code>kind</code></dt>
 <dd><p>One of <code>"fb_prior"</code>, <code>"legacy_scalar"</code>,
 <code>"no_prior_recorded"</code>.</p></dd>
 
 <dt><code>backend</code></dt>
-<dd><p>The backend the fit ran on:
-<code>"greta"</code>, <code>"inla"</code>, or <code>"greta-direct"</code>.</p></dd>
+<dd><p>The backend the fit ran on: <code>"inla"</code> or
+<code>"brms"</code>.</p></dd>
 
 <dt><code>fb_prior</code></dt>
 <dd><p>The <code>fb_prior</code> object (when
@@ -146,19 +128,28 @@ user-supplied.</p></dd>
 <dd><p>Legacy scalar values (when
 <code>kind == "legacy_scalar"</code>).</p></dd>
 
+<dt><code>scalars_supplied</code></dt>
+<dd><p>Named logical: whether the caller
+supplied <code>prior_fixed_sd</code> and <code>prior_vc_sd</code>. An argument left
+unsupplied leaves the engine's own default in force, which
+<code>fixed_sd_engine_default</code> names.</p></dd>
+
+<dt><code>legacy_vc_applied</code></dt>
+<dd><p>Named character: the density the
+legacy scalar bridge put on each variance component it reached,
+empty when <code>prior_vc_sd</code> was not supplied.</p></dd>
+
+<dt><code>not_applied</code></dt>
+<dd><p>Named character: a prior this package
+declared that the engine has no parameter for – a residual
+prior on a family whose dispersion is a function of the mean.</p></dd>
+
 <dt><code>declaration_only</code></dt>
-<dd><p><code>TRUE</code> on <code>flexybayes_direct_greta</code>
-fits – the prior is a declaration of the user's
-greta-built model, not an enforcement.</p></dd>
+<dd><p>Reserved; always <code>FALSE</code> for every
+current backend.</p></dd>
 
 
 </dl></div>
-    <div class="section level2">
-    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>For <code>flexybayes_direct_greta</code> fits the priors are a <em>declaration</em>
-of what the user-built model graph encodes; the summary flags
-this with <code>declaration_only = TRUE</code>.</p>
-    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -183,7 +174,7 @@ this with <code>declaration_only = TRUE</code>.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

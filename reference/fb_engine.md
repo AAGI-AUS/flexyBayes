@@ -2,8 +2,8 @@
 
 Names a concrete inference engine and its tuning options. The result is
 passed as the `backend` argument of the fitting verbs:
-`flexybayes(..., backend = fb_engine("greta", chains = 4L))`. The bare
-string form (`backend = "greta"`) remains valid and is equivalent to the
+`flexybayes(..., backend = fb_engine("brms", chains = 4L))`. The bare
+string form (`backend = "brms"`) remains valid and is equivalent to the
 default `fb_engine()` for that engine.
 
 ## Usage
@@ -16,7 +16,7 @@ fb_engine(name, opts = list(), ...)
 
 - name:
 
-  Character(1): the engine, one of `"greta"`, `"inla"`, `"brms"`.
+  Character(1): the engine, one of `"inla"`, `"brms"`.
 
 - opts:
 
@@ -26,7 +26,7 @@ fb_engine(name, opts = list(), ...)
 - ...:
 
   Tuning options given individually, merged into `opts` (e.g.
-  `fb_engine("greta", chains = 4L)`).
+  `fb_engine("brms", chains = 4L)`).
 
 ## Value
 
@@ -47,7 +47,7 @@ automatic routing.
 ## Examples
 
 ``` r
-e <- fb_engine("greta", chains = 4L)
+e <- fb_engine("brms", chains = 4L)
 e$paradigm
 #> [1] "mcmc"
 e$toolchain_status

@@ -47,8 +47,8 @@ computed from the fitted parameters and reported on `fit$return_levels`
 for the requested return periods.
 
 A scalable Bayesian GEV belongs on INLA's native `gev` / `bgev` family
-and is planned for a future release; the greta backend ships no GEV
-distribution.
+and is planned for a future release; no active engine has a turnkey GEV
+route today.
 
 ## See also
 
@@ -60,8 +60,8 @@ distribution.
 
 ``` r
 set.seed(1)
-y <- rgev(200L, location = 10, scale = 2, shape = 0.1)
-fit <- fb_gev(y)
+y <- flexyBayes:::rgev(200L, location = 10, scale = 2, shape = 0.1)
+fit <- flexyBayes:::fb_gev(y)
 fit$estimates
 #>       term    estimate std.error    conf.low  conf.high
 #> 1 location 10.19181337 0.1453225  9.90698659 10.4766402

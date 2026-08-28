@@ -15,16 +15,10 @@ programmatic access.
 ``` r
 prior_summary(object, ...)
 
-# S3 method for class 'flexybayes'
-prior_summary(object, ...)
-
 # S3 method for class 'flexybayes_inla'
 prior_summary(object, ...)
 
 # S3 method for class 'flexybayes_brms'
-prior_summary(object, ...)
-
-# S3 method for class 'flexybayes_direct_greta'
 prior_summary(object, ...)
 
 # Default S3 method
@@ -35,8 +29,7 @@ prior_summary(object, ...)
 
 - object:
 
-  A `flexybayes`, `flexybayes_inla`, or `flexybayes_direct_greta`
-  object.
+  A `flexybayes_inla` or `flexybayes_brms` object.
 
 - ...:
 
@@ -45,7 +38,8 @@ prior_summary(object, ...)
 
 ## Value
 
-A `prior_summary_flexybayes` object (list). Components:
+A `prior_summary_flexybayes` object, a list carrying the components
+below.
 
 - `kind`:
 
@@ -53,7 +47,7 @@ A `prior_summary_flexybayes` object (list). Components:
 
 - `backend`:
 
-  The backend the fit ran on: `"greta"`, `"inla"`, or `"greta-direct"`.
+  The backend the fit ran on: `"inla"` or `"brms"`.
 
 - `fb_prior`:
 
@@ -76,16 +70,27 @@ A `prior_summary_flexybayes` object (list). Components:
 
   Legacy scalar values (when `kind == "legacy_scalar"`).
 
+- `scalars_supplied`:
+
+  Named logical: whether the caller supplied `prior_fixed_sd` and
+  `prior_vc_sd`. An argument left unsupplied leaves the engine's own
+  default in force, which `fixed_sd_engine_default` names.
+
+- `legacy_vc_applied`:
+
+  Named character: the density the legacy scalar bridge put on each
+  variance component it reached, empty when `prior_vc_sd` was not
+  supplied.
+
+- `not_applied`:
+
+  Named character: a prior this package declared that the engine has no
+  parameter for – a residual prior on a family whose dispersion is a
+  function of the mean.
+
 - `declaration_only`:
 
-  `TRUE` on `flexybayes_direct_greta` fits – the prior is a declaration
-  of the user's greta-built model, not an enforcement.
-
-## Details
-
-For `flexybayes_direct_greta` fits the priors are a *declaration* of
-what the user-built model graph encodes; the summary flags this with
-`declaration_only = TRUE`.
+  Reserved; always `FALSE` for every current backend.
 
 ## Examples
 

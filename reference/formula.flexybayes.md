@@ -13,12 +13,16 @@ formula(x, ...)
 
 - x:
 
-  A flexybayes object
+  A fitted `flexybayes` object of any backend.
 
 - ...:
 
-  Additional arguments (ignored)
+  Ignored, present for compatibility with the generic.
 
 ## Value
 
-The fixed formula
+The fixed-effect (population-level) formula as a `formula` object.
+Random-effect and residual-structure terms are not part of it: read them
+from the fit's `fb_terms` intermediate representation, or from
+[`fb_plan()`](https://aagi-aus.github.io/flexyBayes/reference/fb_plan.md)
+before fitting.

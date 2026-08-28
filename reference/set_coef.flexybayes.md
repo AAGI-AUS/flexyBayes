@@ -1,6 +1,6 @@
-# marginaleffects support: set coefficients (greta backend)
+# marginaleffects support: set coefficients (default method)
 
-marginaleffects support: set coefficients (greta backend)
+marginaleffects support: set coefficients (default method)
 
 ## Usage
 
@@ -24,7 +24,7 @@ set_coef(model, coefs, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

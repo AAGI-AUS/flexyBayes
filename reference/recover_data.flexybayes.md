@@ -1,6 +1,7 @@
-# emmeans support: recover model data (greta backend)
+# emmeans support: recover model data (default method)
 
-emmeans support: recover model data (greta backend)
+The bare `flexybayes` method: reached by any fit whose engine has no
+more specific override, which today is the brms backend.
 
 ## Usage
 

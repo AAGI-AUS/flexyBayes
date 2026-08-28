@@ -1,8 +1,9 @@
 # Credible intervals on the brms path
 
 Uses the brms posterior draws directly (the parent `confint.flexybayes`
-reads `$greta$draws`, which is `NULL` on the brms-passthrough path).
-Returns quantile-based credible bounds over the b\_ rows; row names are
+refuses unconditionally with `fit_lacks_posterior_draws`, since no
+active engine reaches it without its own override). Returns
+quantile-based credible bounds over the `b_<term>` rows; row names are
 stripped of the brms `b_` prefix to align with
 [`coef()`](https://rdrr.io/r/stats/coef.html).
 
@@ -29,4 +30,10 @@ confint(object, parm = NULL, level = 0.95, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
+
+## Value
+
+A numeric matrix with one row per fixed-effect term and two columns
+holding the lower and upper credible bounds at `level`. Row names are
+the term names with the brms `b_` prefix removed.

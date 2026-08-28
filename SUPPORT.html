@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,28 +19,15 @@
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><h6 class="dropdown-header" data-toc-skip>Foundations</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-02-asreml-formulas.html">02 — asreml-shaped formulas</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression.html">03 — Foundational regression</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-04-priors.html">04 — Priors</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core mixed-model concepts</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-04-hierarchical.html">04 — Hierarchical models</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-05-structured-covariance.html">05 — Structured covariance</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-06-priors.html">06 — Priors and regularisation</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Applied workflows</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-07-met-and-genomics.html">07 — METs and genomic selection</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-08-downstream-analysis.html">08 — Downstream analysis</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-09-spatio-temporal.html">09 — Spatio-temporal models</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced &amp; internals</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-10-triangulation.html">10 — Cross-engine triangulation</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-11-lgm-feasibility.html">11 — LGM feasibility filter</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-12-backend-internals.html">12 — Backend internals</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-14-engine-selection.html">14 — Choosing an engine</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-15-extending-backends.html">15 — Extending with a backend</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-16-big-data-streaming.html">16 — Big data — streaming aggregation</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -95,10 +82,10 @@
 <td>Will be set jointly with D5 / D8 / D10.</td>
 </tr><tr><td>Weekly maintenance hours</td>
 <td>Pending AAGI-AUS collective decision</td>
-<td>Honest median across recent quarters will be reported once measured.</td>
+<td>The median across recent quarters will be reported once measured.</td>
 </tr><tr><td>Issue response SLA</td>
 <td>Pending AAGI-AUS collective decision</td>
-<td>No SLA committed under the current development release (<code>0.8.3</code>).</td>
+<td>No SLA committed on the <code>0.10.0</code> development line.</td>
 </tr><tr><td>Critical security SLA</td>
 <td>7 days</td>
 <td>See <a href="SECURITY.html"><code>SECURITY.md</code></a>.</td>
@@ -111,16 +98,16 @@
 <p>A reproducible example (reprex) lets us help you in one round-trip instead of three. The minimum:</p>
 <ol style="list-style-type: decimal"><li>A small <code>data.frame</code> we can copy-paste.</li>
 <li>The exact <code><a href="reference/flexybayes.html">flexybayes()</a></code> / <code><a href="reference/flexybayes.html">fb()</a></code> call.</li>
-<li>The full output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> — especially the greta / TensorFlow / INLA versions.</li>
+<li>The full output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> — especially the INLA and brms / Stan versions.</li>
 <li>The error / unexpected output, copied verbatim.</li>
-</ol><p>For runtime issues, please run with <code>verbose = TRUE</code> and include the emitted greta code (or, for <code>backend = "inla"</code>, the printed INLA formula).</p>
+</ol><p>For runtime issues, please run with <code>verbose = TRUE</code> and include the emitted backend code (the Stan program for <code>backend = "brms"</code>, the printed INLA formula for <code>backend = "inla"</code>).</p>
 </div>
 <div class="section level2">
 <h2 id="what-we-cannot-help-with">What we cannot help with<a class="anchor" aria-label="anchor" href="#what-we-cannot-help-with"></a></h2>
 <ul><li>General R help — see <a href="https://stackoverflow.com/questions/tagged/r" class="external-link">Stack Overflow <code>[r]</code></a>.</li>
 <li>ASReml-R proprietary syntax outside the subset that <code>flexyBayes</code> implements — see VSNi support.</li>
 <li>INLA model-tuning beyond the <code>lgm_gate()</code> / <code>priors_to_inla()</code> surface — see <a href="https://www.r-inla.org/" class="external-link">r-inla.org</a>.</li>
-<li>greta’s own Python / TensorFlow installation — see <a href="https://github.com/greta-dev/greta" class="external-link">greta-dev/greta</a>.</li>
+<li>Stan toolchain installation for the brms backend — see <a href="https://mc-stan.org/" class="external-link">mc-stan.org</a> and the <code>rstan</code> getting-started guide.</li>
 </ul></div>
 </div>
 
@@ -133,7 +120,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

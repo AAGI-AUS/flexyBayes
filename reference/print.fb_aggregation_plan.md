@@ -15,12 +15,14 @@ print(x, ...)
 
 - x:
 
-  an `<fb_aggregation_plan>` object.
+  An `<fb_aggregation_plan>` object, the model-level plan the
+  aggregation layer builds.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the eligibility and cell-count
+lines it prints.

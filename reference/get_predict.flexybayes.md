@@ -1,6 +1,6 @@
-# marginaleffects support: population-level predictions (greta backend)
+# marginaleffects support: population-level predictions (default method)
 
-marginaleffects support: population-level predictions (greta backend)
+marginaleffects support: population-level predictions (default method)
 
 ## Usage
 
@@ -28,7 +28,7 @@ get_predict(model, newdata = NULL, type = "response", ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

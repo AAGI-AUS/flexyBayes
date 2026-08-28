@@ -5,17 +5,15 @@ quantities a plant breeder acts on: each genotype's overall performance
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
 realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries are
-interpretable; judge convergence on these and on the identified
-covariance (fb_structured_cov()) rather than on the raw loadings."><meta property="og:description" content="For a fa(env, k):gen factor-analytic G x E fit, summarise the
+ambiguity of the raw loadings – so their posterior summaries would be
+interpretable."><meta property="og:description" content="For a fa(env, k):gen factor-analytic G x E fit, summarise the
 quantities a plant breeder acts on: each genotype's overall performance
 (the across-environment mean of its realised effects) and stability (the
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
 realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries are
-interpretable; judge convergence on these and on the identified
-covariance (fb_structured_cov()) rather than on the raw loadings."></head><body>
+ambiguity of the raw loadings – so their posterior summaries would be
+interpretable."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -23,7 +21,7 @@ covariance (fb_structured_cov()) rather than on the raw loadings."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,28 +33,15 @@ covariance (fb_structured_cov()) rather than on the raw loadings."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><h6 class="dropdown-header" data-toc-skip>Foundations</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-asreml-formulas.html">02 — asreml-shaped formulas</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression.html">03 — Foundational regression</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core mixed-model concepts</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-hierarchical.html">04 — Hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-structured-covariance.html">05 — Structured covariance</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-priors.html">06 — Priors and regularisation</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Applied workflows</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-met-and-genomics.html">07 — METs and genomic selection</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-downstream-analysis.html">08 — Downstream analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-09-spatio-temporal.html">09 — Spatio-temporal models</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced &amp; internals</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-10-triangulation.html">10 — Cross-engine triangulation</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-11-lgm-feasibility.html">11 — LGM feasibility filter</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-12-backend-internals.html">12 — Backend internals</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-14-engine-selection.html">14 — Choosing an engine</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-15-extending-backends.html">15 — Extending with a backend</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-16-big-data-streaming.html">16 — Big data — streaming aggregation</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -82,9 +67,8 @@ quantities a plant breeder acts on: each genotype's overall performance
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
 realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries are
-interpretable; judge convergence on these and on the identified
-covariance (<code><a href="fb_structured_cov.html">fb_structured_cov()</a></code>) rather than on the raw loadings.</p>
+ambiguity of the raw loadings – so their posterior summaries would be
+interpretable.</p>
     </div>
 
     <div class="section level2">
@@ -97,25 +81,31 @@ covariance (<code><a href="fb_structured_cov.html">fb_structured_cov()</a></code
 
 
 <dl><dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
-<dd><p>A <code>flexybayes</code> greta fit with a <code>fa()</code> factor-analytic G x E
-term.</p></dd>
+<dd><p>A flexybayes fit.</p></dd>
 
 
 <dt id="arg-genotype-levels-environment-levels">genotype_levels, environment_levels<a class="anchor" aria-label="anchor" href="#arg-genotype-levels-environment-levels"></a></dt>
 <dd><p>Optional character labels for
-the inner (genotype) and outer (environment) factors; default to
-positional labels.</p></dd>
+the inner (genotype) and outer (environment) factors; unused (see
+Lifecycle).</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An <code>fb_met_summary</code> object (one entry is built per <code>fa()</code> term,
-the function returns the first / named): <code>op</code> (data frame of overall
-performance per genotype with credible interval), <code>stability</code> (data
-frame of across-environment spread per genotype), <code>gxe_blup</code> (the
-posterior-mean genotype-by-environment effect matrix), <code>env_cor</code> (the
-environment genetic-correlation matrix), <code>loadings</code> (posterior-mean
-factor loadings), and metadata.</p>
+    <p>Does not return: raises the classed <code>met_summary_not_available</code>
+refusal.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="lifecycle">Lifecycle<a class="anchor" aria-label="anchor" href="#lifecycle"></a></h2>
+
+
+<p>No active engine emits an <code>fa(env, k):gen</code> term – both INLA and brms
+refuse a factor-analytic structured-covariance term before a fit object
+exists – so this function always abstains (<code>met_summary_not_available</code>).
+What an active engine does report for a multi-environment trial is the
+variance components, through <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, and on brms the
+genotype-by-environment covariance of a <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> or <code>us()</code> term through
+<code>brms::VarCorr()</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -123,18 +113,6 @@ factor loadings), and metadata.</p>
 and its convergence diagnostic.</p></div>
     </div>
 
-    <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="flexybayes.html">flexybayes</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="va">yield</span> <span class="op">~</span> <span class="va">env</span>, random <span class="op">=</span> <span class="op">~</span> <span class="fu">fa</span><span class="op">(</span><span class="va">env</span>, <span class="fl">2</span><span class="op">)</span><span class="op">:</span><span class="va">gen</span>, data <span class="op">=</span> <span class="va">met</span>, backend <span class="op">=</span> <span class="st">"greta"</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">ms</span> <span class="op">&lt;-</span> <span class="fu">fb_met_summary</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">ms</span><span class="op">$</span><span class="va">op</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">ms</span><span class="op">$</span><span class="va">op</span><span class="op">$</span><span class="va">mean</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span> <span class="co"># best genotypes on average</span></span></span>
-<span class="r-in"><span><span class="va">ms</span><span class="op">$</span><span class="va">env_cor</span> <span class="co"># environment crossover structure</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-</code></pre></div>
-    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
@@ -144,7 +122,7 @@ and its convergence diagnostic.</p></div>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

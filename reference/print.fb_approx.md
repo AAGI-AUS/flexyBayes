@@ -13,12 +13,14 @@ print(x, ...)
 
 - x:
 
-  An `fb_approx` object.
+  An `fb_approx` object as returned by
+  [`fb_approx()`](https://aagi-aus.github.io/flexyBayes/reference/fb_approx.md).
 
 - ...:
 
-  Unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-`x`, invisibly.
+Invisibly, `x` unchanged. Called for the one-line specification it
+prints.

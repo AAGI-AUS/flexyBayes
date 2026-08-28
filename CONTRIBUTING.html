@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -19,28 +19,15 @@
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><h6 class="dropdown-header" data-toc-skip>Foundations</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-02-asreml-formulas.html">02 — asreml-shaped formulas</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression.html">03 — Foundational regression</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-04-priors.html">04 — Priors</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core mixed-model concepts</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-04-hierarchical.html">04 — Hierarchical models</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-05-structured-covariance.html">05 — Structured covariance</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-06-priors.html">06 — Priors and regularisation</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Applied workflows</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-07-met-and-genomics.html">07 — METs and genomic selection</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-08-downstream-analysis.html">08 — Downstream analysis</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-09-spatio-temporal.html">09 — Spatio-temporal models</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced &amp; internals</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-10-triangulation.html">10 — Cross-engine triangulation</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-11-lgm-feasibility.html">11 — LGM feasibility filter</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-12-backend-internals.html">12 — Backend internals</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-14-engine-selection.html">14 — Choosing an engine</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-15-extending-backends.html">15 — Extending with a backend</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-16-big-data-streaming.html">16 — Big data — streaming aggregation</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -67,7 +54,7 @@
 <p>Useful information to include:</p>
 <ul><li>a minimal reproducible example;</li>
 <li>the output of <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code>;</li>
-<li>the output of <code>packageVersion("flexyBayes")</code> and, if relevant, <code>packageVersion("greta")</code> and <code>packageVersion("INLA")</code>;</li>
+<li>the output of <code>packageVersion("flexyBayes")</code> and, if relevant, <code>packageVersion("INLA")</code>;</li>
 <li>whether the issue reproduces on a fresh R session.</li>
 </ul></div>
 <div class="section level2">
@@ -85,7 +72,7 @@
 <div class="sourceCode" id="cb2"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="ex">R</span> CMD check <span class="at">--as-cran</span> <span class="at">--no-manual</span> flexyBayes_<span class="pp">*</span>.tar.gz</span></code></pre></div>
 <p><code>R CMD check</code> against the raw source directory fails immediately with <code>Required fields missing or empty: 'Author' 'Maintainer'</code>. The <code>Author</code> / <code>Maintainer</code> fields are materialised from <code>Authors@R</code> by <code>R CMD build</code>; this is the canonical check path for the project. <code>devtools::check()</code> calls <code>R CMD build</code> internally, so the R-side workflow is unaffected.</p>
-<p>The package depends on <code>greta</code> (default MCMC backend) and <code>INLA</code> (Laplace backend). <code>greta</code> requires a working Python + TensorFlow install — see <code>greta::install_greta_deps()</code>. <code>INLA</code> is hosted at <a href="https://inla.r-inla-download.org/R/stable" class="external-link uri">https://inla.r-inla-download.org/R/stable</a>.</p>
+<p>The package fits on two active backends, <code>INLA</code> (Laplace approximation) and <code>brms</code> (Stan MCMC, on CRAN). <code>INLA</code> is hosted at <a href="https://inla.r-inla-download.org/R/stable" class="external-link uri">https://inla.r-inla-download.org/R/stable</a>. A third native engine was withdrawn entirely in 0.9.3 – see <code>NEWS.md</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="code-style">Code style<a class="anchor" aria-label="anchor" href="#code-style"></a></h3>
@@ -96,26 +83,26 @@
 </ul></div>
 <div class="section level3">
 <h3 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a></h3>
-<p>Add tests under <code>tests/testthat/</code>. Tests that depend on <code>greta</code>, <code>INLA</code>, or <code>brms</code> should <code>skip_if_not_installed(.)</code>. The test suite uses testthat edition 3.</p>
+<p>Add tests under <code>tests/testthat/</code>. Tests that depend on <code>INLA</code> or <code>brms</code> should <code>skip_if_not_installed(.)</code>. The test suite uses testthat edition 3.</p>
 <div class="section level4">
 <h4 id="three-tier-test-discipline">Three-tier test discipline<a class="anchor" aria-label="anchor" href="#three-tier-test-discipline"></a></h4>
 <p>The test suite is organised into three implicit tiers via <code>testthat::skip_*</code> guards. Pick the tier that matches what you can warm in your environment.</p>
-<p><strong>Tier 1 — CRAN-fast (no heavy engines).</strong></p>
+<p><strong>Tier 1 – CRAN-fast (no heavy engines).</strong></p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~30 s; engine-free path only</span></span></code></pre></div>
-<p>Guards: <code>skip_on_cran()</code>, <code>skip_on_ci()</code>, <code>skip_if_not_installed()</code>. Covers IR parsing, prior DSL, refusal templates, registry lookups, canonical-name transforms, dispatch trace shape, review-code workflow, gretaR dormant scaffold. Expected: roughly <strong>PASS 700+ / FAIL 0</strong> with many SKIPs.</p>
-<p><strong>Tier 2 — local integration (greta + INLA warm; brms gated).</strong></p>
+<p>Guards: <code>skip_on_cran()</code>, <code>skip_on_ci()</code>, <code>skip_if_not_installed()</code>. Covers IR parsing, prior DSL, refusal templates, registry lookups, canonical-name transforms, dispatch trace shape, and the review-code workflow. Expected: roughly <strong>PASS 700+ / FAIL 0</strong> with many SKIPs.</p>
+<p><strong>Tier 2 – local integration (INLA warm; brms gated).</strong></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>NOT_CRAN <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span></span>
-<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~3-5 min on a warm TF backend</span></span></code></pre></div>
-<p>Same suite, but <code>skip_on_cran()</code> is now <code>FALSE</code>, so greta + INLA round-trip tests fire. <code>skip_if_not_installed("brms")</code> still gates the Stan passthrough tests. Expected: <strong>PASS 850+ / FAIL 0</strong> with a small handful of SKIPs (brms round-trip, vdiffr).</p>
-<p><strong>Tier 3 — full triangulation (greta + INLA + brms / Stan).</strong></p>
+<span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~1-3 min</span></span></code></pre></div>
+<p>Same suite, but <code>skip_on_cran()</code> is now <code>FALSE</code>, so INLA round-trip tests fire. <code>skip_if_not_installed("brms")</code> still gates the Stan passthrough tests. Expected: <strong>PASS 850+ / FAIL 0</strong> with a small handful of SKIPs (brms round-trip, vdiffr).</p>
+<p><strong>Tier 3 – full triangulation (INLA + brms / Stan).</strong></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>NOT_CRAN <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>FLEXYBAYES_RUN_BRMS <span class="op">=</span> <span class="st">"true"</span><span class="op">)</span>  <span class="co"># opt-in flag</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span>           <span class="co"># ~10-20 min; brms first-call Stan</span></span>
 <span>                           <span class="co"># compile is 30-60 s per backend test</span></span></code></pre></div>
-<p>Adds the Stan passthrough round-trips and three-engine triangulation tests on top of Tier 2. The gate is <strong>FAIL 0</strong>; PASS counts grow across the 0.8.x line (the 90+-file suite is well above the early-release floors quoted above). The residual SKIPs are vdiffr snapshots and asreml-dependent reference comparisons.</p>
+<p>Adds the Stan passthrough round-trips and cross-engine triangulation tests on top of Tier 2. The gate is <strong>FAIL 0</strong>; PASS counts grow across the 0.8.x line (the 90+-file suite is well above the early-release floors quoted above). The residual SKIPs are vdiffr snapshots and asreml-dependent reference comparisons.</p>
 </div>
 <div class="section level4">
 <h4 id="full-r-cmd-check---as-cran-rehearsal">Full <code>R CMD check --as-cran</code> rehearsal<a class="anchor" aria-label="anchor" href="#full-r-cmd-check---as-cran-rehearsal"></a></h4>
@@ -127,11 +114,11 @@
 </div>
 <div class="section level4">
 <h4 id="re-precompile-vignettes">Re-precompile vignettes<a class="anchor" aria-label="anchor" href="#re-precompile-vignettes"></a></h4>
-<p>When a <code>.Rmd.orig</code> source changes — or when the <code>DESCRIPTION</code> version bumps and you want the <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> chunks to refresh — re-precompile via:</p>
+<p>When a <code>.Rmd.orig</code> source changes – or when the <code>DESCRIPTION</code> version bumps and you want the <code><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo()</a></code> chunks to refresh – re-precompile via:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">R</span> CMD build flexyBayes</span>
 <span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="ex">R</span> CMD INSTALL flexyBayes_<span class="op">&lt;</span>version<span class="op">&gt;</span>.tar.gz</span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="bu">cd</span> flexyBayes <span class="kw">&amp;&amp;</span> <span class="ex">Rscript</span> vignettes/_precompile.R</span></code></pre></div>
-<p>Pre-requisites: greta + TF warm, INLA installed, brms installed. The driver knits each <code>.Rmd.orig</code> into its sibling <code>.Rmd</code>; failures are reported per-vignette and the script exits non-zero on any. Expected wall-time on a warm M1 / M2 Mac: 10-15 minutes for the full 16-vignette deck.</p>
+<p>Pre-requisites: INLA installed, brms installed with a warm Stan toolchain. The driver knits each <code>.Rmd.orig</code> into its sibling <code>.Rmd</code>; failures are reported per-vignette and the script exits non-zero on any. Selective refresh is <code>Rscript vignettes/_precompile.R --only 01</code>. Expected wall-time on a warm M1 / M2 Mac: 10-15 minutes for the full eleven-vignette deck.</p>
 </div>
 </div>
 <div class="section level3">
@@ -159,7 +146,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

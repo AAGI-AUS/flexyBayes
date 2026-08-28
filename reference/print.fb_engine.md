@@ -13,12 +13,14 @@ print(x, ...)
 
 - x:
 
-  An `fb_engine` object.
+  An `fb_engine` object as returned by
+  [`fb_engine()`](https://aagi-aus.github.io/flexyBayes/reference/fb_engine.md).
 
 - ...:
 
-  Unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-`x`, invisibly.
+Invisibly, `x` unchanged. Called for the one-line engine description it
+prints.

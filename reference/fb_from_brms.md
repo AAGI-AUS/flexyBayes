@@ -100,13 +100,10 @@ and
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 for the universal fitting entry;
 [`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md)
-and
-[`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md)
-for the other dialects.
+for the other active dialect.
 
 Other flexyBayes ingest adapters:
-[`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md),
-[`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md)
+[`fb_from_asreml()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_asreml.md)
 
 ## Examples
 

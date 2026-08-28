@@ -21,12 +21,13 @@ print(x, ...)
 
 - x:
 
-  a `<flexybayes_review>` object.
+  A `<flexybayes_review>` object as returned by
+  `flexybayes(review_code = TRUE)`.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the two summary lines it prints.

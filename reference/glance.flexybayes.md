@@ -37,7 +37,14 @@ A one-row `data.frame` with `nobs`, `npar`, `logLik`, `family`, `link`,
 ## Examples
 
 ``` r
+# Not run: glance() reports sampler diagnostics, so the example needs
+# a sampled fit and therefore a Stan compile. The fragment is
+# complete and runs as written where a C++ toolchain is present.
 if (FALSE) { # \dontrun{
+set.seed(1)
+dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+                  chains = 1L, n_samples = 200L, warmup = 100L)
 glance(fit)
 } # }
 ```

@@ -34,7 +34,7 @@ A `data.frame` with `term`, `estimate`, `std.error`, `conf.low`, and
 
 ``` r
 set.seed(1)
-fit <- fb_dirichlet(rdirichlet(300L, c(2, 5, 3)))
+fit <- flexyBayes:::fb_dirichlet(flexyBayes:::rdirichlet(300L, c(2, 5, 3)))
 tidy(fit)
 #>    term estimate std.error conf.low conf.high
 #> c1   c1 1.886471 0.1117041 1.667535  2.105407

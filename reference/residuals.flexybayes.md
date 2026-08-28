@@ -13,12 +13,15 @@ residuals(object, ...)
 
 - object:
 
-  A flexybayes object
+  A fitted `flexybayes` object of any backend.
 
 - ...:
 
-  Additional arguments (ignored)
+  Ignored, present for compatibility with the generic.
 
 ## Value
 
-Numeric vector of residuals (observed - fitted)
+A numeric vector of response residuals, the observed value minus the
+posterior-mean fitted value, one per row of the fitted data. A row whose
+response was missing and carried as latent has no observed value and
+returns `NA`.

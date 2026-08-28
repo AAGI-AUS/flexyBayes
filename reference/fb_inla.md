@@ -4,8 +4,8 @@ Engine pin: fits the model with INLA (integrated nested Laplace
 approximation) only. This is sugar for
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)`(..., backend = "inla")`
 and accepts the same arguments and grammars (an ASReml `fixed` /
-`random` / `rcov` specification or a brms-style bar-grouped formula –
-see
+`random` / `residual` specification or a brms-style bar-grouped formula
+– see
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 for the full argument list). The model must be latent-Gaussian feasible;
 if it is not, the shared `lgm_gate()` raises a structured refusal naming
@@ -23,8 +23,9 @@ fb_inla(...)
 
   Arguments passed to
   [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
-  (e.g. `fixed`, `random`, `rcov`, `data`, `family`, `prior`, `syntax`).
-  The `backend` argument is pinned to `"inla"` and must not be supplied.
+  (e.g. `fixed`, `random`, `residual`, `data`, `family`, `prior`,
+  `syntax`). The `backend` argument is pinned to `"inla"` and must not
+  be supplied.
 
 ## Value
 
@@ -35,10 +36,12 @@ for the structure.
 
 ## Details
 
-Sampling-control arguments (`n_samples`, `warmup`, `chains`,
-`mcmc_verbose`) are accepted for call-compatibility with the other
-engine pins but are inert under INLA's deterministic Laplace
-approximation.
+Sampling-control arguments (`n_samples`, `warmup`, `chains`, `seed`,
+`control`, `mcmc_verbose`) are accepted for call-compatibility with the
+other engine pins but are inert under INLA's deterministic Laplace
+approximation. `seed` and `control` say so when supplied: the fit is
+repeatable without a seed, because nothing in the approximation is
+drawn.
 
 ## See also
 
@@ -52,8 +55,7 @@ for the universal entry that picks a backend;
 for the ingest layer.
 
 Other flexyBayes engine pins:
-[`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md),
-[`fb_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_greta.md)
+[`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md)
 
 ## Examples
 

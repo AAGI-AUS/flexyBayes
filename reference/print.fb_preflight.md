@@ -16,12 +16,12 @@ print(x, ...)
 
 - x:
 
-  an `<fb_preflight>` object.
+  An `<fb_preflight>` object, as built by the design-memory preflight.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the per-term table it prints.

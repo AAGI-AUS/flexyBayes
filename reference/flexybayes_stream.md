@@ -3,7 +3,7 @@
 `flexybayes_stream()` is the large-data entry point: it reads the data a
 chunk at a time from `source`, accumulates additive sufficient
 statistics per design cell, and fits the resulting aggregated model
-through the same greta or INLA emit path as
+through the same INLA emit path as
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md).
 The aggregated likelihood is algebraically identical to the per-row
 likelihood, so the posterior is the full-data posterior, not an
@@ -19,7 +19,7 @@ flexybayes_stream(
   family = "gaussian",
   trials = NULL,
   exposure = NULL,
-  backend = c("inla", "greta"),
+  backend = "inla",
   chunk_rows = 5e+06,
   prior = NULL,
   fit = TRUE,
@@ -67,7 +67,10 @@ flexybayes_stream(
 
 - backend:
 
-  The estimation backend, `"inla"` (default) or `"greta"`.
+  The estimation backend. `"inla"` is the default and the only active
+  choice: INLA is the one engine with an aggregated emit. Any other
+  value – including a formerly-registered engine name this package
+  withdrew entirely – refuses with `unknown_backend`.
 
 - chunk_rows:
 
@@ -94,8 +97,7 @@ flexybayes_stream(
 
 - ...:
 
-  Further arguments passed to the aggregated emit (for example
-  `n_samples`, `warmup`, `chains` for the greta backend).
+  Further arguments passed to the aggregated emit.
 
 ## Value
 
@@ -141,17 +143,22 @@ Max Moldovan, <max.moldovan@adelaide.edu.au>
 
 ``` r
 if (FALSE) { # interactive() && requireNamespace("fst", quietly = TRUE)
-set.seed(1L)
-n <- 1e6
-df <- data.frame(
-  env = factor(sample(letters[1:6], n, replace = TRUE)),
-  geno = factor(sample(1:50, n, replace = TRUE)),
-  y = rnorm(n)
-)
-path <- tempfile(fileext = ".fst")
-fst::write_fst(df, path)
-fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
-                         backend = "inla")
-summary(fit)
+# The fit runs on INLA, which is distributed from its own repository
+# rather than from CRAN, so the guard keeps the example readable on a
+# machine that does not carry it.
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1L)
+  n <- 1e6
+  df <- data.frame(
+    env = factor(sample(letters[1:6], n, replace = TRUE)),
+    geno = factor(sample(1:50, n, replace = TRUE)),
+    y = rnorm(n)
+  )
+  path <- tempfile(fileext = ".fst")
+  fst::write_fst(df, path)
+  fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
+                           backend = "inla")
+  summary(fit)
+}
 }
 ```

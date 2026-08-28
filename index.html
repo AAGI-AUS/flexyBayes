@@ -11,9 +11,9 @@
 <script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="flexyBayes — Flexible Bayesian mixed models with ASReml and brms-style syntax">
-<meta name="description" content="Specify mixed models using ASReml-style or brms-style formula syntax, estimate them via greta, INLA, or brms (Stan), and triangulate posterior agreement across engines as a robustness signal.
+<meta name="description" content="Specify mixed models using ASReml-style or brms-style formula syntax, estimate them via INLA or brms (Stan), and compare the same model across engines with triangulate(), a diagnostic on a gated overlap rather than a validation contract.
 ">
-<meta property="og:description" content="Specify mixed models using ASReml-style or brms-style formula syntax, estimate them via greta, INLA, or brms (Stan), and triangulate posterior agreement across engines as a robustness signal.
+<meta property="og:description" content="Specify mixed models using ASReml-style or brms-style formula syntax, estimate them via INLA or brms (Stan), and compare the same model across engines with triangulate(), a diagnostic on a gated overlap rather than a validation contract.
 ">
 </head>
 <body>
@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,28 +38,15 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials">
-<li><h6 class="dropdown-header" data-toc-skip>Foundations</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-02-asreml-formulas.html">02 — asreml-shaped formulas</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression.html">03 — Foundational regression</a></li>
+<li><a class="dropdown-item" href="articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-04-priors.html">04 — Priors</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core mixed-model concepts</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-04-hierarchical.html">04 — Hierarchical models</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-05-structured-covariance.html">05 — Structured covariance</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-06-priors.html">06 — Priors and regularisation</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Applied workflows</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-07-met-and-genomics.html">07 — METs and genomic selection</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-08-downstream-analysis.html">08 — Downstream analysis</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-09-spatio-temporal.html">09 — Spatio-temporal models</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced &amp; internals</h6></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-10-triangulation.html">10 — Cross-engine triangulation</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-11-lgm-feasibility.html">11 — LGM feasibility filter</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-12-backend-internals.html">12 — Backend internals</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-14-engine-selection.html">14 — Choosing an engine</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-15-extending-backends.html">15 — Extending with a backend</a></li>
-    <li><a class="dropdown-item" href="articles/flexyBayes-16-big-data-streaming.html">16 — Big data — streaming aggregation</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
+    <li><a class="dropdown-item" href="articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -80,9 +67,10 @@
 <div class="page-header"><h1 id="flexybayes">flexyBayes<a class="anchor" aria-label="anchor" href="#flexybayes"></a>
 </h1></div>
 <p>Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax</p>
-<p><code>flexyBayes</code> is a multi-backend Bayesian mixed-model framework with cross-engine posterior <strong>triangulation</strong> exposed as a first-class robustness diagnostic. The package routes one model specification to greta (MCMC), INLA (integrated nested Laplace approximation), or brms (Stan passthrough), and tells you — with evidence — when the engines agree, when they differ, and why a backend was refused.</p>
+<p>Licence: MIT. Version 0.10.0 is an experimental release: every export is at the experimental <code>lifecycle</code> stage and the API may change within the 0.x series.</p>
+<p><code>flexyBayes</code> is a multi-backend Bayesian mixed-model framework. It routes one model specification to INLA (integrated nested Laplace approximation) or brms (Stan passthrough), refuses by name what neither engine can represent, and reports how far the two posteriors sit apart when the same model is fitted on both – a diagnostic, <code><a href="reference/triangulate.html">triangulate()</a></code>, not a proof of correctness. The parser, the intermediate representation and the prior interlingua are shared, so agreement between the engines is evidence about the samplers, not about the model.</p>
 <blockquote>
-<p><strong>Development release (v0.8.3).</strong> All exports are at the experimental <code>lifecycle</code> stage and the API may change within the 0.x series. Not on CRAN. The full multi-environment-trial model (genotype-by-environment interaction random effects together with a heteroscedastic per-environment residual) is <strong>not yet supported</strong> by any backend. Read <code>system.file("KNOWN_ISSUES.md", package = "flexyBayes")</code> before relying on results.</p>
+<p><strong>Development release.</strong> All exports are at the experimental <code>lifecycle</code> stage and the API may change within the 0.x series. Not on CRAN. <strong>flexyBayes fits on two active engines: brms and INLA.</strong> A third native engine was withdrawn entirely in 0.9.3 (see <code>NEWS.md</code>); naming it, or any other unrecognised backend, now raises an ordinary unknown-backend refusal. See <code>system.file("KNOWN_ISSUES.md", package = "flexyBayes")</code> for the current per-backend capability boundaries before relying on results.</p>
 </blockquote>
 <div class="section level2">
 <h2 id="which-entry-point-do-i-use">Which entry point do I use?<a class="anchor" aria-label="anchor" href="#which-entry-point-do-i-use"></a>
@@ -94,13 +82,13 @@
 <col width="33%">
 </colgroup>
 <thead><tr>
-<th>If you have…</th>
+<th>If you have …</th>
 <th>Use</th>
 <th>Notes</th>
 </tr></thead>
 <tbody>
 <tr>
-<td>ASReml syntax (<code>fixed</code> / <code>random</code> / <code>rcov</code>)</td>
+<td>ASReml syntax (<code>fixed</code> / <code>random</code> / <code>residual</code>)</td>
 <td>
 <code><a href="reference/flexybayes.html">fb()</a></code> / <code><a href="reference/flexybayes.html">flexybayes()</a></code>
 </td>
@@ -111,19 +99,14 @@
 <td>
 <code><a href="reference/flexybayes.html">fb()</a></code> / <code><a href="reference/flexybayes.html">flexybayes()</a></code>
 </td>
-<td>The grammar is detected from the call; <code>syntax =</code> forces it.</td>
-</tr>
-<tr>
-<td>A pre-built greta model</td>
-<td><code><a href="reference/flexybayes.html">fb()</a></code></td>
-<td>Pass the <code>greta::model()</code> object (or its <code><a href="reference/fb_from_greta.html">fb_from_greta()</a></code> representation) straight in.</td>
+<td>The grammar is detected from the call, and <code>syntax =</code> forces it.</td>
 </tr>
 <tr>
 <td>To force one engine</td>
 <td>
-<code><a href="reference/fb_greta.html">fb_greta()</a></code> / <code><a href="reference/fb_inla.html">fb_inla()</a></code> / <code><a href="reference/fb_brms.html">fb_brms()</a></code>
+<code><a href="reference/fb_inla.html">fb_inla()</a></code> / <code><a href="reference/fb_brms.html">fb_brms()</a></code>
 </td>
-<td>Single-engine pins; a conflicting <code>backend</code> is refused.</td>
+<td>Single-engine pins. A conflicting <code>backend</code> is refused.</td>
 </tr>
 <tr>
 <td>Two fits you want to compare across engines</td>
@@ -132,22 +115,14 @@
 </tr>
 </tbody>
 </table>
-<p><code><a href="reference/flexybayes.html">fb()</a></code> is the short alias for <code><a href="reference/flexybayes.html">flexybayes()</a></code>; either name is the universal entry that spans every backend.</p>
+<p><code><a href="reference/flexybayes.html">fb()</a></code> is the short alias for <code><a href="reference/flexybayes.html">flexybayes()</a></code>, and either name is the universal entry that spans every backend.</p>
 </div>
 <div class="section level2">
 <h2 id="which-backend-will-i-get">Which backend will I get?<a class="anchor" aria-label="anchor" href="#which-backend-will-i-get"></a>
 </h2>
 <table class="table">
-<colgroup>
-<col width="20%">
-<col width="20%">
-<col width="20%">
-<col width="20%">
-<col width="20%">
-</colgroup>
 <thead><tr>
 <th>Verb</th>
-<th align="center"><code>greta</code></th>
 <th align="center"><code>inla</code></th>
 <th align="center">
 <code>brms</code> (Stan)</th>
@@ -160,19 +135,10 @@
 </td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td align="center">✓</td>
-<td align="center">✓ (greta or INLA via <code>lgm_gate()</code>)</td>
-</tr>
-<tr>
-<td><code><a href="reference/fb_greta.html">fb_greta()</a></code></td>
-<td align="center">✓</td>
-<td align="center">–</td>
-<td align="center">–</td>
-<td align="center">–</td>
+<td align="center">✓ (INLA or brms via <code>lgm_gate()</code>)</td>
 </tr>
 <tr>
 <td><code><a href="reference/fb_inla.html">fb_inla()</a></code></td>
-<td align="center">–</td>
 <td align="center">✓</td>
 <td align="center">–</td>
 <td align="center">–</td>
@@ -180,13 +146,12 @@
 <tr>
 <td><code><a href="reference/fb_brms.html">fb_brms()</a></code></td>
 <td align="center">–</td>
-<td align="center">–</td>
 <td align="center">✓</td>
 <td align="center">–</td>
 </tr>
 </tbody>
 </table>
-<p>The universal entry reaches any backend: name one with <code>backend =</code>, or let <code>backend = "auto"</code> choose. Each <code>fb_&lt;engine&gt;()</code> pin fits exactly one engine and refuses a conflicting <code>backend</code>. <code>backend = "auto"</code> runs the LGM feasibility gate and routes to INLA on acceptance, otherwise to greta; it never routes to Stan, because brms’s first-call Stan compile (typically 30–60 s) is incompatible with the auto-fast-path promise. Reach Stan explicitly with <code><a href="reference/fb_brms.html">fb_brms()</a></code> or <code>fb(..., backend = "brms")</code>.</p>
+<p>The universal entry reaches any active backend: name one with <code>backend =</code>, or let <code>backend = "auto"</code> choose. Each <code>fb_&lt;engine&gt;()</code> pin fits exactly one engine and refuses a conflicting <code>backend</code>. <code>backend = "auto"</code> runs the LGM feasibility gate and routes to INLA on acceptance, otherwise to brms. A model neither can represent refuses with <code>auto_no_active_route</code> rather than fitting something else, and nothing is translated silently. <code>auto</code> does change engine in one case after starting: an INLA program failure is caught and re-routed to brms, reported by a message rather than silently, and the fit’s class and <code>backend</code> field always say which engine produced it. Reach Stan explicitly with <code><a href="reference/fb_brms.html">fb_brms()</a></code> or <code>fb(..., backend = "brms")</code>. Naming a withdrawn or otherwise unrecognised backend raises <code>unknown_backend</code> – see <em>Backend support</em> below.</p>
 </div>
 <div class="section level2">
 <h2 id="backend-support">Backend support<a class="anchor" aria-label="anchor" href="#backend-support"></a>
@@ -211,113 +176,224 @@
 <tr>
 <td>INLA</td>
 <td>No (own repository)</td>
-<td>Moderate — binary, no compiler</td>
+<td>Moderate – binary, no compiler</td>
 <td>Approximate (nested Laplace)</td>
 <td>Supported</td>
 </tr>
 <tr>
 <td>brms (Stan)</td>
 <td>Yes</td>
-<td>Heavy — first-call Stan compile (~30–60 s)</td>
+<td>Heavy – first-call Stan compile (~30–60 s)</td>
 <td>MCMC (sampling error only)</td>
 <td>Supported</td>
-</tr>
-<tr>
-<td>greta</td>
-<td>No (greta-dev R-universe)</td>
-<td>Heavy — Python + TensorFlow stack</td>
-<td>MCMC (sampling error only)</td>
-<td>Supported</td>
-</tr>
-<tr>
-<td>gretaR</td>
-<td>No (opt-in)</td>
-<td>Heavy — torch</td>
-<td>MCMC (out-of-process NUTS)</td>
-<td>Dormant, opt-in</td>
 </tr>
 </tbody>
 </table>
-<p>All exports are at the <strong>experimental</strong> <code>lifecycle</code> stage; see <code>API_STABILITY.md</code> in the source repository for what that guarantees. The fastest way to explore the package without any backend is the planner; for a worked fit with production sampling settings and honest diagnostics, follow the <em>getting started</em> vignette.</p>
+<p>A third native engine was withdrawn entirely in 0.9.3 – see <code>NEWS.md</code>.</p>
+<p>All exports are at the <strong>experimental</strong> <code>lifecycle</code> stage. See <code>API_STABILITY.md</code> in the source repository for what that guarantees. The planner runs with no inference backend installed at all, so it is the least you need in place to explore the package. For a worked fit with production sampling settings and its diagnostics reported in full, follow the <em>getting started</em> vignette.</p>
 <div class="section level3">
 <h3 id="backend-support-by-model-class">Backend support by model class<a class="anchor" aria-label="anchor" href="#backend-support-by-model-class"></a>
 </h3>
-<p>What each backend does, by model class, reflecting the 2026-06 empirical validation. “Supported” means the syntax emits and the model is tested; it does not promise that every fit converges at small budgets – convergence is model-specific and is always reported, so treat a high R-hat badge as a diagnostic, not a result.</p>
+<p>What each active engine does, by model class. The table below is generated from a single R-level source and every verdict in it is re-derived from the gate and emit code by <code>tests/testthat/test-capability-matrix.R</code>. Editing it by hand fails that test. <code>fits</code> means the structure emits and a test exercises it – it does not promise that every fit converges at small budgets, which is model-specific and always reported, so treat a high R-hat badge as a diagnostic rather than a result. Only the two active engines are columns; see the callout above.</p>
+<!-- capability-matrix:begin -->
 <table class="table">
 <colgroup>
-<col width="25%">
-<col width="25%">
-<col width="25%">
-<col width="25%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
+<col width="20%">
 </colgroup>
 <thead><tr>
 <th>Model class</th>
-<th>greta</th>
-<th>INLA</th>
-<th>brms</th>
+<th>Spelling</th>
+<th align="center">INLA</th>
+<th align="center">brms</th>
+<th>Notes</th>
 </tr></thead>
 <tbody>
 <tr>
-<td>Gaussian LMM, simple random intercepts</td>
-<td>validated</td>
-<td>validated</td>
-<td>validated</td>
-</tr>
-<tr>
-<td>GLMM (binomial / Poisson / NB), simple RE</td>
-<td>validated</td>
-<td>validated</td>
-<td>validated</td>
-</tr>
-<tr>
-<td>Random slopes, structured covariance, GBLUP, pedigree, separable spatial, splines</td>
-<td>supported</td>
-<td>supported</td>
-<td>supported</td>
-</tr>
-<tr>
-<td><strong>Interaction / nested random effects (GxE)</strong></td>
-<td>does <strong>not</strong> converge</td>
-<td><strong>refused</strong></td>
-<td><strong>refused</strong></td>
-</tr>
-<tr>
+<td>Gaussian LMM, simple random intercept</td>
 <td>
-<strong>Heteroscedastic / per-stratum residual</strong> (<code>dsum</code>)</td>
-<td>does <strong>not</strong> converge</td>
-<td><strong>refused</strong></td>
-<td><strong>refused</strong></td>
+<code>random = ~ g</code> / <code>(1 \| g)</code>
+</td>
+<td align="center">fits</td>
+<td align="center">fits</td>
+<td>The certified overlap class, which both engines emit and <code><a href="reference/triangulate.html">triangulate()</a></code> compares.</td>
 </tr>
 <tr>
-<td>Interaction <em>fixed</em> effects, binomial path</td>
-<td>supported</td>
-<td><strong>known bug</strong></td>
-<td>supported</td>
+<td>GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect</td>
+<td>
+<code>(1 \| g)</code> with <code>family =</code>
+</td>
+<td align="center">fits</td>
+<td align="center">fits</td>
+<td>INLA’s likelihood allowlist is read from <code>INLA::inla.models()</code> when INLA is installed.</td>
+</tr>
+<tr>
+<td>Hurdle gamma (zero mass plus a positive gamma part)</td>
+<td><code>family = "hurdle_gamma"</code></td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>brms-native (<code>dpars</code> mu, shape, hu); the zero-mass probability <code>hu</code> keeps brms’s own prior. INLA’s likelihood roster carries no counterpart, so the family gate refuses it there and <code>auto</code> routes to brms.</td>
+</tr>
+<tr>
+<td>Uncorrelated random slope</td>
+<td><code>(x \|\| g)</code></td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>The three-arbitrator verification named a since-withdrawn engine as one arbitrator, so the INLA mapping stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent – no local artefact lifts it. <code>auto</code> routes to brms.</td>
+</tr>
+<tr>
+<td>Factor-by-numeric fixed interaction</td>
+<td>
+<code>y ~ f * x</code> with numeric <code>x</code>
+</td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. <code>auto</code> routes to brms.</td>
+</tr>
+<tr>
+<td>Correlated random slope</td>
+<td><code>(x \| g)</code></td>
+<td align="center">refuses</td>
+<td align="center">refuses</td>
+<td>Refused at ingest, before any engine is chosen. Fit <code>(x \|\| g)</code> when the correlation is not of inferential interest.</td>
+</tr>
+<tr>
+<td>Nested / interaction random effects, multi-stratum</td>
+<td>
+<code>~ gen:env</code>, <code>~ env:rep:block</code>
+</td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>INLA collapses the finest strata, so it refuses rather than reporting a zero. brms emits <code>(1 \| a:b)</code>.</td>
+</tr>
+<tr>
+<td>Heterogeneous variance by factor level</td>
+<td>
+<code>~ diag(f):g</code>, <code>~ idh(f):g</code>, <code>~ at(f):g</code>
+</td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>One variance per level of <code>f</code>, no covariance between levels. All three spellings emit identical code.</td>
+</tr>
+<tr>
+<td>Unstructured genotype-by-environment covariance</td>
+<td><code>~ us(f):g</code></td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>The correlated sibling of the diagonal structure – <code>k(k+1)/2</code> parameters against <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code>’s <code>k</code>. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and <code>sigma</code> does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual.</td>
+</tr>
+<tr>
+<td>Heterogeneous variances with one shared correlation</td>
+<td><code>~ corh(f):g</code></td>
+<td align="center">refuses</td>
+<td align="center">refuses</td>
+<td>No active engine has an equicorrelation group-level structure. Use <code>diag(f):g</code> or <code>us(f):g</code>.</td>
+</tr>
+<tr>
+<td>Heterogeneous residual by factor level</td>
+<td>
+<code>residual = ~ dsum(~ units \| f)</code> / <code>~ at(f):units</code>
+</td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>Lowered to distributional regression on log sigma, <code>sigma ~ 0 + f</code>. Refused for families with no residual scale.</td>
+</tr>
+<tr>
+<td>Combined interaction random effects and heterogeneous residual (full MET)</td>
+<td>
+<code>random = ~ gen + gen:env</code> with the <code>dsum</code> residual</td>
+<td align="center">refuses</td>
+<td align="center">fits</td>
+<td>The emit carries both the group-level term and the <code>sigma</code> predictor, and a live fit samples cleanly on simulated multi-environment data. <code>auto</code> reaches brms for this class.</td>
+</tr>
+<tr>
+<td>Factor-analytic genotype-by-environment covariance</td>
+<td><code>~ fa(env, k):gen</code></td>
+<td align="center">refuses</td>
+<td align="center">refuses</td>
+<td>Parsed for the formula catalogue and refused at dispatch – no active engine emits a factor-analytic covariance.</td>
+</tr>
+<tr>
+<td>Multi-trait covariance</td>
+<td><code>~ us(trait):vm(gen)</code></td>
+<td align="center">refuses</td>
+<td align="center">refuses</td>
+<td>No active engine represents a trait-by-genotype unstructured covariance.</td>
+</tr>
+<tr>
+<td>Known-covariance genomic / pedigree random effect</td>
+<td>
+<code>~ vm(g, K)</code>, <code>~ ped(a, A)</code>
+</td>
+<td align="center">fits</td>
+<td align="center">fits</td>
+<td>INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky.</td>
+</tr>
+<tr>
+<td>Separable AR1 spatial field</td>
+<td>
+<code>random = ~ ar1(row):ar1(col)</code>, <code>random = ~ ar1(t)</code>
+</td>
+<td align="center">fits</td>
+<td align="center">refuses</td>
+<td>A latent AR1 field plus the Gaussian observation nugget – four hyperparameters, one observation per grid node. This is not ASReml’s three-parameter nugget-free residual, so the residual spelling refuses and names this one.</td>
+</tr>
+<tr>
+<td>Per-trial separable AR1 field</td>
+<td><code>random = ~ at(trial):ar1(row):ar1(col)</code></td>
+<td align="center">fits</td>
+<td align="center">refuses</td>
+<td>One field realisation per level of <code>trial</code>, via INLA’s <code>replicate =</code> mechanism, but the row correlation, column correlation and field SD are shared across every level – not estimated per trial. <code>at(trial, level):ar1(row):ar1(col)</code> (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (<code>at_field_per_level_hyper_not_representable</code>). brms has no lowering for either spelling.</td>
+</tr>
+<tr>
+<td>Univariate P-spline</td>
+<td><code>~ spl(x)</code></td>
+<td align="center">fits</td>
+<td align="center">refuses</td>
+<td>Mapped to INLA’s second-order random walk. brms has no lowering for the smooth basis.</td>
+</tr>
+<tr>
+<td>Observation weights (Gaussian, identity link)</td>
+<td><code>weights = w</code></td>
+<td align="center">fits</td>
+<td align="center">fits</td>
+<td>Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA’s <code>scale = w</code>; on brms a known offset on the sigma distributional parameter, NOT brms’s own <code><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights()</a></code> addition term (a different, likelihood-power quantity per brms’s own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (<code>weights_requires_gaussian</code>); <code>aggregate = TRUE</code> alongside weights also refuses by name (<code>weights_not_aggregatable</code>).</td>
+</tr>
+<tr>
+<td>Exact sufficient-statistic aggregation</td>
+<td>
+<code>aggregate = TRUE</code>, <code><a href="reference/flexybayes_stream.html">flexybayes_stream()</a></code>
+</td>
+<td align="center">fits</td>
+<td align="center">n/a</td>
+<td>Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit.</td>
 </tr>
 </tbody>
 </table>
+<p><code>fits</code> – the engine emits the structure and a test exercises it. <code>emits</code> – the engine generates the structure and no live fit has yet confirmed it samples acceptably. <code>refuses</code> – the request raises rather than fitting something else. <code>n/a</code> – the class does not apply to that engine’s interface.</p>
+<p>This block is generated from <code>.fb_capability_matrix()</code> by <code>tools/generate_capability_matrix.R</code>. Edit the R table, re-run the generator, and let <code>tests/testthat/test-capability-matrix.R</code> check that every verdict still matches the gate and emit code. Do not edit the rows here by hand. <!-- capability-matrix:end --></p>
 <blockquote>
-<p><strong>Capability boundary (read before relying on flexyBayes for METs).</strong> The full multi-environment-trial model – genotype-by-environment <em>interaction random effects</em> together with a <em>heteroscedastic per-environment residual</em> – is <strong>not fittable by any flexyBayes backend in this release</strong>. ASReml and <code>lme4</code> fit it; flexyBayes does not yet. This is the package’s central open problem. See <code>inst/KNOWN_ISSUES.md</code> (<code>system.file("KNOWN_ISSUES.md", package = "flexyBayes")</code>) for the full status, the per-backend reasons, and the intended route to a fix. Until then, flexyBayes is an honest multi-backend orchestration and triangulation tool for the model classes above – not yet a stand-alone Bayesian replacement for full ASReml-style MET analysis.</p>
+<p><strong>What the aggregation row is worth.</strong> The sufficient-statistic route is what carries the package to dataset sizes the per-row path cannot reach: the per-row path runs out of memory between one and five million rows on a 32 GB machine, while the streamed path fits five billion rows through a roughly flat memory envelope, because it is always fitting the same small number of cells. The measured record – sizes, wall-clock, peak memory, the hardware, and the model scope outside which the route refuses rather than approximates – is banked with the package at <code>system.file("validation/benchmark_scaling.md", package = "flexyBayes")</code>.</p>
 </blockquote>
-<p><strong>Breeder MET summaries.</strong> <code><a href="reference/fb_met_summary.html">fb_met_summary()</a></code> (overall performance, stability, GxE BLUPs, factor loadings, environment genetic correlations) requires a <strong>greta</strong> factor-analytic (<code>fa(env, k):gen</code>) fit — it is computed from the identified <em>realised</em> effects, which fit on greta. On an INLA or brms fit it refuses with a pointer to the right path; the scalable INLA MET route gives variance components via <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> / <code><a href="reference/fb_structured_cov.html">fb_structured_cov()</a></code>.</p>
+<blockquote>
+<p><strong>MET capability, stated currently.</strong> A multi-environment-trial model fits on brms, and its pieces are checked against ASReml: nested genotype-by-environment random effects recover every variance component against the REML reference on <code>agridat::besag.met</code>. <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code> / <code>idh()</code> / <code>at()</code> and <code>us()</code> genotype variances emit and are validated on the parameter count before the values, and the heteroscedastic residual <code>dsum(~ units | env)</code> returns per-site posterior-mean variances of 0.1146 / 1.1516 / 4.6981 where ASReml gives 0.1093 / 1.1248 / 4.6079 – within 4.8%, largest on the smallest variance. The <em>combination</em> now fits too: interaction random effects and a sectioned residual in one model generate both blocks in the emitted Stan program and sample with every R-hat below 1.05 and no divergent transitions on simulated data, which is what moved that row from <code>emits</code> to <code>fits</code>. Two limits are worth knowing before planning around it. The verified fit is 120 rows, so the scale a national trial series needs is untested – <code>seed</code> and <code>control</code> reach <code>brms::brm()</code>, so a larger series that needs a raised <code>adapt_delta</code> has a route to it, but nobody has run one. And <code>us(env):gen</code> on unreplicated data confounds its covariance diagonal with the residual – the covariance converges, the residual does not, and more iterations make it worse. INLA refuses every heterogeneous-variance structure and every interaction random effect by name. See <code>system.file("KNOWN_ISSUES.md", package = "flexyBayes")</code> for the per-engine reasons.</p>
+</blockquote>
+<p><strong>Breeder MET summaries.</strong> Overall performance, stability, GxE BLUPs, factor loadings and environment genetic correlations were computed from a factor-analytic (<code>fa(env, k):gen</code>) fit’s identified <em>realised</em> effects on the engine withdrawn in 0.9.3 (see <code>NEWS.md</code>). No active engine produces that fit shape, so that summary is unavailable in this release and its entry point is no longer exported. The INLA MET route gives variance components via <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># greta (R-native MCMC backend) — archived from CRAN, served via the</span></span>
-<span><span class="co"># greta-dev R-universe</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"greta"</span>,</span>
-<span>  repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://greta-dev.r-universe.dev"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">greta</span><span class="fu">::</span><span class="fu">install_greta_deps</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># INLA (approximate-inference backend) — not on CRAN</span></span>
+<code class="sourceCode R"><span><span class="co"># INLA (approximate-inference backend) -- not on CRAN</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"INLA"</span>,</span>
 <span>  repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span>,</span>
 <span>            INLA <span class="op">=</span> <span class="st">"https://inla.r-inla-download.org/R/stable"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># brms (Stan passthrough) — on CRAN</span></span>
+<span><span class="co"># brms (Stan passthrough) -- on CRAN</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"brms"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># flexyBayes itself (not yet on CRAN) -- install from the repository:</span></span>
@@ -328,7 +404,7 @@
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<p>The planner needs no inference backend and is the fastest way to see what flexyBayes will do with a model: it builds the intermediate representation, chooses a backend, and reports the plan without fitting.</p>
+<p>The planner needs no inference backend to show what flexyBayes will do with a model: it builds the intermediate representation, chooses a backend, and reports the plan without fitting.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://aagi-aus.github.io/flexyBayes/">flexyBayes</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package <span class="op">=</span> <span class="st">"lme4"</span><span class="op">)</span></span>
@@ -341,7 +417,7 @@
 <span>  plan   <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">plan</span></span></code></pre></div>
-<p>To fit, install at least one backend (see <em>Backend support</em> above). The following uses production sampling settings; the <em>getting started</em> vignette walks through the same fit with its convergence diagnostics.</p>
+<p>To fit, install at least one backend (see <em>Backend support</em> above). The following uses production sampling settings. The <em>getting started</em> vignette walks through the same fit with its convergence diagnostics.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span></span>
 <span>  fixed  <span class="op">=</span> <span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>,</span>
@@ -364,26 +440,25 @@
 </h2>
 <p>Fit the same model on two backends and compare:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
-<span>                    data <span class="op">=</span> <span class="va">sleepstudy</span>, backend <span class="op">=</span> <span class="st">"greta"</span><span class="op">)</span></span>
-<span><span class="va">fit_i</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
-<span>                    data <span class="op">=</span> <span class="va">sleepstudy</span>, backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">fit_brms</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
+<span>                       data <span class="op">=</span> <span class="va">sleepstudy</span>, backend <span class="op">=</span> <span class="st">"brms"</span><span class="op">)</span></span>
+<span><span class="va">fit_inla</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
+<span>                       data <span class="op">=</span> <span class="va">sleepstudy</span>, backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="reference/triangulate.html">triangulate</a></span><span class="op">(</span><span class="va">fit_g</span>, <span class="va">fit_i</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Common parameters: 3</span></span>
-<span><span class="co">#&gt; # A tibble: 3 × 5</span></span>
-<span><span class="co">#&gt;   parameter   mean_diff sd_ratio tail_drift wasserstein_1</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt;           &lt;dbl&gt;    &lt;dbl&gt;      &lt;dbl&gt;         &lt;dbl&gt;</span></span>
-<span><span class="co">#&gt; 1 (Intercept)    -0.04     0.997     0.012          0.04</span></span>
-<span><span class="co">#&gt; 2 Days            0.001    1.001     0.003          0.001</span></span>
-<span><span class="co">#&gt; 3 sigma           0.12     1.004     0.020          0.12</span></span></code></pre></div>
-<p>Add a third engine via brms / Stan:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_s</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/fb_brms.html">fb_brms</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">Subject</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">sleepstudy</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/triangulate.html">triangulate</a></span><span class="op">(</span><span class="va">fit_g</span>, <span class="va">fit_s</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/triangulate.html">triangulate</a></span><span class="op">(</span><span class="va">fit_i</span>, <span class="va">fit_s</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="reference/canonical_names.html">canonical_names()</a></code> does the work of aligning backend-native parameter names (greta’s <code>sigma_g</code>, INLA’s <code>Precision for g</code> on the precision scale, brms’s <code>sd_g__Intercept</code>) to a single canonical name with the correct scale transform — no <code>name_map</code> argument needed in standard cases.</p>
+<span><span class="fu"><a href="reference/triangulate.html">triangulate</a></span><span class="op">(</span><span class="va">fit_brms</span>, <span class="va">fit_inla</span><span class="op">)</span></span></code></pre></div>
+<p>The result carries an overall <code>status</code> – <code>concordant</code>, <code>discordant</code> or <code>inconclusive</code> – and a per-parameter table: each fit’s posterior mean and SD, the mean shift and Wasserstein-1 distance in posterior-SD units, the SD ratio, and a per-parameter verdict.</p>
+<p>Three gates run before any of those numbers is reported.</p>
+<ul>
+<li>
+<strong>Comparability.</strong> Each fit carries a fingerprint of the question it answered: canonical formula triple, family and link, data dimensions, column names and content digest, and the recorded prior per variance component. Two fits that disagree are refused by name (<code>triangulate_incomparable_fits</code>). There is no override argument.</li>
+<li>
+<strong>Diagnostics.</strong> A fit that failed its own convergence checks makes the status <code>inconclusive</code> and yields no parameter verdicts. Disagreement between an unconverged fit and a converged one is not a finding.</li>
+<li>
+<strong>Matched priors.</strong> A variance component is compared only when both fits record the same prior for it. The rest are reported as <code>not_compared</code> with the reason, most often that the term sits outside the shared default and each engine chose its own hyperprior.</li>
+</ul>
+<p>The thresholds behind the verdicts (0.1 posterior SD on the mean shift and on Wasserstein-1, an SD ratio inside [0.9, 1.1]) are heuristics for directing attention, in the sense Gelman et al. (2020) use for cross-implementation checks. They carry no error rate, and <code>concordant</code> is not a calibration claim: the package ships no simulation-based calibration of its own fits.</p>
+<p>brms (full HMC) and INLA (a Laplace approximation) sit on different inference paradigms, so the comparison is independent evidence about the <em>inference</em>. It is not independent evidence about the model: both fits come from the same parsed representation, so a mistranslation is common-mode and triangulates perfectly. The <em>cross-engine triangulation</em> vignette works through the disagreement patterns, and the package keeps an internal registry of which code paths the two engines have been certified not to share.</p>
+<p><code><a href="reference/canonical_names.html">canonical_names()</a></code> does the work of aligning backend-native parameter names (brms’s <code>sd_g__Intercept</code>, INLA’s <code>Precision for g</code> on the precision scale) to a single canonical name with the correct scale transform – no <code>name_map</code> argument needed in standard cases.</p>
 </div>
 <div class="section level2">
 <h2 id="companion-accessors">Companion accessors<a class="anchor" aria-label="anchor" href="#companion-accessors"></a>
@@ -404,7 +479,7 @@
 </tr>
 <tr>
 <td><code>prior_summary(fit)</code></td>
-<td>The resolved prior — auto-default (weakly-informative bounded uniform on SD; half-Cauchy advised for small group counts), user-supplied <code><a href="reference/fb_prior.html">fb_prior()</a></code>, or legacy scalar bridge.</td>
+<td>The resolved prior – auto-default (weakly-informative bounded uniform on SD, with half-Cauchy advised for small group counts), user-supplied <code><a href="reference/fb_prior.html">fb_prior()</a></code>, or legacy scalar bridge.</td>
 </tr>
 <tr>
 <td><code>canonical_names(fit)</code></td>
@@ -414,30 +489,138 @@
 <td>
 <code>review_code = TRUE</code> on <code><a href="reference/flexybayes.html">flexybayes()</a></code> / <code><a href="reference/fb_brms.html">fb_brms()</a></code>
 </td>
-<td>Inspect-before-fit workflow; <code>cat_code(rev)</code> prints the generated backend code; <code>proceed(rev)</code> advances into the fit. Supported on the formula-entry verbs only. <code><a href="reference/fb_greta.html">fb_greta()</a></code> raises a documented refusal: the user’s model is already greta-side, so there is no flexyBayes-generated code string to inspect (model-graph pretty-printer reserved for a future release).</td>
+<td>Inspect-before-fit workflow. <code>cat_code(rev)</code> prints the generated backend code, and <code>proceed(rev)</code> advances into the fit. Supported on the formula-entry verbs only.</td>
 </tr>
 </tbody>
 </table>
+<p>A fitted object exposes everything a downstream tool needs through these exported accessors, so a pipeline can consume a fit – its variance components, its dispatch decision, its seed – without reading flexyBayes internals. The AAGI ORCHESTRA workspace, which coordinates several analysis packages, builds its provenance records from exactly this surface; nothing in flexyBayes depends on it.</p>
+</div>
+<div class="section level2">
+<h2 id="asreml-hands-accessors">ASReml-hands accessors<a class="anchor" aria-label="anchor" href="#asreml-hands-accessors"></a>
+</h2>
+<p>If you arrive with an <code>asreml()</code> call in hand, <em>Getting started</em>’s section 6, “Reading a fit the way a REML user does”, walks the accessors below one at a time. They are views over an ordinary Bayesian fit – the estimator is named on every table, because a posterior mean is not a REML component.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>You type</th>
+<th>You get</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>summary(fit)</code></td>
+<td>One eleven-slot object on every engine: <code>$fixed</code>, <code>$varcomp</code>, <code>$random</code>, <code>$missing</code>, <code>$converge</code>, <code>$n_design</code>, <code>$n_observed</code>, <code>$na_action</code>, <code>$model</code>, <code>$engine</code>, <code>$call</code>. A fit carrying an autoregressive latent field adds <code>$spatial_field</code>.</td>
+</tr>
+<tr>
+<td><code>summary(fit)$varcomp</code></td>
+<td>Variance components on the standard-deviation scale with a credible interval, the prior each component ran under, and a note column for boundary collapse.</td>
+</tr>
+<tr>
+<td>
+<code>coef(fit, what = "random")</code> / <code>ranef(fit)</code>
+</td>
+<td>Random-effect predictions, one data frame per grouping factor. <code>what = "missing"</code> returns the unobserved design cells, <code>what = "all"</code> returns all three tables.</td>
+</tr>
+<tr>
+<td><code>predict(fit, classify = "Variety", level = 0.95)</code></td>
+<td>The marginal-means table, built on <code>emmeans</code>. Means and credible intervals only – no pairwise standard-error block.</td>
+</tr>
+<tr>
+<td><code>nobs(fit, type = "observed")</code></td>
+<td>Observed responses, beside <code>nobs(fit)</code>, which stays the design row count the engine saw.</td>
+</tr>
+<tr>
+<td><code>na_action = list(y = "include", x = "fail")</code></td>
+<td>ASReml’s <code>na.method()</code> vocabulary, detected by shape. An <code>asreml::na.method()</code> object is accepted directly, with no asreml dependency.</td>
+</tr>
+<tr>
+<td><code>fb_complete_grid(data, ~ row * col, response = "yield")</code></td>
+<td>Absent design cells reinstated with an <code>NA</code> response. A varying design factor refuses unless <code>unused_level =</code> names the level to write.</td>
+</tr>
+<tr>
+<td><code>plot(fit, type = "variogram")</code></td>
+<td>The empirical residual semivariance over the design array, computed on the observed rows.</td>
+</tr>
+<tr>
+<td><code>update(fit, random = ~ Block + Variety)</code></td>
+<td>A re-fit on either engine, carrying every recorded argument forward, <code>na_action</code> and the resolved prior included.</td>
+</tr>
+</tbody>
+</table>
+<p>There is no <code>wald()</code> method, no pairwise standard-error table, and no covariate zero-fill. Each is a deliberate absence rather than a gap, and the vignette says why.</p>
+<div class="section level3">
+<h3 id="two-doors-one-object">Two doors, one object<a class="anchor" aria-label="anchor" href="#two-doors-one-object"></a>
+</h3>
+<p>The same fit answers to the generics a Bayesian reaches for. Neither idiom is a wrapper around the other.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>ASReml hands</th>
+<th>Bayesian hands</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>summary(fit)$varcomp</code></td>
+<td><code>posterior::as_draws_df(fit)</code></td>
+</tr>
+<tr>
+<td>
+<code>coef(fit, what = "random")</code>, <code>ranef(fit)</code>
+</td>
+<td>
+<code>posterior::as_draws()</code>, <code>posterior::as_draws_matrix()</code>, <code>fb_as_draws_simple(fit)</code>
+</td>
+</tr>
+<tr>
+<td><code>predict(fit, classify = "Variety")</code></td>
+<td>
+<code>emmeans</code> or <code>marginaleffects</code> on the same fit</td>
+</tr>
+<tr>
+<td><code>plot(fit, type = "variogram")</code></td>
+<td>
+<code>pp_check(fit)</code>, <code>plot(fit, type = "diagnostics")</code>
+</td>
+</tr>
+<tr>
+<td><code>summary(fit)$converge</code></td>
+<td>The same slot, reporting the engine’s own diagnostics</td>
+</tr>
+<tr>
+<td>No ASReml counterpart</td>
+<td>
+<code>prior_summary(fit)</code>, <code>loo(fit)</code>, <code>triangulate(fit_a, fit_b)</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p><code>loo()</code> and <code>pp_check()</code> pass through to brms on a sampled fit and refuse by name on a Laplace fit, naming the WAIC and DIC that fit does carry.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="output-structure">Output structure<a class="anchor" aria-label="anchor" href="#output-structure"></a>
 </h2>
-<p>Every fit carries three (or four) top-level slots:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">glm</span>         <span class="co"># GLM-compatible shim — works with summary(), emmeans,</span></span>
-<span>                <span class="co"># marginaleffects, effectsize, broom</span></span>
+<p>Every fit carries three top-level slots:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">glm</span>         <span class="co"># GLM-compatible shim -- works with summary(), emmeans,</span></span>
+<span>                <span class="co"># marginaleffects, broom</span></span>
 <span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="va">greta</span>       <span class="co"># native greta output (when backend = "greta")</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">inla</span>        <span class="co"># native INLA output (when backend = "inla")</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">brms</span>        <span class="co"># live brmsfit (when backend = "brms")</span></span>
 <span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">extras</span>      <span class="co"># BLUPs, variance components, convergence diagnostics,</span></span>
 <span>                <span class="co"># generated code, parsed IR, run time, captured call</span></span></code></pre></div>
+<p>There is no third-engine slot on a fit object: naming a withdrawn or otherwise unrecognised <code>backend</code> refuses before a fit object exists (see <em>Backend support</em>).</p>
 </div>
 <div class="section level2">
 <h2 id="supported-asreml-syntax-reference">Supported ASReml syntax (reference)<a class="anchor" aria-label="anchor" href="#supported-asreml-syntax-reference"></a>
 </h2>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fixed effects</span></span>
 <span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span>                  <span class="co"># fixed factor</span></span>
 <span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span> <span class="op">+</span> <span class="va">x_cov</span>          <span class="co"># factor + covariate</span></span>
@@ -447,21 +630,26 @@
 <span><span class="co"># Random effects</span></span>
 <span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="va">geno</span>                       <span class="co"># simple iid</span></span>
 <span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="va">block</span><span class="op">:</span><span class="va">rep</span>                  <span class="co"># nested</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">vm</span><span class="op">(</span><span class="va">geno</span>, <span class="va">Gmat</span><span class="op">)</span>             <span class="co"># GBLUP (dense V; both backends)</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">vm</span><span class="op">(</span><span class="va">geno</span>, chol <span class="op">=</span> <span class="va">L</span><span class="op">)</span>         <span class="co"># user-supplied Cholesky (greta only; v0.3.7+)</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">vm</span><span class="op">(</span><span class="va">geno</span>, precision <span class="op">=</span> <span class="va">Q</span><span class="op">)</span>    <span class="co"># user-supplied sparse precision (INLA preferred; v0.3.7+)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">vm</span><span class="op">(</span><span class="va">geno</span>, <span class="va">Gmat</span><span class="op">)</span>             <span class="co"># GBLUP (dense V; brms)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">vm</span><span class="op">(</span><span class="va">geno</span>, chol <span class="op">=</span> <span class="va">L</span><span class="op">)</span>         <span class="co"># user-supplied Cholesky (brms; v0.3.7+)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">vm</span><span class="op">(</span><span class="va">geno</span>, precision <span class="op">=</span> <span class="va">Q</span><span class="op">)</span>    <span class="co"># user-supplied sparse precision (INLA; v0.3.7+)</span></span>
 <span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">ped</span><span class="op">(</span><span class="va">animal</span>, <span class="va">Amat</span><span class="op">)</span>          <span class="co"># pedigree (animal model)</span></span>
 <span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">ped</span><span class="op">(</span><span class="va">animal</span>, <span class="va">A_inv</span>,</span>
 <span>               use_sparse_precision <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># sparse pedigree precision (v0.3.7+)</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">at</span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="va">geno</span>               <span class="co"># diagonal GxE</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">us</span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="fu">id</span><span class="op">(</span><span class="va">geno</span><span class="op">)</span>           <span class="co"># unstructured GxE</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">fa</span><span class="op">(</span><span class="va">env</span>, <span class="fl">2</span><span class="op">)</span><span class="op">:</span><span class="fu">id</span><span class="op">(</span><span class="va">geno</span><span class="op">)</span>        <span class="co"># factor-analytic GxE</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">ar1</span><span class="op">(</span><span class="va">row</span><span class="op">)</span><span class="op">:</span><span class="fu">id</span><span class="op">(</span><span class="va">col</span><span class="op">)</span>           <span class="co"># spatial AR1</span></span>
-<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">spl</span><span class="op">(</span><span class="va">x_cov</span><span class="op">)</span>                 <span class="co"># P-spline</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="va">geno</span>             <span class="co"># diagonal GxE (brms; idh() and at() are synonyms)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">us</span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="va">geno</span>               <span class="co"># unstructured GxE (brms)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">corh</span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="va">geno</span>             <span class="co"># equicorrelated GxE -- refused by name</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">fa</span><span class="op">(</span><span class="va">env</span>, <span class="fl">2</span><span class="op">)</span><span class="op">:</span><span class="fu">id</span><span class="op">(</span><span class="va">geno</span><span class="op">)</span>        <span class="co"># factor-analytic GxE -- refused (no active engine)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">ar1</span><span class="op">(</span><span class="va">row</span><span class="op">)</span><span class="op">:</span><span class="fu">ar1</span><span class="op">(</span><span class="va">col</span><span class="op">)</span>          <span class="co"># separable AR1 field + nugget (INLA)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">ar1</span><span class="op">(</span><span class="va">t</span><span class="op">)</span>                     <span class="co"># one-dimensional AR1 field + nugget (INLA)</span></span>
+<span><span class="va">random</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">spl</span><span class="op">(</span><span class="va">x_cov</span><span class="op">)</span>                 <span class="co"># P-spline (INLA)</span></span>
 <span></span>
 <span><span class="co"># Residual</span></span>
-<span><span class="va">rcov</span> <span class="op">=</span> <span class="op">~</span> <span class="va">units</span>                <span class="co"># iid residuals (default)</span></span>
-<span><span class="va">rcov</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">at</span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="va">units</span>        <span class="co"># heterogeneous by environment</span></span>
+<span><span class="va">residual</span> <span class="op">=</span> <span class="op">~</span> <span class="va">units</span>                <span class="co"># iid residuals (default)</span></span>
+<span><span class="va">residual</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">dsum</span><span class="op">(</span><span class="op">~</span> <span class="va">units</span> <span class="op">|</span> <span class="va">env</span><span class="op">)</span>  <span class="co"># one residual variance per environment (brms)</span></span>
+<span><span class="va">residual</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">at</span><span class="op">(</span><span class="va">env</span><span class="op">)</span><span class="op">:</span><span class="va">units</span>        <span class="co"># the same structure, ASReml's other spelling</span></span>
+<span><span class="va">residual</span> <span class="op">=</span> <span class="op">~</span> <span class="fu">ar1</span><span class="op">(</span><span class="va">row</span><span class="op">)</span><span class="op">:</span><span class="fu">ar1</span><span class="op">(</span><span class="va">col</span><span class="op">)</span>    <span class="co"># ASReml's nugget-free residual -- refused by</span></span>
+<span>                                  <span class="co">#   name; write the field on the random side</span></span>
 <span></span>
 <span><span class="co"># Families</span></span>
 <span><span class="va">family</span> <span class="op">=</span> <span class="st">"gaussian"</span> <span class="op">|</span> <span class="st">"binomial"</span> <span class="op">|</span> <span class="st">"poisson"</span> <span class="op">|</span> <span class="st">"negative_binomial"</span> <span class="op">|</span></span>
@@ -470,27 +658,50 @@
 <div class="section level2">
 <h2 id="vignettes">Vignettes<a class="anchor" aria-label="anchor" href="#vignettes"></a>
 </h2>
-<p>Sixteen numbered vignettes ship with the package:</p>
-<ol style="list-style-type: decimal">
-<li>Getting started</li>
-<li>ASReml-shaped formulas</li>
-<li>Foundational regression</li>
-<li>Hierarchical models</li>
-<li>Structured covariance</li>
-<li>Priors and regularisation</li>
-<li>METs and genomic selection</li>
-<li>Downstream analysis</li>
-<li>Spatio-temporal models</li>
-<li>Cross-engine triangulation</li>
-<li>LGM feasibility filter</li>
-<li>Backend internals</li>
-<li>LGM feasibility and memory</li>
-<li>Choosing an engine: the universal entry and the engine pins</li>
-<li>Architecture: the backend registry and how a new engine joins</li>
-<li>Big-data streaming</li>
-</ol>
-<p>Heavy MCMC vignettes use a <code>.Rmd.orig</code> precompile pattern; the <code>.Rmd</code> that ships in the package tarball is the pre-evaluated static output. Browse them with <code>browseVignettes("flexyBayes")</code> <strong>after a full install</strong> — <code>R CMD build</code> then <code>R CMD INSTALL</code> the tarball, or <code>devtools::install(build_vignettes = TRUE)</code>. A plain <code>install_github()</code> or source-directory install does <strong>not</strong> build the vignettes into <code>inst/doc</code>.</p>
-<p>Several reference vignettes (02, 04, 05, 07) fit at small sampling budgets and print diagnostics that do not meet the convergence thresholds; each opens with an “illustration of output <em>shape</em>, not inference” disclaimer. For a convergence-clean workflow see the <em>getting started</em> and <em>cross-engine triangulation</em> vignettes.</p>
+<p>Eight vignettes ship with the package:</p>
+<table class="table">
+<thead><tr>
+<th>#</th>
+<th>Vignette</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>01</td>
+<td>Getting started: what changes when you go Bayesian</td>
+</tr>
+<tr>
+<td>02</td>
+<td>The formula surface, and what is not supported</td>
+</tr>
+<tr>
+<td>03</td>
+<td>Regression and hierarchical models</td>
+</tr>
+<tr>
+<td>04</td>
+<td>Priors, and what they do to your answer</td>
+</tr>
+<tr>
+<td>05</td>
+<td>Multi-environment trials and genomics</td>
+</tr>
+<tr>
+<td>06</td>
+<td>Spatial and temporal structure</td>
+</tr>
+<tr>
+<td>07</td>
+<td>After the fit: summaries, comparison, triangulation</td>
+</tr>
+<tr>
+<td>08</td>
+<td>Big data: fitting without holding the data</td>
+</tr>
+</tbody>
+</table>
+<p>Each opens with a panel giving the problem, the ASReml line, the flexyBayes line, what the posterior adds, and what it costs. Every code block is executed at build time, so the numbers on a page came from the fit above them. 12–15 recording earlier merges, and <em>From an ASReml call</em> (page 00) was folded into <em>Getting started</em>’s new accessor section rather than kept as its own page. Every number in the table above is the page’s current, shipped filename suffix.</p>
+<p>Heavy MCMC vignettes use a <code>.Rmd.orig</code> precompile pattern. The <code>.Rmd</code> that ships in the package tarball is the pre-evaluated static output. Browse them with <code>browseVignettes("flexyBayes")</code> <strong>after a full install</strong> – <code>R CMD build</code> then <code>R CMD INSTALL</code> the tarball, or <code>devtools::install(build_vignettes = TRUE)</code>. A plain <code>install_github()</code> or source-directory install does <strong>not</strong> build the vignettes into <code>inst/doc</code>.</p>
+<p>Some vignettes fit at small sampling budgets for speed and say so where it matters, and each flags any diagnostic that falls short of production convergence thresholds rather than presenting it as a clean result. For a convergence-clean workflow see the <em>getting started</em> and <em>cross-engine triangulation</em> vignettes.</p>
 </div>
 <div class="section level2">
 <h2 id="design-principles">Design principles<a class="anchor" aria-label="anchor" href="#design-principles"></a>
@@ -509,28 +720,34 @@
 <div class="section level2">
 <h2 id="correctness">Correctness<a class="anchor" aria-label="anchor" href="#correctness"></a>
 </h2>
-<p>flexyBayes ships an extensive <code>testthat</code> suite (<code>devtools::test()</code>) covering the paths most likely to hide errors: fixed-effect and factor models against <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> / <code>lme4::lmer()</code> references, random intercepts and the asreml-route random slopes, structured-covariance terms, streaming-aggregation equivalence to the per-row fit, weights, offsets, missing-response handling, backend routing and the structured refusal taxonomy, prior translation, and cross-engine <code><a href="reference/triangulate.html">triangulate()</a></code> agreement. The <em>cross-engine triangulation</em> and per-family vignettes show clean reproducible checks; the structured-covariance reference vignettes are explicitly marked non-inferential where a model does not mix at vignette-scale budgets.</p>
+<p>flexyBayes ships an extensive <code>testthat</code> suite (<code>devtools::test()</code>) covering the paths most likely to hide errors: fixed-effect and factor models against <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> / <code>lme4::lmer()</code> references, random intercepts and the asreml-route random slopes, structured-covariance terms, streaming-aggregation equivalence to the per-row fit, weights, offsets, missing-response handling, backend routing and the structured refusal taxonomy, prior translation, and cross-engine <code><a href="reference/triangulate.html">triangulate()</a></code> agreement. The <em>cross-engine triangulation</em> and per-family vignettes show clean reproducible checks.</p>
 </div>
 <div class="section level2">
 <h2 id="testing--ci">Testing &amp; CI<a class="anchor" aria-label="anchor" href="#testing--ci"></a>
 </h2>
-<p>Continuous integration validates the INLA, brms, and engine-independent surface (the ASReml / brms parsers, the intermediate representation, <code>lgm_gate()</code>, the dispatch policy table, the refusal registry, the prior DSL, and the <code><a href="reference/triangulate.html">triangulate()</a></code> metrics). The <strong>greta</strong> integration path (Python + TensorFlow) is <strong>not</strong> installed on the standard CI matrix, so a green CI run does not include live greta fits; greta-dependent tests gate via <code>skip_if_no_greta()</code> and are run locally / via a manual greta-integration check. Run the full suite locally with <code>devtools::test()</code> after <code>greta::install_greta_deps()</code>.</p>
+<p>Continuous integration validates the INLA, brms, and engine-independent surface (the ASReml / brms parsers, the intermediate representation, <code>lgm_gate()</code>, the dispatch policy table, the refusal registry, the prior DSL, and the <code><a href="reference/triangulate.html">triangulate()</a></code> metrics). A third native engine was withdrawn entirely in 0.9.3 (see <code>NEWS.md</code>); its tests were deleted along with the engine rather than skipped, so the suite carries no dormant coverage for a capability the package no longer offers. Run the full suite locally with <code>devtools::test()</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="known-limitations">Known limitations<a class="anchor" aria-label="anchor" href="#known-limitations"></a>
 </h2>
-<p>flexyBayes refuses what it cannot yet fit rather than fitting it silently. The current release does not cover the following; each is a roadmap deferral, and a request that needs one is met with a structured refusal naming the gap, not a quiet wrong answer.</p>
+<p>flexyBayes refuses what it cannot yet fit rather than fitting it silently. The current release does not cover the following. Each is a roadmap deferral, and a request that needs one is met with a structured refusal naming the gap, not a quiet wrong answer.</p>
 <ul>
 <li>
-<strong>Full multi-environment-trial (MET) models</strong>: genotype-by-environment <em>interaction random effects</em> (<code>gen:loc</code>, <code>gen:loc:yearf</code>) and <em>heteroscedastic per-environment residuals</em> (<code>dsum(~ units | env)</code>) are <strong>not fittable by any trustworthy backend in this release</strong> – INLA and brms refuse them, greta expresses but does not converge on them. This is the package’s central open problem; see <code>inst/KNOWN_ISSUES.md</code> for the full status and the intended route to a fix. Use ASReml or <code>lme4</code> for the full MET model today.</li>
+<strong>Scale ceiling on the per-row path (realistic multi-term design)</strong>: on a crossed/nested multi-environment-trial design the flexyBayes/INLA ceiling is bracketed between 911,808 rows (preflight refuses) and 1,823,616 rows (the engine dies after 41.6 minutes), not measured or bisected – see <code>inst/validation/benchmark_scaling.md</code> for the two logged rungs.</li>
 <li>
-<strong>Spatial structure</strong>: only separable AR1 (<code>ar1(row):id(col)</code>) is supported. Intrinsic CAR and BYM2 areal models are not implemented. You can express a custom spatial precision by passing your own matrix to <code>vm(g, precision = Q)</code>, but there is no BYM2 helper.</li>
+<strong>Multi-environment-trial scale</strong>: the combined model – interaction random effects (<code>gen:loc</code>, <code>gen:loc:yearf</code>) <em>together with</em> a heteroscedastic per-environment residual (<code>dsum(~ units | env)</code>) – fits on brms and is verified by a live fit, but on 120 simulated rows. A national trial series is untested. The sampler controls such a run would need are available (<code>seed</code> and <code>control</code> are forwarded to <code>brms::brm()</code>), so what is missing is the run, not the route. INLA refuses both halves. See <code>inst/KNOWN_ISSUES.md</code> for the status.</li>
 <li>
-<strong>Smooth terms</strong>: univariate penalised splines (<code>s(x)</code>, <code>spl(x)</code>) are supported. Multivariate and tensor-product smooths (<code>te()</code>, <code>ti()</code>, <code>t2()</code>) are refused and deferred to a later release.</li>
+<strong>Structured GxE beyond <code>diag</code> / <code>us</code></strong>: <code>corh(env):gen</code> (heterogeneous variances with one shared correlation) and <code>fa(env, k):gen</code> (factor-analytic) have no active emit and refuse by name.</li>
+<li>
+<strong>Spatial structure</strong>: only the separable AR1 field (<code>random = ~ ar1(row):ar1(col)</code>) is supported, on INLA, over a complete grid with one observation per node. It is emitted as an AR1-by-AR1 latent field plus the Gaussian observation nugget – four hyperparameters, all four reported by <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> – and is therefore not ASReml’s three-parameter nugget-free residual. Writing it on the residual side refuses by name and points here. Intrinsic CAR and BYM2 areal models are not implemented. You can express a custom spatial precision by passing your own matrix to <code>vm(g, precision = Q)</code>, but there is no BYM2 helper.</li>
+<li>
+<strong>Smooth terms</strong>: univariate penalised splines (<code>s(x)</code>, <code>spl(x)</code>) are supported on INLA. Multivariate and tensor-product smooths (<code>te()</code>, <code>ti()</code>, <code>t2()</code>) are refused and deferred to a later release.</li>
+<li>
+<strong>Observation weights</strong>: fit for the Gaussian family on an identity link, on both engines, in the ASReml / lme4 / <code>glm(weights=)</code> precision sense (<code>Var(y_i) = sigma^2 / w_i</code>) – both engines match <code>lme4::lmer(weights=)</code> closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (<code>weights_requires_gaussian</code>) rather than returning the unweighted posterior under a weighted call; <code>aggregate = TRUE</code> alongside weights also refuses by name (<code>weights_not_aggregatable</code>).</li>
 <li>
 <strong>Hidden-Markov, multi-state, and survival models</strong>: not supported. Survival / time-to-event families are refused at the family gate. A NIMBLE backend covering these is on the roadmap with no fixed release target.</li>
 <li>
-<strong>Missing data</strong>: flexyBayes does not impute. Greta and the brms (Stan) passthrough require complete cases for the model variables; INLA treats an <code>NA</code> response as a prediction target. Resolve missingness (drop or impute) before fitting, or use the prediction path deliberately.</li>
+<strong>Missing data</strong>: flexyBayes does not impute covariates. A missing <em>predictor</em> is refused by default, as it is in ASReml (<code>na.method(x = "fail")</code>). Setting <code>na_action = list(y = "include", x = "omit")</code> drops the affected rows with a warning naming the count and the columns, and ASReml’s third setting – treat the missing covariate as zero – is refused by name rather than reproduced. A missing <em>response</em> is retained by default (<code>na_action = "augment"</code>), carried as a latent quantity the engine marginalises, so the design index set a structured covariance is built over survives a lost plot. That preserves the representation, not information: under ignorability the parameter posterior is the same either way, and where missingness depends on the unobserved response both augmenting and omitting are biased. That identity is a statement about the posterior and not a promise about what an optimiser returns – the two settings hand the engine an intact design and a ragged one, and on a weakly identified mode they can land in different places. See <code><a href="reference/flexybayes.html">?flexybayes</a></code>. Non-Gaussian missing responses on brms are refused.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -538,7 +755,6 @@
 </h2>
 <ul>
 <li>R ≥ 4.1.0</li>
-<li>greta ≥ 0.4.0 (Python + TensorFlow + TensorFlow Probability)</li>
 <li>INLA (optional, via Additional_repositories)</li>
 <li>brms (optional, for the Stan passthrough)</li>
 </ul>
@@ -564,7 +780,7 @@
 <div class="section level2">
 <h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
 </h2>
-<p>GPL (≥ 3)</p>
+<p>MIT. See <code>LICENSE</code> and <code>LICENSE.md</code>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -579,7 +795,7 @@
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li><a href="LICENSE.html">Full license</a></li>
-<li><small>GPL (&gt;= 3)</small></li>
+<li><small><a href="https://opensource.org/licenses/mit-license.php" class="external-link">MIT</a> + file <a href="LICENSE-text.html">LICENSE</a></small></li>
 </ul>
 </div>
 
@@ -620,7 +836,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

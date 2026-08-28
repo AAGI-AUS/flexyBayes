@@ -1,0 +1,258 @@
+# 3. Regression and hierarchical models
+
+This page in one panel
+
+- The problem : Reaction time under sleep deprivation, measured on the
+  same subjects over ten days. Subjects differ, and the measurements
+  within a subject are not independent.
+
+- In ASReml :
+
+  `asreml(Reaction ~ Days, random = ~ Subject, data = sleepstudy)`
+
+- In flexyBayes :
+
+  `flexybayes(Reaction ~ Days, random = ~ Subject, data = sleepstudy)`
+
+- What the posterior adds : The between-subject standard deviation gets
+  an interval that holds at eighteen subjects, where an asymptotic one
+  does not.
+
+- What it costs : A correlated random slope is refused by both engines.
+  The uncorrelated form fits on brms.
+
+## 1. Fixed and random, and why the split matters
+
+A fixed effect estimates one number per level, and those numbers are the
+target. A random effect assumes the levels are draws from a population,
+estimates the spread of that population, and shrinks each level’s
+estimate toward the mean.
+
+The practical test is the question being asked. *Is variety A better
+than variety B in this trial?* is fixed. *How variable are varieties in
+this population?* is random. Nine environments chosen because they were
+the ones available are fixed; nine environments treated as a sample of
+growing conditions are random.
+
+Shrinkage is the visible consequence. A subject with an extreme mean and
+few observations is pulled toward the population mean, because the model
+treats part of that extremity as noise. This is the same behaviour as
+REML’s BLUPs, and for the same reason.
+
+## 2. A random intercept
+
+`lme4::sleepstudy` is 180 reaction times: 18 subjects, 10 days each.
+
+``` r
+
+library(flexyBayes)
+data(sleepstudy, package = "lme4")
+str(sleepstudy)
+#> 'data.frame':    180 obs. of  3 variables:
+#>  $ Reaction: num  250 259 251 321 357 ...
+#>  $ Days    : num  0 1 2 3 4 5 6 7 8 9 ...
+#>  $ Subject : Factor w/ 18 levels "308","309","310",..: 1 1 1 1 1 1 1 1 1 1 ...
+```
+
+``` r
+
+fit <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                  data = sleepstudy, backend = "inla", verbose = FALSE)
+#> Warning: flexyBayes: a variance component in this fit is at the boundary --
+#> sd_Subject (upper credible bound 4.011e-14 against a residual SD of 47.98). The
+#> term carries no signal the data could separate from residual noise, and its
+#> variance has been absorbed into the residual. The convergence block reports a
+#> converged mode regardless, because the optimiser did converge, to a solution
+#> with that term at zero. This is not always a property of the data: the same
+#> model on a random subset of the same trial can return a well-identified
+#> component. Three routes: give the term an informative prior with fb_prior() so
+#> it is not left to run to a boundary; fit the same model on the other engine for
+#> a second reading; or report the component as unidentified rather than as zero.
+#> Silence via options(flexyBayes.silence_boundary_collapse_warning = TRUE).
+tidy(fit, effects = "random")
+#>         term     estimate    std.error     conf.low    conf.high
+#> 1      sigma 4.801851e+01 2.088792e+00 4.405547e+01 5.224585e+01
+#> 2 sd_Subject 3.377450e-14 3.579603e-15 2.636538e-14 4.011263e-14
+```
+
+Two standard deviations: `sd_Subject` is how much subjects differ from
+one another, `sigma` is how much a measurement varies within a subject.
+Their ratio is the intraclass correlation, and here the between-subject
+spread is the larger of the two.
+
+``` r
+
+tidy(fit)
+#>          term  estimate std.error   conf.low conf.high
+#> 1 (Intercept) 251.47823  6.652993 238.420077 264.53843
+#> 2        Days  10.45104  1.245937   8.005159  12.89646
+```
+
+The `Days` coefficient is the average slope across subjects: reaction
+time rises by about ten milliseconds per day of deprivation.
+
+## 3. Letting the slope vary
+
+A single average slope assumes deprivation affects everyone equally. It
+does not. Allowing the slope to vary by subject needs a second variance
+component.
+
+The correlated form – `(Days | Subject)`, which estimates the
+correlation between a subject’s intercept and their slope – is refused
+by both engines. The uncorrelated form fits on brms.
+
+``` r
+
+fit_s <- flexybayes(Reaction ~ Days + (Days || Subject),
+                    data = sleepstudy, backend = "brms",
+                    chains = 2L, n_samples = 1000L, warmup = 500L,
+                    seed = 1L, verbose = FALSE, mcmc_verbose = FALSE)
+tidy(fit_s, effects = "random")
+#>               term  estimate std.error  conf.low conf.high
+#> 1       sd_Subject 27.479882  7.107779 16.589044 44.299490
+#> 2 sd_Subject__Days  6.586204  1.420817  4.245225  9.813124
+#> 3            sigma 25.812058  1.550532 22.947952 29.081549
+```
+
+Three components now: spread of intercepts, spread of slopes, and
+residual. The slope standard deviation is the answer to “how much does
+the effect of deprivation differ between people”.
+
+``` r
+
+refused <- tryCatch(
+  flexybayes(Reaction ~ Days + (Days | Subject), data = sleepstudy,
+             verbose = FALSE),
+  error = function(e) e
+)
+cat(strwrap(conditionMessage(refused), 72)[1:3], sep = "\n")
+#> Correlated random slopes (x | g) are not yet supported. Got: (Days |
+#> Subject)
+```
+
+## 4. Non-Gaussian responses
+
+`family` and `link` work as they do in
+[`glm()`](https://rdrr.io/r/stats/glm.html). Counts are the common case
+in field work.
+
+``` r
+
+set.seed(2)
+n  <- 300
+dp <- data.frame(g = factor(rep(1:15, each = 20)), x = rnorm(n))
+dp$y <- rpois(n, exp(1 + 0.4 * dp$x +
+                     rnorm(15, 0, 0.5)[as.integer(dp$g)]))
+
+fit_p <- flexybayes(y ~ x, random = ~ g, data = dp,
+                    family = "poisson", backend = "inla", verbose = FALSE)
+tidy(fit_p, effects = "random")
+#>   term  estimate std.error  conf.low conf.high
+#> 1 sd_g 0.5246219 0.1231336 0.3384373 0.8200483
+```
+
+The data were generated with a group standard deviation of 0.5 and a
+slope of 0.4, and the posterior covers both.
+
+``` r
+
+tidy(fit_p)
+#>          term  estimate  std.error  conf.low conf.high
+#> 1 (Intercept) 0.9687198 0.14302716 0.6801326  1.249687
+#> 2           x 0.3963332 0.03040378 0.3367144  0.455952
+```
+
+On the log link the coefficient is multiplicative: `exp(0.4)` is a 49
+per cent increase in the expected count per unit of `x`.
+
+## 5. Which engine fits what
+
+| Structure | Spelling | INLA | brms |
+|:---|:---|:---|:---|
+| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 | g)` | fits | fits |
+| Uncorrelated random slope | `(x || g)` | refuses | fits |
+| Correlated random slope | `(x | g)` | refuses | refuses |
+| Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits |
+| Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | refuses | fits |
+
+`backend = "auto"` picks the engine that can represent the model, so
+most of these need no decision.
+
+## 6. Pitfalls
+
+**Too few levels.** A random effect over three or four levels cannot
+identify its variance well. The posterior will be wide and lean on the
+prior, which is honest but not informative. Five is a common rule of
+thumb and it is only that.
+
+**A term on both sides.** `y ~ g` with `random = ~ g` is refused: the
+fixed part already estimates a mean per level.
+
+**LHS addition forms are not ingested.** brms spellings such as
+`y | trials(n) ~ ...` and `y | cens(c) ~ ...` are not yet parsed, so a
+binomial model specified with a trials term refuses. Aggregate the
+response or use brms directly for those.
+
+**Shrinkage is not a bug.** Group estimates that differ from their raw
+means are the model working. The amount of shrinkage falls as a group
+gains observations.
+
+## 7. Session information
+
+    #> R version 4.5.2 (2025-10-31)
+    #> Platform: aarch64-apple-darwin20
+    #> Running under: macOS Tahoe 26.5.2
+    #> 
+    #> Matrix products: default
+    #> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+    #> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+    #> 
+    #> locale:
+    #> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+    #> 
+    #> time zone: Australia/Adelaide
+    #> tzcode source: internal
+    #> 
+    #> attached base packages:
+    #> [1] stats     graphics  grDevices utils     datasets  methods   base     
+    #> 
+    #> other attached packages:
+    #> [1] flexyBayes_0.10.0
+    #> 
+    #> loaded via a namespace (and not attached):
+    #>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+    #>   [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
+    #>   [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
+    #>  [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
+    #>  [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
+    #>  [16] agridat_1.26           magrittr_2.0.5         posterior_1.7.1       
+    #>  [19] compiler_4.5.2         rlang_1.3.0            tools_4.5.2           
+    #>  [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
+    #>  [25] bridgesampling_1.2-1   mnormt_2.1.2           curl_7.0.0            
+    #>  [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
+    #>  [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+    #>  [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
+    #>  [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
+    #>  [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
+    #>  [43] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
+    #>  [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
+    #>  [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
+    #>  [52] reformulas_0.4.4       generics_0.1.4         otel_0.2.0            
+    #>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         minqa_1.2.8           
+    #>  [58] DBI_1.3.0              proxy_0.4-29           rstan_2.32.7          
+    #>  [61] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
+    #>  [64] parallel_4.5.2         matrixStats_1.5.0      marginaleffects_0.32.0
+    #>  [67] brms_2.23.0            vctrs_0.7.3            boot_1.3-32           
+    #>  [70] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
+    #>  [73] jsonlite_2.0.0         callr_3.8.0            listenv_0.10.1        
+    #>  [76] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
+    #>  [79] nloptr_2.2.1           codetools_0.2-20       distributional_0.8.1  
+    #>  [82] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
+    #>  [85] lme4_2.0-1             tibble_3.3.1           pillar_1.11.1         
+    #>  [88] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
+    #>  [91] Rdpack_2.6.6           evaluate_1.0.5         lattice_0.22-7        
+    #>  [94] rbibutils_2.4.1        backports_1.5.1        rstantools_2.6.0      
+    #>  [97] class_7.3-23           MatrixModels_0.5-4     Rcpp_1.1.2            
+    #> [100] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
+    #> [103] checkmate_2.3.4        xfun_0.57              zoo_1.8-15            
+    #> [106] pkgconfig_2.0.3

@@ -32,7 +32,7 @@ A numeric `n` by `K` matrix whose rows sum to one.
 
 ``` r
 set.seed(1)
-X <- rdirichlet(5L, alpha = c(2, 5, 3))
+X <- flexyBayes:::rdirichlet(5L, alpha = c(2, 5, 3))
 rowSums(X)
 #> [1] 1 1 1 1 1
 ```

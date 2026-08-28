@@ -18,12 +18,13 @@ print(x, ...)
 
 - x:
 
-  an `fb_terms` object.
+  An `fb_terms` object, the parsed intermediate representation of a
+  model.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the term listing it prints.

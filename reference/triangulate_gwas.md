@@ -2,12 +2,12 @@
 
 Compare two GWAS results – typically a flexyBayes
 [`fb_gwas()`](https://aagi-aus.github.io/flexyBayes/reference/fb_gwas.md)
-scan against a field-standard scan (GEMMA / rrBLUP, supplied through the
-koine oracle) – by the agreement that matters for a scan: do the same
-loci come up? Reports the Jaccard overlap of the genome-wide-significant
-marker sets, the overlap among the top markers, the correlation of the
-marker effects on the markers in common, and each scan's genomic-control
-inflation factor.
+scan against a field-standard scan (GEMMA or rrBLUP, supplied as a lens)
+– by the agreement that matters for a scan: do the same loci come up?
+Reports the Jaccard overlap of the genome-wide-significant marker sets,
+the overlap among the top markers, the correlation of the marker effects
+on the markers in common, and each scan's genomic-control inflation
+factor.
 
 ## Usage
 
@@ -54,7 +54,7 @@ mk <- function(sig) data.frame(
 )
 a <- list(results = mk(c(1, 4)), lambda_gc = 1.01)
 b <- list(results = mk(c(1, 4)), lambda_gc = 0.99)
-triangulate_gwas(a, b)
+flexyBayes:::triangulate_gwas(a, b)
 #> <triangulate_gwas_result>
 #>   significant-set Jaccard: 1  (2 common of 2 / 2)
 #>   top-10 overlap: 6/10

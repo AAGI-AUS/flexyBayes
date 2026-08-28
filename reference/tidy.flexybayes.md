@@ -24,8 +24,8 @@ tidy(
 
 - x:
 
-  A flexyBayes fit: `flexybayes` (greta backend) or `flexybayes_brms`
-  (brms backend, which inherits this method).
+  A flexyBayes fit: `flexybayes_brms` (brms backend, which inherits this
+  method via the bare `flexybayes` class).
 
 - conf.int:
 
@@ -76,11 +76,10 @@ An empty `data.frame` is returned when the requested effects are absent
 ## Details
 
 This is the supported accessor for cross-engine summaries. The hub
-returns backend-specific objects – `flexybayes` (greta),
-`flexybayes_brms` (brms), `flexybayes_inla` (INLA) – whose internal
-layouts differ. Tidying through this generic yields the same columns
-across all three, so a greta-versus-INLA triangulation table can be
-assembled by `rbind`-ing two
+returns backend-specific objects – `flexybayes_brms` (brms) and
+`flexybayes_inla` (INLA) – whose internal layouts differ. Tidying
+through this generic yields the same columns across both, so a
+brms-versus-INLA triangulation table can be assembled by `rbind`-ing two
 [`tidy()`](https://generics.r-lib.org/reference/tidy.html) outputs
 rather than reaching into each backend's slots by hand.
 
@@ -100,8 +99,14 @@ name) label.
 ## Examples
 
 ``` r
+# Not run: the brms path compiles a Stan program first, and the
+# compile is far longer than an example should take. The fragment is
+# complete, so it runs as written on a machine with a C++ toolchain.
 if (FALSE) { # \dontrun{
-fit <- flexybayes(yield ~ env, data = dat, backend = "greta")
+set.seed(1)
+dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+                  chains = 1L, n_samples = 200L, warmup = 100L)
 tidy(fit)
 tidy(fit, effects = "random")
 } # }

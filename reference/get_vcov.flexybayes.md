@@ -1,6 +1,6 @@
-# marginaleffects support: covariance (greta backend)
+# marginaleffects support: covariance (default method)
 
-marginaleffects support: covariance (greta backend)
+marginaleffects support: covariance (default method)
 
 ## Usage
 
@@ -20,7 +20,7 @@ get_vcov(model, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

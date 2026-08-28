@@ -6,11 +6,8 @@ quantities a plant breeder acts on: each genotype's overall performance
 across-environment spread), the genotype-by-environment BLUPs, and the
 environment genetic-correlation matrix (the crossover structure). The
 realised effects are identified – invariant to the rotation and sign
-ambiguity of the raw loadings – so their posterior summaries are
-interpretable; judge convergence on these and on the identified
-covariance
-([`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md))
-rather than on the raw loadings.
+ambiguity of the raw loadings – so their posterior summaries would be
+interpretable.
 
 ## Usage
 
@@ -22,38 +19,31 @@ fb_met_summary(fit, genotype_levels = NULL, environment_levels = NULL)
 
 - fit:
 
-  A `flexybayes` greta fit with a `fa()` factor-analytic G x E term.
+  A flexybayes fit.
 
 - genotype_levels, environment_levels:
 
   Optional character labels for the inner (genotype) and outer
-  (environment) factors; default to positional labels.
+  (environment) factors; unused (see Lifecycle).
 
 ## Value
 
-An `fb_met_summary` object (one entry is built per `fa()` term, the
-function returns the first / named): `op` (data frame of overall
-performance per genotype with credible interval), `stability` (data
-frame of across-environment spread per genotype), `gxe_blup` (the
-posterior-mean genotype-by-environment effect matrix), `env_cor` (the
-environment genetic-correlation matrix), `loadings` (posterior-mean
-factor loadings), and metadata.
+Does not return: raises the classed `met_summary_not_available` refusal.
+
+## Lifecycle
+
+No active engine emits an `fa(env, k):gen` term – both INLA and brms
+refuse a factor-analytic structured-covariance term before a fit object
+exists – so this function always abstains (`met_summary_not_available`).
+What an active engine does report for a multi-environment trial is the
+variance components, through
+[`summary()`](https://rdrr.io/r/base/summary.html), and on brms the
+genotype-by-environment covariance of a
+[`diag()`](https://rdrr.io/r/base/diag.html) or `us()` term through
+`brms::VarCorr()`.
 
 ## See also
 
 [`fb_structured_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_structured_cov.md)
 for the identified environment covariance and its convergence
 diagnostic.
-
-## Examples
-
-``` r
-if (FALSE) { # \dontrun{
-fit <- flexybayes(
-  yield ~ env, random = ~ fa(env, 2):gen, data = met, backend = "greta"
-)
-ms <- fb_met_summary(fit)
-head(ms$op[order(-ms$op$mean), ]) # best genotypes on average
-ms$env_cor # environment crossover structure
-} # }
-```

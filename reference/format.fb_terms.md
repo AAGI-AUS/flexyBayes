@@ -15,12 +15,14 @@ format(x, ...)
 
 - x:
 
-  an `fb_terms` object.
+  An `fb_terms` object, the parsed intermediate representation of a
+  model.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-character(1).
+A length-one character string naming the ingest grammar, the response,
+and the fixed and random term counts.

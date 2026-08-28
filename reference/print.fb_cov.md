@@ -13,12 +13,14 @@ print(x, ...)
 
 - x:
 
-  An `fb_cov` object.
+  An `fb_cov` object as returned by
+  [`fb_cov()`](https://aagi-aus.github.io/flexyBayes/reference/fb_cov.md).
 
 - ...:
 
-  Unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-`x`, invisibly.
+Invisibly, `x` unchanged. Called for the one-line carrier description it
+prints.

@@ -20,4 +20,10 @@ logLik(object, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
+
+## Value
+
+An object of class `logLik`: the pointwise log-likelihood summed over
+observations and averaged across draws, carrying `df` (parameter count)
+and `nobs` (observation count) attributes.

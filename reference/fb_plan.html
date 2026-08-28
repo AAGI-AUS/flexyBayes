@@ -13,7 +13,7 @@ estimate, and any structural refusals before paying the fit cost."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">flexyBayes</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.8.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,28 +25,15 @@ estimate, and any structural refusals before paying the fit cost."></head><body>
 <li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-tutorials" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Tutorials</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><h6 class="dropdown-header" data-toc-skip>Foundations</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-02-asreml-formulas.html">02 — asreml-shaped formulas</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression.html">03 — Foundational regression</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-tutorials"><li><a class="dropdown-item" href="../articles/flexyBayes-01-getting-started.html">01 — Getting started</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-02-formulas-and-dispatch.html">02 — The formula surface</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-03-regression-and-hierarchical.html">03 — Regression and hierarchical models</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-04-priors.html">04 — Priors</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Core mixed-model concepts</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-04-hierarchical.html">04 — Hierarchical models</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-05-structured-covariance.html">05 — Structured covariance</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-06-priors.html">06 — Priors and regularisation</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Applied workflows</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-07-met-and-genomics.html">07 — METs and genomic selection</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-08-downstream-analysis.html">08 — Downstream analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-09-spatio-temporal.html">09 — Spatio-temporal models</a></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Advanced &amp; internals</h6></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-10-triangulation.html">10 — Cross-engine triangulation</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-11-lgm-feasibility.html">11 — LGM feasibility filter</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-12-backend-internals.html">12 — Backend internals</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-14-engine-selection.html">14 — Choosing an engine</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-15-extending-backends.html">15 — Extending with a backend</a></li>
-    <li><a class="dropdown-item" href="../articles/flexyBayes-16-big-data-streaming.html">16 — Big data — streaming aggregation</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-05-met-and-genomics.html">05 — METs and genomics</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-06-spatial-and-temporal.html">06 — Spatial and temporal</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-07-after-the-fit.html">07 — After the fit</a></li>
+    <li><a class="dropdown-item" href="../articles/flexyBayes-08-big-data.html">08 — Big data</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
@@ -77,7 +64,9 @@ estimate, and any structural refusals before paying the fit cost.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">fb_plan</span><span class="op">(</span></span>
 <span>  <span class="va">formula</span>,</span>
 <span>  <span class="va">data</span>,</span>
-<span>  backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"greta"</span>, <span class="st">"inla"</span>, <span class="st">"brms"</span><span class="op">)</span>,</span>
+<span>  random <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  residual <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"inla"</span>, <span class="st">"brms"</span><span class="op">)</span>,</span>
 <span>  priors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  known_matrices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  family <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
@@ -86,6 +75,7 @@ estimate, and any structural refusals before paying the fit cost.</p>
 <span>  aggregate <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  memory_ceiling_gb <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  predict_plan <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  syntax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"asreml"</span>, <span class="st">"brms"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -95,64 +85,151 @@ estimate, and any structural refusals before paying the fit cost.</p>
 
 
 <dl><dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
-<dd><p>a brms-style two-sided formula
-(<code>y ~ x + s(z) + (1 | g)</code>).</p></dd>
+<dd><p>Either a brms-style two-sided formula such as
+<code>y ~ x + s(z) + (1 | g)</code>, or (when <code>random</code> and/or <code>residual</code> are
+supplied) the ASReml-grammar fixed-effects formula, e.g.
+<code>yield ~ loc + yearf</code>. The same formula the fit would receive.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>a data.frame.</p></dd>
+<dd><p>A data.frame holding every variable the formula
+names. Planning reads its dimensions and column types, never its
+values.</p></dd>
+
+
+<dt id="arg-random">random<a class="anchor" aria-label="anchor" href="#arg-random"></a></dt>
+<dd><p>An optional one-sided ASReml-grammar random-effects
+formula (e.g. <code>~ gen + gen:loc</code>). <code>NULL</code> (default) for a brms-style
+<code>formula</code>, or for a fixed-effects-only ASReml model.</p></dd>
+
+
+<dt id="arg-residual">residual<a class="anchor" aria-label="anchor" href="#arg-residual"></a></dt>
+<dd><p>An optional one-sided ASReml-grammar residual
+structure formula (e.g. <code>~ dsum(~ units | env)</code>). <code>NULL</code> (default)
+for the ordinary independent-residual model.</p></dd>
 
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
-<dd><p>one of <code>"greta"</code>, <code>"inla"</code>, <code>"brms"</code>, <code>"auto"</code>
-(default <code>"auto"</code>).</p></dd>
+<dd><p>A single string, one of <code>"auto"</code> (the default),
+<code>"inla"</code>, or <code>"brms"</code>. Chooses the engine the plan
+reports on, with <code>"auto"</code> planning the route dispatch would take.</p></dd>
 
 
 <dt id="arg-priors">priors<a class="anchor" aria-label="anchor" href="#arg-priors"></a></dt>
-<dd><p>optional <code><a href="fb_prior.html">fb_prior()</a></code> list; defaults to the v0.2
-uniform-on-SD default.</p></dd>
+<dd><p>An optional <code><a href="fb_prior.html">fb_prior()</a></code> list. Defaults to the
+uniform-on-SD default the fit would inject.</p></dd>
 
 
 <dt id="arg-known-matrices">known_matrices<a class="anchor" aria-label="anchor" href="#arg-known-matrices"></a></dt>
-<dd><p>named list of structured-covariance matrices
-referenced by <code>vm()</code> or <code>ped()</code> terms.</p></dd>
+<dd><p>A named list of structured-covariance matrices
+referenced by <code>vm()</code> or <code>ped()</code> terms. Empty when the model names
+none.</p></dd>
 
 
 <dt id="arg-family-link">family, link<a class="anchor" aria-label="anchor" href="#arg-family-link"></a></dt>
-<dd><p>standard family/link arguments.</p></dd>
+<dd><p>Standard family and link arguments, given as
+single strings.</p></dd>
 
 
 <dt id="arg-weights">weights<a class="anchor" aria-label="anchor" href="#arg-weights"></a></dt>
-<dd><p>optional observation weights.</p></dd>
+<dd><p>An optional numeric vector of observation weights,
+one per row of <code>data</code>.</p></dd>
 
 
 <dt id="arg-aggregate">aggregate<a class="anchor" aria-label="anchor" href="#arg-aggregate"></a></dt>
-<dd><p><code>"auto"</code> / <code>TRUE</code> / <code>FALSE</code> — as on <code><a href="flexybayes.html">flexybayes()</a></code>.</p></dd>
+<dd><p><code>"auto"</code>, <code>TRUE</code>, or <code>FALSE</code>, read exactly as on
+<code><a href="flexybayes.html">flexybayes()</a></code>.</p></dd>
 
 
 <dt id="arg-memory-ceiling-gb">memory_ceiling_gb<a class="anchor" aria-label="anchor" href="#arg-memory-ceiling-gb"></a></dt>
-<dd><p>optional override for the preflight memory
-ceiling (defaults to <code>flexyBayes.preflight_ceiling_gb</code> option, or
-<code>flexyBayes.preflight_ram_fraction</code> x available RAM).</p></dd>
+<dd><p>An optional numeric override for the
+preflight memory ceiling. Defaults to the
+<code>flexyBayes.preflight_ceiling_gb</code> option, or to
+<code>flexyBayes.preflight_ram_fraction</code> of available RAM.</p></dd>
 
 
 <dt id="arg-predict-plan">predict_plan<a class="anchor" aria-label="anchor" href="#arg-predict-plan"></a></dt>
-<dd><p>optional <code>list(newdata = ..., chunk_size = ...)</code>
-to compute a prediction-shape plan. Plan-only;
-does not fire <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>.</p></dd>
+<dd><p>An optional <code>list(newdata = ..., chunk_size = ...)</code> requesting a prediction-shape plan. Plan-only, so it never
+fires <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code>.</p></dd>
+
+
+<dt id="arg-syntax">syntax<a class="anchor" aria-label="anchor" href="#arg-syntax"></a></dt>
+<dd><p>Grammar override, one of <code>"auto"</code> (default,
+detected from <code>formula</code> / <code>random</code> / <code>residual</code> exactly as
+<code><a href="flexybayes.html">flexybayes()</a></code> does), <code>"asreml"</code>, or <code>"brms"</code>.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>currently unused; reserved for future plan inputs.</p></dd>
+<dd><p>Currently unused, reserved for future plan inputs.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>an <code>&lt;fb_plan&gt;</code> classed list. See <code><a href="print.fb_plan.html">print.fb_plan()</a></code> for the
-surface; <code><a href="summary.fb_plan.html">summary.fb_plan()</a></code> for the verbose dump;
+    <p>An <code>&lt;fb_plan&gt;</code> classed list. See <code><a href="print.fb_plan.html">print.fb_plan()</a></code> for the
+one-screen surface, <code><a href="summary.fb_plan.html">summary.fb_plan()</a></code> for the verbose dump, and
 <code><a href="as.data.frame.fb_plan.html">as.data.frame.fb_plan()</a></code> for the programmatic-consumer shape.</p>
     </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Accepts either grammar <code><a href="flexybayes.html">flexybayes()</a></code> accepts: a single brms-style
+two-sided formula (<code>y ~ x + s(z) + (1 | g)</code>), or the ASReml triple
+(<code>formula</code> as the fixed-effects side, plus <code>random</code> / <code>residual</code>).
+Before 0.9.3, <code>fb_plan()</code> was brms-formula-only and silently dropped
+<code>random</code> / <code>residual</code> into its unused <code>...</code> when a caller supplied
+them ASReml-style, planning a fixed-effects-only model and reporting
+a backend the full model would not reach live (FS-22). Both
+spellings now route through the same grammar detection
+<code><a href="flexybayes.html">flexybayes()</a></code> uses (<code>syntax = "auto"</code> by default), so
+<code>fb_plan(y ~ x, random = ..., residual = ..., data = ...)</code> and
+<code>flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)</code> plan the identical model. Note the two spellings of the
+fixed part: <code>fb_plan()</code> takes it positionally as <code>formula</code>, the entry
+point takes it as <code>fixed</code>.</p>
+    </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Planning never fires the backend, so this runs without INLA or</span></span></span>
+<span class="r-in"><span><span class="co"># brms installed.</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">)</span>, x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">60</span><span class="op">)</span>, g <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, <span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># brms-style grammar.</span></span></span>
+<span class="r-in"><span><span class="va">p1</span> <span class="op">&lt;-</span> <span class="fu">fb_plan</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">g</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">p1</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> == flexyBayes plan ======================================</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Will fit:                no  (no active route: auto_no_active_route)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Backend requested:       auto</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Backend chosen:          NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Path:                    auto_no_active_route</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Routing policy version:  stage5a_v1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Gate outcome:            accept</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Aggregation:             not eligible (continuous_cell_key_data_dependent)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Cov validation policy:   n/a</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Representation plan:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     x                        -&gt; indexed_fixed_numeric           indexed (0.0 MB); aggregation-eligible</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     (1 | g)                  -&gt; indexed_random_intercept        indexed (0.0 MB); aggregation-eligible</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Rejected routes:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     inla     -&gt; backend_not_installed</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Memory estimate:         ~ 0.0 MB (preflight)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     INLA per-term total:  ~ 0.0 MB (overhead 2.0x)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       - (1 | g)                indexed_random_intercept        0.0 MB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       - (fixed effects)        fixed_model_matrix              0.0 MB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Representation:          exact</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Engine:                  NA</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ==========================================================</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># ASReml-style grammar plans the identical model (FS-22 parity).</span></span></span>
+<span class="r-in"><span><span class="va">p2</span> <span class="op">&lt;-</span> <span class="fu">fb_plan</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">g</span>, data <span class="op">=</span> <span class="va">d</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">p1</span><span class="op">$</span><span class="va">backend_chosen</span>, <span class="va">p2</span><span class="op">$</span><span class="va">backend_chosen</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># The representation table and the memory estimate are both on the</span></span></span>
+<span class="r-in"><span><span class="co"># plan object without ever fitting.</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">p1</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"backend_chosen"</span>, <span class="st">"gate_outcome"</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   backend_chosen gate_outcome</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1           &lt;NA&gt;       accept</span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
@@ -162,7 +239,7 @@ surface; <code><a href="summary.fb_plan.html">summary.fb_plan()</a></code> for t
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

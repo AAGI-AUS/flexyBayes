@@ -1,6 +1,6 @@
-# marginaleffects support: fixed-effect coefficients (greta backend)
+# marginaleffects support: fixed-effect coefficients (default method)
 
-marginaleffects support: fixed-effect coefficients (greta backend)
+marginaleffects support: fixed-effect coefficients (default method)
 
 ## Usage
 
@@ -20,7 +20,7 @@ get_coef(model, ...)
 
 - ...:
 
-  Ignored.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 

@@ -15,12 +15,13 @@ print(x, ...)
 
 - x:
 
-  an `lgm_refusal` object.
+  An `lgm_refusal` object, as returned by the feasibility gate when a
+  model falls outside the latent Gaussian class.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the refusal template it prints.

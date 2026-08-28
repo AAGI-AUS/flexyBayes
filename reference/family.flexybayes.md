@@ -13,12 +13,14 @@ family(object, ...)
 
 - object:
 
-  A flexybayes object
+  A fitted `flexybayes` object of any backend.
 
 - ...:
 
-  Additional arguments (ignored)
+  Ignored, present for compatibility with the generic.
 
 ## Value
 
-A family object
+The response family the model was fitted under, as the `family` object
+the fit recorded at emit time – so it names the family and link the
+engine actually used, not the string the caller passed.

@@ -1,7 +1,7 @@
 # Ingest an ASReml-format model specification into the flexyBayes IR
 
-Parses an ASReml-style `fixed` / `random` / `rcov` specification into a
-`fb_terms` object – flexyBayes's backend-agnostic intermediate
+Parses an ASReml-style `fixed` / `random` / `residual` specification
+into a `fb_terms` object – flexyBayes's backend-agnostic intermediate
 representation (IR) of a model. The IR is what every engine emits from,
 so building it explicitly lets a power user inspect the parsed model,
 cache it, or hand it to a fitting verb. Most users never call this
@@ -20,7 +20,7 @@ one-for-one, so this is a drop-in for that function's parsing step.
 fb_from_asreml(
   fixed,
   random = NULL,
-  rcov = NULL,
+  residual = NULL,
   data,
   family = "gaussian",
   link = NULL,
@@ -28,7 +28,8 @@ fb_from_asreml(
   known_matrices = list(),
   prior = NULL,
   prior_fixed_sd = 100,
-  prior_vc_sd = 1
+  prior_vc_sd = 1,
+  rcov = lifecycle::deprecated()
 )
 ```
 
@@ -42,7 +43,7 @@ fb_from_asreml(
 
   One-sided formula `~ random_terms` (ASReml syntax), or `NULL`.
 
-- rcov:
+- residual:
 
   One-sided formula `~ residual_structure`, or `NULL`. `NULL` defaults
   to iid residuals (`list(list(type = "units"))`), matching
@@ -87,6 +88,12 @@ fb_from_asreml(
   Numeric hyperparameter for the variance-component priors when `prior`
   is `NULL`.
 
+- rcov:
+
+  Defunct in flexyBayes 0.9.0. The ASReml 3 name for the
+  residual-structure argument, renamed to `residual` in ASReml 4;
+  supplying it now raises an error. Use `residual` instead.
+
 ## Value
 
 An `fb_terms` object with `source = "asreml"`.
@@ -98,13 +105,10 @@ and
 [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 for the universal fitting entry;
 [`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md)
-and
-[`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md)
-for the other ingest dialects.
+for the other ingest dialect.
 
 Other flexyBayes ingest adapters:
-[`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md),
-[`fb_from_greta()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_greta.md)
+[`fb_from_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_from_brms.md)
 
 ## Examples
 

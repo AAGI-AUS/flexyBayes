@@ -15,7 +15,7 @@ Useful information to include:
 - the output of
   [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html);
 - the output of `packageVersion("flexyBayes")` and, if relevant,
-  `packageVersion("greta")` and `packageVersion("INLA")`;
+  `packageVersion("INLA")`;
 - whether the issue reproduces on a fresh R session.
 
 ## Pull requests
@@ -51,10 +51,10 @@ R CMD check --as-cran --no-manual flexyBayes_*.tar.gz
 `devtools::check()` calls `R CMD build` internally, so the R-side
 workflow is unaffected.
 
-The package depends on `greta` (default MCMC backend) and `INLA`
-(Laplace backend). `greta` requires a working Python + TensorFlow
-install — see `greta::install_greta_deps()`. `INLA` is hosted at
-<https://inla.r-inla-download.org/R/stable>.
+The package fits on two active backends, `INLA` (Laplace approximation)
+and `brms` (Stan MCMC, on CRAN). `INLA` is hosted at
+<https://inla.r-inla-download.org/R/stable>. A third native engine was
+withdrawn entirely in 0.9.3 – see `NEWS.md`.
 
 ### Code style
 
@@ -66,9 +66,9 @@ install — see `greta::install_greta_deps()`. `INLA` is hosted at
 
 ### Tests
 
-Add tests under `tests/testthat/`. Tests that depend on `greta`, `INLA`,
-or `brms` should `skip_if_not_installed(.)`. The test suite uses
-testthat edition 3.
+Add tests under `tests/testthat/`. Tests that depend on `INLA` or `brms`
+should `skip_if_not_installed(.)`. The test suite uses testthat edition
+3.
 
 #### Three-tier test discipline
 
@@ -76,7 +76,7 @@ The test suite is organised into three implicit tiers via
 `testthat::skip_*` guards. Pick the tier that matches what you can warm
 in your environment.
 
-**Tier 1 — CRAN-fast (no heavy engines).**
+**Tier 1 – CRAN-fast (no heavy engines).**
 
 ``` r
 
@@ -85,24 +85,23 @@ devtools::test()           # ~30 s; engine-free path only
 
 Guards: `skip_on_cran()`, `skip_on_ci()`, `skip_if_not_installed()`.
 Covers IR parsing, prior DSL, refusal templates, registry lookups,
-canonical-name transforms, dispatch trace shape, review-code workflow,
-gretaR dormant scaffold. Expected: roughly **PASS 700+ / FAIL 0** with
-many SKIPs.
+canonical-name transforms, dispatch trace shape, and the review-code
+workflow. Expected: roughly **PASS 700+ / FAIL 0** with many SKIPs.
 
-**Tier 2 — local integration (greta + INLA warm; brms gated).**
+**Tier 2 – local integration (INLA warm; brms gated).**
 
 ``` r
 
 Sys.setenv(NOT_CRAN = "true")
-devtools::test()           # ~3-5 min on a warm TF backend
+devtools::test()           # ~1-3 min
 ```
 
-Same suite, but `skip_on_cran()` is now `FALSE`, so greta + INLA
-round-trip tests fire. `skip_if_not_installed("brms")` still gates the
-Stan passthrough tests. Expected: **PASS 850+ / FAIL 0** with a small
-handful of SKIPs (brms round-trip, vdiffr).
+Same suite, but `skip_on_cran()` is now `FALSE`, so INLA round-trip
+tests fire. `skip_if_not_installed("brms")` still gates the Stan
+passthrough tests. Expected: **PASS 850+ / FAIL 0** with a small handful
+of SKIPs (brms round-trip, vdiffr).
 
-**Tier 3 — full triangulation (greta + INLA + brms / Stan).**
+**Tier 3 – full triangulation (INLA + brms / Stan).**
 
 ``` r
 
@@ -112,7 +111,7 @@ devtools::test()           # ~10-20 min; brms first-call Stan
                            # compile is 30-60 s per backend test
 ```
 
-Adds the Stan passthrough round-trips and three-engine triangulation
+Adds the Stan passthrough round-trips and cross-engine triangulation
 tests on top of Tier 2. The gate is **FAIL 0**; PASS counts grow across
 the 0.8.x line (the 90+-file suite is well above the early-release
 floors quoted above). The residual SKIPs are vdiffr snapshots and
@@ -137,10 +136,10 @@ the per-NOTE itemisation.
 
 #### Re-precompile vignettes
 
-When a `.Rmd.orig` source changes — or when the `DESCRIPTION` version
+When a `.Rmd.orig` source changes – or when the `DESCRIPTION` version
 bumps and you want the
 [`sessionInfo()`](https://rdrr.io/r/utils/sessionInfo.html) chunks to
-refresh — re-precompile via:
+refresh – re-precompile via:
 
 ``` bash
 R CMD build flexyBayes
@@ -148,11 +147,12 @@ R CMD INSTALL flexyBayes_<version>.tar.gz
 cd flexyBayes && Rscript vignettes/_precompile.R
 ```
 
-Pre-requisites: greta + TF warm, INLA installed, brms installed. The
-driver knits each `.Rmd.orig` into its sibling `.Rmd`; failures are
-reported per-vignette and the script exits non-zero on any. Expected
-wall-time on a warm M1 / M2 Mac: 10-15 minutes for the full 16-vignette
-deck.
+Pre-requisites: INLA installed, brms installed with a warm Stan
+toolchain. The driver knits each `.Rmd.orig` into its sibling `.Rmd`;
+failures are reported per-vignette and the script exits non-zero on any.
+Selective refresh is `Rscript vignettes/_precompile.R --only 01`.
+Expected wall-time on a warm M1 / M2 Mac: 10-15 minutes for the full
+eleven-vignette deck.
 
 ### Documentation
 

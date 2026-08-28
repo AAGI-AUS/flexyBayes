@@ -13,12 +13,13 @@ print(x, ...)
 
 - x:
 
-  an `fb_prior` object.
+  An `fb_prior` object as returned by
+  [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md).
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-invisibly returns `x`.
+Invisibly, `x` unchanged. Called for the specification list it prints.

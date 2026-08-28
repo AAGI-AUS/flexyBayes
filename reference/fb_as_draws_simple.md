@@ -3,15 +3,12 @@
 S3 generic used by
 [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
 to extract a named list of numeric posterior-draw vectors from each fit.
-Methods exist for the `flexybayes` (greta backend) and `flexybayes_inla`
-(INLA backend) classes; user-defined methods can extend the generic.
+The methods that reach an active engine are `flexybayes_brms` and
+`flexybayes_inla`. User-defined methods can extend the generic.
 
 ## Usage
 
 ``` r
-fb_as_draws_simple(fit, ...)
-
-# S3 method for class 'flexybayes'
 fb_as_draws_simple(fit, ...)
 
 # S3 method for class 'flexybayes_inla'
@@ -28,12 +25,30 @@ fb_as_draws_simple(fit, ...)
 
 - fit:
 
-  a model fit object.
+  A model fit object carrying a posterior, dispatched on by the methods
+  listed above.
 
 - ...:
 
-  method-specific arguments (e.g., `n_samples` for INLA).
+  Method-specific arguments, such as `n_samples` for the INLA method.
 
 ## Value
 
-a named list of numeric vectors.
+A named list of numeric vectors, one element per parameter, each element
+holding that parameter's posterior draws.
+
+## Examples
+
+``` r
+# A named list of draw vectors, with no posterior dependency.
+# \donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                    verbose = FALSE)
+  dr <- fb_as_draws_simple(fit)
+  names(dr)
+}
+# }
+```

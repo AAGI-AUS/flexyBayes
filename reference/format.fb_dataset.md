@@ -14,12 +14,13 @@ format(x, ...)
 
 - x:
 
-  an `<fb_dataset>` object.
+  An `<fb_dataset>` object, the wrapper the preflight layer carries in
+  place of the raw data.
 
 - ...:
 
-  unused.
+  Ignored. Present for compatibility with the generic.
 
 ## Value
 
-a length-1 character string.
+A length-one character string summarising the wrapped dataset.

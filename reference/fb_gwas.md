@@ -71,10 +71,10 @@ null REML components), and metadata.
 
 ## Details
 
-The backends (greta / INLA / brms) are not used by the scan itself — it
-is a deterministic frequentist fast path. They enter only when a handful
-of significant loci are re-fit as full Bayesian models for credible
-effect sizes, which is affordable at that reduced scale.
+The backends (INLA / brms) are not used by the scan itself — it is a
+deterministic frequentist fast path. They enter only when a handful of
+significant loci are re-fit as full Bayesian models for credible effect
+sizes, which is affordable at that reduced scale.
 
 ## References
 
@@ -97,7 +97,7 @@ M <- matrix(rbinom(n * m, 2L, 0.3), n, m)
 colnames(M) <- paste0("snp", seq_len(m))
 y <- 2 * scale(M[, 50L]) + rnorm(n)
 dat <- data.frame(y = y)
-scan <- fb_gwas(y ~ 1, data = dat, markers = M)
+scan <- flexyBayes:::fb_gwas(y ~ 1, data = dat, markers = M)
 head(scan$results[order(scan$results$p_value), ])
 #>     marker     effect        se statistic      p_value p_bonferroni
 #> 50   snp50  2.7711252 0.3074583 81.234363 2.004756e-19 4.009512e-17
