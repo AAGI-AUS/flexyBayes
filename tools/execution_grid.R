@@ -459,6 +459,19 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
                   'data = d_cap, known_matrices = list(K = k_cap))')
   ),
   list(
+    # `ped()` and `vm()` are two spellings of one known-covariance term
+    # and shared a single matrix cell, so the grid executed `vm()` only
+    # and `ped()` was advertised without ever being fitted (audit item
+    # 9, 2026-08-27). Its own cell, on the carrier each engine documents:
+    # INLA the sparse precision, brms the dense covariance.
+    model_class = "Known-covariance pedigree random effect, ped() spelling",
+    inla = paste0('flexybayes(y ~ env, ',
+                  'random = ~ ped(gen, cov = fb_cov(Q, type = "precision")), ',
+                  'data = d_cap, known_matrices = list(Q = q_cap))'),
+    brms = paste0('flexybayes(y ~ env, random = ~ ped(gen, K), ',
+                  'data = d_cap, known_matrices = list(K = k_cap))')
+  ),
+  list(
     model_class = "Separable AR1 spatial field",
     inla = 'flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d_capgrid)',
     brms = 'flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d_capgrid)'

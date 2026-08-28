@@ -477,10 +477,26 @@ MAX_EXPORTS <- 34L
     id = "C3", cost = "quick", owner = "claude", blocking = TRUE,
     what = "every export has an \\examples{} block",
     check = function() {
+      # An export is not always documented on man/<name>.Rd: `fb` is an
+      # alias on flexybayes.Rd, and the re-exported generics live on
+      # reexports.Rd. Resolve each export to the page that carries its
+      # \alias{}, and exempt re-exports, which are documented upstream.
+      rds <- list.files("man", pattern = "\\.Rd$", full.names = TRUE)
+      pages <- lapply(rds, .dod_read)
+      names(pages) <- rds
+      page_of <- function(e) {
+        tag <- paste0("\\alias{", e, "}")
+        hit <- names(pages)[vapply(pages, function(x) {
+          any(grepl(tag, x, fixed = TRUE))
+        }, logical(1))]
+        if (length(hit)) hit[[1]] else NA_character_
+      }
       exps <- .dod_exports()
       no_ex <- exps[vapply(exps, function(e) {
-        rd <- file.path("man", paste0(e, ".Rd"))
-        !file.exists(rd) || !any(grepl("\\\\examples", .dod_read(rd)))
+        pg <- page_of(e)
+        if (is.na(pg)) return(TRUE)
+        if (basename(pg) == "reexports.Rd") return(FALSE)
+        !any(grepl("\\examples", pages[[pg]], fixed = TRUE))
       }, logical(1))]
       .dod_ok(length(no_ex) == 0L,
               if (length(no_ex)) paste0(length(no_ex), " without examples: ",
