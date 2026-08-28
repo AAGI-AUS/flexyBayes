@@ -207,8 +207,8 @@ cat("Refused:", conditionMessage(refused), "\n")
 ```
 
 Were it fittable, the variance-component block would report the loading
-variances and the specific variances, and `fb_structured_cov()` would
-reconstruct the implied location-by-location covariance
+variances and the specific variances, and the package would reconstruct
+the implied location-by-location covariance
 $\boldsymbol{\Sigma} = \boldsymbol{\Lambda}\boldsymbol{\Lambda}^\top + \boldsymbol{\Psi}$
 (rotation- and sign-invariant, since raw loadings are identified only up
 to rotation and sign). Until then, the diagonal model of Section 2.1

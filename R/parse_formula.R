@@ -207,7 +207,7 @@
   lapply(terms, .enrich, data = data)
 }
 
-# Recursive AST walker — converts formula expression tree to term descriptors
+# Recursive AST walker -- converts formula expression tree to term descriptors
 .walk <- function(expr) {
   if (is.name(expr)) {
     nm <- as.character(expr)

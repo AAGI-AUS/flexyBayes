@@ -621,18 +621,36 @@ MAX_EXPORTS <- 34L
       # identity is a correct statement about the posterior. What the
       # measurement showed is that it is not a promise about what an
       # optimiser returns, so the claim must travel with that caveat.
-      txt <- .dod_prose("R/na_action.R")
-      claims_same <- grepl(
-        "posterior for the model parameters is then the same", txt
-      )
-      has_caveat <- grepl(
-        "not a promise about what an optimiser returns", txt
-      )
-      .dod_ok(!claims_same || has_caveat,
-              if (claims_same && !has_caveat)
-                paste("the same-posterior identity is stated without the",
-                      "caveat that it does not bind the optimiser")
-              else "clean")
+      #
+      # Widened 2026-08-28: reading only R/na_action.R is what let the
+      # uncaveated identity stand in README.md and in R/emit_brms.R after
+      # the correction landed. Every surface that states the identity is
+      # checked, because a correction applied to one file is not a
+      # correction.
+      surfaces <- c("R/na_action.R", "R/emit_brms.R", "README.md",
+                    .dod_vignette_files())
+      surfaces <- surfaces[file.exists(surfaces)]
+      states <- c("posterior for the model parameters is then the same",
+                  "posterior is the same whether",
+                  "parameter posterior is the same either way")
+      caveats <- c("not a promise about what an optimiser returns",
+                   "not about what an optimiser returns",
+                   "not a promise about what\\s+an optimiser returns")
+      bare <- character(0)
+      for (f in surfaces) {
+        txt <- .dod_prose(f)
+        if (!any(vapply(states, grepl, logical(1), x = txt))) {
+          next
+        }
+        if (!any(vapply(caveats, grepl, logical(1), x = txt))) {
+          bare <- c(bare, f)
+        }
+      }
+      .dod_ok(length(bare) == 0L,
+              if (length(bare))
+                paste("identity stated without the optimiser caveat:",
+                      paste(bare, collapse = ", "))
+              else paste(length(surfaces), "surfaces checked"))
     }
   )
 )
