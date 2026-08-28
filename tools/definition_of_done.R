@@ -190,23 +190,17 @@ MAX_EXPORTS <- 34L
         paste("found:", top)
       )
     }
-  ),
-  list(
-    id = "A5", cost = "quick", owner = "claude", blocking = TRUE,
-    what = "every export carries lifecycle::badge(\"experimental\")",
-    check = function() {
-      n_badge <- length(grep(
-        "lifecycle::badge",
-        unlist(lapply(.dod_r_files(), .dod_read)),
-        value = TRUE
-      ))
-      n_exp <- length(.dod_exports())
-      .dod_ok(
-        n_badge >= n_exp,
-        paste0(n_badge, " badges for ", n_exp, " exports")
-      )
-    }
   )
+  # A5 RETIRED 2026-08-28, signed off. It required a
+  # lifecycle::badge("experimental") on every export. Its purpose was to
+  # stop API_STABILITY.md claiming badges that did not exist, and B7
+  # already achieves that by stating the lifecycle stage without claiming
+  # a badge. The package has no man/figures/, so the criterion would have
+  # meant shipping SVG assets to state, for a fifth time, a fact already
+  # carried by the DESCRIPTION version, the README, API_STABILITY.md and
+  # the startup message. CRAN does not require badges. Retiring it is
+  # recorded here rather than deleted silently, because retiring a
+  # criterion is the same visible act as adding one.
 )
 
 # ---------------------------------------------------------------------

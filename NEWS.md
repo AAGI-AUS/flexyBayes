@@ -69,6 +69,10 @@ blocking criterion is unmet.
   weakly identified mode they can land in different places. `augment`
   remains the default and the recommendation.
 
+* **Every export now carries a runnable `\examples{}` block.** Nine had
+  none. The four that need a fitted model are wrapped in `\donttest{}` and
+  guarded on the engine, so they do not fire where it is absent.
+
 ## Corrections to the package's own claims
 
 Each of these was a statement the code did not support. They are recorded

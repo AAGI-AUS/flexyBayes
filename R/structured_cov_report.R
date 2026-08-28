@@ -33,6 +33,18 @@
 #'   analytic structured terms (`us`, `ar1`) are reported as
 #'   not-yet-reconstructed.
 #'
+#' @examples
+#' # Reports on factor-analytic structured covariance. A fit carrying no
+#' # such term is told so rather than returned an empty object.
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   fb_structured_cov(fit)
+#' }
+#' }
 #' @export
 fb_structured_cov <- function(fit) {
   .check_flexybayes_fit(fit, "`fit` must be a flexybayes object.")

@@ -125,6 +125,9 @@ fb_engine <- function(name, opts = list(), ...) {
 #' @param x Any R object. The test is a class check, not a structural
 #'   one.
 #' @returns `TRUE` if `x` is an `fb_engine` object, `FALSE` otherwise.
+#' @examples
+#' is_fb_engine(fb_engine("inla"))
+#' is_fb_engine("inla")
 #' @export
 is_fb_engine <- function(x) inherits(x, "fb_engine")
 

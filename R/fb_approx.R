@@ -86,6 +86,10 @@ fb_approx <- function(scheme, ...) {
 #' @param x Any R object. The test is a class check, not a structural
 #'   one.
 #' @returns `TRUE` if `x` is an `fb_approx` object, `FALSE` otherwise.
+#' @examples
+#' a <- fb_approx("low_rank_smooth")
+#' is_fb_approx(a)
+#' is_fb_approx("low_rank_smooth")
 #' @export
 is_fb_approx <- function(x) inherits(x, "fb_approx")
 

@@ -225,6 +225,11 @@ fb_cov <- function(M, type = "dense", levels = NULL, scheme = NULL, ...) {
 #' @param x Any R object. The test is a class check, not a structural
 #'   one.
 #' @returns `TRUE` if `x` is an `fb_cov` object, `FALSE` otherwise.
+#' @examples
+#' K <- diag(3)
+#' dimnames(K) <- list(letters[1:3], letters[1:3])
+#' is_fb_cov(fb_cov(K, type = "dense"))
+#' is_fb_cov(K)
 #' @export
 is_fb_cov <- function(x) inherits(x, "fb_cov")
 

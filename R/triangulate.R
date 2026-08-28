@@ -981,6 +981,18 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
 #'   INLA method.
 #' @returns A named list of numeric vectors, one element per parameter,
 #'   each element holding that parameter's posterior draws.
+#' @examples
+#' # A named list of draw vectors, with no posterior dependency.
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   dr <- fb_as_draws_simple(fit)
+#'   names(dr)
+#' }
+#' }
 #' @export
 fb_as_draws_simple <- function(fit, ...) UseMethod("fb_as_draws_simple")
 

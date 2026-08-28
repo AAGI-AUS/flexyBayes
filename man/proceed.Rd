@@ -26,3 +26,17 @@ captured at review-object construction, runs the deferred fit
 via the backend driver, caches the result in-place, and
 returns the fit. A second call returns the cached fit.
 }
+\examples{
+# The review object holds the model back until proceed() is called.
+set.seed(1)
+d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+                 review_code = TRUE)
+rv
+\donttest{
+if (requireNamespace("brms", quietly = TRUE)) {
+  fit <- proceed(rv)
+  class(fit)
+}
+}
+}

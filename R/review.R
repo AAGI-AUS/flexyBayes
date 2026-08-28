@@ -165,6 +165,14 @@ print.flexybayes_review <- function(x, ...) {
 #'   accepts `file`, a connection defaulting to `stdout()`.
 #' @returns Invisibly, the code as a character vector. Called for the
 #'   code it writes to `file`.
+#' @examples
+#' # review_code = TRUE builds the engine code without fitting, so this
+#' # runs without INLA or brms installed.
+#' set.seed(1)
+#' d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#' rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+#'                  review_code = TRUE)
+#' cat_code(rv)
 #' @export
 cat_code <- function(x, ...) {
   UseMethod("cat_code")
@@ -197,6 +205,19 @@ cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
 #'   deferred triangulation.
 #' @returns The fit object the originating call would have returned, of
 #'   class `flexybayes`. A second call returns the cached fit.
+#' @examples
+#' # The review object holds the model back until proceed() is called.
+#' set.seed(1)
+#' d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#' rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+#'                  review_code = TRUE)
+#' rv
+#' \donttest{
+#' if (requireNamespace("brms", quietly = TRUE)) {
+#'   fit <- proceed(rv)
+#'   class(fit)
+#' }
+#' }
 #' @export
 proceed <- function(x, ...) {
   UseMethod("proceed")

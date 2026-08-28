@@ -61,3 +61,16 @@ mapper registered at package load (\code{inla} or \code{brms}) drives the
 resolution; the returned map is cached on
 \code{fit$extras$canonical_map} for fast repeated access.
 }
+\examples{
+# The map is engine-specific, so it needs a fit to read.
+\donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                    verbose = FALSE)
+  cn <- canonical_names(fit)
+  head(cn$map)
+}
+}
+}

@@ -443,6 +443,17 @@ ranef <- function(object, ...) {
 }
 
 #' @rdname ranef
+#' @examples
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   re <- ranef(fit)
+#'   str(re, max.level = 1)
+#' }
+#' }
 #' @export
 #' @exportS3Method nlme::ranef
 ranef.flexybayes <- function(object, ...) {
