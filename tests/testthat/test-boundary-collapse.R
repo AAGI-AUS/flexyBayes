@@ -106,20 +106,55 @@ test_that("the warning can be silenced by option", {
   )
 })
 
-# The calibration itself, pinned. The threshold started at 0.05 of the
+# The calibration itself, pinned against the measured sweep rather than
+# against a number typed in here. The threshold started at 0.05 of the
 # residual SD and fired on seven suite fixtures whose components are null
 # by construction (`mk_inla_data()` is `y = rnorm(30)` with no group
-# effect). A sweep of 112 zero-variance INLA fits put the floor for a
-# genuinely null component at 0.0228 of the residual SD; the degenerate
-# mode measured on besag.met C1 sits at 2.5e-04. These two tests hold the
-# threshold inside that gap, so moving it far in either direction fails
-# here rather than in a release check.
+# effect). `inst/validation/boundary_calibration.csv` holds 112 INLA fits
+# with the group SD set to exactly zero, produced by
+# `tools/calibrate_boundary_collapse.R`; the floor read off it is the
+# number the threshold has to sit below. Reading it here rather than
+# restating it means a wrong threshold cannot pass by also being written
+# into the test.
+
+.calib_path <- function() {
+  local <- testthat::test_path("..", "..", "inst", "validation",
+                               "boundary_calibration.csv")
+  if (file.exists(local)) {
+    return(local)
+  }
+  installed <- system.file("validation", "boundary_calibration.csv",
+                           package = "flexyBayes")
+  if (nzchar(installed)) installed else NA_character_
+}
+
+.null_floor <- function() {
+  p <- .calib_path()
+  if (is.na(p)) {
+    return(NA_real_)
+  }
+  d <- utils::read.csv(p, stringsAsFactors = FALSE)
+  d <- d[d$arm == "null" & is.finite(d$ratio), , drop = FALSE]
+  if (!nrow(d)) NA_real_ else min(d$ratio)
+}
+
+test_that("the threshold sits below the measured null floor", {
+  floor_ratio <- .null_floor()
+  skip_if(is.na(floor_ratio), "calibration record not in this tree")
+  expect_lt(.FB_COLLAPSE_FRACTION, floor_ratio)
+  # and not so far below it that a real collapse escapes: the degenerate
+  # mode measured on besag.met C1 is 0.00396 / 15.6
+  expect_gt(.FB_COLLAPSE_FRACTION, 0.00396 / 15.6)
+})
 
 test_that("a null component at the measured floor does not warn", {
+  floor_ratio <- .null_floor()
+  skip_if(is.na(floor_ratio), "calibration record not in this tree")
+  sigma <- 1.088
   fit <- make_fit(make_vc(
     c("sigma", "sd_gen"),
-    q97.5 = c(1.088, 0.0228 * 1.088),
-    sigma_median = 1.088
+    q97.5 = c(sigma, floor_ratio * sigma),
+    sigma_median = sigma
   ))
   expect_length(.fb_boundary_collapse_reasons(fit), 0L)
   expect_silent(.fb_warn_boundary_collapse(fit))
@@ -133,4 +168,15 @@ test_that("the measured degenerate mode still warns", {
   ))
   expect_length(.fb_boundary_collapse_reasons(fit), 1L)
   expect_warning(.fb_warn_boundary_collapse(fit), "at the boundary")
+})
+
+test_that("the calibration record is the shape the threshold argues from", {
+  p <- .calib_path()
+  skip_if(is.na(p), "calibration record not in this tree")
+  d <- utils::read.csv(p, stringsAsFactors = FALSE)
+  expect_true(all(c("arm", "n", "k", "seed", "ratio") %in% names(d)))
+  expect_gte(sum(d$arm == "null"), 100L)
+  # the positive control: a real component is orders of magnitude higher
+  re <- d[d$arm == "real" & is.finite(d$ratio), ]
+  expect_gt(stats::median(re$ratio), 10 * .null_floor())
 })
