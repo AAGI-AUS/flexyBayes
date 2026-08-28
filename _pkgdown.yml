@@ -192,3 +192,15 @@ redirects:
   - ["articles/flexyBayes-07-downstream-analysis.html", "articles/flexyBayes-07-after-the-fit.html"]
   - ["articles/flexyBayes-09-triangulation.html", "articles/flexyBayes-07-after-the-fit.html"]
   - ["articles/flexyBayes-11-big-data-streaming.html", "articles/flexyBayes-08-big-data.html"]
+  # Historical URLs from the 0.9.x renumbers. Pointed straight at the
+  # current page rather than at the intermediate that replaced them, so
+  # no old link takes two hops -- and so they survive a clean CI build,
+  # which regenerates docs/ from this file alone.
+  - ["articles/flexyBayes-00-from-asreml.html", "articles/flexyBayes-01-getting-started.html"]
+  - ["articles/flexyBayes-06-priors.html", "articles/flexyBayes-04-priors.html"]
+  - ["articles/flexyBayes-07-met-and-genomics.html", "articles/flexyBayes-05-met-and-genomics.html"]
+  - ["articles/flexyBayes-08-downstream-analysis.html", "articles/flexyBayes-07-after-the-fit.html"]
+  - ["articles/flexyBayes-09-spatio-temporal.html", "articles/flexyBayes-06-spatial-and-temporal.html"]
+  - ["articles/flexyBayes-10-triangulation.html", "articles/flexyBayes-07-after-the-fit.html"]
+  - ["articles/flexyBayes-11-dispatch-and-refusals.html", "articles/flexyBayes-02-formulas-and-dispatch.html"]
+  - ["articles/flexyBayes-16-big-data-streaming.html", "articles/flexyBayes-08-big-data.html"]
