@@ -268,6 +268,7 @@ fb_gev <- function(
 #' set.seed(1)
 #' fit <- flexyBayes:::fb_gev(flexyBayes:::rgev(200L, 10, 2, 0.1))
 #' tidy(fit)
+#' @keywords internal
 #' @export
 tidy.fb_gev_fit <- function(x, ...) {
   x$estimates
@@ -278,6 +279,7 @@ tidy.fb_gev_fit <- function(x, ...) {
 #' @param x An `fb_gev_fit` object.
 #' @param ... Currently unused; present for generic compatibility.
 #' @returns `x`, invisibly.
+#' @keywords internal
 #' @export
 print.fb_gev_fit <- function(x, ...) {
   cat("Generalised extreme value fit  [flexyBayes]\n")

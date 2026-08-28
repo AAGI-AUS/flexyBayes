@@ -225,6 +225,7 @@ fb_dirichlet <- function(
 #' set.seed(1)
 #' fit <- flexyBayes:::fb_dirichlet(flexyBayes:::rdirichlet(300L, c(2, 5, 3)))
 #' tidy(fit)
+#' @keywords internal
 #' @export
 tidy.fb_dirichlet_fit <- function(x, ...) {
   x$estimates
@@ -235,6 +236,7 @@ tidy.fb_dirichlet_fit <- function(x, ...) {
 #' @param x An `fb_dirichlet_fit` object.
 #' @param ... Currently unused; present for generic compatibility.
 #' @returns `x`, invisibly.
+#' @keywords internal
 #' @export
 print.fb_dirichlet_fit <- function(x, ...) {
   cat("Dirichlet (compositional) fit  [flexyBayes]\n")

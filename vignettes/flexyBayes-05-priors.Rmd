@@ -1,5 +1,5 @@
 ---
-title: "Tutorial 05: Default priors and the `fb_prior()` DSL"
+title: "Tutorial 05: Default priors and the fb_prior() DSL"
 date: "2026-08-26"
 output:
   rmarkdown::html_vignette:

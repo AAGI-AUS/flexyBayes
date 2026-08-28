@@ -524,6 +524,49 @@ MAX_EXPORTS <- 34L
         else paste0(length(internal), " documented internals, all qualified")
       )
     }
+  ),
+  list(
+    id = "B14", cost = "quick", owner = "claude", blocking = TRUE,
+    what = "every non-internal help page appears in the pkgdown index",
+    check = function() {
+      # pkgdown's build_reference_index() errors when a topic is neither
+      # listed in _pkgdown.yml nor marked internal, and that is a full-
+      # tier gate costing twenty minutes to reach. Withdrawing the
+      # Dirichlet and GEV constructors left their four S3 method pages
+      # indexed with no reachable class, and the failure surfaced only
+      # in the release bake. This is the same rule, in the quick tier.
+      yml <- "_pkgdown.yml"
+      rds <- list.files("man", pattern = "\\.Rd$", full.names = TRUE)
+      if (!file.exists(yml) || !length(rds)) {
+        return(.dod_ok(FALSE, "no _pkgdown.yml or no man/ pages"))
+      }
+      idx <- trimws(sub("^\\s*-\\s*", "", grep("^\\s*-\\s+[A-Za-z.]",
+                                             .dod_read(yml), value = TRUE)))
+      missing <- character(0)
+      for (rd in rds) {
+        txt <- .dod_read(rd)
+        if (any(grepl("\\\\keyword\\{internal\\}", txt))) {
+          next
+        }
+        hit <- grep("^\\\\name\\{", txt, value = TRUE)
+        if (!length(hit)) {
+          next
+        }
+        nm <- sub("^\\\\name\\{(.*)\\}.*$", "\\1", hit[[1]])
+        # reexports.Rd documents borrowed generics and is never indexed
+        if (identical(nm, "reexports")) {
+          next
+        }
+        if (!(nm %in% idx)) {
+          missing <- c(missing, nm)
+        }
+      }
+      .dod_ok(length(missing) == 0L,
+              if (length(missing))
+                paste0(length(missing), " unindexed: ",
+                       paste(utils::head(missing, 6), collapse = ", "))
+              else paste0(length(rds), " pages, index complete"))
+    }
   )
 )
 

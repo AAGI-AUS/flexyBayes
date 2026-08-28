@@ -17,3 +17,4 @@
 \description{
 Print a Dirichlet fit
 }
+\keyword{internal}
