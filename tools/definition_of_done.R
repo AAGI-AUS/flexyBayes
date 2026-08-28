@@ -432,21 +432,45 @@ MAX_EXPORTS <- 34L
       if (!file.exists(grid)) {
         return(.dod_ok(FALSE, "no execution_grid.R"))
       }
-      # Only the emitted call strings count, not fixture setup. The
-      # check used to read the whole file, so `k_cap <- diag(6)` -- a
-      # base-R matrix constructor building a relationship matrix --
-      # satisfied the `diag` criterion permanently, and deleting the
-      # real diag() cell would have left this green.
-      src <- grep("flexybayes\\(|random =|residual =",
-                  .dod_code_lines(grid), value = TRUE)
+      # The oracle is the ledger, which records cells that RAN, not the
+      # source, which only declares them. Reading the source meant
+      # `k_cap <- diag(6)` in fixture setup satisfied the `diag`
+      # criterion permanently, and a deleted cell whose call string
+      # survived in a comment would still pass. The ledger is committed,
+      # so a fresh clone has it; fall back to the source only when it is
+      # absent, and say so rather than passing quietly.
+      # The oracle is the recorded run, not the source. Reading the
+      # source meant `k_cap <- diag(6)` in fixture setup satisfied the
+      # `diag` criterion permanently, and a deleted cell whose call
+      # string survived in a comment would still pass. grid_results.csv
+      # carries a `code` column holding the call each cell actually
+      # executed, and it is committed, so a fresh clone has it. Only
+      # that column is read: the `message` column quotes spellings back
+      # inside refusal text and would satisfy this check by accident.
+      results <- "inst/validation/execution_grid/grid_results.csv"
       advertised <- c("vm", "ped", "us", "diag", "dsum", "ar1", "spl", "at")
+      if (file.exists(results)) {
+        tab <- tryCatch(
+          utils::read.csv(results, stringsAsFactors = FALSE),
+          error = function(e) NULL
+        )
+        if (is.null(tab) || !("code" %in% names(tab))) {
+          return(.dod_ok(FALSE, "grid_results.csv has no `code` column"))
+        }
+        src <- tab$code
+        where <- "the recorded run"
+      } else {
+        src <- grep("flexybayes\\(|random =|residual =",
+                    .dod_code_lines(grid), value = TRUE)
+        where <- "grid source (no run recorded)"
+      }
       missing <- advertised[!vapply(advertised, function(a) {
         any(grepl(paste0("\\b", a, "\\("), src))
       }, logical(1))]
       .dod_ok(length(missing) == 0L,
               if (length(missing)) paste("advertised, never executed:",
                                          paste(missing, collapse = ", "))
-              else "clean")
+              else paste("clean, read from the", where))
     }
   ),
   list(
@@ -567,6 +591,31 @@ MAX_EXPORTS <- 34L
                        paste(utils::head(missing, 6), collapse = ", "))
               else paste0(length(rds), " pages, index complete"))
     }
+  ),
+  list(
+    id = "B15", cost = "quick", owner = "claude", blocking = TRUE,
+    what = "every export is named in API_STABILITY.md",
+    check = function() {
+      # The stability document is the contract a user reads before
+      # depending on a function. Three exports were absent from it --
+      # fb_complete_grid(), genomic_summary() and ranef() -- so their
+      # stability stage was undeclared while the document presented
+      # itself as the inventory.
+      doc <- "API_STABILITY.md"
+      if (!file.exists(doc)) {
+        return(.dod_ok(FALSE, "no API_STABILITY.md"))
+      }
+      txt <- paste(.dod_read(doc), collapse = "\n")
+      exps <- .dod_exports()
+      absent <- exps[!vapply(exps, function(e) {
+        grepl(paste0("`", e), txt, fixed = TRUE)
+      }, logical(1))]
+      .dod_ok(length(absent) == 0L,
+              if (length(absent))
+                paste0(length(absent), " undeclared: ",
+                       paste(utils::head(absent, 8), collapse = ", "))
+              else paste0("all ", length(exps), " exports declared"))
+    }
   )
 )
 
@@ -670,22 +719,29 @@ MAX_EXPORTS <- 34L
       # the correction landed. Every surface that states the identity is
       # checked, because a correction applied to one file is not a
       # correction.
-      surfaces <- c("R/na_action.R", "R/emit_brms.R", "README.md",
-                    .dod_vignette_files())
+      # Derived, not listed. The hand-written list read na_action.R,
+      # emit_brms.R, README and the vignettes, and was still short by
+      # R/flexybayes.R -- the entry point, and the most-read statement of
+      # the identity of the four. A list is only as good as the person
+      # writing it remembering every surface; deriving the set means a
+      # new surface cannot escape by not being thought of.
+      surfaces <- c(.dod_r_files(), "README.md", .dod_vignette_files())
       surfaces <- surfaces[file.exists(surfaces)]
-      states <- c("posterior for the model parameters is then the same",
-                  "posterior is the same whether",
-                  "parameter posterior is the same either way")
-      caveats <- c("not a promise about what an optimiser returns",
-                   "not about what an optimiser returns",
-                   "not a promise about what\\s+an optimiser returns")
+      # Patterns, not literals. Three hand-copied sentences missed the
+      # entry point's phrasing ("posterior FOR THE MODEL PARAMETERS is
+      # the same whether"), so widening the surface list changed nothing
+      # -- the guard could see the file and still not see the claim. The
+      # regex tolerates the words a writer puts between "posterior" and
+      # "is the same".
+      states <- "posterior[^.]{0,60}is (then )?the same"
+      caveats <- "not (a promise )?about what[[:space:]]+an optimiser returns"
       bare <- character(0)
       for (f in surfaces) {
         txt <- .dod_prose(f)
-        if (!any(vapply(states, grepl, logical(1), x = txt))) {
+        if (!grepl(states, txt)) {
           next
         }
-        if (!any(vapply(caveats, grepl, logical(1), x = txt))) {
+        if (!grepl(caveats, txt)) {
           bare <- c(bare, f)
         }
       }

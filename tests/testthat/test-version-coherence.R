@@ -42,7 +42,10 @@
   "SECURITY.md",
   "API_STABILITY.md",
   "SUPPORT.md",
-  ".zenodo.json"
+  ".zenodo.json",
+  # ships in the tarball, and carried `tier: V3` / `0.9.3` into a release
+  # that declares V2 / 0.10.0
+  "inst/validation/scenarios.yaml"
 )
 
 # A superseded version described as live. The marker set is deliberately
