@@ -1,65 +1,90 @@
-# flexyBayes 0.10.0 (in development)
+# flexyBayes 0.10.0
 
-The first release prepared for CRAN. Its criteria are frozen in
-`tools/definition_of_done.R`, which is a runnable contract rather than a
-document: "is it ready" is a command that exits non-zero while any
-blocking criterion is unmet.
+The first release prepared for CRAN. Its criteria are held as a runnable
+contract in the development repository rather than as prose. The checks
+that read source answer immediately; the ones that need a build, a check
+run or a person are listed as unmet until their artefact exists, and the
+contract exits non-zero while any of them is outstanding. That file is
+not shipped in the tarball.
 
 ## Breaking changes
 
 * **The declared validation tier is now V2, not V3.** 0.9.2 declared V3
-  and waived four of its floors (F20, F21, F24, F25); that waiver expired
-  at the next release and is not re-issued. V2 is what the registered
-  evidence supports. The four floors are recorded in
-  `inst/validation/README.md` as the next validation arc, and a second
-  consecutive waiver on the same floors is the pattern a waiver exists to
-  prevent.
+  and waived four of its floors (F20, F21, F24, F25); 0.9.3 shipped
+  declaring V3 with that waiver already expired, and it is not re-issued.
+  V2 is what the registered evidence supports. The four floors are
+  recorded in `inst/validation/README.md` as the next validation arc, and
+  a second consecutive waiver on the same floors is the pattern a waiver
+  exists to prevent.
 
-* **Ten functions are withdrawn from the public API.** The extreme-value
-  and Dirichlet maximum-likelihood fitters (`fb_gev()`, `fb_family_gev()`,
-  `rgev()`, `fb_dirichlet()`, `fb_family_dirichlet()`, `rdirichlet()`),
-  the EMMAX genome-wide association pair (`fb_gwas()`,
-  `triangulate_gwas()`), and the two exports that abstained
-  unconditionally (`fb_met_summary()`, `fb_log_posterior()`) are no longer
-  exported. They remain in the package, documented as internal and covered
-  by their existing tests, and their S3 print and tidy methods stay
-  registered so the objects still print.
+* **Eleven functions are withdrawn from the public API**, taking the
+  export count from 44 to 33. The extreme-value and Dirichlet
+  maximum-likelihood fitters (`fb_gev()`, `fb_family_gev()`, `rgev()`,
+  `fb_dirichlet()`, `fb_family_dirichlet()`, `rdirichlet()`), the EMMAX
+  genome-wide association pair (`fb_gwas()`, `triangulate_gwas()`), and
+  the three exports that abstained unconditionally (`fb_met_summary()`,
+  `fb_log_posterior()`, `fb_structured_cov()`) are no longer exported.
+  They remain in the package, documented as internal and covered by their
+  existing tests, and their S3 print and tidy methods stay registered so
+  the objects still print.
 
   The reason is identity rather than arithmetic. This package's premise is
   a Bayesian posterior where REML returns a point estimate; four of the
   withdrawn fitters are maximum-likelihood or frequentist, none of them
-  has a cell in the 408-cell execution grid, and together they were a
-  quarter of the public surface sitting outside the package's own
-  execution oracle. `fb_gblup_cv()`, `genomic_summary()` and
-  `triangulate_genomic()` were considered for the same treatment and kept:
-  the first is taught and executed in the multi-environment-trials and
-  genomics vignette, and the other two operate on posterior draws.
+  has a cell in the execution grid, and together they were a quarter of
+  the public surface sitting outside the package's own execution oracle.
+  `fb_structured_cov()` joined them late: no active engine emits an
+  `fa()` term, so its only reachable outcome is a message and an empty
+  list, which is the same ground the other two abstainers were withdrawn
+  on. `fb_gblup_cv()`, `genomic_summary()` and `triangulate_genomic()`
+  were considered for the same treatment and kept: the first is taught
+  and executed in the multi-environment-trials and genomics vignette, and
+  the other two operate on posterior draws.
 
 * **`effectsize` is no longer listed as a supported downstream package.**
-  It was named in the `DESCRIPTION` Description and `Suggests` and in
-  `README.md`, and no method for it existed. Removed from all three
-  rather than left as a promise.
+  It was named in the `DESCRIPTION` Description, in `Suggests`, in
+  `README.md`, and in two vignettes -- one of which also said a
+  `flexybayes`-class method dispatched through
+  `parameters::model_parameters()`, which was never true. Removed from
+  all five rather than left as a promise. The standardised-effect section
+  of the downstream-analysis vignette keeps its worked example, which
+  needs nothing but the draws.
 
-* **`coda` moves from `Imports` to `Suggests`.** The only trace of it in
-  `R/` was a roxygen `@importFrom` tag, and neither `effectiveSize()` nor
-  `gelman.diag()` was called there. The test suite does use it, so it is
-  demoted rather than dropped.
+* **`coda` moves from `Imports` to `Suggests`, and `splines` leaves
+  `Imports` altogether.** The only trace of `coda` in `R/` was a roxygen
+  `@importFrom` tag, and neither `effectiveSize()` nor `gelman.diag()`
+  was called there; the test suite does use it, so it is demoted rather
+  than dropped. `splines` was the same defect one release later:
+  `importFrom(splines, bs)` with `bs()` called nowhere in `R/`. It moves
+  to `Suggests`, where the one test that calls `splines::bs()` needs it.
 
 ## Diagnostics
 
 * **A variance component pinned at the boundary now warns, on any term
-  type.** The existing detector covered one case, `sd_spatial` running to
-  its floor against the nugget. Any other component could reach the same
-  state reporting only a `note = "collapsed"` cell in
-  `summary(fit)$varcomp`, which is easy to read past, while the
-  convergence block reported a converged mode. Both engines now raise a
-  warning naming the component, its upper credible bound and the residual
-  scale, with three routes out. Silence with
+  type on the per-row emit paths.** The existing detector covered one
+  case, `sd_spatial` running to its floor against the nugget. Any other
+  component could reach the same state reporting only a
+  `note = "collapsed"` cell in `summary(fit)$varcomp`, which is easy to
+  read past, while the convergence block reported a converged mode. Both
+  engines now raise a warning naming the component, its upper credible
+  bound and the residual scale, with three routes out. Silence with
   `options(flexyBayes.silence_boundary_collapse_warning = TRUE)`.
 
-  The threshold is calibrated for a degenerate mode, not for a small
-  variance: 240 rows simulated with no group effect at all return an
-  upper bound near 0.43 of the residual SD and do not trigger it.
+  The threshold is 0.005 of the residual SD, and it is calibrated against
+  a measured floor. A sweep of 112 INLA fits with the group SD set to
+  exactly zero, crossing n in {30, 60, 120, 240, 480} with 5, 10 and 20
+  groups, puts the upper credible bound of a genuinely null component at
+  0.0228 of the residual SD at the lowest, and the ratio is flat in both
+  n and the group count because it is a floor set by the prior. The
+  degenerate mode sits two orders of magnitude below that: 2.5e-04 on the
+  `besag.met` fit this was built from. The threshold sits in the gap.
+
+  Two limits on its reach, both structural. It compares against a
+  residual SD, so it reads Gaussian-scale fits and is silent on families
+  carrying no `sigma` row. And it needs credible bounds, so it covers the
+  per-row emit paths only: the aggregated streaming emitters record
+  variance components as posterior means with no quantiles, and there is
+  nothing there to read an upper bound from.
 
 * **`na_action` documentation now separates the identity from the
   arithmetic.** Under ignorability the posterior is the same whether a
@@ -67,11 +92,15 @@ blocking criterion is unmet.
   posterior and not a promise about what an optimiser returns: the two
   settings hand the engine an intact design and a ragged one, and on a
   weakly identified mode they can land in different places. `augment`
-  remains the default and the recommendation.
+  remains the default and the recommendation. The caveat now stands
+  wherever the identity is stated, `README.md` and the brms emit path
+  included, rather than in one file.
 
-* **Every export now carries a runnable `\examples{}` block.** Nine had
-  none. The four that need a fitted model are wrapped in `\donttest{}` and
-  guarded on the engine, so they do not fire where it is absent.
+* **Every export carries a runnable `\examples{}` block.** Nine had none.
+  Five of the new blocks are wrapped in `\donttest{}` and guarded on the
+  engine, so they do not fire where it is absent. The three tidier
+  re-exports (`augment`, `glance`, `tidy`) document their generics on
+  `man/reexports.Rd`, which carries no example; their methods do.
 
 * **`Config/testthat/parallel` is now `false`.** It was `true`, and the
   parallel runner stalls: workers spawn, orphan, and sit at 0 per cent CPU
@@ -85,8 +114,8 @@ blocking criterion is unmet.
 ## Corrections to the package's own claims
 
 Each of these was a statement the code did not support. They are recorded
-as fixes rather than dropped silently, and each now has a guard in
-`tools/definition_of_done.R` that fails the lint workflow if it recurs.
+as fixes rather than dropped silently, and each now has a guard that fails
+the lint workflow if it recurs.
 
 * The package-level help said **twelve** vignettes ship, including one on
   arriving from an ASReml call. Eleven ship, and that page was folded into
@@ -101,6 +130,34 @@ as fixes rather than dropped silently, and each now has a guard in
   tree it described.
 * An internal flag word reached a shipped surface in
   `inst/validation/README.md`.
+* `cran-comments.md`, `SECURITY.md`, `SUPPORT.md` and `.zenodo.json` all
+  still named 0.9.3. The coherence test that exists to catch exactly this
+  could not: its "superseded version" pattern was written as `0\.[0-8]\.`
+  and so was blind to the 0.9.x line at the moment the tree reached
+  0.10.0. It now compares parsed versions and needs no edit at the next
+  bump.
+* Withdrawing eleven functions left their `\examples{}` blocks calling
+  them by bare name, and `R CMD check` runs the examples of internal help
+  pages too. Ten pages were affected. They now reach the functions through
+  the namespace, and a new guard fails when any example calls something
+  the package does not export.
+* The boundary-collapse threshold shipped in this release at 0.05 of the
+  residual SD on the strength of a single simulation, with a claim that a
+  null component returns an upper bound near 0.43 of the residual SD. The
+  package's own suite falsified it: seven fixtures whose components are
+  null by construction warned. The claim is withdrawn and the threshold
+  re-grounded on the sweep described above.
+* The release contract reported its machine-evidence criteria as skipped
+  and exited zero regardless, so the suite, both check runs, the grid,
+  lint, pkgdown, the clean room and CI could each be red while it
+  reported success. Those criteria are now unmet until evidenced, and the
+  full tier exits non-zero while one is outstanding. The criterion
+  asserting that a boundary-pinned component warns was satisfied by the
+  existence of its test file; it runs the tests now.
+* The guard asserting that every declared import is used counted mentions
+  in comments and the package name inside message strings, which is how
+  `splines` stayed in `Imports` unused. It now requires an imported
+  symbol to be called.
 
 # flexyBayes 0.9.3
 
