@@ -39,7 +39,7 @@ mk <- function(sig) data.frame(
 )
 a <- list(results = mk(c(1, 4)), lambda_gc = 1.01)
 b <- list(results = mk(c(1, 4)), lambda_gc = 0.99)
-triangulate_gwas(a, b)
+flexyBayes:::triangulate_gwas(a, b)
 }
 \seealso{
 \code{\link[=fb_gwas]{fb_gwas()}}, \code{\link[=triangulate_genomic]{triangulate_genomic()}}.

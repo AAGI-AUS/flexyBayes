@@ -39,7 +39,7 @@
 #'
 #' @seealso [fb_dirichlet()]
 #' @examples
-#' fam <- fb_family_dirichlet()
+#' fam <- flexyBayes:::fb_family_dirichlet()
 #' fam$family
 #' @keywords internal
 fb_family_dirichlet <- function() {
@@ -81,7 +81,7 @@ fb_family_dirichlet <- function() {
 #' @seealso [fb_dirichlet()]
 #' @examples
 #' set.seed(1)
-#' X <- rdirichlet(5L, alpha = c(2, 5, 3))
+#' X <- flexyBayes:::rdirichlet(5L, alpha = c(2, 5, 3))
 #' rowSums(X)
 #' @keywords internal
 rdirichlet <- function(n, alpha) {
@@ -135,8 +135,8 @@ rdirichlet <- function(n, alpha) {
 #' @seealso [fb_family_dirichlet()], [rdirichlet()], [tidy.fb_dirichlet_fit()]
 #' @examples
 #' set.seed(1)
-#' X <- rdirichlet(300L, alpha = c(2, 5, 3))
-#' fit <- fb_dirichlet(X)
+#' X <- flexyBayes:::rdirichlet(300L, alpha = c(2, 5, 3))
+#' fit <- flexyBayes:::fb_dirichlet(X)
 #' fit$estimates
 #' @keywords internal
 fb_dirichlet <- function(
@@ -223,7 +223,7 @@ fb_dirichlet <- function(
 #' @seealso [fb_dirichlet()]
 #' @examples
 #' set.seed(1)
-#' fit <- fb_dirichlet(rdirichlet(300L, c(2, 5, 3)))
+#' fit <- flexyBayes:::fb_dirichlet(flexyBayes:::rdirichlet(300L, c(2, 5, 3)))
 #' tidy(fit)
 #' @export
 tidy.fb_dirichlet_fit <- function(x, ...) {

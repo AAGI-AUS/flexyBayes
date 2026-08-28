@@ -982,9 +982,10 @@ emit_brms <- function(
 #
 # Refusing is not a limitation being papered over. Under ignorability the
 # parameter posterior is the same whether the cell is imputed or omitted, so
-# a user who wants the non-Gaussian fit can pass na_action = "omit" and get
-# a correct answer -- what they cannot have is deletion wearing the name of
-# augmentation.
+# a user who wants the non-Gaussian fit can pass na_action = "omit" -- what
+# they cannot have is deletion wearing the name of augmentation. The
+# identity is a statement about the posterior, not about what an optimiser
+# returns from a ragged design; see the note in R/na_action.R.
 .fb_brms_missing_response_mode <- function(fb, data) {
   resp <- fb$response
   has_missing <- !is.null(resp) &&
@@ -1812,6 +1813,9 @@ print.flexybayes_brms <- function(x, ...) {
 #' @param parm Subset of fixed-effect names to return (NULL = all).
 #' @param level Credible level (default 0.95).
 #' @param ... Ignored. Present for compatibility with the generic.
+#' @returns A numeric matrix with one row per fixed-effect term and two
+#'   columns holding the lower and upper credible bounds at `level`. Row
+#'   names are the term names with the brms `b_` prefix removed.
 #' @export
 confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
   .check_installed(
@@ -1892,6 +1896,12 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #'   proportion. Default `0.95`.
 #' @param ... Forwarded to `brms::posterior_epred()` /
 #'   `brms::posterior_linpred()`.
+#' @returns One of four shapes, by argument. With `classify` set, the
+#'   marginal-means table for those factors. Otherwise with
+#'   `summary = FALSE`, the `draws x rows` posterior matrix; with
+#'   `se.fit = TRUE`, a list of `fit` (posterior mean per row) and
+#'   `se.fit` (posterior SD per row); and by default a numeric vector of
+#'   posterior means, one per row of `newdata` or of the fitted data.
 #' @export
 predict.flexybayes_brms <- function(
   object,
@@ -1960,6 +1970,9 @@ predict.flexybayes_brms <- function(
 #'
 #' @param object A `flexybayes_brms` object.
 #' @param ... Ignored. Present for compatibility with the generic.
+#' @returns An object of class `logLik`: the pointwise log-likelihood
+#'   summed over observations and averaged across draws, carrying `df`
+#'   (parameter count) and `nobs` (observation count) attributes.
 #' @export
 logLik.flexybayes_brms <- function(object, ...) {
   # Dispatch to brms's `log_lik` exported generic. brms ships

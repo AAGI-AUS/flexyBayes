@@ -60,8 +60,13 @@ unrecognised value now stops.
 }
 \examples{
 \dontshow{if (requireNamespace("INLA", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-\dontrun{
-fit <- flexybayes(yield ~ env, data = dat, backend = "inla")
+\donttest{
+set.seed(1)
+dat <- data.frame(yield = rnorm(40),
+                  env = factor(rep(1:4, each = 10)),
+                  block = factor(rep(1:5, times = 8)))
+fit <- flexybayes(yield ~ env, random = ~block, data = dat,
+                  backend = "inla", verbose = FALSE)
 tidy(fit)
 tidy(fit, effects = "random")
 }

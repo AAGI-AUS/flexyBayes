@@ -21,7 +21,7 @@ vector, via the gamma-normalisation construction.
 }
 \examples{
 set.seed(1)
-X <- rdirichlet(5L, alpha = c(2, 5, 3))
+X <- flexyBayes:::rdirichlet(5L, alpha = c(2, 5, 3))
 rowSums(X)
 }
 \seealso{

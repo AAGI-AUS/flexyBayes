@@ -26,7 +26,7 @@ Gumbel limit (\eqn{\xi \to 0}) is handled exactly.
 }
 \examples{
 set.seed(1)
-y <- rgev(100L, location = 10, scale = 2, shape = 0.15)
+y <- flexyBayes:::rgev(100L, location = 10, scale = 2, shape = 0.15)
 summary(y)
 }
 \seealso{

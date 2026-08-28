@@ -28,7 +28,7 @@ The Dirichlet on the \eqn{K}-simplex is parameterised by a vector of
 normalised vector \eqn{\alpha / \sum_k \alpha_k} is the mean composition.
 }
 \examples{
-fam <- fb_family_dirichlet()
+fam <- flexyBayes:::fb_family_dirichlet()
 fam$family
 }
 \seealso{

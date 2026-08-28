@@ -64,8 +64,14 @@ carries the posterior standard deviation of each term, again under the
 }
 \examples{
 \dontshow{if (requireNamespace("generics", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+# Not run: the brms path compiles a Stan program first, and the
+# compile is far longer than an example should take. The fragment is
+# complete, so it runs as written on a machine with a C++ toolchain.
 \dontrun{
-fit <- flexybayes(yield ~ env, data = dat, backend = "brms")
+set.seed(1)
+dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+                  chains = 1L, n_samples = 200L, warmup = 100L)
 tidy(fit)
 tidy(fit, effects = "random")
 }

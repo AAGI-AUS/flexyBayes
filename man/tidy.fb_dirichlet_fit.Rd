@@ -21,7 +21,7 @@ Returns the concentration-parameter summary as a \code{broom}-style
 }
 \examples{
 set.seed(1)
-fit <- fb_dirichlet(rdirichlet(300L, c(2, 5, 3)))
+fit <- flexyBayes:::fb_dirichlet(flexyBayes:::rdirichlet(300L, c(2, 5, 3)))
 tidy(fit)
 }
 \seealso{

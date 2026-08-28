@@ -11,6 +11,11 @@
 
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
+\value{
+An object of class \code{logLik}: the pointwise log-likelihood
+summed over observations and averaged across draws, carrying \code{df}
+(parameter count) and \code{nobs} (observation count) attributes.
+}
 \description{
 Delegates to \code{brms::log_lik()} then sums pointwise log-likelihood
 across observations and averages across draws. The \code{df} attribute

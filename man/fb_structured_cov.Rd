@@ -32,7 +32,8 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
                     verbose = FALSE)
-  fb_structured_cov(fit)
+  flexyBayes:::fb_structured_cov(fit)
 }
 }
 }
+\keyword{internal}

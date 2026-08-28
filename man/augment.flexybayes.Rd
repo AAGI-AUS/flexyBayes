@@ -27,7 +27,14 @@ posterior-mean fitted value and the response residual.
 }
 \examples{
 \dontshow{if (requireNamespace("generics", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+# Not run: augment() appends fitted values and residuals to the data
+# a sampled fit was built from, so the example needs a Stan compile.
+# The fragment is complete and runs as written with a C++ toolchain.
 \dontrun{
+set.seed(1)
+dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+                  chains = 1L, n_samples = 200L, warmup = 100L)
 augment(fit)
 }
 \dontshow{\}) # examplesIf}

@@ -29,11 +29,13 @@ object (Stan code via \code{\link[brms:stancode]{brms::stancode()}} for
 \code{\link[=flexybayes]{flexybayes()}} / \code{fb_brms()}) to a connection.
 }
 \examples{
-# review_code = TRUE builds the engine code without fitting, so this
-# runs without INLA or brms installed.
-set.seed(1)
-d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
-rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
-                 review_code = TRUE)
-cat_code(rv)
+# review_code = TRUE defers the fit, but generating the code still
+# goes through brms::make_stancode(), so brms must be present.
+if (requireNamespace("brms", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+                   review_code = TRUE)
+  cat_code(rv)
+}
 }

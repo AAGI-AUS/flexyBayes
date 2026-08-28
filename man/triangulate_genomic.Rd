@@ -57,5 +57,7 @@ reml <- list(
 triangulate_genomic(bayes, reml)
 }
 \seealso{
-\code{\link[=triangulate]{triangulate()}}, \code{\link[=genomic_summary]{genomic_summary()}}, \code{\link[=triangulate_gwas]{triangulate_gwas()}}.
+\code{\link[=triangulate]{triangulate()}}, \code{\link[=genomic_summary]{genomic_summary()}}. The GWAS counterpart
+\code{triangulate_gwas()} is internal from 0.10.0 and is reached as
+\code{flexyBayes:::triangulate_gwas()}.
 }

@@ -44,8 +44,8 @@ The fitted mean composition (\code{alpha / sum(alpha)}) is reported on
 }
 \examples{
 set.seed(1)
-X <- rdirichlet(300L, alpha = c(2, 5, 3))
-fit <- fb_dirichlet(X)
+X <- flexyBayes:::rdirichlet(300L, alpha = c(2, 5, 3))
+fit <- flexyBayes:::fb_dirichlet(X)
 fit$estimates
 }
 \seealso{

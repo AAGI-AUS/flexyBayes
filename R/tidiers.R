@@ -81,8 +81,14 @@ generics::augment
 #' @seealso [glance.flexybayes()], [augment.flexybayes()],
 #'   [tidy.flexybayes_inla()]
 #' @examplesIf requireNamespace("generics", quietly = TRUE)
+#' # Not run: the brms path compiles a Stan program first, and the
+#' # compile is far longer than an example should take. The fragment is
+#' # complete, so it runs as written on a machine with a C++ toolchain.
 #' \dontrun{
-#' fit <- flexybayes(yield ~ env, data = dat, backend = "brms")
+#' set.seed(1)
+#' dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+#' fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+#'                   chains = 1L, n_samples = 200L, warmup = 100L)
 #' tidy(fit)
 #' tidy(fit, effects = "random")
 #' }
@@ -199,8 +205,13 @@ tidy.flexybayes <- function(
 #'
 #' @seealso [tidy.flexybayes()]
 #' @examplesIf requireNamespace("INLA", quietly = TRUE)
-#' \dontrun{
-#' fit <- flexybayes(yield ~ env, data = dat, backend = "inla")
+#' \donttest{
+#' set.seed(1)
+#' dat <- data.frame(yield = rnorm(40),
+#'                   env = factor(rep(1:4, each = 10)),
+#'                   block = factor(rep(1:5, times = 8)))
+#' fit <- flexybayes(yield ~ env, random = ~block, data = dat,
+#'                   backend = "inla", verbose = FALSE)
 #' tidy(fit)
 #' tidy(fit, effects = "random")
 #' }
@@ -287,7 +298,14 @@ tidy.flexybayes_inla <- function(
 #'
 #' @seealso [tidy.flexybayes()]
 #' @examplesIf requireNamespace("generics", quietly = TRUE)
+#' # Not run: glance() reports sampler diagnostics, so the example needs
+#' # a sampled fit and therefore a Stan compile. The fragment is
+#' # complete and runs as written where a C++ toolchain is present.
 #' \dontrun{
+#' set.seed(1)
+#' dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+#' fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+#'                   chains = 1L, n_samples = 200L, warmup = 100L)
 #' glance(fit)
 #' }
 #' @export
@@ -340,7 +358,14 @@ glance.flexybayes <- function(x, ...) {
 #'
 #' @seealso [tidy.flexybayes()]
 #' @examplesIf requireNamespace("generics", quietly = TRUE)
+#' # Not run: augment() appends fitted values and residuals to the data
+#' # a sampled fit was built from, so the example needs a Stan compile.
+#' # The fragment is complete and runs as written with a C++ toolchain.
 #' \dontrun{
+#' set.seed(1)
+#' dat <- data.frame(yield = rnorm(40), env = factor(rep(1:4, each = 10)))
+#' fit <- flexybayes(yield ~ env, data = dat, backend = "brms",
+#'                   chains = 1L, n_samples = 200L, warmup = 100L)
 #' augment(fit)
 #' }
 #' @export
