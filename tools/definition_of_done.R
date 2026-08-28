@@ -297,13 +297,36 @@ MAX_EXPORTS <- 34L
     check = function() {
       imp <- trimws(strsplit(.dod_desc("Imports"), ",")[[1]])
       imp <- sub("\\s*\\(.*\\)$", "", imp)
+      # Base packages ship with R and are exempt. `methods` especially:
+      # the package reaches S4 through `@` slot access (R/structured_cov.R,
+      # `L@uplo`), which no grep for `pkg::` or for an imported symbol
+      # can see.
       imp <- setdiff(imp, c("", "stats", "methods", "utils", "graphics"))
-      src <- unlist(lapply(.dod_r_files(), .dod_read))
-      unused <- imp[!vapply(imp, function(p) {
-        any(grepl(paste0(p, "::"), src, fixed = TRUE)) ||
-          any(grepl(paste0("importFrom\\(", p), .dod_read("NAMESPACE"))) &&
-            any(grepl(paste0("\\b", p, "\\b"), src[!grepl("^\\s*#", src)]))
-      }, logical(1))]
+      # Two ways this guard used to pass on a dead Import, both fixed
+      # here. It read comments as use, and it accepted the mere presence
+      # of the package NAME anywhere in the source -- including inside a
+      # refusal-message string. `splines` sat in Imports with `bs()`
+      # called nowhere and this check reported clean, which is the defect
+      # 089a64d fixed by hand for coda, recurring inside the guard
+      # written to stop it recurring. A symbol taken by importFrom()
+      # now counts only when that symbol is actually called.
+      src <- .dod_code_lines(.dod_r_files())
+      ns <- .dod_read("NAMESPACE")
+      .used <- function(p) {
+        if (any(grepl(paste0(p, "::"), src, fixed = TRUE))) {
+          return(TRUE)
+        }
+        tags <- grep(paste0("^importFrom\\(", p, ","), ns, value = TRUE)
+        if (!length(tags)) {
+          return(FALSE)
+        }
+        syms <- sub(paste0("^importFrom\\(", p, ",(.*)\\)$"), "\\1", tags)
+        syms <- trimws(unlist(strsplit(syms, ",")))
+        any(vapply(syms, function(sym) {
+          any(grepl(paste0("(^|[^[:alnum:]_.])", sym, "\\s*\\("), src))
+        }, logical(1)))
+      }
+      unused <- imp[!vapply(imp, .used, logical(1))]
       .dod_ok(length(unused) == 0L,
               if (length(unused)) paste("unused:",
                                         paste(unused, collapse = ", "))
@@ -355,9 +378,14 @@ MAX_EXPORTS <- 34L
       pat <- "honesty check|graduation|SA-gate|vibe-check"
       # text only: inst/ carries binaries, and grepl() on those emits an
       # invalid-input warning that would drown a real signal
+      # R/ and man/ ship in the tarball too, and were not being read: a
+      # flag word in a roxygen comment or a generated Rd page passed a
+      # check whose criterion says "any shipped surface".
       files <- c("README.md", "NEWS.md", "DESCRIPTION",
                  list.files("inst", recursive = TRUE, full.names = TRUE,
                             pattern = "\\.(md|R|Rmd|txt|csv|yaml|yml)$"),
+                 .dod_r_files(),
+                 list.files("man", pattern = "\\.Rd$", full.names = TRUE),
                  .dod_vignette_files())
       files <- files[file.exists(files) & !dir.exists(files)]
       bad <- files[vapply(files, function(f) {
@@ -404,7 +432,13 @@ MAX_EXPORTS <- 34L
       if (!file.exists(grid)) {
         return(.dod_ok(FALSE, "no execution_grid.R"))
       }
-      src <- .dod_code_lines(grid)
+      # Only the emitted call strings count, not fixture setup. The
+      # check used to read the whole file, so `k_cap <- diag(6)` -- a
+      # base-R matrix constructor building a relationship matrix --
+      # satisfied the `diag` criterion permanently, and deleting the
+      # real diag() cell would have left this green.
+      src <- grep("flexybayes\\(|random =|residual =",
+                  .dod_code_lines(grid), value = TRUE)
       advertised <- c("vm", "ped", "us", "diag", "dsum", "ar1", "spl", "at")
       missing <- advertised[!vapply(advertised, function(a) {
         any(grepl(paste0("\\b", a, "\\("), src))
@@ -438,6 +472,58 @@ MAX_EXPORTS <- 34L
         else paste0("all ", length(exps), " exports referenced")
       )
     }
+  ),
+  list(
+    id = "B13", cost = "quick", owner = "claude", blocking = TRUE,
+    what = "no Rd example calls a function the package does not export",
+    check = function() {
+      # Withdrawing a function from the API does not touch its examples,
+      # and R CMD check runs the examples of internal Rd pages too. The
+      # 0.10.0 trim unexported eight functions and left ten example
+      # blocks calling them unqualified, which check reported as two
+      # ERRORs and no test could see. The rule: a documented-but-
+      # unexported function may appear in an example only as
+      # `flexyBayes:::name()`.
+      rds <- list.files("man", pattern = "\\.Rd$", full.names = TRUE)
+      if (!length(rds)) {
+        return(.dod_ok(FALSE, "no man/ pages"))
+      }
+      exps <- .dod_exports()
+      rd_name <- function(rd) {
+        hit <- grep("^\\\\name\\{", .dod_read(rd), value = TRUE)
+        if (!length(hit)) return(NA_character_)
+        sub("^\\\\name\\{(.*)\\}.*$", "\\1", hit[[1]])
+      }
+      documented <- vapply(rds, rd_name, character(1), USE.NAMES = FALSE)
+      internal <- setdiff(stats::na.omit(documented), exps)
+      if (!length(internal)) {
+        return(.dod_ok(TRUE, "no documented internals"))
+      }
+      tmp <- tempfile()
+      on.exit(unlink(tmp), add = TRUE)
+      offenders <- character(0)
+      for (rd in rds) {
+        ok <- tryCatch({ tools::Rd2ex(rd, out = tmp); TRUE },
+                       error = function(e) FALSE)
+        if (!ok || !file.exists(tmp)) next
+        ex <- paste(.dod_read(tmp), collapse = "\n")
+        unlink(tmp)
+        if (!nzchar(trimws(ex))) next
+        for (nm in internal) {
+          # bare call, not already reached through the namespace
+          if (grepl(paste0("(?<![\\w:.])", nm, "\\s*\\("), ex, perl = TRUE)) {
+            offenders <- c(offenders, paste0(basename(rd), ":", nm))
+          }
+        }
+      }
+      .dod_ok(
+        length(offenders) == 0L,
+        if (length(offenders))
+          paste0(length(offenders), " unqualified: ",
+                 paste(utils::head(offenders, 8), collapse = ", "))
+        else paste0(length(internal), " documented internals, all qualified")
+      )
+    }
   )
 )
 
@@ -457,9 +543,14 @@ MAX_EXPORTS <- 34L
   ),
   list(
     id = "C2", cost = "quick", owner = "claude", blocking = TRUE,
-    what = "no export always abstains (fb_met_summary, fb_log_posterior)",
+    what = "no export always abstains (3 known unconditional abstainers)",
     check = function() {
-      zombies <- c("fb_met_summary", "fb_log_posterior")
+      # Every export whose only reachable outcome is a message and an
+      # empty return. fb_structured_cov() joined the list at 0.10.0: no
+      # active engine emits an fa() term, so its single return path is
+      # invisible(list()). A name is added here only by withdrawing it.
+      zombies <- c("fb_met_summary", "fb_log_posterior",
+                   "fb_structured_cov")
       present <- intersect(zombies, .dod_exports())
       .dod_ok(length(present) == 0L,
               if (length(present)) paste("still exported:",
@@ -501,13 +592,24 @@ MAX_EXPORTS <- 34L
   ),
   list(
     id = "C4", cost = "full", owner = "claude", blocking = TRUE,
-    what = "a boundary-pinned variance component always warns, any term type",
+    what = "a boundary-pinned variance component warns, on any Gaussian term",
     command = "testthat::test_file('tests/testthat/test-boundary-collapse.R')",
     check = function() {
+      # The oracle here was file.exists(), so the criterion passed while
+      # every test in the file could be failing. It runs them now.
       f <- "tests/testthat/test-boundary-collapse.R"
-      .dod_ok(file.exists(f),
-              if (file.exists(f)) "regression test present"
-              else "no test asserting the iid case warns")
+      if (!file.exists(f)) {
+        return(.dod_ok(FALSE, "no test asserting the iid case warns"))
+      }
+      if (!requireNamespace("pkgload", quietly = TRUE) ||
+            !requireNamespace("testthat", quietly = TRUE)) {
+        return(.dod_ok(FALSE, "pkgload/testthat absent; cannot run C4"))
+      }
+      suppressMessages(pkgload::load_all(".", quiet = TRUE))
+      res <- as.data.frame(testthat::test_file(f, reporter = "silent"))
+      bad <- sum(res$failed) + sum(res$error)
+      .dod_ok(bad == 0L,
+              sprintf("%d failed, %d passed", bad, sum(res$passed)))
     }
   ),
   list(
@@ -542,7 +644,7 @@ MAX_EXPORTS <- 34L
 .dod_section_d <- list(
   list(id = "D1", cost = "full", owner = "claude", blocking = TRUE,
        what = "testthat suite: 0 fail, 0 warn",
-       command = "review/phase_reports_093/scripts/bake_and_gate.sh gates"),
+       command = "review/phase_reports_0100/scripts/bake_and_gate.sh gates"),
   list(id = "D2", cost = "full", owner = "claude", blocking = TRUE,
        what = "R CMD check --as-cran, INLA present: 0/0/<=1",
        command = "R CMD check --as-cran flexyBayes_0.10.0.tar.gz"),
@@ -632,7 +734,14 @@ MAX_EXPORTS <- 34L
     return(list(status = "SKIP", detail = item$command %||% "full tier"))
   }
   if (is.null(item$check)) {
-    return(list(status = "SKIP", detail = item$command %||% "no check yet"))
+    # A blocking criterion with no in-process check is UNMET until its
+    # evidence is recorded, not passed. It used to report SKIP, and SKIP
+    # did not count, so D1-D9 -- the suite, both check runs, the grid,
+    # lint, pkgdown, the clean room, CI and coverage -- could every one
+    # be red while this script exited 0 and the header claimed it exits
+    # non-zero while any blocking criterion is unmet.
+    return(list(status = if (isTRUE(item$blocking)) "PENDING" else "SKIP",
+                detail = item$command %||% "no check yet"))
   }
   res <- tryCatch(item$check(), error = function(e) {
     .dod_ok(FALSE, paste("check errored:", conditionMessage(e)))
@@ -675,6 +784,7 @@ MAX_EXPORTS <- 34L
   n_pass <- 0L
   n_manual <- 0L
   n_skip <- 0L
+  n_pending <- 0L
 
   for (item in items) {
     res <- .dod_run_one(item, do_full)
@@ -682,6 +792,7 @@ MAX_EXPORTS <- 34L
     n_pass <- n_pass + (res$status == "PASS")
     n_manual <- n_manual + (res$status == "MANUAL")
     n_skip <- n_skip + (res$status == "SKIP")
+    n_pending <- n_pending + (res$status == "PENDING")
     cat(sprintf("%-4s %-6s %-62s\n", item$id, res$status,
                 substr(item$what, 1L, 62L)))
     if (nzchar(res$detail) && res$status != "PASS") {
@@ -690,8 +801,13 @@ MAX_EXPORTS <- 34L
   }
 
   cat(strrep("-", 78), "\n", sep = "")
-  cat(sprintf("PASS %d | FAIL %d (blocking) | MANUAL %d | SKIP %d\n",
-              n_pass, n_fail, n_manual, n_skip))
+  cat(sprintf(
+    "PASS %d | FAIL %d (blocking) | PENDING %d | MANUAL %d | SKIP %d\n",
+    n_pass, n_fail, n_pending, n_manual, n_skip))
+  if (do_full && n_pending > 0L) {
+    cat("PENDING is unmet, not passed: run each item's command and ",
+        "record its artefact.\n", sep = "")
+  }
 
   cat("\nExplicitly OUT of ", TARGET_VERSION,
       " - admitting one means editing this file:\n", sep = "")
@@ -700,7 +816,10 @@ MAX_EXPORTS <- 34L
   }
   cat("\n")
 
-  if (n_fail > 0L) {
+  # Quick tier gates on what it can read. The full tier is the release
+  # question, so there an unmet blocking criterion -- failed or merely
+  # unevidenced -- exits non-zero.
+  if (n_fail > 0L || (do_full && n_pending > 0L)) {
     quit(status = 1L)
   }
   invisible(NULL)

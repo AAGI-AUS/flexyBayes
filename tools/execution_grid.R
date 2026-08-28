@@ -460,11 +460,14 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
   ),
   list(
     # `ped()` and `vm()` are two spellings of one known-covariance term
-    # and shared a single matrix cell, so the grid executed `vm()` only
-    # and `ped()` was advertised without ever being fitted (audit item
-    # 9, 2026-08-27). Its own cell, on the carrier each engine documents:
+    # -- every branch in the package tests `%in% c("vm", "ped")` -- so the
+    # capability is one row and the spelling is a surface on it. The grid
+    # executed `vm()` only, and `ped()` was advertised without ever being
+    # fitted (audit item 9, 2026-08-27). This cell fits the same row
+    # through the other spelling, on the carrier each engine documents:
     # INLA the sparse precision, brms the dense covariance.
-    model_class = "Known-covariance pedigree random effect, ped() spelling",
+    model_class = "Known-covariance genomic / pedigree random effect",
+    spelling_variant = "ped",
     inla = paste0('flexybayes(y ~ env, ',
                   'random = ~ ped(gen, cov = fb_cov(Q, type = "precision")), ',
                   'data = d_cap, known_matrices = list(Q = q_cap))'),
@@ -554,6 +557,16 @@ if (length(.m_missing) > 0L || length(.m_extra) > 0L) {
 
 for (spec in .M_CALLS) {
   row <- .matrix[.matrix$model_class == spec$model_class, , drop = FALSE]
+  # A capability may be reachable through more than one spelling. Those
+  # are separate cells against ONE matrix row: inventing a second row
+  # would claim a second capability the engines do not have. The suffix
+  # keeps the cell ids unique; `matrix_cell` stays keyed on the row, so
+  # matrix coverage still counts each capability once.
+  sfx <- if (is.null(spec$spelling_variant)) {
+    ""
+  } else {
+    paste0("-", spec$spelling_variant)
+  }
   for (be in c("inla", "brms")) {
     verdict <- row[[be]]
     key <- paste0("cap-", .m_slug(spec$model_class), "-", be)
@@ -567,7 +580,7 @@ for (spec in .M_CALLS) {
     )
     code <- sub(")$", tail_args, spec[[be]])
     .add_cell(
-      id = paste0("M-", .m_slug(spec$model_class), "-", be),
+      id = paste0("M-", .m_slug(spec$model_class), sfx, "-", be),
       section = "M",
       code = code,
       expected = .m_expectation(verdict),
@@ -582,10 +595,11 @@ for (spec in .M_CALLS) {
       } else {
         "gaussian"
       },
-      variant = .m_slug(spec$model_class),
+      variant = paste0(.m_slug(spec$model_class), sfx),
       matrix_cell = key
     )
-    .matrix_cells <- rbind(.matrix_cells, data.frame(
+    if (!key %in% .matrix_cells$cell) .matrix_cells <- rbind(.matrix_cells,
+      data.frame(
       cell = key,
       model_class = spec$model_class,
       spelling = row$spelling,
