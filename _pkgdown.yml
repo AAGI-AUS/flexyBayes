@@ -94,7 +94,6 @@ reference:
       - backend_decision
       - canonical_names
       - fb_backend_status
-      - fb_structured_cov
       - fb_refusals
       - prior_summary
       - ranef

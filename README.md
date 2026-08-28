@@ -148,13 +148,13 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 > `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the
 > per-engine reasons.
 
-**Breeder MET summaries.** `fb_met_summary()` (overall performance, stability,
-GxE BLUPs, factor loadings, environment genetic correlations) was computed
-from a factor-analytic (`fa(env, k):gen`) fit's identified *realised*
-effects on the engine withdrawn in 0.9.3 (see `NEWS.md`); no active engine
-produces that fit shape, so the function now refuses unconditionally with a
-pointer to the right path. The INLA MET route gives variance components via
-`summary()` / `fb_structured_cov()`.
+**Breeder MET summaries.** Overall performance, stability, GxE BLUPs, factor
+loadings and environment genetic correlations were computed from a
+factor-analytic (`fa(env, k):gen`) fit's identified *realised* effects on the
+engine withdrawn in 0.9.3 (see `NEWS.md`). No active engine produces that fit
+shape, so that summary is unavailable in this release and its entry point is
+no longer exported. The INLA MET route gives variance components via
+`summary()`.
 
 ## Installation
 
@@ -265,8 +265,8 @@ the *inference*. It is not independent evidence about the model: both
 fits come from the same parsed representation, so a mistranslation is
 common-mode and triangulates perfectly. The *cross-engine triangulation*
 vignette works through the disagreement patterns, and
-`backend_independence_registry` records what code independence has been
-certified.
+the package keeps an internal registry of which code paths the two engines
+have been certified not to share.
 
 `canonical_names()` does the work of aligning backend-native parameter
 names (brms's `sd_g__Intercept`, INLA's `Precision for g` on the
@@ -521,8 +521,12 @@ structured refusal naming the gap, not a quiet wrong answer.
   covariance is built over survives a lost plot. That preserves the
   representation, not information: under ignorability the parameter
   posterior is the same either way, and where missingness depends on the
-  unobserved response both augmenting and omitting are biased. Non-Gaussian
-  missing responses on brms are refused.
+  unobserved response both augmenting and omitting are biased. That
+  identity is a statement about the posterior and not a promise about what
+  an optimiser returns -- the two settings hand the engine an intact design
+  and a ragged one, and on a weakly identified mode they can land in
+  different places. See `?na_action`. Non-Gaussian missing responses on
+  brms are refused.
 
 ## Requirements
 

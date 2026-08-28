@@ -116,7 +116,7 @@ introduced in subsequent vignettes:
 
 ```r
 install.packages(c("emmeans", "marginaleffects", "bayesplot",
-                   "posterior", "loo", "effectsize", "agridat"))
+                   "posterior", "loo", "agridat"))
 ```
 
 If INLA cannot be installed on your platform, the package degrades

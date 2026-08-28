@@ -134,7 +134,9 @@
 #'   interval per lens, the difference, and an interval-overlap flag),
 #'   `gebv` (the Pearson / Spearman correlation of the matched breeding
 #'   values and the number in common), the lens labels, and the caveat.
-#' @seealso [triangulate()], [genomic_summary()], [triangulate_gwas()].
+#' @seealso [triangulate()], [genomic_summary()]. The GWAS counterpart
+#'   `triangulate_gwas()` is internal from 0.10.0 and is reached as
+#'   `flexyBayes:::triangulate_gwas()`.
 #' @examples
 #' # A Bayesian posterior (draws) against a field-standard REML point lens.
 #' set.seed(1)
@@ -284,7 +286,7 @@ print.triangulate_genomic_result <- function(x, ...) {
 #' )
 #' a <- list(results = mk(c(1, 4)), lambda_gc = 1.01)
 #' b <- list(results = mk(c(1, 4)), lambda_gc = 0.99)
-#' triangulate_gwas(a, b)
+#' flexyBayes:::triangulate_gwas(a, b)
 #' @keywords internal
 triangulate_gwas <- function(a, b, alpha = 0.05, top_k = 10L) {
   ra <- .fb_gwas_results(a)

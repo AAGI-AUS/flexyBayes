@@ -95,7 +95,7 @@ object so the shared diagnostics, prediction, and interop methods apply:
 | `canonical_names()` | experimental | S3 generic returning the canonical-name registry view for a fit. Methods for every fit subclass. |
 | `fb_refusals()` | experimental | The refusal vocabulary as a table (code, message template, since-version). The registry is the count -- no document quotes a number of refusal codes. |
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
-| `fb_structured_cov()` | experimental | The identified covariance of a factor-analytic structured-covariance term. |
+| `fb_structured_cov()` | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
 | `proceed()`, `cat_code()` | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. |
 
 ## Interoperability contract
@@ -201,6 +201,12 @@ the same density on the standard-deviation scale, so the two carry one prior and
 
 When an experimental export is renamed, restructured, or removed:
 
+**0.10.0 did not follow this cycle.** Eleven exports were withdrawn in one step
+with no `deprecate_warn()` release ahead of them, on the ground that the package
+has never been published and so has no installed base to warn. The policy below
+governs from the first public release onward, and a withdrawal without a cycle
+after that is a break of it, not a precedent set by this one.
+
 1. The old call path emits `lifecycle::deprecate_warn()` for at least one minor
    release.
 2. The next minor release moves it to `lifecycle::deprecate_stop()` -- the
@@ -213,22 +219,25 @@ argument for the rest of the 0.x series.
 
 ## Pinning
 
-Production users who need stability should pin to a specific 0.9.x patch via
+Production users who need stability should pin to a specific 0.10.x patch via
 `renv::snapshot()` until v1.0 lands.
 
 ## Added on the 0.8.x line (all experimental)
 
-The 0.8.x line added the exports below. All are **experimental** under the
-ladder above; none changes the stability posture of the lean-core
-fitting / triangulation surface.
+The 0.8.x line added the entries below. All were **experimental** under the
+ladder above; none changed the stability posture of the lean-core
+fitting / triangulation surface. **Rows marked withdrawn are no longer
+exported as of 0.10.0** (see `NEWS.md`); the functions remain in the package as
+internals, so a caller reaching one now gets "could not find function" rather
+than the behaviour described.
 
 | Export | Added | Notes |
 |---|---|---|
-| `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. |
-| `fb_met_summary()` | 0.8.0 | Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
+| `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. `triangulate_gwas()` **withdrawn at 0.10.0**. |
+| `fb_met_summary()` | 0.8.0 | **Withdrawn at 0.10.0.** Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
 | `fb_gblup_cv()` | 0.8.0 | Genomic-prediction accuracy by cross-validation. |
-| `fb_gwas()` | 0.8.0 | EMMAX / P3D whole-genome scan. |
-| `tidy()` / `glance()` / `augment()` | 0.8.1 | broom-style accessors (re-exported from `generics`). `tidy()` has a method for every fit subclass. `glance()` / `augment()` describe a sampled fit and refuse by name on an INLA fit. |
-| `fb_gev()` / `fb_dirichlet()` | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). |
-| `fb_log_posterior()` | 0.8.2 | Constellation C4 producer. The engine withdrawn in 0.9.3 was the only one that evaluated the log density, so the method now abstains unconditionally with a typed message (`fb_c4_unavailable`) rather than returning a number. |
-| `glance.flexybayes_inla()` / `augment.flexybayes_inla()` | 0.8.3 | Explicit, classed refusals for INLA fits, pointing users to `tidy()`, `summary()`, and `fb_structured_cov()` (an INLA fit previously raised a bare "no applicable method" error). |
+| `fb_gwas()` | 0.8.0 | EMMAX / P3D whole-genome scan. **Withdrawn at 0.10.0.** |
+| `tidy()` / `glance()` / `augment()` | 0.8.1 | broom-style accessors (re-exported from `generics`). `tidy()` has a method for every fit subclass. `glance()` returns a row for an INLA fit with the sampler-specific columns `NA`; `augment()` refuses by name on one. |
+| `fb_gev()` / `fb_dirichlet()` | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). **All six withdrawn at 0.10.0.** |
+| `fb_log_posterior()` | 0.8.2 | **Withdrawn at 0.10.0.** Constellation C4 producer. The engine withdrawn in 0.9.3 was the only one that evaluated the log density, so the method now abstains unconditionally with a typed message (`fb_c4_unavailable`) rather than returning a number. |
+| `glance.flexybayes_inla()` / `augment.flexybayes_inla()` | 0.8.3 | Added so an INLA fit stops raising a bare "no applicable method" error. `glance()` has since returned a one-row summary with the sampler columns `NA` rather than refusing (0.9.3, D15); `augment()` still refuses by name and points at `tidy()` and `predict()`. |

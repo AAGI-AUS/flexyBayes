@@ -141,8 +141,8 @@ package's two paths against each other rather than against another package.
 **What.** The numerical-validation registry: one row per validation
 scenario, in the schema the validation ladder reads
 (`Config/rpkg/validationTier` in `DESCRIPTION`, `V2` for this package).
-Forty-five rows across five studies, plus three stability cells and one
-calibration study. Every row is an existing study. Nothing was simulated
+Forty-one study rows across five studies, plus three stability cells and
+one calibration study: forty-five registered scenarios in all. Every row is an existing study. Nothing was simulated
 to reach a floor, and where a floor is not reached the shortfall is
 written down below rather than filled with a row that would not survive
 being read.

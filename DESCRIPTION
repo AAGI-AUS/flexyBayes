@@ -42,11 +42,11 @@ Imports:
     stats,
     methods,
     graphics,
-    splines,
     mgcv,
     Matrix,
     utils
 Suggests:
+    splines,
     brms,
     INLA,
     fst (>= 0.9.0),

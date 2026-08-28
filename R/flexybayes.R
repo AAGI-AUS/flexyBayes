@@ -414,7 +414,6 @@
 #'   printCoefmat qqline qqnorm runif
 #' @importFrom graphics abline axis hist legend lines par segments
 #' @importFrom methods is
-#' @importFrom splines bs
 #' @export
 flexybayes <- function(
   fixed,

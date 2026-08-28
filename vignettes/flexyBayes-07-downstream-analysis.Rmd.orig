@@ -39,8 +39,8 @@ posterior_ok <- requireNamespace("posterior", quietly = TRUE)
 A fitted `flexybayes` object is the input to the standard R modelling
 ecosystem: `summary()`, `predict()`, `emmeans::emmeans()`,
 `marginaleffects::predictions()`, `bayesplot::*`, `posterior::*`,
-`loo::loo()`, `effectsize::standardize_parameters()`. Each of these
-downstream tools answers a different question. This vignette walks
+`loo::loo()`. Each of these downstream tools answers a different
+question. This vignette walks
 through the most common ones using a single fit as the running
 example.
 
@@ -308,18 +308,18 @@ predicted to do better than model B by `elpd_diff` log-points per
 observation, with uncertainty `se_diff`. It is *not* a hypothesis
 test.
 
-# 7. `effectsize` -- standardised contrasts and partial $R^2$
+# 7. Standardised contrasts and partial $R^2$
 
-`effectsize` (Ben-Shachar, Lüdecke, & Makowski, 2020) standardises
-contrasts to a common scale (Cohen's $d$, partial $R^2$) and is
-useful when reporting effect magnitudes across studies that use
-different response scales.
+Standardising a contrast to a common scale (Cohen's $d$, partial
+$R^2$) is useful when reporting effect magnitudes across studies on
+different response scales; `effectsize` (Ben-Shachar, Lüdecke, &
+Makowski, 2020) is the usual route to it in a frequentist workflow.
 
-The package's `flexybayes`-class method dispatches via
-`parameters::model_parameters()`, which does not yet recognise the
-`flexybayes` class -- `effectsize` integration is queued for a
-subsequent release. For now, the manual standardisation path is
-straightforward:
+flexyBayes provides no `effectsize` or `parameters` method, and none
+is promised: `parameters::model_parameters()` does not recognise the
+`flexybayes` class, and an integration the package has not built is
+not listed as one it has. Standardising from the draws directly is a
+two-line operation and is the supported path:
 
 ```{r effectsize-manual, eval = brms_ok}
 draws  <- flexyBayes::fb_as_draws_simple(fit)
