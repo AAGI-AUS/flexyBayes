@@ -44,3 +44,4 @@ triangulate_gwas(a, b)
 \seealso{
 \code{\link[=fb_gwas]{fb_gwas()}}, \code{\link[=triangulate_genomic]{triangulate_genomic()}}.
 }
+\keyword{internal}

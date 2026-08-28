@@ -36,3 +36,4 @@ fam$parameters
 \seealso{
 \code{\link[=fb_gev]{fb_gev()}}
 }
+\keyword{internal}

@@ -27,3 +27,4 @@ rowSums(X)
 \seealso{
 \code{\link[=fb_dirichlet]{fb_dirichlet()}}
 }
+\keyword{internal}

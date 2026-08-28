@@ -1098,4 +1098,3 @@ anova.flexybayes <- function(object, ...) {
 
   invisible(result)
 }
-

@@ -285,7 +285,7 @@ print.triangulate_genomic_result <- function(x, ...) {
 #' a <- list(results = mk(c(1, 4)), lambda_gc = 1.01)
 #' b <- list(results = mk(c(1, 4)), lambda_gc = 0.99)
 #' triangulate_gwas(a, b)
-#' @export
+#' @keywords internal
 triangulate_gwas <- function(a, b, alpha = 0.05, top_k = 10L) {
   ra <- .fb_gwas_results(a)
   rb <- .fb_gwas_results(b)

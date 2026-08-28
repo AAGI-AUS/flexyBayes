@@ -51,3 +51,4 @@ fit$estimates
 \seealso{
 \code{\link[=fb_family_dirichlet]{fb_family_dirichlet()}}, \code{\link[=rdirichlet]{rdirichlet()}}, \code{\link[=tidy.fb_dirichlet_fit]{tidy.fb_dirichlet_fit()}}
 }
+\keyword{internal}

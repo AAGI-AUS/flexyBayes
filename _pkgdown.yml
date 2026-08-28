@@ -164,32 +164,13 @@ reference:
       - model.matrix.flexybayes
       - update.flexybayes
       - as.data.frame.fb_plan
-  - title: Specialised models
+  - title: Genomics
     desc: >
-      Extreme-value and Dirichlet regression, genome-wide association,
-      and genomic selection, with their fit methods and the cross-engine
-      log-posterior producer.
+      Genomic selection and the cross-engine genomic accessors.
     contents:
-      - fb_gev
-      - print.fb_gev_fit
-      - tidy.fb_gev_fit
-      - fb_dirichlet
-      - print.fb_dirichlet_fit
-      - tidy.fb_dirichlet_fit
-      - fb_gwas
-      - triangulate_gwas
       - fb_gblup_cv
       - genomic_summary
       - triangulate_genomic
-      - fb_met_summary
-      - fb_log_posterior
-  - title: Distribution helpers
-    desc: Custom response families and their random-number generators.
-    contents:
-      - fb_family_gev
-      - rgev
-      - fb_family_dirichlet
-      - rdirichlet
   - title: Datasets
     contents:
       - met_example

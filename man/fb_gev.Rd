@@ -50,3 +50,4 @@ fit$estimates
 \seealso{
 \code{\link[=fb_family_gev]{fb_family_gev()}}, \code{\link[=rgev]{rgev()}}, \code{\link[=tidy.fb_gev_fit]{tidy.fb_gev_fit()}}
 }
+\keyword{internal}

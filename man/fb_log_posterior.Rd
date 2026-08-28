@@ -92,3 +92,4 @@ than discovering the gap by a missing method.
 the returned callable into a Gaussian-mixture proxy).
 }
 \concept{flexyBayes interop}
+\keyword{internal}

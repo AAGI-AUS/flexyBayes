@@ -93,7 +93,7 @@
 #' methods are retained so a consumer can dispatch on the abstention rather
 #' than discovering the gap by a missing method.
 #'
-#' @export
+#' @keywords internal
 fb_log_posterior <- function(fit, ...) {
   UseMethod("fb_log_posterior")
 }

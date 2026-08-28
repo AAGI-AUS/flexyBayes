@@ -15,6 +15,26 @@ blocking criterion is unmet.
   consecutive waiver on the same floors is the pattern a waiver exists to
   prevent.
 
+* **Ten functions are withdrawn from the public API.** The extreme-value
+  and Dirichlet maximum-likelihood fitters (`fb_gev()`, `fb_family_gev()`,
+  `rgev()`, `fb_dirichlet()`, `fb_family_dirichlet()`, `rdirichlet()`),
+  the EMMAX genome-wide association pair (`fb_gwas()`,
+  `triangulate_gwas()`), and the two exports that abstained
+  unconditionally (`fb_met_summary()`, `fb_log_posterior()`) are no longer
+  exported. They remain in the package, documented as internal and covered
+  by their existing tests, and their S3 print and tidy methods stay
+  registered so the objects still print.
+
+  The reason is identity rather than arithmetic. This package's premise is
+  a Bayesian posterior where REML returns a point estimate; four of the
+  withdrawn fitters are maximum-likelihood or frequentist, none of them
+  has a cell in the 408-cell execution grid, and together they were a
+  quarter of the public surface sitting outside the package's own
+  execution oracle. `fb_gblup_cv()`, `genomic_summary()` and
+  `triangulate_genomic()` were considered for the same treatment and kept:
+  the first is taught and executed in the multi-environment-trials and
+  genomics vignette, and the other two operate on posterior draws.
+
 * **`effectsize` is no longer listed as a supported downstream package.**
   It was named in the `DESCRIPTION` Description and `Suggests` and in
   `README.md`, and no method for it existed. Removed from all three

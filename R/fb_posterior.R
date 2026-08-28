@@ -83,7 +83,10 @@
     return(NULL)
   }
   if (!is.null(fit$brms)) {
-    da <- tryCatch(posterior::as_draws_array(fit$brms), error = function(e) NULL)
+    da <- tryCatch(
+      posterior::as_draws_array(fit$brms),
+      error = function(e) NULL
+    )
     if (!is.null(da)) {
       return(da)
     }
@@ -103,7 +106,9 @@
 .fb_mcmc_diagnostics <- function(fit) {
   da <- .fb_draws_array_or_null(fit)
   if (is.null(da)) {
-    return(list(applicable = FALSE, min_ess_bulk = NA_real_, max_rhat = NA_real_))
+    return(list(
+      applicable = FALSE, min_ess_bulk = NA_real_, max_rhat = NA_real_
+    ))
   }
   s <- posterior::summarise_draws(
     da,

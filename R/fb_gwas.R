@@ -181,7 +181,7 @@
 #' head(scan$results[order(scan$results$p_value), ])
 #' scan$lambda_gc
 #' }
-#' @export
+#' @keywords internal
 fb_gwas <- function(
   formula,
   data,

@@ -53,7 +53,7 @@
 #' genotype-by-environment covariance of a `diag()` or `us()` term through
 #' `brms::VarCorr()`.
 #'
-#' @export
+#' @keywords internal
 fb_met_summary <- function(
   fit,
   genotype_levels = NULL,

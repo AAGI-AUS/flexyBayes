@@ -41,7 +41,7 @@
 #' @examples
 #' fam <- fb_family_dirichlet()
 #' fam$family
-#' @export
+#' @keywords internal
 fb_family_dirichlet <- function() {
   structure(
     list(
@@ -83,7 +83,7 @@ fb_family_dirichlet <- function() {
 #' set.seed(1)
 #' X <- rdirichlet(5L, alpha = c(2, 5, 3))
 #' rowSums(X)
-#' @export
+#' @keywords internal
 rdirichlet <- function(n, alpha) {
   if (!is.numeric(alpha) || length(alpha) < 2L || any(alpha <= 0)) {
     stop(
@@ -138,7 +138,7 @@ rdirichlet <- function(n, alpha) {
 #' X <- rdirichlet(300L, alpha = c(2, 5, 3))
 #' fit <- fb_dirichlet(X)
 #' fit$estimates
-#' @export
+#' @keywords internal
 fb_dirichlet <- function(
   x,
   method = "ml",

@@ -85,3 +85,4 @@ association studies. \emph{Statistical Science}, 24(4), 451-471.
 VanRaden, P. M. (2008). Efficient methods to compute genomic
 predictions. \emph{Journal of Dairy Science}, 91(11), 4414-4423.
 }
+\keyword{internal}

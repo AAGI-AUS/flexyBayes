@@ -47,7 +47,7 @@
 #' @examples
 #' fam <- fb_family_gev()
 #' fam$parameters
-#' @export
+#' @keywords internal
 fb_family_gev <- function() {
   structure(
     list(
@@ -105,7 +105,7 @@ fb_family_gev <- function() {
 #' set.seed(1)
 #' y <- rgev(100L, location = 10, scale = 2, shape = 0.15)
 #' summary(y)
-#' @export
+#' @keywords internal
 rgev <- function(n, location, scale, shape = 0) {
   .check_positive_scalar(scale, "scale")
   u <- stats::runif(n)
@@ -154,7 +154,7 @@ rgev <- function(n, location, scale, shape = 0) {
 #' y <- rgev(200L, location = 10, scale = 2, shape = 0.1)
 #' fit <- fb_gev(y)
 #' fit$estimates
-#' @export
+#' @keywords internal
 fb_gev <- function(
   y,
   return_periods = c(10, 50, 100),
