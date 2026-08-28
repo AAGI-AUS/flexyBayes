@@ -294,7 +294,13 @@ test_that("the sleepstudy collapse is not reported as agreement", {
   skip_if_not_installed("lme4")
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
-    flexyBayes.silence_convergence_warning = TRUE
+    flexyBayes.silence_convergence_warning = TRUE,
+    # The INLA fit below lands on the boundary for sd_Subject on this
+    # dataset (see the comment further down), which the 0.10.0 detector
+    # correctly warns about. That is the condition under test here, not
+    # an unexpected event, and it is intermittent -- expect_warning()
+    # would fail on the runs where INLA finds the other mode.
+    flexyBayes.silence_boundary_collapse_warning = TRUE
   )
   data(sleepstudy, package = "lme4", envir = environment())
 

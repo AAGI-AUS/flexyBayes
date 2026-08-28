@@ -105,3 +105,32 @@ test_that("the warning can be silenced by option", {
     expect_silent(.fb_warn_boundary_collapse(fit))
   )
 })
+
+# The calibration itself, pinned. The threshold started at 0.05 of the
+# residual SD and fired on seven suite fixtures whose components are null
+# by construction (`mk_inla_data()` is `y = rnorm(30)` with no group
+# effect). A sweep of 112 zero-variance INLA fits put the floor for a
+# genuinely null component at 0.0228 of the residual SD; the degenerate
+# mode measured on besag.met C1 sits at 2.5e-04. These two tests hold the
+# threshold inside that gap, so moving it far in either direction fails
+# here rather than in a release check.
+
+test_that("a null component at the measured floor does not warn", {
+  fit <- make_fit(make_vc(
+    c("sigma", "sd_gen"),
+    q97.5 = c(1.088, 0.0228 * 1.088),
+    sigma_median = 1.088
+  ))
+  expect_length(.fb_boundary_collapse_reasons(fit), 0L)
+  expect_silent(.fb_warn_boundary_collapse(fit))
+})
+
+test_that("the measured degenerate mode still warns", {
+  fit <- make_fit(make_vc(
+    c("sigma", "sd_gen"),
+    q97.5 = c(15.6, 0.00396),
+    sigma_median = 15.6
+  ))
+  expect_length(.fb_boundary_collapse_reasons(fit), 1L)
+  expect_warning(.fb_warn_boundary_collapse(fit), "at the boundary")
+})

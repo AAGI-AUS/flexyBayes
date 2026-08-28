@@ -18,11 +18,51 @@
 # column is easy to read past, and a zero genotype variance read as a
 # result rather than as a failed mode is a scientific conclusion.
 #
-# The threshold is calibrated for the degenerate mode, not for a small
-# variance. A component that is genuinely zero still returns a posterior
-# well away from the boundary -- 240 rows simulated with no group effect
-# at all give an upper bound near 0.43 of the residual SD -- so this
-# does not fire on an honestly-small component.
+# The threshold is calibrated against a measured floor, not a guess. An
+# earlier version of this file put it at 0.05 of the residual SD on the
+# strength of one simulation at n = 240, and claimed a genuinely null
+# component returns an upper bound near 0.43 of the residual SD. The
+# package's own test suite falsified that: `mk_inla_data()` in
+# test-emit-inla.R is `y = rnorm(30)` with `g` assigned cyclically -- no
+# group effect exists -- and the fit returns an upper bound at 0.025 of
+# the residual SD, so the warning fired on seven fixtures whose
+# components are null by construction.
+#
+# Measured 2026-08-28 by a sweep of 112 INLA fits with the group SD set
+# to exactly zero, crossing n in {30, 60, 120, 240, 480} with 5, 10 and
+# 20 groups, 8 seeds per cell (scratch script, `y ~ 1 + f(g, "iid")`,
+# package default prior). The ratio q97.5(sd_g) / sigma is flat in both
+# n and the group count -- min 0.0228, 5th percentile 0.0239, median
+# 0.0263 -- because it is a floor set by the prior, not by the data. A
+# truly null component does not go below about 0.023.
+#
+# The degenerate mode sits two orders of magnitude lower: `agridat`
+# besag.met county C1 returned sd_gen upper bounds of 0.00396 against a
+# residual SD near 15.6 (a ratio of 2.5e-4) on one run of three, the
+# other two returning 0.0176 and 11.75 from the identical call. The fit
+# is bistable and which mode it finds is not reproducible. This is the
+# INLA degenerate-mode non-reproducibility the getting-started and
+# dispatch vignettes already teach, reaching a plain iid random effect.
+#
+# 0.005 therefore sits about 4.6 times below the lowest null ratio
+# measured and about 20 times above the highest degenerate one, and the
+# gap either side is what makes the reading defensible. The floor is a
+# property of the default prior; a user who sets a very different prior
+# on the component moves it.
+#
+# On a collapsed run `summary(fit)$varcomp` does mark the row
+# `note = "collapsed"`. What was missing is a warning: a note in a table
+# column is easy to read past, and a zero genotype variance read as a
+# result rather than as a failed mode is a scientific conclusion.
+#
+# Two limits on reach, both structural rather than oversight. The
+# detector needs a residual SD to compare against, so it reads Gaussian-
+# scale fits and stays silent on families that carry no `sigma` row. And
+# it needs credible bounds, so it covers the per-row emit paths only:
+# the aggregated (streaming) emitters store `variance_comps` as posterior
+# means with no quantiles (R/emit_gaussian_aggregated.R,
+# R/emit_count_aggregated.R), and there is nothing there to read an upper
+# bound from until those emitters compute one.
 #
 # The detector is deliberately the same shape as the spatial one and
 # reads the same canonical table (`extras$variance_comps`, columns
@@ -32,9 +72,9 @@
 # negligible fraction of the residual scale. It does not claim to know
 # whether the component is truly zero.
 
-# The same fraction the spatial detector uses, for one reason: a reader
-# comparing the two warnings should not have to learn two thresholds.
-.FB_BOUNDARY_COLLAPSE_FRACTION <- 0.05
+# Measured floor (see the header): a null component bottoms out near
+# 0.023 of the residual SD, a degenerate one at 2.5e-4 or below.
+.FB_BOUNDARY_COLLAPSE_FRACTION <- 0.005
 
 # Residual scale for the fit, on the SD scale. Prefer the posterior
 # median attribute the canonical table carries; fall back to the table's
