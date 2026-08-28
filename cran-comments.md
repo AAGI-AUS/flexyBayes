@@ -58,6 +58,16 @@ Found the following (possibly) invalid URLs:
     Message: Not Found
 ```
 
+A local run may show a second NOTE, `checking for future file
+timestamps ... unable to verify current time`. That is this machine, not
+this package: the check reaches an external time service to decide
+whether any file is future-dated, and the service is not reachable from
+the maintainer's network. It appears in whichever of the two runs happens
+to make the call while the service is unreachable, and it is absent from
+the other run on the same tree minutes apart. It is not reproduced here
+as an expected NOTE because it should not occur on a builder with
+network access.
+
 It carries three items.
 
 **New submission.** Expected, and it resolves on acceptance.
