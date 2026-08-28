@@ -1,6 +1,6 @@
 ## Submission
 
-This is a new submission of `flexyBayes`, version 0.9.3.
+This is a new submission of `flexyBayes`, version 0.10.0.
 
 The package specifies mixed models in ASReml-style or brms-style formula
 syntax and estimates them through one of two inference engines, INLA or
@@ -23,21 +23,21 @@ unless it happened.
 
 ## R CMD check results
 
-The check artefacts for this release are `00check_v0.9.3_inla-present.log`
-and `00check_v0.9.3_inla-absent.log` -- one run with INLA installed, one
+The check artefacts for this release are `00check_v0.10.0_inla-present.log`
+and `00check_v0.10.0_inla-absent.log` -- one run with INLA installed, one
 without, since the package behaves differently, and is tested differently,
 in each case. Both are produced at the release bake (after the work
-recorded in `WS/review/phase_reports_093/reports/`) and kept with the
+recorded in `WS/review/phase_reports_0100/reports/`) and kept with the
 release records alongside the tarball; that is where to read the exact
-error/warning/note count for 0.9.3, rather than a number quoted here with
+error/warning/note count for 0.10.0, rather than a number quoted here with
 no artefact behind it.
 
-The note below is what the 0.9.1 and 0.9.2 check artefacts both carry, and
-is expected again for 0.9.3 because neither of the two conditions that
-produce it changed in this release: `DESCRIPTION`'s
-`Additional_repositories:` still names only the INLA repository, and its
-`URL:` field still names the not-yet-public documentation site. Reproduced
-from the 0.9.2 artefact so the shape is not asserted from memory:
+The note below is the one the check produces. It is transcribed from this
+release's own INLA-absent artefact rather than from an earlier release, so
+its shape is read off a run that happened and not asserted from memory.
+Both conditions that produce it are unchanged: `DESCRIPTION`'s
+`Additional_repositories:` names only the INLA repository, and its `URL:`
+field names the not-yet-public documentation site.
 
 ```
 * checking CRAN incoming feasibility ... NOTE
@@ -88,11 +88,14 @@ edited.
 
 ## Cores
 
-`Config/testthat/parallel` is `true`. testthat's own worker default is
-a hard-coded two (verified against the installed testthat 3.3.2
-sources), which is within the CRAN two-core limit. Nothing in the
-package calls `parallel::detectCores()`, sets `mc.cores`, or opens a
-cluster, and both calls into INLA's posterior sampler pin
+`Config/testthat/parallel` is `false`, so the suite runs in the calling
+process and starts no workers at all. It was `true` up to 0.9.3, but the
+declaration was never usable: parallel workers stalled indefinitely on
+the INLA and brms fits, so every release ran the suite sequentially from
+outside anyway. Declaring what actually runs is the honest setting, and
+it is trivially within the CRAN two-core limit. Nothing in the package
+calls `parallel::detectCores()`, sets `mc.cores`, or opens a cluster,
+and both calls into INLA's posterior sampler pin
 `num.threads = "1:1"`. No sampler is given a `cores` argument anywhere
 in the tests, examples or vignettes, so brms runs on its default of one.
 
@@ -112,8 +115,8 @@ vignette build needs neither INLA nor a Stan toolchain.
 ## `fb_log_posterior()`: no active producer, no oracle to skip
 
 `fb_log_posterior()` (the log-posterior producer downstream tools such as
-`proxymix` compress into a closed-form proxy) is exported but currently
-dormant: brms and INLA both abstain with a typed, informative
+`proxymix` compress into a closed-form proxy) is internal in this release
+and dormant: brms and INLA both abstain with a typed, informative
 `fb_c4_unavailable` condition rather than a producer (INLA's posterior is
 a deterministic Laplace/grid approximation, not a sampling log-density,
 and brms's Stan-unconstrained-scale parameter mapping is version-fragile

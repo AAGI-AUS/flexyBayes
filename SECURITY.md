@@ -3,13 +3,13 @@
 ## Supported versions
 
 Security fixes are issued against the development release in progress
-(`0.9.3`, on the 0.9.x line) and the latest CRAN release (when present).
+(`0.10.0`, on the 0.10.x line) and the latest CRAN release (when present).
 Older released versions are not back-patched.
 
 | Version | Supported |
 |---------|-----------|
-| 0.9.x   | yes (the line under active development) |
-| 0.3.x – 0.8.x | best-effort (local release tarballs only; no public release) |
+| 0.10.x  | yes (the line under active development) |
+| 0.3.x – 0.9.x | best-effort (local release tarballs only; no public release) |
 | < 0.3   | no        |
 
 ## Reporting a vulnerability

@@ -3,7 +3,7 @@
   "description": "<p>An R package for specifying mixed models in ASReml-style or brms-style formula syntax and estimating them via INLA or brms (Stan), with cross-engine posterior triangulation as the signature output. Variance components take a weakly-informative bounded-uniform prior on the SD scale by default, with penalised-complexity (Simpson et al. 2017), half-Cauchy, and other priors available. Supports Gaussian, binomial, Poisson, negative binomial, gamma, and beta families; selected structured covariance models (diagonal and unstructured genotype-by-environment variances, per-level residual variances, separable AR1 spatial fields on INLA); genomic relationship matrices (GBLUP); pedigree-based models; and univariate P-splines. Structures outside that set raise typed refusals naming the nearest alternative.</p>",
   "upload_type": "software",
   "license": "MIT",
-  "version": "0.9.3",
+  "version": "0.10.0",
   "creators": [
     {
       "name": "Moldovan, Max",

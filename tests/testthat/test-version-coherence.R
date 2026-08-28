@@ -75,21 +75,41 @@ test_that("every metadata surface names the DESCRIPTION version", {
   }
 })
 
+# Version strings on a line, compared numerically against the current one.
+# A hand-written regex for "any line older than this one" was wrong here:
+# it read "0\\.[0-8]\\." and so could not see the 0.9.x line at all once
+# DESCRIPTION reached 0.10.0 -- the blind spot covered exactly the
+# transition being made. Parsing each version and comparing has no such
+# gap, and needs no edit at the next bump.
+.vc_stale_on <- function(line, current) {
+  found <- regmatches(line, gregexpr("[0-9]+\\.[0-9]+\\.[0-9x]+", line))[[1]]
+  if (!length(found)) {
+    return(FALSE)
+  }
+  any(vapply(
+    found,
+    function(v) {
+      isTRUE(tryCatch(
+        package_version(sub("x$", "0", v)) < current,
+        error = function(e) FALSE
+      ))
+    },
+    logical(1)
+  ))
+}
+
 test_that("no superseded version is described as the current one", {
   root <- .vc_root()
   skip_if(is.na(root), "not running from the source tree")
   version <- .vc_version()
-  # Everything on a lower minor line than the current one.
-  stale <- "0\\.[0-8]\\.[0-9x]+"
+  current <- package_version(version)
 
   for (surface in .VC_SURFACES) {
     path <- file.path(root, surface)
     skip_if_not(file.exists(path), paste(surface, "is not in this tree"))
     lines <- readLines(path, warn = FALSE)
-    offenders <- lines[
-      grepl(stale, lines) &
-        grepl(.VC_CURRENCY_MARKERS, lines, ignore.case = TRUE)
-    ]
+    marked <- lines[grepl(.VC_CURRENCY_MARKERS, lines, ignore.case = TRUE)]
+    offenders <- marked[vapply(marked, .vc_stale_on, logical(1), current = current)]
     expect_identical(
       offenders,
       character(0),
