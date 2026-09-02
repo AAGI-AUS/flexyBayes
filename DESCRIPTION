@@ -12,23 +12,12 @@ Authors@R: c(
     person("Anabel", "Forte Deltell", role = "aut",
            comment = c(ORCID = "0000-0001-9534-1817"))
     )
-Description: Specify mixed models using familiar 'ASReml' or 'brms'-style
-    formula syntax and estimate them via 'INLA' or 'brms' ('Stan'). Returns
+Description: Specify a wide class of linear and generalized linerar mixed models using familiar 'ASReml' or 'brms'-style
+    formula syntax, and estimate them via 'INLA' or 'brms' ('Stan'). Returns
     results in formats compatible with the standard R modelling ecosystem
-    including 'summary()', 'emmeans' and 'marginaleffects'.
-    The package translates 'ASReml'-style formulas (fixed, random, residual)
-    to backend-specific code ('INLA' or 'brms') using an indexing approach,
-    scales to large agricultural datasets by accumulating exact per-cell
-    sufficient statistics for the replicated designs that admit them (the
-    benchmark record is in inst/validation), and compares the same model
-    across engines with triangulate(), a diagnostic on a gated overlap rather
-    than a validation contract. Supports Gaussian, binomial, Poisson,
-    negative binomial, gamma, and beta families, and selected structured
-    covariance models: diagonal and unstructured genotype-by-environment
-    variances, per-level residual variances, known-covariance genomic and
-    pedigree models, separable AR1 spatial fields on 'INLA', and univariate
-    P-splines. Structures outside this set raise typed refusals naming the
-    nearest implemented alternative.
+    including 'summary()', 'emmeans' and 'marginaleffects'. The package supports a range of responses from the exponential family (and a few beyond this), along with a few random effects 
+    covariance/residual structures including genotype-by-environment variances, per-level residual variances, and known-covariance genomic and
+    pedigree matrices among others.
 License: MIT + file LICENSE
 URL: https://aagi-aus.github.io/flexyBayes/, https://github.com/AAGI-AUS/flexyBayes
 BugReports: https://github.com/AAGI-AUS/flexyBayes/issues

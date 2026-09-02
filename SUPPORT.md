@@ -15,9 +15,7 @@ depends on what kind of question you have.
 
 ## Maintenance capacity
 
-`flexyBayes` is maintained by a small team within the Australian
-Agricultural Genomics Institute (AAGI-AUS) collective. The capacity
-block below is updated alongside each release.
+`flexyBayes` is currently maintained by a small team within the Australian Agricultural Genomics Institute (AAGI-AUS) collective. 
 
 > **Note.** The bus-factor / SLA / abandonment-protocol entries below
 > are pending the AAGI-AUS collective conversation that also governs
@@ -38,8 +36,7 @@ block below is updated alongside each release.
 
 ## Reprex etiquette
 
-A reproducible example (reprex) lets us help you in one round-trip
-instead of three. The minimum:
+A reproducible example (reprex) is encouraged, and should minimally the following:
 
 1. A small `data.frame` we can copy-paste.
 2. The exact `flexybayes()` / `fb()` call.
