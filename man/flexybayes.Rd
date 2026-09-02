@@ -342,7 +342,7 @@ before a long MCMC run. Default \code{FALSE} preserves the existing
 run-immediately semantics. A session-level override is available
 via \code{options(flexyBayes.review_code_default = TRUE)}; the
 argument value at call time always wins. Closest published
-precedent: \code{\link[brms:stancode]{brms::make_stancode()}} plus the \code{chains = 0} idiom
+precedent: \code{\link[brms:make_stancode]{brms::make_stancode()}} plus the \code{chains = 0} idiom
 for "do everything except sampling". \code{review_code = TRUE} and
 \code{return_code = TRUE} are mutually exclusive. brms is the only engine
 with a code slot, so \code{review_code = TRUE} is available under
