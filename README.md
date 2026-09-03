@@ -161,6 +161,7 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 **Breeder MET summaries.** Overall performance, stability, GxE BLUPs, factor loadings and environment genetic correlations were computed from a factor-analytic (`fa(env, k):gen`) fit's identified *realised* effects on the engine withdrawn in 0.9.3 (see `NEWS.md`). No active engine produces that fit shape, so that summary is unavailable in this release and its entry point is no longer exported. The INLA MET route gives variance components via `summary()`.
 -->
 
+<!--
 ## Cross-engine triangulation
 
 Fit the same model on two backends and compare:
@@ -187,7 +188,10 @@ The thresholds behind the verdicts (0.1 posterior SD on the mean shift and on Wa
 brms (full HMC) and INLA (a Laplace approximation) sit on different inference paradigms, so the comparison is independent evidence about the *inference*. It is not independent evidence about the model: both fits come from the same parsed representation, so a mistranslation is common-mode and triangulates perfectly. The *cross-engine triangulation* vignette works through the disagreement patterns, and the package keeps an internal registry of which code paths the two engines have been certified not to share.
 
 `canonical_names()` does the work of aligning backend-native parameter names (brms's `sd_g__Intercept`, INLA's `Precision for g` on the precision scale) to a single canonical name with the correct scale transform -- no `name_map` argument needed in standard cases.
+-->
 
+
+<!--
 ## Companion accessors
 
 | Accessor | Returns |
@@ -198,6 +202,7 @@ brms (full HMC) and INLA (a Laplace approximation) sit on different inference pa
 | `review_code = TRUE` on `flexybayes()` / `fb_brms()` | Inspect-before-fit workflow. `cat_code(rev)` prints the generated backend code, and `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. |
 
 A fitted object exposes everything a downstream tool needs through these exported accessors, so a pipeline can consume a fit -- its variance components, its dispatch decision, its seed -- without reading flexyBayes internals. The AAGI ORCHESTRA workspace, which coordinates several analysis packages, builds its provenance records from exactly this surface; nothing in flexyBayes depends on it.
+-->
 
 ## ASReml-hands accessors
 
