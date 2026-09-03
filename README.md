@@ -25,19 +25,14 @@ is evidence about the samplers, not about the model.-->
 
 `fb()` is the short alias for `flexybayes()`, and either name is the universal entry that spans every backend.
 
-```{=html}
-<!--
-## Which backend will I get?
-
+<!--## Which backend will I get?
 | Verb | `inla` | `brms` (Stan) | `auto` |
 |---|:-:|:-:|:-:|
 | `fb()` / `flexybayes()` | ✓ | ✓ | ✓ (INLA or brms via `lgm_gate()`) |
 | `fb_inla()` | ✓ | – | – |
 | `fb_brms()` | – | ✓ | – |
 -->
-```
 
-```{=html}
 <!--
 The universal entry reaches any active backend: name one with
 `backend =`, or let `backend = "auto"` choose. Each `fb_<engine>()` pin
@@ -53,7 +48,6 @@ always say which engine produced it. Reach Stan explicitly with `fb_brms()` or
 unrecognised backend raises `unknown_backend` -- see *Backend support*
 below.
 -->
-```
 
 ## Backend support
 
@@ -73,7 +67,6 @@ sampling settings and its diagnostics reported in full, follow the
 
 ### Backend support and model types
 
-```{=html}
 <!--
 What each active engine does, by model class. The table below is generated
 from a single R-level source and every verdict in it is re-derived from the
@@ -83,7 +76,6 @@ exercises it -- it does not promise that every fit converges at small
 budgets, which is model-specific and always reported, so treat a high R-hat
 badge as a diagnostic rather than a result. Only the two active engines
 are columns; see the callout above.-->
-```
 
 <!-- capability-matrix:begin -->
 
