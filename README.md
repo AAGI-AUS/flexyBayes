@@ -13,6 +13,24 @@ is evidence about the samplers, not about the model.-->
 
 > **Development release.** All exports are at the experimental `lifecycle` stage and the API may change within the 0.x series. Not on CRAN. **flexyBayes fits on two active engines: brms and INLA.** A third native engine was withdrawn entirely in 0.9.3 (see `NEWS.md`); naming it, or any other unrecognised backend, now raises an ordinary unknown-backend refusal. See `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the current per-backend capability boundaries before relying on results.
 
+## Installation
+
+``` r
+# INLA (approximate-inference backend) -- not on CRAN
+install.packages("INLA",
+  repos = c(getOption("repos"),
+            INLA = "https://inla.r-inla-download.org/R/stable"))
+
+# brms (Stan passthrough) -- on CRAN
+install.packages("brms")
+
+# flexyBayes itself (not yet on CRAN) -- install from the repository:
+# install.packages("remotes")
+remotes::install_github("AAGI-AUS/flexyBayes")
+```
+
+`flexyBayes` degrades gracefully when an optional engine is missing: each backend is detected at run time, and a model sent to an unavailable engine is refused with a clear message naming what to install rather than failing obscurely.
+
 ## Which entry point do I use?
 
 | If you are used... | Then | Notes |
@@ -65,7 +83,7 @@ sampling settings and its diagnostics reported in full, follow the
 *getting started* vignette.
 -->
 
-### Backend support and model types
+### Some model types
 
 <!--
 What each active engine does, by model class. The table below is generated
@@ -86,22 +104,22 @@ are columns; see the callout above.-->
 | Hurdle gamma | `family = "hurdle_gamma"` | x | ✓ | |
 | Uncorrelated random slope | `(x \|\| g)` | x | ✓ |  |
 | Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | x | ✓ | |
-<!--| Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
--->
 | Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | x | ✓ | brms basically turns this to `(1 \| a:b)`. |
 | Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | x | ✓ | One variance per level of `f`, no covariance between levels. |
 | Unstructured genotype-by-environment covariance | `~ us(f):g` | x | ✓ | |
-<!--| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |-->
+equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |-->
 | Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | x | ✓ | Refused for families with no residual scale. |
 | Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | x | ✓ | |
-<!--| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |-->
-<!--| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
--->
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | ✓ | ✓ | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky forms. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | ✓ | x | |
 | Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | ✓ | x | One field realisation per level of `trial`, via INLA's `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level. |
 | Univariate P-spline | `~ spl(x)` | ✓ | x | |
 | Observation weights (Gaussian, identity link) | `weights = w` | ✓ | ✓ | Precision weighting, \eqn{Var(y_i) = sigma\^2 / w_i} (the ASReml / lme4 / glm(weights=) sense). |
+<!--| Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
+-->
+<!--| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an <!--| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |-->
+<!--| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
+-->
 <!--| Exact sufficient-statistic aggregation | `aggregate = TRUE`, `flexybayes_stream()` | ✓ | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
 -->
 
@@ -111,31 +129,17 @@ are columns; see the callout above.-->
 This block is generated from `.fb_capability_matrix()` by `tools/generate_capability_matrix.R`. Edit the R table, re-run the generator, and let `tests/testthat/test-capability-matrix.R` check that every verdict still matches the gate and emit code. Do not edit the rows here by hand.
 <!-- capability-matrix:end -->
 
---\>
-
+<!--
 > **What the aggregation row is worth.** The sufficient-statistic route is what carries the package to dataset sizes the per-row path cannot reach: the per-row path runs out of memory between one and five million rows on a 32 GB machine, while the streamed path fits five billion rows through a roughly flat memory envelope, because it is always fitting the same small number of cells. The measured record -- sizes, wall-clock, peak memory, the hardware, and the model scope outside which the route refuses rather than approximates -- is banked with the package at `system.file("validation/benchmark_scaling.md", package = "flexyBayes")`.
+-->
 
+<!--
 > **MET capability, stated currently.** A multi-environment-trial model fits on brms, and its pieces are checked against ASReml: nested genotype-by-environment random effects recover every variance component against the REML reference on `agridat::besag.met`. `diag()` / `idh()` / `at()` and `us()` genotype variances emit and are validated on the parameter count before the values, and the heteroscedastic residual `dsum(~ units | env)` returns per-site posterior-mean variances of 0.1146 / 1.1516 / 4.6981 where ASReml gives 0.1093 / 1.1248 / 4.6079 -- within 4.8%, largest on the smallest variance. The *combination* now fits too: interaction random effects and a sectioned residual in one model generate both blocks in the emitted Stan program and sample with every R-hat below 1.05 and no divergent transitions on simulated data, which is what moved that row from `emits` to `fits`. Two limits are worth knowing before planning around it. The verified fit is 120 rows, so the scale a national trial series needs is untested -- `seed` and `control` reach `brms::brm()`, so a larger series that needs a raised `adapt_delta` has a route to it, but nobody has run one. And `us(env):gen` on unreplicated data confounds its covariance diagonal with the residual -- the covariance converges, the residual does not, and more iterations make it worse. INLA refuses every heterogeneous-variance structure and every interaction random effect by name. See `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the per-engine reasons.
+-->
 
+<!--
 **Breeder MET summaries.** Overall performance, stability, GxE BLUPs, factor loadings and environment genetic correlations were computed from a factor-analytic (`fa(env, k):gen`) fit's identified *realised* effects on the engine withdrawn in 0.9.3 (see `NEWS.md`). No active engine produces that fit shape, so that summary is unavailable in this release and its entry point is no longer exported. The INLA MET route gives variance components via `summary()`.
-
-## Installation
-
-``` r
-# INLA (approximate-inference backend) -- not on CRAN
-install.packages("INLA",
-  repos = c(getOption("repos"),
-            INLA = "https://inla.r-inla-download.org/R/stable"))
-
-# brms (Stan passthrough) -- on CRAN
-install.packages("brms")
-
-# flexyBayes itself (not yet on CRAN) -- install from the repository:
-# install.packages("remotes")
-remotes::install_github("AAGI-AUS/flexyBayes")
-```
-
-`flexyBayes` degrades gracefully when an optional engine is missing: each backend is detected at run time, and a model sent to an unavailable engine is refused with a clear message naming what to install rather than failing obscurely.
+-->
 
 ## Quick start
 
