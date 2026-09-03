@@ -312,13 +312,6 @@ are columns; see the callout above.-->
 <td></td>
 </tr>
 <tr>
-<td>equicorrelation group-level structure. Use <code>diag(f):g</code> or <code>us(f):g</code>.</td>
-<td>–&gt;</td>
-<td align="center"></td>
-<td align="center"></td>
-<td></td>
-</tr>
-<tr>
 <td>Heterogeneous residual by factor level</td>
 <td>
 <code>residual = ~ dsum(~ units \| f)</code> / <code>~ at(f):units</code>
@@ -372,12 +365,12 @@ are columns; see the callout above.-->
 <td><code>weights = w</code></td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td>Precision weighting,  (the ASReml / lme4 / glm(weights=) sense).</td>
+<td>Precision weighting, <code>Var(y_i) = sigma\^2 / w_i</code> (the ASReml / lme4 / glm(weights=) sense).</td>
 </tr>
 </tbody>
 </table>
 <!--| Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
---><!--| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an <!--| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |--><!--| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
+--><!--equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |--><!--| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an <!--| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |--><!--| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
 --><!--| Exact sufficient-statistic aggregation | `aggregate = TRUE`, `flexybayes_stream()` | ✓ | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
 --><!--
 `fits` -- the engine emits the structure and a test exercises it. `emits` -- the engine generates the structure and no live fit has yet confirmed it samples acceptably. `refuses` -- the request raises rather than fitting something else. `n/a` -- the class does not apply to that engine's interface.
@@ -585,33 +578,31 @@ Continuous integration validates the INLA, brms, and engine-independent surface 
 <div class="section level2">
 <h2 id="known-limitations">Known limitations<a class="anchor" aria-label="anchor" href="#known-limitations"></a>
 </h2>
+<!--
+- **Scale ceiling on the per-row path (realistic multi-term design)**: on a crossed/nested multi-environment-trial design the flexyBayes/INLA ceiling is bracketed between 911,808 rows (preflight refuses) and 1,823,616 rows (the engine dies after 41.6 minutes), not measured or bisected -- see `inst/validation/benchmark_scaling.md` for the two logged rungs.
+- **Multi-environment-trial scale**: the combined model -- interaction random effects (`gen:loc`, `gen:loc:yearf`) *together with* a heteroscedastic per-environment residual (`dsum(~ units | env)`) -- fits on brms and is verified by a live fit, but on 120 simulated rows. A national trial series is untested. The sampler controls such a run would need are available (`seed` and `control` are forwarded to `brms::brm()`), so what is missing is the run, not the route. INLA refuses both halves. See `inst/KNOWN_ISSUES.md` for the status.
+-->
 <ul>
 <li>
-<strong>Scale ceiling on the per-row path (realistic multi-term design)</strong>: on a crossed/nested multi-environment-trial design the flexyBayes/INLA ceiling is bracketed between 911,808 rows (preflight refuses) and 1,823,616 rows (the engine dies after 41.6 minutes), not measured or bisected – see <code>inst/validation/benchmark_scaling.md</code> for the two logged rungs.</li>
+<strong>Structured GxE beyond <code>diag</code> / <code>us</code></strong>: <code>corh(env):gen</code> (heterogeneous variances with one shared correlation) and <code>fa(env, k):gen</code> (factor-analytic) are current not implemented.</li>
 <li>
-<strong>Multi-environment-trial scale</strong>: the combined model – interaction random effects (<code>gen:loc</code>, <code>gen:loc:yearf</code>) <em>together with</em> a heteroscedastic per-environment residual (<code>dsum(~ units | env)</code>) – fits on brms and is verified by a live fit, but on 120 simulated rows. A national trial series is untested. The sampler controls such a run would need are available (<code>seed</code> and <code>control</code> are forwarded to <code>brms::brm()</code>), so what is missing is the run, not the route. INLA refuses both halves. See <code>inst/KNOWN_ISSUES.md</code> for the status.</li>
+<strong>Spatial structure</strong>: only the separable AR1 field (<code>random = ~ ar1(row):ar1(col)</code>) is currently supported, on INLA, over a complete grid with one observation per node. Intrinsic CAR and BYM2 areal models are not implemented. You can express a custom spatial precision by passing your own matrix to <code>vm(g, precision = Q)</code>, but there is no BYM2 helper.</li>
 <li>
-<strong>Structured GxE beyond <code>diag</code> / <code>us</code></strong>: <code>corh(env):gen</code> (heterogeneous variances with one shared correlation) and <code>fa(env, k):gen</code> (factor-analytic) have no active emit and refuse by name.</li>
+<strong>Smooth terms</strong>: univariate penalised splines (<code>s(x)</code>, <code>spl(x)</code>) are supported on INLA. Multivariate and tensor-product smooths (<code>te()</code>, <code>ti()</code>, <code>t2()</code>) are currently not implemented.</li>
 <li>
-<strong>Spatial structure</strong>: only the separable AR1 field (<code>random = ~ ar1(row):ar1(col)</code>) is supported, on INLA, over a complete grid with one observation per node. It is emitted as an AR1-by-AR1 latent field plus the Gaussian observation nugget – four hyperparameters, all four reported by <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> – and is therefore not ASReml’s three-parameter nugget-free residual. Writing it on the residual side refuses by name and points here. Intrinsic CAR and BYM2 areal models are not implemented. You can express a custom spatial precision by passing your own matrix to <code>vm(g, precision = Q)</code>, but there is no BYM2 helper.</li>
+<strong>Observation weights</strong>: fit for the Gaussian family on an identity link, on both engines, in the ASReml / lme4 / <code>glm(weights=)</code> precision sense (<code>Var(y_i) = sigma^2 / w_i</code>) -Any other family, or a non-identity link on Gaussian is currently not possible. &lt;!–</li>
 <li>
-<strong>Smooth terms</strong>: univariate penalised splines (<code>s(x)</code>, <code>spl(x)</code>) are supported on INLA. Multivariate and tensor-product smooths (<code>te()</code>, <code>ti()</code>, <code>t2()</code>) are refused and deferred to a later release.</li>
+<strong>Hidden-Markov, multi-state, and survival models</strong>: not supported. Survival / time-to-event families are refused at the family gate. A NIMBLE backend covering these is on the roadmap with no fixed release target. –&gt;</li>
 <li>
-<strong>Observation weights</strong>: fit for the Gaussian family on an identity link, on both engines, in the ASReml / lme4 / <code>glm(weights=)</code> precision sense (<code>Var(y_i) = sigma^2 / w_i</code>) – both engines match <code>lme4::lmer(weights=)</code> closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (<code>weights_requires_gaussian</code>) rather than returning the unweighted posterior under a weighted call; <code>aggregate = TRUE</code> alongside weights also refuses by name (<code>weights_not_aggregatable</code>).</li>
-<li>
-<strong>Hidden-Markov, multi-state, and survival models</strong>: not supported. Survival / time-to-event families are refused at the family gate. A NIMBLE backend covering these is on the roadmap with no fixed release target.</li>
-<li>
-<strong>Missing data</strong>: flexyBayes does not impute covariates. A missing <em>predictor</em> is refused by default, as it is in ASReml (<code>na.method(x = "fail")</code>). Setting <code>na_action = list(y = "include", x = "omit")</code> drops the affected rows with a warning naming the count and the columns, and ASReml’s third setting – treat the missing covariate as zero – is refused by name rather than reproduced. A missing <em>response</em> is retained by default (<code>na_action = "augment"</code>), carried as a latent quantity the engine marginalises, so the design index set a structured covariance is built over survives a lost plot. That preserves the representation, not information: under ignorability the parameter posterior is the same either way, and where missingness depends on the unobserved response both augmenting and omitting are biased. That identity is a statement about the posterior and not a promise about what an optimiser returns – the two settings hand the engine an intact design and a ragged one, and on a weakly identified mode they can land in different places. See <code><a href="reference/flexybayes.html">?flexybayes</a></code>. Non-Gaussian missing responses on brms are refused.</li>
+<strong>Missing data</strong>: flexyBayes does not impute covariates. A missing <em>predictor</em> is refused by default, as it is in ASReml (<code>na.method(x = "fail")</code>). Setting <code>na_action = list(y = "include", x = "omit")</code> drops the affected rows with a warning naming the count and the columns. A missing <em>response</em> is retained by default (<code>na_action = "augment"</code>), carried as a latent quantity the package marginalises, so the design index set a structured covariance is built over survives a lost plot. That preserves the representation, not information: under ignorability the parameter posterior is the same either way, and where missingness depends on the unobserved response both augmenting and omitting are biased. Non-Gaussian missing responses on brms are refused.</li>
 </ul>
-</div>
-<div class="section level2">
-<h2 id="requirements">Requirements<a class="anchor" aria-label="anchor" href="#requirements"></a>
-</h2>
-<ul>
-<li>R ≥ 4.1.0</li>
-<li>INLA (optional, via Additional_repositories)</li>
-<li>brms (optional, for the Stan passthrough)</li>
-</ul>
+<!--
+## Requirements
+
+- R ≥ 4.1.0
+- INLA (optional, via Additional_repositories)
+- brms (optional, for the Stan passthrough)
+-->
 </div>
 <div class="section level2">
 <h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a>
@@ -630,11 +621,6 @@ Continuous integration validates the INLA, brms, and engine-independent surface 
   year   = {2026},
   url    = {https://github.com/AAGI-AUS/flexyBayes}
 }</code></pre>
-</div>
-<div class="section level2">
-<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
-</h2>
-<p>MIT. See <code>LICENSE</code> and <code>LICENSE.md</code>.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
