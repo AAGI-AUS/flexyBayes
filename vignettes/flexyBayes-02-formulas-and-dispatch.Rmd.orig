@@ -87,6 +87,7 @@ These are the constructions the parser recognises on the random side.
 | `~ vm(gen, K)` | random effect with a known covariance `K` |
 | `~ ped(animal, A)` | the same, spelled for a pedigree |
 | `~ ar1(row):ar1(col)` | separable autoregressive field on a grid |
+| `~ ar1(t):g` | AR1 along `t` within each level of `g`, independent across levels |
 | `~ spl(x)` | penalised spline on a numeric covariate |
 | `~ at(trial):ar1(row):ar1(col)` | one field per level of `trial` |
 
@@ -190,9 +191,11 @@ has no information left to describe and its variance component would
 report the prior. ASReml accepts this spelling and fits it, so a
 translated script can arrive here unchanged.
 
-**Factor order matters for `ar1()`.** Correlation is read along the
+**Level order matters for `ar1()`.** Correlation is read along the
 levels of the factor in their stored order. Row labels that sort
 lexically rather than numerically give the wrong neighbour structure.
+The order of the factors in the term does not matter: `ar1(t):g` and
+`g:ar1(t)` are the same field, AR1 along `t` and independent across `g`.
 
 **`residual` is not `rcov`.** ASReml 4 renamed it; flexyBayes uses the
 current name.

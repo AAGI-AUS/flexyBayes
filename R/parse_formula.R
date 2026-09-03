@@ -640,6 +640,20 @@
       col_ar1 = (rt == "ar1")
     )))
   }
+  # The grouped field with the factors in the other order: g:ar1(t),
+  # ASReml's usual spelling for a set of units followed through time.
+  # The covariance is one object whichever factor is written first (the
+  # Kronecker product commutes up to the ordering of its index), so both
+  # orders parse to the same node -- AR1 along the ar1() factor and
+  # independent across the plain one.
+  if (lt %in% c("simple", "id", "ide") && rt == "ar1") {
+    return(list(list(
+      type = "ar1_spatial",
+      row_var = r$var,
+      col_var = l$var,
+      col_ar1 = FALSE
+    )))
+  }
   # at(trial):ar1(row) -- first half of a per-trial separable AR1 field
   # (C5, FS-27). Intermediate node only; a:b:c parses as (a:b):c, so the
   # second ar1() completes the term in the next fold below.

@@ -183,6 +183,41 @@ the posterior recovers it. The component names come from the shared
 spatial machinery, so the temporal correlation is reported as
 `rho_row`.
 
+## Several units followed through time
+
+A long-term trial measures the same plots season after season. The
+covariance Verbyla and Cullis (1992) wrote for that design is separable:
+an AR1 correlation along the occasions, and independence (or a block
+structure) across the plots. On the random side it is `ar1(t):g`, or
+`g:ar1(t)` in ASReml's usual order -- one AR1 series per level of `g`,
+with the correlation and the field SD shared by every level, plus the
+observation nugget. An occasion a plot missed is left in the data as a
+row with the response `NA`, which the default `na_action = "augment"`
+carries through the fit.
+
+```{r grouped-temporal, eval = inla_ok}
+set.seed(11)
+n_t <- 20
+n_g <- 8
+ar1_mat <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
+grid <- expand.grid(t = seq_len(n_t), plot = seq_len(n_g))
+Lt <- t(chol(ar1_mat(n_t, 0.6)))
+u <- as.numeric(vapply(seq_len(n_g),
+                       function(i) as.numeric(Lt %*% rnorm(n_t)),
+                       numeric(n_t)))
+dg <- data.frame(y = 4 + u + rnorm(n_t * n_g, 0, 0.5),
+                 t = factor(grid$t), plot = factor(grid$plot))
+dg$y[c(5, 33, 71)] <- NA
+
+fit_g <- flexybayes(y ~ 1, random = ~ plot:ar1(t), data = dg,
+                    backend = "inla", verbose = FALSE)
+fit_g
+```
+
+The header describes the field as AR1 along `t` and independent across
+`plot`, with three hyperparameters, and names the two-parameter ASReml
+residual it is not.
+
 # 6. What is not covered
 
 | Wanted | Status |

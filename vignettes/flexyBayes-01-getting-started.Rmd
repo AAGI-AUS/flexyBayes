@@ -200,6 +200,12 @@ from what the code does.
    <td style="text-align:left;"> refuses </td>
   </tr>
   <tr>
+   <td style="text-align:left;"> Grouped temporal AR1 field </td>
+   <td style="text-align:left;"> <code>random = ~ ar1(t):g</code>, <code>~ g:ar1(t)</code>, <code>~ ar1(t):id(g)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
    <td style="text-align:left;"> Univariate P-spline </td>
    <td style="text-align:left;"> <code>~ spl(x)</code> </td>
    <td style="text-align:left;"> fits </td>
@@ -311,8 +317,8 @@ variance components and the fixed effects.
 ``` r
 tidy(fit, effects = "random")
 #>     term  estimate  std.error  conf.low conf.high
-#> 1  sigma 0.3861118 0.02352676 0.3426349 0.4348676
-#> 2 sd_gen 0.3910204 0.07877862 0.2625187 0.5705725
+#> 1  sigma 0.3861116 0.02352674 0.3426335 0.4348662
+#> 2 sd_gen 0.3910202 0.07877794 0.2625200 0.5705711
 ```
 
 `estimate` is the posterior median on the standard-deviation scale.
@@ -324,10 +330,10 @@ need not be symmetric, and for a component near zero they will not be.
 ``` r
 head(tidy(fit), 4)
 #>          term    estimate std.error   conf.low  conf.high
-#> 1 (Intercept)  4.36293122 0.1305793  4.1059744  4.6198878
-#> 2     envEA93  0.07529038 0.1288956 -0.1777918  0.3283731
-#> 3     envHW93 -1.22597659 0.1288956 -1.4790586 -0.9728937
-#> 4     envID93 -0.86786845 0.1288956 -1.1209505 -0.6147856
+#> 1 (Intercept)  4.36293122 0.1305794  4.1059741  4.6198881
+#> 2     envEA93  0.07529038 0.1288961 -0.1777928  0.3283740
+#> 3     envHW93 -1.22597659 0.1288961 -1.4790596 -0.9728927
+#> 4     envID93 -0.86786845 0.1288961 -1.1209515 -0.6147847
 ```
 
 The genotype effects themselves are predictions of random effects, the
@@ -336,11 +342,11 @@ BLUPs of REML, and they arrive with intervals:
 
 ``` r
 head(ranef(fit)$gen, 4)
-#>   group level    estimate std.error    conf.low conf.high
-#> 1   gen   Ann -0.16656278 0.1509253 -0.46469580 0.1289696
-#> 2   gen   Ari  0.10539941 0.1508287 -0.19042671 0.4028783
-#> 3   gen   Aug  0.04727766 0.1507771 -0.24890721 0.3442056
-#> 4   gen   Cas  0.31894200 0.1513545  0.02374933 0.6190191
+#>   group level   estimate std.error    conf.low conf.high
+#> 1   gen   Ann -0.1665626 0.1509256 -0.46469605 0.1289702
+#> 2   gen   Ari  0.1053993 0.1508289 -0.19042725 0.4028786
+#> 3   gen   Aug  0.0472776 0.1507773 -0.24890769 0.3442060
+#> 4   gen   Cas  0.3189416 0.1513547  0.02374853 0.6190192
 ```
 
 Because the fit carries draws rather than point estimates, a function of
@@ -371,6 +377,7 @@ fit_b <- flexybayes(yield ~ env, random = ~ gen, data = dat,
                     backend = "brms", chains = 4L, n_samples = 2000L,
                     warmup = 1000L, seed = 1L, verbose = FALSE,
                     mcmc_verbose = FALSE)
+#> Loading required namespace: rstan
 ```
 
 
@@ -392,8 +399,8 @@ the way they disagree is the useful part:
 vc_rows <- tri$metrics$param %in% c("sigma", "sd_gen")
 tri$metrics[vc_rows, c("param", "mean_a", "mean_b", "sd_ratio", "verdict")]
 #>     param    mean_a    mean_b  sd_ratio    verdict
-#> 10  sigma 0.3874270 0.3870293 0.9483894 discordant
-#> 11 sd_gen 0.3876008 0.3933094 0.9297658 discordant
+#> 10  sigma 0.3866574 0.3867247 0.9091133 discordant
+#> 11 sd_gen 0.3895100 0.3967485 0.9178796 discordant
 ```
 
 `mean_a` and `mean_b` are the posterior means from INLA and from brms.
@@ -468,35 +475,34 @@ That is a statement about identification, not a result.
 #> loaded via a namespace (and not attached):
 #>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
 #>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
-#>  [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
-#> [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
-#> [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
-#> [16] agridat_1.26           magrittr_2.0.5         posterior_1.7.1       
-#> [19] compiler_4.5.2         rlang_1.3.0            tools_4.5.2           
-#> [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
-#> [25] bridgesampling_1.2-1   mnormt_2.1.2           curl_7.0.0            
-#> [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
-#> [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+#>  [7] TH.data_1.1-5          tensorA_0.36.2.1       estimability_1.5.1    
+#> [10] lifecycle_1.0.5        sf_1.1-0               StanHeaders_2.32.10   
+#> [13] survival_3.8-3         agridat_1.26           processx_3.9.0        
+#> [16] magrittr_2.0.5         posterior_1.7.1        compiler_4.5.2        
+#> [19] rlang_1.3.0            tools_4.5.2            data.table_1.18.2.1   
+#> [22] sn_2.1.3               knitr_1.51             bridgesampling_1.2-1  
+#> [25] mnormt_2.1.2           curl_7.0.0             pkgbuild_1.4.8        
+#> [28] classInt_0.4-11        plyr_1.8.9             RColorBrewer_1.1-3    
+#> [31] cmdstanr_0.9.0         multcomp_1.4-29        abind_1.4-8           
 #> [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
 #> [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
-#> [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
-#> [43] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
-#> [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
-#> [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
-#> [52] generics_0.1.4         otel_0.2.0             RcppParallel_5.1.11-2 
-#> [55] reshape2_1.4.5         DBI_1.3.0              proxy_0.4-29          
-#> [58] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
-#> [61] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
-#> [64] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
-#> [67] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
-#> [70] jsonlite_2.0.0         callr_3.8.0            listenv_0.10.1        
-#> [73] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
-#> [76] codetools_0.2-20       distributional_0.8.1   stringi_1.8.7         
-#> [79] gtable_0.3.6           QuickJSR_1.9.0         tibble_3.3.1          
-#> [82] pillar_1.11.1          Brobdingnag_1.2-9      R6_2.6.1              
-#> [85] fmesher_0.7.0          evaluate_1.0.5         lattice_0.22-7        
-#> [88] backports_1.5.1        rstantools_2.6.0       class_7.3-23          
-#> [91] MatrixModels_0.5-4     Rcpp_1.1.2             coda_0.19-4.1         
-#> [94] gridExtra_2.3          nlme_3.1-168           checkmate_2.3.4       
-#> [97] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
+#> [40] xtable_1.8-8           e1071_1.7-17           inline_0.3.21         
+#> [43] ggplot2_4.0.3          emmeans_2.0.2          scales_1.4.0          
+#> [46] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#> [49] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
+#> [52] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
+#> [55] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
+#> [58] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
+#> [61] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
+#> [64] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
+#> [67] sandwich_3.1-1         jsonlite_2.0.0         units_1.0-1           
+#> [70] glue_1.8.1             codetools_0.2-20       ps_1.9.3              
+#> [73] distributional_0.8.1   stringi_1.8.7          gtable_0.3.6          
+#> [76] QuickJSR_1.9.0         tibble_3.3.1           pillar_1.11.1         
+#> [79] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
+#> [82] evaluate_1.0.5         lattice_0.22-7         backports_1.5.1       
+#> [85] rstantools_2.6.0       class_7.3-23           MatrixModels_0.5-4    
+#> [88] Rcpp_1.1.2             gridExtra_2.3          coda_0.19-4.1         
+#> [91] nlme_3.1-168           checkmate_2.3.4        xfun_0.57             
+#> [94] zoo_1.8-15             pkgconfig_2.0.3
 ```

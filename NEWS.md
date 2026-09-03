@@ -1,3 +1,18 @@
+# flexyBayes (development version)
+
+* **Units followed through time: `random = ~ ar1(t):g`.** The grouped
+  temporal field -- AR1 along `t` within each level of `g`, independent
+  across levels, three hyperparameters shared by every level -- is now a
+  named capability with its own matrix row, anchor test and
+  execution-grid cell, and the commuted spelling `g:ar1(t)` (ASReml's
+  usual order for a set of plots followed over seasons) parses to the
+  same field instead of falling to an untyped interaction that refused.
+  The model line, the field block and the note naming the ASReml
+  residual the field is not used to describe this field as
+  `ar1(t):ar1(g)` with four parameters; they now describe it as what it
+  is. This is the units-by-occasions covariance of Verbyla and Cullis
+  (1992) written on the random side.
+
 # flexyBayes 0.10.0
 
 The first release prepared for CRAN. Its criteria are held as a runnable

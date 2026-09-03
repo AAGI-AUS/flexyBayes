@@ -777,16 +777,33 @@
 # guard so the three- against four-parameter statement lives in one place.
 .ar1_residual_refusal_message <- function(term) {
   spelling <- .ar1_term_spelling(term)
+  # The parameter count depends on the shape of the field: two
+  # correlations on a separable grid, one along a series or within each
+  # level of a group. The sentence counts the model the user asked for and
+  # the one the engine has, whichever shape was written.
+  separable <- identical(term$type, "ar1_spatial") && isTRUE(term$col_ar1)
+  asreml_params <- if (separable) {
+    "three parameters on a field grid (row correlation, column correlation, one variance)"
+  } else if (identical(term$type, "ar1_spatial")) {
+    paste0(
+      "two parameters (the correlation along ", term$row_var,
+      " and one variance, shared by every level of ", term$col_var, ")"
+    )
+  } else {
+    paste0("two parameters (the correlation along ", term$var, " and one variance)")
+  }
+  field_params <- if (separable) "four parameters" else "three parameters"
+  named_as <- if (separable) "three-parameter" else "two-parameter"
   paste0(
-    "residual = ~ ", spelling, " asks for ASReml's separable ",
+    "residual = ~ ", spelling, " asks for ASReml's ",
+    if (separable) "separable " else "",
     "autoregressive residual: a single correlated residual with no ",
-    "independent plot error, three parameters on a field grid ",
-    "(row correlation, column correlation, one variance). INLA ",
-    "represents a separable AR1 process as a latent random field plus the ",
-    "observation-level Gaussian noise -- four parameters -- which nests ",
+    "independent plot error, ", asreml_params, ". INLA ",
+    "represents an AR1 process as a latent random field plus the ",
+    "observation-level Gaussian noise -- ", field_params, " -- which nests ",
     "ASReml's model as the nugget goes to zero but returns different ",
     "correlations on data with real plot-to-plot noise. flexyBayes will ",
-    "not fit the four-parameter model under the three-parameter name. ",
+    "not fit the ", field_params, " model under the ", named_as, " name. ",
     "Two routes: write the field on the random side, random = ~ ",
     spelling, ", which fits the field-plus-nugget model under its own ",
     "name on INLA (one observation per grid node); or use ASReml itself ",

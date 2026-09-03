@@ -217,6 +217,21 @@
       anchor = "test-nested-ar1-field.R"
     ),
     list(
+      model_class = "Grouped temporal AR1 field",
+      spelling = "`random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)`",
+      inla = "fits",
+      brms = "refuses",
+      note = "AR1 along `t` within each level of `g` and independent across
+        levels: one correlation, one field SD and the Gaussian nugget,
+        three hyperparameters shared by every level. The units-by-occasions
+        repeated-measures covariance of Verbyla and Cullis (1992), written
+        on the random side; an occasion a unit missed stays as a design row
+        with the response NA under `na_action = \"augment\"`. Either factor
+        order is accepted. brms has no lowering for the grouped
+        autoregressive precision and refuses.",
+      anchor = "test-grouped-temporal-ar1.R"
+    ),
+    list(
       model_class = "Univariate P-spline",
       spelling = "`~ spl(x)`",
       inla = "fits",

@@ -314,6 +314,30 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
   dd$trial <- factor(paste0("T", i))
   dd
 }))
+
+# Grouped temporal AR1 field fixture: ten units followed over twelve
+# occasions, AR1 along occasion within each unit and independent across
+# units, plus a nugget; two occasions left as design rows with the
+# response NA, which na_action = "augment" carries through the fit.
+.tg_field <- function(seed) {
+  set.seed(seed)
+  n_t <- 12L
+  n_g <- 10L
+  grid <- expand.grid(t = seq_len(n_t), g = seq_len(n_g))
+  Lt <- t(chol(.ar1_mat_fn(n_t, 0.6)))
+  u <- as.numeric(vapply(
+    seq_len(n_g),
+    function(i) as.numeric(Lt %*% stats::rnorm(n_t)),
+    numeric(n_t)
+  ))
+  d <- data.frame(
+    y = 5 + u + stats::rnorm(n_t * n_g, 0, 0.5),
+    t = factor(grid$t), g = factor(grid$g)
+  )
+  d$y[c(7L, 50L)] <- NA
+  d
+}
+d_ar1_tg <- .tg_field(2001L)
 '
 
 .preamble <- paste0(
@@ -502,6 +526,11 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
                   'data = d_ar1_at_trial)'),
     brms = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
                   'data = d_ar1_at_trial)')
+  ),
+  list(
+    model_class = "Grouped temporal AR1 field",
+    inla = 'flexybayes(y ~ 1, random = ~ ar1(t):g, data = d_ar1_tg)',
+    brms = 'flexybayes(y ~ 1, random = ~ ar1(t):g, data = d_ar1_tg)'
   )
 )
 
