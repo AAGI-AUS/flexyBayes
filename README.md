@@ -204,6 +204,7 @@ brms (full HMC) and INLA (a Laplace approximation) sit on different inference pa
 A fitted object exposes everything a downstream tool needs through these exported accessors, so a pipeline can consume a fit -- its variance components, its dispatch decision, its seed -- without reading flexyBayes internals. The AAGI ORCHESTRA workspace, which coordinates several analysis packages, builds its provenance records from exactly this surface; nothing in flexyBayes depends on it.
 -->
 
+<!--
 ## ASReml-hands accessors
 
 If you arrive with an `asreml()` call in hand, *Getting started*'s section 6, "Reading a fit the way a REML user does", walks the accessors below one at a time. They are views over an ordinary Bayesian fit -- the estimator is named on every table, because a posterior mean is not a REML component.
@@ -221,7 +222,9 @@ If you arrive with an `asreml()` call in hand, *Getting started*'s section 6, "R
 | `update(fit, random = ~ Block + Variety)` | A re-fit on either engine, carrying every recorded argument forward, `na_action` and the resolved prior included. |
 
 There is no `wald()` method, no pairwise standard-error table, and no covariate zero-fill. Each is a deliberate absence rather than a gap, and the vignette says why.
+-->
 
+<!--
 ### Two doors, one object
 
 The same fit answers to the generics a Bayesian reaches for. Neither idiom is a wrapper around the other.
@@ -236,7 +239,9 @@ The same fit answers to the generics a Bayesian reaches for. Neither idiom is a 
 | No ASReml counterpart | `prior_summary(fit)`, `loo(fit)`, `triangulate(fit_a, fit_b)` |
 
 `loo()` and `pp_check()` pass through to brms on a sampled fit and refuse by name on a Laplace fit, naming the WAIC and DIC that fit does carry.
+-->
 
+<!--
 ## Output structure
 
 Every fit carries three top-level slots:
@@ -251,8 +256,7 @@ fit$brms        # live brmsfit (when backend = "brms")
 fit$extras      # BLUPs, variance components, convergence diagnostics,
                 # generated code, parsed IR, run time, captured call
 ```
-
-There is no third-engine slot on a fit object: naming a withdrawn or otherwise unrecognised `backend` refuses before a fit object exists (see *Backend support*).
+-->
 
 ## Supported ASReml syntax (reference)
 
