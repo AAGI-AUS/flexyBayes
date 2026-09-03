@@ -298,8 +298,6 @@ family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |
 
 ## Vignettes
 
-Eight vignettes ship with the package:
-
 | \#  | Vignette                                            |
 |-----|-----------------------------------------------------|
 | 01  | Getting started: what changes when you go Bayesian  |
@@ -311,7 +309,9 @@ Eight vignettes ship with the package:
 | 07  | After the fit: summaries, comparison, triangulation |
 | 08  | Big data: fitting without holding the data          |
 
-Each opens with a panel giving the problem, the ASReml line, the flexyBayes line, what the posterior adds, and what it costs. Every code block is executed at build time, so the numbers on a page came from the fit above them. 12--15 recording earlier merges, and *From an ASReml call* (page 00) was folded into *Getting started*'s new accessor section rather than kept as its own page. Every number in the table above is the page's current, shipped filename suffix.
+Each vignette presents the equivalent the ASReml and flexyBayes fit, what the posterior adds, and what it costs. 
+<!--
+Every code block is executed at build time, so the numbers on a page came from the fit above them. 12--15 recording earlier merges, and *From an ASReml call* (page 00) was folded into *Getting started*'s new accessor section rather than kept as its own page. Every number in the table above is the page's current, shipped filename suffix.
 
 Heavy MCMC vignettes use a `.Rmd.orig` precompile pattern. The `.Rmd` that ships in the package tarball is the pre-evaluated static output. Browse them with `browseVignettes("flexyBayes")` **after a full install** -- `R CMD build` then `R CMD INSTALL` the tarball, or `devtools::install(build_vignettes = TRUE)`. A plain `install_github()` or source-directory install does **not** build the vignettes into `inst/doc`.
 
@@ -331,10 +331,9 @@ flexyBayes ships an extensive `testthat` suite (`devtools::test()`) covering the
 ## Testing & CI
 
 Continuous integration validates the INLA, brms, and engine-independent surface (the ASReml / brms parsers, the intermediate representation, `lgm_gate()`, the dispatch policy table, the refusal registry, the prior DSL, and the `triangulate()` metrics). A third native engine was withdrawn entirely in 0.9.3 (see `NEWS.md`); its tests were deleted along with the engine rather than skipped, so the suite carries no dormant coverage for a capability the package no longer offers. Run the full suite locally with `devtools::test()`.
+-->
 
 ## Known limitations
-
-flexyBayes refuses what it cannot yet fit rather than fitting it silently. The current release does not cover the following. Each is a roadmap deferral, and a request that needs one is met with a structured refusal naming the gap, not a quiet wrong answer.
 
 - **Scale ceiling on the per-row path (realistic multi-term design)**: on a crossed/nested multi-environment-trial design the flexyBayes/INLA ceiling is bracketed between 911,808 rows (preflight refuses) and 1,823,616 rows (the engine dies after 41.6 minutes), not measured or bisected -- see `inst/validation/benchmark_scaling.md` for the two logged rungs.
 - **Multi-environment-trial scale**: the combined model -- interaction random effects (`gen:loc`, `gen:loc:yearf`) *together with* a heteroscedastic per-environment residual (`dsum(~ units | env)`) -- fits on brms and is verified by a live fit, but on 120 simulated rows. A national trial series is untested. The sampler controls such a run would need are available (`seed` and `control` are forwarded to `brms::brm()`), so what is missing is the run, not the route. INLA refuses both halves. See `inst/KNOWN_ISSUES.md` for the status.
