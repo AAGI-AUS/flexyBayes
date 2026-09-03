@@ -42,6 +42,27 @@ each backend is detected at run time, and a model sent to an unavailable
 engine is refused with a clear message naming what to install rather
 than failing obscurely.
 
+## Quick start
+
+``` r
+
+fit <- flexybayes(
+  fixed  = Reaction ~ Days,
+  random = ~ Subject,
+  data   = sleepstudy,
+  n_samples = 2000, warmup = 5000, chains = 4
+)
+
+# Standard R output
+summary(fit)
+coef(fit)
+confint(fit)
+
+# emmeans + marginaleffects
+emmeans::emmeans(fit, ~ Days, at = list(Days = c(0, 5)))
+marginaleffects::avg_slopes(fit)
+```
+
 ## Which entry point do I use?
 
 | If you are used… | Then | Notes |
@@ -87,123 +108,6 @@ All exports are at the **experimental** `lifecycle` stage. See
 | Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | ✓ | x | One field realisation per level of `trial`, via INLA’s `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level. |
 | Univariate P-spline | `~ spl(x)` | ✓ | x |  |
 | Observation weights (Gaussian, identity link) | `weights = w` | ✓ | ✓ | Precision weighting, (the ASReml / lme4 / glm(weights=) sense). |
-
-## Quick start
-
-The planner needs no inference backend to show what flexyBayes will do
-with a model: it builds the intermediate representation, chooses a
-backend, and reports the plan without fitting.
-
-``` r
-
-library(flexyBayes)
-data(sleepstudy, package = "lme4")
-
-# Inspect the routing decision and representation plan -- no backend needed
-plan <- flexybayes(
-  fixed  = Reaction ~ Days,
-  random = ~ Subject,
-  data   = sleepstudy,
-  plan   = TRUE
-)
-plan
-```
-
-To fit, install at least one backend (see *Backend support* above). The
-following uses production sampling settings. The *getting started*
-vignette walks through the same fit with its convergence diagnostics.
-
-``` r
-
-fit <- flexybayes(
-  fixed  = Reaction ~ Days,
-  random = ~ Subject,
-  data   = sleepstudy,
-  n_samples = 2000, warmup = 5000, chains = 4
-)
-
-# Standard R output
-summary(fit)
-coef(fit)
-confint(fit)
-
-# emmeans + marginaleffects
-emmeans::emmeans(fit, ~ Days, at = list(Days = c(0, 5)))
-marginaleffects::avg_slopes(fit)
-```
-
-## Cross-engine triangulation
-
-Fit the same model on two backends and compare:
-
-``` r
-
-fit_brms <- flexybayes(Reaction ~ Days, random = ~ Subject,
-                       data = sleepstudy, backend = "brms")
-fit_inla <- flexybayes(Reaction ~ Days, random = ~ Subject,
-                       data = sleepstudy, backend = "inla")
-
-triangulate(fit_brms, fit_inla)
-```
-
-The result carries an overall `status` – `concordant`, `discordant` or
-`inconclusive` – and a per-parameter table: each fit’s posterior mean
-and SD, the mean shift and Wasserstein-1 distance in posterior-SD units,
-the SD ratio, and a per-parameter verdict.
-
-Three gates run before any of those numbers is reported.
-
-- **Comparability.** Each fit carries a fingerprint of the question it
-  answered: canonical formula triple, family and link, data dimensions,
-  column names and content digest, and the recorded prior per variance
-  component. Two fits that disagree are refused by name
-  (`triangulate_incomparable_fits`). There is no override argument.
-- **Diagnostics.** A fit that failed its own convergence checks makes
-  the status `inconclusive` and yields no parameter verdicts.
-  Disagreement between an unconverged fit and a converged one is not a
-  finding.
-- **Matched priors.** A variance component is compared only when both
-  fits record the same prior for it. The rest are reported as
-  `not_compared` with the reason, most often that the term sits outside
-  the shared default and each engine chose its own hyperprior.
-
-The thresholds behind the verdicts (0.1 posterior SD on the mean shift
-and on Wasserstein-1, an SD ratio inside \[0.9, 1.1\]) are heuristics
-for directing attention, in the sense Gelman et al. (2020) use for
-cross-implementation checks. They carry no error rate, and `concordant`
-is not a calibration claim: the package ships no simulation-based
-calibration of its own fits.
-
-brms (full HMC) and INLA (a Laplace approximation) sit on different
-inference paradigms, so the comparison is independent evidence about the
-*inference*. It is not independent evidence about the model: both fits
-come from the same parsed representation, so a mistranslation is
-common-mode and triangulates perfectly. The *cross-engine triangulation*
-vignette works through the disagreement patterns, and the package keeps
-an internal registry of which code paths the two engines have been
-certified not to share.
-
-[`canonical_names()`](https://aagi-aus.github.io/flexyBayes/reference/canonical_names.md)
-does the work of aligning backend-native parameter names (brms’s
-`sd_g__Intercept`, INLA’s `Precision for g` on the precision scale) to a
-single canonical name with the correct scale transform – no `name_map`
-argument needed in standard cases.
-
-## Companion accessors
-
-| Accessor | Returns |
-|----|----|
-| `backend_decision(fit)` | The captured dispatch trace: backend, path, `lgm_gate` checks, reason. |
-| `prior_summary(fit)` | The resolved prior – auto-default (weakly-informative bounded uniform on SD, with half-Cauchy advised for small group counts), user-supplied [`fb_prior()`](https://aagi-aus.github.io/flexyBayes/reference/fb_prior.md), or legacy scalar bridge. |
-| `canonical_names(fit)` | The backend-native ↔︎ canonical-name table with per-row scale transforms. |
-| `review_code = TRUE` on [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | Inspect-before-fit workflow. `cat_code(rev)` prints the generated backend code, and `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. |
-
-A fitted object exposes everything a downstream tool needs through these
-exported accessors, so a pipeline can consume a fit – its variance
-components, its dispatch decision, its seed – without reading flexyBayes
-internals. The AAGI ORCHESTRA workspace, which coordinates several
-analysis packages, builds its provenance records from exactly this
-surface; nothing in flexyBayes depends on it.
 
 ## ASReml-hands accessors
 

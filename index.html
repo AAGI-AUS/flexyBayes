@@ -95,6 +95,26 @@ is evidence about the samplers, not about the model.--></p>
 <p><code>flexyBayes</code> degrades gracefully when an optional engine is missing: each backend is detected at run time, and a model sent to an unavailable engine is refused with a clear message naming what to install rather than failing obscurely.</p>
 </div>
 <div class="section level2">
+<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+</h2>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span></span>
+<span>  fixed  <span class="op">=</span> <span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>,</span>
+<span>  random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
+<span>  data   <span class="op">=</span> <span class="va">sleepstudy</span>,</span>
+<span>  n_samples <span class="op">=</span> <span class="fl">2000</span>, warmup <span class="op">=</span> <span class="fl">5000</span>, chains <span class="op">=</span> <span class="fl">4</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Standard R output</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># emmeans + marginaleffects</span></span>
+<span><span class="fu">emmeans</span><span class="fu">::</span><span class="fu">emmeans</span><span class="op">(</span><span class="va">fit</span>, <span class="op">~</span> <span class="va">Days</span>, at <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Days <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">marginaleffects</span><span class="fu">::</span><span class="fu">avg_slopes</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="which-entry-point-do-i-use">Which entry point do I use?<a class="anchor" aria-label="anchor" href="#which-entry-point-do-i-use"></a>
 </h2>
 <table class="table">
@@ -369,102 +389,46 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 > **MET capability, stated currently.** A multi-environment-trial model fits on brms, and its pieces are checked against ASReml: nested genotype-by-environment random effects recover every variance component against the REML reference on `agridat::besag.met`. `diag()` / `idh()` / `at()` and `us()` genotype variances emit and are validated on the parameter count before the values, and the heteroscedastic residual `dsum(~ units | env)` returns per-site posterior-mean variances of 0.1146 / 1.1516 / 4.6981 where ASReml gives 0.1093 / 1.1248 / 4.6079 -- within 4.8%, largest on the smallest variance. The *combination* now fits too: interaction random effects and a sectioned residual in one model generate both blocks in the emitted Stan program and sample with every R-hat below 1.05 and no divergent transitions on simulated data, which is what moved that row from `emits` to `fits`. Two limits are worth knowing before planning around it. The verified fit is 120 rows, so the scale a national trial series needs is untested -- `seed` and `control` reach `brms::brm()`, so a larger series that needs a raised `adapt_delta` has a route to it, but nobody has run one. And `us(env):gen` on unreplicated data confounds its covariance diagonal with the residual -- the covariance converges, the residual does not, and more iterations make it worse. INLA refuses every heterogeneous-variance structure and every interaction random effect by name. See `system.file("KNOWN_ISSUES.md", package = "flexyBayes")` for the per-engine reasons.
 --><!--
 **Breeder MET summaries.** Overall performance, stability, GxE BLUPs, factor loadings and environment genetic correlations were computed from a factor-analytic (`fa(env, k):gen`) fit's identified *realised* effects on the engine withdrawn in 0.9.3 (see `NEWS.md`). No active engine produces that fit shape, so that summary is unavailable in this release and its entry point is no longer exported. The INLA MET route gives variance components via `summary()`.
+--><!--
+## Cross-engine triangulation
+
+Fit the same model on two backends and compare:
+
+``` r
+fit_brms <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                       data = sleepstudy, backend = "brms")
+fit_inla <- flexybayes(Reaction ~ Days, random = ~ Subject,
+                       data = sleepstudy, backend = "inla")
+
+triangulate(fit_brms, fit_inla)
+```
+
+The result carries an overall `status` -- `concordant`, `discordant` or `inconclusive` -- and a per-parameter table: each fit's posterior mean and SD, the mean shift and Wasserstein-1 distance in posterior-SD units, the SD ratio, and a per-parameter verdict.
+
+Three gates run before any of those numbers is reported.
+
+- **Comparability.** Each fit carries a fingerprint of the question it answered: canonical formula triple, family and link, data dimensions, column names and content digest, and the recorded prior per variance component. Two fits that disagree are refused by name (`triangulate_incomparable_fits`). There is no override argument.
+- **Diagnostics.** A fit that failed its own convergence checks makes the status `inconclusive` and yields no parameter verdicts. Disagreement between an unconverged fit and a converged one is not a finding.
+- **Matched priors.** A variance component is compared only when both fits record the same prior for it. The rest are reported as `not_compared` with the reason, most often that the term sits outside the shared default and each engine chose its own hyperprior.
+
+The thresholds behind the verdicts (0.1 posterior SD on the mean shift and on Wasserstein-1, an SD ratio inside [0.9, 1.1]) are heuristics for directing attention, in the sense Gelman et al. (2020) use for cross-implementation checks. They carry no error rate, and `concordant` is not a calibration claim: the package ships no simulation-based calibration of its own fits.
+
+brms (full HMC) and INLA (a Laplace approximation) sit on different inference paradigms, so the comparison is independent evidence about the *inference*. It is not independent evidence about the model: both fits come from the same parsed representation, so a mistranslation is common-mode and triangulates perfectly. The *cross-engine triangulation* vignette works through the disagreement patterns, and the package keeps an internal registry of which code paths the two engines have been certified not to share.
+
+`canonical_names()` does the work of aligning backend-native parameter names (brms's `sd_g__Intercept`, INLA's `Precision for g` on the precision scale) to a single canonical name with the correct scale transform -- no `name_map` argument needed in standard cases.
+--><!--
+## Companion accessors
+
+| Accessor | Returns |
+|------------------------------------|------------------------------------|
+| `backend_decision(fit)` | The captured dispatch trace: backend, path, `lgm_gate` checks, reason. |
+| `prior_summary(fit)` | The resolved prior -- auto-default (weakly-informative bounded uniform on SD, with half-Cauchy advised for small group counts), user-supplied `fb_prior()`, or legacy scalar bridge. |
+| `canonical_names(fit)` | The backend-native ↔ canonical-name table with per-row scale transforms. |
+| `review_code = TRUE` on `flexybayes()` / `fb_brms()` | Inspect-before-fit workflow. `cat_code(rev)` prints the generated backend code, and `proceed(rev)` advances into the fit. Supported on the formula-entry verbs only. |
+
+A fitted object exposes everything a downstream tool needs through these exported accessors, so a pipeline can consume a fit -- its variance components, its dispatch decision, its seed -- without reading flexyBayes internals. The AAGI ORCHESTRA workspace, which coordinates several analysis packages, builds its provenance records from exactly this surface; nothing in flexyBayes depends on it.
 -->
 </div>
-</div>
-<div class="section level2">
-<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
-</h2>
-<p>The planner needs no inference backend to show what flexyBayes will do with a model: it builds the intermediate representation, chooses a backend, and reports the plan without fitting.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://aagi-aus.github.io/flexyBayes/">flexyBayes</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package <span class="op">=</span> <span class="st">"lme4"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Inspect the routing decision and representation plan -- no backend needed</span></span>
-<span><span class="va">plan</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span></span>
-<span>  fixed  <span class="op">=</span> <span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>,</span>
-<span>  random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
-<span>  data   <span class="op">=</span> <span class="va">sleepstudy</span>,</span>
-<span>  plan   <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">plan</span></span></code></pre></div>
-<p>To fit, install at least one backend (see <em>Backend support</em> above). The following uses production sampling settings. The <em>getting started</em> vignette walks through the same fit with its convergence diagnostics.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span></span>
-<span>  fixed  <span class="op">=</span> <span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>,</span>
-<span>  random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
-<span>  data   <span class="op">=</span> <span class="va">sleepstudy</span>,</span>
-<span>  n_samples <span class="op">=</span> <span class="fl">2000</span>, warmup <span class="op">=</span> <span class="fl">5000</span>, chains <span class="op">=</span> <span class="fl">4</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Standard R output</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># emmeans + marginaleffects</span></span>
-<span><span class="fu">emmeans</span><span class="fu">::</span><span class="fu">emmeans</span><span class="op">(</span><span class="va">fit</span>, <span class="op">~</span> <span class="va">Days</span>, at <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Days <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">marginaleffects</span><span class="fu">::</span><span class="fu">avg_slopes</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="cross-engine-triangulation">Cross-engine triangulation<a class="anchor" aria-label="anchor" href="#cross-engine-triangulation"></a>
-</h2>
-<p>Fit the same model on two backends and compare:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_brms</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
-<span>                       data <span class="op">=</span> <span class="va">sleepstudy</span>, backend <span class="op">=</span> <span class="st">"brms"</span><span class="op">)</span></span>
-<span><span class="va">fit_inla</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/flexybayes.html">flexybayes</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span>, random <span class="op">=</span> <span class="op">~</span> <span class="va">Subject</span>,</span>
-<span>                       data <span class="op">=</span> <span class="va">sleepstudy</span>, backend <span class="op">=</span> <span class="st">"inla"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/triangulate.html">triangulate</a></span><span class="op">(</span><span class="va">fit_brms</span>, <span class="va">fit_inla</span><span class="op">)</span></span></code></pre></div>
-<p>The result carries an overall <code>status</code> – <code>concordant</code>, <code>discordant</code> or <code>inconclusive</code> – and a per-parameter table: each fit’s posterior mean and SD, the mean shift and Wasserstein-1 distance in posterior-SD units, the SD ratio, and a per-parameter verdict.</p>
-<p>Three gates run before any of those numbers is reported.</p>
-<ul>
-<li>
-<strong>Comparability.</strong> Each fit carries a fingerprint of the question it answered: canonical formula triple, family and link, data dimensions, column names and content digest, and the recorded prior per variance component. Two fits that disagree are refused by name (<code>triangulate_incomparable_fits</code>). There is no override argument.</li>
-<li>
-<strong>Diagnostics.</strong> A fit that failed its own convergence checks makes the status <code>inconclusive</code> and yields no parameter verdicts. Disagreement between an unconverged fit and a converged one is not a finding.</li>
-<li>
-<strong>Matched priors.</strong> A variance component is compared only when both fits record the same prior for it. The rest are reported as <code>not_compared</code> with the reason, most often that the term sits outside the shared default and each engine chose its own hyperprior.</li>
-</ul>
-<p>The thresholds behind the verdicts (0.1 posterior SD on the mean shift and on Wasserstein-1, an SD ratio inside [0.9, 1.1]) are heuristics for directing attention, in the sense Gelman et al. (2020) use for cross-implementation checks. They carry no error rate, and <code>concordant</code> is not a calibration claim: the package ships no simulation-based calibration of its own fits.</p>
-<p>brms (full HMC) and INLA (a Laplace approximation) sit on different inference paradigms, so the comparison is independent evidence about the <em>inference</em>. It is not independent evidence about the model: both fits come from the same parsed representation, so a mistranslation is common-mode and triangulates perfectly. The <em>cross-engine triangulation</em> vignette works through the disagreement patterns, and the package keeps an internal registry of which code paths the two engines have been certified not to share.</p>
-<p><code><a href="reference/canonical_names.html">canonical_names()</a></code> does the work of aligning backend-native parameter names (brms’s <code>sd_g__Intercept</code>, INLA’s <code>Precision for g</code> on the precision scale) to a single canonical name with the correct scale transform – no <code>name_map</code> argument needed in standard cases.</p>
-</div>
-<div class="section level2">
-<h2 id="companion-accessors">Companion accessors<a class="anchor" aria-label="anchor" href="#companion-accessors"></a>
-</h2>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr>
-<th>Accessor</th>
-<th>Returns</th>
-</tr></thead>
-<tbody>
-<tr>
-<td><code>backend_decision(fit)</code></td>
-<td>The captured dispatch trace: backend, path, <code>lgm_gate</code> checks, reason.</td>
-</tr>
-<tr>
-<td><code>prior_summary(fit)</code></td>
-<td>The resolved prior – auto-default (weakly-informative bounded uniform on SD, with half-Cauchy advised for small group counts), user-supplied <code><a href="reference/fb_prior.html">fb_prior()</a></code>, or legacy scalar bridge.</td>
-</tr>
-<tr>
-<td><code>canonical_names(fit)</code></td>
-<td>The backend-native ↔︎ canonical-name table with per-row scale transforms.</td>
-</tr>
-<tr>
-<td>
-<code>review_code = TRUE</code> on <code><a href="reference/flexybayes.html">flexybayes()</a></code> / <code><a href="reference/fb_brms.html">fb_brms()</a></code>
-</td>
-<td>Inspect-before-fit workflow. <code>cat_code(rev)</code> prints the generated backend code, and <code>proceed(rev)</code> advances into the fit. Supported on the formula-entry verbs only.</td>
-</tr>
-</tbody>
-</table>
-<p>A fitted object exposes everything a downstream tool needs through these exported accessors, so a pipeline can consume a fit – its variance components, its dispatch decision, its seed – without reading flexyBayes internals. The AAGI ORCHESTRA workspace, which coordinates several analysis packages, builds its provenance records from exactly this surface; nothing in flexyBayes depends on it.</p>
 </div>
 <div class="section level2">
 <h2 id="asreml-hands-accessors">ASReml-hands accessors<a class="anchor" aria-label="anchor" href="#asreml-hands-accessors"></a>
@@ -577,7 +541,7 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 <h2 id="output-structure">Output structure<a class="anchor" aria-label="anchor" href="#output-structure"></a>
 </h2>
 <p>Every fit carries three top-level slots:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="va">glm</span>         <span class="co"># GLM-compatible shim -- works with summary(), emmeans,</span></span>
 <span>                <span class="co"># marginaleffects, broom</span></span>
 <span></span>
@@ -591,7 +555,7 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 <div class="section level2">
 <h2 id="supported-asreml-syntax-reference">Supported ASReml syntax (reference)<a class="anchor" aria-label="anchor" href="#supported-asreml-syntax-reference"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fixed effects</span></span>
 <span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span>                  <span class="co"># fixed factor</span></span>
 <span><span class="va">yield</span> <span class="op">~</span> <span class="va">env</span> <span class="op">+</span> <span class="va">x_cov</span>          <span class="co"># factor + covariate</span></span>
