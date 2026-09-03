@@ -215,7 +215,7 @@ are columns; see the callout above.-->
 </td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td>The certified overlap class, which both engines emit and <code><a href="reference/triangulate.html">triangulate()</a></code> compares.</td>
+<td></td>
 </tr>
 <tr>
 <td>GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect</td>
@@ -224,156 +224,56 @@ are columns; see the callout above.-->
 </td>
 <td align="center">✓</td>
 <td align="center">✓</td>
-<td>INLA’s likelihood allowlist is read from <code>INLA::inla.models()</code> when INLA is installed.</td>
+<td></td>
 </tr>
 <tr>
-<td>Hurdle gamma (zero mass plus a positive gamma part)</td>
+<td>Hurdle gamma</td>
 <td><code>family = "hurdle_gamma"</code></td>
-<td align="center">refuses</td>
+<td align="center">x</td>
 <td align="center">✓</td>
-<td>brms-native (<code>dpars</code> mu, shape, hu); the zero-mass probability <code>hu</code> keeps brms’s own prior. INLA’s likelihood roster carries no counterpart, so the family gate refuses it there and <code>auto</code> routes to brms.</td>
+<td></td>
 </tr>
 <tr>
 <td>Uncorrelated random slope</td>
 <td><code>(x \|\| g)</code></td>
-<td align="center">refuses</td>
+<td align="center">x</td>
 <td align="center">✓</td>
-<td>The three-arbitrator verification named a since-withdrawn engine as one arbitrator, so the INLA mapping stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent – no local artefact lifts it. <code>auto</code> routes to brms.</td>
+<td></td>
 </tr>
 <tr>
 <td>Factor-by-numeric fixed interaction</td>
 <td>
 <code>y ~ f * x</code> with numeric <code>x</code>
 </td>
-<td align="center">refuses</td>
+<td align="center">x</td>
 <td align="center">✓</td>
-<td>The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. <code>auto</code> routes to brms.</td>
-</tr>
-<tr>
-<td>Correlated random slope</td>
-<td><code>(x \| g)</code></td>
-<td align="center">refuses</td>
-<td align="center">refuses</td>
-<td>Refused at ingest, before any engine is chosen. Fit <code>(x \|\| g)</code> when the correlation is not of inferential interest.</td>
-</tr>
-<tr>
-<td>Nested / interaction random effects, multi-stratum</td>
-<td>
-<code>~ gen:env</code>, <code>~ env:rep:block</code>
-</td>
-<td align="center">refuses</td>
-<td align="center">✓</td>
-<td>INLA collapses the finest strata, so it refuses rather than reporting a zero. brms emits <code>(1 \| a:b)</code>.</td>
-</tr>
-<tr>
-<td>Heterogeneous variance by factor level</td>
-<td>
-<code>~ diag(f):g</code>, <code>~ idh(f):g</code>, <code>~ at(f):g</code>
-</td>
-<td align="center">refuses</td>
-<td align="center">✓</td>
-<td>One variance per level of <code>f</code>, no covariance between levels. All three spellings emit identical code.</td>
-</tr>
-<tr>
-<td>Unstructured genotype-by-environment covariance</td>
-<td><code>~ us(f):g</code></td>
-<td align="center">refuses</td>
-<td align="center">✓</td>
-<td>The correlated sibling of the diagonal structure – <code>k(k+1)/2</code> parameters against <code><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag()</a></code>’s <code>k</code>. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and <code>sigma</code> does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual.</td>
-</tr>
-<tr>
-<td>Heterogeneous variances with one shared correlation</td>
-<td><code>~ corh(f):g</code></td>
-<td align="center">refuses</td>
-<td align="center">refuses</td>
-<td>No active engine has an equicorrelation group-level structure. Use <code>diag(f):g</code> or <code>us(f):g</code>.</td>
-</tr>
-<tr>
-<td>Heterogeneous residual by factor level</td>
-<td>
-<code>residual = ~ dsum(~ units \| f)</code> / <code>~ at(f):units</code>
-</td>
-<td align="center">refuses</td>
-<td align="center">✓</td>
-<td>Lowered to distributional regression on log sigma, <code>sigma ~ 0 + f</code>. Refused for families with no residual scale.</td>
-</tr>
-<tr>
-<td>Combined interaction random effects and heterogeneous residual (full MET)</td>
-<td>
-<code>random = ~ gen + gen:env</code> with the <code>dsum</code> residual</td>
-<td align="center">refuses</td>
-<td align="center">✓</td>
-<td>The emit carries both the group-level term and the <code>sigma</code> predictor, and a live fit samples cleanly on simulated multi-environment data. <code>auto</code> reaches brms for this class.</td>
-</tr>
-<tr>
-<td>Factor-analytic genotype-by-environment covariance</td>
-<td><code>~ fa(env, k):gen</code></td>
-<td align="center">refuses</td>
-<td align="center">refuses</td>
-<td>Parsed for the formula catalogue and refused at dispatch – no active engine emits a factor-analytic covariance.</td>
-</tr>
-<tr>
-<td>Multi-trait covariance</td>
-<td><code>~ us(trait):vm(gen)</code></td>
-<td align="center">refuses</td>
-<td align="center">refuses</td>
-<td>No active engine represents a trait-by-genotype unstructured covariance.</td>
-</tr>
-<tr>
-<td>Known-covariance genomic / pedigree random effect</td>
-<td>
-<code>~ vm(g, K)</code>, <code>~ ped(a, A)</code>
-</td>
-<td align="center">✓</td>
-<td align="center">✓</td>
-<td>INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky.</td>
-</tr>
-<tr>
-<td>Separable AR1 spatial field</td>
-<td>
-<code>random = ~ ar1(row):ar1(col)</code>, <code>random = ~ ar1(t)</code>
-</td>
-<td align="center">✓</td>
-<td align="center">refuses</td>
-<td>A latent AR1 field plus the Gaussian observation nugget – four hyperparameters, one observation per grid node. This is not ASReml’s three-parameter nugget-free residual, so the residual spelling refuses and names this one.</td>
-</tr>
-<tr>
-<td>Per-trial separable AR1 field</td>
-<td><code>random = ~ at(trial):ar1(row):ar1(col)</code></td>
-<td align="center">✓</td>
-<td align="center">refuses</td>
-<td>One field realisation per level of <code>trial</code>, via INLA’s <code>replicate =</code> mechanism, but the row correlation, column correlation and field SD are shared across every level – not estimated per trial. <code>at(trial, level):ar1(row):ar1(col)</code> (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (<code>at_field_per_level_hyper_not_representable</code>). brms has no lowering for either spelling.</td>
-</tr>
-<tr>
-<td>Univariate P-spline</td>
-<td><code>~ spl(x)</code></td>
-<td align="center">✓</td>
-<td align="center">refuses</td>
-<td>Mapped to INLA’s second-order random walk. brms has no lowering for the smooth basis.</td>
-</tr>
-<tr>
-<td>Observation weights (Gaussian, identity link)</td>
-<td><code>weights = w</code></td>
-<td align="center">✓</td>
-<td align="center">✓</td>
-<td>Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA’s <code>scale = w</code>; on brms a known offset on the sigma distributional parameter, NOT brms’s own <code><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights()</a></code> addition term (a different, likelihood-power quantity per brms’s own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (<code>weights_requires_gaussian</code>); <code>aggregate = TRUE</code> alongside weights also refuses by name (<code>weights_not_aggregatable</code>).</td>
-</tr>
-<tr>
-<td>Exact sufficient-statistic aggregation</td>
-<td>
-<code>aggregate = TRUE</code>, <code><a href="reference/flexybayes_stream.html">flexybayes_stream()</a></code>
-</td>
-<td align="center">✓</td>
-<td align="center">n/a</td>
-<td>Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
+<!--| Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
+--><div class="line-block">Nested / interaction random effects, multi-stratum | <code>~ gen:env</code>, <code>~ env:rep:block</code> | x | ✓ | brms basically turns this to <code>(1 \| a:b)</code>. |<br>
+Heterogeneous variance by factor level | <code>~ diag(f):g</code>, <code>~ idh(f):g</code>, <code>~ at(f):g</code> | x | ✓ | One variance per level of <code>f</code>, no covariance between levels. |<br>
+Unstructured genotype-by-environment covariance | <code>~ us(f):g</code> | x | ✓ | |</div>
+<!--| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |-->
+<div class="line-block">Heterogeneous residual by factor level | <code>residual = ~ dsum(~ units \| f)</code> / <code>~ at(f):units</code> | x | ✓ | Refused for families with no residual scale. |<br>
+Combined interaction random effects and heterogeneous residual (full MET) | <code>random = ~ gen + gen:env</code> with the <code>dsum</code> residual | x | ✓ | |</div>
+<!--| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch -- no active engine emits a factor-analytic covariance. |-->
+<!--| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
+-->
+<div class="line-block">Known-covariance genomic / pedigree random effect | <code>~ vm(g, K)</code>, <code>~ ped(a, A)</code> | ✓ | ✓ | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky forms. |<br>
+Separable AR1 spatial field | <code>random = ~ ar1(row):ar1(col)</code>, <code>random = ~ ar1(t)</code> | ✓ | x | |<br>
+Per-trial separable AR1 field | <code>random = ~ at(trial):ar1(row):ar1(col)</code> | ✓ | x | One field realisation per level of <code>trial</code>, via INLA’s <code>replicate =</code> mechanism, but the row correlation, column correlation and field SD are shared across every level. |<br>
+Univariate P-spline | <code>~ spl(x)</code> | ✓ | x | |<br>
+Observation weights (Gaussian, identity link) | <code>weights = w</code> | ✓ | ✓ | Precision weighting,  (the ASReml / lme4 / glm(weights=) sense). |</div>
+<!--| Exact sufficient-statistic aggregation | `aggregate = TRUE`, `flexybayes_stream()` | ✓ | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
+-->
 <!--
 `fits` -- the engine emits the structure and a test exercises it. `emits` -- the engine generates the structure and no live fit has yet confirmed it samples acceptably. `refuses` -- the request raises rather than fitting something else. `n/a` -- the class does not apply to that engine's interface.
 
 This block is generated from `.fb_capability_matrix()` by `tools/generate_capability_matrix.R`. Edit the R table, re-run the generator, and let `tests/testthat/test-capability-matrix.R` check that every verdict still matches the gate and emit code. Do not edit the rows here by hand.
-<!-- capability-matrix:end --><p>–&gt;</p>
+<!-- capability-matrix:end -->
+<p>–&gt;</p>
 <blockquote>
 <p><strong>What the aggregation row is worth.</strong> The sufficient-statistic route is what carries the package to dataset sizes the per-row path cannot reach: the per-row path runs out of memory between one and five million rows on a 32 GB machine, while the streamed path fits five billion rows through a roughly flat memory envelope, because it is always fitting the same small number of cells. The measured record – sizes, wall-clock, peak memory, the hardware, and the model scope outside which the route refuses rather than approximates – is banked with the package at <code>system.file("validation/benchmark_scaling.md", package = "flexyBayes")</code>.</p>
 </blockquote>
