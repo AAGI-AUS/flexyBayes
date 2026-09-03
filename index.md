@@ -109,68 +109,6 @@ All exports are at the **experimental** `lifecycle` stage. See
 | Univariate P-spline | `~ spl(x)` | ✓ | x |  |
 | Observation weights (Gaussian, identity link) | `weights = w` | ✓ | ✓ | Precision weighting, (the ASReml / lme4 / glm(weights=) sense). |
 
-## ASReml-hands accessors
-
-If you arrive with an `asreml()` call in hand, *Getting started*’s
-section 6, “Reading a fit the way a REML user does”, walks the accessors
-below one at a time. They are views over an ordinary Bayesian fit – the
-estimator is named on every table, because a posterior mean is not a
-REML component.
-
-| You type | You get |
-|----|----|
-| `summary(fit)` | One eleven-slot object on every engine: `$fixed`, `$varcomp`, `$random`, `$missing`, `$converge`, `$n_design`, `$n_observed`, `$na_action`, `$model`, `$engine`, `$call`. A fit carrying an autoregressive latent field adds `$spatial_field`. |
-| `summary(fit)$varcomp` | Variance components on the standard-deviation scale with a credible interval, the prior each component ran under, and a note column for boundary collapse. |
-| `coef(fit, what = "random")` / `ranef(fit)` | Random-effect predictions, one data frame per grouping factor. `what = "missing"` returns the unobserved design cells, `what = "all"` returns all three tables. |
-| `predict(fit, classify = "Variety", level = 0.95)` | The marginal-means table, built on `emmeans`. Means and credible intervals only – no pairwise standard-error block. |
-| `nobs(fit, type = "observed")` | Observed responses, beside `nobs(fit)`, which stays the design row count the engine saw. |
-| `na_action = list(y = "include", x = "fail")` | ASReml’s `na.method()` vocabulary, detected by shape. An `asreml::na.method()` object is accepted directly, with no asreml dependency. |
-| `fb_complete_grid(data, ~ row * col, response = "yield")` | Absent design cells reinstated with an `NA` response. A varying design factor refuses unless `unused_level =` names the level to write. |
-| `plot(fit, type = "variogram")` | The empirical residual semivariance over the design array, computed on the observed rows. |
-| `update(fit, random = ~ Block + Variety)` | A re-fit on either engine, carrying every recorded argument forward, `na_action` and the resolved prior included. |
-
-There is no `wald()` method, no pairwise standard-error table, and no
-covariate zero-fill. Each is a deliberate absence rather than a gap, and
-the vignette says why.
-
-### Two doors, one object
-
-The same fit answers to the generics a Bayesian reaches for. Neither
-idiom is a wrapper around the other.
-
-| ASReml hands | Bayesian hands |
-|----|----|
-| `summary(fit)$varcomp` | `posterior::as_draws_df(fit)` |
-| `coef(fit, what = "random")`, `ranef(fit)` | `posterior::as_draws()`, `posterior::as_draws_matrix()`, `fb_as_draws_simple(fit)` |
-| `predict(fit, classify = "Variety")` | `emmeans` or `marginaleffects` on the same fit |
-| `plot(fit, type = "variogram")` | `pp_check(fit)`, `plot(fit, type = "diagnostics")` |
-| `summary(fit)$converge` | The same slot, reporting the engine’s own diagnostics |
-| No ASReml counterpart | `prior_summary(fit)`, `loo(fit)`, `triangulate(fit_a, fit_b)` |
-
-`loo()` and `pp_check()` pass through to brms on a sampled fit and
-refuse by name on a Laplace fit, naming the WAIC and DIC that fit does
-carry.
-
-## Output structure
-
-Every fit carries three top-level slots:
-
-``` r
-
-fit$glm         # GLM-compatible shim -- works with summary(), emmeans,
-                # marginaleffects, broom
-
-fit$inla        # native INLA output (when backend = "inla")
-fit$brms        # live brmsfit (when backend = "brms")
-
-fit$extras      # BLUPs, variance components, convergence diagnostics,
-                # generated code, parsed IR, run time, captured call
-```
-
-There is no third-engine slot on a fit object: naming a withdrawn or
-otherwise unrecognised `backend` refuses before a fit object exists (see
-*Backend support*).
-
 ## Supported ASReml syntax (reference)
 
 ``` r
@@ -212,8 +150,6 @@ family = "gaussian" | "binomial" | "poisson" | "negative_binomial" |
 
 ## Vignettes
 
-Eight vignettes ship with the package:
-
 | \#  | Vignette                                            |
 |-----|-----------------------------------------------------|
 | 01  | Getting started: what changes when you go Bayesian  |
@@ -225,74 +161,10 @@ Eight vignettes ship with the package:
 | 07  | After the fit: summaries, comparison, triangulation |
 | 08  | Big data: fitting without holding the data          |
 
-Each opens with a panel giving the problem, the ASReml line, the
-flexyBayes line, what the posterior adds, and what it costs. Every code
-block is executed at build time, so the numbers on a page came from the
-fit above them. 12–15 recording earlier merges, and *From an ASReml
-call* (page 00) was folded into *Getting started*’s new accessor section
-rather than kept as its own page. Every number in the table above is the
-page’s current, shipped filename suffix.
-
-Heavy MCMC vignettes use a `.Rmd.orig` precompile pattern. The `.Rmd`
-that ships in the package tarball is the pre-evaluated static output.
-Browse them with `browseVignettes("flexyBayes")` **after a full
-install** – `R CMD build` then `R CMD INSTALL` the tarball, or
-`devtools::install(build_vignettes = TRUE)`. A plain `install_github()`
-or source-directory install does **not** build the vignettes into
-`inst/doc`.
-
-Some vignettes fit at small sampling budgets for speed and say so where
-it matters, and each flags any diagnostic that falls short of production
-convergence thresholds rather than presenting it as a clean result. For
-a convergence-clean workflow see the *getting started* and *cross-engine
-triangulation* vignettes.
-
-## Design principles
-
-- **Indexing, not model matrices**: parameters are sized by number of
-  levels (`p`), not observations (`N`), giving O(p) memory for random
-  effects.
-- **Non-centred parameterisation**: all random effects use NCP for
-  efficient MCMC sampling.
-- **Cholesky decomposition**: known covariance matrices (G, A) are
-  decomposed once.
-- **Triangulation as first-class output**: the package is built around
-  the claim that *evidence of cross-engine agreement* is the signature
-  flexyBayes deliverable, not “one more Bayesian mixed- model frontend”.
-
-## Correctness
-
-flexyBayes ships an extensive `testthat` suite (`devtools::test()`)
-covering the paths most likely to hide errors: fixed-effect and factor
-models against [`lm()`](https://rdrr.io/r/stats/lm.html) /
-`lme4::lmer()` references, random intercepts and the asreml-route random
-slopes, structured-covariance terms, streaming-aggregation equivalence
-to the per-row fit, weights, offsets, missing-response handling, backend
-routing and the structured refusal taxonomy, prior translation, and
-cross-engine
-[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
-agreement. The *cross-engine triangulation* and per-family vignettes
-show clean reproducible checks.
-
-## Testing & CI
-
-Continuous integration validates the INLA, brms, and engine-independent
-surface (the ASReml / brms parsers, the intermediate representation,
-`lgm_gate()`, the dispatch policy table, the refusal registry, the prior
-DSL, and the
-[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md)
-metrics). A third native engine was withdrawn entirely in 0.9.3 (see
-`NEWS.md`); its tests were deleted along with the engine rather than
-skipped, so the suite carries no dormant coverage for a capability the
-package no longer offers. Run the full suite locally with
-`devtools::test()`.
+Each vignette presents the equivalent the ASReml and flexyBayes fit,
+what the posterior adds, and what it costs.
 
 ## Known limitations
-
-flexyBayes refuses what it cannot yet fit rather than fitting it
-silently. The current release does not cover the following. Each is a
-roadmap deferral, and a request that needs one is met with a structured
-refusal naming the gap, not a quiet wrong answer.
 
 - **Scale ceiling on the per-row path (realistic multi-term design)**:
   on a crossed/nested multi-environment-trial design the flexyBayes/INLA
