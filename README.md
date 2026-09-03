@@ -31,6 +31,26 @@ remotes::install_github("AAGI-AUS/flexyBayes")
 
 `flexyBayes` degrades gracefully when an optional engine is missing: each backend is detected at run time, and a model sent to an unavailable engine is refused with a clear message naming what to install rather than failing obscurely.
 
+## Quick start
+
+``` r
+fit <- flexybayes(
+  fixed  = Reaction ~ Days,
+  random = ~ Subject,
+  data   = sleepstudy,
+  n_samples = 2000, warmup = 5000, chains = 4
+)
+
+# Standard R output
+summary(fit)
+coef(fit)
+confint(fit)
+
+# emmeans + marginaleffects
+emmeans::emmeans(fit, ~ Days, at = list(Days = c(0, 5)))
+marginaleffects::avg_slopes(fit)
+```
+
 ## Which entry point do I use?
 
 | If you are used... | Then | Notes |
@@ -140,44 +160,6 @@ This block is generated from `.fb_capability_matrix()` by `tools/generate_capabi
 <!--
 **Breeder MET summaries.** Overall performance, stability, GxE BLUPs, factor loadings and environment genetic correlations were computed from a factor-analytic (`fa(env, k):gen`) fit's identified *realised* effects on the engine withdrawn in 0.9.3 (see `NEWS.md`). No active engine produces that fit shape, so that summary is unavailable in this release and its entry point is no longer exported. The INLA MET route gives variance components via `summary()`.
 -->
-
-## Quick start
-
-The planner needs no inference backend to show what flexyBayes will do with a model: it builds the intermediate representation, chooses a backend, and reports the plan without fitting.
-
-``` r
-library(flexyBayes)
-data(sleepstudy, package = "lme4")
-
-# Inspect the routing decision and representation plan -- no backend needed
-plan <- flexybayes(
-  fixed  = Reaction ~ Days,
-  random = ~ Subject,
-  data   = sleepstudy,
-  plan   = TRUE
-)
-plan
-```
-
-To fit, install at least one backend (see *Backend support* above). The following uses production sampling settings. The *getting started* vignette walks through the same fit with its convergence diagnostics.
-
-``` r
-fit <- flexybayes(
-  fixed  = Reaction ~ Days,
-  random = ~ Subject,
-  data   = sleepstudy,
-  n_samples = 2000, warmup = 5000, chains = 4
-)
-
-# Standard R output
-summary(fit)
-coef(fit)
-confint(fit)
-
-# emmeans + marginaleffects
-emmeans::emmeans(fit, ~ Days, at = list(Days = c(0, 5)))
-marginaleffects::avg_slopes(fit)
-```
 
 ## Cross-engine triangulation
 
