@@ -1,20 +1,15 @@
 # flexyBayes
 
-Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax
+Flexible Bayesian Mixed Models with `ASReml` and `brms`-style Syntax
 
 Licence: MIT. Version 0.10.0 is an experimental release: every export is
 at the experimental `lifecycle` stage and the API may change within the
 0.x series.
 
-`flexyBayes` is a multi-backend Bayesian mixed-model framework. It
-routes one model specification to INLA (integrated nested Laplace
-approximation) or brms (Stan passthrough), refuses by name what neither
-engine can represent, and reports how far the two posteriors sit apart
-when the same model is fitted on both – a diagnostic,
-[`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md),
-not a proof of correctness. The parser, the intermediate representation
-and the prior interlingua are shared, so agreement between the engines
-is evidence about the samplers, not about the model.
+`flexyBayes` is a multi-backend Bayesian mixed model framework,
+effectively acting as a wrapper to estimate a range of linear and
+generalized linear mixed models via INLA (integrated nested Laplace
+approximation) or `brms` (wrapping around Stan).
 
 > **Development release.** All exports are at the experimental
 > `lifecycle` stage and the API may change within the 0.x series. Not on
@@ -27,108 +22,55 @@ is evidence about the samplers, not about the model.
 
 ## Which entry point do I use?
 
-| If you have … | Use | Notes |
+| If you are used… | Then | Notes |
 |----|----|----|
-| ASReml syntax (`fixed` / `random` / `residual`) | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | Variance-component / agricultural workflows. |
-| brms or lme4 syntax (`y ~ x + (1 \| g)`) | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | The grammar is detected from the call, and `syntax =` forces it. |
-| To force one engine | [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) / [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | Single-engine pins. A conflicting `backend` is refused. |
-| Two fits you want to compare across engines | [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md) | Auto-resolves canonical parameter names. |
+| ASReml syntax (`fixed` / `random` / `residual`) | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | Variance-component / Aimed more at analysis of agricultural data. |
+| brms/lme4 syntax (`y ~ x + (1 \| g)`) | [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | At more any more other mixed model analysis |
+| I don’t mind! | [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) / [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | If you want to use a specific backend |
 
 [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md)
 is the short alias for
 [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md),
 and either name is the universal entry that spans every backend.
 
-## Which backend will I get?
-
-| Verb | `inla` | `brms` (Stan) | `auto` |
-|----|:--:|:--:|:--:|
-| [`fb()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) / [`flexybayes()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes.md) | ✓ | ✓ | ✓ (INLA or brms via `lgm_gate()`) |
-| [`fb_inla()`](https://aagi-aus.github.io/flexyBayes/reference/fb_inla.md) | ✓ | – | – |
-| [`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md) | – | ✓ | – |
-
-The universal entry reaches any active backend: name one with
-`backend =`, or let `backend = "auto"` choose. Each `fb_<engine>()` pin
-fits exactly one engine and refuses a conflicting `backend`.
-`backend = "auto"` runs the LGM feasibility gate and routes to INLA on
-acceptance, otherwise to brms. A model neither can represent refuses
-with `auto_no_active_route` rather than fitting something else, and
-nothing is translated silently. `auto` does change engine in one case
-after starting: an INLA program failure is caught and re-routed to brms,
-reported by a message rather than silently, and the fit’s class and
-`backend` field always say which engine produced it. Reach Stan
-explicitly with
-[`fb_brms()`](https://aagi-aus.github.io/flexyBayes/reference/fb_brms.md)
-or `fb(..., backend = "brms")`. Naming a withdrawn or otherwise
-unrecognised backend raises `unknown_backend` – see *Backend support*
-below.
-
 ## Backend support
 
-flexyBayes is standalone-functional with any one backend installed, and
-the planner (see *Quick start*) needs none at all. The backends differ
-in install burden and in what they offer.
+The backends differ in install burden and in what they offer.
 
 | Backend | On CRAN? | Install burden | Inference | In flexyBayes |
 |----|----|----|----|----|
 | INLA | No (own repository) | Moderate – binary, no compiler | Approximate (nested Laplace) | Supported |
 | brms (Stan) | Yes | Heavy – first-call Stan compile (~30–60 s) | MCMC (sampling error only) | Supported |
 
-A third native engine was withdrawn entirely in 0.9.3 – see `NEWS.md`.
-
 All exports are at the **experimental** `lifecycle` stage. See
 `API_STABILITY.md` in the source repository for what that guarantees.
-The planner runs with no inference backend installed at all, so it is
-the least you need in place to explore the package. For a worked fit
-with production sampling settings and its diagnostics reported in full,
-follow the *getting started* vignette.
 
-### Backend support by model class
-
-What each active engine does, by model class. The table below is
-generated from a single R-level source and every verdict in it is
-re-derived from the gate and emit code by
-`tests/testthat/test-capability-matrix.R`. Editing it by hand fails that
-test. `fits` means the structure emits and a test exercises it – it does
-not promise that every fit converges at small budgets, which is
-model-specific and always reported, so treat a high R-hat badge as a
-diagnostic rather than a result. Only the two active engines are
-columns; see the callout above.
+### Backend support and model types
 
 | Model class | Spelling | INLA | brms | Notes |
 |----|----|:--:|:--:|----|
-| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md) compares. |
-| GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA’s likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
-| Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms’s own prior. INLA’s likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
-| Uncorrelated random slope | `(x \|\| g)` | refuses | fits | The three-arbitrator verification named a since-withdrawn engine as one arbitrator, so the INLA mapping stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent – no local artefact lifts it. `auto` routes to brms. |
-| Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | fits | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
+| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | ✓ | ✓ | The certified overlap class, which both engines emit and [`triangulate()`](https://aagi-aus.github.io/flexyBayes/reference/triangulate.md) compares. |
+| GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | ✓ | ✓ | INLA’s likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
+| Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | ✓ | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms’s own prior. INLA’s likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
+| Uncorrelated random slope | `(x \|\| g)` | refuses | ✓ | The three-arbitrator verification named a since-withdrawn engine as one arbitrator, so the INLA mapping stays deferred until the criterion is rebuilt around the active engines. The deferral is host-independent – no local artefact lifts it. `auto` routes to brms. |
+| Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | refuses | ✓ | The indexed-slope INLA mapping shares the deferred three-arbitrator verification with the uncorrelated random slope, and refuses on every host. `auto` routes to brms. |
 | Correlated random slope | `(x \| g)` | refuses | refuses | Refused at ingest, before any engine is chosen. Fit `(x \|\| g)` when the correlation is not of inferential interest. |
-| Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | refuses | fits | INLA collapses the finest strata, so it refuses rather than reporting a zero. brms emits `(1 \| a:b)`. |
-| Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | refuses | fits | One variance per level of `f`, no covariance between levels. All three spellings emit identical code. |
-| Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits | The correlated sibling of the diagonal structure – `k(k+1)/2` parameters against [`diag()`](https://rdrr.io/r/base/diag.html)’s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
+| Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | refuses | ✓ | INLA collapses the finest strata, so it refuses rather than reporting a zero. brms emits `(1 \| a:b)`. |
+| Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | refuses | ✓ | One variance per level of `f`, no covariance between levels. All three spellings emit identical code. |
+| Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | ✓ | The correlated sibling of the diagonal structure – `k(k+1)/2` parameters against [`diag()`](https://rdrr.io/r/base/diag.html)’s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |
-| Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | refuses | fits | Lowered to distributional regression on log sigma, `sigma ~ 0 + f`. Refused for families with no residual scale. |
-| Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | refuses | fits | The emit carries both the group-level term and the `sigma` predictor, and a live fit samples cleanly on simulated multi-environment data. `auto` reaches brms for this class. |
+| Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | refuses | ✓ | Lowered to distributional regression on log sigma, `sigma ~ 0 + f`. Refused for families with no residual scale. |
+| Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | refuses | ✓ | The emit carries both the group-level term and the `sigma` predictor, and a live fit samples cleanly on simulated multi-environment data. `auto` reaches brms for this class. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Parsed for the formula catalogue and refused at dispatch – no active engine emits a factor-analytic covariance. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
-| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. |
-| Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget – four hyperparameters, one observation per grid node. This is not ASReml’s three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
-| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, via INLA’s `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level – not estimated per trial. `at(trial, level):ar1(row):ar1(col)` (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (`at_field_per_level_hyper_not_representable`). brms has no lowering for either spelling. |
-| Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA’s second-order random walk. brms has no lowering for the smooth basis. |
-| Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA’s `scale = w`; on brms a known offset on the sigma distributional parameter, NOT brms’s own [`weights()`](https://rdrr.io/r/stats/weights.html) addition term (a different, likelihood-power quantity per brms’s own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (`weights_requires_gaussian`); `aggregate = TRUE` alongside weights also refuses by name (`weights_not_aggregatable`). |
-| Exact sufficient-statistic aggregation | `aggregate = TRUE`, [`flexybayes_stream()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes_stream.md) | fits | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
+| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | ✓ | ✓ | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. |
+| Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | ✓ | refuses | A latent AR1 field plus the Gaussian observation nugget – four hyperparameters, one observation per grid node. This is not ASReml’s three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
+| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | ✓ | refuses | One field realisation per level of `trial`, via INLA’s `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level – not estimated per trial. `at(trial, level):ar1(row):ar1(col)` (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (`at_field_per_level_hyper_not_representable`). brms has no lowering for either spelling. |
+| Univariate P-spline | `~ spl(x)` | ✓ | refuses | Mapped to INLA’s second-order random walk. brms has no lowering for the smooth basis. |
+| Observation weights (Gaussian, identity link) | `weights = w` | ✓ | ✓ | Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA’s `scale = w`; on brms a known offset on the sigma distributional parameter, NOT brms’s own [`weights()`](https://rdrr.io/r/stats/weights.html) addition term (a different, likelihood-power quantity per brms’s own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (`weights_requires_gaussian`); `aggregate = TRUE` alongside weights also refuses by name (`weights_not_aggregatable`). |
+| Exact sufficient-statistic aggregation | `aggregate = TRUE`, [`flexybayes_stream()`](https://aagi-aus.github.io/flexyBayes/reference/flexybayes_stream.md) | ✓ | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
 
-`fits` – the engine emits the structure and a test exercises it. `emits`
-– the engine generates the structure and no live fit has yet confirmed
-it samples acceptably. `refuses` – the request raises rather than
-fitting something else. `n/a` – the class does not apply to that
-engine’s interface.
-
-This block is generated from `.fb_capability_matrix()` by
-`tools/generate_capability_matrix.R`. Edit the R table, re-run the
-generator, and let `tests/testthat/test-capability-matrix.R` check that
-every verdict still matches the gate and emit code. Do not edit the rows
-here by hand.
+–\>
 
 > **What the aggregation row is worth.** The sufficient-statistic route
 > is what carries the package to dataset sizes the per-row path cannot
