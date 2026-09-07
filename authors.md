@@ -5,9 +5,9 @@
 - **Max Moldovan**. Author, maintainer.
   [](https://orcid.org/0000-0001-9680-8474)
 
-- **Emi Tanaka**. Author. [](https://orcid.org/0000-0002-1455-259X)
+- **Emi Tanaka**. Contributor. [](https://orcid.org/0000-0002-1455-259X)
 
-- **Francis K.C. Hui**. Author.
+- **Francis K.C. Hui**. Contributor.
   [](https://orcid.org/0000-0003-0765-3533)
 
 - **Anabel Forte Deltell**. Author.
