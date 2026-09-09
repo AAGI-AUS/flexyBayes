@@ -86,11 +86,6 @@ lgm_gate <- function(
     .lgm_check_fixed_term_inla_support(fb), # check 7
     .lgm_check_random_term_inla_support(fb), # check 8
     .lgm_check_residual_term_inla_support(fb), # check 9
-    # check 10 -- conditional INLA-mapping
-    # verification for the factor_numeric_interaction term class.
-    # Refuses the INLA emit path when verification has not been run
-    # or did not pass on this host.
-    .lgm_check_factor_numeric_interaction_inla_verified(fb),
     # check 11 -- INLA-
     # specific memory-feasibility rule. Trivially passes when the
     # caller did not supply a preflight result (v0.3.5 backward-
@@ -683,8 +678,7 @@ print.lgm_refusal <- function(x, ...) {
 # factor x continuous interactions -- to the allowlist. INLA's
 # native `f:x` notation handles this term shape directly for the
 # gaussian-identity case; non-gaussian cases have no active-engine
-# route per the INLA verification policy (see
-# .lgm_check_factor_numeric_interaction_inla_verified() below).
+# route to the engine that represents the term.
 .inla_fixed_term_type_allowlist <- function() {
   c(
     "factor",
@@ -701,14 +695,11 @@ print.lgm_refusal <- function(x, ...) {
 # variants) has no INLA representation; the refusal
 # text names the structured-covariance class.
 .inla_random_term_type_allowlist <- function() {
-  # "simple_slope_uncor" enters the allowlist
-  # conditionally -- the gate accepts so dispatch routes to emit_inla,
-  # but emit_inla itself consults the verification artefact at
-  # inst/extdata/inla-verification/simple_slope_uncor.rds and refuses
-  # with a deferral message if the three-arbitrator test
-  # has not passed. This keeps the gate truth = emit truth invariant:
-  # accept here means "INLA dispatch is attempted"; emit
-  # refusal is structurally distinguishable from gate refusal.
+  # "simple_slope_uncor" is an ordinary member: emit_inla() writes it as
+  # f(<g>, model = "iid") + f(<g>_for_slope, <x>, model = "iid"). It used
+  # to be conditional on a runtime verification artefact, retired at
+  # 0.10.0.9000 -- the agreement it asserted is checked in the suite
+  # against lme4, which is where every other capability claim here lives.
   c("simple", "ide", "id", "spline", "simple_slope_uncor")
 }
 
@@ -824,8 +815,7 @@ print.lgm_refusal <- function(x, ...) {
 #
 # emit_inla()'s random-effect switch() recognises simple / ide /
 # id (mapped to INLA "iid"), spline (mapped to INLA "rw2"), and
-# simple_slope_uncor (mapped via the verification
-# gate). vm / ped enter the allowlist *conditionally*: the
+# simple_slope_uncor (two independent iid fields). vm / ped enter the allowlist *conditionally*: the
 # precision and pedigree_sparse_precision formats route through
 # INLA's f(model = "generic0", Cmatrix = Q) interface; the blocks
 # format (v0.3.10) routes through K independent
@@ -991,120 +981,6 @@ print.lgm_refusal <- function(x, ...) {
   .lgm_pass("residual_term_type_inla")
 }
 
-# Check 10 -- verification gate
-# for the `factor_numeric_interaction` term class.
-#
-# The fixed-term allowlist (check 7) accepts the new term class
-# structurally, but the INLA mapper for this class is not admitted on
-# the shipped surface: the three-arbitrator verification (INLA vs an
-# engine since withdrawn vs lme4 on a gaussian-identity fixture) named
-# a now-withdrawn engine as one of its arbitrators, so the criterion
-# cannot be re-run as designed. The check therefore refuses on every
-# host, and `auto` routes the term class to brms.
-#
-# The artefact at
-# `inst/extdata/inla-verification/factor_numeric_interaction.rds`
-# survives as a developer verification hook and nothing more. It is
-# excluded from the build (`.Rbuildignore`), it is untracked, and it is
-# read only when the developer option below is switched on by hand --
-# so a host that happens to carry one gets exactly the behaviour a host
-# without one gets. Until 0.9.0 the artefact's presence flipped the gate
-# from refuse to accept, which meant a locally built tarball and a clean
-# clone of the same commit did not fit the same models.
-#
-# If the IR contains no `factor_numeric_interaction` term, this
-# check is a trivial pass -- the gate is term-class-specific.
-.lgm_check_factor_numeric_interaction_inla_verified <- function(fb) {
-  rule_id <- "factor_numeric_interaction_inla_verified"
-  has_fni <- any(vapply(
-    fb$fixed_terms,
-    function(t) {
-      identical(t$type, "factor_numeric_interaction")
-    },
-    logical(1)
-  ))
-  if (!has_fni) {
-    return(.lgm_pass(rule_id))
-  }
-
-  # Shipped behaviour never reads the artefact; only a developer who has
-  # set the option by hand does, and then only to rehearse the mapping.
-  verified <- .fb_dev_verification_artefacts_enabled() &&
-    .factor_numeric_interaction_inla_verified()
-  if (isTRUE(verified)) {
-    return(.lgm_pass(rule_id))
-  }
-
-  .lgm_fail(
-    rule_id,
-    paste0(
-      "factor:continuous indexed interaction INLA mapping is not ",
-      "admitted: its three-arbitrator verification named a since-",
-      "withdrawn engine as one arbitrator (see NEWS.md), so the ",
-      "criterion cannot be re-run as designed. Pass ",
-      "backend = \"brms\", or leave backend = \"auto\", which routes ",
-      "there when INLA refuses."
-    ),
-    diagnostic = paste0(
-      "the refusal is host-independent: the developer verification ",
-      "artefact at ",
-      .factor_numeric_interaction_verification_path(),
-      " is excluded from the build and is read only when ",
-      "options(flexyBayes.dev_inla_verification_artefacts = TRUE) is ",
-      "set by hand."
-    )
-  )
-}
-
-# Developer switch for the host-local INLA verification artefacts.
-#
-# FALSE (the default, and the only value any shipped surface sees) means
-# the artefacts under inst/extdata/inla-verification/ are inert: the
-# gate and the emit refuse the two deferred term classes regardless of
-# what is on disk. A developer rehearsing a mapping sets the option to
-# TRUE for the duration of the rehearsal.
-#
-# The option exists so the verification machinery stays runnable without
-# letting an untracked, unshipped file decide what the package fits.
-.fb_dev_verification_artefacts_enabled <- function() {
-  isTRUE(getOption("flexyBayes.dev_inla_verification_artefacts", FALSE))
-}
-
-# Look up the on-disk INLA-verification artefact for the
-# factor_numeric_interaction term class. Returns TRUE iff the
-# artefact exists, is readable, and reports a passing verification
-# run; FALSE in every other case (missing, unreadable, malformed,
-# pass = FALSE). Callers gate this on
-# .fb_dev_verification_artefacts_enabled() -- it is not consulted on the
-# shipped path.
-.factor_numeric_interaction_inla_verified <- function() {
-  path <- .factor_numeric_interaction_verification_path()
-  if (!file.exists(path)) {
-    return(FALSE)
-  }
-  rec <- tryCatch(readRDS(path), error = function(e) NULL)
-  if (is.null(rec)) {
-    return(FALSE)
-  }
-  isTRUE(rec$pass)
-}
-
-# Path to the developer verification artefact. The directory is excluded
-# from the build, so `system.file()` resolves it only in a source tree
-# under `pkgload::load_all()`; from an installed package the path falls
-# back to a session-temporary location that no shipped code writes.
-.factor_numeric_interaction_verification_path <- function() {
-  base <- system.file(
-    "extdata",
-    "inla-verification",
-    package = "flexyBayes",
-    mustWork = FALSE
-  )
-  if (!nzchar(base)) {
-    base <- file.path(tempdir(), "flexyBayes-inla-verification")
-  }
-  file.path(base, "factor_numeric_interaction.rds")
-}
 
 
 # ---------------------------------------------------------------- #

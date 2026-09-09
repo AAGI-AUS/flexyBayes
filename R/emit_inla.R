@@ -544,19 +544,6 @@ emit_inla <- function(
     "    dep = TRUE)"
   )
 
-  # INLA verification gate. simple_slope_uncor
-  # passes lgm_gate (the allowlist includes it) so dispatch routes
-  # here, but the INLA mapping for (x || g) is registered only when
-  # the three-arbitrator verification test on a simple fixture has
-  # passed and the artefact at
-  # inst/extdata/inla-verification/simple_slope_uncor.rds records
-  # pass = TRUE. Until then, refuse explicitly with a deferral
-  # message naming the workaround (backend = "brms"). This is the
-  # "no silent translation of an unverified mapping" policy.
-  if (.has_simple_slope_uncor(fb)) {
-    .check_inla_verification_simple_slope_uncor()
-  }
-
   # Build INLA formula and family. priors_to_inla() returns a list
   # keyed by group / smoother var ("sigma" for residual). We thread
   # the per-term entries into f(..., hyper = list(prec = ...)) and
@@ -878,6 +865,35 @@ emit_inla <- function(
         ))
       }
     }
+  }
+
+  # Uncorrelated random slope `(x || g)`. The formula builder writes two
+  # independent iid fields over the same grouping factor,
+  # f(<g>, ...) + f(<g>_for_slope_<x>, <x>, ...), so the second index has to
+  # exist in the data list under that generated name. It never did: the
+  # runtime verification gate refused this class before emit ran, so the
+  # path was never exercised end to end and the missing column could not
+  # surface. Retiring the gate (0.10.0.9000) exposed it immediately.
+  for (term in fb$random_terms) {
+    if (!identical(term$type, "simple_slope_uncor")) {
+      next
+    }
+    slope_idx <- paste0(term$var, "_for_slope_", term$slope_var)
+    if (slope_idx %in% names(data)) {
+      stop(.fb_refusal_condition(
+        reason_code = "nested_index_name_collision",
+        message = paste0(
+          "Fitting the uncorrelated random slope `(",
+          term$slope_var,
+          " || ",
+          term$var,
+          ")` on INLA needs an index column named `",
+          slope_idx,
+          "`, and `data` already has one. Rename that column."
+        )
+      ))
+    }
+    data_inla[[slope_idx]] <- as.integer(factor(data[[term$var]]))
   }
 
   # Nested / interaction random effects, `a:b` and `a:b:c`. INLA has no
@@ -2020,96 +2036,6 @@ emit_inla <- function(
   list(pass = pass, reasons = reasons)
 }
 
-# ---------------------------------------------------------------- #
-# INLA verification gate for (x || g)                             #
-# ---------------------------------------------------------------- #
-
-# Predicate: is any random term in the IR an uncorrelated random
-# slope? Drives the per-fit verification check at the top of
-# emit_inla().
-.has_simple_slope_uncor <- function(fb) {
-  if (is.null(fb$random_terms) || length(fb$random_terms) == 0L) {
-    return(FALSE)
-  }
-  for (term in fb$random_terms) {
-    if (identical(term$type, "simple_slope_uncor")) return(TRUE)
-  }
-  FALSE
-}
-
-# Refuse the (x || g) INLA mapping, which is deferred on every host.
-#
-# The three-arbitrator verification named a since-withdrawn engine as
-# one arbitrator, so the criterion cannot be re-run as designed.
-# The artefact at inst/extdata/inla-verification/simple_slope_uncor.rds
-# survives as a developer rehearsal hook: it is excluded from the build
-# and is consulted only when a developer sets
-# options(flexyBayes.dev_inla_verification_artefacts = TRUE) by hand, so
-# shipped behaviour is the same whether or not a host carries one.
-#
-# The refusal names backend = "brms" as the workaround (auto already
-# falls back to it) and raises a structured condition of class
-# flexybayes_inla_simple_slope_uncor_deferred so downstream tooling can
-# pattern-match.
-.check_inla_verification_simple_slope_uncor <- function() {
-  pass <- FALSE
-  if (.fb_dev_verification_artefacts_enabled()) {
-    artefact_path <- system.file(
-      "extdata",
-      "inla-verification",
-      "simple_slope_uncor.rds",
-      package = "flexyBayes"
-    )
-    if (nzchar(artefact_path) && file.exists(artefact_path)) {
-      art <- tryCatch(readRDS(artefact_path), error = function(e) NULL)
-      if (is.list(art) && isTRUE(art$pass)) pass <- TRUE
-    }
-  }
-  if (isTRUE(pass)) {
-    return(invisible(TRUE))
-  }
-
-  msg <- paste0(
-    "INLA mapping for uncorrelated random slopes (x || g) is ",
-    "deferred to a future release.\n",
-    "The INLA mapper is registered ",
-    "only when the\nthree-arbitrator verification test (INLA vs an ",
-    "engine since withdrawn vs lme4 on a simple fixture\nat J = 20 ",
-    "groups) passes within the Wasserstein-1 \u2264 0.20 * tau_true\n",
-    "tolerance on both sd_<g> and sd_<x>_<g>. One of the three ",
-    "arbitrators has since been withdrawn as a fitting engine\n",
-    "(see NEWS.md), so this INLA-native mapping stays deferred until ",
-    "the\n",
-    "verification is re-designed around active backends. The refusal ",
-    "is\n",
-    "host-independent -- no on-disk artefact lifts it.\n\n",
-    "Workaround: fit via brms instead, which already represents ",
-    "(x || g)\n",
-    "natively. For example:\n",
-    "  fit <- flexybayes(y ~ x + (x || g), data = d, ",
-    "backend = \"brms\")\n",
-    "  fit <- fb_brms   (y ~ x + (x || g), data = d)\n\n",
-    "backend = \"auto\" already does this for you: an INLA-eligible ",
-    "model\n",
-    "that hits this deferral falls back to brms automatically.\n\n",
-    "This refusal is mandatory: no silent translation of an ",
-    "unverified mapping ships."
-  )
-  cond <- structure(
-    class = c(
-      "flexybayes_inla_simple_slope_uncor_deferred",
-      "error",
-      "condition"
-    ),
-    list(
-      message = msg,
-      call = NULL,
-      deferral_target = "a future release",
-      workaround = "backend = \"brms\""
-    )
-  )
-  stop(cond)
-}
 
 # ---------------------------------------------------------------- #
 # Separable AR1 field: the four parameters, named                  #

@@ -348,6 +348,15 @@ register_canonical_mapper <- function(backend, mapper) {
   nested_idx <- list()
   for (t in fb_terms$random_terms %||% list()) {
     tt <- t$type %||% ""
+    # Uncorrelated random slope: the emit writes the slope half as a second
+    # iid field over a generated index (<g>_for_slope_<x>). Map it back to
+    # the package's own name for that component, <slope>_<group>, which is
+    # also the key its prior is registered under.
+    if (identical(tt, "simple_slope_uncor")) {
+      nested_idx[[paste0(t$var, "_for_slope_", t$slope_var)]] <-
+        paste0(t$slope_var, "_", t$var)
+      next
+    }
     if (tt %in% c("nested", "combo")) {
       vars <- if (identical(tt, "nested")) {
         c(t$outer, t$inner)

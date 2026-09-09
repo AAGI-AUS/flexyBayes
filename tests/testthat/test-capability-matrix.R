@@ -295,16 +295,10 @@ test_that("a factor-by-numeric fixed interaction fits on brms only", {
   skip_if_not_installed("brms")
   r <- .cap_row("Factor-by-numeric fixed interaction")
   d <- .cap_data()
-  # The deferral is host-independent: the developer artefact switch is at
-  # its default here, which is what every shipped surface sees.
-  withr::local_options(
-    list(flexyBayes.dev_inla_verification_artefacts = NULL)
-  )
   .cap_expect(
     .cap_emit("inla", y ~ env * x, data = d),
     r$inla,
-    "INLA",
-    condition_class = "flexybayes_lgm_factor_numeric_interaction_inla_verified"
+    "INLA"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env * x, data = d),

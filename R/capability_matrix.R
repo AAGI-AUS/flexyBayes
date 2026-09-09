@@ -73,24 +73,22 @@
     list(
       model_class = "Uncorrelated random slope",
       spelling = "`(x || g)`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The three-arbitrator verification named a since-withdrawn
-        engine as one arbitrator, so the INLA mapping stays deferred until
-        the criterion is rebuilt around the active engines. The deferral
-        is host-independent -- no local artefact lifts it. `auto` routes
-        to brms.",
-      anchor = "test-random-slopes-uncor.R"
+      note = "Two independent iid fields on INLA, one for the intercept and
+        one for the slope, checked against lme4's REML fit of the same
+        model. Reported as `sd_<g>` and `sd_<x>_<g>`.",
+      anchor = "test-inla-slope-and-interaction-verified.R"
     ),
     list(
       model_class = "Factor-by-numeric fixed interaction",
       spelling = "`y ~ f * x` with numeric `x`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The indexed-slope INLA mapping shares the deferred
-        three-arbitrator verification with the uncorrelated random slope,
-        and refuses on every host. `auto` routes to brms.",
-      anchor = "test-inla-verification-artefact-policy.R"
+      note = "An ordinary treatment-coded design matrix on both engines.
+        The INLA posterior means sit on the least-squares estimates of the
+        same model under a weak prior.",
+      anchor = "test-inla-slope-and-interaction-verified.R"
     ),
     list(
       model_class = "Correlated random slope",

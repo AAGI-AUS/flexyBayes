@@ -526,26 +526,33 @@ test_that("priors_to_brms legacy specs add the slope-variance row(s) per ADR 002
 
 
 # ---------------------------------------------------------------- #
-# (o) INLA path refuses (x || g) per ADR 0020 §Decision 5            #
+# (o) INLA path FITS (x || g) -- the deferral was retired at         #
+#     0.10.0.9000                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("INLA path refuses (x || g) with deferral when verification artefact absent", {
+test_that("INLA path fits (x || g) rather than deferring", {
+  # This asserted the runtime deferral: (x || g) refused on INLA unless an
+  # on-disk artefact recorded that a three-arbitrator comparison had passed,
+  # and one of those arbitrators was withdrawn at 0.9.3, so it refused
+  # everywhere. Retiring that gate exposed a real defect the refusal had
+  # been hiding -- the emit wrote an index column it never created -- which
+  # is now fixed. Agreement with lme4 REML is checked in
+  # test-inla-slope-and-interaction-verified.R.
   testthat::skip_if_not_installed("INLA")
+  testthat::skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- mk_slope_data()
-  err <- tryCatch(
-    suppressMessages(fb(
-      Reaction ~ Days + (Days || Subject),
-      data = d,
-      backend = "inla",
-      verbose = FALSE
-    )),
-    error = function(e) e
-  )
-  expect_s3_class(err, "flexybayes_inla_simple_slope_uncor_deferred")
-  expect_identical(err$deferral_target, "a future release")
-  expect_identical(err$workaround, "backend = \"brms\"")
-  msg <- conditionMessage(err)
-  expect_true(grepl("future release", msg))
-  expect_true(grepl("three-arbitrator verification test", msg, fixed = TRUE))
-  expect_true(grepl("backend = \"brms\"", msg, fixed = TRUE))
+  fit <- suppressMessages(fb(
+    Reaction ~ Days + (Days || Subject),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  ))
+  expect_s3_class(fit, "flexybayes")
+  comps <- summary(fit)$varcomp$component
+  # One SD for the intercept, one for the slope, and no generated index
+  # name reaching the label.
+  expect_true("sd_Subject" %in% comps)
+  expect_true("sd_Days_Subject" %in% comps)
+  expect_false(any(grepl("_for_slope_", comps, fixed = TRUE)))
 })

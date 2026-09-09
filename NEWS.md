@@ -1,5 +1,28 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **Uncorrelated random slopes `(x || g)` and factor-by-numeric interactions
+  `y ~ f * x` fit on INLA.** Both were refused at run time unless an on-disk
+  artefact recorded that a "three-arbitrator" comparison had passed. One of
+  those arbitrators was an engine withdrawn at 0.9.3, so the criterion could
+  not be re-run and the refusal became permanent -- a working capability
+  blocked by the memory of a withdrawn dependency.
+
+  The runtime gate is retired. The agreement it stood in for is now checked
+  in the suite, where every other capability claim in this package lives:
+  against `lme4`'s REML fit for the random slope, and against `lm()` for the
+  fixed interaction. Both references are independent of this package's parser
+  and emit.
+
+  **Retiring the gate exposed a defect it had been hiding.** The uncorrelated
+  slope emit wrote `f(<g>_for_slope_<x>, ...)` into the INLA formula and never
+  created that index column, so the fit would have failed with `object not
+  found`. Because the gate refused the class before the emit ran, the path was
+  never exercised end to end and the defect could not surface. Fixed, and the
+  column now refuses by name if it would overwrite a user column.
+
+  Component labels no longer leak the generated index name: the slope reports
+  as `sd_<x>_<g>`, the name its prior is registered under.
+
 * **Nested and multi-stratum random effects fit on INLA: `~ rep:block`,
   `~ env:rep:block`.** These refused, with a message asserting that INLA's
   `f()` machinery could not represent the term class without an SPDE or

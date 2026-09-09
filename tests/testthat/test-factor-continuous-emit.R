@@ -313,14 +313,11 @@ test_that("custom contrast matrix raises flexybayes_contrast_unsupported", {
 # Subtest 10 -- lgm_gate accepts factor_numeric_interaction         #
 # ---------------------------------------------------------------- #
 #
-# ADR 0017 (gate-truth = emit-truth): the fixed-term allowlist gains
-# `factor_numeric_interaction` so the gate accepts structurally; the
-# §3.4 verification check (.lgm_check_factor_numeric_interaction_inla_verified)
-# is the term-class-specific INLA conditional, and since 0.9.0 it refuses
-# on every host -- its three-arbitrator verification named a since-
-# withdrawn engine as one arbitrator (see NEWS.md, 0.9.3), so the
-# criterion cannot be re-run as designed. The host-independence of that
-# refusal is the subject of test-inla-verification-artefact-policy.R.
+# ADR 0017 (gate-truth = emit-truth): the fixed-term allowlist carries
+# `factor_numeric_interaction` and the emit writes it. The runtime
+# verification check that used to gate this class was retired at
+# 0.10.0.9000; the agreement it stood in for is checked against lm() in
+# test-inla-slope-and-interaction-verified.R.
 
 test_that("lgm_gate accepts factor_numeric_interaction structurally", {
   fb <- flexyBayes:::new_fb_terms(
@@ -353,13 +350,6 @@ test_that("lgm_gate accepts factor_numeric_interaction structurally", {
   # Structural fixed-term allowlist accepts the new class.
   r7 <- flexyBayes:::.lgm_check_fixed_term_inla_support(fb)
   expect_true(r7$pass)
-  # §3.4 verification check refuses on every host, whatever is on disk.
-  withr::local_options(
-    list(flexyBayes.dev_inla_verification_artefacts = NULL)
-  )
-  r10 <- flexyBayes:::.lgm_check_factor_numeric_interaction_inla_verified(fb)
-  expect_false(r10$pass)
-  expect_match(r10$reason, "is not admitted")
 })
 
 # ---------------------------------------------------------------- #
