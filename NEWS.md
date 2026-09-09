@@ -1,5 +1,15 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **A failed brms fit no longer blames the model for a broken compiler.** The
+  brms path compiles a Stan program, and a missing or mismatched C++ toolchain
+  reaches R as a downstream symptom -- `invalid connection` -- while the
+  compiler's own message goes to the console. Reported verbatim that sends the
+  reader looking for a fault in their model. On a failed fit the toolchain is
+  now asked directly: a three-line C++ program is compiled, and only if that
+  fails does the message name the toolchain, give the check and the repair,
+  and note that `backend = "inla"` compiles nothing. A machine that compiles
+  fine gets the engine's own words unchanged.
+
 * **`vpredict()`: exact posterior functionals of the variance components.**
   ASReml's `vpredict()` returns a heritability with a delta-method standard
   error, which linearises at the REML estimate and does not know where the
