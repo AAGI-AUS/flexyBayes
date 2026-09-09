@@ -917,6 +917,13 @@ print.lgm_refusal <- function(x, ...) {
   if (term$type %in% c("simple", "ide", "id", "spline", "simple_slope_uncor")) {
     return(TRUE)
   }
+  # Nested / interaction random effects. INLA fits these as an iid field
+  # over the interaction index; .build_inla_formula() has the branch and
+  # emit_inla() builds the index. Verified against agridat::john.alpha,
+  # the alpha-design that reported this as a bug.
+  if (term$type %in% c("nested", "combo")) {
+    return(TRUE)
+  }
   # WP16: AR1 (1D) and separable AR1xAR1 spatial latent fields on INLA.
   # emit_inla() validates the one-observation-per-node grid condition and
   # refuses an incomplete / replicated grid there (gate accepts the class;

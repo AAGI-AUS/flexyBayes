@@ -2428,5 +2428,35 @@ print.fb_refusals_table <- function(x, ...) {
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )
+  .register_refusal(
+    reason_code = "nested_variable_not_in_data",
+    description = paste0(
+      "An interaction random effect names a variable that is not a column ",
+      "of the data, so the interaction index cannot be built."
+    ),
+    message_template = paste0(
+      "Interaction random effect `%s` names a variable not in data: %s."
+    ),
+    registered_in_adr = "0.10.0.9000 nested on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "nested_index_name_collision",
+    description = paste0(
+      "Fitting an interaction random effect on INLA generates an index ",
+      "column, and the data already carries a column of that name. ",
+      "Overwriting it would index the field by whatever that column holds ",
+      "with nothing downstream saying so, which is why this refuses rather ",
+      "than renaming silently."
+    ),
+    message_template = paste0(
+      "Fitting the interaction random effect `%s` on INLA needs an index ",
+      "column named `%s`, and `data` already has one. Rename that column."
+    ),
+    registered_in_adr = "0.10.0.9000 nested on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
   invisible(NULL)
 }

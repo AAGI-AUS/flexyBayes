@@ -315,8 +315,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # route reads named columns off disk and cannot, so it refuses by name
   # rather than asking the reader for a column that does not exist
   # (114 + 1 = 115).
-  expect_equal(length(entries), 115L)
+  # Nested random effects on INLA add two more: the interaction index needs
+  # every named variable present, and it must not overwrite a user column of
+  # the same name (115 + 2 = 117).
+  expect_equal(length(entries), 117L)
   expect_true("stream_response_must_be_a_column" %in% entries)
+  expect_true("nested_variable_not_in_data" %in% entries)
+  expect_true("nested_index_name_collision" %in% entries)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)

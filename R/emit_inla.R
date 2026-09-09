@@ -880,6 +880,52 @@ emit_inla <- function(
     }
   }
 
+  # Nested / interaction random effects, `a:b` and `a:b:c`. INLA has no
+  # interaction syntax of its own and does not need one: the term is an iid
+  # field over the interaction index, which is exactly what brms's
+  # `(1 | a:b)` means. drop = TRUE so only observed cells get a level, which
+  # matches lme4 and brms rather than inventing empty strata.
+  for (term in fb$random_terms) {
+    if (!term$type %in% c("nested", "combo")) {
+      next
+    }
+    vars <- .fb_nested_vars(term)
+    missing_vars <- setdiff(vars, names(data))
+    if (length(missing_vars)) {
+      stop(.fb_refusal_condition(
+        reason_code = "nested_variable_not_in_data",
+        message = paste0(
+          "Interaction random effect `",
+          paste(vars, collapse = ":"),
+          "` names ",
+          if (length(missing_vars) > 1L) "variables" else "a variable",
+          " not in data: ",
+          paste(missing_vars, collapse = ", "),
+          "."
+        )
+      ))
+    }
+    idx_name <- .fb_inla_interaction_index(vars)
+    # A generated index must not silently overwrite a user column of the
+    # same name -- the fit would then be indexed by whatever that column
+    # holds, and nothing downstream would say so.
+    if (idx_name %in% names(data)) {
+      stop(.fb_refusal_condition(
+        reason_code = "nested_index_name_collision",
+        message = paste0(
+          "Fitting the interaction random effect `",
+          paste(vars, collapse = ":"),
+          "` on INLA needs an index column named `",
+          idx_name,
+          "`, and `data` already has one. Rename that column."
+        )
+      ))
+    }
+    data_inla[[idx_name]] <- as.integer(
+      interaction(data[vars], drop = TRUE, lex.order = TRUE)
+    )
+  }
+
   # Formula build runs here (post data_inla setup) so blocks-format
   # vm/ped terms can resolve their K-count from known_matrices.
   inla_form <- .build_inla_formula(
@@ -1310,6 +1356,25 @@ emit_inla <- function(
     # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
     if (term$type %in% c("ar1", "ar1_spatial")) {
       rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
+      next
+    }
+    # Nested / interaction random effect. One iid field over the
+    # interaction index built in emit_inla()'s data_inla setup. The prior
+    # is keyed by the colon-joined group name, which is how
+    # fb_prior.R names it for brms too, so one spec covers both engines.
+    if (term$type %in% c("nested", "combo")) {
+      vars <- .fb_nested_vars(term)
+      hyper_str <- .inla_hyper_arg(hyper_ctrl[[paste(vars, collapse = ":")]])
+      rhs_terms <- c(
+        rhs_terms,
+        paste0(
+          "f(",
+          .fb_inla_interaction_index(vars),
+          ", model = \"iid\"",
+          if (nzchar(hyper_str)) paste0(", ", hyper_str) else "",
+          ")"
+        )
+      )
       next
     }
     key <- switch(
@@ -2663,4 +2728,22 @@ summary.flexybayes_inla <- function(object, ...) {
   out <- .fb_summary_object(object)
   print(out)
   invisible(out)
+}
+
+
+# The variables an interaction random effect is indexed by. `nested` is the
+# two-way form carrying outer / inner; `combo` is the multi-stratum form
+# carrying a vars vector.
+.fb_nested_vars <- function(term) {
+  if (identical(term$type, "nested")) {
+    c(term$outer, term$inner)
+  } else {
+    as.character(term$vars)
+  }
+}
+
+# The INLA index column name for an interaction random effect. Deterministic,
+# so the formula and the data list agree without passing a name between them.
+.fb_inla_interaction_index <- function(vars) {
+  paste0(paste(vars, collapse = "_"), "_id")
 }

@@ -104,13 +104,13 @@
     list(
       model_class = "Nested / interaction random effects, multi-stratum",
       spelling = "`~ gen:env`, `~ env:rep:block`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "Not yet emitted on INLA. The refusal is a flexyBayes gap:
-        INLA fits a nested random effect as an iid field over the
-        interaction index, verified on agridat::john.alpha. brms emits
-        `(1 | a:b)`.",
-      anchor = "test-preflight-interaction-terms.R"
+      note = "An iid field over the interaction index on INLA, `(1 | a:b)`
+        on brms -- the same model, and the two agree with lme4's REML fit
+        of it on `agridat::john.alpha`. Only observed cells get a level,
+        as in lme4 and brms.",
+      anchor = "test-nested-random-inla.R"
     ),
     list(
       model_class = "Heterogeneous variance by factor level",

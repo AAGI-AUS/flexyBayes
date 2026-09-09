@@ -1,5 +1,23 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **Nested and multi-stratum random effects fit on INLA: `~ rep:block`,
+  `~ env:rep:block`.** These refused, with a message asserting that INLA's
+  `f()` machinery could not represent the term class without an SPDE or
+  kronecker expansion. That was not true. The term is an iid field over the
+  interaction index, which is what brms's `(1 | a:b)` means as well, and the
+  alpha-design in the report that raised it (`agridat::john.alpha`) fits in
+  seconds.
+
+  The two engines and `lme4`'s REML fit of the same model agree: residual
+  0.293 against 0.286, `sd_gen` 0.397 against 0.378, `sd_rep:block` 0.288
+  against 0.265. Only observed cells get a level, as in lme4 and brms.
+
+  The generated index is named after the interacting factors and never
+  reaches a user-facing label: the summary reports `sd_rep:block`, the name
+  brms uses, so the same component lines up across engines. A generated
+  index that would overwrite an existing column refuses by name rather than
+  silently indexing the field by whatever that column holds.
+
 * **A transformed response fits: `log(yield) ~ env`.** The left-hand side was
   required to name a column, so every peer's ordinary spelling -- `lm`,
   `lme4`, `brms` and ASReml all evaluate it -- was refused with "Response

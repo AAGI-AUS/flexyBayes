@@ -340,9 +340,36 @@ register_canonical_mapper <- function(backend, mapper) {
       spatial_idx <- c(spatial_idx, paste0(t$var, "_id"))
     }
   }
+  # Nested / interaction random effects. The INLA emit fits these as an iid
+  # field over a generated interaction index (<a>_<b>_id), so INLA names the
+  # hyperparameter after that index. The generated name must not reach the
+  # user's summary: map it back to the colon-joined group, which is also what
+  # brms calls it, so the two engines line up on one canonical name.
+  nested_idx <- list()
+  for (t in fb_terms$random_terms %||% list()) {
+    tt <- t$type %||% ""
+    if (tt %in% c("nested", "combo")) {
+      vars <- if (identical(tt, "nested")) {
+        c(t$outer, t$inner)
+      } else {
+        as.character(t$vars)
+      }
+      nested_idx[[paste0(paste(vars, collapse = "_"), "_id")]] <-
+        paste(vars, collapse = ":")
+    }
+  }
+
   hyper_names <- rownames(fit$inla$summary.hyperpar) %||% character(0)
   for (nm in hyper_names) {
     sp_hit <- FALSE
+    if (startsWith(nm, "Precision for ")) {
+      idx <- sub("^Precision for ", "", nm)
+      if (!is.null(nested_idx[[idx]])) {
+        map[nm] <- paste0("sd_", nested_idx[[idx]])
+        transform[[nm]] <- prec_to_sd
+        next
+      }
+    }
     for (idx in spatial_idx) {
       if (identical(nm, paste0("Rho for ", idx))) {
         map[nm] <- "rho_row"
