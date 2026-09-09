@@ -299,10 +299,13 @@ test_that("the plan says a combined MET model fits, because it does", {
   )
 
   expect_true(p$will_fit)
-  expect_identical(p$backend_chosen, "brms")
-  expect_identical(p$gate_outcome, "refuse_structural")
-  # The gate refusal is reported, and is no longer mistaken for the
-  # fit's verdict.
+  # It fits on INLA now. Both halves of the full MET model -- the
+  # interaction random effect and the sectioned residual -- were refused
+  # there before 0.10.0.9000, so the combination was unreachable and the
+  # plan named brms after a structural gate refusal. The gate passes, so
+  # the plan names the engine the model actually lands on.
+  expect_identical(p$backend_chosen, "inla")
+  expect_identical(p$gate_outcome, "accept")
   out <- utils::capture.output(print(p))
   expect_true(any(grepl("Will fit:                yes", out, fixed = TRUE)))
   expect_false(any(grepl("preflight refused", out, fixed = TRUE)))

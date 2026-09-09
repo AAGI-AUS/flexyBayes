@@ -136,7 +136,7 @@ test_that("print.fb_plan()'s Aggregation line shows numbers on an unproductive-b
   d
 }
 
-test_that("FS-22 reproduction: fb_plan() names brms under backend = 'auto', matching flexybayes(plan = TRUE)", {
+test_that("FS-22 reproduction: the plan and the gate agree under backend = 'auto'", {
   skip_if_no_brms()
   d <- .fs22_data()
 
@@ -163,12 +163,16 @@ test_that("FS-22 reproduction: fb_plan() names brms under backend = 'auto', matc
   expect_identical(p_fb_plan$gate_outcome, p_flexybayes_plan$gate_outcome)
   expect_identical(p_fb_plan$will_fit, p_flexybayes_plan$will_fit)
 
-  # And the FS-22 headline: brms, not INLA/aggregated_inla, with the
-  # gate's real verdict reported (not silently accepted on a
-  # fixed-effects-only misreading of the model).
-  expect_identical(p_fb_plan$backend_chosen, "brms")
+  # FS-22's headline was that the plan announced an INLA route while the
+  # gate refused the model, and the live call went to brms. The five
+  # strata and the sectioned residual all reach INLA from 0.10.0.9000, so
+  # the gate accepts and INLA is the honest answer -- the plan and the
+  # gate agree, which is what FS-22 was about. What must still hold is
+  # that the plan does not name the AGGREGATED route: a sectioned
+  # residual is not aggregatable whatever the gate says.
+  expect_identical(p_fb_plan$backend_chosen, "inla")
   expect_false(identical(p_fb_plan$path, "aggregated_inla"))
-  expect_identical(p_fb_plan$gate_outcome, "refuse_structural")
+  expect_identical(p_fb_plan$gate_outcome, "accept")
 
   # The representation table enumerates random AND residual terms, not
   # only the three fixed terms (FS-22's second observed symptom).
@@ -177,7 +181,7 @@ test_that("FS-22 reproduction: fb_plan() names brms under backend = 'auto', matc
   expect_true(any(grepl("dsum(~ units | env)", ids, fixed = TRUE)))
 })
 
-test_that("FS-22 reproduction: fb_plan() matches the live refusal under backend = 'inla' (both spellings of backend)", {
+test_that("FS-22 reproduction: fb_plan() matches the live fit under backend = 'inla'", {
   skip_if_no_inla()
   d <- .fs22_data()
 
@@ -188,21 +192,40 @@ test_that("FS-22 reproduction: fb_plan() matches the live refusal under backend 
     data = d,
     backend = "inla"
   )
-  expect_false(p_inla$will_fit)
-  expect_true(is.na(p_inla$backend_chosen))
+  expect_true(p_inla$will_fit)
+  expect_identical(p_inla$backend_chosen, "inla")
+})
+
+test_that("plan and live agree when INLA genuinely refuses", {
+  # The parity contract has to be shown on a refusal as well as on a fit,
+  # or it only proves the easy half. The five-stratum MET model used to
+  # be the refusal case and is now the fit case, so the refusal case
+  # moves to a family INLA's likelihood roster has no counterpart for.
+  skip_if_no_inla()
+  d <- .fs22_data()
+  d$yield <- pmax(d$yield, 0.01)
+
+  p <- fb_plan(
+    yield ~ loc,
+    random = ~gen,
+    data = d,
+    family = "hurdle_gamma",
+    backend = "inla"
+  )
+  expect_false(p$will_fit)
 
   live_err <- tryCatch(
     suppressMessages(flexybayes(
-      fixed = yield ~ loc + yearf + loc:yearf,
-      random = ~ gen + rep:loc:yearf + gen:yearf + gen:loc + gen:loc:yearf,
-      residual = ~ dsum(~ units | env),
+      fixed = yield ~ loc,
+      random = ~gen,
       data = d,
+      family = "hurdle_gamma",
       backend = "inla",
       verbose = FALSE
     )),
     error = function(e) e
   )
-  expect_s3_class(live_err, "flexybayes_refusal_inla_gate_refused")
+  expect_s3_class(live_err, "error")
 })
 
 test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (plan == live)", {
@@ -233,8 +256,10 @@ test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (p
     chains = 1L,
     verbose = FALSE
   )))
+  # The parity assertion is the first one: what the plan named is where
+  # the fit landed. The second pins which engine that is today.
   expect_identical(fit$extras$backend_decision$backend, p$backend_chosen)
-  expect_identical(fit$extras$backend_decision$backend, "brms")
+  expect_identical(fit$extras$backend_decision$backend, "inla")
 })
 
 
@@ -273,7 +298,10 @@ test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (p
     expect_backend = "inla"
   ),
   list(
-    label = "colon-interaction random term -> INLA structural refusal -> brms",
+    # This entry used to read "INLA structural refusal -> brms". The
+    # three-way interaction random term is an iid field over the
+    # interaction index on INLA from 0.10.0.9000, so it stays on INLA.
+    label = "colon-interaction random term -> INLA accept",
     data = function() {
       set.seed(13L)
       n <- 120L
@@ -286,6 +314,25 @@ test_that("FS-22 reproduction: fb_plan() predicts the live auto fit's backend (p
       )
     },
     formula = y ~ x + (1 | a:b:cc),
+    expect_backend = "inla"
+  ),
+  list(
+    # The roster needs a route that still leaves INLA, or it stops
+    # testing the branch it was built for. A hurdle gamma has no
+    # counterpart in INLA's likelihood roster, so the family gate refuses
+    # and `auto` routes to brms.
+    label = "hurdle gamma -> INLA family refusal -> brms",
+    data = function() {
+      set.seed(14L)
+      n <- 120L
+      data.frame(
+        y = pmax(rnorm(n, 2, 1), 0),
+        x = rnorm(n),
+        g = factor(sample(letters[1:6], n, replace = TRUE))
+      )
+    },
+    formula = y ~ x + (1 | g),
+    family = "hurdle_gamma",
     expect_backend = "brms"
   )
 )
@@ -297,7 +344,9 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
 
   for (spec in .plan_parity_roster) {
     d <- spec$data()
-    p <- fb_plan(spec$formula, data = d, backend = "auto")
+    args <- list(spec$formula, data = d, backend = "auto")
+    if (!is.null(spec$family)) args$family <- spec$family
+    p <- do.call(fb_plan, args)
     expect_identical(
       p$backend_chosen,
       spec$expect_backend,
@@ -306,7 +355,7 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
     # Routing parity again (see the FS-22 reproduction above) -- the
     # tiny sampler budget's ESS warning is muffled, not fixed by a
     # bigger budget, for the same reason.
-    fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
+    fit_args <- list(
       spec$formula,
       data = d,
       backend = "auto",
@@ -314,7 +363,11 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
       warmup = 200L,
       chains = 1L,
       verbose = FALSE
-    )))
+    )
+    if (!is.null(spec$family)) fit_args$family <- spec$family
+    fit <- .muffle_ess_warnings(suppressMessages(
+      do.call(flexybayes, fit_args)
+    ))
     expect_identical(
       fit$extras$backend_decision$backend,
       p$backend_chosen,

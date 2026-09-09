@@ -365,15 +365,25 @@ test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial (WP16)", {
   expect_true(r$pass)
 })
 
-# Residual negative case: at_units triggers residual_term_type_inla.
+# Residual cases. at_units -- the sectioned residual, dsum(~units | f) --
+# reaches INLA through the multiple-likelihood interface from 0.10.0.9000,
+# so it is now an ACCEPTED type and the negative case moved to a residual
+# shape INLA genuinely does not carry.
 
-test_that(".lgm_check_residual_term_inla_support() refuses at_units (heterogeneous residual)", {
+test_that(".lgm_check_residual_term_inla_support() accepts at_units", {
   fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+  r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
+  expect_true(r$pass)
+})
+
+test_that(".lgm_check_residual_term_inla_support() refuses a structured residual", {
+  fb <- mk_fb(residual_terms = list(list(
+    type = "ar1_spatial", row_var = "row", col_var = "col"
+  )))
   r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
   expect_false(r$pass)
   expect_identical(r$rule_id, "residual_term_type_inla")
-  expect_match(r$reason, "\"at_units\"")
-  expect_match(r$reason, "heterogeneous residual")
+  expect_match(r$reason, "\"ar1_spatial\"")
 })
 
 # Integration: lgm_gate() routes a structured-cov refusal through
@@ -389,11 +399,18 @@ test_that("lgm_gate() refuses a vm random term via random_term_type_inla", {
   expect_true(any(grepl("variance-matrix", text)))
 })
 
-test_that("lgm_gate() refuses an at_units residual term via residual_term_type_inla", {
-  fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+test_that("lgm_gate() refuses a structured residual via residual_term_type_inla", {
+  fb <- mk_fb(residual_terms = list(list(
+    type = "ar1_spatial", row_var = "row", col_var = "col"
+  )))
   out <- flexyBayes:::lgm_gate(fb)
   expect_s3_class(out, "lgm_refusal")
   expect_identical(out$primary_rule, "residual_term_type_inla")
+})
+
+test_that("lgm_gate() accepts the sectioned residual it used to refuse", {
+  fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+  expect_false(inherits(flexyBayes:::lgm_gate(fb), "lgm_refusal"))
 })
 
 # ---------------------------------------------------------------- #
@@ -527,11 +544,14 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
 # throw site now wraps it in the shared condition hierarchy.
 
 test_that("an explicit inla request refused by the gate raises a typed condition", {
+  # The vehicle is a model the gate refuses, and it has to keep being one.
+  # us(env):gen was the original choice and now fits at k <= 5; six levels
+  # still refuse, by the order check that names fa() instead.
   d <- data.frame(
-    y = stats::rnorm(40L),
-    x = stats::rnorm(40L),
-    env = factor(rep(letters[1:4], each = 10L)),
-    gen = factor(rep(seq_len(10L), times = 4L))
+    y = stats::rnorm(60L),
+    x = stats::rnorm(60L),
+    env = factor(rep(letters[1:6], each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 6L))
   )
 
   err <- tryCatch(
@@ -562,22 +582,29 @@ test_that("an explicit inla request refused by the gate raises a typed condition
   expect_identical(err$rule_id, err$lgm_refusal$primary_rule)
 })
 
-test_that("a second gate-refusal route is typed and names its own rule", {
-  # A heterogeneous residual fails a different rule from an unstructured
-  # random term, and reaches the same site through the fb_inla() engine
-  # pin rather than through backend = "inla".
+test_that("a gate refusal through the fb_inla() pin is typed and names its rule", {
+  # Same throw site, reached through the engine pin rather than through
+  # backend = "inla", and carrying a DIFFERENT rule from the test above so
+  # the per-rule class is shown to track the rule rather than the site.
+  #
+  # The original vehicle here was the sectioned residual dsum(~units | f),
+  # refused by residual_term_type_inla. That residual now fits. So does
+  # every other residual spelling that reaches the gate: the structured
+  # ones are refused earlier, at dispatch, and `units` and `at_units` both
+  # pass. residual_term_type_inla is therefore no longer reachable from the
+  # formula surface -- it remains as a defence, and the unit test above
+  # exercises it directly on a hand-built IR.
   d <- data.frame(
-    y = stats::rnorm(40L),
-    x = stats::rnorm(40L),
-    site = factor(rep(letters[1:4], each = 10L)),
-    gen = factor(rep(seq_len(10L), times = 4L))
+    y = stats::rnorm(60L),
+    x = stats::rnorm(60L),
+    env = factor(rep(letters[1:6], each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 6L))
   )
 
   err <- tryCatch(
     suppressMessages(fb_inla(
       fixed = y ~ x,
-      random = ~gen,
-      residual = ~ dsum(~ units | site),
+      random = ~ us(env):gen,
       data = d,
       verbose = FALSE
     )),
@@ -585,9 +612,9 @@ test_that("a second gate-refusal route is typed and names its own rule", {
   )
 
   expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
-  expect_identical(err$rule_id, "residual_term_type_inla")
+  expect_identical(err$rule_id, "hyperparam_budget")
   # The per-rule class lets one rule be caught without catching the rest.
-  expect_s3_class(err, "flexybayes_lgm_residual_term_type_inla")
+  expect_s3_class(err, "flexybayes_lgm_hyperparam_budget")
 })
 
 # ---------------------------------------------------------------- #

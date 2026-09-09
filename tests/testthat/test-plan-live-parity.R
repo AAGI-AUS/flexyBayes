@@ -48,7 +48,14 @@
 # (1) The plan names the backend the live fit uses                   #
 # ---------------------------------------------------------------- #
 
-test_that("plan for a dsum residual names brms, never aggregated_inla", {
+test_that("plan for a dsum residual names inla, never aggregated_inla", {
+  # The reviewer's probe named brms after a structural gate refusal. INLA
+  # carries the sectioned residual from 0.10.0.9000, through its
+  # multiple-likelihood interface, so the gate accepts and the plan names
+  # INLA. What has not changed, and is the contract this file exists for,
+  # is that the plan must not name the AGGREGATED INLA route: a sectioned
+  # residual is still not aggregatable, and announcing that route would be
+  # the original defect wearing a different verdict.
   skip_if_not_installed("brms")
   d <- .parity_dsum_data()
   p <- flexybayes(
@@ -60,11 +67,9 @@ test_that("plan for a dsum residual names brms, never aggregated_inla", {
   )
 
   expect_s3_class(p, "fb_plan")
-  expect_identical(p$backend_chosen, "brms")
+  expect_identical(p$backend_chosen, "inla")
   expect_false(identical(p$path, "aggregated_inla"))
-  # The gate verdict on the plan is the one the live INLA route reports.
-  expect_identical(p$gate_outcome, "refuse_structural")
-  expect_identical(p$gate_primary_rule, "residual_term_type_inla")
+  expect_identical(p$gate_outcome, "accept")
 })
 
 test_that("a sectioned residual is not aggregatable at plan level", {
@@ -82,24 +87,26 @@ test_that("a sectioned residual is not aggregatable at plan level", {
   )
 })
 
-test_that("explicit backend = 'inla' refuses the dsum residual typed", {
+test_that("explicit backend = 'inla' fits the dsum residual", {
+  # The other end of the parity contract: what the plan names, the live
+  # explicit call does. This used to be a typed refusal; it is now a fit,
+  # and the per-section residual standard deviations come back ordered as
+  # the fixture built them.
   skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .parity_dsum_data()
-  err <- tryCatch(
-    flexybayes(
-      y ~ env,
-      residual = ~ dsum(~ units | env),
-      data = d,
-      backend = "inla",
-      verbose = FALSE
-    ),
-    error = function(e) e
-  )
-  expect_s3_class(err, "flexybayes_refusal")
-  expect_s3_class(err, "flexybayes_lgm_residual_term_type_inla")
-  expect_identical(err$reason_code, "inla_gate_refused")
-  # The refusal names the engine that does represent the model.
-  expect_match(conditionMessage(err), "backend = \"brms\"", fixed = TRUE)
+  fit <- suppressMessages(flexybayes(
+    y ~ env,
+    residual = ~ dsum(~ units | env),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  ))
+  v <- summary(fit)$varcomp
+  sig <- v$estimate[grepl("^sigma_", v$component)]
+  expect_length(sig, 3L)
+  expect_true(all(diff(sig) > 0))
 })
 
 test_that("aggregate = TRUE on a dsum residual refuses typed", {
@@ -124,10 +131,10 @@ test_that("aggregate = TRUE on a dsum residual refuses typed", {
 # (2) The live fit under `auto` takes the route the plan named       #
 # ---------------------------------------------------------------- #
 
-test_that("live auto fit of the dsum shape lands on brms as planned", {
+test_that("live auto fit of the dsum shape lands where the plan said", {
   skip_on_cran()
-  skip_on_ci()
-  skip_if_not_installed("brms")
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .parity_dsum_data()
   p <- flexybayes(
     y ~ env,
@@ -141,13 +148,12 @@ test_that("live auto fit of the dsum shape lands on brms as planned", {
     residual = ~ dsum(~ units | env),
     data = d,
     backend = "auto",
-    n_samples = 400L,
-    warmup = 400L,
-    chains = 2L,
     verbose = FALSE
   ))
+  # The parity assertion is the first one: the plan and the live call
+  # agree. The second pins which engine that is today.
   expect_identical(fit$extras$backend_decision$backend, p$backend_chosen)
-  expect_identical(fit$extras$backend_decision$backend, "brms")
+  expect_identical(fit$extras$backend_decision$backend, "inla")
 })
 
 

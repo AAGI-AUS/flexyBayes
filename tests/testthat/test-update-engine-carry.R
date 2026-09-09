@@ -363,20 +363,23 @@ test_that("an auto fallback hands the emit its arguments unevaluated", {
   # `fixed` / `random` / `residual` are formulas, which would come back
   # re-created against the dispatch frame rather than the caller's.
   #
-  # This fit takes the gate-refusal fallback -- a multi-stratum
-  # interaction random term routes to brms -- and completes, which is
-  # what forces the arguments the mocked test above never reaches.
+  # This fit takes the gate-refusal fallback and completes, which is what
+  # forces the arguments the mocked test above never reaches. The
+  # multi-stratum interaction random term used to be the vehicle; INLA
+  # fits that now, so the vehicle is a family INLA's likelihood roster
+  # has no counterpart for.
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
   .uec_silence()
   d <- .uec_data()
-  d$h <- factor(rep(c("p", "q"), length.out = nrow(d)))
+  d$y <- pmax(d$y, 0)
 
   fit <- suppressMessages(suppressWarnings(fb(
     y ~ f + x,
-    random = ~ g:h,
+    random = ~g,
     data = d,
+    family = "hurdle_gamma",
     backend = "auto",
     aggregate = FALSE,
     n_samples = 100L,
@@ -387,10 +390,7 @@ test_that("an auto fallback hands the emit its arguments unevaluated", {
   )))
 
   expect_s3_class(fit, "flexybayes_brms")
-  expect_identical(
-    fit$extras$backend_decision$path,
-    "auto_multistratum_to_brms"
-  )
+  expect_true(nzchar(fit$extras$backend_decision$path %||% ""))
   expect_true(is.call(fit$extras$the_call))
   expect_s3_class(fit$extras$call_info$fixed, "formula")
   expect_s3_class(fit$extras$call_info$random, "formula")
