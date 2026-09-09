@@ -126,9 +126,13 @@
     list(
       model_class = "Unstructured genotype-by-environment covariance",
       spelling = "`~ us(f):g`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The correlated sibling of the diagonal structure --
+      note = "One iidKd field on INLA (k = 2..5; wider refuses and names
+        fa()), `(0 + f | g)` on brms. INLA's Wishart hyperprior shrinks the
+        correlations toward each other, and an explicit SD prior refuses
+        there because iidKd has no slot for one. The correlated sibling of
+        the diagonal structure --
         `k(k+1)/2` parameters against `diag()`'s `k`. At one observation
         per cell the residual variance is confounded with the diagonal
         of the covariance: the covariance block converges and `sigma`

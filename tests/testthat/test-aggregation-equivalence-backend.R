@@ -59,6 +59,10 @@ if (requireNamespace("INLA", quietly = TRUE)) {
 
 for (fam in c("gaussian", "binomial", "poisson")) {
   test_that(paste0("INLA: per-row == streamed-aggregated [", fam, "]"), {
+  # Two live INLA fits at a size where both the per-row and the
+  # aggregated paths are feasible: out of the devtools::check() path,
+  # run by devtools::test().
+  skip_on_cran()
     skip_if_not_installed("INLA")
     withr::local_options(flexyBayes.silence_uniform_inla_approx = TRUE)
     df <- .eq_make_data(fam)

@@ -79,6 +79,9 @@ test_that("an uncorrelated factor slope names `diag(f):g` verbatim", {
 })
 
 test_that("the named ASReml surfaces do fit -- the refusal is not a dead end", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   # Naming an alternative that does not work is worse than naming none, so
   # both surfaces the messages above name are exercised here.
   skip_if_not_installed("brms")
@@ -112,6 +115,9 @@ test_that("a numeric multi-slope refuses typed and claims no ASReml sibling", {
 })
 
 test_that("the supported bar forms are untouched by the factor-slope branch", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("brms")
   options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()

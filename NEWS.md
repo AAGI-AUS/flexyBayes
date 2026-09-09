@@ -1,5 +1,36 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **Unstructured genotype-by-environment covariance fits on INLA:
+  `us(f):g`.** INLA holds the whole k-by-k covariance as one `iidKd` field
+  over a blocked index. Standard deviations of 0.8, 1.2 and 0.5 come back as
+  0.768, 1.256 and 0.447 with the residual at 0.354 against 0.35. Components
+  are reported as `sd_<g>__<f><level>` and `cor_<g>__<f>I__<f>J`, the names
+  brms uses for `(0 + f | g)`.
+
+  **The correlations are shrunk toward each other** by INLA's Wishart
+  hyperprior: a true 0.7 / 0.2 / 0.4 returns near 0.71 / 0.41 / 0.61. That is
+  a property of the prior, measured and documented, not a translation defect,
+  and the test asserts what is defensible rather than three point values.
+
+  **An explicit standard-deviation prior on this term refuses.** INLA's
+  `iidKd` hyperparameters are `prec1..preck` and `cor12..` under a joint
+  Wishart, with no slot for a scalar SD prior; splicing one in makes INLA
+  drop it silently. The package's auto-default is left unspliced, so INLA's
+  Wishart governs, and an explicit prior is refused by name rather than
+  discarded.
+
+  `us()` beyond five levels refuses and names `fa(f, k):g` instead: INLA's
+  `iidkd` is a different parameterisation above that width, and k(k+1)/2
+  parameters is the problem the factor-analytic structure exists to solve.
+
+* **`devtools::check()` spends less time in tests.** Eight test blocks that
+  compile a Stan program now carry `skip_on_cran()`, cutting the check-path
+  test phase from about six minutes to under three. The gating is per block
+  rather than per file: the six files involved hold 69 test blocks and only
+  11 brms fits, so gating whole files would have dropped roughly sixty cheap
+  tests out of `check()` for no gain. `devtools::test()` still runs
+  everything.
+
 * **The full multi-environment-trial model fits on INLA: a sectioned residual
   `dsum(~ units | f)`, alone and together with an interaction random effect.**
   The refusal claimed that "INLA folds residual variance into the likelihood

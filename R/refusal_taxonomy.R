@@ -2442,6 +2442,22 @@ print.fb_refusals_table <- function(x, ...) {
     since_version = "0.10.0.9000"
   )
   .register_refusal(
+    reason_code = "us_gxe_prior_not_translatable_inla",
+    description = paste0(
+      "us(f):g on INLA is an iidKd field carrying a joint Wishart prior over ",
+      "the whole covariance. It has no standard-deviation slot, so a ",
+      "supplied SD prior cannot be translated. Refused rather than dropped."
+    ),
+    message_template = paste0(
+      "A prior was supplied for `%s`, and us() on INLA carries a joint ",
+      "Wishart prior over the whole covariance. Fit with backend = \"brms\", ",
+      "or drop the prior to accept INLA's default."
+    ),
+    registered_in_adr = "0.10.0.9000 us() on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
     reason_code = "nested_index_name_collision",
     description = paste0(
       "Fitting an interaction random effect on INLA generates an index ",

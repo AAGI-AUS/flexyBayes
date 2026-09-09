@@ -867,6 +867,35 @@ emit_inla <- function(
     }
   }
 
+  # us(f):g -- an unstructured covariance across the levels of f. INLA holds
+  # it as ONE field of length k * n_inner, arranged as k blocks, carrying a
+  # k-by-k unstructured covariance across blocks (iid2d..iid5d). Each row
+  # indexes exactly one element, so a single f() term holds the structure.
+  for (term in fb$random_terms) {
+    if (!identical(term$type, "us_gxe")) {
+      next
+    }
+    outer_f <- factor(data[[term$outer]])
+    inner_f <- factor(data[[term$inner]])
+    idx_name <- .fb_inla_us_index(term$outer, term$inner)
+    if (idx_name %in% names(data)) {
+      stop(.fb_refusal_condition(
+        reason_code = "nested_index_name_collision",
+        message = paste0(
+          "Fitting `us(",
+          term$outer,
+          "):",
+          term$inner,
+          "` on INLA needs an index column named `",
+          idx_name,
+          "`, and `data` already has one. Rename that column."
+        )
+      ))
+    }
+    data_inla[[idx_name]] <- as.integer(inner_f) +
+      (as.integer(outer_f) - 1L) * nlevels(inner_f)
+  }
+
   # Heterogeneous variance by factor level: diag(f):g, idh(f):g, at(f):g.
   # One free SD per level of the outer factor and no covariance between
   # levels, which INLA writes as one independent iid field per level on an
@@ -1457,6 +1486,55 @@ emit_inla <- function(
       rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
       next
     }
+    # us(f):g -- one iidKd field carrying the whole k-by-k covariance.
+    if (identical(term$type, "us_gxe")) {
+      k <- term$n_outer
+      # INLA's iidKd hyperparameters are prec1..preck and cor12..cor(k-1)k
+      # under a joint Wishart prior; there is no `prec` slot for a scalar SD
+      # prior to occupy. Rather than splice one in and have INLA drop it --
+      # the silent-prior-loss this package fixed in the sectioned residual --
+      # a supplied prior on this group refuses by name.
+      # The package's auto-default reaches this group because brms CAN take
+      # an SD prior on `(0 + f | g)`. INLA cannot, so the default is left
+      # unspliced and INLA's Wishart governs. An EXPLICIT prior is a
+      # different matter: dropping one the user wrote would be the
+      # silent-prior-loss this package fixed in the sectioned residual, so
+      # it refuses by name.
+      user_prior <- !is.null(hyper_ctrl[[term$inner]]) &&
+        is.null(attr(fb$priors, "fb_prior_default_basis"))
+      if (isTRUE(user_prior)) {
+        stop(.fb_refusal_condition(
+          reason_code = "us_gxe_prior_not_translatable_inla",
+          message = paste0(
+            "A prior was supplied for `",
+            term$inner,
+            "`, and `us(",
+            term$outer,
+            "):",
+            term$inner,
+            "` on INLA carries a joint Wishart prior over the whole ",
+            k,
+            "-by-", k,
+            " covariance (prec1..prec", k, ", cor12..). There is no ",
+            "standard-deviation slot to translate it into, and silently ",
+            "dropping it would leave the fit on a prior nobody chose. Fit ",
+            "with backend = \"brms\", which takes an SD prior on this ",
+            "structure, or drop the prior to accept INLA's Wishart default."
+          )
+        ))
+      }
+      rhs_terms <- c(
+        rhs_terms,
+        paste0(
+          "f(",
+          .fb_inla_us_index(term$outer, term$inner),
+          ", model = \"iid", k, "d\", n = ", k * term$n_inner,
+          ")"
+        )
+      )
+      next
+    }
+
     # Heterogeneous variance by factor level. One iid field per level of the
     # outer factor, each with its own precision -- k variances, no
     # covariance, which is what diag() / idh() / at() ask for.
@@ -2799,3 +2877,10 @@ summary.flexybayes_inla <- function(object, ...) {
 # INLA data list. Fixed rather than derived, so the formula and the data
 # list agree without passing a name between them.
 .FB_INLA_SECTIONED_RESPONSE <- "fb_sectioned_response"
+
+
+# The INLA index column name for an unstructured GxE covariance. One index
+# for the whole term: the field is blocked by the outer factor's levels.
+.fb_inla_us_index <- function(outer, inner) {
+  make.names(paste0(inner, "_by_", outer, "_id"))
+}

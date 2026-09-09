@@ -86,6 +86,10 @@ lgm_gate <- function(
     .lgm_check_fixed_term_inla_support(fb), # check 7
     .lgm_check_random_term_inla_support(fb), # check 8
     .lgm_check_residual_term_inla_support(fb), # check 9
+    # check 9b -- us() order. INLA's iid2d..iid5d carry an unstructured
+    # covariance for k = 2..5; a wider one is both a different INLA model
+    # and k(k+1)/2 parameters, which is the problem fa() exists to solve.
+    .lgm_check_us_gxe_order(fb),
     # check 11 -- INLA-
     # specific memory-feasibility rule. Trivially passes when the
     # caller did not supply a preflight result (v0.3.5 backward-
@@ -729,6 +733,51 @@ print.lgm_refusal <- function(x, ...) {
   NULL
 }
 
+# Check 9b -- the order of an unstructured GxE covariance on INLA.
+#
+# INLA carries an unstructured k-dimensional covariance as iid2d..iid5d.
+# Beyond k = 5 the model is iidkd, whose parameterisation and hyperparameter
+# naming differ, and a k-level unstructured covariance costs k(k+1)/2
+# parameters -- 210 at k = 20 -- which is exactly the problem the
+# factor-analytic structure exists to solve. Refusing by name and pointing at
+# fa() is the honest answer rather than emitting a model nobody can fit.
+.FB_INLA_US_MAX_ORDER <- 5L
+
+.lgm_check_us_gxe_order <- function(fb) {
+  rule_id <- "us_gxe_order_inla"
+  for (term in fb$random_terms %||% list()) {
+    if (!identical(term$type %||% "", "us_gxe")) {
+      next
+    }
+    k <- term$n_outer %||% length(term$outer_levels %||% character(0))
+    if (is.numeric(k) && k > .FB_INLA_US_MAX_ORDER) {
+      return(.lgm_fail(
+        rule_id,
+        paste0(
+          "us(",
+          term$outer,
+          "):",
+          term$inner,
+          " asks for an unstructured covariance across ",
+          k,
+          " levels, which is ",
+          k * (k + 1L) / 2L,
+          " parameters. INLA carries an unstructured covariance up to ",
+          .FB_INLA_US_MAX_ORDER,
+          " levels (iid2d..iid5d). Use fa(",
+          term$outer,
+          ", k):",
+          term$inner,
+          " for a reduced-rank covariance at this width, or ",
+          "backend = \"brms\", which emits the full structure."
+        ),
+        diagnostic = paste0("n_outer = ", k)
+      ))
+    }
+  }
+  .lgm_pass(rule_id)
+}
+
 # What the OTHER active engine does with this model, asked rather than
 # assumed.
 #
@@ -931,6 +980,14 @@ print.lgm_refusal <- function(x, ...) {
   # of the outer factor. The `level` argument conditions on selected levels,
   # which is a different model, and stays refused.
   if (identical(term$type, "at_simple") && is.null(term$level)) {
+    return(TRUE)
+  }
+  # us(f):g -- an unstructured covariance across the levels of f. INLA writes
+  # it as one iidKd field over a blocked index. iid2d..iid5d cover k = 2..5;
+  # beyond that INLA's iidkd uses a different parameterisation, and a k-level
+  # unstructured covariance has k(k+1)/2 parameters, which is why fa() exists.
+  # The size limit is enforced in .lgm_check_us_gxe_order().
+  if (identical(term$type, "us_gxe")) {
     return(TRUE)
   }
   # WP16: AR1 (1D) and separable AR1xAR1 spatial latent fields on INLA.

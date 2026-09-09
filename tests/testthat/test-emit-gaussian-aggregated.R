@@ -241,6 +241,9 @@ test_that("(j) aggregate = TRUE on an unrecognised backend name raises unknown_b
 })
 
 test_that("(j) aggregate = TRUE on backend = 'brms' refuses", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   dat <- mk_agg_data()
   err <- tryCatch(
     suppressMessages(fb(

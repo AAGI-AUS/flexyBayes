@@ -355,6 +355,8 @@ register_canonical_mapper <- function(backend, mapper) {
   }
 
   nested_idx <- list()
+  us_prec <- list()
+  us_cor <- list()
   for (t in fb_terms$random_terms %||% list()) {
     tt <- t$type %||% ""
     # Uncorrelated random slope: the emit writes the slope half as a second
@@ -365,6 +367,27 @@ register_canonical_mapper <- function(backend, mapper) {
     # of the outer factor. Map each back to brms's name for the same
     # component, sd_<inner>__<outer><level>, so diag() reports identically
     # on both engines.
+    # us(f):g -- one iidKd field. INLA names its parts "Precision for <idx>
+    # (component j)" and "RhoI:J for <idx>". Map to what brms calls the same
+    # quantities for `(0 + f | g)`: sd_<g>__<f><level> and
+    # cor_<g>__<f><levelI>__<f><levelJ>.
+    if (identical(tt, "us_gxe")) {
+      idx <- make.names(paste0(t$inner, "_by_", t$outer, "_id"))
+      levs <- t$outer_levels %||% character(0)
+      for (j in seq_along(levs)) {
+        us_prec[[paste0("Precision for ", idx, " (component ", j, ")")]] <-
+          paste0("sd_", t$inner, "__", t$outer, levs[[j]])
+      }
+      for (a in seq_along(levs)) {
+        for (b in seq_along(levs)) {
+          if (b <= a) next
+          us_cor[[paste0("Rho", a, ":", b, " for ", idx)]] <-
+            paste0("cor_", t$inner, "__", t$outer, levs[[a]],
+                   "__", t$outer, levs[[b]])
+        }
+      }
+      next
+    }
     if (identical(tt, "at_simple")) {
       for (lev in t$outer_levels %||% character(0)) {
         nested_idx[[make.names(paste0(t$inner, "_at_", t$outer, "_", lev))]] <-
@@ -391,6 +414,16 @@ register_canonical_mapper <- function(backend, mapper) {
   hyper_names <- rownames(fit$inla$summary.hyperpar) %||% character(0)
   for (nm in hyper_names) {
     sp_hit <- FALSE
+    if (!is.null(us_prec[[nm]])) {
+      map[nm] <- us_prec[[nm]]
+      transform[[nm]] <- prec_to_sd
+      next
+    }
+    if (!is.null(us_cor[[nm]])) {
+      # A correlation, not a precision: no transform.
+      map[nm] <- us_cor[[nm]]
+      next
+    }
     if (startsWith(nm, "Precision for ")) {
       idx <- sub("^Precision for ", "", nm)
       if (!is.null(nested_idx[[idx]])) {

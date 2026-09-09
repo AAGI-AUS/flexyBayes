@@ -861,7 +861,11 @@
     },
     "us_gxe" = {
       if (term$outer %in% names(data)) {
-        term$n_outer <- nlevels(factor(data[[term$outer]]))
+        of <- factor(data[[term$outer]])
+        term$n_outer <- nlevels(of)
+        # The INLA emit sizes the iidKd field and names its components from
+        # these, and builds the formula without seeing `data`.
+        term$outer_levels <- levels(of)
       }
       if (term$inner %in% names(data)) {
         term$n_inner <- nlevels(factor(data[[term$inner]]))

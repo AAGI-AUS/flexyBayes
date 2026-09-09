@@ -254,6 +254,9 @@ test_that("the six full-specification INLA cells stay green", {
 # --- (2) arrival: brms -------------------------------------------------- #
 
 test_that("every translatable brms variance-component cell reaches the Stan program", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("brms")
   .pt_silence()
   d <- .pt_data()
