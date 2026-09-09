@@ -117,6 +117,7 @@ S3method(validate_approximation,default)
 S3method(validate_approximation,low_rank_smooth)
 S3method(vcov,flexybayes)
 S3method(vcov,flexybayes_inla)
+S3method(vpredict,flexybayes)
 export(augment)
 export(backend_decision)
 export(canonical_names)
@@ -150,6 +151,7 @@ export(tidy)
 export(triangulate)
 export(triangulate_genomic)
 export(validate_approximation)
+export(vpredict)
 importFrom(generics,
   augment,
   glance,

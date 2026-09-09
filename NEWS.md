@@ -1,5 +1,23 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **`vpredict()`: exact posterior functionals of the variance components.**
+  ASReml's `vpredict()` returns a heritability with a delta-method standard
+  error, which linearises at the REML estimate and does not know where the
+  parameter space ends -- which is how an ASReml heritability acquires an
+  interval running below zero. This one transforms the draws, so the interval
+  is a quantile interval of the functional's own posterior and cannot leave
+  the range the function maps into.
+
+  ```r
+  vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
+  ```
+
+  It reads canonical draws rather than engine-native ones, so the same call
+  gives the same answer on either engine, and it agrees with `lme4`'s REML
+  variance components put through the same ratio. A functional naming a
+  component the fit does not carry refuses and lists the ones it does, rather
+  than resolving the name against the caller's workspace.
+
 * **The correlated random slope fits on both engines: `(x | g)`.** It used to
   refuse at ingest, before any engine was chosen, on the ground that no active
   backend represented the structure. It is the uncorrelated slope with the

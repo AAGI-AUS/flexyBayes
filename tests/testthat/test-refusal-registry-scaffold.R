@@ -318,10 +318,29 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # Nested random effects on INLA add two more: the interaction index needs
   # every named variable present, and it must not overwrite a user column of
   # the same name (115 + 2 = 117).
-  expect_equal(length(entries), 117L)
+  # us(f):g and (x | g) reach INLA as iidKd fields, whose hyperparameters
+  # are a joint Wishart with no standard-deviation slot. An explicit SD
+  # prior refuses on each rather than being spliced in and dropped
+  # (us_gxe_prior_not_translatable_inla,
+  # cor_slope_prior_not_translatable_inla) (117 + 2 = 119).
+  # vpredict() adds three: no functional or a malformed one
+  # (vpredict_no_functional), a functional naming a component the fit does
+  # not carry, which must refuse rather than resolve against the caller's
+  # workspace (vpredict_component_not_in_posterior), and one that does not
+  # return a number per draw (vpredict_functional_not_one_value_per_draw)
+  # (= 122). A brms fit that fails on a machine whose toolchain cannot
+  # compile is named as such, and only when a probe confirms it
+  # (brms_stan_toolchain_compile_failure) (= 123).
+  expect_equal(length(entries), 123L)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)
   expect_true("nested_index_name_collision" %in% entries)
+  expect_true("us_gxe_prior_not_translatable_inla" %in% entries)
+  expect_true("cor_slope_prior_not_translatable_inla" %in% entries)
+  expect_true("vpredict_no_functional" %in% entries)
+  expect_true("vpredict_component_not_in_posterior" %in% entries)
+  expect_true("vpredict_functional_not_one_value_per_draw" %in% entries)
+  expect_true("brms_stan_toolchain_compile_failure" %in% entries)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)
