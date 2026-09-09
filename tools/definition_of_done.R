@@ -28,7 +28,7 @@
 #
 # Run from the package root. Not shipped (`^tools$` in .Rbuildignore).
 
-TARGET_VERSION <- "0.10.0"
+TARGET_VERSION <- "0.10.0.9000"
 TARGET_TIER <- "V2"
 # 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
 # Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
@@ -152,7 +152,7 @@ MAX_EXPORTS <- 34L
 
 .dod_section_a <- list(
   list(
-    id = "A1", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "A1", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "validationTier is V2, not V3",
     check = function() {
       got <- .dod_desc("Config/rpkg/validationTier")
@@ -160,7 +160,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "A2", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "A2", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "no expired-version waiver text in inst/validation/README.md",
     check = function() {
       txt <- .dod_read("inst/validation/README.md")
@@ -172,7 +172,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "A3", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "A3", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = paste0("DESCRIPTION Version is ", TARGET_VERSION),
     check = function() {
       got <- .dod_desc("Version")
@@ -180,7 +180,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "A4", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "A4", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "NEWS top section matches DESCRIPTION Version",
     check = function() {
       news <- .dod_read("NEWS.md")
@@ -209,7 +209,7 @@ MAX_EXPORTS <- 34L
 
 .dod_section_b <- list(
   list(
-    id = "B1", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B1", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every argument named in roxygen prose exists in formals()",
     check = function() {
       bad <- character(0)
@@ -259,7 +259,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B2", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B2", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "package-level Rd vignette count matches vignettes/",
     check = function() {
       n_real <- length(.dod_vignette_files())
@@ -277,7 +277,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B3", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B3", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every package named in DESCRIPTION Description is a real dep",
     check = function() {
       descr <- .dod_desc("Description")
@@ -307,7 +307,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B4", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B4", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every Imports package is actually used",
     check = function() {
       imp <- trimws(strsplit(.dod_desc("Imports"), ",")[[1]])
@@ -349,7 +349,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B5", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B5", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "CITATION.cff / codemeta.json / inst/CITATION agree on version",
     check = function() {
       v <- .dod_desc("Version")
@@ -362,7 +362,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B6", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B6", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "CITATION.cff date-released is not before the last commit",
     check = function() {
       cff <- grep("date-released", .dod_read("CITATION.cff"), value = TRUE)
@@ -374,7 +374,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B7", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B7", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "API_STABILITY.md makes no claim contradicted by R/",
     check = function() {
       api <- .dod_read("API_STABILITY.md")
@@ -387,7 +387,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B8", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B8", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "no I14 flag words on any shipped surface",
     check = function() {
       pat <- "honesty check|graduation|SA-gate|vibe-check"
@@ -411,7 +411,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B9", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B9", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "README makes no stability claim contradicting experimental",
     check = function() {
       txt <- .dod_read("README.md")
@@ -423,7 +423,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B10", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B10", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "workflow files make no false claim about their own gates",
     check = function() {
       yml <- list.files(".github/workflows", full.names = TRUE)
@@ -436,7 +436,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B11", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B11", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every advertised structure spelling is executed by the grid",
     check = function() {
       # The ledger's `cell` column carries prose slugs, so a spelling is
@@ -489,7 +489,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B12", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B12", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every export is exercised by at least one test file",
     check = function() {
       # The count in C1 is a symptom; this is the principle. An export
@@ -513,7 +513,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B13", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B13", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "no Rd example calls a function the package does not export",
     check = function() {
       # Withdrawing a function from the API does not touch its examples,
@@ -565,7 +565,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B14", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B14", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every non-internal help page appears in the pkgdown index",
     check = function() {
       # pkgdown's build_reference_index() errors when a topic is neither
@@ -608,7 +608,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "B15", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "B15", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every export is named in API_STABILITY.md",
     check = function() {
       # The stability document is the contract a user reads before
@@ -641,7 +641,7 @@ MAX_EXPORTS <- 34L
 
 .dod_section_c <- list(
   list(
-    id = "C1", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "C1", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = paste0("export count is at most ", MAX_EXPORTS),
     check = function() {
       n <- length(.dod_exports())
@@ -649,7 +649,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "C2", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "C2", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "no export always abstains (3 known unconditional abstainers)",
     check = function() {
       # Every export whose only reachable outcome is a message and an
@@ -666,7 +666,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "C3", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "C3", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "every export has an \\examples{} block",
     check = function() {
       # An export is not always documented on man/<name>.Rd: `fb` is an
@@ -698,7 +698,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "C4", cost = "full", owner = "claude", blocking = TRUE,
+    id = "C4", cost = "full", owner = "maintainer", blocking = TRUE,
     what = "a boundary-pinned variance component warns, on any Gaussian term",
     command = "testthat::test_file('tests/testthat/test-boundary-collapse.R')",
     check = function() {
@@ -720,7 +720,7 @@ MAX_EXPORTS <- 34L
     }
   ),
   list(
-    id = "C5", cost = "quick", owner = "claude", blocking = TRUE,
+    id = "C5", cost = "quick", owner = "maintainer", blocking = TRUE,
     what = "na_action documented behaviour matches the measured behaviour",
     check = function() {
       # Measurement revised 2026-08-28. The original check demanded the
@@ -774,34 +774,34 @@ MAX_EXPORTS <- 34L
 # ---------------------------------------------------------------------
 
 .dod_section_d <- list(
-  list(id = "D1", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D1", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "testthat suite: 0 fail, 0 warn",
        command = "review/phase_reports_0100/scripts/bake_and_gate.sh gates"),
-  list(id = "D2", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D2", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "R CMD check --as-cran, INLA present: 0/0/<=1",
        command = "R CMD check --as-cran flexyBayes_0.10.0.tar.gz"),
-  list(id = "D3", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D3", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "R CMD check --as-cran, INLA absent: 0/0/<=1",
        command = "INLA masked; same check"),
-  list(id = "D4", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D4", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "execution grid: 0 divergent, 0 untyped, 0 crash",
        command = "Rscript tools/execution_grid.R"),
-  list(id = "D5", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D5", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "lintr::lint_package() returns 0 lints (lint.yaml hard-gates)",
        # with the dev tree loaded, as CI does via local::. -- against a
        # stale installed build object_usage_linter reports phantoms
        command = paste("Rscript -e 'pkgload::load_all(quiet=TRUE);",
                        "print(length(lintr::lint_package()))'")),
-  list(id = "D6", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D6", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "pkgdown builds clean",
        command = "Rscript -e 'pkgdown::build_site()'"),
-  list(id = "D7", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D7", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "clean-room: tarball built from the tag tree, checked in scratch",
        command = "R CMD build from a fresh clone, check in a scratch dir"),
-  list(id = "D8", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D8", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "all four CI workflows green on a local dry run",
        command = "act, or a scratch private repo; none has ever executed"),
-  list(id = "D9", cost = "full", owner = "claude", blocking = FALSE,
+  list(id = "D9", cost = "full", owner = "maintainer", blocking = FALSE,
        what = "coverage measured once with INLA and brms present (recorded)",
        command = "Rscript -e 'covr::package_coverage()'"),
   # The gate that would have caught the first push going red. The
@@ -810,7 +810,7 @@ MAX_EXPORTS <- 34L
   # a locally-green suite produced 20 failures on the first CI run, all
   # of them tests that reached an engine without guarding on it, and
   # R CMD check failed on all six platforms for the same reason.
-  list(id = "D10", cost = "full", owner = "claude", blocking = TRUE,
+  list(id = "D10", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "suite green with the heavy Suggests absent, as CI runs it",
        command = "tools/check_suggests_absent.sh")
 )

@@ -53,13 +53,11 @@ marginaleffects::avg_slopes(fit)
 
 ## Which entry point do I use?
 
-| If you are used... | Then | Notes |
-|------------------------|------------------------|------------------------|
-| ASReml syntax (`fixed` / `random` / `residual`) | `fb()` / `flexybayes()` | Variance-component / Aimed more at analysis of agricultural data. |
-| brms/lme4 syntax (`y ~ x + (1 \| g)`) | `fb()` / `flexybayes()` | At more any more other mixed model analysis |
-| I don't mind! | `fb_inla()` / `fb_brms()` | If you want to use a specific backend |
-
-<!--| Two fits you want to compare across engines | `triangulate()` | Auto-resolves canonical parameter names. |-->
+| If you write ... | Use | Notes |
+|---|---|---|
+| ASReml syntax (`fixed` / `random` / `residual`) | `fb()` / `flexybayes()` | Designed agricultural experiments: variance components, structured covariance. |
+| brms or lme4 syntax (`y ~ x + (1 \| g)`) | `fb()` / `flexybayes()` | Any other mixed model. The grammar is detected from the call. |
+| Either, but you want a named engine | `fb_inla()` / `fb_brms()` | Single-engine pins; a conflicting `backend` is refused. |
 
 `fb()` is the short alias for `flexybayes()`, and either name is the universal entry that spans every backend.
 
@@ -343,7 +341,7 @@ Continuous integration validates the INLA, brms, and engine-independent surface 
 - **Hidden-Markov, multi-state, and survival models**: not supported. Survival / time-to-event families are refused at the family gate. A NIMBLE backend covering these is on the roadmap with no fixed release target.
 -->
 - **Missing data**: flexyBayes does not impute covariates. A missing *predictor* is refused by default, as it is in ASReml (`na.method(x = "fail")`). Setting `na_action = list(y = "include", x = "omit")` drops the affected rows with a warning naming the count and the columns.
-A missing *response* is retained by default (`na_action = "augment"`), carried as a latent quantity the package marginalises, so the design index set a structured covariance is built over survives a lost plot. That preserves the representation, not information: under ignorability the parameter posterior is the same either way, and where missingness depends on the unobserved response both augmenting and omitting are biased. Non-Gaussian missing responses on brms are refused.
+A missing *response* is retained by default (`na_action = "augment"`), carried as a latent quantity the package marginalises, so the design index set a structured covariance is built over survives a lost plot. What that does and does not buy you is set out under `na_action` in `?flexybayes`. Non-Gaussian missing responses on brms are refused.
 
 <!--
 ## Requirements
@@ -365,8 +363,7 @@ If you use `flexyBayes` in your research, please cite:
 @software{flexyBayes,
   title  = {flexyBayes: Flexible Bayesian Mixed Models with ASReml
             and brms-Style Syntax},
-  author = {Moldovan, Max and Tanaka, Emi and Hui, Francis K.C. and
-            Forte Deltell, Anabel},
+  author = {Moldovan, Max},
   year   = {2026},
   url    = {https://github.com/AAGI-AUS/flexyBayes}
 }

@@ -1,4 +1,4 @@
-# flexyBayes (development version)
+# flexyBayes 0.10.0.9000 (development version)
 
 * **Units followed through time: `random = ~ ar1(t):g`.** The grouped
   temporal field -- AR1 along `t` within each level of `g`, independent
