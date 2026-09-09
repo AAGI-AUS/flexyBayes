@@ -137,10 +137,14 @@ test_that("the supported bar forms are untouched by the factor-slope branch", {
   }
 })
 
-test_that("a correlated NUMERIC slope keeps its own refusal", {
+test_that("a correlated NUMERIC slope is no longer a refusal", {
+  # The neighbouring refusals in this file are all real. This one was not:
+  # `(x | g)` is the uncorrelated slope with the correlation freed, and
+  # both engines carry it. It stays here as the boundary of the sweep --
+  # a FACTOR slope still refuses (above), a numeric one does not.
   d <- .gs_data()
-  err <- .gs_refuse(y ~ x + (x | g), data = d, family = "gaussian")
-  expect_s3_class(err, "flexybayes_correlated_slope_unsupported")
+  fb <- fb_from_brms(y ~ x + (x | g), data = d, family = "gaussian")
+  expect_identical(fb$random_terms[[1]]$type, "simple_slope_cor")
 })
 
 

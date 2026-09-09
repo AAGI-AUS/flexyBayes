@@ -93,11 +93,27 @@
     list(
       model_class = "Correlated random slope",
       spelling = "`(x | g)`",
-      inla = "refuses",
-      brms = "refuses",
-      note = "Refused at ingest, before any engine is chosen. Fit
-        `(x || g)` when the correlation is not of inferential interest.",
-      anchor = "test-random-slopes-uncor.R"
+      inla = "fits",
+      brms = "fits",
+      note = "The uncorrelated slope with the correlation freed: one
+        intercept SD, one slope SD and the correlation between them. INLA
+        holds all three in a single iid2d field over a two-block index,
+        with the slope block entering as a fixed-scaling copy weighted by
+        `x`; brms writes `(x | g)` verbatim. Both report `sd_<g>`,
+        `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`. The iid2d
+        hyperparameters are one joint Wishart with no standard-deviation
+        slot, so on INLA an explicit SD prior refuses by name and the
+        package default is reported as an engine default rather than as a
+        prior that reached the fit. Where the intercept and the slope are
+        weakly separated by the design, INLA's mode for this structure is
+        not unique: on `lme4::sleepstudy` (18 subjects) five identical
+        calls return intercept SDs of 0.5 to 4.6 against lme4's 24.7 and
+        correlations spanning -0.96 to +0.99, each reporting
+        `mode.status = 0`. Hand-written INLA reproduces it without this
+        package, so it is a property of the iid2d parameterisation and not
+        of the translation. Fit such designs on brms, or read the
+        boundary-collapse warning, which does fire.",
+      anchor = "test-correlated-random-slope.R"
     ),
     list(
       model_class = "Nested / interaction random effects, multi-stratum",

@@ -25,10 +25,7 @@
 # - Optional `weights` argument mapped to addition_terms with
 #   type = "weights" (mirrors fb_from_asreml).
 #
-# Refused (v0.1) -- fail-fast at ingest with a clear message:
-# - Correlated random slopes `(x | g)` (deferred to the v0.3
-#   structured-covariance representation; refuses with
-#   condition class flexybayes_correlated_slope_unsupported).
+# Refused -- fail-fast at ingest with a clear message:
 # - Smoothers `s()`, `t2()`.
 # - Gaussian processes `gp()`.
 # - Autocorrelation `ar()`, `ma()`, `arma()`, `cosy()`, `car()`.
@@ -291,12 +288,6 @@ fb_from_brms <- function(
   random_terms <- list()
   for (pair in walked$re_pairs) {
     rt <- .brms_re_to_fb(pair, data)
-    if (identical(rt$type, "brms_re_correlated_slope_unsupported")) {
-      .stop_correlated_slope_unsupported(
-        grouping_factor = rt$rhs,
-        slope_variable = rt$slope_var
-      )
-    }
     if (identical(rt$type, "brms_re_factor_slope_unsupported")) {
       .stop_factor_slope_unsupported(
         grouping_factor = rt$rhs,
@@ -515,8 +506,8 @@ fb_from_brms <- function(
 #                                                  same model as above)
 #   (0 + x || g)   -> type = "simple_slope_uncor" (with_intercept = FALSE;
 #                                                  slope-only)
-#   (x | g)        -> type = "brms_re_correlated_slope_unsupported"
-#                     (correlated slope; deferred to v0.3)
+#   (x | g)        -> type = "simple_slope_cor" (intercept and slope share
+#                     one 2-by-2 unstructured covariance)
 #
 # Anything else returns a marker descriptor whose type =
 # "brms_re_unsupported" so the caller can reject with a clear
@@ -672,8 +663,9 @@ fb_from_brms <- function(
     ))
   }
 
-  # Slope correlated: (x | g) or (1 + x | g). Refused with the
-  # structured deferral message.
+  # Slope correlated: (x | g) or (1 + x | g). The intercept and the slope
+  # share one 2-by-2 unstructured covariance -- the uncorrelated model with
+  # the correlation freed rather than a different class of model.
   if (isTRUE(cor)) {
     slope_var <- NA_character_
     if (is_simple_var(lhs)) {
@@ -689,12 +681,10 @@ fb_from_brms <- function(
       if (is_one(right) && is_simple_var(left)) slope_var <- as.character(left)
     }
     if (!is.na(slope_var)) {
-      return(list(
-        type = "brms_re_correlated_slope_unsupported",
-        lhs = lhs_str,
-        rhs = group_name,
+      return(.brms_re_to_fb_slope_cor(
         slope_var = slope_var,
-        deparse = paste0("(", lhs_str, " | ", group_name, ")")
+        group_name = group_name,
+        data = data
       ))
     }
   }
@@ -728,6 +718,30 @@ fb_from_brms <- function(
     var = group_name,
     slope_var = slope_var,
     with_intercept = isTRUE(with_intercept)
+  )
+  if (group_name %in% names(data)) {
+    f <- factor(data[[group_name]])
+    out$var_n <- nlevels(f)
+    out$var_levels <- levels(f)
+  }
+  if (slope_var %in% names(data)) {
+    out$slope_var_values <- as.numeric(data[[slope_var]])
+  }
+  out
+}
+
+# The correlated random slope `(x | g)`, carried as one term rather than
+# two. The intercept and the slope deviations of a group share a 2-by-2
+# unstructured covariance: two standard deviations and one correlation.
+# Both engines fit it -- brms as `(x | g)` verbatim, INLA as an iid2d field
+# over a two-block index -- so the IR keeps the fields the uncorrelated
+# sibling uses and adds nothing else.
+.brms_re_to_fb_slope_cor <- function(slope_var, group_name, data) {
+  out <- list(
+    type = "simple_slope_cor",
+    var = group_name,
+    slope_var = slope_var,
+    with_intercept = TRUE
   )
   if (group_name %in% names(data)) {
     f <- factor(data[[group_name]])
@@ -862,68 +876,3 @@ fb_from_brms <- function(
   ))
 }
 
-# Raise the structured refusal for (x | g).
-# The custom condition class flexybayes_correlated_slope_unsupported
-# carries the grouping factor, slope variable, deferral target, and
-# workaround so downstream tooling can pattern-match on the slots
-# without parsing free text.
-.stop_correlated_slope_unsupported <- function(
-  grouping_factor,
-  slope_variable
-) {
-  uncorrelated <- paste0("(", slope_variable, " || ", grouping_factor, ")")
-  msg <- paste0(
-    "Correlated random slopes (x | g) are not yet supported.\n",
-    "Got: (",
-    slope_variable,
-    " | ",
-    grouping_factor,
-    ")\n\n",
-    "Fit ",
-    uncorrelated,
-    " instead. That is the uncorrelated random\n",
-    "intercept and slope: a per-",
-    grouping_factor,
-    " intercept deviation\n",
-    "and a per-",
-    grouping_factor,
-    " slope on ",
-    slope_variable,
-    ", each with its own\n",
-    "variance and no correlation parameter between them. It emits on brms\n",
-    "and is the right model whenever the intercept-slope correlation is not\n",
-    "itself of inferential interest.\n\n",
-    "Do NOT reach for the asreml crossing ~ ",
-    grouping_factor,
-    " + ",
-    grouping_factor,
-    ":",
-    slope_variable,
-    ".\n",
-    "With a numeric ",
-    slope_variable,
-    " that is one independent deviation per\n",
-    grouping_factor,
-    "-by-",
-    slope_variable,
-    " cell, not a per-",
-    grouping_factor,
-    " slope -- a\n",
-    "different model with a different parameter count.\n\n",
-    "If the correlation parameter itself is needed, it is deferred to a\n",
-    "future release (structured-covariance representation). No active\n",
-    "backend represents the correlated form today."
-  )
-  cond <- structure(
-    class = c("flexybayes_correlated_slope_unsupported", "error", "condition"),
-    list(
-      message = msg,
-      call = NULL,
-      grouping_factor = grouping_factor,
-      slope_variable = slope_variable,
-      deferral_target = "a future release",
-      workaround = uncorrelated
-    )
-  )
-  stop(cond)
-}

@@ -994,6 +994,27 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
+    # (x | g) -- the same two standard deviations, plus the correlation
+    # between them. brms takes an SD prior on both; the correlation keeps
+    # brms's LKJ, which the prior DSL does not carry.
+    if (identical(ttype, "simple_slope_cor")) {
+      if (!is.null(t$var) && nzchar(t$var)) {
+        shared <- c(shared, t$var)
+      }
+      if (!is.null(t$slope_var) && nzchar(t$slope_var)) {
+        shared <- c(shared, paste0(t$slope_var, "_", t$var))
+        add_engine(
+          paste0("cor_", t$var),
+          paste0(
+            "(", t$slope_var, " | ", t$var, ") intercept-slope correlation ",
+            "keeps brms's default LKJ prior; flexyBayes sets no correlation ",
+            "prior"
+          )
+        )
+      }
+      next
+    }
+
     if (ttype %in% c("vm", "ped")) {
       if (!is.null(t$var) && nzchar(t$var)) {
         vm_ped <- c(vm_ped, t$var)

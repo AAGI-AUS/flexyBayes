@@ -1003,6 +1003,40 @@ emit_inla <- function(
     data_inla[[slope_idx]] <- as.integer(factor(data[[term$var]]))
   }
 
+  # Correlated random slope `(x | g)`. The intercept and slope deviations
+  # share one 2-by-2 unstructured covariance, which INLA holds as a single
+  # iid2d field of length 2 * n_g: the first block is the intercepts, the
+  # second the slopes. The slope block enters the linear predictor scaled by
+  # x, as a COPY of the same field -- copy with the default fixed scaling,
+  # so it contributes the same latent values, not a second set.
+  for (term in fb$random_terms) {
+    if (!identical(term$type, "simple_slope_cor")) {
+      next
+    }
+    g_f <- factor(data[[term$var]])
+    n_g <- nlevels(g_f)
+    idx_int <- .fb_inla_cor_slope_index(term$var, term$slope_var)
+    idx_slope <- .fb_inla_cor_slope_slope_index(term$var, term$slope_var)
+    for (idx_name in c(idx_int, idx_slope)) {
+      if (idx_name %in% names(data)) {
+        stop(.fb_refusal_condition(
+          reason_code = "nested_index_name_collision",
+          message = paste0(
+            "Fitting the correlated random slope `(",
+            term$slope_var,
+            " | ",
+            term$var,
+            ")` on INLA needs an index column named `",
+            idx_name,
+            "`, and `data` already has one. Rename that column."
+          )
+        ))
+      }
+    }
+    data_inla[[idx_int]] <- as.integer(g_f)
+    data_inla[[idx_slope]] <- as.integer(g_f) + n_g
+  }
+
   # Nested / interaction random effects, `a:b` and `a:b:c`. INLA has no
   # interaction syntax of its own and does not need one: the term is an iid
   # field over the interaction index, which is exactly what brms's
@@ -1448,6 +1482,68 @@ emit_inla <- function(
           ", model = \"iid\"",
           if (nzchar(hyper_slope)) paste0(", ", hyper_slope) else "",
           ")"
+        )
+      )
+      next
+    }
+
+    # Correlated random slope `(x | g)`. One iid2d field over the two-block
+    # index carries both standard deviations and the correlation between
+    # them; the slope block is a fixed-scaling copy of that same field,
+    # entered with `x` as its weight.
+    if (identical(term$type, "simple_slope_cor")) {
+      sv <- term$slope_var
+      gtag <- term$var
+      n_g <- term$var_n %||% length(unique(data[[gtag]]))
+      # iid2d's hyperparameters are a single joint Wishart on theta1, with
+      # theta2 and theta3 carrying prior = "none" (read from
+      # INLA::inla.models()). There is no standard-deviation slot to
+      # translate a prior into, and splicing one in makes INLA drop it --
+      # the silent prior loss this package fixed in the sectioned residual.
+      # The auto-default is therefore left unspliced and INLA's Wishart
+      # governs; an EXPLICIT prior refuses by name rather than vanishing.
+      user_prior <- (!is.null(hyper_ctrl[[gtag]]) ||
+        !is.null(hyper_ctrl[[paste0(sv, "_", gtag)]])) &&
+        is.null(attr(fb$priors, "fb_prior_default_basis"))
+      if (isTRUE(user_prior)) {
+        stop(.fb_refusal_condition(
+          reason_code = "cor_slope_prior_not_translatable_inla",
+          message = paste0(
+            "A prior was supplied for `",
+            gtag,
+            "`, and the correlated random slope `(",
+            sv,
+            " | ",
+            gtag,
+            ")` on INLA carries a joint Wishart prior over the whole ",
+            "2-by-2 covariance of the intercept and the slope. There is no ",
+            "standard-deviation slot to translate it into, and silently ",
+            "dropping it would leave the fit on a prior nobody chose. Fit ",
+            "with backend = \"brms\", which takes an SD prior on this ",
+            "structure, or write the model as `(",
+            sv,
+            " || ",
+            gtag,
+            ")`, whose two independent precisions do take one."
+          )
+        ))
+      }
+      rhs_terms <- c(
+        rhs_terms,
+        paste0(
+          "f(",
+          .fb_inla_cor_slope_index(gtag, sv),
+          ", model = \"iid2d\", n = ", 2L * n_g,
+          ")"
+        ),
+        paste0(
+          "f(",
+          .fb_inla_cor_slope_slope_index(gtag, sv),
+          ", ",
+          sv,
+          ", copy = \"",
+          .fb_inla_cor_slope_index(gtag, sv),
+          "\")"
         )
       )
       next
@@ -2965,6 +3061,17 @@ summary.flexybayes_inla <- function(object, ...) {
 # for the whole term: the field is blocked by the outer factor's levels.
 .fb_inla_us_index <- function(outer, inner) {
   make.names(paste0(inner, "_by_", outer, "_id"))
+}
+
+# The two index columns a correlated random slope needs: one block of
+# intercepts and one of slopes, laid end to end so a single iid2d field of
+# length 2 * n_g spans both and carries the covariance between them.
+.fb_inla_cor_slope_index <- function(group, slope_var) {
+  make.names(paste0(group, "_cor_", slope_var, "_id"))
+}
+
+.fb_inla_cor_slope_slope_index <- function(group, slope_var) {
+  make.names(paste0(group, "_cor_", slope_var, "_slope_id"))
 }
 
 

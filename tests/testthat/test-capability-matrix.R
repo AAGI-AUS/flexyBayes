@@ -307,7 +307,7 @@ test_that("a factor-by-numeric fixed interaction fits on brms only", {
   )
 })
 
-test_that("a correlated random slope refuses on both, typed", {
+test_that("a correlated random slope emits on both", {
   skip_if_not_installed("brms")
   r <- .cap_row("Correlated random slope")
   d <- .cap_data()
@@ -315,8 +315,7 @@ test_that("a correlated random slope refuses on both, typed", {
     .cap_expect(
       .cap_emit(engine, y ~ x + (x | gen), data = d),
       if (identical(engine, "inla")) r$inla else r$brms,
-      engine,
-      condition_class = "flexybayes_correlated_slope_unsupported"
+      engine
     )
   }
 })
@@ -480,7 +479,7 @@ test_that("the combined MET model emits both blocks on brms", {
   expect_match(sigma, "sigma ~ 0 + env", fixed = TRUE)
 })
 
-test_that("factor-analytic GxE refuses on both", {
+test_that("factor-analytic GxE emits on INLA and refuses on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row("Factor-analytic genotype-by-environment covariance")
@@ -488,14 +487,17 @@ test_that("factor-analytic GxE refuses on both", {
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ fa(env, 1):gen, data = d),
     r$inla,
-    "INLA",
-    condition_class = "flexybayes_refusal_fa_not_representable"
+    "INLA"
   )
+  # The refusal belongs to the engine that cannot do it, and says so under
+  # that engine's own reason code. `fa_not_representable` now covers only
+  # the bare `fa(v, k)` spelling, which has no grouping factor to apply the
+  # covariance to and no emit anywhere.
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ fa(env, 1):gen, data = d),
     r$brms,
     "brms",
-    condition_class = "flexybayes_refusal_fa_not_representable"
+    condition_class = "flexybayes_refusal_brms_cannot_represent_term"
   )
 })
 

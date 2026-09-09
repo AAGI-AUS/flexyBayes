@@ -426,6 +426,23 @@ register_canonical_mapper <- function(backend, mapper) {
         paste0(t$slope_var, "_", t$var)
       next
     }
+    # (x | g) is one iid2d field over a two-block index, so its
+    # hyperparameters arrive in the same shape us() uses: two component
+    # precisions and one Rho. Component 1 is the intercept block and
+    # component 2 the slope block, which fixes the reading of both. The
+    # standard deviations take the names the UNCORRELATED sibling already
+    # reports, so the two models are read side by side; the correlation
+    # takes brms's own cor_<g>__Intercept__<x>.
+    if (identical(tt, "simple_slope_cor")) {
+      idx <- make.names(paste0(t$var, "_cor_", t$slope_var, "_id"))
+      us_prec[[paste0("Precision for ", idx, " (component 1)")]] <-
+        paste0("sd_", t$var)
+      us_prec[[paste0("Precision for ", idx, " (component 2)")]] <-
+        paste0("sd_", t$slope_var, "_", t$var)
+      us_cor[[paste0("Rho1:2 for ", idx)]] <-
+        paste0("cor_", t$var, "__Intercept__", t$slope_var)
+      next
+    }
     if (tt %in% c("nested", "combo")) {
       vars <- if (identical(tt, "nested")) {
         c(t$outer, t$inner)

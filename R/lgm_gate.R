@@ -704,7 +704,12 @@ print.lgm_refusal <- function(x, ...) {
   # to be conditional on a runtime verification artefact, retired at
   # 0.10.0.9000 -- the agreement it asserted is checked in the suite
   # against lme4, which is where every other capability claim here lives.
-  c("simple", "ide", "id", "spline", "simple_slope_uncor")
+  # "simple_slope_cor" is the same model with the correlation freed: one
+  # iid2d field over a two-block index, plus a copy carrying the slope.
+  c(
+    "simple", "ide", "id", "spline", "simple_slope_uncor",
+    "simple_slope_cor"
+  )
 }
 
 # Allowlist: residual-term types that emit_inla()'s residual-term guard
@@ -966,7 +971,11 @@ print.lgm_refusal <- function(x, ...) {
   if (!is.character(term$type)) {
     return(FALSE)
   }
-  if (term$type %in% c("simple", "ide", "id", "spline", "simple_slope_uncor")) {
+  if (
+    term$type %in%
+      c("simple", "ide", "id", "spline", "simple_slope_uncor",
+        "simple_slope_cor")
+  ) {
     return(TRUE)
   }
   # Nested / interaction random effects. INLA fits these as an iid field

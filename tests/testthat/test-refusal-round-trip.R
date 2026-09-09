@@ -131,16 +131,30 @@ test_that("str() is refused and names what to write instead", {
   expect_match(conditionMessage(bad), "us(f):g", fixed = TRUE)
 })
 
-test_that("a factor-analytic covariance is refused on both engines", {
+test_that("a factor-analytic covariance emits on INLA and refuses on brms", {
+  # The refusal that used to cover both engines now covers the one that
+  # cannot do it. INLA enters each common factor as scaled copies of a
+  # latent field, so the dispatch-wide refusal was withdrawn; what remains
+  # on brms is that engine's own emit saying it has no lowering.
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   d <- .rt_data()
-  for (engine in c("inla", "brms")) {
-    bad <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
-                    backend = engine)
-    expect_s3_class(bad, "flexybayes_refusal_fa_not_representable")
-    expect_match(conditionMessage(bad), "us(env):gen", fixed = TRUE)
-  }
+  ok <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
+                 backend = "inla")
+  expect_false(inherits(ok, "error"))
+
+  bad <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
+                  backend = "brms")
+  expect_s3_class(bad, "flexybayes_refusal_brms_cannot_represent_term")
+  expect_match(conditionMessage(bad), "backend = \"inla\"", fixed = TRUE)
+
+  # The bare spelling -- no grouping factor for the covariance to apply to
+  # -- keeps the original refusal, and still names the way to write it.
+  bare <- .rt_emit(y ~ env, random = ~ fa(env, 1), data = d,
+                   backend = "inla")
+  expect_s3_class(bare, "flexybayes_refusal_fa_not_representable")
+  expect_match(conditionMessage(bare), "us(env):<group>", fixed = TRUE)
+
   # It still parses, which is what makes fb_terms() a formula catalogue.
   fb <- fb_from_asreml(y ~ env, random = ~ fa(env, 1):gen, data = d)
   expect_identical(fb$random_terms[[1L]]$type, "fa_gxe")

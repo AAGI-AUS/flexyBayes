@@ -202,31 +202,22 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
 
 
 # ---------------------------------------------------------------- #
-# (6) ADR 0020 refusal: correlated random slopes (x | g)            #
+# (6) Correlated random slopes (x | g) through the fb() surface      #
 # ---------------------------------------------------------------- #
 #
-# Uncorrelated random slopes (x || g) are now supported per ADR 0020
-# (covered by test-random-slopes-uncor.R). The correlated form
-# (x | g) continues to refuse, but with the new structured
-# `flexybayes_correlated_slope_unsupported` condition carrying
-# precise slots (deferral_target; workaround, which names the concrete
-# uncorrelated spelling for this model; grouping_factor; slope_variable).
+# Both bar forms reach the engines: (x || g) is two independent
+# variances, (x | g) the same two with the correlation between them
+# freed. The single pipe used to refuse with a structured deferral.
 
-test_that("fb_brms() refuses correlated random slopes (x | g) with ADR 0020 structured condition", {
+test_that("fb() carries correlated random slopes (x | g) to the brms formula", {
   d <- mk_brms_gaussian_data()
-  err <- tryCatch(
-    fb(y ~ x + (x | g1), data = d, verbose = FALSE),
-    error = function(e) e
-  )
-  expect_s3_class(err, "flexybayes_correlated_slope_unsupported")
-  expect_identical(err$deferral_target, "a future release")
-  expect_identical(err$workaround, "(x || g1)")
-  expect_identical(err$grouping_factor, "g1")
-  expect_identical(err$slope_variable, "x")
-  msg <- conditionMessage(err)
-  expect_true(grepl("Correlated random slopes", msg))
-  expect_true(grepl("future release", msg))
-  expect_true(grepl("(x || g1)", msg, fixed = TRUE))
+  fb_ir <- fb_from_brms(y ~ x + (x | g1), data = d)
+  expect_identical(fb_ir$random_terms[[1]]$type, "simple_slope_cor")
+  expect_identical(fb_ir$random_terms[[1]]$var, "g1")
+  expect_identical(fb_ir$random_terms[[1]]$slope_var, "x")
+  txt <- gsub("\\s+", " ", paste(deparse(.fb_to_brms_formula(fb_ir)),
+                                 collapse = " "))
+  expect_match(txt, "(x | g1)", fixed = TRUE)
 })
 
 

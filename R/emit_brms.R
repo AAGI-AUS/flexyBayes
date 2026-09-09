@@ -256,7 +256,10 @@ emit_brms <- function(
       }
     ),
     error = function(e) {
-      stop("brms::brm() failed: ", conditionMessage(e), call. = FALSE)
+      # A Stan compile failure reaches R as a downstream symptom, so the
+      # toolchain is asked directly before the message is written. See
+      # .fb_brms_failure_message().
+      .fb_stop_brms_failure(conditionMessage(e))
     }
   )
   elapsed <- unname((proc.time() - t0)["elapsed"])
@@ -703,7 +706,10 @@ emit_brms <- function(
       next
     }
 
-    if (!ttype %in% c("simple", "ide", "id", "simple_slope_uncor")) {
+    if (
+      !ttype %in%
+        c("simple", "ide", "id", "simple_slope_uncor", "simple_slope_cor")
+    ) {
       stop(.fb_refusal_condition(
         reason_code = "brms_cannot_represent_term",
         message = .brms_term_refusal_message(term),
@@ -735,6 +741,16 @@ emit_brms <- function(
           ")"
         )
       )
+      next
+    }
+    # Correlated random slope. brms writes this one natively: the single
+    # pipe IS the correlated form, with the intercept implicit.
+    if (identical(term$type, "simple_slope_cor")) {
+      sv <- term$slope_var
+      if (is.null(sv) || !nzchar(sv)) {
+        stop("Correlated random-slope term missing slope_var.", call. = FALSE)
+      }
+      re_terms <- c(re_terms, paste0("(", sv, " | ", grp, ")"))
       next
     }
     re_terms <- c(re_terms, paste0("(1 | ", grp, ")"))
@@ -946,10 +962,22 @@ emit_brms <- function(
       term$inner %||% var_name,
       ", K) on its own, or use ASReml for the crossed form."
     ),
+    "fa_gxe" = paste0(
+      "brms group-level effects are either uncorrelated or fully ",
+      "unstructured, with no factor-analytic form between the two. INLA ",
+      "emits this one, entering each common factor as scaled copies of a ",
+      "latent field, so fit it with backend = \"inla\"."
+    ),
+    # The fallback claims nothing about the other engine. Which structures
+    # INLA emits changes as the emit grows, and a sentence here saying "no
+    # active engine" is a claim about a file this one does not read -- the
+    # class of statement the 0.10.0 review found to be false in twelve
+    # places. The capability table is generated from one source and is the
+    # thing to point at.
     paste0(
-      "No active engine emits this structure. fb_terms() will describe ",
-      "what was parsed, and the capability table in the README lists what ",
-      "each engine fits."
+      "This structure has no brms lowering. fb_terms() will describe what ",
+      "was parsed, and the capability table in the README lists what each ",
+      "engine fits."
     )
   )
   paste0(

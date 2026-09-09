@@ -1,5 +1,42 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **The correlated random slope fits on both engines: `(x | g)`.** It used to
+  refuse at ingest, before any engine was chosen, on the ground that no active
+  backend represented the structure. It is the uncorrelated slope with the
+  correlation freed -- one intercept SD, one slope SD, and the correlation
+  between them -- and both engines carry it. INLA holds all three in a single
+  `iid2d` field over an index blocked intercepts-then-slopes, with the slope
+  block entering as a fixed-scaling copy of that same field weighted by `x`;
+  brms writes `(x | g)` verbatim.
+
+  On simulated data with an intercept SD of 1.2, a slope SD of 0.6 and a
+  correlation of 0.60, INLA returns 1.11, 0.66 and 0.569 with the residual at
+  0.338 against 0.35, and agrees with `lme4::lmer()`'s REML fit of the same
+  model on all three. A crossover fixture with a correlation of -0.7 comes
+  back negative with an interval excluding zero. Components are reported as
+  `sd_<g>`, `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`.
+
+  **Where the design separates the intercept from the slope weakly, INLA's
+  mode for this structure is not unique, and the capability table says so.**
+  On `lme4::sleepstudy`, with 18 subjects, five identical calls return
+  intercept standard deviations between 0.5 and 4.6 against `lme4`'s 24.7,
+  and correlations spanning -0.96 to +0.99 -- each reporting
+  `mode.status = 0`, INLA's own convergence flag, and each with a different
+  marginal likelihood. Hand-written INLA, with this package not loaded,
+  reproduces the same spread, so it is a property of the `iid2d`
+  parameterisation rather than of the translation. The boundary-collapse
+  warning fires on these fits. Fit such designs on brms.
+
+* **The `prior` column now reports the prior that reached the fit.** `us(f):g`
+  and `(x | g)` are `iidKd` fields on INLA, and their hyperparameters are a
+  single joint Wishart: `theta1` carries it and every later `theta` reports
+  `prior = "none"`. There is no standard-deviation slot. The package's own
+  default was therefore never spliced in -- correctly -- but `summary()` and
+  `prior_summary()` went on reporting it as though it had been, which said the
+  fit used a prior it never saw. Those components now read `engine default`,
+  and `prior_summary()$not_applied` names them with the reason. An **explicit**
+  prior on these groups still refuses by name rather than being dropped.
+
 * **The factor-analytic covariance fits on INLA: `fa(f, k):g`.** ASReml's
   headline multi-environment-trial model, and the one this package declared no
   engine could fit. INLA has no latent model called "factor analytic", which

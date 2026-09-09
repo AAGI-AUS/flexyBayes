@@ -948,7 +948,9 @@ flexybayes_stream <- function(
     }
     reason <- if (rtype %in% c("smooth", "s", "t2", "smooth_mgcv", "spline")) {
       "smooth_term_not_aggregatable"
-    } else if (rtype %in% c("simple_slope_uncor", "slope", "random_slope")) {
+    } else if (rtype %in% c(
+      "simple_slope_uncor", "simple_slope_cor", "slope", "random_slope"
+    )) {
       "random_slope_not_aggregatable"
     } else {
       "structured_random_not_aggregatable"

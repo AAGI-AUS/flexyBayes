@@ -2474,5 +2474,84 @@ print.fb_refusals_table <- function(x, ...) {
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )
+  .register_refusal(
+    reason_code = "cor_slope_prior_not_translatable_inla",
+    description = paste0(
+      "(x | g) on INLA is an iid2d field whose hyperparameters are a single ",
+      "joint Wishart over the 2-by-2 covariance of the intercept and the ",
+      "slope. It has no standard-deviation slot, so a supplied SD prior ",
+      "cannot be translated. Refused rather than dropped."
+    ),
+    message_template = paste0(
+      "A prior was supplied for `%s`, and (x | g) on INLA carries a joint ",
+      "Wishart prior over the whole 2-by-2 covariance. Fit with ",
+      "backend = \"brms\", or write the model as `(x || g)`, whose two ",
+      "independent precisions do take an SD prior."
+    ),
+    registered_in_adr = "0.10.0.9000 correlated slope on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "vpredict_no_functional",
+    description = paste0(
+      "vpredict() was called with no functional, or with an argument that ",
+      "is not a two-sided `name ~ expression` formula."
+    ),
+    message_template = paste0(
+      "vpredict() needs at least one functional, written as a two-sided ",
+      "formula: vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))."
+    ),
+    registered_in_adr = "0.10.0.9000 posterior functionals",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "vpredict_component_not_in_posterior",
+    description = paste0(
+      "A functional names a variance component the fit does not carry. ",
+      "Resolving the name against the caller's workspace instead would ",
+      "return a number computed from something other than this posterior, ",
+      "so it refuses and lists the components that are available."
+    ),
+    message_template = paste0(
+      "`%s` names a component this fit does not carry. It carries: %s."
+    ),
+    registered_in_adr = "0.10.0.9000 posterior functionals",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "vpredict_functional_not_one_value_per_draw",
+    description = paste0(
+      "A functional returned something other than one number per posterior ",
+      "draw, so it is not a transform of the posterior and has no ",
+      "posterior of its own to summarise."
+    ),
+    message_template = paste0(
+      "`%s` must evaluate to one number per posterior draw."
+    ),
+    registered_in_adr = "0.10.0.9000 posterior functionals",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "brms_stan_toolchain_compile_failure",
+    description = paste0(
+      "The brms path compiles a Stan program, and a broken C++ toolchain ",
+      "reaches R as a downstream symptom -- `invalid connection` -- rather ",
+      "than as the compiler's own message. On a failed fit the toolchain ",
+      "is probed directly, and this code is raised only when the probe ",
+      "confirms it cannot compile."
+    ),
+    message_template = paste0(
+      "brms::brm() failed, and this machine cannot compile a three-line ",
+      "C++ file either -- so the fault is in the C++ toolchain, not in the ",
+      "model. backend = \"inla\" compiles nothing and needs no toolchain."
+    ),
+    registered_in_adr = "0.10.0.9000 Stan toolchain diagnostic",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
   invisible(NULL)
 }

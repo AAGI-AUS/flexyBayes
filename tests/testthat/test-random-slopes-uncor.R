@@ -10,14 +10,11 @@
 #   (b) fb(y ~ x + (1 + x || g)) parses to type =
 #       "simple_slope_uncor" with with_intercept = TRUE; fits both
 #       intercept- and slope-variance components.
-#   (c) fb(y ~ x + (x | g)) raises a structured
-#       flexybayes_correlated_slope_unsupported condition with
-#       deferral_target, workaround (the concrete uncorrelated
-#       spelling for the model at hand, not a placeholder),
-#       grouping_factor + slope_variable slots populated and a
-#       refusal message that hands the reader the supported model
-#       and warns off the asreml factor-crossing spelling.
-#   (d-e) Refusal slot inspection.
+#   (c) fb(y ~ x + (x | g)) parses to type = "simple_slope_cor" --
+#       the same model with the correlation freed. It used to raise a
+#       structured deferral; both engines now carry it.
+#   (d-e) The two spellings agree, and emit_brms writes the single
+#       pipe back out.
 #   (f) Posterior matches lme4::lmer(REML = FALSE) on sleepstudy
 #       within W_1 <= 0.20 * tau_true on the slope SD (loosened per
 #       the design spec) and 0.15 on the intercept SD.
@@ -27,8 +24,8 @@
 #   (i) [removed at 0.9.3, see NEWS.md] triangulate() used to compare
 #       fb(backend = "brms") against the since-withdrawn native
 #       engine on the slope-variance posterior; that engine is
-#       withdrawn entirely and INLA cannot represent (x || g) at
-#       all, so no 2-engine pairing remains for this structure.
+#       withdrawn entirely, so no 2-engine pairing through it remains
+#       for this structure.
 #   (j) Minimum-group guard: triangulation cell uses J >= 10 by
 #       construction (sleepstudy has J = 18).
 #   (k) prior_summary() lists the slope-variance prior row.
@@ -100,61 +97,47 @@ test_that("(1 + x || g) keeps the intercept; (0 + x || g) suppresses it", {
 
 
 # ---------------------------------------------------------------- #
-# (c) (x | g) raises flexybayes_correlated_slope_unsupported        #
+# (c) (x | g) parses to the correlated-slope term                   #
 # ---------------------------------------------------------------- #
 
-test_that("(x | g) raises ADR 0020 structured deferral", {
+test_that("(x | g) parses to simple_slope_cor with the intercept in", {
+  # The single pipe used to refuse with a structured deferral. It is the
+  # uncorrelated model with the correlation freed, and both engines now
+  # carry it -- INLA as one iid2d field over a two-block index, brms as
+  # `(x | g)` verbatim -- so the deferral is gone and the term is ordinary.
   d <- mk_slope_data()
-  err <- tryCatch(
-    fb_from_brms(Reaction ~ Days + (Days | Subject), data = d),
-    error = function(e) e
-  )
-  expect_s3_class(err, "flexybayes_correlated_slope_unsupported")
-  msg <- conditionMessage(err)
-  expect_true(grepl("Correlated random slopes", msg))
-  expect_true(grepl("future release", msg))
-  expect_true(grepl("(Days || Subject)", msg, fixed = TRUE))
-  expect_true(grepl("structured-covariance", msg))
+  fb <- fb_from_brms(Reaction ~ Days + (Days | Subject), data = d)
+  expect_length(fb$random_terms, 1L)
+  t1 <- fb$random_terms[[1]]
+  expect_identical(t1$type, "simple_slope_cor")
+  expect_identical(t1$slope_var, "Days")
+  expect_identical(t1$var, "Subject")
+  # The intercept is always in: the correlation is what it is with.
+  expect_true(isTRUE(t1$with_intercept))
+  expect_identical(t1$var_n, 18L)
 })
 
-
-# ---------------------------------------------------------------- #
-# (d) Refusal carries deferral_target slot                          #
-# ---------------------------------------------------------------- #
-
-test_that("(x | g) refusal carries deferral_target = 'v0.3'", {
+test_that("(1 + x | g) is the same term as (x | g)", {
   d <- mk_slope_data()
-  err <- tryCatch(
-    fb_from_brms(Reaction ~ Days + (Days | Subject), data = d),
-    error = function(e) e
+  bare <- fb_from_brms(Reaction ~ Days + (Days | Subject), data = d)
+  explicit <- fb_from_brms(Reaction ~ Days + (1 + Days | Subject), data = d)
+  expect_identical(
+    bare$random_terms[[1]]$type,
+    explicit$random_terms[[1]]$type
   )
-  expect_identical(err$deferral_target, "a future release")
+  expect_identical(
+    bare$random_terms[[1]]$slope_var,
+    explicit$random_terms[[1]]$slope_var
+  )
 })
 
-
-# ---------------------------------------------------------------- #
-# (e) Refusal carries workaround + grouping/slope slots             #
-# ---------------------------------------------------------------- #
-
-test_that("(x | g) refusal carries workaround + grouping_factor + slope_variable slots", {
+test_that("emit_brms writes the single pipe back out", {
   d <- mk_slope_data()
-  err <- tryCatch(
-    fb_from_brms(Reaction ~ Days + (Days | Subject), data = d),
-    error = function(e) e
-  )
-  # The workaround slot names the spelling for THIS model, not a
-  # placeholder. Tutorials 01 and 04 taught the asreml crossing
-  # `~ Subject + Subject:Days` as the random-slope route; with numeric
-  # Days that is one iid deviation per Subject-Day cell, so the refusal
-  # has to hand the reader the model it means.
-  expect_identical(err$workaround, "(Days || Subject)")
-  expect_identical(err$grouping_factor, "Subject")
-  expect_identical(err$slope_variable, "Days")
-  msg <- conditionMessage(err)
-  expect_true(grepl("(Days || Subject)", msg, fixed = TRUE))
-  # The crossing appears only inside the warning against it.
-  expect_true(grepl("Do NOT reach for", msg, fixed = TRUE))
-  expect_true(grepl("Subject:Days", msg, fixed = TRUE))
+  fb <- fb_from_brms(Reaction ~ Days + (Days | Subject), data = d)
+  txt <- gsub("\\s+", " ", paste(deparse(.fb_to_brms_formula(fb)),
+                                 collapse = " "))
+  expect_match(txt, "(Days | Subject)", fixed = TRUE)
+  expect_false(grepl("||", txt, fixed = TRUE))
 })
 
 

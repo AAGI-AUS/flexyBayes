@@ -199,6 +199,9 @@ prior_summary.default <- function(object, ...) {
 # drops the row -- it has to, or brms refuses the fit -- and the drop is
 # reported here rather than left for a reader to infer from its absence.
 .prior_summary_not_applied <- function(priors, fb_terms, backend_label) {
+  if (identical(backend_label, "inla")) {
+    return(.fb_inla_wishart_sd_not_applied(fb_terms))
+  }
   if (!identical(backend_label, "brms") || is.null(fb_terms)) {
     return(character(0))
   }
@@ -227,6 +230,56 @@ prior_summary.default <- function(object, ...) {
       "is not applied, and that dispersion parameter keeps brms's own default"
     )
   )
+}
+
+# .fb_inla_wishart_sd_not_applied() --- the variance components whose
+# standard-deviation prior INLA has nowhere to put.
+#
+# `us(f):g` and `(x | g)` reach INLA as iidKd fields, and the whole
+# covariance carries ONE joint Wishart: theta1 holds it and every later
+# theta reports prior = "none" (read from INLA::inla.models()). There is no
+# standard-deviation slot. An explicit prior on these groups refuses at
+# emit; the package's own default cannot refuse, or every fit of these
+# structures would, so it is left unspliced and INLA's Wishart governs.
+#
+# Reporting that unspliced default as though it had reached the fit would
+# be the same silent prior loss this package refuses everywhere else, so
+# the affected components are named here and both prior_summary() and the
+# `prior` column of summary()$varcomp read them back as engine defaults.
+.fb_inla_wishart_sd_not_applied <- function(fb_terms) {
+  if (is.null(fb_terms)) {
+    return(character(0))
+  }
+  out <- character(0)
+  for (t in fb_terms$random_terms %||% list()) {
+    ttype <- t$type %||% ""
+    if (identical(ttype, "us_gxe")) {
+      why <- paste0(
+        "`us(", t$outer, "):", t$inner, "` is one iid", t$n_outer,
+        "d field on INLA, and its hyperparameters are a joint Wishart ",
+        "over the whole covariance -- there is no standard-deviation slot ",
+        "to carry the declared prior, so INLA's Wishart governs this term"
+      )
+      for (lev in t$outer_levels %||% character(0)) {
+        out[[paste0("sd_", t$inner, "__", t$outer, lev)]] <- why
+      }
+      next
+    }
+    if (identical(ttype, "simple_slope_cor")) {
+      why <- paste0(
+        "`(", t$slope_var, " | ", t$var, ")` is one iid2d field on INLA, ",
+        "and its hyperparameters are a joint Wishart over the 2-by-2 ",
+        "covariance of the intercept and the slope -- there is no ",
+        "standard-deviation slot to carry the declared prior, so INLA's ",
+        "Wishart governs this term. `(", t$slope_var, " || ", t$var,
+        ")` has two independent precisions, which do take one"
+      )
+      out[[paste0("sd_", t$var)]] <- why
+      out[[paste0("sd_", t$slope_var, "_", t$var)]] <- why
+      next
+    }
+  }
+  out
 }
 
 .prior_summary_impl <- function(object, backend_label, declaration_only) {

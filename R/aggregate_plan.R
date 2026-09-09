@@ -266,7 +266,9 @@
       )
     } else if (rtype %in% c("smooth_mgcv", "smooth", "s", "t2", "spline")) {
       reason_codes <- c(reason_codes, "smooth_term_not_aggregatable")
-    } else if (rtype %in% c("simple_slope_uncor", "slope", "random_slope")) {
+    } else if (rtype %in% c(
+      "simple_slope_uncor", "simple_slope_cor", "slope", "random_slope"
+    )) {
       reason_codes <- c(reason_codes, "random_slope_not_aggregatable")
     } else {
       # Structured-covariance terms (vm, ped, at, us, fa, ar1, ...):

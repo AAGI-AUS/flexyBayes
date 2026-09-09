@@ -82,7 +82,7 @@
   )
 
   # Build a lookup of (slope_var, grouping_factor) pairs for
-  # every simple_slope_uncor random term in the IR. The flexyBayes
+  # every random-slope term in the IR, correlated or not. The flexyBayes
   # default-prior expansion synthesises a group name `<slope_var>_<g>`
   # for the slope-variance hyperparameter so the per-group uniform-on-
   # SD machinery reaches it; on the brms passthrough path we must
@@ -94,7 +94,7 @@
   slope_lookup <- list()
   for (t in fb$random_terms %||% list()) {
     if (
-      identical(t$type, "simple_slope_uncor") &&
+      t$type %in% c("simple_slope_uncor", "simple_slope_cor") &&
         !is.null(t$slope_var) &&
         nzchar(t$slope_var) &&
         !is.null(t$var) &&
@@ -606,7 +606,7 @@
   }
 
   # sd(group) -- one row per named random group.
-  # simple_slope_uncor adds a 10th row class to the
+  # The random-slope terms add a 10th row class to the
   # legacy table -- the slope-variance prior, keyed on
   # (class = "sd", coef = "<slope_var>", group = "<grouping_factor>").
   # brms's set_prior() discriminates intercept- and slope-variance
@@ -614,7 +614,9 @@
   # rows leave `coef` unset (NA / empty), slope rows set it to the
   # slope variable name. The double-pipe form (x || g) and the
   # double-pipe + intercept form (1 + x || g) both ship the slope
-  # row; only (1 + x || g) also ships the intercept row.
+  # row; only (1 + x || g) also ships the intercept row. The
+  # single-pipe form (x | g) always ships both -- the intercept is what
+  # the correlation is with.
   for (term in fb$random_terms %||% list()) {
     if (is.null(term$type)) {
       next
@@ -636,7 +638,7 @@
       next
     }
 
-    if (identical(term$type, "simple_slope_uncor")) {
+    if (term$type %in% c("simple_slope_uncor", "simple_slope_cor")) {
       sv <- term$slope_var
       if (isTRUE(term$with_intercept)) {
         specs[[length(specs) + 1L]] <- list(

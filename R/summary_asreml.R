@@ -343,9 +343,18 @@
   }
   sectioned <- .fb_sectioned_residual_prior(ps)
 
+  # Ahead of the declaration on purpose. A component whose structure gives
+  # the engine no slot for the declared prior did not get it, whatever the
+  # declaration says, and the cell has to report the fit rather than the
+  # intention -- see .fb_inla_wishart_sd_not_applied().
+  not_applied <- names(ps$not_applied %||% character(0))
+
   vapply(
     components,
     function(cmp) {
+      if (cmp %in% not_applied) {
+        return("engine default")
+      }
       if (cmp %in% names(recorded)) {
         return(unname(recorded[[cmp]]))
       }

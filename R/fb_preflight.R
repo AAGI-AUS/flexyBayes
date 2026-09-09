@@ -554,6 +554,36 @@
     ))
   }
 
+  # (x | g) -- correlated slope. Two integer index columns rather than one,
+  # since INLA blocks the intercepts and the slopes end to end, plus the
+  # slope variable column and 2k latent values. The intercept is always
+  # present: the correlation is what the model is for.
+  if (identical(rtype, "simple_slope_cor")) {
+    if (is.na(k)) {
+      return(.preflight_entry(
+        label = label,
+        design_memory_bytes = NA_real_,
+        representation_class = "unknown",
+        aggregated_likelihood_candidate = FALSE,
+        term_kind = "random_slope",
+        unknown_representation = TRUE
+      ))
+    }
+    bytes <- 4 * n_rows * 2 + # intercept-block and slope-block indices
+      8 * n_rows + # slope variable column
+      8 * k * 2L + # latent intercepts and slopes
+      .FB_PREFLIGHT_TERM_OVERHEAD
+    return(.preflight_entry(
+      label = label,
+      design_memory_bytes = bytes,
+      representation_class = .representation_class(
+        "dense_baseline"
+      ),
+      aggregated_likelihood_candidate = FALSE,
+      term_kind = "random_slope"
+    ))
+  }
+
   # Smooth s(x) on the random side -- the asreml ingest path places
   # parser-emitted "smooth_mgcv" terms in random_terms (e.g.
   # random = ~ s(x, k = 6)). Same N x k dense basis cost as the
@@ -853,6 +883,14 @@
       slope
     }
     return(paste0("(", lhs, " || ", group, ")"))
+  }
+  if (identical(ttype, "simple_slope_cor")) {
+    slope <- if (!is.null(term$slope_var)) {
+      as.character(term$slope_var)
+    } else {
+      "x"
+    }
+    return(paste0("(", slope, " | ", group, ")"))
   }
   if (ttype %in% c("smooth_mgcv", "smooth", "s", "t2")) {
     return(paste0("s(", group, ")"))
