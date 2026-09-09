@@ -639,6 +639,32 @@ test_that("the per-trial separable AR1 field fits on INLA and refuses on brms", 
   ))
 })
 
+test_that("the grouped temporal AR1 field fits on INLA and refuses on brms", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  r <- .cap_row("Grouped temporal AR1 field")
+  g <- .cap_grid(n_row = 8L, n_col = 5L)
+  names(g)[names(g) == "row"] <- "t"
+  names(g)[names(g) == "col"] <- "g"
+  .cap_expect(
+    .cap_emit("inla", y ~ 1, random = ~ ar1(t):g, data = g),
+    r$inla,
+    "INLA"
+  )
+  .cap_expect(
+    .cap_emit("brms", y ~ 1, random = ~ ar1(t):g, data = g),
+    r$brms,
+    "brms",
+    condition_class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
+  )
+  # The row's spelling column lists the commuted order as the same field.
+  .cap_expect(
+    .cap_emit("inla", y ~ 1, random = ~ g:ar1(t), data = g),
+    r$inla,
+    "INLA, commuted spelling"
+  )
+})
+
 test_that("a univariate P-spline fits on INLA and refuses on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
@@ -736,6 +762,7 @@ test_that("every capability row carries a behaviour anchor here", {
     "Known-covariance genomic / pedigree random effect",
     "Separable AR1 spatial field",
     "Per-trial separable AR1 field",
+    "Grouped temporal AR1 field",
     "Univariate P-spline",
     "Observation weights (Gaussian, identity link)",
     "Exact sufficient-statistic aggregation"

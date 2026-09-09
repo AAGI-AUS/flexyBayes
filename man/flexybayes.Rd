@@ -139,7 +139,19 @@ column correlation and field SD are \strong{shared across every level of
 per-trial (unshared) hyperparameters, and both are refused
 (\code{at_field_per_level_hyper_not_representable}): there is no lowering
 for a level-conditioned field or for hyperparameters that vary by
-level. brms has no lowering for this field at all and refuses.}
+level. brms has no lowering for this field at all and refuses.
+
+\strong{Units followed through time.} \code{ar1(t):g}, or the same term written
+\code{g:ar1(t)}, fits one AR1 series along \code{t} within each level of \code{g},
+independent across levels, with one correlation and one field SD
+shared by every level and the Gaussian nugget on top -- three
+hyperparameters. This is the units-by-occasions repeated-measures
+covariance of Verbyla and Cullis (1992) written on the random side:
+\code{g} indexes the plots, animals or series and \code{t} the occasions, whose
+levels must be in time order. An occasion a unit missed stays as a
+design row with the response \code{NA} under the default
+\code{na_action = "augment"}, and the \code{t} by \code{g} grid must be complete in
+that sense, one row per node. brms refuses, as for the other fields.}
 
 \item{residual}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
 (iid residuals). \code{~ dsum(~ units | env)}, and the equivalent

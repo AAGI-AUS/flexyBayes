@@ -2520,14 +2520,36 @@ emit_inla <- function(
   if (is.null(tab)) {
     return(invisible(NULL))
   }
-  separable <- any(vapply(
-    .inla_spatial_field_terms(object),
-    function(t) identical(t$type, "ar1_spatial"),
+  field_terms <- .inla_spatial_field_terms(object)
+  is_separable <- vapply(
+    field_terms,
+    function(t) identical(t$type, "ar1_spatial") && isTRUE(t$col_ar1),
     logical(1L)
-  ))
+  )
+  is_grouped <- vapply(
+    field_terms,
+    function(t) identical(t$type, "ar1_spatial") && !isTRUE(t$col_ar1),
+    logical(1L)
+  )
+  title <- if (any(is_separable)) {
+    "Separable AR1 field"
+  } else if (any(is_grouped)) {
+    # AR1 along the first factor, independent across the second: say
+    # which is which, since the correlation belongs to one of them only.
+    g <- field_terms[[which(is_grouped)[1L]]]
+    paste0(
+      "Grouped AR1 field (AR1 along ",
+      g$row_var,
+      ", independent across ",
+      g$col_var,
+      ")"
+    )
+  } else {
+    "AR1 field"
+  }
   cat(
     "\n",
-    if (separable) "Separable AR1 field" else "AR1 field",
+    title,
     " (posterior median, 95% interval):\n",
     sep = ""
   )

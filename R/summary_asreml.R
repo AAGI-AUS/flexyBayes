@@ -133,12 +133,22 @@
     units = "units",
     at_units = paste0("units sectioned by ", term$var),
     ar1 = paste0("ar1(", term$var, ") field + nugget"),
+    # Spelled back from the IR so the grouped field (AR1 along the first
+    # factor, independent across the second) is not described as a second
+    # ar1() on the group with a fourth parameter it does not have.
     ar1_spatial = paste0(
-      "ar1(",
-      term$row_var,
-      "):ar1(",
-      term$col_var,
-      ") field + nugget (4 parameters)"
+      .ar1_term_spelling(term),
+      if (isTRUE(term$col_ar1)) {
+        " field + nugget (4 parameters)"
+      } else {
+        paste0(
+          " field, AR1 along ",
+          term$row_var,
+          " and independent across ",
+          term$col_var,
+          ", + nugget (3 parameters)"
+        )
+      }
     ),
     spline = paste0("spline in ", term$var),
     smooth_mgcv = paste0("smooth in ", term$var),
@@ -232,6 +242,39 @@
     function(t) (t$type %||% "") %in% c("ar1", "ar1_spatial"),
     logical(1L)
   ))
+}
+
+# .fb_asreml_residual_note() --- the ASReml residual the field is not.
+#
+# The field-plus-nugget model has one parameter more than the nugget-free
+# residual ASReml fits under the same spelling. The note names that
+# residual with the factors the user wrote and counts its parameters, so
+# the sentence is true for the separable grid (three: two correlations
+# and a variance), the grouped temporal field (two: one correlation and
+# a variance) and the one-dimensional series (two) alike.
+#
+# @noRd
+# @keywords internal
+.fb_asreml_residual_note <- function(ir) {
+  terms_all <- c(ir$random_terms %||% list(), ir$residual_terms %||% list())
+  fields <- Filter(
+    function(t) (t$type %||% "") %in% c("ar1", "ar1_spatial"),
+    terms_all
+  )
+  term <- fields[[1L]]
+  if (identical(term$type, "ar1")) {
+    return(paste0("ASReml residual = ~ ar1(", term$var, ") (2 parameters)"))
+  }
+  if (isTRUE(term$col_ar1)) {
+    return("ASReml residual = ~ ar1:ar1 (3 parameters)")
+  }
+  paste0(
+    "ASReml residual = ~ ",
+    term$col_var,
+    ":ar1(",
+    term$row_var,
+    ") (2 parameters)"
+  )
 }
 
 # .fb_is_spatial_varcomp() --- does this table describe a latent field?
@@ -1473,8 +1516,9 @@
     # than leaving it to be discovered in the variance components.
     if (.fb_ir_has_field(ir)) {
       cat(
-        "             this is not ASReml residual = ~ ar1:ar1 ",
-        "(3 parameters)\n",
+        "             this is not ",
+        .fb_asreml_residual_note(ir),
+        "\n",
         sep = ""
       )
     }

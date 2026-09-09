@@ -82,6 +82,18 @@
 #'   (`at_field_per_level_hyper_not_representable`): there is no lowering
 #'   for a level-conditioned field or for hyperparameters that vary by
 #'   level. brms has no lowering for this field at all and refuses.
+#'
+#'   **Units followed through time.** `ar1(t):g`, or the same term written
+#'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,
+#'   independent across levels, with one correlation and one field SD
+#'   shared by every level and the Gaussian nugget on top -- three
+#'   hyperparameters. This is the units-by-occasions repeated-measures
+#'   covariance of Verbyla and Cullis (1992) written on the random side:
+#'   `g` indexes the plots, animals or series and `t` the occasions, whose
+#'   levels must be in time order. An occasion a unit missed stays as a
+#'   design row with the response `NA` under the default
+#'   `na_action = "augment"`, and the `t` by `g` grid must be complete in
+#'   that sense, one row per node. brms refuses, as for the other fields.
 #' @param residual One-sided formula: `~ residual_structure`. Default `~ units`
 #'   (iid residuals). `~ dsum(~ units | env)`, and the equivalent
 #'   `~ at(env):units`, give a separate residual variance per level of `env`.

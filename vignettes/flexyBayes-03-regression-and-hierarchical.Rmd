@@ -73,7 +73,7 @@ str(sleepstudy)
 fit <- flexybayes(Reaction ~ Days, random = ~ Subject,
                   data = sleepstudy, backend = "inla", verbose = FALSE)
 #> Warning: flexyBayes: a variance component in this fit is at the boundary --
-#> sd_Subject (upper credible bound 4.011e-14 against a residual SD of 47.98). The
+#> sd_Subject (upper credible bound 2.251e-05 against a residual SD of 49.15). The
 #> term carries no signal the data could separate from residual noise, and its
 #> variance has been absorbed into the residual. The convergence block reports a
 #> converged mode regardless, because the optimiser did converge, to a solution
@@ -85,8 +85,8 @@ fit <- flexybayes(Reaction ~ Days, random = ~ Subject,
 #> Silence via options(flexyBayes.silence_boundary_collapse_warning = TRUE).
 tidy(fit, effects = "random")
 #>         term     estimate    std.error     conf.low    conf.high
-#> 1      sigma 4.801851e+01 2.088792e+00 4.405547e+01 5.224585e+01
-#> 2 sd_Subject 3.377450e-14 3.579603e-15 2.636538e-14 4.011263e-14
+#> 1      sigma 4.920200e+01 2.782218e+00 4.393500e+01 5.484341e+01
+#> 2 sd_Subject 1.687161e-05 2.832775e-06 1.150716e-05 2.251123e-05
 ```
 
 Two standard deviations: `sd_Subject` is how much subjects differ from
@@ -98,8 +98,8 @@ spread is the larger of the two.
 ``` r
 tidy(fit)
 #>          term  estimate std.error   conf.low conf.high
-#> 1 (Intercept) 251.47823  6.652993 238.420077 264.53843
-#> 2        Days  10.45104  1.245937   8.005159  12.89646
+#> 1 (Intercept) 251.47868  6.673722 238.379324 264.58018
+#> 2        Days  10.45094  1.249817   7.997326  12.90407
 ```
 
 The `Days` coefficient is the average slope across subjects: reaction
@@ -122,10 +122,10 @@ fit_s <- flexybayes(Reaction ~ Days + (Days || Subject),
                     chains = 2L, n_samples = 1000L, warmup = 500L,
                     seed = 1L, verbose = FALSE, mcmc_verbose = FALSE)
 tidy(fit_s, effects = "random")
-#>               term  estimate std.error  conf.low conf.high
-#> 1       sd_Subject 27.479882  7.107779 16.589044 44.299490
-#> 2 sd_Subject__Days  6.586204  1.420817  4.245225  9.813124
-#> 3            sigma 25.812058  1.550532 22.947952 29.081549
+#>               term estimate std.error  conf.low conf.high
+#> 1       sd_Subject 27.17405  6.769676 16.256514 42.613200
+#> 2 sd_Subject__Days  6.49741  1.441426  4.245196  9.923894
+#> 3            sigma 25.87579  1.520726 23.237364 29.209441
 ```
 
 Three components now: spread of intercepts, spread of slopes, and
@@ -171,7 +171,7 @@ slope of 0.4, and the posterior covers both.
 ``` r
 tidy(fit_p)
 #>          term  estimate  std.error  conf.low conf.high
-#> 1 (Intercept) 0.9687198 0.14302716 0.6801326  1.249687
+#> 1 (Intercept) 0.9687197 0.14302737 0.6801321  1.249687
 #> 2           x 0.3963332 0.03040378 0.3367144  0.455952
 ```
 
@@ -274,38 +274,36 @@ gains observations.
 #> loaded via a namespace (and not attached):
 #>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
 #>   [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
-#>   [7] TH.data_1.1-5          tensorA_0.36.2.1       digest_0.6.39         
-#>  [10] estimability_1.5.1     lifecycle_1.0.5        sf_1.1-0              
-#>  [13] StanHeaders_2.32.10    processx_3.9.0         survival_3.8-3        
-#>  [16] agridat_1.26           magrittr_2.0.5         posterior_1.7.1       
-#>  [19] compiler_4.5.2         rlang_1.3.0            tools_4.5.2           
-#>  [22] data.table_1.18.2.1    sn_2.1.3               knitr_1.51            
-#>  [25] bridgesampling_1.2-1   mnormt_2.1.2           curl_7.0.0            
-#>  [28] pkgbuild_1.4.8         classInt_0.4-11        plyr_1.8.9            
-#>  [31] RColorBrewer_1.1-3     multcomp_1.4-29        abind_1.4-8           
+#>   [7] TH.data_1.1-5          tensorA_0.36.2.1       estimability_1.5.1    
+#>  [10] lifecycle_1.0.5        sf_1.1-0               StanHeaders_2.32.10   
+#>  [13] survival_3.8-3         agridat_1.26           processx_3.9.0        
+#>  [16] magrittr_2.0.5         posterior_1.7.1        compiler_4.5.2        
+#>  [19] rlang_1.3.0            tools_4.5.2            data.table_1.18.2.1   
+#>  [22] sn_2.1.3               knitr_1.51             bridgesampling_1.2-1  
+#>  [25] mnormt_2.1.2           curl_7.0.0             pkgbuild_1.4.8        
+#>  [28] classInt_0.4-11        plyr_1.8.9             RColorBrewer_1.1-3    
+#>  [31] cmdstanr_0.9.0         multcomp_1.4-29        abind_1.4-8           
 #>  [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
 #>  [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
-#>  [40] xtable_1.8-8           e1071_1.7-17           future_1.70.0         
-#>  [43] inline_0.3.21          ggplot2_4.0.3          globals_0.19.1        
-#>  [46] emmeans_2.0.2          scales_1.4.0           MASS_7.3-65           
-#>  [49] dichromat_2.0-0.1      cli_3.6.6              mvtnorm_1.3-6         
-#>  [52] reformulas_0.4.4       generics_0.1.4         otel_0.2.0            
-#>  [55] RcppParallel_5.1.11-2  reshape2_1.4.5         minqa_1.2.8           
-#>  [58] DBI_1.3.0              proxy_0.4-29           rstan_2.32.7          
-#>  [61] stringr_1.6.0          splines_4.5.2          bayesplot_1.15.0      
-#>  [64] parallel_4.5.2         matrixStats_1.5.0      marginaleffects_0.32.0
-#>  [67] brms_2.23.0            vctrs_0.7.3            boot_1.3-32           
-#>  [70] V8_8.0.1               Matrix_1.7-4           sandwich_3.1-1        
-#>  [73] jsonlite_2.0.0         callr_3.8.0            listenv_0.10.1        
-#>  [76] units_1.0-1            glue_1.8.1             parallelly_1.47.0     
-#>  [79] nloptr_2.2.1           codetools_0.2-20       distributional_0.8.1  
-#>  [82] stringi_1.8.7          gtable_0.3.6           QuickJSR_1.9.0        
-#>  [85] lme4_2.0-1             tibble_3.3.1           pillar_1.11.1         
-#>  [88] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
-#>  [91] Rdpack_2.6.6           evaluate_1.0.5         lattice_0.22-7        
-#>  [94] rbibutils_2.4.1        backports_1.5.1        rstantools_2.6.0      
-#>  [97] class_7.3-23           MatrixModels_0.5-4     Rcpp_1.1.2            
-#> [100] coda_0.19-4.1          gridExtra_2.3          nlme_3.1-168          
-#> [103] checkmate_2.3.4        xfun_0.57              zoo_1.8-15            
-#> [106] pkgconfig_2.0.3
+#>  [40] xtable_1.8-8           e1071_1.7-17           inline_0.3.21         
+#>  [43] ggplot2_4.0.3          emmeans_2.0.2          scales_1.4.0          
+#>  [46] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#>  [49] mvtnorm_1.3-6          reformulas_0.4.4       generics_0.1.4        
+#>  [52] otel_0.2.0             RcppParallel_5.1.11-2  reshape2_1.4.5        
+#>  [55] minqa_1.2.8            DBI_1.3.0              proxy_0.4-29          
+#>  [58] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
+#>  [61] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
+#>  [64] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
+#>  [67] boot_1.3-32            V8_8.0.1               Matrix_1.7-4          
+#>  [70] sandwich_3.1-1         jsonlite_2.0.0         units_1.0-1           
+#>  [73] glue_1.8.1             nloptr_2.2.1           codetools_0.2-20      
+#>  [76] ps_1.9.3               distributional_0.8.1   stringi_1.8.7         
+#>  [79] gtable_0.3.6           QuickJSR_1.9.0         lme4_2.0-1            
+#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
+#>  [85] R6_2.6.1               fmesher_0.7.0          Rdpack_2.6.6          
+#>  [88] evaluate_1.0.5         lattice_0.22-7         rbibutils_2.4.1       
+#>  [91] backports_1.5.1        rstantools_2.6.0       class_7.3-23          
+#>  [94] MatrixModels_0.5-4     Rcpp_1.1.2             gridExtra_2.3         
+#>  [97] coda_0.19-4.1          nlme_3.1-168           checkmate_2.3.4       
+#> [100] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
 ```
