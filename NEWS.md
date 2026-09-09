@@ -52,8 +52,12 @@
   `mode.status = 0`, INLA's own convergence flag, and each with a different
   marginal likelihood. Hand-written INLA, with this package not loaded,
   reproduces the same spread, so it is a property of the `iid2d`
-  parameterisation rather than of the translation. The boundary-collapse
-  warning fires on these fits. Fit such designs on brms.
+  parameterisation rather than of the translation. INLA's own restart
+  machinery fires on some of those runs -- `inla.core.safe: rerun with
+  improved initial values`, from the `safe` argument that defaults to TRUE --
+  so the engine detects a suspect solution without the answer settling. The
+  boundary-collapse warning fires on these fits. Fit such designs on brms,
+  and refit before reporting a correlation.
 
 * **The `prior` column now reports the prior that reached the fit.** `us(f):g`
   and `(x | g)` are `iidKd` fields on INLA, and their hyperparameters are a

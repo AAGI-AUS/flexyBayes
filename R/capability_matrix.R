@@ -111,8 +111,12 @@
         correlations spanning -0.96 to +0.99, each reporting
         `mode.status = 0`. Hand-written INLA reproduces it without this
         package, so it is a property of the iid2d parameterisation and not
-        of the translation. Fit such designs on brms, or read the
-        boundary-collapse warning, which does fire.",
+        of the translation. INLA's own restart machinery fires on some of
+        those runs -- `inla.core.safe: rerun with improved initial values`,
+        from the `safe` argument that defaults to TRUE -- so it detects a
+        suspect solution without the result settling. Fit such designs on
+        brms, refit and compare before reporting a correlation, and read
+        the boundary-collapse warning, which does fire.",
       anchor = "test-correlated-random-slope.R"
     ),
     list(
