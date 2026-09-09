@@ -357,6 +357,7 @@ register_canonical_mapper <- function(backend, mapper) {
   nested_idx <- list()
   us_prec <- list()
   us_cor <- list()
+  fa_load <- list()
   for (t in fb_terms$random_terms %||% list()) {
     tt <- t$type %||% ""
     # Uncorrelated random slope: the emit writes the slope half as a second
@@ -371,6 +372,31 @@ register_canonical_mapper <- function(backend, mapper) {
     # (component j)" and "RhoI:J for <idx>". Map to what brms calls the same
     # quantities for `(0 + f | g)`: sd_<g>__<f><level> and
     # cor_<g>__<f><levelI>__<f><levelJ>.
+    # fa(f, k):g -- three kinds of hyperparameter. The anchor field's
+    # precision is the common factor's SD; each copy's Beta is a LOADING (a
+    # scaling, no transform); each psi field's precision is that level's
+    # specific SD, which is the same quantity diag(f):g reports, so it takes
+    # the same name.
+    if (identical(tt, "fa_gxe")) {
+      levs <- t$outer_levels %||% character(0)
+      for (j in seq_len(t$k %||% 0L)) {
+        anchor <- make.names(paste0(t$inner, "_fa", j, "_", t$outer, "_",
+                                    levs[[j]]))
+        us_prec[[paste0("Precision for ", anchor)]] <- paste0("sd_fa", j)
+        for (e in seq_along(levs)) {
+          idx <- make.names(paste0(t$inner, "_fa", j, "_", t$outer, "_",
+                                   levs[[e]]))
+          fa_load[[paste0("Beta for ", idx)]] <-
+            paste0("fa", j, "_", t$outer, levs[[e]])
+        }
+      }
+      for (e in seq_along(levs)) {
+        psi <- make.names(paste0(t$inner, "_psi_", t$outer, "_", levs[[e]]))
+        us_prec[[paste0("Precision for ", psi)]] <-
+          paste0("sd_", t$inner, "__", t$outer, levs[[e]])
+      }
+      next
+    }
     if (identical(tt, "us_gxe")) {
       idx <- make.names(paste0(t$inner, "_by_", t$outer, "_id"))
       levs <- t$outer_levels %||% character(0)
@@ -417,6 +443,11 @@ register_canonical_mapper <- function(backend, mapper) {
     if (!is.null(us_prec[[nm]])) {
       map[nm] <- us_prec[[nm]]
       transform[[nm]] <- prec_to_sd
+      next
+    }
+    if (!is.null(fa_load[[nm]])) {
+      # A loading, not a precision: no transform.
+      map[nm] <- fa_load[[nm]]
       next
     }
     if (!is.null(us_cor[[nm]])) {

@@ -830,6 +830,9 @@
       if (term$outer %in% names(data)) {
         f <- factor(data[[term$outer]])
         term$n_outer <- nlevels(f)
+        # The INLA emit writes one f() per factor per level and builds the
+        # formula without seeing `data`, so the level names travel here.
+        term$outer_levels <- levels(f)
         # Data-aware identifiability preflight: a factor-analytic
         # covariance is identifiable only for k < n_outer. The data-free
         # k < 1 floor is enforced earlier in .classify_interaction(); the
@@ -856,6 +859,7 @@
       if (term$inner %in% names(data)) {
         f <- factor(data[[term$inner]])
         term$n_inner <- nlevels(f)
+        term$inner_levels <- levels(f)
       }
       term
     },

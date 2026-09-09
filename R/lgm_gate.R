@@ -990,6 +990,13 @@ print.lgm_refusal <- function(x, ...) {
   if (identical(term$type, "us_gxe")) {
     return(TRUE)
   }
+  # fa(f, k):g -- a factor-analytic covariance. INLA writes each common
+  # factor once as an iid field and again per level as a SCALED COPY, and
+  # the copy's scaling parameter IS the loading. Identifiability (k <
+  # n_outer) is enforced at parse time.
+  if (identical(term$type, "fa_gxe")) {
+    return(TRUE)
+  }
   # WP16: AR1 (1D) and separable AR1xAR1 spatial latent fields on INLA.
   # emit_inla() validates the one-observation-per-node grid condition and
   # refuses an incomplete / replicated grid there (gate accepts the class;

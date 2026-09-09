@@ -867,6 +867,50 @@ emit_inla <- function(
     }
   }
 
+  # fa(f, k):g -- a factor-analytic covariance. Each common factor is one
+  # latent field over the inner levels, entered once per level of f. INLA's
+  # copy= carries an ESTIMATED scaling, and that scaling IS the loading, so
+  # the loadings arrive with a posterior rather than a point estimate.
+  #
+  # Factor j is anchored at level j (its loading there is fixed at 1) and
+  # entered only from level j onward, which is the zero upper triangle ASReml
+  # uses to identify the loading matrix against rotation.
+  #
+  # The per-level specific variances are the same structure diag(f):g emits,
+  # so they are built here too rather than asking the user to write both.
+  for (term in fb$random_terms) {
+    if (!identical(term$type, "fa_gxe")) {
+      next
+    }
+    outer_f <- factor(data[[term$outer]])
+    inner_f <- factor(data[[term$inner]])
+    levs <- levels(outer_f)
+    for (j in seq_len(term$k)) {
+      for (e in seq(j, length(levs))) {
+        idx_name <- .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]])
+        if (idx_name %in% names(data)) {
+          stop(.fb_refusal_condition(
+            reason_code = "nested_index_name_collision",
+            message = paste0(
+              "Fitting `fa(", term$outer, ", ", term$k, "):", term$inner,
+              "` on INLA needs an index column named `", idx_name,
+              "`, and `data` already has one. Rename that column."
+            )
+          ))
+        }
+        data_inla[[idx_name]] <- ifelse(
+          outer_f == levs[[e]], as.integer(inner_f), NA_integer_
+        )
+      }
+    }
+    for (e in seq_along(levs)) {
+      idx_name <- .fb_inla_fa_specific(term$outer, term$inner, levs[[e]])
+      data_inla[[idx_name]] <- ifelse(
+        outer_f == levs[[e]], as.integer(inner_f), NA_integer_
+      )
+    }
+  }
+
   # us(f):g -- an unstructured covariance across the levels of f. INLA holds
   # it as ONE field of length k * n_inner, arranged as k blocks, carrying a
   # k-by-k unstructured covariance across blocks (iid2d..iid5d). Each row
@@ -1486,6 +1530,44 @@ emit_inla <- function(
       rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
       next
     }
+    # fa(f, k):g -- k common factors as scaled copies, plus one specific
+    # variance per level. The copy's beta is the loading.
+    if (identical(term$type, "fa_gxe")) {
+      levs <- term$outer_levels
+      n_inner <- term$n_inner
+      # The prior is not decoration here. Left on INLA's default log-gamma
+      # precision, a specific variance whose level carries a large loading
+      # collapses to zero -- measured on this very structure: with four
+      # environments and a true specific SD of 0.25 throughout, the
+      # environment with the largest loading came back at 0.007. The
+      # package's own SD prior reaches these terms and holds them off the
+      # boundary, so it is spliced rather than omitted.
+      hyper_str <- .inla_hyper_arg(hyper_ctrl[[term$inner]])
+      hyper_sfx <- if (nzchar(hyper_str)) paste0(", ", hyper_str) else ""
+      for (j in seq_len(term$k)) {
+        anchor_idx <- .fb_inla_fa_index(term$outer, term$inner, j, levs[[j]])
+        rhs_terms <- c(rhs_terms, paste0(
+          "f(", anchor_idx, ", model = \"iid\", values = seq_len(",
+          n_inner, ")", hyper_sfx, ")"
+        ))
+        for (e in seq(j + 1L, length(levs))) {
+          if (e > length(levs)) break
+          rhs_terms <- c(rhs_terms, paste0(
+            "f(", .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
+            ", copy = \"", anchor_idx, "\", fixed = FALSE)"
+          ))
+        }
+      }
+      for (e in seq_along(levs)) {
+        rhs_terms <- c(rhs_terms, paste0(
+          "f(", .fb_inla_fa_specific(term$outer, term$inner, levs[[e]]),
+          ", model = \"iid\", values = seq_len(", n_inner, ")",
+          hyper_sfx, ")"
+        ))
+      }
+      next
+    }
+
     # us(f):g -- one iidKd field carrying the whole k-by-k covariance.
     if (identical(term$type, "us_gxe")) {
       k <- term$n_outer
@@ -2883,4 +2965,16 @@ summary.flexybayes_inla <- function(object, ...) {
 # for the whole term: the field is blocked by the outer factor's levels.
 .fb_inla_us_index <- function(outer, inner) {
   make.names(paste0(inner, "_by_", outer, "_id"))
+}
+
+
+# Index column names for a factor-analytic term. `fa_index` carries common
+# factor j as it enters one level of the outer factor; `fa_specific` carries
+# that level's specific effects.
+.fb_inla_fa_index <- function(outer, inner, j, level) {
+  make.names(paste0(inner, "_fa", j, "_", outer, "_", level))
+}
+
+.fb_inla_fa_specific <- function(outer, inner, level) {
+  make.names(paste0(inner, "_psi_", outer, "_", level))
 }

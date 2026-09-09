@@ -1023,6 +1023,28 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     # us(f):g -- the same per-level SDs, plus a correlation block. The SDs
     # take the shared default; the correlations keep brms's own LKJ, which
     # has no counterpart in the prior DSL and no INLA analogue.
+    # fa(f, k):g -- the common factors and the per-level specific variances
+    # are ordinary iid fields keyed by the inner group, so the shared SD
+    # default reaches them. It has to: left on INLA's default log-gamma
+    # precision, the specific variance at the level with the largest loading
+    # collapses to zero (measured: a true 0.25 came back at 0.007). The
+    # LOADINGS are copy-scaling parameters with no SD prior to set, so they
+    # keep the engine's own and are recorded as such.
+    if (identical(ttype, "fa_gxe")) {
+      if (!is.null(t$inner) && nzchar(t$inner)) {
+        shared <- c(shared, t$inner)
+        add_engine(
+          paste0("loadings_", t$inner),
+          paste0(
+            "fa(", t$outer, ", ", t$k, "):", t$inner,
+            " loadings are INLA copy-scaling parameters; flexyBayes sets ",
+            "no prior on them"
+          )
+        )
+      }
+      next
+    }
+
     if (identical(ttype, "us_gxe")) {
       if (!is.null(t$inner) && nzchar(t$inner)) {
         shared <- c(shared, t$inner)

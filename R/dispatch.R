@@ -630,28 +630,29 @@
   all_terms <- c(fb$random_terms %||% list(), fb$residual_terms %||% list())
   for (term in all_terms) {
     ty <- term$type %||% ""
-    if (ty %in% c("fa", "fa_gxe")) {
-      spelling <- if (identical(ty, "fa_gxe")) {
-        paste0("fa(", term$outer, ", ", term$k, "):", term$inner)
-      } else {
-        paste0("fa(", term$var, ", k)")
-      }
+    # fa_gxe is emitted on INLA from 0.10.0.9000: each common factor is one
+    # latent field entered per level as a SCALED COPY, and the copy's
+    # scaling parameter is the loading. The claim this refusal used to make
+    # -- that INLA has no factor-analytic latent model -- is true of INLA's
+    # named model list and false of what INLA can express, which is the
+    # distinction that matters to a user. The bare `fa(v, k)` spelling (no
+    # inner grouping factor) has no emit on either engine and still refuses.
+    if (identical(ty, "fa")) {
       stop(.fb_refusal_condition(
         reason_code = "fa_not_representable",
         message = paste0(
-          spelling, " requests a factor-analytic covariance -- a rank-k ",
-          "loading matrix plus a diagonal. Neither active engine emits ",
-          "one: INLA's f() has no factor-analytic latent model, and brms ",
-          "group-level effects are either uncorrelated or fully ",
-          "unstructured. Use us(", term$outer %||% term$var, "):",
-          term$inner %||% "g", " for the full unstructured covariance, ",
-          "diag(", term$outer %||% term$var, "):", term$inner %||% "g",
-          " for heterogeneous variances with no correlation, or ASReml ",
-          "for the factor-analytic model itself. The term still parses, ",
-          "so fb_terms() will describe it."
+          "fa(", term$var, ", k) names a factor-analytic covariance with no ",
+          "grouping factor to apply it to. Write it as fa(", term$var,
+          ", k):<group>, which INLA emits as scaled copies of a common ",
+          "factor, or use us(", term$var, "):<group> for the full ",
+          "unstructured covariance."
         )
       ))
     }
+    # fa_gxe is not refused here any more. INLA emits it; brms's own emit
+    # refuses it by name (brms_cannot_represent_term), which is the right
+    # altitude -- a per-engine limit belongs to that engine's emit, not to a
+    # dispatch-wide rule that speaks for both.
     if (identical(ty, "ar2")) {
       stop(.fb_refusal_condition(
         reason_code = "ar2_not_representable",

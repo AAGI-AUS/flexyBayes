@@ -1,5 +1,37 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **The factor-analytic covariance fits on INLA: `fa(f, k):g`.** ASReml's
+  headline multi-environment-trial model, and the one this package declared no
+  engine could fit. INLA has no latent model called "factor analytic", which
+  is what the refusal said; it does not need one. Each common factor is a
+  single latent field entered once per level of `f` as a **scaled copy**, and
+  `copy=`'s scaling parameter **is the loading** -- so the loadings arrive
+  with a posterior, which REML cannot give.
+
+  Factor `j` is anchored at level `j` and entered from that level onward: the
+  zero upper triangle ASReml uses to identify the loading matrix against
+  rotation. An anchored loading is therefore absent from the summary rather
+  than reported as an estimate of 1.
+
+  On simulated data with four environments and loadings 1.6, 0.5 and -0.9,
+  the fit returns 1.598, 0.505 and -0.846, with the common-factor SD at 0.890
+  against 0.9 and the residual at 0.309 against 0.30. A crossover environment
+  comes back negative rather than merely small. `fa(f, 2)` recovers both
+  loading columns on five environments.
+
+  **The prior is the package's contribution here, and it has a test.** On
+  INLA's default log-gamma precision the specific variance at the level
+  carrying the largest loading collapsed to 0.007 against a truth of 0.25:
+  `.fb_default_prior_targets()` had no branch for this term, because the term
+  had never been reachable. With the package's own standard-deviation prior
+  wired in it recovers to 0.165 with an interval covering the truth, and a
+  test asserts no specific variance collapses.
+
+  The dispatch-wide refusal that claimed "INLA's `f()` has no factor-analytic
+  latent model" is gone. brms's own emit refuses the term by name, which is
+  the right altitude: a per-engine limit belongs to that engine's emit, not to
+  a rule that speaks for both.
+
 * **Unstructured genotype-by-environment covariance fits on INLA:
   `us(f):g`.** INLA holds the whole k-by-k covariance as one `iidKd` field
   over a blocked index. Standard deviations of 0.8, 1.2 and 0.5 come back as

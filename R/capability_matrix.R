@@ -180,10 +180,16 @@
     list(
       model_class = "Factor-analytic genotype-by-environment covariance",
       spelling = "`~ fa(env, k):gen`",
-      inla = "refuses",
+      inla = "fits",
       brms = "refuses",
-      note = "Parsed for the formula catalogue and refused at dispatch --
-        no active engine emits a factor-analytic covariance.",
+      note = "Each common factor is one latent field entered per level of `f`
+        as a SCALED COPY, and INLA's copy scaling IS the loading, so the
+        loadings carry a posterior rather than a point estimate. Factor j is
+        anchored at level j, the zero upper triangle ASReml uses against
+        rotation, so an anchored loading is absent from the summary rather
+        than reported as 1. Verified at k = 1 and k = 2. brms group-level
+        effects are either uncorrelated or fully unstructured, with no
+        factor-analytic form between.",
       anchor = "test-capability-matrix.R"
     ),
     list(
