@@ -82,7 +82,7 @@ class(ir)
 \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal fitting entry;
 \code{\link[=fb_from_brms]{fb_from_brms()}} for the other ingest dialect.
 
-Other flexyBayes ingest adapters: 
-\code{\link{fb_from_brms}()}
+Other flexyBayes ingest adapters:
+\code{\link[=fb_from_brms]{fb_from_brms()}}
 }
 \concept{flexyBayes ingest adapters}

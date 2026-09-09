@@ -79,7 +79,7 @@ class(ir)
 \code{\link[=fb]{fb()}} and \code{\link[=flexybayes]{flexybayes()}} for the universal fitting entry;
 \code{\link[=fb_from_asreml]{fb_from_asreml()}} for the other active dialect.
 
-Other flexyBayes ingest adapters: 
-\code{\link{fb_from_asreml}()}
+Other flexyBayes ingest adapters:
+\code{\link[=fb_from_asreml]{fb_from_asreml()}}
 }
 \concept{flexyBayes ingest adapters}

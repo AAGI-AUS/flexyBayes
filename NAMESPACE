@@ -150,55 +150,61 @@ export(tidy)
 export(triangulate)
 export(triangulate_genomic)
 export(validate_approximation)
-importFrom(generics,augment)
-importFrom(generics,glance)
-importFrom(generics,tidy)
-importFrom(graphics,abline)
-importFrom(graphics,axis)
-importFrom(graphics,hist)
-importFrom(graphics,legend)
-importFrom(graphics,lines)
-importFrom(graphics,par)
-importFrom(graphics,segments)
+importFrom(generics,
+  augment,
+  glance,
+  tidy
+)
+importFrom(graphics,
+  abline,
+  axis,
+  hist,
+  legend,
+  lines,
+  par,
+  segments
+)
 importFrom(lifecycle,deprecated)
 importFrom(methods,is)
-importFrom(stats,.getXlevels)
-importFrom(stats,Gamma)
-importFrom(stats,anova)
-importFrom(stats,binomial)
-importFrom(stats,coef)
-importFrom(stats,confint)
-importFrom(stats,cov)
-importFrom(stats,dbinom)
-importFrom(stats,density)
-importFrom(stats,deviance)
-importFrom(stats,df.residual)
-importFrom(stats,dnorm)
-importFrom(stats,dpois)
-importFrom(stats,family)
-importFrom(stats,fitted)
-importFrom(stats,formula)
-importFrom(stats,gaussian)
-importFrom(stats,logLik)
-importFrom(stats,lowess)
-importFrom(stats,median)
-importFrom(stats,model.frame)
-importFrom(stats,model.matrix)
-importFrom(stats,model.response)
-importFrom(stats,na.omit)
-importFrom(stats,nobs)
-importFrom(stats,pnorm)
-importFrom(stats,poisson)
-importFrom(stats,predict)
-importFrom(stats,printCoefmat)
-importFrom(stats,qnorm)
-importFrom(stats,qqline)
-importFrom(stats,qqnorm)
-importFrom(stats,quantile)
-importFrom(stats,residuals)
-importFrom(stats,runif)
-importFrom(stats,setNames)
-importFrom(stats,terms)
-importFrom(stats,update)
-importFrom(stats,var)
-importFrom(stats,vcov)
+importFrom(stats,
+  .getXlevels,
+  Gamma,
+  anova,
+  binomial,
+  coef,
+  confint,
+  cov,
+  dbinom,
+  density,
+  deviance,
+  df.residual,
+  dnorm,
+  dpois,
+  family,
+  fitted,
+  formula,
+  gaussian,
+  logLik,
+  lowess,
+  median,
+  model.frame,
+  model.matrix,
+  model.response,
+  na.omit,
+  nobs,
+  pnorm,
+  poisson,
+  predict,
+  printCoefmat,
+  qnorm,
+  qqline,
+  qqnorm,
+  quantile,
+  residuals,
+  runif,
+  setNames,
+  terms,
+  update,
+  var,
+  vcov
+)

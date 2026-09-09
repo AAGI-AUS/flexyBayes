@@ -98,9 +98,14 @@ Useful links:
 
 Authors:
 \itemize{
-  \item Emi Tanaka (\href{https://orcid.org/0000-0002-1455-259X}{ORCID})
-  \item Francis K.C. Hui (\href{https://orcid.org/0000-0003-0765-3533}{ORCID})
-  \item Anabel Forte Deltell (\href{https://orcid.org/0000-0001-9534-1817}{ORCID})
+  \item Max Moldovan \email{max.moldovan@adelaide.edu.au} (\href{https://orcid.org/0000-0001-9680-8474}{ORCID})
+}
+
+Other contributors:
+\itemize{
+  \item Emi Tanaka (\href{https://orcid.org/0000-0002-1455-259X}{ORCID}) [contributor]
+  \item Francis K.C. Hui (\href{https://orcid.org/0000-0003-0765-3533}{ORCID}) [contributor]
+  \item Anabel Forte Deltell (\href{https://orcid.org/0000-0001-9534-1817}{ORCID}) [contributor]
 }
 
 }

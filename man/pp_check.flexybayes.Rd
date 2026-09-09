@@ -9,24 +9,24 @@
 \arguments{
 \item{object}{A fitted \code{flexybayes} object.}
 
-\item{...}{Passed to \code{\link[brms:pp_check.brmsfit]{brms::pp_check()}} on the brms path -- \code{type},
+\item{...}{Passed to \code{\link[brms:pp_check]{brms::pp_check()}} on the brms path -- \code{type},
 \code{ndraws}, \code{group} and the rest; ignored on the refusal path.}
 }
 \value{
 On a brms-engine fit, the \pkg{ggplot2} object
-\code{\link[brms:pp_check.brmsfit]{brms::pp_check()}} returns. Otherwise the method does not return: it
+\code{\link[brms:pp_check]{brms::pp_check()}} returns. Otherwise the method does not return: it
 raises a refusal of class
 \code{flexybayes_refusal_pp_check_requires_predictive_draws}.
 }
 \description{
 A method for the \pkg{bayesplot} package's \code{pp_check()} generic. On a
 fit from the \strong{brms} engine the call delegates to
-\code{\link[brms:pp_check.brmsfit]{brms::pp_check()}}: datasets are simulated from the posterior
+\code{\link[brms:pp_check]{brms::pp_check()}}: datasets are simulated from the posterior
 predictive distribution and shown against the observed response. The
 default display overlays the densities of the replicated datasets on
 the density of the response (\code{type = "dens_overlay"}); every other
 \pkg{bayesplot} check type, and every argument of
-\code{\link[brms:pp_check.brmsfit]{brms::pp_check()}}, is reachable through \code{...}.
+\code{\link[brms:pp_check]{brms::pp_check()}}, is reachable through \code{...}.
 }
 \details{
 On a fit from the \strong{INLA} engine the method refuses by name. A nested

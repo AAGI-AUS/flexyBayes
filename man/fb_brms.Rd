@@ -62,7 +62,7 @@ if (requireNamespace("brms", quietly = TRUE) &&
 backend; \code{\link[=fb_inla]{fb_inla()}} for the other active engine pin;
 \code{\link[=fb_from_brms]{fb_from_brms()}} for building a brms-grammar IR.
 
-Other flexyBayes engine pins: 
-\code{\link{fb_inla}()}
+Other flexyBayes engine pins:
+\code{\link[=fb_inla]{fb_inla()}}
 }
 \concept{flexyBayes engine pins}

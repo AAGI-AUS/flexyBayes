@@ -12,7 +12,7 @@
 \arguments{
 \item{object}{A \code{flexybayes_inla} fit.}
 
-\item{...}{Passed to \code{\link[emmeans:extending-emmeans]{emmeans::recover_data()}}.}
+\item{...}{Passed to \code{\link[emmeans:recover_data]{emmeans::recover_data()}}.}
 }
 \value{
 A data frame of predictors for the reference grid.
