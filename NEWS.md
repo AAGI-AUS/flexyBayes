@@ -1,5 +1,28 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **The full multi-environment-trial model fits on INLA: a sectioned residual
+  `dsum(~ units | f)`, alone and together with an interaction random effect.**
+  The refusal claimed that "INLA folds residual variance into the likelihood
+  and has no separate residual-structure surface". The multiple-likelihood
+  interface is exactly that surface: a matrix response with one Gaussian
+  family per section carries one observation precision each. The claim was
+  ours, not INLA's, and it was the second of ASReml's two MET workhorses.
+
+  Per-section residual standard deviations of 0.25, 0.80 and 1.60 come back
+  as 0.246, 0.748 and 1.722. With an interaction random effect added -- the
+  combination that was unreachable on INLA because both halves refused --
+  the fit recovers the genotype (0.913 against 0.9), the
+  genotype-by-environment (0.534 against 0.5) and all three residuals.
+
+  Sections are reported as `sigma_<level>` on the standard-deviation scale,
+  the vocabulary the brms path already used, so `dsum()` reads the same on
+  both engines. The matrix response is built inside the INLA call only:
+  `fb$response` stays a scalar name and `data` is untouched, so every
+  consumer that reads the response as a vector is unaffected.
+
+  `at(f, level):units` conditions the residual on selected levels rather than
+  asking for one variance per level. That is a different model and refuses.
+
 * **Heterogeneous variance by factor level fits on INLA: `diag(f):g`,
   `idh(f):g`, `at(f):g`.** One free standard deviation per level of the outer
   factor and no covariance between levels -- one of ASReml's two

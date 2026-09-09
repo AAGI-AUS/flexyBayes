@@ -886,7 +886,11 @@
     },
     "at_units" = {
       if (term$var %in% names(data)) {
-        term$n_var <- nlevels(factor(data[[term$var]]))
+        vf <- factor(data[[term$var]])
+        term$n_var <- nlevels(vf)
+        # The INLA emit builds one likelihood per section and names the
+        # resulting sigma rows after the levels, without seeing `data`.
+        term$var_levels <- levels(vf)
       }
       term
     },

@@ -976,12 +976,60 @@ emit_inla <- function(
     )
   }
 
+  # A sectioned residual, dsum(~ units | f). INLA has no residual-structure
+  # argument, but its multiple-likelihood interface carries one observation
+  # precision per section, which is the same model. The response becomes an
+  # n-by-k matrix whose column j holds the response for the rows in section
+  # j and NA elsewhere, and `family` becomes a k-vector.
+  #
+  # This is confined to the INLA call. `fb$response` stays a scalar name and
+  # `data` is untouched, so every consumer that reads the response as a
+  # vector keeps working.
+  sectioned <- .fb_inla_sectioned_residual(fb)
+  resid_levels <- NULL
+  if (!is.null(sectioned)) {
+    sec_f <- factor(data[[sectioned$var]])
+    resid_levels <- levels(sec_f)
+    y_vec <- .fb_response_values(fb, data)
+    if (is.null(y_vec)) {
+      stop(.fb_refusal_condition(
+        reason_code = "response_not_in_data",
+        message = paste0(
+          "Response variable \"",
+          fb$response,
+          "\" not found in data."
+        )
+      ))
+    }
+    if (.FB_INLA_SECTIONED_RESPONSE %in% names(data)) {
+      stop(.fb_refusal_condition(
+        reason_code = "nested_index_name_collision",
+        message = paste0(
+          "Fitting a sectioned residual on INLA needs a response column ",
+          "named `",
+          .FB_INLA_SECTIONED_RESPONSE,
+          "`, and `data` already has one. Rename that column."
+        )
+      ))
+    }
+    mat_y <- matrix(NA_real_, nrow = nrow(data), ncol = nlevels(sec_f))
+    mat_y[cbind(seq_len(nrow(data)), as.integer(sec_f))] <- as.numeric(y_vec)
+    data_inla[[.FB_INLA_SECTIONED_RESPONSE]] <- mat_y
+    inla_family <- rep(inla_family, nlevels(sec_f))
+    # One control.family entry per likelihood, each the WHOLE spec.
+    # `control_family[[1L]]` here would hand INLA the `hyper` element on its
+    # own; INLA then warns that 'prec' is not a valid control.family name
+    # and REMOVES it, silently dropping the user's residual prior.
+    control_family <- rep(list(control_family), nlevels(sec_f))
+  }
+
   # Formula build runs here (post data_inla setup) so blocks-format
   # vm/ped terms can resolve their K-count from known_matrices.
   inla_form <- .build_inla_formula(
     fb,
     hyper_ctrl = hyper_ctrl,
-    known_matrices = known_matrices
+    known_matrices = known_matrices,
+    sectioned_response = !is.null(sectioned)
   )
   if (verbose) {
     cat(
@@ -1239,7 +1287,8 @@ emit_inla <- function(
 .build_inla_formula <- function(
   fb,
   hyper_ctrl = list(),
-  known_matrices = list()
+  known_matrices = list(),
+  sectioned_response = FALSE
 ) {
   rhs_terms <- character(0)
 
@@ -1490,13 +1539,14 @@ emit_inla <- function(
     rhs_terms <- c(rhs_terms, contrib)
   }
 
-  # Residual terms. INLA folds the residual variance into the likelihood, so
-  # the only residual form that reaches here is the homogeneous one, which
-  # contributes nothing to the formula. The separable autoregressive
-  # residual used to be reinterpreted here as a latent field; it now refuses
-  # at dispatch and the field is written on the random side.
+  # Residual terms contribute nothing to the formula on either route. The
+  # homogeneous residual is the likelihood's own variance; a sectioned
+  # residual (at_units, from dsum(~ units | f)) is carried by the matrix
+  # response and the family vector emit_inla() builds, not by a term here.
+  # The separable autoregressive residual refuses at dispatch and the field
+  # is written on the random side.
   for (term in fb$residual_terms) {
-    if (term$type != "units") {
+    if (!term$type %in% c("units", "at_units")) {
       # Internal contract-violation assertion. See the
       # fixed-term site above for the rationale; the gate's
       # .lgm_check_residual_term_inla_support() owns this guard.
@@ -1514,7 +1564,14 @@ emit_inla <- function(
   }
 
   rhs <- paste(rhs_terms, collapse = " + ")
-  stats::as.formula(paste0(fb$response, " ~ ", rhs))
+  # A sectioned residual replaces the scalar response with the matrix built
+  # in emit_inla(); everything to the right of the tilde is unchanged.
+  lhs <- if (isTRUE(sectioned_response)) {
+    .FB_INLA_SECTIONED_RESPONSE
+  } else {
+    fb$response
+  }
+  stats::as.formula(paste0(lhs, " ~ ", rhs))
 }
 
 # Build the `hyper = list(prec = list(prior = ..., param = ...))`
@@ -2736,3 +2793,9 @@ summary.flexybayes_inla <- function(object, ...) {
 .fb_inla_at_index <- function(outer, inner, level) {
   make.names(paste0(inner, "_at_", outer, "_", level))
 }
+
+
+# The column name the sectioned-residual matrix response occupies in the
+# INLA data list. Fixed rather than derived, so the formula and the data
+# list agree without passing a name between them.
+.FB_INLA_SECTIONED_RESPONSE <- "fb_sectioned_response"

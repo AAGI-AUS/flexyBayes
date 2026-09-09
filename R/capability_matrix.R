@@ -148,11 +148,16 @@
     list(
       model_class = "Heterogeneous residual by factor level",
       spelling = "`residual = ~ dsum(~ units | f)` / `~ at(f):units`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "Lowered to distributional regression on log sigma,
-        `sigma ~ 0 + f`. Refused for families with no residual scale.",
-      anchor = "test-heterogeneous-variance.R"
+      note = "One residual variance per section. INLA carries it through the
+        multiple-likelihood interface, a matrix response with one Gaussian
+        family per level; brms lowers it to distributional regression on
+        log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the
+        standard-deviation scale. Refused for families with no residual
+        scale; `at(f, level):units` conditions on selected levels, which is
+        a different model, and refuses.",
+      anchor = "test-sectioned-residual-inla.R"
     ),
     list(
       model_class = paste(
@@ -160,12 +165,13 @@
         "(full MET)"
       ),
       spelling = "`random = ~ gen + gen:env` with the `dsum` residual",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The emit carries both the group-level term and the `sigma`
-        predictor, and a live fit samples cleanly on simulated
-        multi-environment data. `auto` reaches brms for this class.",
-      anchor = "test-met-combined.R"
+      note = "The full multi-environment-trial model. Both halves refused on
+        INLA before 0.10.0.9000, so the combination was unreachable there.
+        It now recovers the genotype, genotype-by-environment and all three
+        per-section residual standard deviations on simulated data.",
+      anchor = "test-sectioned-residual-inla.R"
     ),
     list(
       model_class = "Factor-analytic genotype-by-environment covariance",

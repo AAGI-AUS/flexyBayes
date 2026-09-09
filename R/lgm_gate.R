@@ -713,7 +713,20 @@ print.lgm_refusal <- function(x, ...) {
   # residual -- so the residual spelling is refused by name at dispatch
   # (.refuse_unrepresentable_structures(), R/dispatch.R) and only the
   # homogeneous residual reaches the INLA emit.
-  c("units")
+  c("units", "at_units")
+}
+
+# A sectioned residual reaches INLA through the multiple-likelihood
+# interface, which carries one observation precision per section -- exactly
+# `dsum(~ units | f)`. The `level` argument conditions the residual on
+# selected levels instead, which is a different model, and stays refused.
+.fb_inla_sectioned_residual <- function(fb) {
+  for (term in fb$residual_terms %||% list()) {
+    if (identical(term$type %||% "", "at_units") && is.null(term$level)) {
+      return(term)
+    }
+  }
+  NULL
 }
 
 # What the OTHER active engine does with this model, asked rather than
@@ -954,7 +967,14 @@ print.lgm_refusal <- function(x, ...) {
   bad <- character(0)
   labels <- character(0)
   for (term in fb$residual_terms) {
-    if (!is.character(term$type) || !(term$type %in% allowed)) {
+    ok <- is.character(term$type) && term$type %in% allowed
+    # at(f, level):units conditions the residual on selected levels, which
+    # is a different model from one variance per level, and has no
+    # multiple-likelihood lowering.
+    if (ok && identical(term$type, "at_units") && !is.null(term$level)) {
+      ok <- FALSE
+    }
+    if (!ok) {
       bad <- c(bad, as.character(term$type))
       labels <- c(labels, .inla_residual_term_class_label(term$type))
     }

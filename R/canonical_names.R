@@ -345,6 +345,15 @@ register_canonical_mapper <- function(backend, mapper) {
   # hyperparameter after that index. The generated name must not reach the
   # user's summary: map it back to the colon-joined group, which is also what
   # brms calls it, so the two engines line up on one canonical name.
+  # The section levels of a dsum() residual, for naming its per-section
+  # sigma rows below.
+  resid_levels <- NULL
+  for (t in fb_terms$residual_terms %||% list()) {
+    if (identical(t$type %||% "", "at_units") && is.null(t$level)) {
+      resid_levels <- t$var_levels
+    }
+  }
+
   nested_idx <- list()
   for (t in fb_terms$random_terms %||% list()) {
     tt <- t$type %||% ""
@@ -410,6 +419,25 @@ register_canonical_mapper <- function(backend, mapper) {
     }
     if (sp_hit) {
       next
+    }
+    # A sectioned residual gives INLA one Gaussian likelihood per section.
+    # It names the first "Precision for the Gaussian observations" and the
+    # rest "...[2]", "...[3]". Map them to sigma_<level>, the same
+    # vocabulary the brms path already uses for dsum(), so the two engines
+    # report the sectioned residual under one set of names.
+    if (length(resid_levels) > 1L &&
+          startsWith(nm, "Precision for the Gaussian observations")) {
+      suffix <- sub("^Precision for the Gaussian observations", "", nm)
+      j <- if (nzchar(suffix)) {
+        as.integer(gsub("[^0-9]", "", suffix))
+      } else {
+        1L
+      }
+      if (!is.na(j) && j >= 1L && j <= length(resid_levels)) {
+        map[nm] <- paste0("sigma_", resid_levels[[j]])
+        transform[[nm]] <- prec_to_sd
+        next
+      }
     }
     if (identical(nm, "Precision for the Gaussian observations")) {
       map[nm] <- "sigma"
