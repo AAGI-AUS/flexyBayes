@@ -556,10 +556,10 @@
     return(invisible(NULL))
   }
   col <- fb$response
-  if (is.null(col) || !nzchar(col) || is.null(data[[col]])) {
+  yv <- .fb_response_values(fb, data)
+  if (is.null(yv)) {
     return(invisible(NULL)) # nothing to check against
   }
-  yv <- data[[col]]
   if (is.numeric(yv) && all(yv %in% c(0, 1) | is.na(yv))) {
     return(invisible(NULL))
   }
@@ -1606,11 +1606,8 @@
   # aggregated path mean complete-case deletion while the per-row path means
   # augmentation, so the same call would answer two different questions
   # depending on a compression ratio the user never set.
-  resp <- fb$response
-  if (
-    !is.null(resp) && nzchar(resp) && resp %in% names(data) &&
-      anyNA(data[[resp]])
-  ) {
+  resp_vals <- .fb_response_values(fb, data)
+  if (!is.null(resp_vals) && anyNA(resp_vals)) {
     if (isTRUE(aggregate)) {
       # Carries `flexybayes_aggregate_refusal` beneath the per-code class
       # for the same reason the two refusals further down do: a caller

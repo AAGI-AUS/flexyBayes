@@ -565,7 +565,7 @@ emit_gaussian_aggregated <- function(
     posterior_summary,
     ri_plan
   )
-  y_row <- data[[fb$response]]
+  y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
 
   glm_obj <- structure(

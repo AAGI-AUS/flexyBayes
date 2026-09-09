@@ -15,16 +15,42 @@
       message = "The model formula must be two-sided: response ~ predictors."
     ))
   }
-  response <- deparse(fixed[[2]])
+  response <- paste(deparse(fixed[[2]]), collapse = "")
+  response_is_expression <- FALSE
   if (!response %in% names(data)) {
-    stop(.fb_refusal_condition(
-      reason_code = "response_not_in_data",
-      message = paste0(
-        "Response variable \"",
-        response,
-        "\" not found in data."
-      )
-    ))
+    # A transformed response -- log(yield), sqrt(count). Every peer (lm,
+    # lme4, brms, asreml) evaluates the left-hand side rather than demanding
+    # a column of that name, and both engines evaluate it too once the
+    # formula reaches them. Demanding a column name here refused a model
+    # both engines can fit (issue #14, fit1).
+    #
+    # baseenv() is the enclosure, and the choice is load-bearing. Base
+    # transforms (log, sqrt, exp, arithmetic, I) resolve, and the lookup then
+    # terminates at the empty environment, so a same-named object in the
+    # user's workspace cannot be picked up: a mistyped column refuses rather
+    # than silently binding to a global of the right length. asNamespace()
+    # does NOT achieve this -- every namespace's parent chain reaches
+    # globalenv, so the first version of this guard accepted a workspace
+    # vector as the response. Found by the falsification test, not by review.
+    val <- tryCatch(
+      eval(fixed[[2]], envir = data, enclos = baseenv()),
+      error = function(e) NULL
+    )
+    usable <- !is.null(val) &&
+      is.atomic(val) &&
+      (is.numeric(val) || is.logical(val)) &&
+      length(val) == nrow(data)
+    if (!usable) {
+      stop(.fb_refusal_condition(
+        reason_code = "response_not_in_data",
+        message = paste0(
+          "Response variable \"",
+          response,
+          "\" not found in data."
+        )
+      ))
+    }
+    response_is_expression <- TRUE
   }
 
   tt <- tryCatch(terms(fixed, data = data), error = function(e) terms(fixed))
@@ -35,7 +61,44 @@
     .classify_fixed_term(lbl, data)
   })
 
-  list(response = response, intercept = intercept, terms = term_info)
+  list(
+    response = response,
+    response_is_expression = response_is_expression,
+    intercept = intercept,
+    terms = term_info
+  )
+}
+
+# .fb_response_values() --- the response, whether it names a column or is an
+# expression over columns.
+#
+# `fb$response` is the deparsed left-hand side. For a plain column name it
+# indexes `data` directly; for `log(yield)` there is no such column, and every
+# consumer that reached for `data[[fb$response]]` got NULL. The guards around
+# those reads then returned "no missing responses" and "nothing to check" --
+# a silent wrong answer rather than a crash, which is why the transformed
+# response has to be resolved in one place instead of guarded in several.
+.fb_response_values <- function(fb, data) {
+  resp <- fb$response
+  if (is.null(resp) || !is.character(resp) || length(resp) != 1L ||
+        !nzchar(resp)) {
+    return(NULL)
+  }
+  if (resp %in% names(data)) {
+    return(data[[resp]])
+  }
+  expr <- tryCatch(str2lang(resp), error = function(e) NULL)
+  if (is.null(expr)) {
+    return(NULL)
+  }
+  val <- tryCatch(
+    eval(expr, envir = data, enclos = baseenv()),
+    error = function(e) NULL
+  )
+  if (is.null(val) || !is.atomic(val) || length(val) != nrow(data)) {
+    return(NULL)
+  }
+  val
 }
 
 # The smoother spellings other packages use on the fixed side. mgcv and

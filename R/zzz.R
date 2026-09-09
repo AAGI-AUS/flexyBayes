@@ -89,6 +89,9 @@
   # boundary refusal.
   .populate_refusal_registry_v093()
 
+  # 0.10.0.9000: the streaming route's transformed-response refusal.
+  .populate_refusal_registry_v01000_9000()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

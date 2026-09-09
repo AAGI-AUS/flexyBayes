@@ -614,6 +614,24 @@ flexybayes_stream <- function(
     )
   }
 
+  # The streaming route reads named columns off disk chunk by chunk, so a
+  # transformed response has nothing to read. The per-row route evaluates it
+  # (see .fb_response_values()); this one cannot, and says so rather than
+  # asking the reader for a column that does not exist.
+  if (isTRUE(fb$response_is_expression)) {
+    stop(.fb_refusal_condition(
+      reason_code = "stream_response_must_be_a_column",
+      message = paste0(
+        "Streaming aggregation needs the response to be a column on disk, ",
+        "and \"",
+        fb$response,
+        "\" is an expression. Materialise it as a column in the source ",
+        "before streaming, or fit the per-row route, which evaluates the ",
+        "expression."
+      )
+    ))
+  }
+
   response <- fb$response
   family <- fb$family
   read_cols <- unique(c(response, key_cols, trials, exposure))

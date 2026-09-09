@@ -310,7 +310,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # outside {"auto", "inla", "brms"} -- including the withdrawn engine's
   # name -- refuses by this code rather than via match.arg()) (121 - 11 +
   # 2 = 112).
-  expect_equal(length(entries), 114L)
+  # 0.10.0.9000 adds one: stream_response_must_be_a_column. The per-row
+  # route now evaluates a transformed response (log(yield)); the streaming
+  # route reads named columns off disk and cannot, so it refuses by name
+  # rather than asking the reader for a column that does not exist
+  # (114 + 1 = 115).
+  expect_equal(length(entries), 115L)
+  expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)

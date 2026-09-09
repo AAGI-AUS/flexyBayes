@@ -1,5 +1,28 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **A transformed response fits: `log(yield) ~ env`.** The left-hand side was
+  required to name a column, so every peer's ordinary spelling -- `lm`,
+  `lme4`, `brms` and ASReml all evaluate it -- was refused with "Response
+  variable not found in data" (reported as issue #14). The left-hand side is
+  now evaluated against the data when it does not name a column.
+
+  The refusal was the visible half. The quiet half was worse: several
+  consumers read `data[[fb$response]]` behind a guard that returned early when
+  the name was absent, so a transformed response reported *no missing
+  responses* on data that had them, and skipped the binomial response check
+  and the aggregation route's missing-data branch. Those reads now go through
+  one resolver rather than several guards.
+
+  The expression is evaluated with `baseenv()` as its enclosure, so base
+  transforms resolve and an object in the user's workspace does not: a
+  mistyped column still refuses rather than silently binding to a global of
+  the right length.
+
+  Streaming aggregation reads named columns from disk and cannot evaluate an
+  expression, so it now refuses one by name
+  (`stream_response_must_be_a_column`) instead of asking the reader for a
+  column that does not exist.
+
 * **Units followed through time: `random = ~ ar1(t):g`.** The grouped
   temporal field -- AR1 along `t` within each level of `g`, independent
   across levels, three hyperparameters shared by every level -- is now a

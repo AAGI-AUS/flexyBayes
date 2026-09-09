@@ -203,11 +203,11 @@
 
 # .fb_response_missing() --- index of rows whose response is NA.
 .fb_response_missing <- function(fb, data) {
-  resp <- fb$response
-  if (is.null(resp) || !nzchar(resp) || !resp %in% names(data)) {
+  vals <- .fb_response_values(fb, data)
+  if (is.null(vals)) {
     return(integer(0))
   }
-  which(is.na(data[[resp]]))
+  which(is.na(vals))
 }
 
 # .fb_design_index_vars() --- the variables a structured covariance is

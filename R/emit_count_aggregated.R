@@ -337,7 +337,7 @@ emit_count_aggregated <- function(
     ri_plan
   )
   fitted_row <- .agg_count_inverse_link(eta_row, fb$family)
-  y_row <- data[[fb$response]]
+  y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
 
   glm_obj <- structure(

@@ -2401,3 +2401,32 @@ print.fb_refusals_table <- function(x, ...) {
   }
   invisible(x)
 }
+
+
+# 0.10.0.9000 -- the transformed response. A left-hand side that is an
+# expression over columns rather than a column name is now accepted on the
+# per-row route (issue #14, fit1), and the streaming route, which reads named
+# columns off disk, refuses it by name instead of asking a reader for a column
+# that does not exist.
+.populate_refusal_registry_v01000_9000 <- function() {
+  .register_refusal(
+    reason_code = "stream_response_must_be_a_column",
+    description = paste0(
+      "Streaming aggregation reads named columns from the source chunk by ",
+      "chunk, so a transformed response -- log(yield) -- has no column to ",
+      "read. The per-row route evaluates the expression against the data; ",
+      "the streaming route cannot, and says so rather than failing inside ",
+      "the reader."
+    ),
+    message_template = paste0(
+      "Streaming aggregation needs the response to be a column on disk, ",
+      "and \"%s\" is an expression. Materialise it as a column in the ",
+      "source before streaming, or fit the per-row route, which evaluates ",
+      "the expression."
+    ),
+    registered_in_adr = "0.10.0.9000 transformed response",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  invisible(NULL)
+}

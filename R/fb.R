@@ -135,6 +135,7 @@ fb_from_asreml <- function(
 
   new_fb_terms(
     response = fixed_info$response,
+    response_is_expression = isTRUE(fixed_info$response_is_expression),
     family = fam_link$family,
     link = fam_link$link,
     intercept = fixed_info$intercept,

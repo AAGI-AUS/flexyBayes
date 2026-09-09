@@ -53,6 +53,7 @@
 new_fb_terms <- function(
   response,
   family,
+  response_is_expression = FALSE,
   link = NULL,
   intercept = TRUE,
   fixed_terms = list(),
@@ -68,6 +69,7 @@ new_fb_terms <- function(
 
   obj <- list(
     response = response,
+    response_is_expression = isTRUE(response_is_expression),
     family = family,
     link = link,
     intercept = intercept,
