@@ -352,6 +352,17 @@ register_canonical_mapper <- function(backend, mapper) {
     # iid field over a generated index (<g>_for_slope_<x>). Map it back to
     # the package's own name for that component, <slope>_<group>, which is
     # also the key its prior is registered under.
+    # Heterogeneous variance by factor level: one generated index per level
+    # of the outer factor. Map each back to brms's name for the same
+    # component, sd_<inner>__<outer><level>, so diag() reports identically
+    # on both engines.
+    if (identical(tt, "at_simple")) {
+      for (lev in t$outer_levels %||% character(0)) {
+        nested_idx[[make.names(paste0(t$inner, "_at_", t$outer, "_", lev))]] <-
+          paste0(t$inner, "__", t$outer, lev)
+      }
+      next
+    }
     if (identical(tt, "simple_slope_uncor")) {
       nested_idx[[paste0(t$var, "_for_slope_", t$slope_var)]] <-
         paste0(t$slope_var, "_", t$var)

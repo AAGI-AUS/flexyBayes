@@ -867,6 +867,40 @@ emit_inla <- function(
     }
   }
 
+  # Heterogeneous variance by factor level: diag(f):g, idh(f):g, at(f):g.
+  # One free SD per level of the outer factor and no covariance between
+  # levels, which INLA writes as one independent iid field per level on an
+  # index that is NA outside that level. `values` spans every inner level so
+  # the field has the same length in each, which is what makes the k
+  # variances comparable and what an unbalanced design needs.
+  for (term in fb$random_terms) {
+    if (!identical(term$type, "at_simple")) {
+      next
+    }
+    outer_f <- factor(data[[term$outer]])
+    inner_f <- factor(data[[term$inner]])
+    for (lev in levels(outer_f)) {
+      idx_name <- .fb_inla_at_index(term$outer, term$inner, lev)
+      if (idx_name %in% names(data)) {
+        stop(.fb_refusal_condition(
+          reason_code = "nested_index_name_collision",
+          message = paste0(
+            "Fitting `diag(",
+            term$outer,
+            "):",
+            term$inner,
+            "` on INLA needs an index column named `",
+            idx_name,
+            "`, and `data` already has one. Rename that column."
+          )
+        ))
+      }
+      data_inla[[idx_name]] <- ifelse(
+        outer_f == lev, as.integer(inner_f), NA_integer_
+      )
+    }
+  }
+
   # Uncorrelated random slope `(x || g)`. The formula builder writes two
   # independent iid fields over the same grouping factor,
   # f(<g>, ...) + f(<g>_for_slope_<x>, <x>, ...), so the second index has to
@@ -1374,6 +1408,28 @@ emit_inla <- function(
       rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
       next
     }
+    # Heterogeneous variance by factor level. One iid field per level of the
+    # outer factor, each with its own precision -- k variances, no
+    # covariance, which is what diag() / idh() / at() ask for.
+    if (identical(term$type, "at_simple")) {
+      hyper_str <- .inla_hyper_arg(hyper_ctrl[[term$inner]])
+      n_inner <- term$n_inner %||%
+        length(unique(stats::na.omit(term$inner_levels)))
+      for (lev in term$outer_levels) {
+        rhs_terms <- c(
+          rhs_terms,
+          paste0(
+            "f(",
+            .fb_inla_at_index(term$outer, term$inner, lev),
+            ", model = \"iid\", values = seq_len(", n_inner, ")",
+            if (nzchar(hyper_str)) paste0(", ", hyper_str) else "",
+            ")"
+          )
+        )
+      }
+      next
+    }
+
     # Nested / interaction random effect. One iid field over the
     # interaction index built in emit_inla()'s data_inla setup. The prior
     # is keyed by the colon-joined group name, which is how
@@ -2672,4 +2728,11 @@ summary.flexybayes_inla <- function(object, ...) {
 # so the formula and the data list agree without passing a name between them.
 .fb_inla_interaction_index <- function(vars) {
   paste0(paste(vars, collapse = "_"), "_id")
+}
+
+
+# The INLA index column name for one level of a heterogeneous-variance term.
+# make.names() so a level like "2024-25" still yields a usable symbol.
+.fb_inla_at_index <- function(outer, inner, level) {
+  make.names(paste0(inner, "_at_", outer, "_", level))
 }

@@ -113,11 +113,15 @@
     list(
       model_class = "Heterogeneous variance by factor level",
       spelling = "`~ diag(f):g`, `~ idh(f):g`, `~ at(f):g`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
       note = "One variance per level of `f`, no covariance between levels.
-        All three spellings emit identical code.",
-      anchor = "test-heterogeneous-variance.R"
+        All three spellings emit identical code. INLA writes k independent
+        iid fields, one per level; brms writes `(0 + f || g)`. Both report
+        the component as `sd_<g>__<f><level>` and agree with lme4's REML
+        fit of the same model. `at(f, level)` conditions on selected levels
+        -- a different model -- and still refuses.",
+      anchor = "test-heterogeneous-variance-inla.R"
     ),
     list(
       model_class = "Unstructured genotype-by-environment covariance",

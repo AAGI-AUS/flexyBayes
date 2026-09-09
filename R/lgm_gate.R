@@ -914,6 +914,12 @@ print.lgm_refusal <- function(x, ...) {
   if (term$type %in% c("nested", "combo")) {
     return(TRUE)
   }
+  # diag(f):g / idh(f):g / at(f):g -- k independent iid fields, one per level
+  # of the outer factor. The `level` argument conditions on selected levels,
+  # which is a different model, and stays refused.
+  if (identical(term$type, "at_simple") && is.null(term$level)) {
+    return(TRUE)
+  }
   # WP16: AR1 (1D) and separable AR1xAR1 spatial latent fields on INLA.
   # emit_inla() validates the one-observation-per-node grid condition and
   # refuses an incomplete / replicated grid there (gate accepts the class;

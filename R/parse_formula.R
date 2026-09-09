@@ -870,10 +870,17 @@
     },
     "at_simple" = {
       if (term$outer %in% names(data)) {
-        term$n_outer <- nlevels(factor(data[[term$outer]]))
+        of <- factor(data[[term$outer]])
+        term$n_outer <- nlevels(of)
+        # The INLA emit writes one f() per level of the outer factor and
+        # builds the formula without seeing `data`, so the level names have
+        # to travel on the term.
+        term$outer_levels <- levels(of)
       }
       if (term$inner %in% names(data)) {
-        term$n_inner <- nlevels(factor(data[[term$inner]]))
+        inf <- factor(data[[term$inner]])
+        term$n_inner <- nlevels(inf)
+        term$inner_levels <- levels(inf)
       }
       term
     },

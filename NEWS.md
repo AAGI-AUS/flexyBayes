@@ -1,5 +1,24 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **Heterogeneous variance by factor level fits on INLA: `diag(f):g`,
+  `idh(f):g`, `at(f):g`.** One free standard deviation per level of the outer
+  factor and no covariance between levels -- one of ASReml's two
+  multi-environment-trial workhorses, and refused on INLA with nothing but an
+  allowlist behind the refusal.
+
+  INLA writes it as k independent iid fields, one per level, each on an index
+  that is NA outside its level. On simulated data with per-environment
+  standard deviations of 0.4, 1.0 and 2.0 the fit returns 0.48, 1.08 and 1.95
+  against lme4's REML values of 0.46, 1.05 and 1.89, with the residual at
+  0.293 against 0.292.
+
+  The component is reported as `sd_<g>__<f><level>`, which is what brms calls
+  the same quantity, so `diag()` reads identically on both engines.
+
+  `at(f, level)` -- conditioning the effect on selected levels rather than
+  asking for a heterogeneous variance across all of them -- is a different
+  model and still refuses.
+
 * **Uncorrelated random slopes `(x || g)` and factor-by-numeric interactions
   `y ~ f * x` fit on INLA.** Both were refused at run time unless an on-disk
   artefact recorded that a "three-arbitrator" comparison had passed. One of
