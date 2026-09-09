@@ -867,9 +867,10 @@ print.lgm_refusal <- function(x, ...) {
       )
     } else {
       paste0(
-        "INLA's f() machinery does not currently represent this term ",
-        "class without an SPDE / kronecker expansion that the current ",
-        "INLA emit does not produce. ",
+        "the INLA emit has no branch for this term class yet. This is a ",
+        "flexyBayes gap, not an INLA one: INLA represents a nested or ",
+        "interaction random effect as an ordinary iid field over the ",
+        "interaction index. Until the branch lands, ",
         .lgm_other_engine_note(fb)
       )
     }
@@ -937,9 +938,11 @@ print.lgm_refusal <- function(x, ...) {
 
 # Check 9 -- Residual-term type allowlist for the INLA emit path.
 #
-# INLA folds residual variance into the likelihood and does not expose a
-# separate residual-structure surface. Only `units` (the homogeneous
-# residual) passes. A heterogeneous residual -- dsum(~ units | f), at(f):units
+# The INLA emit currently produces only `units`, the homogeneous residual.
+# That is a flexyBayes gap rather than an INLA one: INLA carries a residual
+# variance per section through its multiple-likelihood interface (a matrix
+# response with family = rep("gaussian", k)), verified 2026-09-09 against
+# a known truth. Until the emit branch lands, only `units` passes. A heterogeneous residual -- dsum(~ units | f), at(f):units
 # -- is emitted by brms as distributional regression on sigma; a separable
 # autoregressive residual is refused by name before the gate sees it, since
 # the field that would fit it belongs on the random side.
@@ -964,8 +967,10 @@ print.lgm_refusal <- function(x, ...) {
         "\" (",
         first_label,
         ") is outside the INLA emit ",
-        "allowlist. INLA folds residual variance into the likelihood and ",
-        "has no separate residual-structure surface. ",
+        "allowlist. The INLA emit has no branch for a sectioned residual ",
+        "yet. This is a flexyBayes gap, not an INLA one: INLA carries a ",
+        "residual variance per section through its multiple-likelihood ",
+        "interface. Until the branch lands, ",
         .lgm_other_engine_note(fb)
       ),
       diagnostic = paste0(

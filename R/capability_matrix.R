@@ -106,8 +106,10 @@
       spelling = "`~ gen:env`, `~ env:rep:block`",
       inla = "refuses",
       brms = "fits",
-      note = "INLA collapses the finest strata, so it refuses rather than
-        reporting a zero. brms emits `(1 | a:b)`.",
+      note = "Not yet emitted on INLA. The refusal is a flexyBayes gap:
+        INLA fits a nested random effect as an iid field over the
+        interaction index, verified on agridat::john.alpha. brms emits
+        `(1 | a:b)`.",
       anchor = "test-preflight-interaction-terms.R"
     ),
     list(
