@@ -28,7 +28,7 @@ which had drifted from the emit layer in four places.
 <!-- capability-matrix:begin -->
 | Model class | Spelling | INLA | brms | Notes |
 |---|---|:-:|:-:|---|
-| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The certified overlap class, which both engines emit and `triangulate()` compares. |
+| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The class both engines emit, and the one their agreement is checked on in the test suite. |
 | GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
 | Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms's own prior. INLA's likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
 | Uncorrelated random slope | `(x \|\| g)` | fits | fits | Two independent iid fields on INLA, one for the intercept and one for the slope, checked against lme4's REML fit of the same model. Reported as `sd_<g>` and `sd_<x>_<g>`. |
@@ -288,8 +288,8 @@ two-part decomposition with the parts fitted jointly.
   gate / emit / refusal architecture is already in place -- these are new
   emit branches, reason codes and verification runs, not new subsystems.
 - A fix is "done" only when `summary()`, `prior_summary()`,
-  `canonical_names()`, `triangulate()`, and prediction all understand the new
-  term, and when the capability row that claims it is backed by an assertion
+  `canonical_names()` and prediction all understand the new term, and when
+  the capability row that claims it is backed by an assertion
   in `tests/testthat/test-capability-matrix.R`. A half-plumbed capability is
   worse than a refusal, and an unbacked table row is how this file went stale
   the first time.

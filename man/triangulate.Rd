@@ -203,7 +203,7 @@ if (requireNamespace("brms", quietly = TRUE) &&
               verbose = FALSE)
   # canonical_names() aligns the names and the precision-to-SD
   # transform, so no name_map is needed in the common cases.
-  print(triangulate(fit_b, fit_i))
+  print(flexyBayes:::triangulate(fit_b, fit_i))
 }
 }
 }
@@ -220,3 +220,4 @@ Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., et al. (2021).
 Rank-normalization, folding, and localization: an improved R-hat for
 assessing convergence of MCMC. \emph{Bayesian Analysis}, 16(2), 667--718.
 }
+\keyword{internal}

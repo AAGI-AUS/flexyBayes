@@ -54,10 +54,11 @@ reml <- list(
   h2 = list(estimate = 0.48, se = 0.04),
   gebv = stats::setNames(bv + rnorm(5, 0, 0.2), paste0("g", 1:5))
 )
-triangulate_genomic(bayes, reml)
+flexyBayes:::triangulate_genomic(bayes, reml)
 }
 \seealso{
 \code{\link[=triangulate]{triangulate()}}, \code{\link[=genomic_summary]{genomic_summary()}}. The GWAS counterpart
 \code{triangulate_gwas()} is internal from 0.10.0 and is reached as
 \code{flexyBayes:::triangulate_gwas()}.
 }
+\keyword{internal}

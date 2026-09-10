@@ -149,8 +149,8 @@
 #'   h2 = list(estimate = 0.48, se = 0.04),
 #'   gebv = stats::setNames(bv + rnorm(5, 0, 0.2), paste0("g", 1:5))
 #' )
-#' triangulate_genomic(bayes, reml)
-#' @export
+#' flexyBayes:::triangulate_genomic(bayes, reml)
+#' @keywords internal
 triangulate_genomic <- function(a, b, term = NULL, data_independence = NA) {
   la <- .fb_genomic_lens(a, term)
   lb <- .fb_genomic_lens(b, term)

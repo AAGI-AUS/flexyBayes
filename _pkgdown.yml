@@ -38,7 +38,7 @@ reference:
   - title: Verbs
     desc: >
       The universal entry, the single-engine pins, the feasibility
-      planner, cross-engine triangulation, and approximation validation.
+      planner, and approximation validation.
     contents:
       - flexybayes
       - flexybayes_stream
@@ -46,7 +46,6 @@ reference:
       - fb_inla
       - fb_brms
       - fb_plan
-      - triangulate
       - validate_approximation
       - proceed
   - title: Ingest adapters
@@ -147,7 +146,6 @@ reference:
     contents:
       - fb_gblup_cv
       - genomic_summary
-      - triangulate_genomic
   - title: Datasets
     contents:
       - met_example

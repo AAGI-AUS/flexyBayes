@@ -227,10 +227,10 @@
 #'               verbose = FALSE)
 #'   # canonical_names() aligns the names and the precision-to-SD
 #'   # transform, so no name_map is needed in the common cases.
-#'   print(triangulate(fit_b, fit_i))
+#'   print(flexyBayes:::triangulate(fit_b, fit_i))
 #' }
 #' }
-#' @export
+#' @keywords internal
 triangulate <- function(
   fit_a,
   fit_b,

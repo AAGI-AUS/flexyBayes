@@ -43,8 +43,8 @@
       spelling = "`random = ~ g` / `(1 | g)`",
       inla = "fits",
       brms = "fits",
-      note = "The certified overlap class, which both engines emit and
-        `triangulate()` compares.",
+      note = "The class both engines emit, and the one their agreement is
+        checked on in the test suite.",
       anchor = "test-backend-conformance-open-oracle.R"
     ),
     list(

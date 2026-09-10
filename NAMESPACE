@@ -148,8 +148,6 @@ export(prior_summary)
 export(proceed)
 export(ranef)
 export(tidy)
-export(triangulate)
-export(triangulate_genomic)
 export(validate_approximation)
 export(vpredict)
 importFrom(generics,
