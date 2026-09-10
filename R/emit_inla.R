@@ -1494,7 +1494,18 @@ emit_inla <- function(
     if (identical(term$type, "simple_slope_cor")) {
       sv <- term$slope_var
       gtag <- term$var
-      n_g <- term$var_n %||% length(unique(data[[gtag]]))
+      # No `data` fallback: this function is called with the IR alone, so
+      # `data` here resolves to utils::data() and the fallback could only
+      # ever raise. term$var_n is set by every ingest path that builds this
+      # term; a term without it is a broken IR and should say so.
+      n_g <- term$var_n
+      if (!is.numeric(n_g) || length(n_g) != 1L || !is.finite(n_g)) {
+        stop(
+          "Correlated random-slope term is missing var_n; the IR is ",
+          "incomplete.",
+          call. = FALSE
+        )
+      }
       # iid2d's hyperparameters are a single joint Wishart on theta1, with
       # theta2 and theta3 carrying prior = "none" (read from
       # INLA::inla.models()). There is no standard-deviation slot, so a

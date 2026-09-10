@@ -54,6 +54,7 @@ Suggests:
     rmarkdown,
     agridat,
     lme4,
+    pkgbuild,
     nlme,
     MASS,
     splines,
