@@ -104,19 +104,16 @@
         hyperparameters are one joint Wishart with no standard-deviation
         slot, so on INLA an explicit SD prior refuses by name and the
         package default is reported as an engine default rather than as a
-        prior that reached the fit. Where the intercept and the slope are
-        weakly separated by the design, INLA's mode for this structure is
-        not unique: on `lme4::sleepstudy` (18 subjects) five identical
-        calls return intercept SDs of 0.5 to 4.6 against lme4's 24.7 and
-        correlations spanning -0.96 to +0.99, each reporting
-        `mode.status = 0`. Hand-written INLA reproduces it without this
-        package, so it is a property of the iid2d parameterisation and not
-        of the translation. INLA's own restart machinery fires on some of
-        those runs -- `inla.core.safe: rerun with improved initial values`,
-        from the `safe` argument that defaults to TRUE -- so it detects a
-        suspect solution without the result settling. Fit such designs on
-        brms, refit and compare before reporting a correlation, and read
-        the boundary-collapse warning, which does fire.",
+        prior that reached the fit. The joint Wishart's scale matrix is set
+        from the response's own variance, and the slope block from the
+        response variance per unit of the slope variable. Leaving INLA's
+        default there -- a scale matrix of ones, so a prior centred on unit
+        variances -- makes the mode non-unique on any response that is not
+        near unit scale: on `lme4::sleepstudy` eight identical calls
+        returned intercept SDs from 0.5 to 54.8 and correlations from -1.00
+        to +0.75. Scaled, the same fit returns 25.7 to 26.9 against lme4's
+        24.7, with the correlation between -0.07 and +0.15 around lme4's
+        0.066.",
       anchor = "test-correlated-random-slope.R"
     ),
     list(

@@ -1497,11 +1497,28 @@ emit_inla <- function(
       n_g <- term$var_n %||% length(unique(data[[gtag]]))
       # iid2d's hyperparameters are a single joint Wishart on theta1, with
       # theta2 and theta3 carrying prior = "none" (read from
-      # INLA::inla.models()). There is no standard-deviation slot to
-      # translate a prior into, and splicing one in makes INLA drop it --
-      # the silent prior loss this package fixed in the sectioned residual.
-      # The auto-default is therefore left unspliced and INLA's Wishart
-      # governs; an EXPLICIT prior refuses by name rather than vanishing.
+      # INLA::inla.models()). There is no standard-deviation slot, so a
+      # prior written in the DSL cannot be translated and an EXPLICIT one
+      # refuses by name rather than vanishing.
+      #
+      # What the default does is a different question, and getting it wrong
+      # cost this package a capability it had already advertised. Leaving
+      # theta1 unspliced leaves INLA's own Wishart, whose scale matrix is
+      # the IDENTITY -- a prior centred on unit variances. On data that is
+      # not on unit scale that prior fights the likelihood, and the mode
+      # stops being unique: on lme4::sleepstudy, whose response has a
+      # standard deviation near 50, eight identical calls returned
+      # intercept standard deviations from 0.50 to 54.8 and correlations
+      # from -1.00 to +0.75, with marginal likelihoods 31 units apart.
+      # None was near lme4's REML answer of 24.7. It was reported as an
+      # INLA limitation. It was our default.
+      #
+      # Scaling the Wishart to the data removes it. R is on the VARIANCE
+      # scale (established by fitting the three candidates), so the
+      # intercept block takes var(y) and the slope block var(y)/var(x) --
+      # the slope's variance in the units the slope is measured in. With
+      # that, the same eight calls agree to three decimal places and
+      # recover 26.9 and 7.3 against lme4's 24.7 and 5.9.
       user_prior <- (!is.null(hyper_ctrl[[gtag]]) ||
         !is.null(hyper_ctrl[[paste0(sv, "_", gtag)]])) &&
         is.null(attr(fb$priors, "fb_prior_default_basis"))
@@ -1534,6 +1551,7 @@ emit_inla <- function(
           "f(",
           .fb_inla_cor_slope_index(gtag, sv),
           ", model = \"iid2d\", n = ", 2L * n_g,
+          .fb_inla_wishart_arg(.fb_inla_wishart_scale_slope(fb, term)),
           ")"
         ),
         paste0(
@@ -1707,6 +1725,7 @@ emit_inla <- function(
           "f(",
           .fb_inla_us_index(term$outer, term$inner),
           ", model = \"iid", k, "d\", n = ", k * term$n_inner,
+          .fb_inla_wishart_arg(rep(.fb_inla_response_var(fb), k)),
           ")"
         )
       )
@@ -3061,6 +3080,65 @@ summary.flexybayes_inla <- function(object, ...) {
 # for the whole term: the field is blocked by the outer factor's levels.
 .fb_inla_us_index <- function(outer, inner) {
   make.names(paste0(inner, "_by_", outer, "_id"))
+}
+
+# --- the Wishart scale for iidKd ------------------------------------- #
+#
+# INLA's iidKd families put ONE joint Wishart on theta1 and give every later
+# theta prior = "none", so there is no per-component slot to write a
+# standard-deviation prior into. The scale matrix R is on the VARIANCE scale
+# and defaults to the identity, which is a prior centred on unit variances.
+# That default is only reasonable when the data happens to be on unit scale,
+# and when it is not the posterior mode stops being unique -- see the note in
+# the simple_slope_cor branch for the measurement that established this.
+#
+# These helpers put R on the data's own scale, the same basis the package
+# already uses for its uniform-SD default.
+
+# Read off `fb` rather than off `data`: the formula builder is called with
+# the IR alone, including by the tests, so a scale derived from anything else
+# would make the emitted formula differ between the test path and the fit
+# path. The prior layer already carries the response's scale -- the uniform
+# default's upper bound is .FB_UNIFORM_SD_MULTIPLIER * sd(y) -- so this
+# recovers sd(y) from it and uses the same basis rather than a second one.
+.fb_inla_response_var <- function(fb) {
+  scale <- attr(fb$priors, "fb_prior_default_scale")
+  if (is.null(scale) || !is.finite(scale) || scale <= 0) {
+    return(NA_real_)
+  }
+  (scale / .FB_UNIFORM_SD_MULTIPLIER)^2
+}
+
+# Intercept block on the response's variance, slope block on the response's
+# variance per unit of the slope variable -- the scale a slope actually lives
+# on. The slope's own values ride on the term from ingest.
+.fb_inla_wishart_scale_slope <- function(fb, term) {
+  vy <- .fb_inla_response_var(fb)
+  xs <- term$slope_var_values
+  vx <- if (is.numeric(xs) && length(xs) > 1L) {
+    stats::var(xs, na.rm = TRUE)
+  } else {
+    NA_real_
+  }
+  c(vy, if (is.finite(vx) && vx > 0) vy / vx else vy)
+}
+
+# `wishart<k>d` takes param = c(r, R11..Rkk, upper-triangle covariances).
+# r = k + 2 is INLA's own default degrees of freedom at k = 2 and the
+# lightest proper choice; the off-diagonals stay at zero, so the prior is
+# scaled but says nothing about the correlations.
+.fb_inla_wishart_arg <- function(diag_scale) {
+  k <- length(diag_scale)
+  if (k < 2L || any(!is.finite(diag_scale))) {
+    return("")
+  }
+  n_offdiag <- k * (k - 1L) / 2L
+  param <- c(k + 2L, diag_scale, rep(0, n_offdiag))
+  paste0(
+    ", hyper = list(theta1 = list(param = c(",
+    paste(format(param, digits = 10, trim = TRUE), collapse = ", "),
+    ")))"
+  )
 }
 
 # The two index columns a correlated random slope needs: one block of

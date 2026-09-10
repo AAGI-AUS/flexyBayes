@@ -1,5 +1,31 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **The unstructured and correlated-slope covariances get a Wishart scaled to
+  the data, and that removes an instability this package had blamed on INLA.**
+  `iid2d` and `iidKd` carry one joint Wishart on `theta1`, and its scale matrix
+  defaults to the identity -- a prior centred on unit variances. There is no
+  standard-deviation slot to translate a DSL prior into, so the default was
+  left unspliced, which left that unit-scale prior in force on data of any
+  scale.
+
+  On `lme4::sleepstudy`, whose response has a standard deviation near 50,
+  eight identical calls to `(Days | Subject)` returned intercept standard
+  deviations from 0.50 to 54.8 and correlations from -1.00 to +0.75, with
+  marginal likelihoods 31 units apart, and none near `lme4`'s REML answer of
+  24.7. That was recorded here and in the capability table as a property of
+  INLA's `iid2d` parameterisation. It was not. It was our default.
+
+  The scale matrix is now taken from the response's own variance -- the same
+  basis the uniform-SD default already uses -- with the slope block scaled by
+  the response variance per unit of the slope variable, which is the scale a
+  slope lives on. `R` is on the variance scale, established by fitting the
+  candidates rather than read off a manual. Five identical calls now return
+  intercept SDs of 25.7 to 26.9 against 24.7, slope SDs of 6.7 to 7.2 against
+  5.92, correlations of -0.07 to +0.15 around 0.066, and sigma 25.66 to 25.81
+  against 25.59. The correlation's run-to-run spread falls from 1.95 to 0.22.
+
+  The earlier note said to fit such designs on brms. That advice is withdrawn.
+
 * **`vpredict()` on INLA drew its variance components from the integration
   grid, not from the posterior.** The generic draws path uses
   `INLA::inla.posterior.sample()`, which resamples the configurations INLA
