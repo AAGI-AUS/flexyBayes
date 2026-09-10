@@ -246,7 +246,7 @@ test_that("backend = 'auto' still routes the pre-existing single-trial field to 
   expect_false(p$preflight_refused)
 })
 
-test_that(".preflight_term_level_count() sizes ar1_spatial correctly, with and without at_var", {
+test_that(".preflight_term_level_count() sizes ar1_spatial with and without at_var", {
   ds <- .fb_dataset(
     data = NULL,
     n_rows = 288L,

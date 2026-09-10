@@ -29,7 +29,7 @@ mk_asreml_data <- function() {
 # Minimal cases                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_asreml() handles a minimal gaussian fixed-only model", {
+test_that("fb_from_asreml() reads a minimal gaussian fixed-only model as a `continuous` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(yield ~ x, data = d)
 
@@ -55,14 +55,14 @@ test_that("fb_from_asreml() default residual is ~ units (matches flexybayes)", {
   expect_identical(fb$residual_terms[[1]]$type, "units")
 })
 
-test_that("fb_from_asreml() handles intercept-only model", {
+test_that("fb_from_asreml() reads an intercept-only model as one fixed term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(yield ~ 1, data = d)
   expect_true(fb$intercept)
   expect_length(fb$fixed_terms, 0L)
 })
 
-test_that("fb_from_asreml() handles no-intercept factor model", {
+test_that("fb_from_asreml() reads no-intercept factor model as a `factor` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(yield ~ 0 + env, data = d)
   expect_false(fb$intercept)
@@ -75,7 +75,7 @@ test_that("fb_from_asreml() handles no-intercept factor model", {
 # Random effects                                                   #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_asreml() handles simple random effect", {
+test_that("fb_from_asreml() reads simple random effect as a `simple` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(yield ~ env, random = ~geno, data = d)
   expect_length(fb$random_terms, 1L)
@@ -84,7 +84,7 @@ test_that("fb_from_asreml() handles simple random effect", {
   expect_identical(fb$random_terms[[1]]$var_n, 5L)
 })
 
-test_that("fb_from_asreml() handles structured GxE (fa_gxe)", {
+test_that("fb_from_asreml() reads structured GxE (fa_gxe) as a `fa_gxe` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(
     yield ~ env,
@@ -96,7 +96,7 @@ test_that("fb_from_asreml() handles structured GxE (fa_gxe)", {
   expect_identical(fb$random_terms[[1]]$k, 2L)
 })
 
-test_that("fb_from_asreml() handles us_gxe", {
+test_that("fb_from_asreml() reads us_gxe as a `us_gxe` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(
     yield ~ env,
@@ -106,7 +106,7 @@ test_that("fb_from_asreml() handles us_gxe", {
   expect_identical(fb$random_terms[[1]]$type, "us_gxe")
 })
 
-test_that("fb_from_asreml() handles ar1 spatial", {
+test_that("fb_from_asreml() reads ar1 spatial as a `ar1_spatial` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(
     yield ~ env,
@@ -120,7 +120,7 @@ test_that("fb_from_asreml() handles ar1 spatial", {
 # Heterogeneous residual                                           #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_asreml() handles heterogeneous residual (at_units)", {
+test_that("fb_from_asreml() reads heterogeneous residual (at_units) as a `at_units` term", {
   d <- mk_asreml_data()
   fb <- flexyBayes:::fb_from_asreml(
     yield ~ env,
@@ -136,7 +136,7 @@ test_that("fb_from_asreml() handles heterogeneous residual (at_units)", {
 # Family + link                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_asreml() handles binomial with default logit link", {
+test_that("fb_from_asreml() gives binomial the logit link by default", {
   d <- mk_asreml_data()
   d$y_bin <- as.integer(d$yield > 0)
   fb <- flexyBayes:::fb_from_asreml(y_bin ~ x, data = d, family = "binomial")
@@ -144,7 +144,7 @@ test_that("fb_from_asreml() handles binomial with default logit link", {
   expect_identical(fb$link, "logit")
 })
 
-test_that("fb_from_asreml() handles binomial with custom probit link", {
+test_that("fb_from_asreml() keeps an explicit probit link on binomial", {
   d <- mk_asreml_data()
   d$y_bin <- as.integer(d$yield > 0)
   fb <- flexyBayes:::fb_from_asreml(
@@ -157,7 +157,7 @@ test_that("fb_from_asreml() handles binomial with custom probit link", {
   expect_identical(fb$link, "probit")
 })
 
-test_that("fb_from_asreml() handles poisson", {
+test_that("fb_from_asreml() gives poisson the log link by default", {
   d <- mk_asreml_data()
   d$y_count <- pmax(0L, as.integer(round(d$yield + 5)))
   fb <- flexyBayes:::fb_from_asreml(y_count ~ x, data = d, family = "poisson")

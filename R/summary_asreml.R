@@ -921,11 +921,20 @@
   if (!is.list(sr) || length(sr) == 0L) {
     return(list())
   }
+  # INLA names each summary.random entry after the index column emit_inla()
+  # built for the term, so a structured term arrives as `rep_block_id` rather
+  # than `rep:block`. Map it back to what the user wrote.
+  fb <- object$extras$fb_terms
+  labels <- if (is.null(fb)) character(0) else .fb_inla_group_labels(fb)
+  # Single-bracket lookup: `labels[[nm]]` raises on a name the map does not
+  # carry, which is the common case (a plain `~ g` needs no relabelling).
+  relabel <- function(nm) if (nm %in% names(labels)) labels[[nm]] else nm
   out <- lapply(names(sr), function(nm) {
     tab <- sr[[nm]]
     if (!is.data.frame(tab) || nrow(tab) == 0L) {
       return(NULL)
     }
+    group_label <- relabel(nm)
     # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
     # for a group INLA's f() indexes by a relabelled factor; restore the
     # user's own label the same way coef.flexybayes_inla() does for the
@@ -940,7 +949,7 @@
       )
     }
     .fb_random_rows(
-      group = nm,
+      group = group_label,
       level = level_vals,
       estimate = .fb_random_column(tab, "mean"),
       std_error = .fb_random_column(tab, "sd"),
@@ -948,7 +957,7 @@
       conf_high = .fb_random_column(tab, "0.975quant")
     )
   })
-  names(out) <- names(sr)
+  names(out) <- vapply(names(sr), relabel, character(1L), USE.NAMES = FALSE)
   out[!vapply(out, is.null, logical(1L))]
 }
 

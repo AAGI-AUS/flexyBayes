@@ -362,7 +362,7 @@ test_that("ADR 0024 (h+): backend='variational_advi' also refuses (variational p
   expect_match(conditionMessage(err), "approximation registry")
 })
 
-test_that("ADR 0024 (h++): approximate-scheme refusal works on fb_brms too", {
+test_that("fb_brms() raises the approximate-scheme refusal, like the universal entry", {
   dat <- data.frame(y = rnorm(20), x = rnorm(20))
   err <- expect_error(
     fb(y ~ x, data = dat, backend = "inla_pardiso_approximate"),

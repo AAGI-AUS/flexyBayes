@@ -199,13 +199,13 @@ test_that(".lgm_check_hyperparam_budget() refuses above the hard limit", {
   expect_match(r$reason, "exceeds hard limit")
 })
 
-test_that(".lgm_count_hyperparams() handles fa_gxe via 2k contribution", {
+test_that(".lgm_count_hyperparams() charges fa_gxe 2k hyperparameters", {
   fb <- mk_fb(random_terms = list(list(type = "fa_gxe", k = 3L)))
   # gaussian (1) + 2*3 = 7
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb), 7L)
 })
 
-test_that(".lgm_count_hyperparams() handles us_gxe via n*(n+1)/2", {
+test_that(".lgm_count_hyperparams() charges us_gxe n(n+1)/2 hyperparameters", {
   fb <- mk_fb(random_terms = list(list(type = "us_gxe", n_outer = 4L)))
   # gaussian (1) + 4*5/2 = 11
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb), 11L)

@@ -1,6 +1,6 @@
 # Tests for formula parsing
 
-test_that("parse_fixed handles intercept-only", {
+test_that("parse_fixed reads an intercept-only formula", {
   dat <- data.frame(y = rnorm(10), x = rnorm(10))
   info <- flexyBayes:::.parse_fixed(y ~ 1, dat)
   expect_equal(info$response, "y")
@@ -8,7 +8,7 @@ test_that("parse_fixed handles intercept-only", {
   expect_length(info$terms, 0)
 })
 
-test_that("parse_fixed handles no-intercept with factor", {
+test_that("parse_fixed reads no-intercept with factor as a `factor` term", {
   dat <- data.frame(y = rnorm(20), env = factor(rep(1:4, 5)))
   info <- flexyBayes:::.parse_fixed(y ~ 0 + env, dat)
   expect_false(info$intercept)
@@ -18,7 +18,7 @@ test_that("parse_fixed handles no-intercept with factor", {
   expect_equal(info$terms[[1]]$n_levels, 4)
 })
 
-test_that("parse_fixed handles continuous covariate", {
+test_that("parse_fixed reads continuous covariate as a `continuous` term", {
   dat <- data.frame(y = rnorm(10), x = rnorm(10))
   info <- flexyBayes:::.parse_fixed(y ~ x, dat)
   expect_true(info$intercept)
@@ -27,7 +27,7 @@ test_that("parse_fixed handles continuous covariate", {
   expect_equal(info$terms[[1]]$var, "x")
 })
 
-test_that("parse_fixed handles factor interaction", {
+test_that("parse_fixed reads factor interaction as a `factor_interaction` term", {
   dat <- data.frame(
     y = rnorm(20),
     A = factor(rep(1:2, 10)),
@@ -38,7 +38,7 @@ test_that("parse_fixed handles factor interaction", {
   expect_equal(info$terms[[1]]$type, "factor_interaction")
 })
 
-test_that("parse_fixed handles I() expressions", {
+test_that("parse_fixed reads I() expressions as a `expression` term", {
   dat <- data.frame(y = rnorm(10), x = rnorm(10))
   info <- flexyBayes:::.parse_fixed(y ~ I(x^2), dat)
   expect_length(info$terms, 1)
@@ -53,7 +53,7 @@ test_that("parse_fixed errors on missing response", {
   )
 })
 
-test_that("parse_formula handles simple random", {
+test_that("parse_formula reads simple random as a `simple` term", {
   dat <- data.frame(geno = factor(rep(1:5, 4)))
   terms <- flexyBayes:::.parse_formula(~geno, dat)
   expect_length(terms, 1)
@@ -62,7 +62,7 @@ test_that("parse_formula handles simple random", {
   expect_equal(terms[[1]]$var_n, 5)
 })
 
-test_that("parse_formula handles crossed random", {
+test_that("parse_formula reads crossed random as a `simple` term", {
   dat <- data.frame(
     geno = factor(rep(1:5, 4)),
     env = factor(rep(1:4, each = 5))
@@ -73,14 +73,14 @@ test_that("parse_formula handles crossed random", {
   expect_equal(terms[[2]]$type, "simple")
 })
 
-test_that("parse_formula handles nested (colon)", {
+test_that("parse_formula reads nested (colon) as a `nested` term", {
   dat <- data.frame(block = factor(rep(1:3, 4)), rep = factor(rep(1:2, 6)))
   terms <- flexyBayes:::.parse_formula(~ block:rep, dat)
   expect_length(terms, 1)
   expect_equal(terms[[1]]$type, "nested")
 })
 
-test_that("parse_formula handles vm()", {
+test_that("parse_formula reads vm() as a `vm` term", {
   dat <- data.frame(geno = factor(1:5))
   terms <- flexyBayes:::.parse_formula(~ vm(geno, Gmat), dat)
   expect_length(terms, 1)
@@ -89,7 +89,7 @@ test_that("parse_formula handles vm()", {
   expect_equal(terms[[1]]$mat, "Gmat")
 })
 
-test_that("parse_formula handles at(env):geno", {
+test_that("parse_formula reads at(env):geno as a `at_simple` term", {
   dat <- data.frame(
     geno = factor(rep(1:5, 4)),
     env = factor(rep(1:4, each = 5))
@@ -99,7 +99,7 @@ test_that("parse_formula handles at(env):geno", {
   expect_equal(terms[[1]]$type, "at_simple")
 })
 
-test_that("parse_formula handles us(env):id(geno)", {
+test_that("parse_formula reads us(env):id(geno) as a `us_gxe` term", {
   dat <- data.frame(
     geno = factor(rep(1:5, 4)),
     env = factor(rep(1:4, each = 5))
@@ -109,7 +109,7 @@ test_that("parse_formula handles us(env):id(geno)", {
   expect_equal(terms[[1]]$type, "us_gxe")
 })
 
-test_that("parse_formula handles fa(env,2):id(geno)", {
+test_that("parse_formula reads fa(env,2):id(geno) as a `fa_gxe` term", {
   dat <- data.frame(
     geno = factor(rep(1:5, 4)),
     env = factor(rep(1:4, each = 5))
@@ -131,34 +131,34 @@ test_that("parse_formula errors on fa(env, 0)", {
   )
 })
 
-test_that("parse_formula handles ar1(row):id(col)", {
+test_that("parse_formula reads ar1(row):id(col) as a `ar1_spatial` term", {
   dat <- data.frame(row = factor(rep(1:5, 3)), col = factor(rep(1:3, each = 5)))
   terms <- flexyBayes:::.parse_formula(~ ar1(row):id(col), dat)
   expect_length(terms, 1)
   expect_equal(terms[[1]]$type, "ar1_spatial")
 })
 
-test_that("parse_formula handles spl(x)", {
+test_that("parse_formula reads spl(x) as a `spline` term", {
   dat <- data.frame(x = rnorm(20))
   terms <- flexyBayes:::.parse_formula(~ spl(x), dat)
   expect_length(terms, 1)
   expect_equal(terms[[1]]$type, "spline")
 })
 
-test_that("parse_formula handles at(env):units (residual)", {
+test_that("parse_formula reads at(env):units (residual) as a `at_units` term", {
   dat <- data.frame(env = factor(rep(1:4, each = 5)))
   terms <- flexyBayes:::.parse_formula(~ at(env):units, dat)
   expect_length(terms, 1)
   expect_equal(terms[[1]]$type, "at_units")
 })
 
-test_that("parse_formula handles units", {
+test_that("parse_formula reads units as a `units` term", {
   terms <- flexyBayes:::.parse_formula(~units, data.frame(x = 1))
   expect_length(terms, 1)
   expect_equal(terms[[1]]$type, "units")
 })
 
-test_that("parse_formula handles dsum(~units|env)", {
+test_that("parse_formula reads dsum(~units|env) as a `at_units` term", {
   dat <- data.frame(env = factor(rep(1:3, 5)))
   terms <- flexyBayes:::.parse_formula(~ dsum(~ units | env), dat)
   expect_length(terms, 1)
@@ -195,7 +195,7 @@ test_that(".dsum_inner_is_plain_units allows only units / id(units)", {
   expect_false(flexyBayes:::.dsum_inner_is_plain_units(NULL))
 })
 
-test_that("parse_formula handles three-way combo", {
+test_that("parse_formula reads three-way combo as a `combo` term", {
   dat <- data.frame(a = factor(1:2), b = factor(1:2), c = factor(1:2))
   terms <- flexyBayes:::.parse_formula(~ a:b:c, dat)
   expect_length(terms, 1)
@@ -203,7 +203,7 @@ test_that("parse_formula handles three-way combo", {
   expect_length(terms[[1]]$vars, 3)
 })
 
-test_that("resolve_family works", {
+test_that("resolve_family maps each family name to its default link", {
   expect_equal(flexyBayes:::.resolve_family("gaussian", NULL)$link, "identity")
   expect_equal(flexyBayes:::.resolve_family("binomial", NULL)$link, "logit")
   expect_equal(

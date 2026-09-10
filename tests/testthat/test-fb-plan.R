@@ -184,7 +184,7 @@ test_that("as.data.frame.fb_plan() preserves .FB_PLAN_DF_COLS ordering", {
 # (i) cov_validation_policy                                          #
 # ---------------------------------------------------------------- #
 
-test_that("cov_validation_policy reads flexyBayes.trust_pd option correctly", {
+test_that("cov_validation_policy follows the flexyBayes.trust_pd option", {
   d <- .test_plan_data_simple()
   # No known matrices -> "n/a"
   p <- fb_plan(y ~ x + (1 | g), data = d, backend = "auto")

@@ -207,6 +207,25 @@ MAX_EXPORTS <- 34L
 # Section B - claim-surface parity, the anti-drift guards
 # ---------------------------------------------------------------------
 
+# .dod_refusal_template_lengths() --- message-template length by reason code.
+#
+# Its own function so B8b's refusal arm can be exercised: the registry
+# environment is locked after population, so a falsification run cannot inject
+# a bloated template into it. Overriding this in the calling environment can.
+.dod_refusal_template_lengths <- function() {
+  reg <- tryCatch(
+    get(".refusal_registry", envir = asNamespace("flexyBayes")),
+    error = function(e) NULL
+  )
+  if (is.null(reg)) {
+    return(numeric(0))
+  }
+  vapply(ls(reg, all.names = TRUE), function(k) {
+    e <- get(k, envir = reg)
+    nchar(e$message_template %||% "")
+  }, numeric(1))
+}
+
 .dod_section_b <- list(
   list(
     id = "B1", cost = "quick", owner = "maintainer", blocking = TRUE,
@@ -384,6 +403,76 @@ MAX_EXPORTS <- 34L
       .dod_ok(!claims_badges || has_badges,
               paste0("claims badges=", claims_badges,
                      " badges present=", has_badges))
+    }
+  ),
+  list(
+    # The R Journal review of 0.10.0 called the prose machine-written. A
+    # word-list sweep over eleven reader-facing files found nineteen hits in
+    # total, so the register problem was never lexical -- B8 above already
+    # covers the words. It was STRUCTURAL, and these are the three shapes it
+    # took, each measured before this criterion was written:
+    #   * README.md: 178 of 371 lines commented out rather than deleted
+    #   * the gate refusal: 16 lines and 1225 characters for a two-rule
+    #     refusal, including a roadmap sentence about mixtures printed
+    #     whether or not the model contained one
+    #   * test names carrying a verb instead of a claim ("handles X")
+    # A threshold is set a little above where the repaired code sits, so
+    # this fails on a return to the old shape rather than on a line of drift.
+    id = "B8b", cost = "quick", owner = "maintainer", blocking = TRUE,
+    what = "no structural bloat on the surfaces a reader meets",
+    check = function() {
+      bad <- character(0)
+
+      readme <- .dod_read("README.md")
+      if (length(readme)) {
+        txt <- paste(readme, collapse = "\n")
+        # (?s) so the dot spans newlines. Without it the pattern matched no
+        # multi-line comment at all and the arm silently passed on a README
+        # that was half commented out -- caught by falsifying the gate
+        # rather than by reading it.
+        blocks <- regmatches(
+          txt, gregexpr("(?s)<!--.*?-->", txt, perl = TRUE)
+        )[[1L]]
+        blocks <- blocks[!grepl("capability-matrix:", blocks, fixed = TRUE)]
+        dead <- sum(vapply(blocks, function(b) {
+          length(strsplit(b, "\n", fixed = TRUE)[[1L]])
+        }, numeric(1)))
+        pct <- if (length(readme)) 100 * dead / length(readme) else 0
+        if (pct > 10) {
+          bad <- c(bad, sprintf("README %.0f%% commented-out prose", pct))
+        }
+      }
+
+      # A refusal is read by someone who wanted a fit. Registered templates
+      # are the ones a reader meets most often.
+      n <- .dod_refusal_template_lengths()
+      if (length(n)) {
+        over <- names(n)[n > 700]
+        if (length(over)) {
+          bad <- c(bad, paste0("refusal template over 700 chars: ",
+                               paste(over, collapse = ", ")))
+        }
+      }
+
+      # A test name states what is asserted. "handles X" states that
+      # something happened.
+      tf <- list.files("tests/testthat", pattern = "^test-.*\\.R$",
+                       full.names = TRUE)
+      weak <- unlist(lapply(tf, function(f) {
+        l <- .dod_read(f)
+        i <- grep("test_that\\(\"", l)
+        if (!length(i)) return(character(0))
+        nm <- sub("\".*$", "", sub("^[^\"]*\"", "", l[i]))
+        nm[grepl("\\b(handles|correctly|properly|successfully)\\b", nm,
+                 ignore.case = TRUE)]
+      }))
+      if (length(weak) > 5L) {
+        bad <- c(bad, sprintf("%d test names carry a verb, not a claim",
+                              length(weak)))
+      }
+
+      .dod_ok(length(bad) == 0L,
+              if (length(bad)) paste(bad, collapse = "; ") else "clean")
     }
   ),
   list(

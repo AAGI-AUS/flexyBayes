@@ -259,7 +259,7 @@ test_that("an unrecognised effects value stops rather than falling through", {
   )
 })
 
-test_that("tidy(effects = 'random') works on an aggregated fit", {
+test_that("tidy(effects = 'random') returns the random-effect rows of an aggregated fit", {
   # The aggregated emits write a list of posterior means under
   # `variance_comps`, so `nrow()` of it is NULL and the raw read errored.
   skip_on_cran()

@@ -35,7 +35,7 @@ suppressPackageStartupMessages(library(testthat))
 # INLA backend (deterministic, cheap)                               #
 # ---------------------------------------------------------------- #
 
-test_that("emmeans(fit, ~ f) works on an INLA fit and recovers cell means", {
+test_that("emmeans(fit, ~ f) recovers the cell means from an INLA fit", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("emmeans")
   skip_on_cran() # INLA posterior sampling: heavy + core-limited under --as-cran
@@ -94,7 +94,7 @@ test_that("emmeans pairwise contrasts on an INLA fit recover the DGP gaps", {
 # brms backend (MCMC -- gated)                                      #
 # ---------------------------------------------------------------- #
 
-test_that("emmeans(fit, ~ f) works on a brms fit (bare-method inheritance)", {
+test_that("emmeans(fit, ~ f) reaches a brms fit through the bare method", {
   skip_if_not_installed("brms")
   skip_if_not_installed("emmeans")
   skip_on_cran()

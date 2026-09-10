@@ -251,6 +251,88 @@ register_canonical_mapper <- function(backend, mapper) {
 # tag. The raw-vector index `i` maps to factor level `i + 1` because
 # the reference level (level 1) is fixed at zero and absent from the
 # raw parameter vector.
+# .fb_inla_group_labels() --- generated index name -> the group a user wrote.
+#
+# emit_inla() builds an index column per structured random term --
+# `rep_block_id` for `rep:block`, `gen_at_env_E1` for one level of a diag(),
+# `gen_by_env_id` for an unstructured covariance -- and INLA names each
+# summary.random entry after the column it was indexed by. The variance
+# COMPONENTS were mapped back to user labels when that machinery was built;
+# the random-effect table was not, so `ranef()` reported a grouping factor
+# called `rep_block_id`, which is a name the user never wrote and cannot look
+# up. Same defect class as the one closed for summary()$varcomp, reached by a
+# different accessor.
+#
+# Returns a named character vector; a group with no entry keeps its own name,
+# which is right for a plain `~ g` where the index IS the variable.
+.fb_inla_group_labels <- function(fb) {
+  map <- character(0)
+  put <- function(key, value) map[[key]] <<- value
+  for (t in fb$random_terms %||% list()) {
+    tt <- t$type %||% ""
+    if (tt %in% c("nested", "combo")) {
+      vars <- if (identical(tt, "nested")) {
+        c(t$outer, t$inner)
+      } else {
+        as.character(t$vars)
+      }
+      put(
+        make.names(paste0(paste(vars, collapse = "_"), "_id")),
+        paste(vars, collapse = ":")
+      )
+      next
+    }
+    if (identical(tt, "at_simple")) {
+      for (lev in t$outer_levels %||% character(0)) {
+        put(
+          make.names(paste0(t$inner, "_at_", t$outer, "_", lev)),
+          paste0(t$inner, " (", t$outer, " = ", lev, ")")
+        )
+      }
+      next
+    }
+    if (identical(tt, "simple_slope_uncor")) {
+      put(
+        make.names(paste0(t$var, "_for_slope_", t$slope_var)),
+        paste0(t$slope_var, " | ", t$var)
+      )
+      next
+    }
+    if (identical(tt, "simple_slope_cor")) {
+      lab <- paste0(t$slope_var, " | ", t$var)
+      put(make.names(paste0(t$var, "_cor_", t$slope_var, "_id")), lab)
+      put(make.names(paste0(t$var, "_cor_", t$slope_var, "_slope_id")), lab)
+      next
+    }
+    if (identical(tt, "us_gxe")) {
+      put(
+        make.names(paste0(t$inner, "_by_", t$outer, "_id")),
+        paste0(t$inner, ":", t$outer)
+      )
+      next
+    }
+    if (identical(tt, "fa_gxe")) {
+      levs <- t$outer_levels %||% character(0)
+      for (j in seq_len(t$k %||% 1L)) {
+        for (lev in levs) {
+          put(
+            make.names(paste0(t$inner, "_fa", j, "_", t$outer, "_", lev)),
+            paste0(t$inner, " factor ", j, " (", t$outer, " = ", lev, ")")
+          )
+        }
+      }
+      for (lev in levs) {
+        put(
+          make.names(paste0(t$inner, "_psi_", t$outer, "_", lev)),
+          paste0(t$inner, " specific (", t$outer, " = ", lev, ")")
+        )
+      }
+      next
+    }
+  }
+  map
+}
+
 .parse_slope_dev_raw <- function(nm, lookup) {
   m <- regmatches(
     nm,

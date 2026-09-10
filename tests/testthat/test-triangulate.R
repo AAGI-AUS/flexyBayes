@@ -51,7 +51,7 @@ test_that(".wasserstein1_1d() recovers a deterministic shift", {
   )
 })
 
-test_that(".wasserstein1_1d() handles edge case with empty samples", {
+test_that(".wasserstein1_1d() returns NA rather than a number for empty samples", {
   expect_true(is.na(flexyBayes:::.wasserstein1_1d(numeric(0), 1:5)))
 })
 
@@ -219,7 +219,7 @@ test_that("print.triangulate_result emits the structured header + table", {
   expect_true(any(grepl("Metrics", out)))
 })
 
-test_that("print.triangulate_result handles zero common parameters", {
+test_that("print.triangulate_result says so when no parameter is common to both fits", {
   set.seed(12L)
   d_a <- list(p = rnorm(100))
   d_b <- list(q = rnorm(100))
