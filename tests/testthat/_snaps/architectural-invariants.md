@@ -4,7 +4,7 @@
       sort(.FB_VERBS)
     Output
       [1] "fb_brms"                "fb_inla"                "fb_plan"               
-      [4] "flexybayes"             "triangulate"            "validate_approximation"
+      [4] "flexybayes"             "validate_approximation"
 
 # the constructor schemas are stable (snapshot)
 
