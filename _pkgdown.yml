@@ -10,10 +10,10 @@ development:
 home:
   title: flexyBayes — Flexible Bayesian mixed models with ASReml and brms-style syntax
   description: >
-    Specify mixed models using ASReml-style or brms-style formula syntax,
-    estimate them via INLA or brms (Stan), and compare the same model
-    across engines with triangulate(), a diagnostic on a gated overlap
-    rather than a validation contract.
+    Specify mixed models using ASReml-style or brms-style formula syntax
+    and estimate them via INLA or brms (Stan). The ASReml grammar reaches
+    INLA natively, so multi-stratum designs, per-environment residuals and
+    factor-analytic covariance fit by approximation rather than by MCMC.
 
 navbar:
   structure:
@@ -22,27 +22,18 @@ navbar:
   components:
     intro:
       text: Get started
-      href: articles/flexyBayes-01-getting-started.html
+      href: articles/flexyBayes-01-mixed-models.html
     articles:
-      text: Tutorials
+      text: Articles
       menu:
-        - text: 01 — Getting started
-          href: articles/flexyBayes-01-getting-started.html
-        - text: 02 — The formula surface
-          href: articles/flexyBayes-02-formulas-and-dispatch.html
-        - text: 03 — Regression and hierarchical models
-          href: articles/flexyBayes-03-regression-and-hierarchical.html
-        - text: 04 — Priors
-          href: articles/flexyBayes-04-priors.html
-        - text: "---"
-        - text: 05 — METs and genomics
-          href: articles/flexyBayes-05-met-and-genomics.html
-        - text: 06 — Spatial and temporal
-          href: articles/flexyBayes-06-spatial-and-temporal.html
-        - text: 07 — After the fit
-          href: articles/flexyBayes-07-after-the-fit.html
-        - text: 08 — Big data
-          href: articles/flexyBayes-08-big-data.html
+        - text: 01 — Mixed models in brief
+          href: articles/flexyBayes-01-mixed-models.html
+        - text: 02 — Bayesian estimation in brief
+          href: articles/flexyBayes-02-bayesian.html
+        - text: 03 — The ASReml syntax covered
+          href: articles/flexyBayes-03-syntax.html
+        - text: 04 — ASReml and flexyBayes side by side
+          href: articles/flexyBayes-04-illustration.html
 reference:
   - title: Verbs
     desc: >
@@ -166,22 +157,29 @@ reference:
       - flexyBayes-package
 
 articles:
-  - title: Foundations
+  - title: Read in order
+    desc: >
+      Four pages, enough to start work: what a mixed model is, what
+      changes when it is estimated as a posterior, every ASReml spelling
+      the package covers, and one worked comparison.
     contents:
-      - flexyBayes-01-getting-started
-      - flexyBayes-02-formulas-and-dispatch
-      - flexyBayes-03-regression-and-hierarchical
-      - flexyBayes-04-priors
-  - title: Applied workflows
-    contents:
-      - flexyBayes-05-met-and-genomics
-      - flexyBayes-06-spatial-and-temporal
-  - title: After the fit, and scale
-    contents:
-      - flexyBayes-07-after-the-fit
-      - flexyBayes-08-big-data
+      - flexyBayes-01-mixed-models
+      - flexyBayes-02-bayesian
+      - flexyBayes-03-syntax
+      - flexyBayes-04-illustration
 
 redirects:
+  # The eight-page tutorial deck was retired at 0.10.0.9000 and kept under
+  # vignettes-reserve/. Every one of its URLs is pointed at the page that
+  # now covers the same ground, so no published link dies.
+  - ["articles/flexyBayes-01-getting-started.html", "articles/flexyBayes-01-mixed-models.html"]
+  - ["articles/flexyBayes-02-formulas-and-dispatch.html", "articles/flexyBayes-03-syntax.html"]
+  - ["articles/flexyBayes-03-regression-and-hierarchical.html", "articles/flexyBayes-01-mixed-models.html"]
+  - ["articles/flexyBayes-04-priors.html", "articles/flexyBayes-02-bayesian.html"]
+  - ["articles/flexyBayes-05-met-and-genomics.html", "articles/flexyBayes-04-illustration.html"]
+  - ["articles/flexyBayes-06-spatial-and-temporal.html", "articles/flexyBayes-03-syntax.html"]
+  - ["articles/flexyBayes-07-after-the-fit.html", "articles/flexyBayes-02-bayesian.html"]
+  - ["articles/flexyBayes-08-big-data.html", "articles/flexyBayes-03-syntax.html"]
   - ["articles/flexyBayes-02-asreml-formulas.html", "articles/flexyBayes-02-formulas-and-dispatch.html"]
   - ["articles/flexyBayes-10-dispatch-and-refusals.html", "articles/flexyBayes-02-formulas-and-dispatch.html"]
   - ["articles/flexyBayes-03-regression.html", "articles/flexyBayes-03-regression-and-hierarchical.html"]

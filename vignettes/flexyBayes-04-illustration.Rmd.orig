@@ -1,0 +1,245 @@
+---
+title: "ASReml and flexyBayes on the same trials"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ASReml and flexyBayes on the same trials}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(flexyBayes)
+options(flexyBayes.silence_default_prior_note = TRUE)
+asreml_ref <- readRDS(
+  system.file("extdata", "asreml_reference.rds", package = "flexyBayes")
+)
+rnd <- function(d, k = 3) {
+  num <- vapply(d, is.numeric, logical(1))
+  d[num] <- lapply(d[num], round, k)
+  d
+}
+```
+
+Two public trials, fitted both ways. The ASReml numbers on this page were
+computed once with a licensed ASReml `r asreml_ref$stamp$asreml` under
+`r asreml_ref$stamp$r` on `r asreml_ref$stamp$date`, by
+`data-raw/asreml_reference.R`, and stored with the package so this page
+builds without a licence. Nothing here is quoted from memory or from a
+manual.
+
+The order is deliberate. First a case where the two agree, because a
+comparison is worth nothing until you have seen that. Then the cases where
+they do not, and why.
+
+# 1. A whole alpha design: the two agree
+
+`john.alpha` is the trial from the previous pages. Twenty-four genotypes,
+three replicates, blocks nested in replicates.
+
+| | ASReml | flexyBayes |
+|---|---|---|
+| call | `asreml(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` | `flexybayes(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` |
+| heritability | `vpredict(m, h2 ~ V2/(V2 + V3))` | `vpredict(fit, h2 ~ sd_gen^2/(sd_gen^2 + sigma^2))` |
+
+The `fixed` and `random` arguments are the same text. The heritability is
+asked for the same way, and the name is the same, because it is ASReml's verb.
+
+```{r alpha-fit}
+data(john.alpha, package = "agridat")
+
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla"
+)
+
+vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
+```
+
+```{r alpha-ref}
+rnd(asreml_ref$alpha[1, ])
+```
+
+Heritability 0.64 either way, and the two intervals overlap almost exactly.
+The variance components agree with `lme4::lmer()`'s REML fit of the same
+model as well. On a trial of this size there is nothing to choose between
+them, and any claim that there is should be treated with suspicion.
+
+# 2. Shrink the trial, and one of them stops making sense
+
+Now degrade the same trial: fewer genotypes, then plots dropped at random.
+The whole-trial value of 0.64 is the target -- it is what the full design
+says, and a method that recovers it from less data is doing well.
+
+ASReml, from the stored run:
+
+```{r alpha-degraded-asreml}
+rnd(asreml_ref$alpha)
+```
+
+Read the `lower` column. At twelve genotypes -- half the trial, and still a
+real trial -- the interval runs from **-0.53**. At six it runs from -1.26 to
+1.26, wider than the parameter space. Two of the random-deletion rows put the
+upper bound above 1. A heritability is a proportion of variance and cannot be
+negative or exceed one, so these intervals are not describing a heritability.
+They are the delta method extrapolating a normal approximation off the end of
+the parameter space, which is what it does when a variance component
+approaches its boundary. ASReml is not doing anything wrong here. It is
+reporting a standard error, and a standard error is a local quantity.
+
+The same designs through flexyBayes:
+
+```{r alpha-degraded-fb}
+degrade <- function(n_gen = NULL, drop_frac = NULL) {
+  d <- john.alpha
+  if (!is.null(n_gen)) {
+    d <- droplevels(subset(d, gen %in% levels(d$gen)[seq_len(n_gen)]))
+  }
+  if (!is.null(drop_frac)) {
+    set.seed(2026)
+    d <- droplevels(d[-sample(nrow(d), round(drop_frac * nrow(d))), ])
+  }
+  d
+}
+
+designs <- list(
+  "24 genotypes, 3 reps (whole)"    = degrade(),
+  "12 genotypes, 3 reps"            = degrade(n_gen = 12),
+  "6 genotypes, 3 reps"             = degrade(n_gen = 6),
+  "50% of plots dropped at random"  = degrade(drop_frac = 0.50),
+  "65% of plots dropped at random"  = degrade(drop_frac = 0.65)
+)
+
+out <- do.call(rbind, lapply(names(designs), function(nm) {
+  f <- flexybayes(yield ~ rep, random = ~ rep:block + gen,
+                  data = designs[[nm]], backend = "inla", verbose = FALSE)
+  v <- vpredict(f, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
+  data.frame(design = nm, n = nrow(designs[[nm]]),
+             h2 = v$estimate, lower = v$conf.low, upper = v$conf.high)
+}))
+rnd(out)
+```
+
+Every interval lies inside `[0, 1]`, because every draw does. They widen as
+the design shrinks, which is the correct response to having less
+information, and they keep containing the whole-trial value.
+
+Two things must be said about this plainly.
+
+The prior is doing work here, and it should be. With six genotypes the data
+barely identifies a genetic variance, ASReml's REML estimate goes to the
+boundary and reports zero, and the posterior sits well above it. If the truth
+really were near zero the prior would be holding the estimate up wrongly. What
+the posterior gives you is not a guarantee of being right -- it is an interval
+you can act on, where the alternative is an interval that includes impossible
+values.
+
+And the point estimates are not the story. At 65 per cent deletion flexyBayes
+returns a heritability some distance from the whole-trial figure. Its interval
+still contains it, and still means what it says.
+
+# 3. A multi-environment trial: the loadings get a posterior
+
+`dasilva.maize` is nine environments, fifty-five genotypes, three replicates,
+complete. The standard model is factor-analytic: one common factor across
+environments, one variance specific to each, one residual variance per
+environment.
+
+| | ASReml | flexyBayes |
+|---|---|---|
+| random | `~ fa(env, 1):gen` | `~ fa(env, 1):gen` |
+| residual | `~ dsum(~ units \| env)` | `~ dsum(~ units \| env)` |
+
+Identical text. Both engines fit it, and they agree: the per-environment
+residual standard deviations match to two decimals, and so do the specific
+variances.
+
+What differs is what comes back. ASReml returns a loading and a standard
+error. flexyBayes returns a posterior for each loading, so any function of
+them -- the quantity a breeder actually asks about -- has a posterior too.
+
+The genetic correlation between two environments says whether they rank
+genotypes the same way. Under a one-factor model it is a function of the
+loadings and the specific variances, so it is one line:
+
+```{r met-fit}
+data(dasilva.maize, package = "agridat")
+d <- dasilva.maize[order(dasilva.maize$env, dasilva.maize$gen), ]
+
+met <- flexybayes(yield ~ env, random = ~ fa(env, 1):gen,
+                  residual = ~ dsum(~ units | env),
+                  data = d, backend = "inla", verbose = FALSE)
+
+vpredict(met,
+  r_E5_E9 ~ (fa1_envE5 * sd_fa1) * (fa1_envE9 * sd_fa1) /
+    sqrt(((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2) *
+         ((fa1_envE9 * sd_fa1)^2 + sd_gen__envE9^2)),
+  r_E3_E8 ~ (fa1_envE3 * sd_fa1) * (fa1_envE8 * sd_fa1) /
+    sqrt(((fa1_envE3 * sd_fa1)^2 + sd_gen__envE3^2) *
+         ((fa1_envE8 * sd_fa1)^2 + sd_gen__envE8^2)),
+  h2_E5 ~ ((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2) /
+          ((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2 + sigma_E5^2),
+  n_draws = 4000)
+```
+
+The same three quantities from ASReml, by the delta method:
+
+```{r met-ref}
+rnd(asreml_ref$met_derived)
+```
+
+The heritability, which is well identified, agrees: 0.57 against 0.55, with
+near-identical intervals. The two correlations do not. Their delta-method
+intervals reach **1.03** and **1.34**. A correlation cannot exceed one, and
+these two are close enough to the boundary that a symmetric interval around
+them leaves the parameter space. The posterior intervals stay inside it,
+because a correlation computed on every draw is a correlation on every draw.
+
+The same thing appears in the variance components themselves. Environment 8's
+specific variance:
+
+```{r met-e8}
+rnd(asreml_ref$met_varcomp[
+  asreml_ref$met_varcomp$term == "fa(env, 1):gen!E8!var", ], 4)
+```
+
+An estimate of 0.017 with a standard error of 0.137. A variance, with a
+standard error eight times its own size. flexyBayes reports that environment
+as a standard deviation of 0.27 with an interval from 0.06 to 1.02 -- wide,
+which is the honest answer, and positive throughout, which a variance must be.
+
+# 4. What missing cells do, and do not, change
+
+flexyBayes can keep a plot whose response was lost as a design row and treat
+the response as a latent quantity (`na_action = "augment"`, the default),
+rather than deleting the row. It is worth saying what that does.
+
+On both trials on this page, and under deletion at random, it changes the
+variance components hardly at all. That is not a disappointment, it is the
+ignorability result: when the reason a value is missing is unrelated to the
+value, the parameter posterior is the same whether the cell is carried or
+dropped. The factor-analytic fit also does not fail on a design with whole
+genotype-by-environment cells removed, which an earlier note in this project
+predicted it would.
+
+What carrying the cell does buy is the cell itself: a posterior for the
+response that was not observed, on the same footing as the ones that were.
+Where it would change the parameters is when the reason for the missingness
+is related to the response -- the plot lost because it lodged, the trial
+abandoned because it failed. That case is not demonstrated here, and it is
+not claimed.
+
+# What to take away
+
+On a whole, well-sized trial the two approaches agree, and if you only ever
+analyse whole trials the case for changing is weak.
+
+The case is in three places. A quantity near a boundary -- a small variance
+component, a high genetic correlation -- gets an interval that stays in the
+parameter space instead of one that leaves it. A small or damaged trial gets
+an interval that widens instead of a standard error whose
+approximation has stopped holding. And any function of the variance
+components is available exactly, from one line, instead of through a
+linearisation.

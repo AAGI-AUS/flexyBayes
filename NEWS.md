@@ -38,11 +38,39 @@
   the one generated table plus a syntax vignette, which is what the review
   asked for.
 
-* **The vignette deck is being rebuilt from eight tutorials to four pages**:
-  mixed models in brief, Bayesian estimation in brief, the ASReml syntax
-  covered and not covered, and one worked illustration. The previous deck is
-  retained under `vignettes-reserve/`, excluded from the build, rather than
-  deleted.
+* **The vignette deck is four pages, not eight tutorials.** Mixed models in
+  brief, Bayesian estimation in brief, the ASReml syntax covered and not
+  covered, and one worked illustration -- 2696 lines of tutorial replaced by
+  enough to start work. The previous deck is retained under
+  `vignettes-reserve/`, excluded from the build rather than deleted, and every
+  one of its published URLs redirects to the page that now covers the same
+  ground.
+
+* **The illustration is fitted both ways, on two public trials.** The ASReml
+  side was computed once with a licensed ASReml 4.2.0.392 by
+  `data-raw/asreml_reference.R` and stored, so the page builds without a
+  licence and every number attributed to ASReml has one source.
+
+  On the whole `john.alpha` alpha design the two agree: heritability 0.636
+  against 0.640, intervals almost coincident. Degrade the same trial and they
+  part. At twelve genotypes ASReml's delta-method interval runs from
+  **-0.533**; at six, from -1.256 to 1.256, wider than the parameter space.
+  Two random-deletion designs put the upper bound above 1. The posterior
+  intervals stay inside \[0, 1\] throughout, because every draw does.
+
+  On the `dasilva.maize` multi-environment trial both engines fit
+  `fa(env, 1):gen` with a `dsum` residual and agree on the residual and
+  specific variances. The genetic correlations do not agree: ASReml's
+  delta-method intervals reach **1.034** and **1.342** for two correlations,
+  which cannot exceed one. The same quantities are exact posteriors here,
+  from one `vpredict()` line, and stay in range.
+
+  Two claims are recorded as **not** demonstrated. Carrying a lost plot as a
+  design row rather than deleting it changes the variance components hardly
+  at all under deletion at random -- the ignorability result -- and the
+  factor-analytic fit does not fail on a design with whole
+  genotype-by-environment cells removed, which an earlier note in this
+  project predicted it would.
 
 * **A failed brms fit no longer blames the model for a broken compiler.** The
   brms path compiles a Stan program, and a missing or mismatched C++ toolchain

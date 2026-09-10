@@ -1,0 +1,180 @@
+---
+title: "Mixed models in brief"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Mixed models in brief}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+If you already fit mixed models in ASReml, skip to
+`vignette("flexyBayes-03-syntax")`. This page is the short version for
+everyone else.
+
+# The idea
+
+A designed experiment produces variation from several sources at once. A
+field trial has differences between treatments, between replicates, between
+blocks inside replicates, and between plots. Only some of those are the
+question. The rest are structure you have to account for, because ignoring
+them attributes their variation to the treatment.
+
+A mixed model splits the two. **Fixed effects** are the levels you care
+about individually -- these three varieties, these two nitrogen rates.
+**Random effects** are levels drawn from a population you want to describe
+rather than enumerate: this year's blocks, this trial's genotypes. For a
+fixed effect you estimate each level. For a random effect you estimate the
+*variance* of the levels, and the levels themselves come back shrunk toward
+the mean by an amount the data decides.
+
+That shrinkage is the practical payoff. A genotype seen in one block gets
+pulled toward the overall mean more than one seen in twenty, automatically,
+without you choosing a rule.
+
+# A worked example
+
+`john.alpha` is an alpha-design: 24 genotypes, three replicates, blocks
+nested inside replicates.
+
+
+``` r
+data(john.alpha, package = "agridat")
+str(john.alpha)
+#> 'data.frame':	72 obs. of  7 variables:
+#>  $ plot : int  1 2 3 4 5 6 7 8 9 10 ...
+#>  $ rep  : Factor w/ 3 levels "R1","R2","R3": 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ block: Factor w/ 6 levels "B1","B2","B3",..: 1 1 1 1 2 2 2 2 3 3 ...
+#>  $ gen  : Factor w/ 24 levels "G01","G02","G03",..: 11 4 5 22 21 10 20 2 23 14 ...
+#>  $ yield: num  4.12 4.45 5.88 4.58 4.65 ...
+#>  $ row  : int  1 2 3 4 5 6 7 8 9 10 ...
+#>  $ col  : int  1 1 1 1 1 1 1 1 1 1 ...
+```
+
+Replicate is a fixed effect here -- three specific replicates, and the
+difference between them is a nuisance you want removed rather than a
+population you want to describe. Blocks within replicates and genotypes are
+random.
+
+
+``` r
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla"
+)
+#> flexyBayes: variance-component prior default is uniform(0, 3.05) on every SD (residual sigma + every named random-effect group): a weakly-informative choice for moderate group counts. For very small groups, Gelman (2006) recommends a half-Cauchy instead -- see ?fb_prior. Scale basis = "identity_sd_uniform". Pass `prior_vc_sd` explicitly for the legacy lognormal(0, prior_vc_sd) default, `prior = fb_prior(...)` for full control, or options(flexyBayes.silence_default_prior_note = TRUE) to silence this notice.
+#> 
+#> -- flexyBayes: INLA fit ----------------------------------------
+#>   formula: yield ~ 1 + rep + f(rep_block_id, model = "iid", <prior: uniform-SD(0, 3.049)>) + f(gen, model = "iid", <prior: uniform-SD(0, 3.049)>)
+#>   family:  gaussian
+#> ------------------------------------------------------------
+```
+
+The `fixed` and `random` arguments are ASReml's, and `rep:block` is the
+nesting written the same way.
+
+
+``` r
+summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : yield ~ rep 
+#>   Random   : ~rep:block + gen 
+#>   Model    : G: block within rep; gen iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 72 design rows, 72 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 1.5 sec
+#> 
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)   4.5182    0.1598   4.2016    4.8348
+#>        repR2   0.2978    0.1936  -0.0887    0.6844
+#>        repR3  -0.4140    0.1936  -0.8006   -0.0275
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>     component estimate std.error conf.low conf.high
+#>         sigma   0.2926    0.0364   0.2290    0.3716
+#>  sd_rep:block   0.2880    0.0779   0.1632    0.4677
+#>        sd_gen   0.3974    0.0734   0.2736    0.5610
+#>                          prior note
+#>  uniform(lower=0, upper=3.049)     
+#>  uniform(lower=0, upper=3.049)     
+#>  uniform(lower=0, upper=3.049)     
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
+#>                                            mean     sd 0.025quant 0.5quant
+#> Precision for the Gaussian observations 12.2229 3.0393     7.2298  11.8924
+#> Precision for rep_block_id              14.9645 8.7743     4.5837  12.8730
+#> Precision for gen                        7.0002 2.6397     3.1726   6.5569
+#>                                         0.975quant    mode
+#> Precision for the Gaussian observations    19.1159 11.2911
+#> Precision for rep_block_id                 37.7774  9.6128
+#> Precision for gen                          13.4051  5.7511
+#> 
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -65.806
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 3.81e-07
+#>   Numerical confirm: PASS
+#>      component  estimate  conf.low conf.high
+#> 1        sigma 0.2926119 0.2289805 0.3715672
+#> 2 sd_rep:block 0.2880190 0.1632086 0.4677145
+#> 3       sd_gen 0.3973742 0.2736151 0.5610332
+```
+
+Three variances, one per stratum. Read them as standard deviations on the
+scale of the response.
+
+- `sd_gen` is the genetic standard deviation, the spread of true genotype
+  means. It is what a breeder is trying to exploit.
+- `sd_rep:block` is the block-to-block variation inside a replicate. Blocking
+  worked if this is appreciable, because that variation has been removed from
+  the genotype comparison.
+- `sigma` is what is left, plot to plot.
+
+# Why the split matters
+
+The ratio of genetic variance to total variance is heritability, the
+proportion of what you observe that reflects the genotype rather than the
+field.
+
+
+``` r
+vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
+#>   functional  estimate    median std.error  conf.low conf.high
+#> 1         h2 0.6351691 0.6435453 0.1034997 0.4150573 0.8132233
+```
+
+Around two thirds here. That number is the reason for the model: it is not
+readable from the raw plot means, because those confound genotype with
+whichever block a plot happened to sit in.
+
+# Predictions of the random levels
+
+The shrunken genotype means -- BLUPs in the REML vocabulary -- come back with
+`ranef()`.
+
+
+``` r
+head(ranef(fit)$gen, 4)
+#>   group level     estimate std.error   conf.low  conf.high
+#> 1   gen   G01  0.497121640 0.1904686  0.1243114  0.8737101
+#> 2   gen   G02  0.005307344 0.1854221 -0.3595168  0.3703372
+#> 3   gen   G03 -0.777465618 0.1973561 -1.1685580 -0.3925544
+#> 4   gen   G04  0.005927140 0.1858493 -0.3606933  0.3708349
+```
+
+# What to read next
+
+`vignette("flexyBayes-02-bayesian")` says what changes when these quantities
+are estimated as posteriors rather than as point estimates, and why the
+interval on the heritability above is worth having.
