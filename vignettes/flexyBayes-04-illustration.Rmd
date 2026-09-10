@@ -1,6 +1,11 @@
 ---
 title: "ASReml and flexyBayes on the same trials"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{ASReml and flexyBayes on the same trials}
   %\VignetteEngine{knitr::rmarkdown}
@@ -50,8 +55,8 @@ fit <- flexybayes(
 #> ------------------------------------------------------------
 
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
-#>   functional  estimate    median std.error  conf.low conf.high
-#> 1         h2 0.6405668 0.6446635 0.1010644 0.4350717 0.8210431
+#>   functional  estimate    median std.error conf.low conf.high
+#> 1         h2 0.6376408 0.6407214 0.0998666 0.425785 0.8150101
 ```
 
 
@@ -198,10 +203,10 @@ vpredict(met,
   h2_E5 ~ ((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2) /
           ((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2 + sigma_E5^2),
   n_draws = 4000)
-#>   functional  estimate    median  std.error  conf.low conf.high
-#> 1    r_E5_E9 0.6401088 0.6487099 0.11995939 0.3812768 0.8431094
-#> 2    r_E3_E8 0.8020699 0.8273993 0.12271283 0.5051203 0.9648183
-#> 3      h2_E5 0.5565659 0.5578518 0.06838931 0.4172545 0.6870151
+#>   functional  estimate    median std.error  conf.low conf.high
+#> 1    r_E5_E9 0.6371187 0.6450666 0.1199627 0.3801449 0.8423240
+#> 2    r_E3_E8 0.7981862 0.8211757 0.1206796 0.5054688 0.9619411
+#> 3      h2_E5 0.5566210 0.5576646 0.0679189 0.4184597 0.6832296
 ```
 
 The same three quantities from ASReml, by the delta method:

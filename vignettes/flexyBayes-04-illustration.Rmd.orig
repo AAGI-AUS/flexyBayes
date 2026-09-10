@@ -1,6 +1,11 @@
 ---
 title: "ASReml and flexyBayes on the same trials"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{ASReml and flexyBayes on the same trials}
   %\VignetteEngine{knitr::rmarkdown}

@@ -1,6 +1,11 @@
 ---
 title: "Bayesian estimation in brief"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{Bayesian estimation in brief}
   %\VignetteEngine{knitr::rmarkdown}

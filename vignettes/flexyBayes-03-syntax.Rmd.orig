@@ -1,6 +1,11 @@
 ---
 title: "The ASReml syntax flexyBayes covers"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{The ASReml syntax flexyBayes covers}
   %\VignetteEngine{knitr::rmarkdown}

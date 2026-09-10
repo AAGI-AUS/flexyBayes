@@ -1,6 +1,11 @@
 ---
 title: "Bayesian estimation in brief"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{Bayesian estimation in brief}
   %\VignetteEngine{knitr::rmarkdown}
@@ -82,11 +87,11 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>   Engine:         INLA Laplace
 #>   N        : 72 design rows, 72 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 1.3 sec
+#>   Runtime  : 1.5 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
-#>  (Intercept)   4.5182    0.1598   4.2016    4.8348
+#>  (Intercept)   4.5182    0.1598   4.2016    4.8349
 #>        repR2   0.2978    0.1936  -0.0887    0.6844
 #>        repR3  -0.4140    0.1936  -0.8006   -0.0275
 #> 
@@ -103,13 +108,13 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #> 
 #> -- Hyperparameters (INLA, precision scale) ---------------------
 #>                                            mean     sd 0.025quant 0.5quant
-#> Precision for the Gaussian observations 12.2228 3.0392     7.2294  11.8925
-#> Precision for rep_block_id              14.9644 8.7741     4.5833  12.8732
-#> Precision for gen                        7.0004 2.6400     3.1726   6.5569
+#> Precision for the Gaussian observations 12.2230 3.0395     7.2296  11.8925
+#> Precision for rep_block_id              14.9651 8.7757     4.5831  12.8732
+#> Precision for gen                        7.0003 2.6399     3.1726   6.5569
 #>                                         0.975quant    mode
-#> Precision for the Gaussian observations    19.1151 11.2917
-#> Precision for rep_block_id                 37.7763  9.6129
-#> Precision for gen                          13.4064  5.7508
+#> Precision for the Gaussian observations    19.1161 11.2912
+#> Precision for rep_block_id                 37.7820  9.6123
+#> Precision for gen                          13.4059  5.7509
 #> 
 #> -- Convergence -----------------------------------------------
 #>   Engine    : INLA nested Laplace approximation
@@ -119,9 +124,9 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>   corrected marginal: 3.81e-07
 #>   Numerical confirm: PASS
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2926127 0.2289852 0.3715754
-#> 2 sd_rep:block 0.2880212 0.1632108 0.4677374
-#> 3       sd_gen 0.3973737 0.2736023 0.5610333
+#> 1        sigma 0.2926117 0.2289789 0.3715709
+#> 2 sd_rep:block 0.2880204 0.1631987 0.4677452
+#> 3       sd_gen 0.3973737 0.2736067 0.5610298
 ```
 
 `estimate` is the posterior mean. The interval is a **credible interval**: on
@@ -146,10 +151,10 @@ cannot leave the range the function maps into:
 ``` r
 h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
 range(h2[, "h2"])
-#> [1] 0.3105593 0.8882866
+#> [1] 0.2960232 0.8983319
 quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
 #>      2.5%       50%     97.5% 
-#> 0.4267337 0.6430456 0.8208845
+#> 0.4197655 0.6432970 0.8053794
 ```
 
 Every draw lies in `[0, 1]`, so the interval does. No asymptotics were used.

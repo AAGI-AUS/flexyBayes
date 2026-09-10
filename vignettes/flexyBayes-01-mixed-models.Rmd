@@ -1,6 +1,11 @@
 ---
 title: "Mixed models in brief"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
 vignette: >
   %\VignetteIndexEntry{Mixed models in brief}
   %\VignetteEngine{knitr::rmarkdown}
@@ -89,7 +94,7 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>   Engine:         INLA Laplace
 #>   N        : 72 design rows, 72 observed responses
 #>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 1.5 sec
+#>   Runtime  : 1.2 sec
 #> 
 #> -- Fixed effects (posterior mean, 95% credible interval) --------
 #>         term estimate std.error conf.low conf.high
@@ -110,13 +115,13 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #> 
 #> -- Hyperparameters (INLA, precision scale) ---------------------
 #>                                            mean     sd 0.025quant 0.5quant
-#> Precision for the Gaussian observations 12.2229 3.0393     7.2298  11.8924
-#> Precision for rep_block_id              14.9645 8.7743     4.5837  12.8730
-#> Precision for gen                        7.0002 2.6397     3.1726   6.5569
+#> Precision for the Gaussian observations 12.2228 3.0393     7.2295  11.8925
+#> Precision for rep_block_id              14.9642 8.7734     4.5838  12.8731
+#> Precision for gen                        7.0003 2.6398     3.1725   6.5569
 #>                                         0.975quant    mode
-#> Precision for the Gaussian observations    19.1159 11.2911
-#> Precision for rep_block_id                 37.7774  9.6128
-#> Precision for gen                          13.4051  5.7511
+#> Precision for the Gaussian observations    19.1153 11.2915
+#> Precision for rep_block_id                 37.7743  9.6132
+#> Precision for gen                          13.4056  5.7510
 #> 
 #> -- Convergence -----------------------------------------------
 #>   Engine    : INLA nested Laplace approximation
@@ -126,9 +131,9 @@ summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>   corrected marginal: 3.81e-07
 #>   Numerical confirm: PASS
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2926119 0.2289805 0.3715672
-#> 2 sd_rep:block 0.2880190 0.1632086 0.4677145
-#> 3       sd_gen 0.3973742 0.2736151 0.5610332
+#> 1        sigma 0.2926128 0.2289836 0.3715736
+#> 2 sd_rep:block 0.2880186 0.1632153 0.4677094
+#> 3       sd_gen 0.3973746 0.2736096 0.5610380
 ```
 
 Three variances, one per stratum. Read them as standard deviations on the
@@ -151,7 +156,7 @@ field.
 ``` r
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
 #>   functional  estimate    median std.error  conf.low conf.high
-#> 1         h2 0.6351691 0.6435453 0.1034997 0.4150573 0.8132233
+#> 1         h2 0.6364475 0.6410511 0.1012723 0.4363606 0.8171327
 ```
 
 Around two thirds here. That number is the reason for the model: it is not
@@ -167,10 +172,10 @@ The shrunken genotype means -- BLUPs in the REML vocabulary -- come back with
 ``` r
 head(ranef(fit)$gen, 4)
 #>   group level     estimate std.error   conf.low  conf.high
-#> 1   gen   G01  0.497121640 0.1904686  0.1243114  0.8737101
-#> 2   gen   G02  0.005307344 0.1854221 -0.3595168  0.3703372
-#> 3   gen   G03 -0.777465618 0.1973561 -1.1685580 -0.3925544
-#> 4   gen   G04  0.005927140 0.1858493 -0.3606933  0.3708349
+#> 1   gen   G01  0.497124923 0.1904677  0.1243162  0.8737115
+#> 2   gen   G02  0.005307195 0.1854212 -0.3595152  0.3703353
+#> 3   gen   G03 -0.777470576 0.1973553 -1.1685611 -0.3925607
+#> 4   gen   G04  0.005927353 0.1858484 -0.3606915  0.3708332
 ```
 
 # What to read next
