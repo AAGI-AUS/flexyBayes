@@ -17,14 +17,20 @@
 # requires an ADR amendment. fb_from_*() are ingest adapters, not verbs,
 # and are tracked separately. A third engine pin existed briefly on this
 # list between ADR 0031 Phase 3 and the 0.9.3 withdrawal of its engine
-# entirely (see NEWS.md) -- the roster is back to six, which is also
-# what ADR 0030 §3 originally ratified.
+# entirely (see NEWS.md).
+#
+# triangulate() left the roster at 0.10.0.9000. It was demoted, not deleted:
+# the R Journal review objected to cross-engine agreement being sold as the
+# package's signature output, which it should not be -- both fits come from
+# the same parsed representation, so a mistranslation is common-mode and
+# triangulates perfectly. It survives as an internal validation harness and
+# as the oracle the backend-conformance tests read, and is reachable as
+# flexyBayes:::triangulate(). Five verbs.
 .FB_VERBS <- c(
   "flexybayes",
   "fb_brms",
   "fb_inla",
   "fb_plan",
-  "triangulate",
   "validate_approximation"
 )
 
@@ -67,12 +73,17 @@
 # (a) Verb-count invariant                                          #
 # ---------------------------------------------------------------- #
 
-test_that("exactly six verbs are exported (ADR 0030 §3)", {
+test_that("exactly five verbs are exported (ADR 0030 §3)", {
   exports <- getNamespaceExports("flexyBayes")
   for (v in .FB_VERBS) {
     expect_true(v %in% exports, info = paste("verb not exported:", v))
   }
-  expect_length(.FB_VERBS, 6L)
+  expect_length(.FB_VERBS, 5L)
+  # And the demoted one is genuinely gone from the surface, not merely
+  # absent from this list.
+  expect_false("triangulate" %in% exports)
+  expect_false("triangulate_genomic" %in% exports)
+  expect_true(is.function(flexyBayes:::triangulate))
 })
 
 test_that("the verb list is stable (snapshot)", {

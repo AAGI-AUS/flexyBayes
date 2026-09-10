@@ -27,8 +27,12 @@ install.packages("brms")
 
 # flexyBayes -- not yet on CRAN
 # install.packages("remotes")
-remotes::install_github("AAGI-AUS/flexyBayes")
+remotes::install_github("AAGI-AUS/flexyBayes", build_vignettes = TRUE)
 ```
+
+`build_vignettes = TRUE` matters: `remotes::install_github()` does not build
+them by default, and without it `vignette(package = "flexyBayes")` comes back
+empty.
 
 Either engine is optional. A model sent to an engine that is not installed is
 refused with a message naming what to install.
