@@ -525,11 +525,21 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
   )
   out <- flexyBayes:::lgm_gate(fb)
   text <- capture.output(print(out))
-  expect_true(any(grepl("flexyBayes: INLA backend refused", text)))
+  expect_true(any(grepl("INLA cannot fit this model", text, fixed = TRUE)))
   expect_true(any(grepl("\\[family_allowlist\\]", text)))
   expect_true(any(grepl("\\[latent_class\\]", text)))
-  expect_true(any(grepl("Re-route", text)))
-  expect_true(any(grepl("Override", text)))
+  # The refusal names one route onward and one place to read the rest.
+  # It used to print four lines on what backend = "auto" already does, an
+  # unconditional roadmap sentence about mixtures, and a two-argument
+  # override incantation -- sixteen lines for a two-rule refusal, which is
+  # what the R Journal review read.
+  expect_true(any(grepl("backend = \"brms\"", text, fixed = TRUE)))
+  expect_true(any(grepl("?lgm_gate", text, fixed = TRUE)))
+  # The citation still belongs to the latent-class rule's own reason, which
+  # this fixture triggers. What is gone is the unconditional advert that
+  # printed it on every refusal, mixture or not.
+  expect_false(any(grepl("on the roadmap", text, fixed = TRUE)))
+  expect_lte(length(text), 8L)
 })
 
 # ---------------------------------------------------------------- #
@@ -570,10 +580,9 @@ test_that("an explicit inla request refused by the gate raises a typed condition
   expect_s3_class(err, "error")
 
   # Every existing gate message survives verbatim inside the condition.
-  expect_match(conditionMessage(err), "backend = \"inla\" refused by lgm_gate")
-  expect_match(conditionMessage(err), "flexyBayes: INLA backend refused")
-  expect_match(conditionMessage(err), "Re-route")
-  expect_match(conditionMessage(err), "Override")
+  expect_match(conditionMessage(err), "INLA cannot fit this model", fixed = TRUE)
+  expect_match(conditionMessage(err), "backend = \"brms\"", fixed = TRUE)
+  expect_match(conditionMessage(err), "?lgm_gate", fixed = TRUE)
 
   # The check-list object itself rides on the condition, so a caller can
   # read the rules rather than parse the printed text.

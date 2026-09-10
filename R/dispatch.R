@@ -1123,10 +1123,11 @@
         primary_rule <- gated$primary_rule %||% NA_character_
         stop(.fb_refusal_condition(
           reason_code = "inla_gate_refused",
-          message = paste0(
-            "backend = \"inla\" refused by lgm_gate():\n",
-            msg
-          ),
+          # The printed refusal already opens with what happened, so a
+          # second header above it said the same thing twice -- which is
+          # how a refusal grows to sixteen lines one reasonable addition
+          # at a time.
+          message = msg,
           family_class = if (!is.na(primary_rule)) {
             paste0("flexybayes_lgm_", primary_rule)
           } else {

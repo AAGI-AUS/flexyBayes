@@ -1,5 +1,49 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **`vpredict()` on INLA drew its variance components from the integration
+  grid, not from the posterior.** The generic draws path uses
+  `INLA::inla.posterior.sample()`, which resamples the configurations INLA
+  assembled the fit from. Those are coherent -- each latent draw is paired
+  with the hyperparameters it was drawn under -- but the hyperparameters
+  themselves take only as many distinct values as the grid has points: on a
+  24-genotype alpha design, 1000 draws carried **15** unique values. A
+  heritability built on them had a posterior supported on 15 atoms while its
+  quantiles were reported as a smooth interval, and its minimum *was* its
+  2.5th percentile.
+
+  `vpredict()` now draws from the fitted joint hyperparameter posterior via
+  `INLA::inla.hyperpar.sample()`, whose columns carry the same names the
+  canonical map already keys on. The point estimate barely moves (0.633 to
+  0.638 on that fit); the tails do -- the interval widens from
+  \[0.460, 0.800\] to \[0.426, 0.816\], and the support now properly exceeds
+  it. A test asserts more than half the draws are distinct and that the range
+  is wider than the central interval, which a 15-atom distribution cannot be.
+
+* **The refusal a user reads is four lines, not sixteen.** The R Journal
+  review of 0.10.0 quoted one back. It carried a per-rule diagnostic string,
+  four lines explaining what `backend = "auto"` already does, an
+  unconditional sentence about a roadmap item for mixtures -- printed whether
+  or not the model contained one -- a two-argument override incantation, and
+  a second header above the one the printed refusal already had. It now
+  carries the rule ids, the reasons, and one route onward, with `?lgm_gate`
+  for the rest. Measured on the same model: 1225 characters to 531.
+
+* **README rebuilt to what a reader needs.** It was 371 lines of which 178
+  were commented-out prose, and it carried claims the code had overtaken --
+  `fa(env, k):gen` was still listed as "refused (no active engine)" in two
+  places. It is now 147 lines: what the package does, how to install it, one
+  worked example with its printed output and an `lme4` cross-check, the
+  generated capability table, and where to report problems. The separate
+  "Supported ASReml syntax" and "Model types" sections are consolidated into
+  the one generated table plus a syntax vignette, which is what the review
+  asked for.
+
+* **The vignette deck is being rebuilt from eight tutorials to four pages**:
+  mixed models in brief, Bayesian estimation in brief, the ASReml syntax
+  covered and not covered, and one worked illustration. The previous deck is
+  retained under `vignettes-reserve/`, excluded from the build, rather than
+  deleted.
+
 * **A failed brms fit no longer blames the model for a broken compiler.** The
   brms path compiles a Stan program, and a missing or mismatched C++ toolchain
   reaches R as a downstream symptom -- `invalid connection` -- while the

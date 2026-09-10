@@ -170,60 +170,40 @@ is_lgm_refusal <- function(x) inherits(x, "lgm_refusal")
 
 #' Print method for lgm_refusal -- LGM feasibility refusal
 #'
-#' Internal S3 method, registered for dispatch only. Emits the
-#' structured refusal template: rule id + one-line gloss +
-#' diagnostic + re-route hint + override hint + docs pointer.
+#' Internal S3 method, registered for dispatch only. Prints why INLA
+#' cannot fit the model and what to do about it, and nothing else.
+#'
+#' The refusal used to print sixteen lines: a per-rule diagnostic string,
+#' four lines explaining what `backend = "auto"` already does, an
+#' unconditional sentence about a roadmap item for mixtures -- printed
+#' whether or not the model contained one -- and a two-argument override
+#' incantation. The R Journal review of 0.10.0 read one of these and said
+#' so. A refusal is read by someone who wanted a fit, so it now carries the
+#' reasons and one route onward; `rule_id` and `diagnostic` stay on the
+#' object for anything that wants to branch on them, and `?lgm_gate`
+#' documents the override.
 #'
 #' @param x   An `lgm_refusal` object, as returned by the feasibility
 #'   gate when a model falls outside the latent Gaussian class.
 #' @param ... Ignored. Present for compatibility with the generic.
-#' @returns Invisibly, `x` unchanged. Called for the refusal template it
-#'   prints.
+#' @returns Invisibly, `x` unchanged. Called for the refusal it prints.
+#' @seealso `vignette("flexyBayes-03-syntax")` lists every spelling the
+#'   package covers and what each refusal means.
 #' @keywords internal
 #' @export
 print.lgm_refusal <- function(x, ...) {
-  cat("flexyBayes: INLA backend refused for this model.\n")
-  cat(
-    "Reasons (",
-    x$n_failures,
-    " structural failure",
-    if (x$n_failures != 1L) "s" else "",
-    "):\n",
-    sep = ""
-  )
+  cat("flexyBayes: INLA cannot fit this model.\n")
   for (f in x$failures) {
     cat("  - [", f$rule_id, "] ", f$reason, "\n", sep = "")
-    if (!is.null(f$diagnostic)) {
-      cat("    Diagnostic: ", f$diagnostic, "\n", sep = "")
-    }
   }
-  if (length(x$warnings)) {
-    cat("Warnings:\n")
-    for (w in x$warnings) {
-      cat("  - [", w$rule_id, "] ", w$warning, "\n", sep = "")
-    }
+  for (w in x$warnings) {
+    cat("  ! [", w$rule_id, "] ", w$warning, "\n", sep = "")
   }
   cat(
-    "Re-route: brms is the other active engine -- pass backend = ",
-    "\"brms\"\n  (or call fb_brms()) when it can represent the model. ",
-    "Under the\n  default backend = \"auto\" that re-route is already ",
-    "attempted, and\n  auto refuses when brms cannot represent the model ",
-    "either.\n",
+    "Fit it with backend = \"brms\", or see ?lgm_gate for the rule ids ",
+    "and the override.\n",
     sep = ""
   )
-  cat(
-    "For mixtures with <= 2 components, the planned ",
-    "INLA-within-MCMC escape\n  (Gomez-Rubio & Rue 2018) is on ",
-    "the roadmap.\n",
-    sep = ""
-  )
-  cat("Override (not recommended): lgm_gate(fb, force = \"inla\",\n")
-  cat(
-    "  acknowledge_silent_bias_risk = TRUE, reason = \"<your ",
-    "reason>\")\n",
-    sep = ""
-  )
-  cat("Docs: vignette(\"flexyBayes-02-formulas-and-dispatch\").\n")
   invisible(x)
 }
 

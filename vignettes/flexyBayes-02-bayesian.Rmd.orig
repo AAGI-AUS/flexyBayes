@@ -1,0 +1,116 @@
+---
+title: "Bayesian estimation in brief"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Bayesian estimation in brief}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(flexyBayes)
+data(john.alpha, package = "agridat")
+```
+
+The model in `vignette("flexyBayes-01-mixed-models")` is the same model
+ASReml fits. What changes here is how its parameters are described.
+
+# One sentence
+
+REML returns a point estimate for each variance component and a standard
+error. A Bayesian fit returns a **distribution** for each one, and every
+statement -- an interval, a heritability, a probability that one genotype
+beats another -- is read off that distribution rather than derived from an
+asymptotic argument about it.
+
+# The prior
+
+Before seeing data you state what values a parameter could plausibly take.
+That is the prior. It is combined with the likelihood to give the posterior.
+
+flexyBayes sets a weakly-informative default scaled to your response, and
+tells you what it chose:
+
+```{r prior}
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla"
+)
+
+prior_summary(fit)
+```
+
+Two things about that default are worth stating plainly.
+
+It is a **choice**, and a different choice gives a different answer. With
+plenty of data the difference is negligible, because the likelihood dominates.
+With a variance estimated from a handful of levels it is not negligible at
+all, and that is the case where it earns its place.
+
+Where an engine's own default would be used instead, the `prior` column of
+`summary()` says `engine default` rather than naming a prior the fit never
+saw. A structure whose hyperparameters have no standard-deviation slot -- the
+unstructured and factor-analytic covariances on INLA -- is reported that way.
+
+# The posterior
+
+```{r varcomp}
+summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
+```
+
+`estimate` is the posterior mean. The interval is a **credible interval**: on
+this model and this prior, the parameter lies inside it with probability 0.95.
+That is the statement most people believe a confidence interval makes, and
+here it is the statement being made.
+
+# Why it matters in practice
+
+## Any function of the parameters is exact
+
+Heritability is a ratio of variances. In REML you get it by substituting the
+estimates and propagating the standard errors with the delta method, which
+linearises the ratio and assumes normality on a scale where neither holds
+near a boundary. That is how an ASReml heritability acquires a standard error
+implying an interval below zero.
+
+Here the ratio is computed on every draw, so its posterior is exact and
+cannot leave the range the function maps into:
+
+```{r h2}
+h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
+range(h2[, "h2"])
+quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
+```
+
+Every draw lies in `[0, 1]`, so the interval does. No asymptotics were used.
+
+On the INLA path these draws come from the fitted joint hyperparameter
+posterior rather than from the integration grid the fit was assembled on. The
+distinction matters only in the tails, and only for a functional -- but that
+is precisely where an interval is read.
+
+## A variance near zero stays honest
+
+REML can put a variance component exactly at zero and report a small standard
+error beside it, which reads as certainty that the effect is absent. It is
+usually a boundary, not a finding. flexyBayes reports a component that has run
+to the boundary as unidentified, with a warning naming the term, rather than
+as a confident zero.
+
+## Small trials are where the difference bites
+
+With many levels per variance component the posterior mean sits close to the
+REML estimate and the interval close to the Wald interval. With few levels
+they diverge, the asymptotic argument behind REML's standard error is weakest,
+and the prior is doing real work. `vignette("flexyBayes-04-illustration")`
+degrades a complete trial on purpose to show how far apart they get.
+
+# What it costs
+
+Approximation, or time, and you choose which. The INLA path approximates the
+posterior and returns in seconds. The brms path samples it and returns in
+minutes. For the models in this package the two agree on the certified
+overlap class, and the package reports which engine answered.

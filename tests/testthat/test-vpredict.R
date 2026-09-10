@@ -87,6 +87,28 @@ test_that("the interval respects the boundary the delta method does not", {
   expect_true(all(d[, "h2"] >= 0 & d[, "h2"] <= 1))
 })
 
+test_that("the functional's draws are continuous, not INLA's integration grid", {
+  # The generic draws path takes hyperparameters from
+  # inla.posterior.sample(), which resamples the stored integration
+  # configurations: 1000 draws carried 15 distinct values on this fixture,
+  # so a functional built on them had a posterior supported on 15 atoms
+  # while its quantiles were reported as a smooth interval. The point
+  # estimate was unaffected; the tails were not. vpredict() draws from the
+  # joint hyperparameter posterior instead.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  fit <- .vp_fit(.vp_fixture())
+  d <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
+                n_draws = 1000L, draws = TRUE)
+  expect_gt(length(unique(d[, "h2"])), 500L)
+  # And the support is genuinely wider than the central interval, which a
+  # 15-atom distribution cannot be: its min IS its 2.5th percentile.
+  q <- stats::quantile(d[, "h2"], c(0.025, 0.975), names = FALSE)
+  expect_lt(min(d[, "h2"]), q[[1L]])
+  expect_gt(max(d[, "h2"]), q[[2L]])
+})
+
 test_that("draws = TRUE returns one column per functional", {
   skip_if_not_installed("INLA")
   skip_on_cran()

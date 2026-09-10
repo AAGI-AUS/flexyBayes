@@ -18,6 +18,69 @@
 # not engine-native ones: .fb_canonical_draws() has already renamed and
 # put every variance component on the standard-deviation scale.
 
+# .fb_vpredict_draws() --- variance-component draws fit to be transformed.
+#
+# The generic draws path takes hyperparameters from
+# INLA::inla.posterior.sample(), which resamples the stored integration
+# configurations. That is coherent -- each latent draw is paired with the
+# hyperparameters it was drawn under -- but the hyperparameters themselves
+# take only as many distinct values as INLA's integration grid has points.
+# Measured on a 24-genotype alpha design: 1000 draws, 15 unique values. A
+# functional built on those has a posterior supported on 15 atoms, and
+# reporting its quantiles as a smooth interval overstates what was computed.
+#
+# INLA::inla.hyperpar.sample() draws from the fitted joint hyperparameter
+# density instead, and returns 1000 distinct values for the same fit. Its
+# columns are named exactly as rownames(summary.hyperpar), which is what
+# canonical_names() maps from, so the same rename and the same
+# precision-to-SD transform apply unchanged.
+#
+# vpredict() is about functions of variance components, so the pairing the
+# configuration sampler preserves is not needed here: every component the
+# functional can name is a hyperparameter. Latent draws are kept from the
+# generic path for the parameters that are not.
+.fb_vpredict_draws <- function(object, n_draws) {
+  post <- .fb_canonical_draws(object, n_samples = n_draws)
+  if (!inherits(object, "flexybayes_inla") || is.null(object$inla)) {
+    return(post)
+  }
+  if (!requireNamespace("INLA", quietly = TRUE)) {
+    return(post)
+  }
+  smp <- tryCatch(
+    INLA::inla.hyperpar.sample(n_draws, object$inla),
+    error = function(e) NULL
+  )
+  if (is.null(smp) || !is.matrix(smp) || nrow(smp) != n_draws) {
+    warning(
+      "vpredict(): could not draw from the joint hyperparameter posterior, ",
+      "so the variance components carry INLA's integration grid rather than ",
+      "a continuous posterior. Intervals on them are coarser than they look.",
+      call. = FALSE
+    )
+    return(post)
+  }
+  cn <- tryCatch(
+    canonical_names(object, drop = TRUE),
+    error = function(e) list(map = character(0), transform = list())
+  )
+  name_map <- cn$map %||% character(0)
+  value_transform <- cn$transform %||% list()
+  for (native in colnames(smp)) {
+    canonical <- name_map[[native]] %||% NA_character_
+    if (is.na(canonical) || !canonical %in% names(post)) {
+      next
+    }
+    v <- smp[, native]
+    tf <- value_transform[[native]]
+    if (is.function(tf)) {
+      v <- tf(v)
+    }
+    post[[canonical]] <- as.numeric(v)
+  }
+  post
+}
+
 #' Posterior functionals of the variance components
 #'
 #' The exact posterior of any function of the fitted variance components --
@@ -84,7 +147,7 @@ vpredict.flexybayes <- function(
     ))
   }
 
-  post <- .fb_canonical_draws(object, n_samples = n_draws)
+  post <- .fb_vpredict_draws(object, n_draws = n_draws)
   post <- post[vapply(post, is.numeric, logical(1L))]
   if (!length(post)) {
     stop(.fb_refusal_condition(

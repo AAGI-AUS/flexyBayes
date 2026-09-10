@@ -66,3 +66,5 @@ Rplots\.pdf$
 ^validation$
 ^review$
 ^inst/extdata/inla-verification/
+^vignettes-reserve$
+^vignettes-reserve/.*$
