@@ -80,3 +80,41 @@ classified `covariance-family`, meaning the fitted covariance set is the same
 after a documented parameter map. On INLA that claim is not supported by this
 measurement and the row must not keep it unqualified. The brms route was not
 exercised here and is untouched by this finding.
+
+## Disposition, 2026-09-11
+
+Committed, and the claim surfaces brought into line with the measurement.
+
+- The registry row *Unstructured covariance over a factor, on INLA* is
+  reclassified from `covariance-family` to **`analogue`**, with the
+  measurement in the row rather than in a note beneath it. The change
+  propagates to `inst/TRANSLATION.md`, the shipped CSV, and -- through the
+  capability matrix -- to `README.md` and `inst/KNOWN_ISSUES.md`, where it is
+  open issue 1. The capability-matrix note previously said the Wishart
+  "shrinks the correlations toward each other", which is the wrong direction
+  as well as the wrong claim.
+- Scenarios `06_us_dim2` and `07_us_dim3` are committed, and the tranche has
+  been re-run from a committed SHA so the banked evidence names the code it
+  came from.
+- The scale-invariance check is now a test rather than an exercise, in
+  `tests/testthat/test-metamorphic-scale-invariance.R`. It is two-sided: an
+  invariance **gate** on the validated structures, which must pass, and a
+  **tripwire** on this defect, which asserts the gap and names what to close
+  when the gap goes away. A defect left as a silent skip becomes an unknown
+  defect.
+- Decision recorded at
+  `ledger/r-package/2026-09-11-us-inla-demoted-to-analogue.cairn.md`.
+
+## One thing measured while writing that test
+
+The rescaled fit does not converge, and says so. At a tenfold response scale
+the fit returns `Mode status: 6` and `Numerical confirm: FAIL`, and the
+package warns. **The unscaled fit reports `Mode status: 0` and passes its
+numerical confirm**, and it is the one a user actually runs, and it is wrong.
+
+That is the same shape as O01b, one level along. The numerical gate is not
+blind here -- it fires on the harder problem and stays quiet on the easier one
+that happens to be misspecified. A gate that passes the fit you will use and
+fails the fit you will not is worse than no gate for this purpose, because it
+reads as assurance. Whatever the eventual cause turns out to be, a repair has
+to be judged on the unscaled fit, not on whether the warning appears.

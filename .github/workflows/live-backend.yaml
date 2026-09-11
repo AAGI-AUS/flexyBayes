@@ -75,12 +75,13 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          # Measured against the 16 anchor files: 14 touch brms, 8 lme4,
-          # 3 mgcv, and the substrates come from agridat. A job that installs
-          # less would skip, and this job fails on a skip.
+          # Enumerated from the anchor files themselves rather than guessed:
+          # every `pkg::`, `library(pkg)` and `skip_if_not_installed("pkg")`
+          # they contain, minus base and this package's own Imports. A job
+          # that installs less would skip, and a skip here is a failure.
           extra-packages: >-
             any::testthat, any::withr, any::pkgload, any::lme4, any::agridat,
-            any::mgcv, any::brms
+            any::mgcv, any::brms, any::MASS, any::posterior, any::sommer
           dependencies: '"hard"'
 
       - name: Install INLA
@@ -116,17 +117,36 @@ jobs:
             reporter = "summary"
           )
           df <- as.data.frame(res)
-          n_skip <- sum(df$skipped)
-          cat("skipped:", n_skip, "\n")
-          # The job's whole purpose is that these do not skip. A run that
-          # skips them is a green tick over nothing, which is the defect
-          # this job exists to remove.
-          if (n_skip > 0L) {
-            stop("live-backend job skipped ", n_skip,
-                 " test(s); the skips it exists to defeat are still firing.",
-                 call. = FALSE)
-          }
           if (sum(df$failed) > 0L || any(df$error)) {
             stop("live-backend failures: ", sum(df$failed), call. = FALSE)
+          }
+
+          # The job exists to defeat two skip families, so it fails on those
+          # two and reports the rest. "Fail on any skip at all" would be
+          # brittle for the wrong reason: an optional comparison package
+          # missing from a runner is a different fact from a live backend
+          # path being skipped, and conflating them teaches maintainers to
+          # re-run the job rather than read it.
+          reasons <- unlist(lapply(res, function(file_res) {
+            vapply(
+              Filter(function(r) inherits(r, "expectation_skip"), file_res$results),
+              function(r) conditionMessage(r),
+              character(1)
+            )
+          }), use.names = FALSE)
+          cat("skipped:", length(reasons), "\n")
+          for (r in unique(reasons)) cat("  -", r, "\n")
+
+          defeated <- grepl("On CRAN|On CI|NOT_CRAN", reasons, ignore.case = TRUE)
+          if (any(defeated)) {
+            stop(sum(defeated),
+                 " test(s) skipped for CRAN/CI, which is what this job unsets. ",
+                 "A green tick over those is a green tick over nothing.",
+                 call. = FALSE)
+          }
+          if (length(reasons)) {
+            cat("note:", length(reasons),
+                "skip(s) for reasons this job does not control ",
+                "(an absent optional package, an unavailable toolchain).\n")
           }
         shell: Rscript {0}
