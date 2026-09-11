@@ -89,7 +89,19 @@ R_PROFILE_USER=/dev/null R_LIBS_USER="$LIB:$ASREML_LIB" \
 
 SCENARIOS=("$@")
 if [ ${#SCENARIOS[@]} -eq 0 ]; then
-  SCENARIOS=($("$R45HOME/bin/R" --no-echo --no-restore -e \
+  # R_PROFILE_USER=/dev/null, exactly as the per-scenario calls below set it.
+  # Without it this line reads ~/.Rprofile, which sources a config that calls
+  # requireNamespace("data.table"); under the 4.5 shim that dyn.load
+  # segfaults, and the run dies before a single scenario starts:
+  #
+  #   *** caught segfault *** address 0x0, cause 'invalid permissions'
+  #   1: dyn.load(file, DLLpath = DLLpath, ...)
+  #   8: requireNamespace("data.table", quietly = TRUE)
+  #
+  # The no-argument form is the documented default and had never been run --
+  # every previous tranche named its scenarios, which takes this branch out of
+  # the path entirely.
+  SCENARIOS=($(R_PROFILE_USER=/dev/null "$R45HOME/bin/R" --no-echo --no-restore -e \
     "source(\"$SRC/data-raw/asreml_oracle/scenarios.R\"); cat(names(scenario_registry()))"))
 fi
 
