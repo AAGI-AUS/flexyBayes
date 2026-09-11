@@ -118,3 +118,45 @@ that happens to be misspecified. A gate that passes the fit you will use and
 fails the fit you will not is worse than no gate for this purpose, because it
 reads as assurance. Whatever the eventual cause turns out to be, a repair has
 to be judged on the unscaled fit, not on whether the warning appears.
+
+## The banked run, and what three refits actually show
+
+The numbers at the top of this finding come from the first run, which was made
+from an uncommitted tree. The evidence that now ships was produced at commit
+`8638306` on a clean tree, from `git archive`, with the scenarios asserting
+the correlation rather than only the fixed effects.
+
+| Quantity | ASReml | flexyBayes (banked) | Three refits |
+|---|---|---|---|
+| correlation, 2 environments | 0.930 | **0.142** | 0.141 to 0.147 |
+| correlation, C1 vs C2 (3 env) | 0.898 | **0.198** | 0.171 to 0.198 |
+| correlation, C1 vs C3 | 0.915 | **0.231** | 0.220 to 0.238 |
+| correlation, C2 vs C3 | 0.955 | **0.320** | 0.309 to 0.320 |
+| genotype variances, 2 env | 23.4, 33.4 | 124.3, 132.6 | |
+| residual, 2 env | 297.0 | 281.6 | |
+
+**The gap is the finding; the third digit is one run's.** ASReml returns the
+same correlation on every refit. Ours moves in the second decimal -- 0.171 to
+0.198 on one pair is a 16 per cent spread -- so the earlier sentence in this
+finding, that three identical fits agree "to 1 per cent", was true of the
+*variance components* the repeatability screen measures and is not true of the
+correlations derived from them. The claim surfaces now quote the banked value
+with the observed range beside it rather than a single figure that the next
+refit would contradict.
+
+## The instrument was also at fault, and that is the third time
+
+Scenarios 06 and 07 were added to test `us()`. On their first two runs they
+banked `numeric 1 pass / 0 fail` -- the intercept -- because the scenario
+schema had slots for variance ratios and BLUPs and none for a correlation, so
+`cmp_correlation()` and its declared 0.10 tolerance, both present in
+`compare.R` since SPEC.md was written, were never called. An oracle reporting
+a pass on the row its own finding says is wrong is worse than no oracle for
+that row.
+
+With the correlation asserted, scenario 06 reports `1 pass / 1 fail` and
+scenario 07 reports `0 pass / 4 fail`, which is what the measurement always
+said. This joins O03, where the comparator read sectioned residuals on the
+wrong scale, as the second defect found in the instrument rather than in the
+package, and the third instance overall of the rule that **the instrument is
+an artefact too**.

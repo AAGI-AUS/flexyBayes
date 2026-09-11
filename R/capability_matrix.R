@@ -148,14 +148,15 @@
       note = "One iidKd field on INLA (k = 2..5; wider refuses and names
         fa()), `(0 + f | g)` on brms. **On INLA this route does not
         reproduce ASReml's covariance.** Paired against ASReml 4.2.0.392 on
-        `agridat::besag.met` it returns a genetic correlation of 0.147 where
-        ASReml returns 0.930, with genotype variances four to five times
-        larger while the residual agrees; the answer is stable across
-        identical refits, so it is reproducible rather than noisy, and it is
-        not invariant to rescaling the response -- multiplying the response
-        by ten moves the correlation to -0.622. Read the correlations from
-        the brms route, which was not exercised in that comparison, or from
-        ASReml. An explicit SD prior refuses on INLA because iidKd has no
+        `agridat::besag.met` it returns a genetic correlation of 0.142 where
+        ASReml returns 0.930, and 0.198, 0.231 and 0.320 where ASReml returns
+        0.898, 0.915 and 0.955 over three environments, with genotype
+        variances four to five times larger while the residual agrees
+        closely. The gap reproduces across refits, so it is a stable wrong
+        answer rather than a noisy one, and it is not invariant to rescaling
+        the response -- multiplying the response by ten moves the correlation
+        to about -0.6. Read the correlations from the brms route, which was
+        not exercised in that comparison, or from ASReml. An explicit SD prior refuses on INLA because iidKd has no
         slot for one. The correlated sibling of
         the diagonal structure --
         `k(k+1)/2` parameters against `diag()`'s `k`. At one observation

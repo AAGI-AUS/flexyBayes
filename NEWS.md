@@ -2,18 +2,23 @@
 
 * **`us(f):g` on INLA is no longer described as covariance-family equivalent
   to ASReml's, because it is not.** Paired against ASReml 4.2.0.392 on
-  `agridat::besag.met`, the route returns a genetic correlation of 0.147 where
-  ASReml returns 0.930, and 0.171 / 0.220 / 0.309 against 0.898 / 0.915 /
+  `agridat::besag.met`, the route returns a genetic correlation of 0.142 where
+  ASReml returns 0.930, and 0.198 / 0.231 / 0.320 against 0.898 / 0.915 /
   0.955 over three environments, with genotype variances four to five times
-  larger while the residual variance agrees closely. Three identical refits
-  agree with each other to about one per cent, so this is a stable wrong
-  answer rather than a noisy one -- the harder kind to notice, and the kind a
-  repeatability screen rates as fine.
+  larger while the residual variance agrees closely. The gap reproduces across
+  refits -- three runs spanned 0.141 to 0.147 over two environments -- so this
+  is a stable wrong answer rather than a noisy one, the harder kind to notice
+  and the kind a repeatability screen rates as fine. The gap is the finding;
+  the third digit belongs to one run, and the banked fixture carries it.
 
   It also fails a check that needs no external reference at all. Multiplying
   the response by ten is an exact transformation under which a correlation is
-  invariant, and it moves the correlation to -0.622 and a variance ratio by a
-  factor of five. ASReml returns 0.930 at every scale.
+  invariant, and it moves the correlation to about -0.6 and a variance ratio
+  by a factor of five. ASReml returns 0.930 at every scale. The rescaled fit
+  also reports `Mode status: 6` and fails its numerical confirm, while the
+  unscaled fit -- the one a user runs, and the wrong one -- reports 0 and
+  passes. The gate fires on the harder problem and stays quiet on the easier
+  misspecified one.
 
   The translation registry row is now classified `analogue` rather than
   `covariance-family`, the capability matrix says which route to read the
