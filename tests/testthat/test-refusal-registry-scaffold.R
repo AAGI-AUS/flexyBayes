@@ -350,7 +350,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # argument, so b(c("x", "z")) became the three names c("c", "x", "z") and
   # failed inside the emitter with "the condition has length > 1"
   # (prior_target_not_a_single_name) (= 133).
-  expect_equal(length(entries), 133L)
+  # The selection module's covariance substrate adds three, all in the one
+  # place a wrong answer would be invisible. No admitted builder applies to
+  # the base fit, or the fit does not report what a builder needs
+  # (selection_covariance_not_buildable) (= 134); a covariance block has no
+  # Cholesky factor, refused rather than given jitter, because a silent
+  # repair there is misspecification wearing a passing test
+  # (selection_covariance_not_positive_definite) (= 135); and the dense
+  # covariance reference was asked for above its size cap, since it is an
+  # oracle for small cases and the deposit's V would be about 43 GB
+  # (selection_dense_reference_too_large) (= 136).
+  expect_equal(length(entries), 136L)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
@@ -360,6 +370,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("dsum_malformed" %in% entries)
   expect_true("fa_rank_missing" %in% entries)
   expect_true("pol_degree_invalid" %in% entries)
+  expect_true("selection_covariance_not_buildable" %in% entries)
+  expect_true("selection_covariance_not_positive_definite" %in% entries)
+  expect_true("selection_dense_reference_too_large" %in% entries)
   expect_true("multivariate_smooth_unsupported" %in% entries)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)

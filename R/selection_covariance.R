@@ -22,6 +22,27 @@
 # 73,341 observations is about 43 GB.
 
 
+# --- a quiet summary ------------------------------------------------ #
+
+# .fb_sel_summary() --- summary(object) without the 67 lines.
+#
+# summary.flexybayes_inla() and its two siblings call print() unconditionally
+# and return invisibly, so `s <- summary(fit)` prints and
+# `print(summary(fit))` prints twice. That is the wrong side of the S3
+# contract -- print.summary.flexybayes() already exists and is where the
+# printing belongs -- but the fix changes visible behaviour at fifteen test
+# call sites and in the vignettes, so it is not made here.
+#
+# The substrate calls summary() once per fold. Left alone, a ten-fold run
+# would emit several hundred lines of model summary into the console. This
+# wrapper is a local defence, not the repair.
+.fb_sel_summary <- function(object) {
+  out <- NULL
+  utils::capture.output(out <- summary(object))
+  out
+}
+
+
 # --- variance components ------------------------------------------- #
 
 # .fb_sel_variance_components() --- theta-hat under a named estimand.
@@ -53,7 +74,7 @@
   )
 ) {
   estimand <- match.arg(estimand)
-  vc <- summary(object)$varcomp
+  vc <- .fb_sel_summary(object)$varcomp
 
   if (is.null(vc) || nrow(vc) == 0L) {
     stop(.fb_refusal_condition(
