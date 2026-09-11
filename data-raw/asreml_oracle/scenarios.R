@@ -144,7 +144,21 @@ scenario_registry <- function() {
                                data = d, backend = "inla", verbose = FALSE)
       },
       ratios = list(),
-      blup = list()
+      blup = list(),
+      # The quantity us() claims to represent, and the one the scenario
+      # existed to test. Without this the run banked "1 pass" -- the
+      # intercept -- while the genetic correlation was 0.14 against 0.93,
+      # which is the instrument answering a question nobody asked. ASReml
+      # reports the covariance directly, so the correlation is reconstructed
+      # from its three parameters rather than read off a row.
+      correlations = list(
+        list(
+          label = "gen, C1 vs C2",
+          asreml = c(v1 = "env:gen!env_C1:C1", v2 = "env:gen!env_C2:C2",
+                     cov = "env:gen!env_C2:C1"),
+          flexybayes = "cor_gen__envC1__envC2"
+        )
+      )
     ),
 
     "07_us_dim3" = list(
@@ -172,7 +186,27 @@ scenario_registry <- function() {
                                data = d, backend = "inla", verbose = FALSE)
       },
       ratios = list(),
-      blup = list()
+      blup = list(),
+      correlations = list(
+        list(
+          label = "gen, C1 vs C2",
+          asreml = c(v1 = "env:gen!env_C1:C1", v2 = "env:gen!env_C2:C2",
+                     cov = "env:gen!env_C2:C1"),
+          flexybayes = "cor_gen__envC1__envC2"
+        ),
+        list(
+          label = "gen, C1 vs C3",
+          asreml = c(v1 = "env:gen!env_C1:C1", v2 = "env:gen!env_C3:C3",
+                     cov = "env:gen!env_C3:C1"),
+          flexybayes = "cor_gen__envC1__envC3"
+        ),
+        list(
+          label = "gen, C2 vs C3",
+          asreml = c(v1 = "env:gen!env_C2:C2", v2 = "env:gen!env_C3:C3",
+                     cov = "env:gen!env_C3:C2"),
+          flexybayes = "cor_gen__envC2__envC3"
+        )
+      )
     ),
 
     # ---- 15 Gaussian relative weights ------------------------------------ #

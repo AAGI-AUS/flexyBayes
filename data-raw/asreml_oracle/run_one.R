@@ -127,6 +127,27 @@ for (b in sc$blup) {
   checks[[length(checks) + 1L]] <- cmp_blup(blup_asr, blup_fb, b$label)
 }
 
+# Correlations. ASReml parameterises us() as variances and a covariance, so
+# the correlation is reconstructed from the three named parameters; flexyBayes
+# reports it directly. Comparing the reconstruction against the reported value
+# is the point -- it is the one quantity invariant to the two systems'
+# different parameterisations, and the one a breeder reads.
+for (r in sc$correlations %||% list()) {
+  nm <- r$asreml
+  if (all(nm %in% names(v_asr)) && r$flexybayes %in% names(v_fb)) {
+    r_asr <- unname(v_asr[[nm[["cov"]]]] /
+                      sqrt(v_asr[[nm[["v1"]]]] * v_asr[[nm[["v2"]]]]))
+    checks[[length(checks) + 1L]] <- cmp_correlation(
+      r_asr, unname(v_fb[[r$flexybayes]]), r$label
+    )
+  } else {
+    checks[[length(checks) + 1L]] <- list(
+      quantity = paste0("correlation: ", r$label), pass = NA,
+      note = "not asserted -- a named component was absent on one side"
+    )
+  }
+}
+
 record$checks <- checks
 record$elapsed_sec <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
 record$status <- "compared"
