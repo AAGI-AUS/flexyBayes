@@ -253,7 +253,11 @@ On both trials on this page, and under deletion at random, it changes the
 variance components hardly at all. That is not a disappointment, it is the
 ignorability result: when the reason a value is missing is unrelated to the
 value, the parameter posterior is the same whether the cell is carried or
-dropped. The factor-analytic fit also does not fail on a design with whole
+dropped. That identity is a statement about the posterior and not a promise
+about what an optimiser returns. The two settings hand the engine different
+index sets -- an intact design against a ragged one -- so on a fit whose mode
+is weakly identified they can land in different places even where the
+identity holds. The factor-analytic fit also does not fail on a design with whole
 genotype-by-environment cells removed, which an earlier note in this project
 predicted it would.
 
