@@ -13,12 +13,16 @@
 
   It also fails a check that needs no external reference at all. Multiplying
   the response by ten is an exact transformation under which a correlation is
-  invariant, and it moves the correlation to about -0.6 and a variance ratio
-  by a factor of five. ASReml returns 0.930 at every scale. The rescaled fit
-  also reports `Mode status: 6` and fails its numerical confirm, while the
-  unscaled fit -- the one a user runs, and the wrong one -- reports 0 and
-  passes. The gate fires on the harder problem and stays quiet on the easier
-  misspecified one.
+  invariant, and it must not decide whether the model fits at all. Here it
+  does. Across eight identical rescaled calls **none converged**, and the
+  correlation returned spanned **-0.894 to +0.686** -- nearly the whole of its
+  range -- against an unscaled value reproducible to 0.1448-0.1474. ASReml
+  returns 0.930 at every scale.
+
+  The rescaled fit at least says so, through a non-zero mode status and a
+  failed numerical confirm. The unscaled fit -- the one a user runs, and the
+  wrong one -- reports mode status 0 and passes its confirm. The gate fires on
+  the fit nobody would trust and stays quiet on the one they would.
 
   The translation registry row is now classified `analogue` rather than
   `covariance-family`, the capability matrix says which route to read the

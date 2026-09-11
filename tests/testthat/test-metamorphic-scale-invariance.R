@@ -105,15 +105,29 @@ test_that("a variance ratio is invariant to rescaling the response (nested strat
   fit_10 <- flexybayes(yield ~ gen, random = ~ rep + rep:block, data = d10,
                        backend = "inla", verbose = FALSE)
 
+  # Read `rep:block`, not `rep`. The choice is the oracle's own identification
+  # rule (compare.R: ASReml se/estimate < 0.5), applied to a metamorphic gate.
+  # `rep` has three levels here, so its variance component is weakly
+  # identified and its ratio wanders at the rescaled mode -- measured over
+  # three refits each: sd_rep/sigma 3.167, 3.168, 3.179 unscaled against
+  # 3.249, 3.122, 2.737 rescaled, a 19 per cent spread that fails a 10 per
+  # cent tolerance intermittently. `rep:block` has eighteen cells and is
+  # reproducible to four digits at both scales: 0.8953, 0.8953, 0.8952
+  # against 0.9058, 0.9077, 0.9060.
+  #
+  # The first version of this gate read `sd_rep` and was flaky. The fix is a
+  # better-identified quantity, not a wider tolerance: a metamorphic gate is
+  # only as reproducible as the component it reads, and SPEC.md is explicit
+  # that there is no outcome in which a tolerance moves.
   expect_equal(
-    .msi_ratio(fit_10, "sd_rep", "sigma"),
-    .msi_ratio(fit_1, "sd_rep", "sigma"),
+    .msi_ratio(fit_10, "sd_rep:block", "sigma"),
+    .msi_ratio(fit_1, "sd_rep:block", "sigma"),
     tolerance = 0.10
   )
 })
 
 
-test_that("us() on INLA still fails scale invariance -- tripwire for finding O04", {
+test_that("us() on INLA fails scale invariance -- tripwire for finding O04", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("agridat")
   skip_on_cran()
@@ -129,9 +143,11 @@ test_that("us() on INLA still fails scale invariance -- tripwire for finding O04
   d$env <- droplevels(d$env)
   d$gen <- droplevels(d$gen)
 
-  correlation <- function(dat) {
-    fit <- flexybayes(yield ~ env, random = ~ us(env):gen, data = dat,
-                      backend = "inla", verbose = FALSE)
+  fit_of <- function(dat) {
+    flexybayes(yield ~ env, random = ~ us(env):gen, data = dat,
+               backend = "inla", verbose = FALSE)
+  }
+  correlation_of <- function(fit) {
     vc <- summary(fit)$varcomp
     row <- vc[grepl("^cor_", vc$component), , drop = FALSE]
     if (!nrow(row)) {
@@ -140,37 +156,55 @@ test_that("us() on INLA still fails scale invariance -- tripwire for finding O04
     as.numeric(row$estimate[[1L]])
   }
 
-  c_1 <- correlation(d)
+  # What is asserted here, and what deliberately is not.
+  #
+  # Measured 2026-09-11 across identical calls on these rows:
+  #
+  #   unscaled,  n = 4   0.1448 to 0.1474          -- tight
+  #   rescaled x10, n = 8  -0.894 to +0.686, 0/8 converged
+  #
+  # So the two halves of this defect have to be asserted differently. The
+  # unscaled correlation is reproducible and is nowhere near ASReml's 0.930,
+  # and that is the finding a repair would move. The rescaled fit is not a
+  # wrong number -- it is not a converged fit at all, and the correlation it
+  # returns spans nearly the whole of [-1, 1] across identical calls.
+  #
+  # Two earlier versions of this test asserted a numeric property of the
+  # rescaled fit -- first a gap above 0.3, then a gap above the oracle's
+  # declared 0.10 correlation tolerance -- and both were flaky, because no
+  # numeric property of a non-convergent fit is assertable. That is the same
+  # error corrected elsewhere this session: quoting a digit a refit
+  # contradicts. What is stable about the rescaled arm is categorical, so
+  # that is what is asserted.
+  fit_1 <- fit_of(d)
+  c_1 <- correlation_of(fit_1)
+
   d10 <- d
   d10$yield <- 10 * d10$yield
-  c_10 <- correlation(d10)
+  fit_10 <- fit_of(d10)
 
-  # A correlation is invariant to rescaling the response. This one is not:
-  # measured 2026-09-11 at 0.150 and -0.622. The assertion is on the *gap*,
-  # not on either value, so the test does not become a specification for a
-  # particular wrong number.
-  observed_gap <- abs(c_10 - c_1)
+  # The stable half, and the one a repair would move.
   expect_true(
-    observed_gap > 0.3,
+    c_1 < 0.5,
     info = paste0(
-      "us() on INLA now looks scale-invariant (correlations ",
-      signif(c_1, 3), " and ", signif(c_10, 3), ", gap ",
-      signif(observed_gap, 3), "). If that is a repair rather than an ",
-      "accident: close finding O04 in data-raw/asreml_oracle/findings/, ",
-      "re-run oracle scenarios 06_us_dim2 and 07_us_dim3, reclassify the ",
-      "INLA us() row in R/translation_registry.R, update the capability ",
-      "matrix note and KNOWN_ISSUES open issue 1, and replace this tripwire ",
-      "with the invariance gate the two tests above use."
+      "the unscaled genetic correlation is ", signif(c_1, 3),
+      " against ASReml's 0.930 on these rows. If it has risen toward 0.930 ",
+      "this is a repair: close finding O04, re-run oracle scenarios ",
+      "06_us_dim2 and 07_us_dim3, reclassify the INLA us() row in ",
+      "R/translation_registry.R, update the capability-matrix note and ",
+      "KNOWN_ISSUES open issue 1, and replace this tripwire with the ",
+      "invariance gate the two tests above use."
     )
   )
 
-  # ASReml returns 0.930 on these rows at every scale. Whichever of ours is
-  # nearer, it is not near.
-  expect_true(
-    max(c_1, c_10) < 0.5,
+  # The rescaled half. Rescaling the response is an exact transformation and
+  # must not decide whether the model fits at all.
+  expect_false(
+    isTRUE(summary(fit_10)$converge$ok),
     info = paste0(
-      "the larger of the two correlations is ", signif(max(c_1, c_10), 3),
-      ", against ASReml's 0.930. See the note above before changing this."
+      "the tenfold-rescaled us() fit now reports convergence. Measured ",
+      "0 of 8 identical calls converging on 2026-09-11, so this is a ",
+      "change worth reading rather than a flake -- see the note above."
     )
   )
 })

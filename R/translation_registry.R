@@ -205,12 +205,15 @@
         "five times larger (124.3 and 132.6 against 23.4 and 33.4) while the",
         "residual agrees closely (281.6 against 297.0). The disagreement",
         "reproduces across refits and our own third digit does not: three",
-        "runs spanned 0.141 to 0.147 over two environments, so the gap is the",
-        "finding and the digits are one run's. Multiplying the response by",
-        "ten -- an exact transformation under which a correlation is",
-        "invariant -- moves it to about -0.6, and that rescaled fit does not",
-        "converge while the unscaled one reports mode status 0. The cause is",
-        "not established: the emitted iidKd hyper block has not been read"
+        "runs spanned 0.1448 to 0.1474 over two environments, so the gap is",
+        "the finding and the digits are one run's. Rescaling the response by",
+        "ten is an exact transformation and must not decide whether the model",
+        "fits, and here it does: across eight identical rescaled calls, none",
+        "converged and the returned correlation spanned -0.894 to +0.686,",
+        "nearly the whole of its range. The rescaled fit at least says so",
+        "through the convergence record, while the unscaled fit reports mode",
+        "status 0 and is wrong. The cause is not established: the emitted",
+        "iidKd hyper block has not been read"
       ),
       anchor = "test-wishart-scale.R"
     ),
