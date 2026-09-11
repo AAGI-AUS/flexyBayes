@@ -83,6 +83,7 @@
 #' @seealso [fb()] and [flexybayes()] for the universal fitting entry;
 #'   [fb_from_asreml()] for the other active dialect.
 #' @examples
+#' set.seed(1L)
 #' df <- data.frame(
 #'   y = rnorm(30),
 #'   x = rnorm(30),

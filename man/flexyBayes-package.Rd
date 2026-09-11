@@ -20,11 +20,6 @@ are at the experimental \code{lifecycle} stage. The same fitted object
 supports \code{summary()}, \code{predict()}, \code{emmeans::emmeans()},
 \code{marginaleffects::predictions()}, and the \verb{bayesplot::*} family.
 }
-\details{
-The package's signature feature is \code{triangulate()}, a cross-engine
-posterior comparison that quantifies disagreement between two fits of
-the same model on the same data.
-}
 \section{Entry points}{
 
 The entry points share a single internal model representation
@@ -40,21 +35,23 @@ refused by name for any other family -- see \code{?flexybayes}'s
 formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).
 \item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} -- the two active single-engine pins.
 \item \code{\link[=fb_prior]{fb_prior()}} -- penalised-complexity-canonical prior DSL.
-\item \code{\link[=triangulate]{triangulate()}} -- cross-engine posterior comparison.
+\item \code{\link[=vpredict]{vpredict()}} -- ASReml's own verb for a posterior functional of the
+variance components: heritabilities, ratios and genetic correlations,
+computed on the draws rather than by the delta method.
 }
 }
 
 \section{Vignettes}{
 
-Eight vignettes ship with the package, covering:
-getting started and what changes under a posterior, the formula
-surface together with dispatch and the inventory of unsupported
-structures, regression and hierarchical models, priors,
-multi-environment trials and genomics, spatial and temporal
-structure, reading and comparing a fit including cross-engine
-triangulation, and fitting from sufficient statistics when the data
-do not fit in memory. Each opens with a panel giving the ASReml line,
-the flexyBayes line, and what the posterior adds.
+Four vignettes ship with the package: \emph{Mixed models in brief},
+\emph{Bayesian estimation in brief}, \emph{The ASReml syntax flexyBayes covers},
+and \emph{ASReml and flexyBayes on the same trials}. The first two set up
+the model class and what changes under a posterior; the third is the
+formula surface together with dispatch and the inventory of structures
+that are refused; the fourth fits the same trials through both and
+shows where the answers agree and where they do not. The count here is
+checked against \verb{vignettes/} by a parity test, because a number written
+into prose is the first thing to drift.
 }
 
 \section{Capability}{

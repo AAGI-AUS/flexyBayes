@@ -34,6 +34,7 @@ repeatable without a seed, because nothing in the approximation is
 drawn.
 }
 \examples{
+set.seed(1L)
 df <- data.frame(
   yield = rnorm(40),
   geno  = factor(rep(letters[1:8], 5)),

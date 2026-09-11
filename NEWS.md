@@ -1,5 +1,160 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **A converged INLA fit could be the wrong converged fit, and the package now
+  finds the better one and returns it.** Fitting
+  `random = ~ diag(env):gen` to `agridat::besag.met` returned no genetic
+  variance in any of six environments on nineteen of twenty-four runs of the
+  identical call, and substantial variance on the other five. Every one of the
+  twenty-four reported `Mode status: 0` and `Numerical confirm: PASS`, because
+  the optimiser had converged -- to a solution with every component pinned at
+  zero. ASReml 4.2 on the same rows returns 5.84 and 5.45 in two of those
+  environments, stably.
+
+  The cause is not a prior this package chose. The emitted INLA formula was
+  read directly and carries the intended prior, and tightening it from
+  `uniform(0, 192.6)` through `uniform(0, 40)` to `uniform(0, 10)`, and then
+  to a penalised-complexity prior, did not remove the collapse. That separates
+  this from the factor-analytic specific variance and the `iid2d` Wishart,
+  which were both our own defaults.
+
+  When a component comes back pinned at zero, the fit is now restarted from a
+  mode where that component carries real variance and the two marginal
+  likelihoods are compared. On `besag.met` the restart was better by 65 to 154
+  log units, so **the restarted fit is the one returned**. The numerical gate
+  is re-run against the fit actually returned, and the adoption is stated in
+  the convergence block and as a message rather than left to be inferred from
+  a number that moved. A fit with nothing pinned at zero never enters the
+  probe and costs nothing.
+
+  After adoption, five identical calls return every component substantially
+  non-zero, agreeing with ASReml closely where a component is well identified
+  (5.76 to 7.77 against 5.84; 6.03 to 7.96 against 5.45) and standing above it
+  where ASReml has pinned the component at the boundary. That last difference
+  is the documented one between a REML estimate, which can sit exactly at
+  zero, and the mean of a posterior over a non-negative parameter, which
+  cannot.
+
+* **Variance components of a `diag()` term reported the wrong prior.**
+  `summary(fit)$varcomp$prior` read `engine default` on every
+  `sd_<group>__<level>` row while the emitted formula carried the package
+  default, or the user's own prior, verbatim. The heterogeneous routes emit one
+  field per level keyed by the inner group, so the canonical row names never
+  matched the prior spec's key and every one of them fell through to the
+  closing branch.
+
+  The cost was not cosmetic. Reading that column was how the first pass of the
+  ASReml oracle suite concluded that the prior layer did not reach `diag()` at
+  all -- a finding that was written up before the emitted formula was read,
+  and withdrawn once it was. A column that misreports the fit is what the next
+  reader reasons from.
+
+* **An ASReml oracle suite, and the repeatability screen that has to run
+  first.** `data-raw/asreml_oracle/` carries a specification written before any
+  comparison ran, a scenario matrix pairing ASReml 4.2 against the built
+  flexyBayes tarball on byte-identical public data, and a screen that asks
+  whether a structure returns the same answer twice before any comparison is
+  attempted. Tolerances are fixed in the specification, and the exit gate
+  admits no outcome in which a tolerance moves.
+
+  The screen found five of ten structures unstable before the mode-adoption
+  fix, with the factor-analytic row swinging by a factor of fifteen between
+  identical calls. It also found its own blind spot: its first criterion
+  returned STABLE for the very structure already measured as bistable, because
+  all three runs had collapsed alike and a consistently wrong answer scored as
+  a repeatable one.
+
+* **A malformed `dsum()` fitted a homogeneous residual instead of refusing,
+  and it was one of four ways the parser let a malformed formula through.**
+  `dsum(~ units | env)` asks for one residual variance per section. Written
+  without the bar -- `dsum(~units)`, a typo away -- the parser returned a
+  plain `units` residual. The fitted model is a plausible neighbour of the
+  one requested, so it converges, prints credible output, and agrees across
+  both engines, because both engines consume the same parsed representation.
+  That is the failure this package exists to prevent.
+
+  An external translation audit reported this and one other case, `fa(env)`
+  without a rank raising a base subscript error. A fuzz corpus over all 22
+  special forms -- 129 malformed variants -- found the class was wider than
+  both: 15 cases raised an untyped base error across five forms, 7 lowered
+  `dsum()` to `units`, 15 zero-argument forms parsed into a term whose
+  variable was `NA`, and 32 calls had a surplus argument discarded without
+  comment.
+
+  Each branch of the parser read the arguments it expected without asking
+  whether that is what it was given. The argument shape of every special form
+  is now declared once, in `R/grammar_contract.R`, and checked once, before
+  the parser dispatches. Across the same 129 cases, untyped errors fall from
+  15 to 0 and 55 silent acceptances become typed refusals, while every
+  well-formed call parses into the term it always produced. Eight reason
+  codes join the registry: `grammar_arity_too_few`, `grammar_arity_too_many`,
+  `grammar_named_argument_unknown`, `grammar_argument_empty`,
+  `dsum_malformed`, `fa_rank_missing`, `pol_degree_invalid` and
+  `multivariate_smooth_unsupported`. `fa()`'s rank and `pol()`'s degree must
+  now be whole numbers written into the formula, where `as.integer()` used to
+  turn `TRUE`, `1.5` and `"1"` each into a rank of 1.
+
+* **A negative factor-analytic loading was printed as a collapsed variance.**
+  The `collapsed` note in `summary(fit)$varcomp` flagged any component that
+  was not a correlation and not `sigma` whose upper credible bound sat below
+  1% of the residual scale. Factor-analytic loadings are signed, so a
+  crossover interaction -- a negative loading, which is a result rather than
+  a failure -- has a negative upper bound, satisfies that inequality for
+  arithmetic reasons, and was labelled as a variance pinned at zero. The
+  shipped FA(1) and FA(2) summaries both carried one.
+
+  The note now applies only to components the canonical namer marks as
+  non-negative scales, which is the rule the fit-time collapse warning has
+  always used. The two surfaces had disagreed. A component the namer does not
+  produce is left unflagged rather than admitted to a test written for
+  standard deviations.
+
+* **What each ASReml structure is lowered to, and what grounds the claim, is
+  now written down.** "ASReml syntax" covered lowerings of three different
+  kinds without saying which was which: exact structural translations,
+  covariance-family equivalents whose identification and priors are not
+  ASReml's, and one analogue built from a different basis.
+  `inst/TRANSLATION.md` and `inst/translation/translation_registry.csv` carry
+  one row per structure with its syntax vintage, its translation class, its
+  precondition where it has one, and the independent oracle that grounds it.
+  Both are generated from a single table and pinned by a staleness test.
+
+  Three consequences are visible to readers. `spl()` is an analogue of
+  ASReml's spline rather than a translation of it, and says so on every
+  surface -- the basis, the scaling and the prediction rule differ, and no
+  equivalence has been established. Residual-side `at()` and `ped()` are
+  labelled as the ASReml 3 spellings they are, since ASReml 4 replaced them
+  with `dsum()` and `vm()` and may reject them. And a fit carrying a
+  factor-analytic term no longer reports `Representation: exact`: the
+  loadings are anchored to one at a level taken from factor-level order,
+  which spans the factor-analytic family only where the leading loading block
+  supports the anchoring, so the line now names the condition.
+
+  Several rows record `none at this anchor` in the oracle column. The banked
+  ASReml comparisons were taken at 0.10.0's predecessors, before this line
+  added or changed the INLA factor-analytic, `us()`, correlated-slope,
+  sectioned-residual and combined multi-environment paths.
+
+* **Four claim surfaces had drifted apart, and now hold each other to
+  account.** The package help said eight vignettes ship and `cran-comments`
+  said eleven, where four ship. The help and the startup banner still offered
+  `triangulate()` as the signature feature after it was unexported, and two
+  `@seealso` entries pointed at `fb_structured_cov()`, withdrawn at 0.10.0.
+  `vpredict()` was exported but absent from both the pkgdown reference index
+  and `API_STABILITY.md`. Each is corrected, and each is now held by a test
+  that fails when the surfaces disagree rather than by anyone remembering.
+
+* **Five documented examples generated random data without a seed.** The
+  invariant checker had marked seed discipline present because it found
+  `set.seed()` calls somewhere in the sources. Each `@examples` block is now
+  linted on its own and must seed itself before its first draw.
+
+* **The ASReml reference recipe no longer carries a workstation path.**
+  `data-raw/asreml_reference.R` set `.libPaths()` to an absolute path under a
+  home directory, which made the recipe unrunnable by anyone else. It reads
+  `FLEXYBAYES_ASREML_LIB` instead, and a test now scans every source
+  directory for absolute home paths rather than the four the estate-level
+  pre-commit rule reads.
+
 * **The unstructured and correlated-slope covariances get a Wishart scaled to
   the data, and that removes an instability this package had blamed on INLA.**
   `iid2d` and `iidKd` carry one joint Wishart on `theta1`, and its scale matrix

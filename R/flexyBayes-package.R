@@ -14,10 +14,6 @@
 #' supports `summary()`, `predict()`, `emmeans::emmeans()`,
 #' `marginaleffects::predictions()`, and the `bayesplot::*` family.
 #'
-#' The package's signature feature is `triangulate()`, a cross-engine
-#' posterior comparison that quantifies disagreement between two fits of
-#' the same model on the same data.
-#'
 #' @section Entry points:
 #' The entry points share a single internal model representation
 #' (`fb_terms`):
@@ -32,18 +28,20 @@
 #'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).
 #' * [fb_inla()] / [fb_brms()] -- the two active single-engine pins.
 #' * [fb_prior()] -- penalised-complexity-canonical prior DSL.
-#' * [triangulate()] -- cross-engine posterior comparison.
+#' * [vpredict()] -- ASReml's own verb for a posterior functional of the
+#'   variance components: heritabilities, ratios and genetic correlations,
+#'   computed on the draws rather than by the delta method.
 #'
 #' @section Vignettes:
-#' Eight vignettes ship with the package, covering:
-#' getting started and what changes under a posterior, the formula
-#' surface together with dispatch and the inventory of unsupported
-#' structures, regression and hierarchical models, priors,
-#' multi-environment trials and genomics, spatial and temporal
-#' structure, reading and comparing a fit including cross-engine
-#' triangulation, and fitting from sufficient statistics when the data
-#' do not fit in memory. Each opens with a panel giving the ASReml line,
-#' the flexyBayes line, and what the posterior adds.
+#' Four vignettes ship with the package: *Mixed models in brief*,
+#' *Bayesian estimation in brief*, *The ASReml syntax flexyBayes covers*,
+#' and *ASReml and flexyBayes on the same trials*. The first two set up
+#' the model class and what changes under a posterior; the third is the
+#' formula surface together with dispatch and the inventory of structures
+#' that are refused; the fourth fits the same trials through both and
+#' shows where the answers agree and where they do not. The count here is
+#' checked against `vignettes/` by a parity test, because a number written
+#' into prose is the first thing to drift.
 #'
 #' @section Capability:
 #' What each active engine fits, emits, or refuses by model class is

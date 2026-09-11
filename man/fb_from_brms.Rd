@@ -67,6 +67,7 @@ correlated random slopes (\code{(x | g)}), smoothers, Gaussian processes
 and autocorrelation terms refuse at ingest with a structured message.
 }
 \examples{
+set.seed(1L)
 df <- data.frame(
   y = rnorm(30),
   x = rnorm(30),

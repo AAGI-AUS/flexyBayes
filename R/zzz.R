@@ -92,6 +92,10 @@
   # 0.10.0.9000: the streaming route's transformed-response refusal.
   .populate_refusal_registry_v01000_9000()
 
+  # 0.10.0.9000: the special-form argument contract -- arity, named
+  # arguments, literal counts, and the malformed-dsum fall-through.
+  .populate_refusal_registry_grammar_contract()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
@@ -166,8 +170,7 @@
   packageStartupMessage(
     "flexyBayes ",
     utils::packageVersion(pkgname),
-    " -- multi-backend Bayesian mixed models (INLA / brms)",
-    " with cross-engine triangulation\n",
+    " -- multi-backend Bayesian mixed models (INLA / brms)\n",
     "  Development release: all exports experimental; not on CRAN. ",
     "See system.file(\"KNOWN_ISSUES.md\", package = \"flexyBayes\")."
   )

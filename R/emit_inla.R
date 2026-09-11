@@ -1227,8 +1227,40 @@ emit_inla <- function(
   }
   elapsed <- unname((proc.time() - t0)["elapsed"])
 
-  # Post-fit numerical-confirm gate
+  # Post-fit numerical-confirm gate.
+  #
+  # mode.status and a finite marginal likelihood say the optimiser stopped,
+  # not that it stopped in the right place. Where a component came back
+  # pinned at zero variance, the fit is restarted from a mode where that
+  # component has real variance and the two marginal likelihoods are
+  # compared -- see R/inla_restart_probe.R for the measurement that made
+  # this necessary. Costs one extra fit, and only in the suspicious case.
   num_check <- .lgm_check_numerical(fit)
+  restart_probe <- tryCatch(
+    .fb_inla_restart_probe(fit, inla_args, .fb_inla_collapsed_hyper(fit)),
+    error = function(e) NULL
+  )
+  restart_adopted <- FALSE
+  if (!is.null(restart_probe) && isTRUE(restart_probe$better)) {
+    # Adopt. Given two converged modes, returning the one with a materially
+    # worse marginal likelihood is not defensible: on besag.met the gap ran
+    # from 65 to 154 log units, and the inferior mode reported no genetic
+    # variance in any environment where ASReml found substantial variance in
+    # two. Flagging alone would leave the user holding the wrong answer with
+    # a caveat attached.
+    #
+    # The gate is then re-run against the fit actually returned, so `pass`
+    # describes that fit rather than the one just discarded. The adoption
+    # itself is recorded and surfaced, never silent.
+    fit <- restart_probe$fit
+    restart_adopted <- TRUE
+    num_check <- .lgm_check_numerical(fit)
+    num_check$restart_adopted_note <- .fb_restart_adopted_note(restart_probe)
+    message("flexyBayes: ", num_check$restart_adopted_note, ".")
+  }
+  restart_probe$fit <- NULL
+  num_check$restart_probe <- restart_probe
+  num_check$restart_adopted <- restart_adopted
   if (!num_check$pass) {
     warning(
       "flexyBayes: INLA numerical-confirm gate flagged: ",

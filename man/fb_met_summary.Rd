@@ -39,7 +39,7 @@ genotype-by-environment covariance of a \code{diag()} or \code{us()} term throug
 }
 
 \seealso{
-\code{\link[=fb_structured_cov]{fb_structured_cov()}} for the identified environment covariance
-and its convergence diagnostic.
+\code{\link[=vpredict]{vpredict()}} for posterior functionals of the variance
+components, including genetic correlations.
 }
 \keyword{internal}

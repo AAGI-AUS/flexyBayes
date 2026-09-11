@@ -70,6 +70,7 @@ the same arguments. Argument names and defaults mirror \code{\link[=flexybayes]{
 one-for-one, so this is a drop-in for that function's parsing step.
 }
 \examples{
+set.seed(1L)
 df <- data.frame(
   yield = rnorm(20),
   geno  = factor(rep(letters[1:4], 5)),

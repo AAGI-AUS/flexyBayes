@@ -42,8 +42,8 @@
 #' @return Does not return: raises the classed `met_summary_not_available`
 #'   refusal.
 #'
-#' @seealso [fb_structured_cov()] for the identified environment covariance
-#'   and its convergence diagnostic.
+#' @seealso [vpredict()] for posterior functionals of the variance
+#'   components, including genetic correlations.
 #' @section Lifecycle:
 #' No active engine emits an `fa(env, k):gen` term -- both INLA and brms
 #' refuse a factor-analytic structured-covariance term before a fit object

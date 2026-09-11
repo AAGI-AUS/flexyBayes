@@ -51,3 +51,7 @@ tests/testthat/_problems/
 # 2026-08-17-release-nine-review-record is the public anchor)
 review/
 .positai
+
+# ASReml oracle run artefacts: rebuilt shim, scratch library, per-run results.
+# Durable evidence is banked under inst/validation/asreml-4.2/ instead.
+oracle_work/

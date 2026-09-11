@@ -74,6 +74,7 @@ reference:
       - fb_refusals
       - prior_summary
       - ranef
+      - vpredict
       - fb_complete_grid
       - cat_code
   - title: Cross-package interop

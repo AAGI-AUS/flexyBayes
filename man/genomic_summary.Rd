@@ -50,6 +50,6 @@ head(gs$gebv)
 }
 }
 \seealso{
-\code{\link[=fb_structured_cov]{fb_structured_cov()}} for factor-analytic MET covariance,
-\code{\link[=triangulate]{triangulate()}} for cross-engine agreement.
+\code{\link[=vpredict]{vpredict()}} for posterior functionals of the variance
+components, and \code{\link[=ranef]{ranef()}} for the group-level effects themselves.
 }

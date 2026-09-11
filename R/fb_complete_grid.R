@@ -260,6 +260,7 @@
 #' @seealso [flexybayes()], whose `na_action` argument carries the
 #'   completed grid into the fit.
 #' @examples
+#' set.seed(1L)
 #' trial <- expand.grid(row = factor(1:4), col = factor(1:3))
 #' trial$yield <- rnorm(nrow(trial))
 #' holed <- trial[-c(2L, 7L), ]

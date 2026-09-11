@@ -109,6 +109,7 @@
 #' @seealso [fb_approx()], [fb_engine()], [fb_prior()],
 #'   [validate_approximation()]
 #' @examples
+#' set.seed(1L)
 #' G <- crossprod(matrix(rnorm(9L), 3L, 3L))
 #' fb_cov(G, type = "dense")
 #' L <- t(chol(G))

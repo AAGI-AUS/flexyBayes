@@ -54,6 +54,7 @@
 #' @seealso [flexybayes()] and [fb()] for the universal fitting entry;
 #'   [fb_from_brms()] for the other ingest dialect.
 #' @examples
+#' set.seed(1L)
 #' df <- data.frame(
 #'   yield = rnorm(20),
 #'   geno  = factor(rep(letters[1:4], 5)),

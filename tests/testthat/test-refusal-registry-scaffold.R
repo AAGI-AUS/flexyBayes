@@ -331,7 +331,25 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (= 122). A brms fit that fails on a machine whose toolchain cannot
   # compile is named as such, and only when a probe confirms it
   # (brms_stan_toolchain_compile_failure) (= 123).
-  expect_equal(length(entries), 123L)
+  # The 0.10.0.9000 grammar contract adds eight. A special form written with
+  # too few or too many positional arguments, an unrecognised named argument,
+  # or an empty argument slot (grammar_arity_too_few, grammar_arity_too_many,
+  # grammar_named_argument_unknown, grammar_argument_empty) (= 127); a dsum()
+  # body carrying no grouping bar, which used to lower to a homogeneous
+  # `units` residual (dsum_malformed) (= 128); fa() written without its rank
+  # and pol() given a degree that is not a literal count (fa_rank_missing,
+  # pol_degree_invalid) (= 130); and s() over more than one variable, which
+  # used to raise an untyped names-attribute error from mgcv
+  # (multivariate_smooth_unsupported) (= 131).
+  expect_equal(length(entries), 131L)
+  expect_true("grammar_arity_too_few" %in% entries)
+  expect_true("grammar_arity_too_many" %in% entries)
+  expect_true("grammar_named_argument_unknown" %in% entries)
+  expect_true("grammar_argument_empty" %in% entries)
+  expect_true("dsum_malformed" %in% entries)
+  expect_true("fa_rank_missing" %in% entries)
+  expect_true("pol_degree_invalid" %in% entries)
+  expect_true("multivariate_smooth_unsupported" %in% entries)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)
   expect_true("nested_index_name_collision" %in% entries)

@@ -304,6 +304,13 @@
     return(.classify_interaction(l, r))
   }
 
+  # The argument contract is checked once, here, before any branch indexes
+  # anything. Until 0.10.0.9000 each branch read the arguments it expected
+  # without asking whether that is what it was given, so a malformed call
+  # escaped as an untyped base error, as a term carrying no variable, or as
+  # a silently truncated one. See R/grammar_contract.R.
+  .fb_check_grammar_arity(fn, expr)
+
   # ASReml-specific functions
   switch(
     fn,
@@ -387,7 +394,14 @@
     "fa" = list(list(
       type = "fa",
       var = .dep(expr, 2),
-      k = as.integer(expr[[3]])
+      k = .fb_literal_count(
+        expr,
+        3L,
+        fn = "fa",
+        what = "rank",
+        symbol = "k",
+        reason_code = "fa_rank_invalid"
+      )
     )),
     "us" = list(list(type = "us", var = .dep(expr, 2))),
     "at" = list(list(
@@ -493,7 +507,31 @@
         error = function(e) NULL
       )
       if (is.null(parsed) || is.null(parsed$grp)) {
-        list(list(type = "units"))
+        # Fidelity guard (0.10.0.9000): a dsum() body that carries no
+        # grouping used to fall through to a homogeneous `units` residual.
+        # dsum(~ units | env) requests one variance per section; a typo that
+        # drops the bar -- dsum(~units) -- then fitted a single-variance
+        # residual, a plausible neighbour that survives convergence checks
+        # and prints credible output. That is the one failure this package
+        # exists to prevent, so it refuses by name instead.
+        written <- paste(deparse(expr), collapse = "")
+        stop(.fb_refusal_condition(
+          reason_code = "dsum_malformed",
+          message = sprintf(
+            paste0(
+              "`%s` does not name the sections to give their own variance. ",
+              "dsum() takes a formula with a grouping bar -- ",
+              "dsum(~ units | env) fits one residual variance per level of ",
+              "env. Written without the bar there is nothing to section on, ",
+              "and a homogeneous residual is a different model from the one ",
+              "requested, so it is refused rather than fitted. For a single ",
+              "residual variance, write residual = ~ units."
+            ),
+            written
+          ),
+          form = "dsum",
+          written = written
+        ))
       } else {
         # Fidelity guard: dsum() is represented ONLY as a per-region
         # heteroscedastic variance (the inner term is `units`). A
@@ -528,7 +566,18 @@
     "pol" = list(list(
       type = "polynomial",
       var = .dep(expr, 2),
-      degree = if (length(expr) > 2) as.integer(expr[[3]]) else 2L
+      degree = if (length(expr) > 2) {
+        .fb_literal_count(
+          expr,
+          3L,
+          fn = "pol",
+          what = "degree",
+          symbol = "degree",
+          reason_code = "pol_degree_invalid"
+        )
+      } else {
+        2L
+      }
     )),
     # Default: the vocabulary above is closed, so anything reaching here is
     # a call flexyBayes does not recognise. It used to be read as a plain
@@ -825,7 +874,37 @@
     "id" = .add_var_info(term),
     "vm" = .add_var_info(term),
     "ped" = .add_var_info(term),
-    "fa" = .add_var_info(term),
+    "fa" = {
+      term <- .add_var_info(term)
+      # Same identifiability bound the fa(f, k):g form has carried since
+      # 0.4.0, and the same reason code. It was reachable only through the
+      # interaction branch below, so a bare fa(site, 99) over three sites
+      # parsed and fitted; k < number of levels is a property of the
+      # covariance, not of how the term was written.
+      if (
+        !is.null(term$k) &&
+          !is.null(term$var_n) &&
+          term$k >= term$var_n
+      ) {
+        stop(.fb_refusal_condition(
+          reason_code = "fa_rank_exceeds_dim",
+          message = paste0(
+            "fa() requires k < the number of levels of \"",
+            term$var,
+            "\"; got k = ",
+            term$k,
+            " with ",
+            term$var_n,
+            " level(s). Use k <= ",
+            term$var_n - 1L,
+            ", or us(",
+            term$var,
+            ") for a full unstructured covariance."
+          )
+        ))
+      }
+      term
+    },
     "fa_gxe" = {
       if (term$outer %in% names(data)) {
         f <- factor(data[[term$outer]])

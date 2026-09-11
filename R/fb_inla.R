@@ -82,6 +82,7 @@
 #' @seealso [flexybayes()] and [fb()] for the universal entry that picks a
 #'   backend; [fb_from_asreml()] / [fb_from_brms()] for the ingest layer.
 #' @examples
+#' set.seed(1L)
 #' df <- data.frame(
 #'   yield = rnorm(40),
 #'   geno  = factor(rep(letters[1:8], 5)),

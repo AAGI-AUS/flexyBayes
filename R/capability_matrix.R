@@ -274,7 +274,10 @@
       inla = "fits",
       brms = "refuses",
       note = "Mapped to INLA's second-order random walk. brms has no
-        lowering for the smooth basis.",
+        lowering for the smooth basis. An analogue of ASReml's spline
+        rather than a translation of it -- basis, scaling and prediction
+        rule differ, and no equivalence has been established (see
+        TRANSLATION.md).",
       anchor = "test-smooth.R"
     ),
     list(

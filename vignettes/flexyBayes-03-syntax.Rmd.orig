@@ -62,14 +62,20 @@ One variance component per term unless the term says otherwise.
 | `~ us(env):gen` | The full unstructured covariance across environments: every variance and every correlation. Use when the number of environments is small (up to five here) and the correlations are the question. | both |
 | `~ fa(env, k):gen` | Factor-analytic: a few common factors plus a variance specific to each environment. Use when there are many environments and `us()` would ask for more parameters than the trial can support. This is the standard multi-environment-trial model. | INLA |
 | `~ vm(gen, K)` | A random effect with a known covariance, from a genomic relationship matrix. Genomic prediction. | both |
-| `~ ped(animal, A)` | The same with a pedigree relationship matrix, the animal model. | both |
+| `~ ped(animal, A)` | The same with a pedigree relationship matrix, the animal model. ASReml 4 removed `ped()` in favour of `vm()`, so this is the ASReml 3 spelling, kept for compatibility; write `vm(animal, A)` for new work. | both |
 | `~ ar1(row):ar1(col)` | A separable autoregressive field over a plot grid, plus independent plot error. Use for field trials where neighbouring plots resemble each other. | INLA |
 | `~ ar1(t)` | An autoregressive field along one dimension, for repeated measures on a common schedule. | INLA |
 | `~ ar1(t):g` | The same within each level of `g` and independent across levels: repeated measures on many units. | INLA |
 | `~ at(trial):ar1(row):ar1(col)` | One field realisation per trial, with the correlations shared across trials. | INLA |
-| `~ spl(x)` | A penalised spline. Use when a covariate's effect is smooth but not a known shape. | INLA |
+| `~ spl(x)` | A penalised spline, emitted as INLA's second-order random walk. Use when a covariate's effect is smooth but not a known shape. This is an analogue of ASReml's spline rather than a translation of it: the basis, the scaling and the prediction rule differ, and no equivalence has been established. | INLA |
 | `(x \| g)` | A random slope correlated with the random intercept. Use when units differ both in level and in response to `x`, and the relationship between the two matters. | both |
 | `(x \|\| g)` | The same with the correlation fixed at zero. Use when the correlation is not of interest. | both |
+
+Not every spelling in the table below is a translation of the same kind. Some
+are exact structural translations, some share a covariance family but not the
+identification or the priors, and one -- `spl()` -- is an analogue built from a
+different basis. Which is which, and what independently grounds each, is
+recorded in `system.file("TRANSLATION.md", package = "flexyBayes")`.
 
 # Residual structure
 
@@ -77,7 +83,7 @@ One variance component per term unless the term says otherwise.
 |---|---|---|
 | `~ units` | Independent residuals with one variance. The default. | both |
 | `~ dsum(~ units \| env)` | One residual variance per environment. Use when trials differ in measurement precision, which is the normal case in a multi-environment trial. | both |
-| `~ at(env):units` | The same structure, ASReml's other spelling. | both |
+| `~ at(env):units` | The same structure in ASReml 3's spelling. ASReml 4 removed `at()` on the residual side in favour of `dsum()`, and current ASReml may reject this form. Accepted here for compatibility; `dsum(~ units | env)` is canonical. | both |
 
 # Families
 

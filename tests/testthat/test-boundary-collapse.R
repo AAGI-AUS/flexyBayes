@@ -180,3 +180,129 @@ test_that("the calibration record is the shape the threshold argues from", {
   re <- d[d$arm == "real" & is.finite(d$ratio), ]
   expect_gt(stats::median(re$ratio), 10 * .null_floor())
 })
+
+
+# =============================================================================
+# Signed components are not scale components (audit 2026-09-11, F18).
+#
+# The display flag used a denylist: everything that was not a correlation and
+# not `sigma` was treated as a variance component and tested against
+# `upper < 0.01 * sigma`. Factor-analytic loadings are signed, so a negative
+# loading -- a crossover interaction, which is a real and interpretable result
+# -- has a negative upper credible bound, satisfies that inequality for
+# arithmetic reasons, and was printed as `collapsed`. The audit found it on
+# the shipped FA(1) and FA(2) summaries.
+#
+# The fit-time detector above has always used the allowlist, so the two
+# surfaces disagreed. These tests pin the agreement in both directions: the
+# loading must go unflagged, and a genuinely collapsed specific SD must still
+# be flagged by both.
+# =============================================================================
+
+test_that("a negative factor-analytic loading is not marked collapsed", {
+  components <- c("sigma", "sd_fa1", "fa1_env1", "fa1_env4", "sd_gen__env1")
+  # fa1_env4 is the crossover loading: the whole interval sits below zero.
+  upper <- c(17, 2.1, 1.8, -0.42, 1.2)
+  medians <- c(sigma = 15.6)
+  notes <- .fb_varcomp_notes(components, upper, medians)
+  expect_equal(notes[[4]], "")
+  expect_true(all(notes == ""))
+})
+
+test_that("a genuinely collapsed specific SD is still flagged", {
+  # The falsifier. Without this the fix could simply have stopped flagging
+  # anything and passed the test above.
+  components <- c("sigma", "fa1_env4", "sd_gen__env3")
+  upper <- c(17, -0.42, 0.004)
+  medians <- c(sigma = 15.6)
+  notes <- .fb_varcomp_notes(components, upper, medians)
+  expect_equal(notes[[2]], "")
+  expect_equal(notes[[3]], "collapsed")
+})
+
+test_that("the table and the fit-time diagnostic agree on the same components", {
+  components <- c("sigma", "fa1_env4", "fa2_env5", "sd_gen__env3", "sd_fa1")
+  upper <- c(17, -0.42, -1.03, 0.004, 2.1)
+  vc <- make_vc(components, q97.5 = upper, sigma_median = 15.6)
+  notes <- .fb_varcomp_notes(components, upper, c(sigma = 15.6))
+  flagged_table <- components[notes == "collapsed"]
+  flagged_fit <- .fb_boundary_collapse_reasons(make_fit(vc))
+  expect_equal(flagged_table, "sd_gen__env3")
+  expect_length(flagged_fit, 1L)
+  expect_match(flagged_fit, "sd_gen__env3", fixed = TRUE)
+})
+
+test_that("component domains are classified from the canonical name", {
+  expect_equal(.fb_component_domain("sigma"), "positive")
+  expect_equal(.fb_component_domain("sd_gen"), "positive")
+  expect_equal(.fb_component_domain("sd_spatial"), "positive")
+  expect_equal(.fb_component_domain("sd_fa1"), "positive")
+  expect_equal(.fb_component_domain("cor_g__Intercept__x"), "unit_interval")
+  expect_equal(.fb_component_domain("rho_row"), "unit_interval")
+  expect_equal(.fb_component_domain("fa1_env4"), "signed")
+  expect_equal(.fb_component_domain("fa12_env4"), "signed")
+  # A component the canonical namer did not produce fails safe: it is not
+  # admitted to a test written for standard deviations.
+  expect_equal(.fb_component_domain("shape"), "unknown")
+  expect_equal(.fb_component_domain("shape"), "unknown")
+})
+
+test_that("an unknown-domain component is never flagged", {
+  notes <- .fb_varcomp_notes(
+    c("sigma", "shape"),
+    c(17, 0.0001),
+    c(sigma = 15.6)
+  )
+  expect_true(all(notes == ""))
+})
+
+
+# =============================================================================
+# The Representation: line names a conditional translation (audit F06).
+#
+# `Representation: exact (model, not inference)` means the emit carries no
+# structural approximation. A reader takes it for more: "this is the model
+# ASReml would fit". For a factor-analytic term the two come apart -- the
+# loadings are anchored to one at a level taken from factor-level order, which
+# spans the factor-analytic family only where the leading loading block
+# supports the anchoring. The audit found FA(1) and FA(2) summaries printing
+# the bare `exact` badge on exactly that lowering.
+# =============================================================================
+
+make_fit_with_terms <- function(types) {
+  structure(
+    list(
+      exactness = "exact",
+      extras = list(
+        parse_info = list(random = lapply(types, function(t) list(type = t)))
+      )
+    ),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+}
+
+test_that("a factor-analytic fit does not report a bare exact representation", {
+  fit <- make_fit_with_terms(c("fa_gxe"))
+  label <- .repr_label_for_fit(fit, list())
+  expect_false(identical(label, "exact (model, not inference)"))
+  expect_match(label, "conditional", fixed = TRUE)
+  expect_match(label, "TRANSLATION.md", fixed = TRUE)
+})
+
+test_that("a bare fa() term is treated the same as the interaction form", {
+  expect_match(
+    .repr_label_for_fit(make_fit_with_terms(c("fa")), list()),
+    "conditional",
+    fixed = TRUE
+  )
+})
+
+test_that("a fit with no conditional term keeps the plain exact label", {
+  # The falsifier: without this, always returning the caveat would pass above.
+  for (types in list(c("ide"), c("nested", "at"), c("us_gxe"), character(0))) {
+    expect_equal(
+      .repr_label_for_fit(make_fit_with_terms(types), list()),
+      "exact (model, not inference)"
+    )
+  }
+})

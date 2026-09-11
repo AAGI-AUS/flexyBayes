@@ -358,6 +358,27 @@
       if (cmp %in% names(recorded)) {
         return(unname(recorded[[cmp]]))
       }
+      # A per-level row of a heterogeneous route. diag() / idh() / at()
+      # emit one iid field per level of the outer factor, and every one of
+      # them carries the hyper block keyed by the INNER group -- see the
+      # `at_simple` branch of .build_inla_formula(). The canonical names
+      # are `sd_<group>__<outer><level>`, which never equals the spec key
+      # `sd_<group>`, so the exact match above missed every one of them and
+      # the cell fell through to the closing "engine default" while the
+      # emitted formula carried the user's prior verbatim.
+      #
+      # Found 2026-09-11 by the ASReml oracle suite, and it cost something
+      # before it was found: the first reading of that column concluded the
+      # prior layer did not reach diag() at all. A column that reports the
+      # fit wrongly is not a cosmetic defect, because it is what the next
+      # reader reasons from. `not_applied` is tested ahead of this, so a
+      # structure that genuinely has no slot for the prior still says so.
+      if (grepl("__", cmp, fixed = TRUE)) {
+        base_key <- sub("__.*$", "", cmp)
+        if (base_key %in% names(recorded)) {
+          return(unname(recorded[[base_key]]))
+        }
+      }
       # A per-level residual row. The declared uniform on the SD scale
       # was retargeted onto the log-sigma coefficients at emit time, so
       # `sigma` names no parameter this model has and the spec keyed to
@@ -542,18 +563,56 @@
   if (!is.numeric(ref) || length(ref) != 1L || is.na(ref) || ref <= 0) {
     return(blank)
   }
-  is_correlation <- startsWith(components, "rho_") |
-    startsWith(components, "cor_")
   fraction <- ifelse(
     components == "sd_spatial",
     .FB_SPATIAL_COLLAPSE_FRACTION,
     .FB_COLLAPSE_FRACTION
   )
-  flagged <- !is_correlation &
-    is.finite(upper) &
+  # Only a non-negative scale can collapse against zero. `sigma` is that
+  # scale's reference rather than a candidate against itself.
+  flagged <- .fb_component_domain(components) == "positive" &
     components != "sigma" &
+    is.finite(upper) &
     upper < fraction * ref
   ifelse(flagged, "collapsed", "")
+}
+
+
+# .fb_component_domain() --- what kind of quantity a canonical component is.
+#
+# `positive` is a standard deviation, `unit_interval` a correlation, `signed`
+# a loading or other quantity that may legitimately be negative, `unknown`
+# anything an engine passes through that the canonical namer did not produce.
+#
+# This replaces a denylist. .fb_varcomp_notes() used to flag every row that
+# was not a correlation and not `sigma`, on the reasoning that what remained
+# was a variance component. Factor-analytic loadings are not: fa(f, k):g emits
+# `fa<j>_<env><level>` rows, which are signed, and a negative loading -- a
+# crossover interaction, a real and interpretable result -- has a negative
+# upper credible bound, which satisfies `upper < 0.01 * sigma` for arithmetic
+# reasons and was printed as `collapsed`. The 2026-09-11 audit found it on the
+# shipped FA(1) and FA(2) summaries (rows fa1_env4 and fa2_env5).
+#
+# The fit-time detector in R/boundary_collapse.R has always used the
+# allowlist (`startsWith(cmp, "sd_")`), so the two diagnostic surfaces
+# disagreed. They now read the same rule, which is the point of having both.
+#
+# An allowlist also fails safe as the namer grows: a component type added
+# later is `unknown` and goes unflagged, where the denylist would have
+# admitted it to a test written for standard deviations.
+#
+# @noRd
+# @keywords internal
+.fb_component_domain <- function(components) {
+  out <- rep("unknown", length(components))
+  out[startsWith(components, "sd_") |
+    components == "sigma" |
+    startsWith(components, "sigma_")] <- "positive"
+  out[startsWith(components, "cor_") |
+    startsWith(components, "rho_")] <- "unit_interval"
+  # fa<j>_<factor><level> -- a loading, which carries its own sign.
+  out[grepl("^fa[0-9]+_", components)] <- "signed"
+  out
 }
 
 # .fb_agg_varcomp_from_means() --- the last-resort aggregated table.
@@ -1378,7 +1437,13 @@
       mlik = mlik,
       kld_max = if (length(kld) == 0L) NA_real_ else max(kld),
       numerical_confirm = confirm,
-      numerical_confirm_reasons = object$num_check$reasons %||% character(0)
+      numerical_confirm_reasons = object$num_check$reasons %||% character(0),
+      # Adoption changes which answer the user is holding, so the
+      # convergence block states it. A number that moved with nothing
+      # saying why is how a reader concludes the wrong thing.
+      restart_adopted = isTRUE(object$num_check$restart_adopted),
+      restart_adopted_note = object$num_check$restart_adopted_note %||%
+        character(0)
     ))
   }
 
@@ -1673,6 +1738,14 @@
     }
     # No line at all where no check ran: a printed PASS/FAIL is a claim
     # about a confirmation step, and the aggregated route runs none.
+    if (isTRUE(cv$restart_adopted) && length(cv$restart_adopted_note)) {
+      cat(
+        "  Restart adopted: ",
+        cv$restart_adopted_note,
+        "\n",
+        sep = ""
+      )
+    }
     if (!is.na(cv$numerical_confirm)) {
       cat(
         "  Numerical confirm: ",

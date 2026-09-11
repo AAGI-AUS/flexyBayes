@@ -11,7 +11,26 @@
 # from no other source. Re-run it and the vignette's comparison moves with
 # it; edit the stored numbers by hand and the provenance is gone.
 
-.libPaths(c("~/Library/R/arm64/4.5/library", .libPaths()))
+# ASReml is licensed and installed outside the default library on the
+# maintainer's machine. The path is read from the environment rather than
+# written here: a hard-coded home directory makes this recipe unrunnable by
+# anyone else and leaks a workstation path into the repository.
+#
+#   FLEXYBAYES_ASREML_LIB=/path/to/library R --vanilla -f data-raw/asreml_reference.R
+#
+# Unset, the default library is used, which is correct where asreml is
+# installed normally.
+asreml_lib <- Sys.getenv("FLEXYBAYES_ASREML_LIB", unset = "")
+if (nzchar(asreml_lib)) {
+  if (!dir.exists(asreml_lib)) {
+    stop(
+      "FLEXYBAYES_ASREML_LIB is set to a directory that does not exist: ",
+      asreml_lib,
+      call. = FALSE
+    )
+  }
+  .libPaths(c(asreml_lib, .libPaths()))
+}
 suppressMessages(library(asreml))
 
 stamp <- list(

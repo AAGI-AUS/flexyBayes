@@ -856,8 +856,12 @@
   .register_refusal(
     reason_code = "fa_rank_invalid",
     description = paste0(
-      "A factor-analytic term fa(x, k) was given a rank k below 1; ",
-      "the factor-analytic rank must be a positive integer."
+      "A factor-analytic term fa(x, k) was given a rank that is not a ",
+      "positive whole number written in the formula. Registered at 0.4.0 ",
+      "as the k < 1 floor and widened by the 0.10.0.9000 grammar contract ",
+      "to every non-count rank -- a symbol, a string, a logical, a ",
+      "fraction -- each of which as.integer() used to coerce into a rank ",
+      "the user did not write."
     ),
     message_template = paste0(
       "fa() requires k >= 1; got k = %s."
@@ -2550,6 +2554,123 @@ print.fb_refusals_table <- function(x, ...) {
       "model. backend = \"inla\" compiles nothing and needs no toolchain."
     ),
     registered_in_adr = "0.10.0.9000 Stan toolchain diagnostic",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  invisible(NULL)
+}
+
+
+# 0.10.0.9000 grammar contract -- the special-form argument shape.
+#
+# A grammar fuzz corpus over all 22 ASReml special forms found four ways a
+# malformed call escaped this taxonomy: an untyped base error from a branch's
+# own indexing, a silent lowering to a plausible neighbour, a term carrying no
+# variable, and a silently discarded surplus argument. The contract in
+# R/grammar_contract.R closes all four at one locus; these are the codes it
+# raises. See also .fb_check_grammar_arity() and .fb_literal_count().
+.populate_refusal_registry_grammar_contract <- function() {
+  .register_refusal(
+    reason_code = "grammar_arity_too_few",
+    description = paste0(
+      "An ASReml special form was written with fewer positional arguments ",
+      "than it takes. Before the contract these parsed into a term whose ",
+      "variable was NA, which reaches the engine as a model nobody wrote."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "grammar_arity_too_many",
+    description = paste0(
+      "An ASReml special form was written with more positional arguments ",
+      "than it reads. The surplus used to be dropped in silence, so a ",
+      "structure written into the call never reached the fitted model."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "grammar_named_argument_unknown",
+    description = paste0(
+      "A special form was given a named argument it does not answer to. An ",
+      "unrecognised name used to be ignored, which reads as accepted."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "dsum_malformed",
+    description = paste0(
+      "A dsum() body carrying no grouping bar. dsum(~ units | env) requests ",
+      "one residual variance per section; written without the bar there is ",
+      "nothing to section on, and the parser used to fall through to a ",
+      "homogeneous `units` residual -- a plausible neighbour that survives ",
+      "convergence checks and prints credible output."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract (audit F01)",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "fa_rank_missing",
+    description = paste0(
+      "fa() written without its rank. The rank is a number the user chooses, ",
+      "so it is named separately from the general arity refusal."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract (audit F08)",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  # fa()'s invalid-rank code has existed since 0.4.0 as the k < 1 floor. The
+  # grammar contract widens what reaches it -- a symbol, a string, a logical,
+  # a fraction -- rather than minting a second code for the same condition.
+  # The rank-versus-levels bound has a code already -- fa_rank_exceeds_dim,
+  # registered at 0.4.0 and raised from .enrich() where the level count is
+  # known. It was reachable only from the fa(f, k):g interaction form; the
+  # bare fa(f, k) branch now raises the same code rather than a synonym.
+  .register_refusal(
+    reason_code = "grammar_argument_empty",
+    description = paste0(
+      "A special form written with a trailing or doubled comma, leaving ",
+      "R's empty symbol where a value belongs. Touching it raised ",
+      "\"argument is missing, with no default\" from wherever it was first ",
+      "read -- a base error about flexyBayes internals rather than a ",
+      "statement about the formula."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "pol_degree_invalid",
+    description = paste0(
+      "pol()'s degree is not a positive whole number written in the formula. ",
+      "Same coercion defect as fa()'s rank."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "multivariate_smooth_unsupported",
+    description = paste0(
+      "s() written over more than one variable. flexyBayes fits univariate ",
+      "penalised splines only; this used to raise an untyped names-attribute ",
+      "error from mgcv's call handling."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )

@@ -102,6 +102,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | `fb_complete_grid()` | experimental | Completes a design grid (`index = ~ row * col`) before fitting, so a structured covariance is built over the intended index set rather than over the observed rows only. |
 | `genomic_summary()` | experimental | Turns the posterior draws of a relationship-matrix term into genomic quantities for a fitted model. |
 | `ranef()` | experimental | S3 generic returning random-effect predictions -- posterior summaries of the group-level effects -- from a fit. |
+| `vpredict()` | experimental | S3 generic returning a posterior functional of the variance components -- a heritability, a variance ratio, a genetic correlation -- named as an expression in the canonical component names. ASReml's own verb for the same job. Computed on the draws, so the interval is a quantile of the functional rather than a delta-method approximation and cannot leave the parameter space. Refuses by name when the functional is missing or malformed (`vpredict_no_functional`), names a component the fit does not carry (`vpredict_component_not_in_posterior`), or does not return one value per draw (`vpredict_functional_not_one_value_per_draw`). |
 
 ## Interoperability contract
 

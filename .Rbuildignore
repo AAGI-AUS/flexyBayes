@@ -68,3 +68,4 @@ Rplots\.pdf$
 ^inst/extdata/inla-verification/
 ^vignettes-reserve$
 ^vignettes-reserve/.*$
+^oracle_work$

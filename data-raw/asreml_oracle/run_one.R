@@ -1,0 +1,127 @@
+# run_one.R -- run one paired scenario and write its manifest row.
+#
+#   FB_LIB=<lib> FB_SCENARIO=<id> FB_OUT=<dir> R --file=run_one.R
+#
+# One scenario per process, deliberately: these fits are memory-heavy and a
+# single long-lived session accumulating all of them is what killed two earlier
+# whole-suite runs on this machine.
+
+.libPaths(path.expand(c(Sys.getenv("FB_LIB"),
+                        "~/Library/R/arm64/4.5/library", .libPaths())))
+suppressMessages(library(asreml))
+suppressMessages(library(flexyBayes))
+
+here <- Sys.getenv("FB_ORACLE_DIR")
+source(file.path(here, "compare.R"))
+source(file.path(here, "scenarios.R"))
+
+id <- Sys.getenv("FB_SCENARIO")
+out_dir <- Sys.getenv("FB_OUT")
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+sc <- scenario_registry()[[id]]
+if (is.null(sc)) stop("unknown scenario: ", id, call. = FALSE)
+
+d <- sc$data()
+t0 <- Sys.time()
+
+asr <- tryCatch(sc$asreml(d), error = function(e) e)
+fb <- tryCatch(sc$flexybayes(d), error = function(e) e)
+
+record <- list(
+  scenario = id,
+  label = sc$label,
+  registry_row = sc$registry_row,
+  run_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+  data_rows = nrow(d),
+  data_sha256 = data_digest(d),
+  factor_levels = lapply(
+    stats::setNames(sc$factor_cols, sc$factor_cols),
+    function(cn) levels(factor(d[[cn]]))
+  ),
+  versions = list(
+    r = R.version.string,
+    asreml = as.character(utils::packageVersion("asreml")),
+    flexybayes = as.character(utils::packageVersion("flexyBayes")),
+    inla = if (requireNamespace("INLA", quietly = TRUE))
+      as.character(utils::packageVersion("INLA")) else NA_character_,
+    agridat = as.character(utils::packageVersion("agridat"))
+  ),
+  source_sha = Sys.getenv("FB_SOURCE_SHA"),
+  tarball_sha256 = Sys.getenv("FB_TARBALL_SHA")
+)
+
+if (inherits(asr, "error") || inherits(fb, "error")) {
+  record$status <- "not_compared"
+  record$reason <- paste0(
+    if (inherits(asr, "error")) paste0("asreml did not fit: ", conditionMessage(asr)) else "",
+    if (inherits(fb, "error")) paste0("flexybayes did not fit: ", conditionMessage(fb)) else ""
+  )
+  saveRDS(record, file.path(out_dir, paste0(id, ".rds")))
+  cat(id, "\tNOT_COMPARED\t", record$reason, "\n", sep = "")
+  quit(save = "no", status = 0)
+}
+
+s <- summary(fb)
+record$asreml_converged <- isTRUE(asr$converge)
+record$flexybayes_converged <- isTRUE(s$converge$ok %||% TRUE)
+record$asreml_loglik <- asr$loglik
+
+# ---- Layer 1 ---- #
+record$structural <- structural_checks(asr, s, d, sc$factor_cols)
+
+# ---- Layer 2 ---- #
+v_asr <- asr_varcomp(asr)
+se_asr <- asr_varcomp_se(asr)
+v_fb <- fb_varcomp(s)
+record$raw <- list(asreml_varcomp = v_asr, asreml_se = se_asr,
+                   flexybayes_varcomp_as_variance = v_fb)
+
+checks <- list()
+for (r in sc$ratios) {
+  if (r$asreml %in% names(v_asr) && r$flexybayes %in% names(v_fb)) {
+    checks[[length(checks) + 1L]] <- cmp_variance_ratio(r, v_asr, v_fb, se_asr)
+  }
+}
+
+fixed_map <- lapply(
+  intersect(rownames(summary(asr, coef = TRUE)$coef.fixed), s$fixed$term),
+  function(tm) list(asreml = tm, flexybayes = tm)
+)
+checks <- c(checks, cmp_fixed(asr, s, fixed_map))
+
+for (b in sc$blup) {
+  ra <- asreml::summary.asreml(asr, coef = TRUE)$coef.random
+  keep <- grep(paste0("^", b$asreml, "_"), rownames(ra))
+  blup_asr <- stats::setNames(ra[keep, "solution"],
+                              sub(paste0("^", b$asreml, "_"), "", rownames(ra)[keep]))
+  # ranef() returns a named list of data frames, one per group, not a
+  # single frame. Read the contract rather than the shape it happened to
+  # print in.
+  rf_all <- ranef(fb)
+  rf <- if (is.data.frame(rf_all)) {
+    rf_all[rf_all$group == b$flexybayes, , drop = FALSE]
+  } else {
+    rf_all[[b$flexybayes]]
+  }
+  blup_fb <- if (is.null(rf) || !nrow(rf)) {
+    stats::setNames(numeric(0), character(0))
+  } else {
+    stats::setNames(rf$estimate, as.character(rf$level))
+  }
+  checks[[length(checks) + 1L]] <- cmp_blup(blup_asr, blup_fb, b$label)
+}
+
+record$checks <- checks
+record$elapsed_sec <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
+record$status <- "compared"
+
+saveRDS(record, file.path(out_dir, paste0(id, ".rds")))
+
+np <- sum(vapply(checks, function(c) isTRUE(c$pass), logical(1)))
+nf <- sum(vapply(checks, function(c) identical(c$pass, FALSE), logical(1)))
+nn <- sum(vapply(checks, function(c) is.na(c$pass), logical(1)))
+ns <- sum(vapply(record$structural, function(c) isTRUE(c$pass), logical(1)))
+nsf <- sum(vapply(record$structural, function(c) identical(c$pass, FALSE), logical(1)))
+cat(sprintf("%s\tstructural %d pass / %d fail\tnumeric %d pass / %d fail / %d not-asserted\t%.0fs\n",
+            id, ns, nsf, np, nf, nn, record$elapsed_sec))
