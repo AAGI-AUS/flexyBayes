@@ -183,13 +183,30 @@
       spelling = "`us(f):g`",
       vintage = "ASReml 4",
       engine = "inla",
-      class = "covariance-family",
+      class = "analogue",
       condition = paste(
         "Lowered to an iidKd field carrying a joint Wishart prior scaled to",
         "the data. The prior geometry and the parameter coordinates are not",
-        "ASReml's; a supplied SD prior is refused rather than dropped."
+        "ASReml's; a supplied SD prior is refused rather than dropped. This",
+        "row claimed covariance-family until 2026-09-11, when a paired ASReml",
+        "comparison measured a different covariance rather than a",
+        "differently-parameterised one, and a metamorphic check found the fit",
+        "is not invariant to rescaling the response. Correlations from this",
+        "route are not to be read as ASReml's."
       ),
-      oracle = "Simulated recovery and Wishart-scale tests; none at this anchor against ASReml",
+      oracle = paste(
+        "ASReml 4.2.0.392 at this anchor on agridat::besag.met, oracle",
+        "scenarios 06 and 07 (finding O04). Structural layer exact on both.",
+        "Numerical layer FAILS: genetic correlation 0.147 against ASReml's",
+        "0.930 over two environments, and 0.171 / 0.220 / 0.309 against",
+        "0.898 / 0.915 / 0.955 over three, with genotype variances four to",
+        "five times larger while the residual agrees closely. The",
+        "repeatability screen rates both rows stable, so the answer is",
+        "reproducible and different rather than noisy. Multiplying the",
+        "response by ten -- an exact transformation under which a correlation",
+        "is invariant -- moves the correlation to -0.622. The cause is not",
+        "established; the emitted iidKd hyper block has not been read"
+      ),
       anchor = "test-wishart-scale.R"
     ),
     list(

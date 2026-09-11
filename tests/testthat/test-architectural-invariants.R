@@ -87,7 +87,10 @@ test_that("exactly five verbs are exported (ADR 0030 §3)", {
 })
 
 test_that("the verb list is stable (snapshot)", {
-  expect_snapshot(sort(.FB_VERBS))
+  # One verb per line: print() on a character vector column-pads every
+  # element to the longest, which is trailing whitespace in the committed
+  # snapshot and a reflow of the whole block when one long verb is added.
+  expect_snapshot(cat(sort(.FB_VERBS), sep = "\n"))
 })
 
 # ---------------------------------------------------------------- #
@@ -164,7 +167,21 @@ test_that("the registry key inventory is stable (snapshot)", {
     )
   })
   names(dump) <- .FB_REGISTRIES
-  expect_snapshot(dump)
+  # Printed one key per line rather than as R's column-aligned character
+  # vector. print() pads every element to the width of the longest, so the
+  # snapshot carried trailing whitespace on ~90 lines -- reported by
+  # `git diff --check` and flagged in the 2026-09-11 review -- and adding one
+  # long key reflowed the whole block instead of showing a one-line diff.
+  expect_snapshot({
+    for (d in dump) {
+      cat(
+        d$registry, ": locked=", d$locked, " n_keys=", d$n_keys, "\n",
+        sep = ""
+      )
+      cat(paste0("  ", d$keys), sep = "\n")
+      cat("\n")
+    }
+  })
 })
 
 # ---------------------------------------------------------------- #

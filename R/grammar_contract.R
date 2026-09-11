@@ -153,6 +153,37 @@
     ))
   }
 
+  # A named argument written twice. The 0.10.0.9000 contract validated the
+  # *set* of names and never their multiplicity, which left the same defect
+  # alive in two shapes: `vm(g, V = G, V = G)` was accepted and lowered to one
+  # vm term, with the surviving copy an accident of how .walk() indexes; and
+  # `s(x, k = 5, k = 9)` reached mgcv's own matcher and raised "formal
+  # argument 'k' matched by multiple actual arguments" -- a base error about
+  # our internals, which is escape class 1 of the four this contract closes.
+  # Checked before arity so a doubled name is named as one, and independent of
+  # `contract$named` so the open-ended s() set is covered too.
+  if (length(split$named)) {
+    dup <- unique(split$named[duplicated(split$named)])
+    if (length(dup)) {
+      stop(.fb_refusal_condition(
+        reason_code = "grammar_argument_duplicated",
+        message = sprintf(
+          paste0(
+            "`%s` writes %s twice. %s() reads each named argument once, so ",
+            "which copy takes effect is an accident of the parser rather ",
+            "than a choice -- write the argument once with the value you ",
+            "mean."
+          ),
+          written,
+          paste0("`", dup, "`", collapse = " and "),
+          fn
+        ),
+        form = fn,
+        written = written
+      ))
+    }
+  }
+
   if (split$n_pos < contract$min_pos) {
     # fa() without its rank is the one case worth naming on its own: the
     # missing argument is a number the user has to choose, not a variable

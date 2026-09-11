@@ -1077,3 +1077,134 @@ test_that("factor fixed term with NA k escalates to representation_unknown", {
     "representation_unknown_for_preflight"
   )
 })
+
+
+# =============================================================================
+# The RAM probe is one shell-out per session, and it is silent (review A23).
+#
+# An external review measured a 21-minute installed check whose log carried
+# repeated "sh: /bin/kstat: No such file or directory" from resource probing,
+# and asked for three things: probe once, cache for the session, and never let
+# a child process's stderr reach the terminal.
+#
+# Total system RAM does not change while an R process runs, so the correct
+# number of shell-outs is one. Measured here before the cache: fb_plan()
+# resolved a ceiling on every call and each resolution spawned a child, five
+# calls for five children at about 9 ms each. A full flexybayes() fit called
+# it zero times, so the review's "fit hot path" framing did not reproduce --
+# the repetition is in plan resolution.
+#
+# The noise itself cannot be reproduced on Darwin, where the native sysctl
+# probe returns first with stderr = FALSE. It belongs to hosts that fall
+# through to benchmarkme / memuse, which spawn without stderr control. A
+# child's stderr cannot be redirected from inside R once it is running, so
+# the defence is Sys.which() before the spawn, and at most one spawn per
+# session.
+# =============================================================================
+
+test_that("the RAM probe shells out once per session, not once per plan", {
+  ns <- asNamespace("flexyBayes")
+  original <- get(".fb_probe_system_ram_uncached", envir = ns, inherits = FALSE)
+  calls <- new.env(parent = emptyenv())
+  calls$n <- 0L
+  assignInNamespace(
+    ".fb_probe_system_ram_uncached",
+    function() {
+      calls$n <- calls$n + 1L
+      original()
+    },
+    ns = "flexyBayes"
+  )
+  on.exit(
+    {
+      assignInNamespace(
+        ".fb_probe_system_ram_uncached", original,
+        ns = "flexyBayes"
+      )
+      flexyBayes:::.fb_reset_ram_cache()
+    },
+    add = TRUE
+  )
+
+  flexyBayes:::.fb_reset_ram_cache()
+  df <- data.frame(y = rnorm(50), x = rnorm(50))
+  fb <- fb_from_brms(y ~ x, data = df)
+  for (i in seq_len(5L)) {
+    invisible(.fb_preflight(fb, .fb_dataset(df)))
+  }
+  expect_identical(calls$n, 1L)
+
+  # An unavailable probe is cached like any other answer, so a host with no
+  # probe pays one failed shell-out per session rather than one per plan.
+  flexyBayes:::.fb_reset_ram_cache()
+  calls$n <- 0L
+  assignInNamespace(
+    ".fb_probe_system_ram_uncached",
+    function() {
+      calls$n <- calls$n + 1L
+      NA_real_
+    },
+    ns = "flexyBayes"
+  )
+  for (i in seq_len(3L)) {
+    expect_true(is.na(flexyBayes:::.fb_probe_system_ram()))
+  }
+  expect_identical(calls$n, 1L)
+})
+
+test_that("resolving a ceiling writes nothing to a child process's stderr", {
+  skip_on_cran()
+  skip_on_os("windows")
+  rbin <- file.path(R.home("bin"), "R")
+  skip_if_not(file.exists(rbin))
+  # The child loads the *installed* package, which under `R CMD check` is the
+  # package under test -- and an installed as-cran run is where the review
+  # measured the noise. Under load_all() against a stale install the child
+  # would be measuring different code, so the versions must agree first.
+  installed <- tryCatch(
+    as.character(utils::packageVersion("flexyBayes")),
+    error = function(e) NA_character_
+  )
+  skip_if(is.na(installed))
+
+  script <- tempfile(fileext = ".R")
+  on.exit(unlink(script), add = TRUE)
+  writeLines(
+    c(
+      "suppressMessages(library(flexyBayes))",
+      "invisible(flexyBayes:::.fb_probe_system_ram())",
+      "df <- data.frame(y = rnorm(50), x = rnorm(50))",
+      "fb <- fb_from_brms(y ~ x, data = df)",
+      "invisible(flexyBayes:::.fb_preflight(fb, flexyBayes:::.fb_dataset(df)))",
+      "cat('PROBE-DONE\\n')",
+      # The positive control, in the same process. A detector that cannot
+      # see the defect would pass this test vacuously, so the run also
+      # spawns a command that does not exist, the way benchmarkme's Solaris
+      # branch spawns kstat -- without stderr control. Its noise must land
+      # in the captured stream, after the marker.
+      "cat('CONTROL-BEGIN\\n')",
+      "try(system2('flexybayes-no-such-probe-kstat', stdout = TRUE),",
+      "    silent = TRUE)",
+      "cat('CONTROL-DONE\\n')"
+    ),
+    script
+  )
+
+  err <- suppressWarnings(system2(
+    rbin,
+    c("--vanilla", "--no-echo", "-f", shQuote(script)),
+    stdout = NULL, stderr = TRUE
+  ))
+  err <- paste(err, collapse = "\n")
+
+  # The control fired: the harness can see a noisy child.
+  expect_match(err, "flexybayes-no-such-probe-kstat")
+
+  # The probe did not: nothing before the control marker mentions a missing
+  # or unpermitted system tool.
+  quiet_part <- strsplit(err, "flexybayes-no-such-probe-kstat", fixed = TRUE)[[1]][1]
+  expect_no_match(quiet_part, "kstat", fixed = TRUE)
+  expect_no_match(quiet_part, "No such file or directory", fixed = TRUE)
+  expect_no_match(quiet_part, "command not found", fixed = TRUE)
+  expect_no_match(quiet_part, "Operation not permitted", fixed = TRUE)
+})

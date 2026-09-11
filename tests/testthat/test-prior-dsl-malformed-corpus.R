@@ -434,3 +434,79 @@ test_that("the fit-entry controls reach a completed fit", {
     expect_false(inherits(fit, "condition"), label = case[[1L]])
   }
 })
+
+
+# --- the b() target shape (review A24) ---------------------------------- #
+#
+# `b()` read its argument with as.character() on the unevaluated expression,
+# which deparses a call head-first. The consequences were the same three
+# escapes the grammar contract closed on the random side, one level up:
+#
+#   b(c("x", "z"))       -> the three names c("c", "x", "z"), a phantom "c"
+#                           the user never wrote;
+#   b(starts_with("x"))  -> c("starts_with", "x");
+#   b(1)                 -> "1".
+#
+# None refused. The length-3 target survived fb_prior() and fb_plan() intact
+# and failed inside the emitter with "the condition has length > 1" -- a base
+# R message about an if() in our internals, raised about a formula the user
+# wrote. Vector and tidy-select targets are a real feature; they need a typed
+# term resolver rather than a coercion, and until one exists the refusal says
+# so.
+
+test_that("b() refuses a target that is not one coefficient name", {
+  malformed <- list(
+    quote(b(c("x", "z"))),
+    quote(b(starts_with("x"))),
+    quote(b(all_of(c("x", "z")))),
+    quote(b(1)),
+    quote(b(TRUE))
+  )
+  for (expr in malformed) {
+    err <- tryCatch(
+      {
+        flexyBayes:::.parse_prior_target(expr)
+        NULL
+      },
+      condition = function(e) if (inherits(e, "error")) e else NULL
+    )
+    expect_s3_class(
+      err,
+      "flexybayes_refusal_prior_target_not_a_single_name"
+    )
+    expect_match(conditionMessage(err), "one coefficient", fixed = TRUE)
+  }
+})
+
+test_that("b() still takes the two spellings it has always documented", {
+  # The falsifier. A target check that refused everything would pass the
+  # block above.
+  expect_identical(
+    flexyBayes:::.parse_prior_target(quote(b("treatment"))),
+    list(type = "b", name = "treatment")
+  )
+  expect_identical(
+    flexyBayes:::.parse_prior_target(quote(b(treatment))),
+    list(type = "b", name = "treatment")
+  )
+})
+
+test_that("a vector b() target refuses before an engine is reached", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  set.seed(20260911L)
+  d <- data.frame(
+    y = stats::rnorm(60),
+    x = stats::rnorm(60),
+    z = stats::rnorm(60),
+    g = factor(rep(paste0("g", 1:6), 10))
+  )
+  err <- tryCatch(
+    {
+      fb_prior(b(c("x", "z")) ~ normal(mean = 0, sd = 3))
+      NULL
+    },
+    condition = function(e) if (inherits(e, "error")) e else NULL
+  )
+  expect_s3_class(err, "flexybayes_refusal_prior_target_not_a_single_name")
+})

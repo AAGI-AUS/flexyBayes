@@ -81,8 +81,8 @@ the runner, never by hand.
 | 03 | Diagonal heterogeneous G by E | `diag(env):gen` | `agridat::yan.winterwheat` |
 | 04 | Sectioned residual | `dsum(~ units \| env)` | `agridat::yan.winterwheat` |
 | 05 | Combined MET | `diag(env):gen` + `dsum(~ units \| env)` | `agridat::yan.winterwheat` |
-| 06 | Unstructured, dim 2 | `us(env):gen`, 2 environments | `yan.winterwheat` subset |
-| 07 | Unstructured, dim 3 | `us(env):gen`, 3 environments | `yan.winterwheat` subset |
+| 06 | Unstructured, dim 2 | `us(env):gen`, 2 counties | `besag.met` subset (amendment 4) |
+| 07 | Unstructured, dim 3 | `us(env):gen`, 3 counties | `besag.met` subset (amendment 4) |
 | 08 | Unstructured, dim 5 | `us(env):gen`, 5 environments | `yan.winterwheat` subset |
 | 09 | Factor-analytic rank 1 | `fa(env, 1):gen` | `agridat::yan.winterwheat` |
 | 10 | Factor-analytic rank 2 | `fa(env, 2):gen` | `agridat::yan.winterwheat` |
@@ -90,7 +90,7 @@ the runner, never by hand.
 | 12 | Known precision | `vm(gen, cov = fb_cov(Q, type = "precision"))` | simulated, seed 20260911 |
 | 13 | Correlated slope | `(x \| g)` against ASReml `us(2):g` | simulated, seed 20260911 |
 | 14 | Uncorrelated slope | `(x \|\| g)` against ASReml `diag(2):g` | simulated, seed 20260911 |
-| 15 | Gaussian relative weights | `weights = w` | simulated, seed 20260911 |
+| 15 | Gaussian relative weights | `weights = w` | `agridat::john.alpha` + fixed weights (amendment 4) |
 | 16 | Random-side AR1 | `~ ar1(col)` matched formulation | `agridat::gilmour.serpentine` |
 
 Rows classified `analogue` or `refused` in the translation registry are out of
@@ -162,11 +162,52 @@ exactly those rows, because a component estimated at zero has no such ratio.
 This was declared before the comparison ran and is recorded here because the
 first results make its purpose concrete.
 
+
+## Amendment 4 -- 2026-09-11, substrates, numbering, and provenance
+
+Three corrections, all of them to this document rather than to a measurement.
+
+**Substrate for rows 06 and 07.** The matrix named a `yan.winterwheat` subset.
+That trial carries one observation per genotype-by-environment cell, and at
+one observation per cell the diagonal of an unstructured covariance is
+confounded with the residual variance -- the package's own
+`inst/KNOWN_ISSUES.md` says so. Pairing on that substrate would have measured
+the confounding rather than the translation. Rows 06 and 07 use
+`agridat::besag.met` restricted to the first two and three counties, which is
+replicated within cell. Row 08 at dimension five is unrun and keeps its
+original substrate until it is.
+
+**Substrate for row 15.** Simulated data with a fixed seed was specified. The
+run uses `agridat::john.alpha` with weights varying by a factor of four, which
+is a real replicated trial and makes a dropped or inverted weight visible in
+the fixed effects. A simulated substrate would have been equally valid; the
+public one is preferable and the change is recorded rather than left as a
+difference between this document and the code.
+
+**Numbering.** The weights scenario was first implemented as `08_weights`,
+which is row 08's number in this matrix. A scenario whose identifier disagrees
+with its specification is a claim surface out of step with its own record, and
+the fixtures are named by that identifier. It is `15_weights`.
+
+**Provenance (review finding A21).** The first tranche built its tarball from
+the working directory while stamping the record with `git rev-parse HEAD`.
+Those are the same thing only when the tree is clean, and it was not: five
+fixtures name `5e4e0ef` for a run whose code was what later became `9b1d93c`.
+The content was probably identical and the stored evidence cannot establish
+it, which defeats the purpose of storing it. `run_tranche.sh` now refuses a
+dirty tree, builds from `git archive <sha>`, takes the scenario and comparator
+code from that same archive, and records their hashes with the rest of the
+manifest. `FB_ORACLE_ALLOW_DIRTY=1` runs anyway and marks the record
+`dirty = TRUE`, which makes it exploration rather than evidence.
+
 ## Manifest -- recorded per scenario
 
 Scenario id and estimand; data digest (SHA-256 of the serialised frame) and
 factor-level order; both calls verbatim; ASReml, R, flexyBayes, INLA and brms
-versions; flexyBayes source SHA and tarball SHA-256; design and covariance
+versions; flexyBayes source SHA and tarball SHA-256; the SHA-256 of
+`scenarios.R`, `compare.R` and `run_one.R` as they stood in that commit;
+whether the tree was clean when the tarball was built; the BLAS and LAPACK in
+use; the RNG kind; the platform; the run command; design and covariance
 parameter counts; convergence and boundary diagnostics from both systems; the
 invariant compared; the tolerance, quoted from this document; pass or fail with
 the raw values on both sides.

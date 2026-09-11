@@ -613,3 +613,9 @@ scenarios:
     oracle_ref: "simulation with known truth; the credible interval is scored for covering it, over 3 families x 2 structures x 3 backends x 10 replicates (180 fits, 480 parameter rows)"
     quantity_class: coverage
     result_cache: release-validation/results/validation_results.rds
+    waiver: "10 replicates per cell against the tier floor, on a 0.7.0.9000
+      candidate and a backend set that still included the engine withdrawn at
+      0.9.3. The shortfall is stated in inst/validation/README.md and is
+      carried here so the gate reports it as a declared gap rather than as an
+      unread artefact. It closes when the coverage study is re-run on this
+      release at the tier's replicate count."

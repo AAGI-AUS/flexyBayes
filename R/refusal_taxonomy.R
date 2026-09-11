@@ -1876,6 +1876,20 @@
     since_version = "0.9.2"
   )
   .register_refusal(
+    reason_code = "prior_target_not_a_single_name",
+    description = paste0(
+      "A b() prior target was given something other than one coefficient ",
+      "name. as.character() on the unevaluated argument deparses a call ",
+      "head-first, so b(c(\"x\", \"z\")) became the three names c(\"c\", ",
+      "\"x\", \"z\") and survived fb_plan() before failing inside the ",
+      "emitter with an untyped base error."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 prior-target contract (review A24)",
+    plan_field = NA_character_,
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
     reason_code = "prior_target_argument_missing",
     description = paste0(
       "A prior target call is missing the argument that identifies which ",
@@ -2602,6 +2616,19 @@ print.fb_refusals_table <- function(x, ...) {
     ),
     message_template = "%s",
     registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "grammar_argument_duplicated",
+    description = paste0(
+      "A special form was given the same named argument twice. The contract ",
+      "validated the set of names and not their multiplicity, so a doubled ",
+      "name was either silently resolved to whichever copy the branch ",
+      "happened to index, or escaped as an untyped matcher error."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract (review A22)",
     plan_field = "rejected_routes",
     since_version = "0.10.0.9000"
   )

@@ -1025,16 +1025,48 @@
   as.numeric(fraction) * ram_bytes
 }
 
+# The probe's answer for this session. Total system RAM does not change while
+# an R process runs, so the shell-out is worth exactly one call: `fb_plan()`
+# resolves a ceiling on every invocation and each resolution was a separate
+# ~9 ms child process, measured on this host. `NULL` means "not yet probed";
+# a probed NA is cached like any other answer, so an unavailable probe costs
+# one failed shell-out per session rather than one per plan.
+.fb_ram_cache <- new.env(parent = emptyenv())
+
+# @noRd
+.fb_reset_ram_cache <- function() {
+  if (exists("bytes", envir = .fb_ram_cache, inherits = FALSE)) {
+    rm("bytes", envir = .fb_ram_cache)
+  }
+  invisible(NULL)
+}
+
 .fb_probe_system_ram <- function() {
+  if (exists("bytes", envir = .fb_ram_cache, inherits = FALSE)) {
+    return(get("bytes", envir = .fb_ram_cache, inherits = FALSE))
+  }
+  bytes <- .fb_probe_system_ram_uncached()
+  assign("bytes", bytes, envir = .fb_ram_cache)
+  bytes
+}
+
+.fb_probe_system_ram_uncached <- function() {
   # Quiet, platform-native probes for the common platforms, with child stderr
-  # suppressed (`stderr = FALSE`). benchmarkme / memuse shell out to system
-  # tools (sysctl, kstat) without stderr control, which prints harmless but
-  # alarming noise ("sysctl: hw.memsize: Operation not permitted",
-  # "/bin/kstat: No such file or directory") on restricted or sandboxed hosts
-  # and makes a successful preflight look broken. The native probes avoid that;
-  # the optional helpers are a last resort for other platforms only.
+  # suppressed (`stderr = FALSE`) and the executable's presence established
+  # with Sys.which() before anything is spawned. benchmarkme / memuse shell
+  # out to system tools (sysctl, kstat) without stderr control, which prints
+  # harmless but alarming noise ("sysctl: hw.memsize: Operation not
+  # permitted", "/bin/kstat: No such file or directory") on restricted or
+  # sandboxed hosts and makes a successful preflight look broken. A child's
+  # stderr cannot be redirected from inside R once it is running, so the only
+  # defence is not to spawn it: the helpers below are reached at most once per
+  # session, and only where neither native probe applies.
+  have <- function(cmd) nzchar(Sys.which(cmd)[[1]])
   sysname <- Sys.info()[["sysname"]]
   if (identical(sysname, "Darwin")) {
+    if (!have("sysctl")) {
+      return(NA_real_)
+    }
     res <- tryCatch(
       as.numeric(suppressWarnings(
         system2("sysctl", c("-n", "hw.memsize"),
@@ -1053,6 +1085,13 @@
       error = function(e) NA_real_
     )
     return(if (!is.na(res) && res > 0) res else NA_real_)
+  }
+  # SunOS / Solaris is where the reported "/bin/kstat: No such file or
+  # directory" comes from: benchmarkme's Solaris branch shells out to kstat
+  # unconditionally and cannot be told to quieten its child. Establish the
+  # tool exists before handing the platform to a helper that will call it.
+  if (identical(sysname, "SunOS") && !have("kstat")) {
+    return(NA_real_)
   }
   if (requireNamespace("benchmarkme", quietly = TRUE)) {
     res <- tryCatch(as.numeric(benchmarkme::get_ram()), error = function(e) {

@@ -36,7 +36,7 @@ which had drifted from the emit layer in four places.
 | Correlated random slope | `(x \| g)` | fits | fits | The uncorrelated slope with the correlation freed: one intercept SD, one slope SD and the correlation between them. INLA holds all three in a single iid2d field over a two-block index, with the slope block entering as a fixed-scaling copy weighted by `x`; brms writes `(x \| g)` verbatim. Both report `sd_<g>`, `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`. The iid2d hyperparameters are one joint Wishart with no standard-deviation slot, so on INLA an explicit SD prior refuses by name and the package default is reported as an engine default rather than as a prior that reached the fit. The joint Wishart's scale matrix is set from the response's own variance, and the slope block from the response variance per unit of the slope variable. Leaving INLA's default there -- a scale matrix of ones, so a prior centred on unit variances -- makes the mode non-unique on any response that is not near unit scale: on `lme4::sleepstudy` eight identical calls returned intercept SDs from 0.5 to 54.8 and correlations from -1.00 to +0.75. Scaled, the same fit returns 25.7 to 26.9 against lme4's 24.7, with the correlation between -0.07 and +0.15 around lme4's 0.066. |
 | Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | fits | fits | An iid field over the interaction index on INLA, `(1 \| a:b)` on brms -- the same model, and the two agree with lme4's REML fit of it on `agridat::john.alpha`. Only observed cells get a level, as in lme4 and brms. |
 | Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | fits | fits | One variance per level of `f`, no covariance between levels. All three spellings emit identical code. INLA writes k independent iid fields, one per level; brms writes `(0 + f \|\| g)`. Both report the component as `sd_<g>__<f><level>` and agree with lme4's REML fit of the same model. `at(f, level)` conditions on selected levels -- a different model -- and still refuses. |
-| Unstructured genotype-by-environment covariance | `~ us(f):g` | fits | fits | One iidKd field on INLA (k = 2..5; wider refuses and names fa()), `(0 + f \| g)` on brms. INLA's Wishart hyperprior shrinks the correlations toward each other, and an explicit SD prior refuses there because iidKd has no slot for one. The correlated sibling of the diagonal structure -- `k(k+1)/2` parameters against `diag()`'s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
+| Unstructured genotype-by-environment covariance | `~ us(f):g` | fits | fits | One iidKd field on INLA (k = 2..5; wider refuses and names fa()), `(0 + f \| g)` on brms. **On INLA this route does not reproduce ASReml's covariance.** Paired against ASReml 4.2.0.392 on `agridat::besag.met` it returns a genetic correlation of 0.147 where ASReml returns 0.930, with genotype variances four to five times larger while the residual agrees; the answer is stable across identical refits, so it is reproducible rather than noisy, and it is not invariant to rescaling the response -- multiplying the response by ten moves the correlation to -0.622. Read the correlations from the brms route, which was not exercised in that comparison, or from ASReml. An explicit SD prior refuses on INLA because iidKd has no slot for one. The correlated sibling of the diagonal structure -- `k(k+1)/2` parameters against `diag()`'s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |
 | Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA carries it through the multiple-likelihood interface, a matrix response with one Gaussian family per level; brms lowers it to distributional regression on log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for families with no residual scale; `at(f, level):units` conditions on selected levels, which is a different model, and refuses. |
 | Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The full multi-environment-trial model. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
@@ -112,21 +112,46 @@ two, a model ASReml cannot fit and INLA can).
 
 Each is reproducible on this release. Priority is for the MET use case.
 
-1. **Take the combined MET fit to realistic scale.** The emit and one live
+1. **`us(f):g` on INLA returns the wrong covariance, reproducibly.** Paired
+   against ASReml 4.2.0.392 on `agridat::besag.met`, the genetic correlation
+   between two environments comes back at 0.147 where ASReml returns 0.930,
+   and the genotype variances are four to five times larger while the
+   residual variance agrees closely. Over three environments the pattern
+   repeats: 0.171, 0.220, 0.309 against 0.898, 0.915, 0.955. Three identical
+   refits agree with each other to about one per cent, so this is not
+   instability -- it is a stable wrong answer, which is the harder kind to
+   notice. It also fails a metamorphic check that needs no external
+   reference: multiplying the response by ten, under which a correlation is
+   invariant, moves the correlation to -0.622 and a variance ratio by a
+   factor of five. For a multi-environment trial the between-environment
+   genetic correlation is the question the model is asked, so this row is
+   classified `analogue` in `inst/TRANSLATION.md` rather than
+   covariance-family, and its correlations should be read from the brms
+   route or from ASReml until this is closed. *What is not yet established
+   is the cause.* The hypothesis with a plausible mechanism is the joint
+   Wishart the `iidKd` field carries, whose scale is set from the response
+   variance -- about 1,483 here against genotype variances of 23 to 70 --
+   but the emitted hyper block has not been read directly, and a hypothesis
+   about this exact route was published once and withdrawn for exactly that
+   reason. Reproduce with `data-raw/asreml_oracle/run_tranche.sh`, scenarios
+   `06_us_dim2` and `07_us_dim3`; the measurement is written up in
+   `data-raw/asreml_oracle/findings/O04_us_disagrees_and_is_not_scale_invariant.md`.
+   *Closes the largest open correctness gap in the package.*
+2. **Take the combined MET fit to realistic scale.** The emit and one live
    fit are in place (120 rows, 4 chains, clean diagnostics). What is missing
    is the same check on a trial series of realistic size, where
    `adapt_delta` and the rest of Stan's `control` list start to matter.
    Those are reachable -- `flexybayes()` and `fb_brms()` forward `seed` and
    `control` to `brms::brm()` -- so the gap is the run, not the route.
    *Closes the package's headline gap.*
-2. **INLA: interaction / nested random effects.** Map `a:b` to
+3. **INLA: interaction / nested random effects.** Map `a:b` to
    `f(interaction(a, b), model = "iid")` and characterise the finest-stratum
    collapse rather than refusing categorically. *Unblocks GxE on the fast
    engine.*
-3. **Heteroscedastic residual on INLA.** A hierarchical / few-stratum
+4. **Heteroscedastic residual on INLA.** A hierarchical / few-stratum
    reformulation. The full many-independent-variance form is outside INLA's
    envelope -- do not promise it.
-4. **Exact aggregation of a factor interaction.** The per-row INLA path
+5. **Exact aggregation of a factor interaction.** The per-row INLA path
    fits `y ~ a*b` on any family (see the resolved list below), but the
    aggregated path cannot: it expands the fixed effects to a model matrix
    and names its columns in the INLA formula, and INLA does not resolve a
@@ -136,11 +161,11 @@ Each is reproducible on this release. Priority is for the MET use case.
    `marginals.fixed` and the latent field together, so the posterior is
    never labelled with a synthesised token. *Restores compression on the
    replicated factorial where it is most useful.*
-5. **Aggregated-binomial input.** No clean `cbind(success, failure)` or
+6. **Aggregated-binomial input.** No clean `cbind(success, failure)` or
    `trials =` on the main fit entry. The streaming path has `trials` but the
    modelling entry does not. Today the only working form is Bernoulli long
    expansion. *Usability.*
-6. **Observation weights outside the Gaussian/identity case.** `weights =`
+7. **Observation weights outside the Gaussian/identity case.** `weights =`
    now fits (0.9.3) for the Gaussian family on an identity link, on both
    engines, in the ASReml / lme4 / `glm(weights=)` precision sense --
    checked against an analytic oracle and matching `lme4::lmer(weights=)`
@@ -152,7 +177,7 @@ Each is reproducible on this release. Priority is for the MET use case.
    weights refuses (`weights_not_aggregatable`) because the closed-form
    sufficient statistics do not carry a per-observation weight through
    the compression.
-7. **A bounded uniform prior whose upper bound cuts into the posterior can
+8. **A bounded uniform prior whose upper bound cuts into the posterior can
    crash the INLA binary.** *Symptom*: the `inla` subprocess exits with a
    segmentation fault, INLA retries once with improved initial values and
    the retry crashes too, and `backend = "inla"` then raises `INLA fit
@@ -176,7 +201,7 @@ Each is reproducible on this release. Priority is for the MET use case.
    engine produced it, so a fit can always be traced to its engine.
    *The crash is upstream. What remains ours is that the re-route is a
    message rather than a refusal you have to acknowledge.*
-8. **The autoregressive field can lose its signal on an incomplete grid.**
+9. **The autoregressive field can lose its signal on an incomplete grid.**
    *Symptom*: the field standard deviation runs to a floor near 0.01, both
    correlations sit at approximately zero with credible intervals spanning
    almost the whole of `[-1, 1]`, and the variance the field should have

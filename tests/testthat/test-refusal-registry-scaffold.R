@@ -341,7 +341,18 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # pol_degree_invalid) (= 130); and s() over more than one variable, which
   # used to raise an untyped names-attribute error from mgcv
   # (multivariate_smooth_unsupported) (= 131).
-  expect_equal(length(entries), 131L)
+  # The 2026-09-11 review adds two, both the same class one level out. A
+  # named argument written twice was validated for membership and never for
+  # multiplicity, so `vm(g, V = G, V = G)` was accepted and lowered to one
+  # term while `s(x, k = 5, k = 9)` escaped as mgcv's own matcher error
+  # (grammar_argument_duplicated) (= 132); and a b() prior target that is not
+  # one coefficient name was read with as.character() on the unevaluated
+  # argument, so b(c("x", "z")) became the three names c("c", "x", "z") and
+  # failed inside the emitter with "the condition has length > 1"
+  # (prior_target_not_a_single_name) (= 133).
+  expect_equal(length(entries), 133L)
+  expect_true("grammar_argument_duplicated" %in% entries)
+  expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
   expect_true("grammar_arity_too_many" %in% entries)
   expect_true("grammar_named_argument_unknown" %in% entries)

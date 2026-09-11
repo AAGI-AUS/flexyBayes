@@ -168,6 +168,41 @@ test_that("a multivariate s() refuses by name rather than through mgcv's call ha
 })
 
 
+test_that("a named argument written twice refuses rather than resolving by accident", {
+  # Review A22. The 0.10.0.9000 contract validated the *set* of named
+  # arguments and never their multiplicity, which left the audited class
+  # alive in two shapes. `vm(g, V = G, V = G)` was accepted and lowered to
+  # one vm term, with the surviving copy an accident of how .walk() indexes;
+  # `s(x, k = 5, k = 9)` reached mgcv's own matcher and raised "formal
+  # argument 'k' matched by multiple actual arguments", an untyped base
+  # error about our internals. Both are escapes the contract exists to
+  # close, and the open-ended s() name set must be covered as well as the
+  # closed vm() / ped() ones.
+  duplicated_calls <- c(
+    "vm(g, V = Gmat, V = Gmat)",
+    "vm(g, cov = fb_cov(Gmat), cov = fb_cov(Gmat))",
+    "ped(g, V = Gmat, V = Gmat)",
+    "ped(g, use_sparse_precision = TRUE, use_sparse_precision = FALSE)",
+    "s(x, k = 5, k = 9)",
+    "s(x, bs = \"cr\", bs = \"tp\")"
+  )
+  dat <- .gc_data()
+  Gmat <- diag(nlevels(dat$g))
+  dimnames(Gmat) <- list(levels(dat$g), levels(dat$g))
+  for (case in duplicated_calls) {
+    err <- tryCatch(
+      {
+        .parse_formula(stats::as.formula(paste0("~ ", case)), dat)
+        NULL
+      },
+      condition = function(e) if (inherits(e, "error")) e else NULL
+    )
+    expect_s3_class(err, "flexybayes_refusal_grammar_argument_duplicated")
+    expect_match(conditionMessage(err), "twice", fixed = TRUE)
+  }
+})
+
+
 # --- the no-backend-call assertion (audit work package 1, step 4) ------- #
 
 test_that("a malformed grammar never reaches an engine", {
@@ -239,4 +274,14 @@ test_that("every well-formed special form still parses into the term it always p
   # mgcv's named basis arguments stay open.
   expect_equal(.parse_formula(~ s(x, k = 5), dat)[[1]]$type, "smooth_mgcv")
   expect_equal(.parse_formula(~ s(x, bs = "cr"), dat)[[1]]$type, "smooth_mgcv")
+
+  # The duplicate-name check (A22) must refuse the second copy and nothing
+  # else: every name it polices still works when written once.
+  expect_equal(.parse_formula(~ vm(g, cov = fb_cov(Gmat)), dat)[[1]]$type, "vm")
+  expect_equal(.parse_formula(~ ped(g, V = Gmat), dat)[[1]]$type, "ped")
+  expect_equal(
+    .parse_formula(~ ped(g, Gmat, use_sparse_precision = FALSE), dat)[[1]]$type,
+    "ped"
+  )
+  expect_equal(.parse_formula(~ s(x, k = 5, bs = "cr"), dat)[[1]]$type, "smooth_mgcv")
 })

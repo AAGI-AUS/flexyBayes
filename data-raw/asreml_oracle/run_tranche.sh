@@ -14,6 +14,24 @@
 # With no scenario named, every scenario in scenarios.R is run. Results land
 # as one .rds per scenario in <work-dir>/oracle_out, and the manifest fields
 # are listed in SPEC.md.
+#
+# PROVENANCE (review finding A21). The first tranche built the tarball from
+# the working directory and stamped it with `git rev-parse HEAD`. Those are
+# two different things whenever the tree is dirty, and the tree was dirty:
+# five banked fixtures carry source_sha 5e4e0ef while the code they exercised
+# was what later became 9b1d93c. The content may well have been identical --
+# the stored evidence gives a future reader no way to establish that, which
+# is the whole point of storing it. So:
+#
+#   * the tree must be clean, or the run is refused by name;
+#   * the tarball is built from `git archive <sha>`, never from the working
+#     directory, so the tarball hash is a function of the commit;
+#   * the comparison code (scenarios.R, compare.R, run_one.R) is taken from
+#     that same archive and hashed into the record.
+#
+# Set FB_ORACLE_ALLOW_DIRTY=1 to run anyway. The record then carries
+# dirty = TRUE and the tarball is still built from the commit, so the run is
+# honest about being an exploration rather than evidence.
 set -e
 
 WORK_IN="${1:?usage: run_tranche.sh <work-dir> [scenario ...]}"
@@ -28,32 +46,64 @@ PKG="$(cd "$(dirname "$0")/../.." && pwd)"
 SHIM_SRC="$PKG/../applications/00_preliminaries/tools/r45_home.sh"
 ASREML_LIB="${FLEXYBAYES_ASREML_LIB:-$HOME/Library/R/arm64/4.5/library}"
 
+cd "$PKG"
+SHA="$(git rev-parse HEAD)"
+DIRTY_FILES="$(git status --porcelain)"
+DIRTY="FALSE"
+if [ -n "$DIRTY_FILES" ]; then
+  if [ "${FB_ORACLE_ALLOW_DIRTY:-0}" != "1" ]; then
+    echo "REFUSED: the working tree is not clean, so a tarball built from" >&2
+    echo "$SHA would not be the code this tree holds. Commit, or re-run" >&2
+    echo "with FB_ORACLE_ALLOW_DIRTY=1 to bank the result as exploration." >&2
+    echo "$DIRTY_FILES" >&2
+    exit 1
+  fi
+  DIRTY="TRUE"
+fi
+
 OUT="$WORK/oracle_out"; mkdir -p "$OUT"
 
-R45HOME="$WORK/r45home_$(date +%Y%m%d_%H%M%S)"
+STAMP="$(date +%Y%m%d_%H%M%S)"
+R45HOME="$WORK/r45home_$STAMP"
 sh "$SHIM_SRC" "$R45HOME"
 
+# The source under test, extracted from the commit rather than copied from
+# the tree. Everything downstream -- the tarball, the scenario code, the
+# comparator -- comes from here. The directory is stamped rather than reused,
+# so a previous extraction is never silently built on and nothing is removed.
+SRC="$WORK/src_${SHA:0:12}_$STAMP"
+mkdir -p "$SRC"
+git archive --format=tar "$SHA" | tar -x -C "$SRC"
+
 LIB="$WORK/oraclelib"; mkdir -p "$LIB"
-cd "$PKG"
+cd "$SRC"
 R CMD build --no-build-vignettes . >/dev/null
-TARBALL="$(ls -t flexyBayes_*.tar.gz | head -1)"
+TARBALL="$SRC/$(ls -t flexyBayes_*.tar.gz | head -1)"
 TSHA="$(shasum -a 256 "$TARBALL" | cut -d' ' -f1)"
-SHA="$(git rev-parse HEAD)"
+SCEN_SHA="$(shasum -a 256 "$SRC/data-raw/asreml_oracle/scenarios.R" | cut -d' ' -f1)"
+CMP_SHA="$(shasum -a 256 "$SRC/data-raw/asreml_oracle/compare.R" | cut -d' ' -f1)"
+RUN_SHA="$(shasum -a 256 "$SRC/data-raw/asreml_oracle/run_one.R" | cut -d' ' -f1)"
+
 R_PROFILE_USER=/dev/null R_LIBS_USER="$LIB:$ASREML_LIB" \
   "$R45HOME/bin/R" CMD INSTALL --library="$LIB" --no-test-load "$TARBALL" >/dev/null
 
 SCENARIOS=("$@")
 if [ ${#SCENARIOS[@]} -eq 0 ]; then
   SCENARIOS=($("$R45HOME/bin/R" --no-echo --no-restore -e \
-    'source("data-raw/asreml_oracle/scenarios.R"); cat(names(scenario_registry()))'))
+    "source(\"$SRC/data-raw/asreml_oracle/scenarios.R\"); cat(names(scenario_registry()))"))
 fi
 
-echo "source SHA   : $SHA"
-echo "tarball SHA  : $TSHA"
+RUN_CMD="data-raw/asreml_oracle/run_tranche.sh <work-dir> ${SCENARIOS[*]}"
+
+echo "source SHA    : $SHA (dirty: $DIRTY)"
+echo "tarball SHA   : $TSHA"
+echo "scenarios SHA : $SCEN_SHA"
 for sc in "${SCENARIOS[@]}"; do
-  FB_LIB="$LIB" FB_ORACLE_DIR="$PKG/data-raw/asreml_oracle" FB_OUT="$OUT" \
+  FB_LIB="$LIB" FB_ORACLE_DIR="$SRC/data-raw/asreml_oracle" FB_OUT="$OUT" \
   FB_SCENARIO="$sc" FB_SOURCE_SHA="$SHA" FB_TARBALL_SHA="$TSHA" \
+  FB_SCENARIOS_SHA="$SCEN_SHA" FB_COMPARE_SHA="$CMP_SHA" FB_RUNNER_SHA="$RUN_SHA" \
+  FB_DIRTY="$DIRTY" FB_RUN_CMD="$RUN_CMD" \
   R_PROFILE_USER=/dev/null "$R45HOME/bin/R" --no-echo --no-restore \
-    --file="$PKG/data-raw/asreml_oracle/run_one.R" 2>&1 | tail -1
+    --file="$SRC/data-raw/asreml_oracle/run_one.R" 2>&1 | tail -1
 done
 echo "TRANCHE COMPLETE -- results in $OUT"

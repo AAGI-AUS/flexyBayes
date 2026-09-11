@@ -112,6 +112,107 @@ scenario_registry <- function() {
       blup = list(list(asreml = "gen", flexybayes = "gen", label = "gen"))
     ),
 
+    # ---- 06 / 07 unstructured covariance, dimensions 2 and 3 ------------- #
+    #
+    # us() is where the two systems' parameterisations differ most: ASReml
+    # estimates the covariance directly, INLA carries an iidKd field under a
+    # joint Wishart. The comparison is therefore on the reconstructed
+    # covariance and the correlations derived from it, never on raw
+    # parameters, which is what SPEC.md's covariance tolerance is for.
+    "06_us_dim2" = list(
+      label = "Unstructured genotype covariance across two environments",
+      registry_row = "Unstructured covariance over a factor, on INLA",
+      factor_cols = c("gen", "env"),
+      data = function() {
+        e <- new.env()
+        utils::data("besag.met", package = "agridat", envir = e)
+        d <- e$besag.met
+        d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+        d <- d[!is.na(d$yield), ]
+        d <- d[d$env %in% levels(d$env)[seq_len(2)], ]
+        d$env <- droplevels(d$env); d$gen <- droplevels(d$gen)
+        d <- d[order(d$env, d$gen), ]
+        rownames(d) <- NULL
+        d
+      },
+      asreml = function(d) {
+        asreml::asreml(fixed = yield ~ env, random = ~ us(env):gen,
+                       data = d, trace = FALSE)
+      },
+      flexybayes = function(d) {
+        flexyBayes::flexybayes(fixed = yield ~ env, random = ~ us(env):gen,
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      ratios = list(),
+      blup = list()
+    ),
+
+    "07_us_dim3" = list(
+      label = "Unstructured genotype covariance across three environments",
+      registry_row = "Unstructured covariance over a factor, on INLA",
+      factor_cols = c("gen", "env"),
+      data = function() {
+        e <- new.env()
+        utils::data("besag.met", package = "agridat", envir = e)
+        d <- e$besag.met
+        d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+        d <- d[!is.na(d$yield), ]
+        d <- d[d$env %in% levels(d$env)[seq_len(3)], ]
+        d$env <- droplevels(d$env); d$gen <- droplevels(d$gen)
+        d <- d[order(d$env, d$gen), ]
+        rownames(d) <- NULL
+        d
+      },
+      asreml = function(d) {
+        asreml::asreml(fixed = yield ~ env, random = ~ us(env):gen,
+                       data = d, trace = FALSE)
+      },
+      flexybayes = function(d) {
+        flexyBayes::flexybayes(fixed = yield ~ env, random = ~ us(env):gen,
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      ratios = list(),
+      blup = list()
+    ),
+
+    # ---- 15 Gaussian relative weights ------------------------------------ #
+    #
+    # Both systems claim variance proportional to sigma^2 / w. The check is
+    # that they agree on the fixed effects, which is where a mis-scaled
+    # weight shows up first.
+    #
+    # Numbered 15 to match SPEC.md's matrix, not in run order. The number is
+    # the registry row's identity and the fixtures are named by it, so a
+    # scenario that drifts from its number in the specification is a claim
+    # surface out of step with its own record.
+    "15_weights" = list(
+      label = "Gaussian relative weights on a replicated trial",
+      registry_row = "Gaussian relative weights",
+      factor_cols = c("gen", "rep"),
+      data = function() {
+        e <- new.env()
+        utils::data("john.alpha", package = "agridat", envir = e)
+        d <- e$john.alpha
+        d$gen <- factor(d$gen); d$rep <- factor(d$rep); d$block <- factor(d$block)
+        set.seed(20260911L)
+        # Weights varying by a factor of four, so a dropped or inverted
+        # weight cannot pass unnoticed.
+        d$wt <- rep(c(1, 2, 4, 2), length.out = nrow(d))
+        d
+      },
+      asreml = function(d) {
+        asreml::asreml(fixed = yield ~ gen, random = ~ rep, weights = wt,
+                       data = d, trace = FALSE)
+      },
+      flexybayes = function(d) {
+        flexyBayes::flexybayes(fixed = yield ~ gen, random = ~ rep,
+                               weights = d$wt, data = d,
+                               backend = "inla", verbose = FALSE)
+      },
+      ratios = list(list(asreml = "rep", flexybayes = "sd_rep")),
+      blup = list(list(asreml = "rep", flexybayes = "rep", label = "rep"))
+    ),
+
     # ---- 05 combined MET ------------------------------------------------- #
     "05_combined_met" = list(
       label = "Heterogeneous G by E together with a sectioned residual",

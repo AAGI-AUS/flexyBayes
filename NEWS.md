@@ -1,5 +1,66 @@
 # flexyBayes 0.10.0.9000 (development version)
 
+* **`us(f):g` on INLA is no longer described as covariance-family equivalent
+  to ASReml's, because it is not.** Paired against ASReml 4.2.0.392 on
+  `agridat::besag.met`, the route returns a genetic correlation of 0.147 where
+  ASReml returns 0.930, and 0.171 / 0.220 / 0.309 against 0.898 / 0.915 /
+  0.955 over three environments, with genotype variances four to five times
+  larger while the residual variance agrees closely. Three identical refits
+  agree with each other to about one per cent, so this is a stable wrong
+  answer rather than a noisy one -- the harder kind to notice, and the kind a
+  repeatability screen rates as fine.
+
+  It also fails a check that needs no external reference at all. Multiplying
+  the response by ten is an exact transformation under which a correlation is
+  invariant, and it moves the correlation to -0.622 and a variance ratio by a
+  factor of five. ASReml returns 0.930 at every scale.
+
+  The translation registry row is now classified `analogue` rather than
+  `covariance-family`, the capability matrix says which route to read the
+  correlations from, and `inst/KNOWN_ISSUES.md` carries the measurement as the
+  package's largest open correctness gap. The cause is **not** established: the
+  joint Wishart the `iidKd` field carries has a plausible mechanism, its scale
+  being set from the response variance, but the emitted hyper block has not
+  been read directly, and a hypothesis about this exact route was published
+  once and withdrawn for precisely that reason. Reproduce with oracle
+  scenarios `06_us_dim2` and `07_us_dim3`.
+
+* **A named argument written twice is now refused
+  (`grammar_argument_duplicated`).** The 0.10.0.9000 grammar contract
+  validated the *set* of named arguments a special form answers to and never
+  their multiplicity, which left the audited defect class alive in two shapes.
+  `vm(g, V = G, V = G)` was accepted and lowered to a single `vm` term, with
+  the surviving copy an accident of how the parser indexes rather than a
+  choice. `s(x, k = 5, k = 9)` reached mgcv's own argument matcher and raised
+  "formal argument 'k' matched by multiple actual arguments" -- a base error
+  about package internals, which is exactly the untyped escape the contract
+  exists to close. Both now refuse before dispatch, for closed name sets
+  (`vm`, `ped`) and for the open-ended `s()` set alike.
+
+* **A `b()` prior target that is not one coefficient name is now refused
+  (`prior_target_not_a_single_name`).** The target was read with
+  `as.character()` on the unevaluated argument, which deparses a call
+  head-first. `b(c("x", "z"))` became the three coefficient names
+  `c("c", "x", "z")` -- a phantom `c` nobody wrote -- and
+  `b(starts_with("x"))` became `c("starts_with", "x")`. Neither was refused.
+  The length-three target passed through `fb_prior()` and `fb_plan()` intact
+  and failed inside the emitter with "the condition has length > 1", an R
+  internals message raised about a formula the user had written. The two
+  documented spellings, `b("treatment")` and `b(treatment)`, are unchanged.
+  Vector and tidy-select targets are a real feature and need a typed term
+  resolver rather than a coercion; until there is one the refusal says so.
+
+* **The system-memory probe shells out once per session instead of once per
+  plan.** `fb_plan()` resolved a memory ceiling on every call and each
+  resolution spawned a child process, measured at about 9 ms. Total system RAM
+  does not change while an R process runs, so the answer is now cached for the
+  session, including when the probe is unavailable. The native probes also
+  establish that the executable exists with `Sys.which()` before spawning it,
+  and a Solaris host without `kstat` no longer reaches the optional helper
+  that would call it -- a child's stderr cannot be redirected from inside R
+  once it is running, so the only defence is not to spawn it.
+
+
 * **A converged INLA fit could be the wrong converged fit, and the package now
   finds the better one and returns it.** Fitting
   `random = ~ diag(env):gen` to `agridat::besag.met` returned no genetic

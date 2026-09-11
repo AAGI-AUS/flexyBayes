@@ -1,0 +1,132 @@
+# Live-backend integration job (audit F04).
+#
+# The ordinary R-CMD-check workflow installs INLA on its Linux release leg and
+# then does not exercise it: `skip_on_ci()` reads the `CI` variable GitHub sets
+# on every runner, and `skip_on_cran()` fires because `NOT_CRAN` is unset under
+# `R CMD check`. Measured on the maintainer's machine at 0.10.0.9000, the two
+# routes disagree by hundreds of assertions -- the as-cran route reported 4,190
+# passes and 348 skips where an unfiltered local run reported 5,716 and 5. The
+# skipped set is the live translation paths, which is where every claim in
+# inst/TRANSLATION.md lives. A green check on that route establishes that the
+# package builds, not that the advertised translations still fit.
+#
+# This job removes both skips rather than editing 461 call sites: `CI` is set
+# empty for the job so `skip_on_ci()` does not fire, and `NOT_CRAN=true` so
+# `skip_on_cran()` does not either.
+#
+# WHICH FILES. Not a hand-kept list. The job asks the translation registry
+# which test file anchors each claimed structure and runs exactly those, so a
+# new claimed row brings its live test with it and a list cannot drift from
+# the claims it is supposed to cover. `test-translation-registry.R` already
+# fails when an anchor names a file that does not exist.
+#
+# BUDGET. 16 anchor files at 0.10.0.9000. Measured 2026-09-11 on the
+# maintainer's machine (Apple M-series, R 4.6.1, INLA 25.10.19, sequential,
+# `CI=` and `NOT_CRAN=true`): **404 seconds, 659 assertions, 0 failures and
+# 0 skips**. The zero is the point -- it is the direct evidence that the two
+# levers below defeat the skips this job exists to defeat, measured rather
+# than reasoned about. A GitHub-hosted Linux runner is slower and has to
+# compile Stan models for the brms legs, so the timeout is set with a wide
+# margin and deliberately not tuned: a job that fails on a timeout teaches
+# maintainers to re-run it rather than read it.
+#
+# NOT YET EXECUTED. This workflow has never run: the branch it belongs to is
+# local and the push is blocked on the relicensing consent recorded in
+# PROJECT_LOG.md. It is committed so that the job exists the moment the push
+# does, and its first run is expected to be its own first test.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Weekly, so a backend release that changes behaviour is caught without
+    # waiting for the next push.
+    - cron: '0 17 * * 0'
+  workflow_dispatch:
+
+name: live-backend
+
+jobs:
+  live-inla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    name: live INLA translation paths
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      # The two levers. `CI` empty defeats skip_on_ci(); NOT_CRAN defeats
+      # skip_on_cran(). Both are the point of this job.
+      CI: ''
+      NOT_CRAN: 'true'
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          # Measured against the 16 anchor files: 14 touch brms, 8 lme4,
+          # 3 mgcv, and the substrates come from agridat. A job that installs
+          # less would skip, and this job fails on a skip.
+          extra-packages: >-
+            any::testthat, any::withr, any::pkgload, any::lme4, any::agridat,
+            any::mgcv, any::brms
+          dependencies: '"hard"'
+
+      - name: Install INLA
+        run: |
+          install.packages("INLA", repos = c(
+            getOption("repos"),
+            INLA = "https://inla.r-inla-download.org/R/stable"
+          ))
+          stopifnot(requireNamespace("INLA", quietly = TRUE))
+          cat("INLA ", as.character(packageVersion("INLA")), "\n", sep = "")
+        shell: Rscript {0}
+
+      - name: Run every test file the translation registry anchors
+        run: |
+          pkgload::load_all(".", quiet = TRUE)
+          reg <- flexyBayes:::.fb_translation_registry()
+          files <- sort(unique(reg$anchor))
+          paths <- file.path("tests", "testthat", files)
+          missing <- files[!file.exists(paths)]
+          if (length(missing)) {
+            stop("registry anchors name files that do not exist: ",
+                 paste(missing, collapse = ", "), call. = FALSE)
+          }
+          cat("running", length(files), "anchor files\n")
+          # Sequential by design: testthat's parallel runner stalls on
+          # INLA / brms fits (reference_testthat_parallel_stall).
+          res <- testthat::test_dir(
+            "tests/testthat",
+            filter = paste0("^(", paste(sub("^test-", "", sub("\\.R$", "", files)),
+                                        collapse = "|"), ")$"),
+            package = "flexyBayes",
+            stop_on_failure = FALSE,
+            reporter = "summary"
+          )
+          df <- as.data.frame(res)
+          n_skip <- sum(df$skipped)
+          cat("skipped:", n_skip, "\n")
+          # The job's whole purpose is that these do not skip. A run that
+          # skips them is a green tick over nothing, which is the defect
+          # this job exists to remove.
+          if (n_skip > 0L) {
+            stop("live-backend job skipped ", n_skip,
+                 " test(s); the skips it exists to defeat are still firing.",
+                 call. = FALSE)
+          }
+          if (sum(df$failed) > 0L || any(df$error)) {
+            stop("live-backend failures: ", sum(df$failed), call. = FALSE)
+          }
+        shell: Rscript {0}

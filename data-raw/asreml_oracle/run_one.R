@@ -48,7 +48,22 @@ record <- list(
     agridat = as.character(utils::packageVersion("agridat"))
   ),
   source_sha = Sys.getenv("FB_SOURCE_SHA"),
-  tarball_sha256 = Sys.getenv("FB_TARBALL_SHA")
+  tarball_sha256 = Sys.getenv("FB_TARBALL_SHA"),
+  # Review A21: a future reader has to be able to establish which code
+  # produced this number without trusting the sentence that shipped with it.
+  # The commit and the tarball hash pin the package; these pin the
+  # comparison itself, the numerical library underneath it, and the command.
+  provenance = list(
+    scenarios_sha256 = Sys.getenv("FB_SCENARIOS_SHA"),
+    compare_sha256 = Sys.getenv("FB_COMPARE_SHA"),
+    runner_sha256 = Sys.getenv("FB_RUNNER_SHA"),
+    dirty = identical(Sys.getenv("FB_DIRTY"), "TRUE"),
+    run_command = Sys.getenv("FB_RUN_CMD"),
+    blas = tryCatch(extSoftVersion()[["BLAS"]], error = function(e) NA_character_),
+    lapack = tryCatch(La_library(), error = function(e) NA_character_),
+    rng_kind = paste(RNGkind(), collapse = " / "),
+    platform = R.version$platform
+  )
 )
 
 if (inherits(asr, "error") || inherits(fb, "error")) {

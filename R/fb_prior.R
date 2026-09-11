@@ -229,8 +229,32 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           )
         ))
       }
-      name <- as.character(args_list[[1]])
-      return(list(type = "b", name = name))
+      # One coefficient, named by a string or a bare symbol. Anything else
+      # used to reach as.character() on the unevaluated argument, which
+      # deparses a call head-first: b(c("x", "z")) became the three names
+      # c("c", "x", "z") and b(starts_with("x")) became c("starts_with", "x").
+      # Neither was refused; the phantom head survived fb_plan() and the
+      # length-3 target then failed inside the emitter with the base error
+      # "the condition has length > 1" -- an R internals message about a
+      # formula the user wrote. Vector and tidy-select targets are a real
+      # feature and need a typed term resolver, not a coercion; until that
+      # exists the refusal names what was written and what b() takes.
+      raw <- args_list[[1]]
+      ok <- is.symbol(raw) ||
+        (is.character(raw) && length(raw) == 1L && !is.na(raw))
+      if (!ok) {
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_not_a_single_name",
+          message = paste0(
+            "`b(", paste(deparse(raw), collapse = ""), ")` does not name one ",
+            "coefficient. b() takes a single coefficient name, written as a ",
+            "string -- b(\"treatment\") -- or as a bare symbol -- b(treatment).",
+            "\nA vector or a tidy-select helper is not yet supported: give ",
+            "each coefficient its own row in fb_prior()."
+          )
+        ))
+      }
+      return(list(type = "b", name = as.character(raw)))
     }
 
     if (fn == "cor") {
