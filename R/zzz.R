@@ -96,6 +96,9 @@
   # arguments, literal counts, and the malformed-dsum fall-through.
   .populate_refusal_registry_grammar_contract()
 
+  # 0.10.0.9000: the selection module's covariance-builder refusals.
+  .populate_refusal_registry_selection()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
