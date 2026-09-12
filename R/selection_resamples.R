@@ -1417,6 +1417,23 @@ fb_resamples <- function(
     aggregated = aggregated,
     metric = metric,
     prediction = prediction,
-    seed = seed
+    seed = seed,
+    # The four axes of SPEC v5 section 2, as far as this route resolves them.
+    # This is the unpenalised BENCHMARK: a closed-form GLS on a covariance
+    # estimated once per fold and plugged in. It is never labelled Bayesian.
+    workflow = "unpenalized_benchmark",
+    provider = "gls_reml_plugin",
+    # Read from the fold objects, never from an argument. Each substrate
+    # carries the estimand of the `fb_sel_cov_spec` it actually worked in,
+    # which `.fb_sel_reml_components()` set; a certificate built from this
+    # field cannot disagree with what ran, which is the defect SPEC v5
+    # section 9.2 closes. `unique()` rather than the first fold's value, so a
+    # run in which the folds disagreed reports two estimands rather than
+    # silently reporting one of them.
+    covariance_estimand = unique(vapply(
+      substrates,
+      function(z) z$covariance_estimand,
+      character(1L)
+    ))
   )
 }
