@@ -10,6 +10,10 @@
                         "~/Library/R/arm64/4.5/library", .libPaths())))
 suppressMessages(library(asreml))
 suppressMessages(library(flexyBayes))
+# Scenario 19 reads its substrate from lme4. Loaded unconditionally so a
+# missing dependency fails at the top of the run rather than inside one
+# scenario, where it would look like a modelling failure.
+suppressMessages(library(lme4))
 
 here <- Sys.getenv("FB_ORACLE_DIR")
 source(file.path(here, "compare.R"))
@@ -153,6 +157,57 @@ for (r in sc$correlations %||% list()) {
   }
 }
 
+# ---- Layer 3 ---- #
+#
+# SPEC.md Amendment 5. Runs only for a scenario that declares the pair, so
+# every earlier scenario's record is unchanged in shape and in content.
+if (is.function(sc$asreml_protected)) {
+  asr_p <- tryCatch(sc$asreml_protected(d), error = function(e) e)
+  fb_p <- tryCatch(sc$flexybayes_protected(d), error = function(e) e)
+  v1 <- list()
+  if (inherits(asr_p, "error") || inherits(fb_p, "error")) {
+    v1$status <- "not_compared"
+    v1$reason <- paste0(
+      if (inherits(asr_p, "error"))
+        paste0("asreml protected fit failed: ", conditionMessage(asr_p)) else "",
+      if (inherits(fb_p, "error"))
+        paste0("flexybayes protected fit failed: ", conditionMessage(fb_p)) else ""
+    )
+  } else {
+    s_p <- summary(fb_p)
+    moments_full <- .fb_inla_variance_moments(fb)
+    moments_prot <- .fb_inla_variance_moments(fb_p)
+    v1$status <- "compared"
+    v1$inla_moments_full <- moments_full
+    v1$inla_moments_protected <- moments_prot
+    v1$protected_converged <- s_p$converge$ok
+    v1$protected_asreml_converged <- isTRUE(asr_p$converge)
+    v1$protected_asreml_loglik <- asr_p$loglik
+
+    v1_checks <- c(
+      cmp_fixed_v1(asr_p, s_p, "protected_only"),
+      cmp_fixed_v1(asr, s, "protected_plus_candidates")
+    )
+    if (!is.null(sc$varcomp_map)) {
+      v1_checks <- c(
+        v1_checks,
+        cmp_varcomp_v1(asr_p, moments_prot, sc$varcomp_map, "protected_only"),
+        cmp_varcomp_v1(asr, moments_full, sc$varcomp_map,
+                       "protected_plus_candidates")
+      )
+    }
+    for (b in sc$blup_v1 %||% list()) {
+      v1_checks[[length(v1_checks) + 1L]] <- cmp_blup_v1(
+        .fb_blup_asreml(asr, b$asreml),
+        .fb_blup_flexybayes(fb, b$flexybayes),
+        paste0(b$label, " (protected_plus_candidates)")
+      )
+    }
+    v1$checks <- v1_checks
+  }
+  record$layer3 <- v1
+}
+
 record$checks <- checks
 record$elapsed_sec <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
 record$status <- "compared"
@@ -164,5 +219,9 @@ nf <- sum(vapply(checks, function(c) identical(c$pass, FALSE), logical(1)))
 nn <- sum(vapply(checks, function(c) is.na(c$pass), logical(1)))
 ns <- sum(vapply(record$structural, function(c) isTRUE(c$pass), logical(1)))
 nsf <- sum(vapply(record$structural, function(c) identical(c$pass, FALSE), logical(1)))
-cat(sprintf("%s\tstructural %d pass / %d fail\tnumeric %d pass / %d fail / %d not-asserted\t%.0fs\n",
-            id, ns, nsf, np, nf, nn, record$elapsed_sec))
+l3 <- record$layer3$checks %||% list()
+l3p <- sum(vapply(l3, function(c) isTRUE(c$pass), logical(1)))
+l3f <- sum(vapply(l3, function(c) identical(c$pass, FALSE), logical(1)))
+l3n <- sum(vapply(l3, function(c) is.na(c$pass), logical(1)))
+cat(sprintf("%s\tstructural %d pass / %d fail\tnumeric %d pass / %d fail / %d not-asserted\tlayer3 %d / %d / %d\t%.0fs\n",
+            id, ns, nsf, np, nf, nn, l3p, l3f, l3n, record$elapsed_sec))

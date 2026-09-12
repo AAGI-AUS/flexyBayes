@@ -274,6 +274,168 @@ scenario_registry <- function() {
       },
       ratios = list(),
       blup = list()
+    ),
+
+    # ---- 17 / 18 / 19 the selection-validation rows (SPEC Amendment 5) --- #
+    #
+    # These three differ from every row above in carrying a PAIR of nested
+    # fixed specifications. The selection verb's claims are about the
+    # increment between a protected-only fit and a protected-plus-candidates
+    # fit, so a suite that pairs one model in each system cannot reach them.
+    # `asreml_protected` / `flexybayes_protected` are the protected-only half;
+    # `asreml` / `flexybayes` stay the extended fit, so every Layer 1 and
+    # Layer 2 assertion above continues to apply unchanged.
+    #
+    # `varcomp_map` is written out per scenario rather than inferred. ASReml
+    # names a variance component after the term; INLA names a hyperparameter
+    # after the index column the emitter built for it, and the two
+    # vocabularies agree by accident on some rows and not on others. An
+    # automatic match between them would be the exact defect this suite
+    # exists to catch.
+
+    "17_v1_alpha_nested" = list(
+      label = "Alpha lattice: intercept-only against genotype-fixed, two strata",
+      registry_row = "Nested and interacted iid terms",
+      factor_cols = c("gen", "rep", "block"),
+      data = function() {
+        e <- new.env()
+        utils::data("john.alpha", package = "agridat", envir = e)
+        d <- e$john.alpha
+        d$gen <- factor(d$gen); d$rep <- factor(d$rep); d$block <- factor(d$block)
+        d
+      },
+      asreml_protected = function(d) {
+        asreml::asreml(fixed = yield ~ 1, random = ~ rep + rep:block,
+                       data = d, trace = FALSE)
+      },
+      flexybayes_protected = function(d) {
+        flexyBayes::flexybayes(fixed = yield ~ 1, random = ~ rep + rep:block,
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      asreml = function(d) {
+        asreml::asreml(fixed = yield ~ gen, random = ~ rep + rep:block,
+                       data = d, trace = FALSE)
+      },
+      flexybayes = function(d) {
+        flexyBayes::flexybayes(fixed = yield ~ gen, random = ~ rep + rep:block,
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      ratios = list(list(asreml = "rep", flexybayes = "sd_rep")),
+      blup = list(list(asreml = "rep", flexybayes = "rep", label = "rep")),
+      varcomp_map = c(
+        "rep" = "Precision for rep",
+        "rep:block" = "Precision for rep_block_id",
+        "units!R" = "Precision for the Gaussian observations"
+      ),
+      blup_v1 = list(
+        list(asreml = "rep", flexybayes = "rep", label = "rep"),
+        list(asreml = "rep", flexybayes = "rep:block", label = "rep:block")
+      )
+    ),
+
+    "18_v1_sim_met_candidates" = list(
+      label = "Twenty sites by ten plots: one protected covariate and six candidates",
+      registry_row = "Simple iid random intercept",
+      factor_cols = c("site"),
+      data = function() {
+        set.seed(20260913L)
+        n_site <- 20L
+        n_plot <- 10L
+        site <- factor(rep(sprintf("S%02d", seq_len(n_site)), each = n_plot))
+        n <- n_site * n_plot
+        x <- matrix(stats::rnorm(n * 7L), nrow = n, ncol = 7L)
+        colnames(x) <- c("x_prot", paste0("c", seq_len(6L)))
+        u <- stats::rnorm(n_site, sd = 0.7)
+        # Two candidates carry signal and four do not, so a selection that
+        # keeps everything and a selection that keeps nothing are both wrong.
+        y <- 1 + 0.8 * x[, "x_prot"] + 0.6 * x[, "c1"] - 0.5 * x[, "c4"] +
+          u[as.integer(site)] + stats::rnorm(n)
+        d <- data.frame(y = y, site = site, x)
+        rownames(d) <- NULL
+        d
+      },
+      asreml_protected = function(d) {
+        asreml::asreml(fixed = y ~ x_prot, random = ~ site,
+                       data = d, trace = FALSE)
+      },
+      flexybayes_protected = function(d) {
+        flexyBayes::flexybayes(fixed = y ~ x_prot, random = ~ site,
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      asreml = function(d) {
+        asreml::asreml(fixed = y ~ x_prot + c1 + c2 + c3 + c4 + c5 + c6,
+                       random = ~ site, data = d, trace = FALSE)
+      },
+      flexybayes = function(d) {
+        flexyBayes::flexybayes(fixed = y ~ x_prot + c1 + c2 + c3 + c4 + c5 + c6,
+                               random = ~ site, data = d,
+                               backend = "inla", verbose = FALSE)
+      },
+      ratios = list(list(asreml = "site", flexybayes = "sd_site")),
+      blup = list(list(asreml = "site", flexybayes = "site", label = "site")),
+      varcomp_map = c(
+        "site" = "Precision for site",
+        "units!R" = "Precision for the Gaussian observations"
+      ),
+      blup_v1 = list(
+        list(asreml = "site", flexybayes = "site", label = "site")
+      )
+    ),
+
+    "19_v1_random_slope" = list(
+      label = "Correlated random intercept and slope on a repeated-measures trial",
+      registry_row = "Correlated slope",
+      factor_cols = c("Subject"),
+      data = function() {
+        d <- lme4::sleepstudy
+        d$Subject <- factor(d$Subject)
+        rownames(d) <- NULL
+        d
+      },
+      asreml_protected = function(d) {
+        asreml::asreml(
+          fixed = Reaction ~ 1,
+          random = ~ str(~ Subject + Days:Subject, ~ us(2):id(Subject)),
+          data = d, trace = FALSE
+        )
+      },
+      flexybayes_protected = function(d) {
+        flexyBayes::flexybayes(fixed = Reaction ~ 1 + (Days | Subject),
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      asreml = function(d) {
+        asreml::asreml(
+          fixed = Reaction ~ Days,
+          random = ~ str(~ Subject + Days:Subject, ~ us(2):id(Subject)),
+          data = d, trace = FALSE
+        )
+      },
+      flexybayes = function(d) {
+        flexyBayes::flexybayes(fixed = Reaction ~ Days + (Days | Subject),
+                               data = d, backend = "inla", verbose = FALSE)
+      },
+      ratios = list(),
+      blup = list(),
+      correlations = list(
+        list(
+          label = "Subject, intercept vs slope",
+          asreml = c(v1 = "Subject+Days:Subject!us(2)_1:1",
+                     v2 = "Subject+Days:Subject!us(2)_2:2",
+                     cov = "Subject+Days:Subject!us(2)_2:1"),
+          flexybayes = "cor_Subject__Intercept__Days"
+        )
+      ),
+      varcomp_map = c(
+        "Subject+Days:Subject!us(2)_1:1" =
+          "Precision for Subject_cor_Days_id (component 1)",
+        "Subject+Days:Subject!us(2)_2:2" =
+          "Precision for Subject_cor_Days_id (component 2)",
+        "units!R" = "Precision for the Gaussian observations"
+      ),
+      blup_v1 = list(
+        list(asreml = "Subject", flexybayes = "Days | Subject",
+             label = "Subject intercept and slope")
+      )
     )
   )
 }

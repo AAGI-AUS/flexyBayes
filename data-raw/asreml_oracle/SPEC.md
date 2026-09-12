@@ -222,3 +222,65 @@ Every registry row classified `exact` or `covariance-family` either passes its
 Layer 1 and Layer 2 assertions at the tolerances above, or is reclassified in
 `.fb_translation_registry()` with the measured discrepancy named. There is no
 third outcome, and in particular no outcome in which a tolerance moves.
+
+## Amendment 5 -- 2026-09-13, the selection-validation tranche (V1)
+
+Written before the tranche ran, for the same reason the rest of this document
+was.
+
+**Why a new group of rows.** The eight banked scenarios pair one model in each
+system. The selection verb's claims are about a *pair* of nested models -- a
+protected-only fit and a protected-plus-candidates fit -- and about quantities
+the earlier rows never asserted on: the posterior standard deviation of a fixed
+effect, the posterior mean *and median* of a variance component on the variance
+scale, and the largest absolute difference between two systems' random-effect
+predictions rather than only their correlation. Three rows are added for that.
+
+**Numbering.** The validation programme these rows serve calls them V1(a), (b)
+and (c), and asked for them as "09 to 11" by run order. Matrix numbers 09, 10
+and 11 are already spoken for by the factor-analytic and known-covariance rows,
+which are unrun rather than retired, and Amendment 4 exists because a scenario
+whose identifier disagrees with its specification is a claim surface out of step
+with its own record. The rows are therefore **17, 18 and 19**, and this
+paragraph is the map between the two namings.
+
+| # | Registry row | Structure | Substrate |
+|---|---|---|---|
+| 17 | Nested / multi-stratum, nested fixed pair | `yield ~ 1` and `yield ~ gen`, `random = ~ rep + rep:block` | `agridat::john.alpha` |
+| 18 | Simple iid intercept, protected plus six candidates | `y ~ x_prot` and `y ~ x_prot + c1..c6`, `random = ~ site` | simulated, 20 sites by 10 plots, seed 20260913 |
+| 19 | Correlated slope | `Reaction ~ 1` and `Reaction ~ Days`, `(Days | Subject)` against ASReml `str(~ Subject + Days:Subject, ~us(2):id(Subject))` | `lme4::sleepstudy` |
+
+Row 19 is matrix row 13's structure (correlated slope) on a public substrate,
+run here because the selection verb's random-slope claim needs it; row 13 keeps
+its simulated substrate and stays unrun.
+
+### Layer 3 -- the selection-validation comparisons. Tolerances fixed in advance.
+
+These are *looser* than Layer 2's and they are a different question, so they are
+a third layer rather than a relaxation of the second. Layer 2 asks whether the
+translation is faithful, and answers it on a quarter of a standard error. Layer
+3 asks whether a user reading the two systems' reports would draw the same
+scientific conclusion, and a posterior summary and a REML estimate are allowed
+to differ inside the width of the interval either one reports.
+
+| Id | Quantity | Criterion | Asserted when |
+|---|---|---|---|
+| V1-F1 | Fixed effect against REML BLUE | `abs(b_fb - b_asr) <= 2 * sd_post(b_fb)` | every estimable shared term |
+| V1-F2 | Fixed effect, relative | `abs(b_fb - b_asr) / abs(b_asr) <= 0.05` | `abs(z_asr) >= 2`; a relative criterion on an effect not resolved from zero measures noise |
+| V1-V1 | Variance component, posterior **mean** on the variance scale | `abs(m - v_asr) / v_asr <= 0.15` | ASReml `bound == "P"` and `component > 0` |
+| V1-V2 | Variance component, posterior **median** on the variance scale | same | same |
+| V1-B1 | BLUP agreement | `cor(blup_fb, blup_asr) >= 0.99`, on levels matched **by name** | at least three levels match by name |
+
+Both the mean and the median are asserted, and separately, because they answer
+different halves of one question. A posterior mean of a non-negative parameter
+sits above its mode by an amount that grows with the posterior's skew, so a mean
+that misses while the median holds is the estimand difference this suite has
+recorded since Amendment 3, and a mean *and* median that both miss is not.
+
+**Level matching is by name and never by position.** A group whose levels come
+back as integer indices on one side cannot be aligned with a group whose levels
+come back as decorated labels on the other, and lining the two up by row order
+is a guess that a differently-ordered interaction silently converts into a
+false pass. Such a comparison is recorded as `not asserted -- levels cannot be
+matched by name`, which is a finding about the reporting surface, not a
+tolerance question.
