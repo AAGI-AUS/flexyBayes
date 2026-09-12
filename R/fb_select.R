@@ -1479,6 +1479,24 @@ fb_select <- function(base,
     ))
   }
 
+  # The two routes below have no decision layer at all -- there is no
+  # shrinkage prior for a submodel to be projected out of -- so they report
+  # `full` however the gate read, and the resolution record has to say that
+  # rather than the projection it would have picked for a penalised request.
+  forced_full <- list(
+    requested = decision_resolution$requested,
+    resolved_from = if (identical(decision_resolution$requested, "auto")) {
+      "auto"
+    } else {
+      NA_character_
+    },
+    gate_verdict = decision_resolution$gate_verdict,
+    reason = paste0(
+      "every candidate is protected on this route, so there is no submodel ",
+      "to decide between and the answer is the extended model itself"
+    )
+  )
+
   if (identical(workflow, "unpenalized_benchmark")) {
     if (!is.null(penalty)) {
       stop(.fb_refusal_condition(
@@ -1520,7 +1538,7 @@ fb_select <- function(base,
       calibration = calibration,
       provider_versions = list(),
       structure_gate = structure_gate,
-      decision_resolution = decision_resolution,
+      decision_resolution = forced_full,
       dots = dots
     ))
   }
@@ -1543,7 +1561,22 @@ fb_select <- function(base,
       requested_workflow = requested_workflow,
       calibration = calibration,
       structure_gate = structure_gate,
-      decision_resolution = decision_resolution
+      decision_resolution = list(
+        requested = decision_resolution$requested,
+        resolved_from = if (
+          identical(decision_resolution$requested, "auto")
+        ) {
+          "auto"
+        } else {
+          NA_character_
+        },
+        gate_verdict = decision_resolution$gate_verdict,
+        reason = paste0(
+          "the penalised optimiser reports the support of its own solution ",
+          "at the chosen lambda; there is no posterior for a projection to ",
+          "act on"
+        )
+      )
     ))
   }
 
@@ -1564,7 +1597,7 @@ fb_select <- function(base,
         prediction = prediction,
         fits_per_fold = 2L,
         candidates = candidates,
-        decision_resolution = decision_resolution
+        decision_resolution = forced_full
       ))
     }
     cv <- .fb_sel_bayes_cv(
@@ -1614,7 +1647,7 @@ fb_select <- function(base,
       calibration = calibration,
       provider_versions = .fb_select_provider_versions(cv$provider),
       structure_gate = structure_gate,
-      decision_resolution = decision_resolution,
+      decision_resolution = forced_full,
       dots = dots
     ))
   }
@@ -2230,10 +2263,12 @@ print.fb_select <- function(x, digits = 4L, ...) {
     "\n",
     sep = ""
   )
-  # Printed only where it says something the row count does not: in a
-  # clustered design the prior scales are calibrated against the units, and
-  # a reader who saw only the row count would read a different prior.
-  if (!identical(cert$calibration_n, cert$n_rows)) {
+  # Printed only where it says something the row count does not, and only
+  # where a prior scale was actually calibrated against it: in a clustered
+  # design the scales are stated at the unit, and a reader who saw only the
+  # row count would read a different prior.
+  if (length(cert$prior_blocks) > 0L &&
+        !identical(cert$calibration_n, cert$n_rows)) {
     cat(
       "  prior n   : calibrated at ", cert$calibration_n, " ",
       paste(cert$calibration_unit, collapse = ", "),
