@@ -8,7 +8,7 @@ fb_select(
   base,
   candidates,
   penalty = NULL,
-  workflow = c("bayes", "penalized_optimizer"),
+  workflow = c("bayes", "penalized_optimizer", "unpenalized_benchmark"),
   fallback = c("none", "glmnet"),
   benchmark = FALSE,
   resamples = fb_resamples(),
@@ -30,7 +30,13 @@ block and are never penalised.}
 \item{penalty}{\code{NULL} (every candidate protected) or an \code{\link[=fb_penalty]{fb_penalty()}}
 declaring the joint shrinkage prior over the candidate block.}
 
-\item{workflow}{\code{"bayes"} (default) or \code{"penalized_optimizer"}.}
+\item{workflow}{\code{"bayes"} (default), \code{"penalized_optimizer"} or
+\code{"unpenalized_benchmark"}. The third asks for the closed-form
+generalised-least-squares arm on its own -- the same computation
+\code{benchmark = TRUE} adds beside a Bayesian answer -- for a caller who
+wants the plugged-in-covariance comparison and not the posterior. It is
+never labelled Bayesian, on the object, in the print method or on the
+certificate.}
 
 \item{fallback}{\code{"none"} (default) or \code{"glmnet"}. Fires only when the
 Bayesian provider is absent, never after a failure.}

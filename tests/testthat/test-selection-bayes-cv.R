@@ -346,6 +346,11 @@ test_that("the INLA fold refit reports its own missing fraction", {
   # does not suppress it -- a reader choosing v is choosing that fraction.
   skip_on_cran()
   skip_if_not_installed("INLA")
+  # The note is emit-once for the session, so a sibling file that exercises
+  # this route first would consume it and leave this assertion reading an
+  # empty warning list. The latch is reset for the scope of this test and
+  # restored on exit.
+  local_clean_emit_state()
 
   d <- fb_bcv_data()
   split <- .fb_sel_folds(fb_resamples(unit = ~site, v = 3L), d)[[1L]]

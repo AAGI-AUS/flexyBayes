@@ -33,15 +33,18 @@
 #'   computed on the draws rather than by the delta method.
 #'
 #' @section Vignettes:
-#' Four vignettes ship with the package: *Mixed models in brief*,
+#' Five vignettes ship with the package: *Mixed models in brief*,
 #' *Bayesian estimation in brief*, *The ASReml syntax flexyBayes covers*,
-#' and *ASReml and flexyBayes on the same trials*. The first two set up
-#' the model class and what changes under a posterior; the third is the
-#' formula surface together with dispatch and the inventory of structures
-#' that are refused; the fourth fits the same trials through both and
-#' shows where the answers agree and where they do not. The count here is
-#' checked against `vignettes/` by a parity test, because a number written
-#' into prose is the first thing to drift.
+#' *ASReml and flexyBayes on the same trials*, and *Selecting over a
+#' candidate block*. The first two set up the model class and what changes
+#' under a posterior; the third is the formula surface together with
+#' dispatch and the inventory of structures that are refused; the fourth
+#' fits the same trials through both and shows where the answers agree and
+#' where they do not; the fifth shrinks a block of candidate fixed effects
+#' under a declared joint prior, reads a projection predictive decision off
+#' it, and says what a benchmark against an external optimiser does and does
+#' not establish. The count here is checked against `vignettes/` by a parity
+#' test, because a number written into prose is the first thing to drift.
 #'
 #' @section Capability:
 #' What each active engine fits, emits, or refuses by model class is

@@ -198,7 +198,13 @@ fb_sel_proj_bits <- function() {
   # The sampler's own warnings about a handful of divergent transitions at
   # this deliberately small budget are what the convergence gate reads and
   # reports; they are not the subject of these tests.
-  ref <- fb_sel_bayes_memo("reference", suppressWarnings(.fb_sel_reference_fit(
+  # The memo cache is shared across every file that sources
+  # helper-selection-bayes.R, so the key names the FIT rather than its role:
+  # test-selection-reference.R builds a different reference (2500 draws,
+  # 1000 warm-up) and under a plain "reference" key whichever file ran first
+  # handed its fit to the other. The adequacy assertions there then read a
+  # posterior they had not asked for.
+  ref <- fb_sel_bayes_memo("reference_projection", suppressWarnings(.fb_sel_reference_fit(
     base, ~ x1 + x2 + z1 + z2,
     prior = comp$prior,
     column_map = .fb_sel_test_column_map(cand),
@@ -211,7 +217,7 @@ fb_sel_proj_bits <- function() {
 }
 
 fb_sel_proj_run <- function(bits) {
-  fb_sel_bayes_memo("projection", suppressWarnings(.fb_sel_project(
+  fb_sel_bayes_memo("projection_search", suppressWarnings(.fb_sel_project(
     bits$ref, bits$folds,
     decision = list(rule = "one_se", validate_search = TRUE),
     seed = 20260912L,

@@ -37,8 +37,11 @@ fb_sel_ref_bits <- function(n_samples = 2500L, warmup = 1000L, ...) {
 }
 
 fb_sel_reference <- function(bits) {
+  # A distinct key: test-selection-projection.R memoises its own reference
+  # fit at a smaller sampler budget into the same shared cache, and the
+  # adequacy gates below are assertions about THIS fit's diagnostics.
   fb_sel_bayes_memo(
-    "reference",
+    "reference_adequacy",
     .fb_sel_reference_fit(
       bits$base,
       ~ x1 + x2 + z1 + z2,
@@ -164,18 +167,30 @@ test_that("the reference fit refuses without a seed", {
 
 
 test_that("a candidate absent from the fit's data refuses by name", {
+  # A brms fit now carries the analysis data at `$data`, as an INLA fit
+  # always did, so a base fitted on a frame that HOLDS the candidates finds
+  # them there and the refusal is not reachable from it. The refusal is
+  # still the right answer when the data genuinely lacks the column, and
+  # this is the base that lacks it: the same fit with its data narrowed to
+  # the variables the base model used, which is the shape a fit reloaded
+  # from a brms model frame has.
   bits <- fb_sel_ref_bits()
-  # Without `data =`, a brms base offers only its model frame, which holds
-  # the variables the BASE used. The candidates are not among them.
+  narrowed <- bits$base
+  narrowed$data <- bits$d[, c("y", "p1", "site"), drop = FALSE]
+
   expect_error(
-    .fb_sel_reference_fit(bits$base, ~ x1 + x2, seed = 1L),
+    .fb_sel_reference_fit(narrowed, ~ x1 + x2, seed = 1L),
     class = "flexybayes_refusal_selection_base_shape_unreadable"
   )
   err <- tryCatch(
-    .fb_sel_reference_fit(bits$base, ~ x1 + x2, seed = 1L),
+    .fb_sel_reference_fit(narrowed, ~ x1 + x2, seed = 1L),
     condition = function(e) e
   )
   expect_match(conditionMessage(err), "x1, x2")
+
+  # And the negative control the emit fix earns: the unnarrowed base does
+  # NOT refuse, because the candidates are in the data it carries.
+  expect_true(all(c("x1", "x2") %in% names(bits$base$data)))
 })
 
 
