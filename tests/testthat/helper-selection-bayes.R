@@ -8,10 +8,18 @@
 # rather than against an implementation. The prior rows are written with
 # `brms::set_prior()` directly, which is what the compiler emits.
 
-# CmdStan is the Stan toolchain of record on this machine, and the fits
-# below are small enough that compile time dominates; the rstan backend
+# CmdStan is the Stan toolchain of record on this machine, and the fits in
+# this file are small enough that compile time dominates; the rstan backend
 # would recompile the same programs against an older Stan.
-options(brms.backend = "cmdstanr")
+#
+# The option is set only when cmdstanr is actually reachable. A helper is
+# sourced for EVERY test file, so an unconditional setting leaks into files
+# that have nothing to do with this module: under `R CMD check`, where
+# cmdstanr is not on the library path, it turned seven unrelated brms fits
+# into "Please install the 'cmdstanr' package".
+if (requireNamespace("cmdstanr", quietly = TRUE)) {
+  options(brms.backend = "cmdstanr")
+}
 
 
 # --- data -------------------------------------------------------------- #

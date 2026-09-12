@@ -87,7 +87,7 @@
         "and a family without a provider is a promise rather than a ",
         "capability."
       ),
-      family = family,
+      penalty_family = family,
       supported = supported
     ))
   }

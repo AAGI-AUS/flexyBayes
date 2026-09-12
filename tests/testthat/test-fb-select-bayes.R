@@ -28,7 +28,12 @@
 #                                and requires no substitution
 # =============================================================================
 
-options(brms.backend = "cmdstanr")
+# Set only when cmdstanr is reachable: an unconditional setting here reaches
+# every file in the run, and under `R CMD check` -- where cmdstanr is not on
+# the library path -- it turns unrelated brms fits into an install refusal.
+if (requireNamespace("cmdstanr", quietly = TRUE)) {
+  options(brms.backend = "cmdstanr")
+}
 
 fbsb_cache <- new.env(parent = emptyenv())
 

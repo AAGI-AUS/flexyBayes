@@ -433,7 +433,7 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
         paste(setdiff(.fb_pen_supported_families(), "none"), collapse = ", "),
         "."
       ),
-      family = fn
+      penalty_family = fn
     ))
   }
 
@@ -448,7 +448,7 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
         "; the aliases ", paste(names(alias), collapse = ", "),
         " resolve to ", paste(unname(alias), collapse = ", "), "."
       ),
-      family = fn
+      penalty_family = fn
     ))
   }
   if (identical(fn, "lasso")) {
