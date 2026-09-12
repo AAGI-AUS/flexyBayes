@@ -228,8 +228,11 @@ test_that("summary() on an INLA fit returns the shared summary object", {
   fit <- .char090_inla_fit()
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
 
-  expect_false(res$visible)
-  expect_true(length(captured) > 0L)
+  # summary() computes and returns VISIBLY; print.summary.flexybayes() does
+  # the printing. These two lines asserted the opposite -- an invisible
+  # return plus a side-effect print -- which is how that defect survived.
+  expect_true(res$visible)
+  expect_identical(length(captured), 0L)
 
   expect_identical(class(res$value), c("summary.flexybayes", "list"))
   expect_identical(names(res$value), .CHAR090_SUMMARY_SLOTS)
@@ -252,8 +255,11 @@ test_that("summary() on a brms fit returns the shared summary object", {
   fit <- .char090_brms_fit()
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
 
-  expect_false(res$visible)
-  expect_true(length(captured) > 0L)
+  # summary() computes and returns VISIBLY; print.summary.flexybayes() does
+  # the printing. These two lines asserted the opposite -- an invisible
+  # return plus a side-effect print -- which is how that defect survived.
+  expect_true(res$visible)
+  expect_identical(length(captured), 0L)
 
   expect_identical(class(res$value), c("summary.flexybayes", "list"))
   expect_identical(names(res$value), .CHAR090_SUMMARY_SLOTS)

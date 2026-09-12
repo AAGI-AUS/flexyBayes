@@ -87,6 +87,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | Export | Stage | Notes |
 |---|---|---|
 | `fb_plan()` | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
+| `fb_select()` | experimental | Covariance-aware selection over a fitted model. Scores a candidate block against the protected base, out of fold, on data whitened by the base fit's own covariance; folds are assigned on original observational units before any rotation and the prediction estimand is named. `penalty = NULL` is the only implemented mode in this release: it protects every candidate and returns the extended base model with its out-of-fold score and the increment over the base. A penalty refuses by name. |
 | `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, for `family = "gaussian"`, `"binomial"` or `"poisson"` (the count families take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
 
 ## Diagnostics and introspection

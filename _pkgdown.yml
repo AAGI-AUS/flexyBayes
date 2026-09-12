@@ -46,6 +46,7 @@ reference:
       - fb_inla
       - fb_brms
       - fb_plan
+      - fb_select
       - validate_approximation
       - proceed
   - title: Ingest adapters
