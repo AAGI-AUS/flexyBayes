@@ -5,7 +5,7 @@
 \title{Declare how a selection decision is made}
 \usage{
 fb_decision(
-  method = c("projection", "full", "posterior_threshold"),
+  method = c("auto", "projection", "full", "posterior_threshold"),
   metric = c("elpd", "rmse", "nlpd"),
   rule = c("one_se", "min", "tolerance"),
   tolerance = NULL,
@@ -17,8 +17,9 @@ fb_decision(
 )
 }
 \arguments{
-\item{method}{\code{"projection"} (default), \code{"full"} or
-\code{"posterior_threshold"}.}
+\item{method}{\code{"auto"} (default), \code{"projection"}, \code{"full"} or
+\code{"posterior_threshold"}. \code{"auto"} resolves to \code{"projection"} where the
+structure gate is green and to \code{"full"} where it is red.}
 
 \item{metric}{\code{"elpd"} (default), \code{"rmse"} or \code{"nlpd"}. The projection
 decision is on \code{elpd} in this release; the other two are scored by the
@@ -53,8 +54,8 @@ used by, \code{method = "posterior_threshold"}.}
 }
 \value{
 An object of class \code{fb_decision}: a validated list carrying
-\code{method}, \code{metric}, \code{rule}, \code{tolerance}, \code{search}, \code{nterms_max},
-\code{validate_search}, \code{threshold} and \code{effect_size}.
+\code{method}, \code{requested_method}, \code{metric}, \code{rule}, \code{tolerance}, \code{search},
+\code{nterms_max}, \code{validate_search}, \code{threshold} and \code{effect_size}.
 }
 \description{
 The decision layer of \code{\link[=fb_select]{fb_select()}}: which quantity is optimised, how a
@@ -63,10 +64,21 @@ Validated at construction, so a rule that is missing the number it needs
 refuses before anything is fitted.
 }
 \details{
-The three methods answer three different questions.
+\code{"auto"}, the default, is resolved by \code{fb_select()} against the projection
+structure gate: \code{"projection"} where the reference model's structure is
+one the provider can project, and \code{"full"} where it is not. The
+resolution is recorded on the result and on its certificate, so a reader
+can see which decision ran and why. Most of what this package fits --
+known-covariance genomic and pedigree terms, unstructured and
+factor-analytic covariances, autoregressive fields, smooths -- is red at
+that gate, and a default of \code{"projection"} meant those models refused
+only after a reference model had been sampled. Naming \code{"projection"}
+explicitly on a red gate still refuses, by name, with the feature that
+failed.
 
-\code{"projection"} is the default where the reference model's structure
-permits it. The reference posterior is projected onto each submodel and
+The three methods themselves answer three different questions.
+
+\code{"projection"} projects the reference posterior onto each submodel and
 the submodel's expected log predictive density is assessed on the same
 folds the rest of the selection uses, with the standard error aggregated
 at the resampling unit rather than at the row. Protected terms and the

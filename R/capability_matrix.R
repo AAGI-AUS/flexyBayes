@@ -235,7 +235,15 @@
       inla = "fits",
       brms = "fits",
       note = "INLA takes the sparse-precision, pedigree-precision and
-        block carriers, and brms additionally takes dense and Cholesky.",
+        block carriers, and brms additionally takes dense and Cholesky.
+        Under `fb_select()`: shrinkage yes, projection no. A joint
+        shrinkage prior over candidate fixed effects fits on a base
+        carrying one of these terms, but the term lowers to
+        `(1 | gr(g, cov = K))` and projpred refuses a function call on the
+        right-hand side of a group-term `|` (probe C5), so the projection
+        decision is red. `decision = \"auto\"`, the default, resolves to
+        `full` there; naming `\"projection\"` refuses before the reference
+        model is sampled.",
       anchor = "test-known-covariance-inputs.R"
     ),
     list(
@@ -366,14 +374,22 @@
       spelling = "`fb_penalty(term(...) ~ regularized_horseshoe(p0))`",
       inla = "refuses",
       brms = "fits",
-      note = "brms's native `horseshoe()`, with `par_ratio` set from `p0`.
-        It is a class-wide prior: brms refuses a coefficient-specific row
-        beside a class-wide special prior, so a base carrying protected
-        fixed effects beyond the intercept refuses with
-        `penalty_block_targeting_unsupported` unless `scope = \"all_fixed\"`
-        is asked for, under which the protected coefficients sit under the
-        global-local prior too and the certificate records the
-        approximation. INLA refuses as for ridge.",
+      note = "brms's native `horseshoe()`, with `par_ratio` set from `p0`
+        and calibrated against the number of resampling units rather than
+        the number of rows. Exact block targeting ONLY when the base's
+        fixed part is intercept-only: it is a class-wide prior, brms
+        refuses a coefficient-specific row beside a class-wide special
+        prior, so a base carrying protected fixed effects beyond the
+        intercept refuses with `penalty_block_targeting_unsupported`. The
+        two ways forward are `laplace()`, `ridge()` or `elastic_net()`,
+        which target the block exactly, or `scope = \"all_fixed\"`, an
+        opt-in under which the protected coefficients also sit under the
+        global-local prior, the projection search forces them into every
+        submodel, and the certificate records the named approximation
+        `protected_under_global_shrinkage`. A candidate block containing a
+        design column the re-emitted reference cannot standardise -- a
+        factor contrast, an interaction product -- refuses with
+        `penalty_candidate_columns_unscaled`. INLA refuses as for ridge.",
       anchor = "test-penalty-stancode.R"
     ),
     list(
@@ -384,7 +400,11 @@
       note = "brms's native `R2D2()`, whose scales are stated on the
         explained-variance grammar rather than on a coefficient scale, so
         `p0` is refused for it. Class-wide, with the same targeting rule as
-        the regularised horseshoe. INLA refuses as for ridge.",
+        the regularised horseshoe: exact only when the base's fixed part is
+        intercept-only, otherwise `laplace()`, `ridge()` or
+        `elastic_net()`, or `scope = \"all_fixed\"` with the named
+        approximation. Unstandardised candidate columns refuse as for the
+        horseshoe. INLA refuses as for ridge.",
       anchor = "test-penalty-stancode.R"
     )
   )

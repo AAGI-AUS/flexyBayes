@@ -830,6 +830,139 @@ test_that("fallback = \"glmnet\" fires only on an absent provider, and certifies
 })
 
 
+# --- the structure gate leads, and it resolves the decision --------------- #
+
+fbsb_genomic <- function() {
+  set.seed(7L)
+  d <- data.frame(
+    site = factor(rep(sprintf("S%d", seq_len(8L)), each = 6L)),
+    gen = factor(rep(sprintf("G%d", seq_len(6L)), times = 8L))
+  )
+  d$p1 <- stats::rnorm(nrow(d))
+  d$x1 <- stats::rnorm(nrow(d))
+  d$x2 <- stats::rnorm(nrow(d))
+  d$y <- 1 + 0.5 * d$p1 + stats::rnorm(nrow(d))
+  K <- diag(6L)
+  dimnames(K) <- list(levels(d$gen), levels(d$gen))
+  list(data = d, K = K)
+}
+
+
+test_that("the plan and the printed result lead with the structure-gate table", {
+  fbsb_needs_brms()
+  plan <- fb_select(
+    fbsb_base(), fbsb_candidates,
+    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    plan = TRUE, seed = 1L
+  )
+  out <- utils::capture.output(print(plan))
+  # The table, not a one-word verdict, and before anything else.
+  expect_match(out[[2L]], "Projection structure gate", fixed = TRUE)
+  joined <- paste(out, collapse = "\n")
+  expect_match(joined, "response family", fixed = TRUE)
+  expect_match(joined, "(1 | site)", fixed = TRUE)
+  expect_match(joined, "probes C1-C3", fixed = TRUE)
+  # One row per structural feature the model carries, with a verdict.
+  gate <- plan$selection$structure_gate
+  expect_true(is.data.frame(gate))
+  expect_true(all(c("feature", "verdict", "reason") %in% names(gate)))
+  expect_true(all(gate$verdict == "supported"))
+
+  # The clustered-draw counts are on the plan too, not only on the object.
+  expect_match(joined, "20 clustered draws", fixed = TRUE)
+  expect_match(joined, "evaluation on 100", fixed = TRUE)
+})
+
+
+test_that("decision = \"auto\" resolves against the gate and records the resolution", {
+  fbsb_needs_brms()
+  skip_if_not_installed("projpred")
+
+  # Green gate: the projection runs, and the object says the method was
+  # resolved rather than asked for.
+  green <- fb_select(
+    fbsb_base(), fbsb_candidates,
+    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    plan = TRUE, seed = 1L
+  )
+  expect_identical(green$selection$decision, "projection")
+  expect_identical(green$selection$decision_requested, "auto")
+  expect_identical(green$selection$decision_resolved_from, "auto")
+
+  # Red gate: a known-covariance genomic term lowers to
+  # `(1 | gr(gen, cov = K))`, which projpred refuses (probe C5). The
+  # decision falls to `full` BEFORE a reference model is sampled -- which
+  # is the whole point: it used to error after the fit.
+  bits <- fbsb_genomic()
+  base <- fbsb_memo("genomic_base", suppressWarnings(fb_brms(
+    y ~ p1, random = ~ vm(gen, K), data = bits$data,
+    known_matrices = list(K = bits$K), chains = 2L, n_samples = 600L,
+    warmup = 600L, seed = 11L, verbose = FALSE, mcmc_verbose = FALSE
+  )))
+  red <- fb_select(
+    base, ~ x1 + x2,
+    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    resamples = fb_resamples(unit = ~gen, v = 3L),
+    plan = TRUE, seed = 1L
+  )
+  expect_identical(red$selection$decision, "full")
+  expect_identical(red$selection$decision_resolved_from, "auto")
+  expect_match(
+    red$selection$decision_resolution_reason, "gate is red", fixed = TRUE
+  )
+  red_out <- paste(utils::capture.output(print(red)), collapse = "\n")
+  expect_match(red_out, "gr(gen, cov = K)", fixed = TRUE)
+  expect_match(red_out, "probe C5", fixed = TRUE)
+
+  # And naming the projection explicitly on the same base still refuses --
+  # before the reference model is sampled, not several minutes into it.
+  t0 <- proc.time()
+  err <- tryCatch(
+    fb_select(
+      base, ~ x1 + x2,
+      penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+      resamples = fb_resamples(unit = ~gen, v = 3L),
+      decision = fb_decision(method = "projection"),
+      engine = fbsb_engine(), seed = 1L
+    ),
+    error = function(e) e
+  )
+  expect_s3_class(
+    err, "flexybayes_refusal_projection_structure_unsupported"
+  )
+  expect_match(conditionMessage(err), "gr(gen, cov = K)", fixed = TRUE)
+  expect_match(conditionMessage(err), "decision = \"full\"", fixed = TRUE)
+  # A refusal that costs a reference fit before it fires is not a refusal
+  # that came first. A Stan compile alone is longer than this.
+  expect_lt(unname((proc.time() - t0)["elapsed"]), 30)
+})
+
+
+test_that("a projection result prints its clustered-draw counts on the first line", {
+  fbsb_needs_brms()
+  skip_if_not_installed("projpred")
+  sel <- fbsb_cache[["hs_projection"]]
+  skip_if(is.null(sel), "the projection run is not in this file's cache")
+  first_line <- utils::capture.output(print(sel))[[1L]]
+  expect_match(first_line, "decision projection", fixed = TRUE)
+  expect_match(first_line, "20 clustered draws", fixed = TRUE)
+  expect_match(first_line, "evaluated on 100", fixed = TRUE)
+  # The counts are the ones the object actually ran at, not a recital.
+  expect_identical(
+    sel$projection$settings$nclusters, .FB_SEL_PROJECTION_NCLUSTERS
+  )
+  expect_identical(
+    sel$projection$settings$nclusters_pred,
+    .FB_SEL_PROJECTION_NCLUSTERS_PRED
+  )
+  # And the gate leads the printed result.
+  out <- utils::capture.output(print(sel))
+  expect_match(out[[2L]], "Projection structure gate", fixed = TRUE)
+})
+
+
 # --- the plan ------------------------------------------------------------- #
 
 test_that("plan = TRUE reports the axes, the blocks and the gate without fitting", {

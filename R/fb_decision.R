@@ -25,10 +25,21 @@
 #' refuses before anything is fitted.
 #'
 #' @details
-#' The three methods answer three different questions.
+#' `"auto"`, the default, is resolved by `fb_select()` against the projection
+#' structure gate: `"projection"` where the reference model's structure is
+#' one the provider can project, and `"full"` where it is not. The
+#' resolution is recorded on the result and on its certificate, so a reader
+#' can see which decision ran and why. Most of what this package fits --
+#' known-covariance genomic and pedigree terms, unstructured and
+#' factor-analytic covariances, autoregressive fields, smooths -- is red at
+#' that gate, and a default of `"projection"` meant those models refused
+#' only after a reference model had been sampled. Naming `"projection"`
+#' explicitly on a red gate still refuses, by name, with the feature that
+#' failed.
 #'
-#' `"projection"` is the default where the reference model's structure
-#' permits it. The reference posterior is projected onto each submodel and
+#' The three methods themselves answer three different questions.
+#'
+#' `"projection"` projects the reference posterior onto each submodel and
 #' the submodel's expected log predictive density is assessed on the same
 #' folds the rest of the selection uses, with the standard error aggregated
 #' at the resampling unit rather than at the row. Protected terms and the
@@ -52,8 +63,9 @@
 #' `"tolerance"` takes the smallest size losing less than `tolerance` nats
 #' per unit against the reference model.
 #'
-#' @param method `"projection"` (default), `"full"` or
-#'   `"posterior_threshold"`.
+#' @param method `"auto"` (default), `"projection"`, `"full"` or
+#'   `"posterior_threshold"`. `"auto"` resolves to `"projection"` where the
+#'   structure gate is green and to `"full"` where it is red.
 #' @param metric `"elpd"` (default), `"rmse"` or `"nlpd"`. The projection
 #'   decision is on `elpd` in this release; the other two are scored by the
 #'   out-of-fold path.
@@ -79,8 +91,8 @@
 #'   used by, `method = "posterior_threshold"`.
 #'
 #' @returns An object of class `fb_decision`: a validated list carrying
-#'   `method`, `metric`, `rule`, `tolerance`, `search`, `nterms_max`,
-#'   `validate_search`, `threshold` and `effect_size`.
+#'   `method`, `requested_method`, `metric`, `rule`, `tolerance`, `search`,
+#'   `nterms_max`, `validate_search`, `threshold` and `effect_size`.
 #'
 #' @seealso [fb_select()], which takes this object; [fb_resamples()] for the
 #'   folds the decision is assessed on.
@@ -91,7 +103,7 @@
 #' fb_decision(method = "posterior_threshold", effect_size = 0.2)
 #' @export
 fb_decision <- function(
-  method = c("projection", "full", "posterior_threshold"),
+  method = c("auto", "projection", "full", "posterior_threshold"),
   metric = c("elpd", "rmse", "nlpd"),
   rule = c("one_se", "min", "tolerance"),
   tolerance = NULL,
@@ -223,6 +235,9 @@ fb_decision <- function(
   structure(
     list(
       method = method,
+      # What the caller asked for, kept beside what runs, so a resolution
+      # from `auto` is visible on the object rather than inferred from it.
+      requested_method = method,
       metric = metric,
       rule = rule,
       tolerance = tolerance,
@@ -240,7 +255,15 @@ fb_decision <- function(
 #' @export
 print.fb_decision <- function(x, ...) {
   cat("<fb_decision> method = \"", x$method, "\"\n", sep = "")
-  if (identical(x$method, "projection")) {
+  if (identical(x$method, "auto")) {
+    cat(
+      "  resolved by fb_select() against the projection structure gate:\n",
+      "  projection where the reference model's structure is projectable,\n",
+      "  full where it is not. The resolution is recorded on the result.\n",
+      sep = ""
+    )
+  }
+  if (identical(x$method, "projection") || identical(x$method, "auto")) {
     cat(
       "  metric  : ", x$metric,
       ", rule ", x$rule,

@@ -233,6 +233,50 @@ one fired on the formulas the module exists to serve rather than on an edge.
   `projection_search_unsupported`. The forward search is the search this
   release executes.
 
+## The structure gate leads, and it chooses the decision
+
+Projection predictive inference is the right Bayesian decision given a
+reference posterior, and it is available for a minority of what this package
+fits. The gate that says so was executed and accurate, and it was reported
+after the fact.
+
+* **`fb_decision()`'s default method is `"auto"`.** It resolves to
+  `"projection"` where every structural feature of the reference model has an
+  executed projection gate behind it, and to `"full"` -- the reference
+  posterior under the shrinkage prior, with no selection -- where one does
+  not. The resolution and the gate verdict that produced it are recorded on
+  the result and on its certificate. A known-covariance genomic or pedigree
+  base used to refuse only after a reference model had been sampled; it now
+  gets shrinkage without a selection, and says why.
+
+* **Naming `"projection"` explicitly on a red gate refuses before the
+  reference model is sampled**, with the feature that failed. The gate inside
+  the projection stays, because it reads the reference model rather than the
+  base and can still red a base that was green.
+
+* **`fb_plan()` and `print.fb_select()` lead with the structure-gate table**
+  -- one row per structural feature the model carries, its verdict, and the
+  run behind that verdict.
+
+* **The clustered-draw counts are on the first print line of a projection
+  result and in `?fb_select`**: the search runs on 20 clustered draws and the
+  predictive evaluation on 100, rather than on the whole posterior.
+  Projecting a multilevel submodel is a fit per draw.
+
+* **The capability matrix says what each family can be asked for.** The
+  regularised horseshoe and R2D2 rows say that exact block targeting holds
+  only when the base's fixed part is intercept-only, and name the two ways
+  forward otherwise. The known-covariance genomic and pedigree row says
+  shrinkage yes, projection no. The selection vignette carries the same
+  table, keeps its intercept-only base with the sentence that says why, and
+  adds a base with a protected covariate under `laplace()`.
+
+* **The withdrawn families are not offered a schedule.** The refusal names
+  what was removed and what is available now; it no longer says when the
+  group, exclusive and adaptive families return, because no dated decision
+  stands behind that. The release record above is the only place the
+  withdrawal is described, and the resolver keeps their component traits.
+
 ## glmnet is a check that cannot be misread
 
 `posterior_predictive_comparable` says the arms were scored "on the same

@@ -15,7 +15,12 @@
 test_that("the default is a validated projection on elpd at one standard error", {
   d <- fb_decision()
   expect_s3_class(d, "fb_decision")
-  expect_identical(d$method, "projection")
+  # `auto` is resolved by fb_select() against the projection structure gate.
+  # It replaced a default of `projection`, under which a genomic or a
+  # G-by-E base -- most of what this package fits -- refused only after a
+  # reference model had been sampled.
+  expect_identical(d$method, "auto")
+  expect_identical(d$requested_method, "auto")
   expect_identical(d$metric, "elpd")
   expect_identical(d$rule, "one_se")
   expect_identical(d$search, "forward")
@@ -163,6 +168,17 @@ test_that("print states the rule rather than only the method", {
     collapse = " "
   )
   expect_match(full, "no selection", fixed = TRUE)
+})
+
+
+test_that("\"auto\" prints what it will be resolved against", {
+  out <- paste(utils::capture.output(print(fb_decision())), collapse = " ")
+  expect_match(out, "projection structure gate", fixed = TRUE)
+  expect_match(out, "full where it is not", fixed = TRUE)
+  # And it still prints the rule and the search, which is what a caller
+  # actually chose: the resolution decides the method, not the rest.
+  expect_match(out, "one_se", fixed = TRUE)
+  expect_match(out, "forward", fixed = TRUE)
 })
 
 

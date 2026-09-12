@@ -1090,7 +1090,8 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                compiled = NULL,
                                approximations = character(0),
                                base_engine = NA_character_,
-                               reference_engine = NA_character_) {
+                               reference_engine = NA_character_,
+                               decision_resolution = NULL) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1125,6 +1126,11 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
     provider = axes$provider,
     prior = axes$prior,
     decision = axes$decision,
+    decision_requested = decision_resolution$requested %||% axes$decision,
+    decision_resolved_from = decision_resolution$resolved_from %||%
+      NA_character_,
+    decision_resolution_reason = decision_resolution$reason %||%
+      NA_character_,
     base_engine = base_engine,
     # A joint shrinkage prior is always emitted on brms, so the engine that
     # will fit the reference is not always the engine that fitted the base.
@@ -1174,15 +1180,53 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
 }
 
 
+# The structure gate, printed as the table it is: one row per structural
+# feature of the reference model, its verdict and the run behind it. It
+# leads because it is what decides whether the default decision can run at
+# all, and most of what this package fits is red at it.
+.fb_print_structure_gate <- function(gate, indent = "  ") {
+  if (!is.data.frame(gate) || nrow(gate) == 0L) {
+    return(invisible(NULL))
+  }
+  width <- max(nchar(gate$feature))
+  cat(indent, "Projection structure gate:\n", sep = "")
+  for (i in seq_len(nrow(gate))) {
+    cat(
+      indent, "  ", format(gate$feature[[i]], width = width), "  ",
+      format(gate$verdict[[i]], width = 9L), "  ",
+      .fb_squish(gate$reason[[i]]), "\n",
+      sep = ""
+    )
+  }
+  invisible(NULL)
+}
+
+
 #' @export
 print.fb_select_plan <- function(x, ...) {
   s <- x$selection
   cat("== flexyBayes selection plan ", strrep("=", 28), "\n", sep = "")
+  .fb_print_structure_gate(s$structure_gate)
   cat("  Workflow:     ", s$workflow, "\n", sep = "")
   cat("  Provider:     ", s$provider, "\n", sep = "")
   cat("  Prior:        ", s$prior, "  (route ",
       paste(s$prior_route, collapse = ", "), ")\n", sep = "")
-  cat("  Decision:     ", s$decision, "\n", sep = "")
+  cat("  Decision:     ", s$decision,
+      if (identical(s$decision_resolved_from, "auto")) {
+        " (resolved from \"auto\")"
+      } else {
+        ""
+      },
+      "\n", sep = "")
+  if (identical(s$decision_resolved_from, "auto")) {
+    cat("                ", .fb_squish(s$decision_resolution_reason), "\n",
+        sep = "")
+  }
+  if (identical(s$decision, "projection")) {
+    cat("                 the search runs on ", .FB_SEL_PROJECTION_NCLUSTERS,
+        " clustered draws and the predictive evaluation on ",
+        .FB_SEL_PROJECTION_NCLUSTERS_PRED, "\n", sep = "")
+  }
   if (!is.na(s$reference_engine %||% NA_character_) &&
         !identical(s$reference_engine, s$base_engine)) {
     cat("  Reference fit: ", s$reference_engine, " (the base was fitted by ",
@@ -1204,7 +1248,7 @@ print.fb_select_plan <- function(x, ...) {
         sep = "")
   }
   cat("  Structure gate: ",
-      if (is.na(s$structure_verdict)) "not run for this decision"
+      if (is.na(s$structure_verdict)) "not readable for this base"
       else s$structure_verdict,
       "\n", sep = "")
   cat("  Folds:        ", s$resampling$n_folds,

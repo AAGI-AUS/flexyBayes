@@ -108,7 +108,10 @@ The group, exclusive and adaptive families of the earlier grammar
 (\code{group_lasso()}, \code{exclusive_lasso()}, \code{sparse_group_lasso()},
 \code{group_exclusive()}, \code{adaptive()}) are withdrawn from this release and
 refuse by name. Their providers are not shipped, and a family without a
-provider is a promise rather than a method.
+provider is a promise rather than a method. This release names no
+successor for them: a structured-sparsity prior needs a prior, a
+provider and a gate that has been run, and none of the three exists
+here.
 }
 
 \examples{

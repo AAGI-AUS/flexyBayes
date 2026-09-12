@@ -167,6 +167,74 @@
 }
 
 
+# --- the decision, resolved against the structure gate --------------------- #
+
+# .fb_select_resolve_decision() --- turn `auto` into the decision that can
+# actually run, and refuse an explicit one that cannot.
+#
+# The gate is the section 6.3 matrix evaluated for THIS model. A row that has
+# not been executed refuses exactly as a row that was executed and came back
+# red, so "green" here means every feature the model carries has a run behind
+# it. `auto` reads that verdict; an explicit `projection` does not get to,
+# and still refuses by name at the projection itself with the feature that
+# failed.
+.fb_select_resolve_decision <- function(decision, structure_gate) {
+  requested <- decision$requested_method %||% decision$method
+  if (!identical(decision$method, "auto")) {
+    decision$requested_method <- requested
+    return(list(
+      decision = decision,
+      resolved_from = NA_character_,
+      gate_verdict = .fb_select_gate_verdict(structure_gate),
+      reason = NA_character_
+    ))
+  }
+  verdict <- .fb_select_gate_verdict(structure_gate)
+  green <- identical(verdict, "supported")
+  decision$method <- if (green) "projection" else "full"
+  decision$requested_method <- "auto"
+  reason <- if (is.na(verdict)) {
+    paste0(
+      "the projection structure gate could not be read for this base, so ",
+      "the decision falls to `full`, which needs no projectable structure"
+    )
+  } else if (green) {
+    paste0(
+      "every structural feature of the reference model has an executed ",
+      "projection gate behind it, so the decision is the projection"
+    )
+  } else {
+    paste0(
+      "the projection structure gate is red (", verdict,
+      "), so the decision is `full`: the reference posterior under the ",
+      "shrinkage prior, with no selection. Naming decision = ",
+      "\"projection\" explicitly refuses instead, with the feature that ",
+      "failed"
+    )
+  }
+  list(
+    decision = decision,
+    resolved_from = "auto",
+    gate_verdict = verdict,
+    reason = reason
+  )
+}
+
+
+# The one-line reading of the gate table: "supported", or the features that
+# are not, or NA where no gate could be built.
+.fb_select_gate_verdict <- function(structure_gate) {
+  if (!is.data.frame(structure_gate) || nrow(structure_gate) == 0L) {
+    return(NA_character_)
+  }
+  bad <- structure_gate$feature[structure_gate$verdict != "supported"]
+  if (length(bad) == 0L) {
+    return("supported")
+  }
+  paste0("refuses: ", paste(bad, collapse = ", "))
+}
+
+
 # --- the information a prior scale is calibrated against ------------------ #
 
 # .fb_select_calibration_n() --- the n a prior scale is stated against.
@@ -518,7 +586,9 @@
                                    provider_versions = list(),
                                    column_map = NULL,
                                    reference_engine = NA_character_,
-                                   predictive_side_by_side = NULL) {
+                                   predictive_side_by_side = NULL,
+                                   structure_gate = NULL,
+                                   decision_resolution = NULL) {
   conv <- .fb_convergence_verdict(base)
   calibration <- .fb_select_calibration_normalise(calibration, base)
   predictive_side_by_side <- predictive_side_by_side %||%
@@ -549,6 +619,16 @@
       provider = axes$provider,
       prior = axes$prior,
       decision = axes$decision,
+      # The decision the caller asked for beside the one that ran, and the
+      # gate that decided between them. `auto` is the default, so the
+      # resolution has to be visible rather than inferable.
+      decision_requested = decision_resolution$requested %||% axes$decision,
+      decision_resolved_from = decision_resolution$resolved_from %||%
+        NA_character_,
+      decision_resolution_reason = decision_resolution$reason %||%
+        NA_character_,
+      structure_gate = structure_gate,
+      structure_verdict = .fb_select_gate_verdict(structure_gate),
       base = list(
         engine = base$fb$source %||% NA_character_,
         family = base$fb$family,
@@ -1295,6 +1375,26 @@ fb_select <- function(base,
 
   metric <- decision$metric
 
+  # The projection structure gate, before anything runs. It is the first
+  # thing the plan and the printed result report, and it is what resolves
+  # `decision = "auto"`: projection where the reference model's structure is
+  # one the provider can project, full where it is not. The default used to
+  # be projection outright, so a genomic or a G-by-E model refused only
+  # after a reference model had been sampled -- and most of what this
+  # package fits is red at that gate.
+  structure_gate <- tryCatch(
+    .fb_sel_structure_gate(base$fb),
+    error = function(e) NULL
+  )
+  resolved_decision <- .fb_select_resolve_decision(decision, structure_gate)
+  decision <- resolved_decision$decision
+  decision_resolution <- list(
+    requested = resolved_decision$decision$requested_method,
+    resolved_from = resolved_decision$resolved_from,
+    gate_verdict = resolved_decision$gate_verdict,
+    reason = resolved_decision$reason
+  )
+
   # The information the prior scales and the certificate are stated against.
   # Resolved once, before any route branches, so every route reports the
   # same number.
@@ -1419,6 +1519,8 @@ fb_select <- function(base,
       metric = metric,
       calibration = calibration,
       provider_versions = list(),
+      structure_gate = structure_gate,
+      decision_resolution = decision_resolution,
       dots = dots
     ))
   }
@@ -1439,7 +1541,9 @@ fb_select <- function(base,
       plan = plan,
       fallback_fired = fallback_fired,
       requested_workflow = requested_workflow,
-      calibration = calibration
+      calibration = calibration,
+      structure_gate = structure_gate,
+      decision_resolution = decision_resolution
     ))
   }
 
@@ -1455,11 +1559,12 @@ fb_select <- function(base,
           decision = "full"
         ),
         blocks = NULL,
-        structure_gate = NULL,
+        structure_gate = structure_gate,
         resamples = resamples,
         prediction = prediction,
         fits_per_fold = 2L,
-        candidates = candidates
+        candidates = candidates,
+        decision_resolution = decision_resolution
       ))
     }
     cv <- .fb_sel_bayes_cv(
@@ -1508,6 +1613,8 @@ fb_select <- function(base,
       approximations = character(0),
       calibration = calibration,
       provider_versions = .fb_select_provider_versions(cv$provider),
+      structure_gate = structure_gate,
+      decision_resolution = decision_resolution,
       dots = dots
     ))
   }
@@ -1556,7 +1663,7 @@ fb_select <- function(base,
         decision = decision$method
       ),
       blocks = resolved$blocks,
-      structure_gate = .fb_sel_structure_gate(base$fb),
+      structure_gate = structure_gate,
       resamples = resamples,
       prediction = prediction,
       fits_per_fold = if (isTRUE(decision$validate_search)) 1L else 0L,
@@ -1564,8 +1671,19 @@ fb_select <- function(base,
       compiled = resolved$compiled,
       approximations = approximations,
       base_engine = engine_name,
-      reference_engine = reference_engine
+      reference_engine = reference_engine,
+      decision_resolution = decision_resolution
     ))
+  }
+
+  # An explicit projection on a red gate refuses HERE, before the reference
+  # model is sampled. It used to refuse inside the projection, after the
+  # sampler had run: the same answer, several minutes later, about a
+  # structure the gate could read from the parsed model before the first
+  # fit. The gate inside the projection stays -- it reads the reference
+  # model rather than the base, so it can still red a base that was green.
+  if (identical(decision$method, "projection")) {
+    .fb_sel_require_projectable(base$fb)
   }
 
   cost <- .fb_sel_cost_estimate(
@@ -1717,6 +1835,8 @@ fb_select <- function(base,
     calibration = calibration,
     provider_versions = .fb_select_provider_versions("brms", decision),
     reference_engine = reference_engine,
+    structure_gate = structure_gate,
+    decision_resolution = decision_resolution,
     dots = dots
   )
 }
@@ -1743,7 +1863,9 @@ fb_select <- function(base,
                                  plan,
                                  fallback_fired,
                                  requested_workflow,
-                                 calibration = NULL) {
+                                 calibration = NULL,
+                                 structure_gate = NULL,
+                                 decision_resolution = NULL) {
   resolved <- .fb_select_resolve_penalty(
     base, candidates, penalty, protected_labels, calibration = calibration
   )
@@ -1762,13 +1884,14 @@ fb_select <- function(base,
       base = base,
       axes = axes,
       blocks = resolved$blocks,
-      structure_gate = NULL,
+      structure_gate = structure_gate,
       resamples = resamples,
       prediction = prediction,
       fits_per_fold = 0L,
       candidates = candidates,
       compiled = resolved$compiled,
-      approximations = resolved$approximations
+      approximations = resolved$approximations,
+      decision_resolution = decision_resolution
     ))
   }
   .fb_sel_require_glmnet()
@@ -1828,6 +1951,8 @@ fb_select <- function(base,
     provider_versions = .fb_select_provider_versions("glmnet"),
     fallback_fired = fallback_fired,
     requested_workflow = requested_workflow,
+    structure_gate = structure_gate,
+    decision_resolution = decision_resolution,
     dots = list()
   )
 }
@@ -1856,6 +1981,8 @@ fb_select <- function(base,
                                 fallback_fired = FALSE,
                                 requested_workflow = NULL,
                                 reference_engine = NA_character_,
+                                structure_gate = NULL,
+                                decision_resolution = NULL,
                                 dots = list()) {
   increment <- NULL
   agg <- cv$aggregated
@@ -1906,7 +2033,9 @@ fb_select <- function(base,
     provider_versions = provider_versions,
     column_map = column_map,
     reference_engine = reference_engine,
-    predictive_side_by_side = side_by_side
+    predictive_side_by_side = side_by_side,
+    structure_gate = structure_gate,
+    decision_resolution = decision_resolution
   )
 
   structure(
@@ -1916,7 +2045,9 @@ fb_select <- function(base,
       prior = axes$prior,
       decision = axes$decision,
       requested_workflow = requested_workflow %||% axes$workflow,
+      requested_decision = decision_resolution$requested %||% axes$decision,
       fallback_fired = isTRUE(fallback_fired),
+      structure_gate = structure_gate,
       base = base,
       reference = reference,
       column_map = column_map,
@@ -2066,9 +2197,31 @@ print.fb_select <- function(x, digits = 4L, ...) {
     "<fb_select> workflow ", x$workflow,
     " / provider ", x$provider,
     " / prior ", x$prior,
-    " / decision ", x$decision, "\n",
+    " / decision ", x$decision,
+    if (identical(cert$decision_resolved_from, "auto")) {
+      " (resolved from \"auto\")"
+    } else {
+      ""
+    },
+    if (identical(x$decision, "projection")) {
+      paste0(
+        ", searched on ", .FB_SEL_PROJECTION_NCLUSTERS,
+        " clustered draws and evaluated on ",
+        .FB_SEL_PROJECTION_NCLUSTERS_PRED
+      )
+    } else {
+      ""
+    },
+    "\n",
     sep = ""
   )
+  # The gate leads, because it is what decides whether the default decision
+  # can run at all and most of what this package fits is red at it.
+  .fb_print_structure_gate(x$structure_gate)
+  if (identical(cert$decision_resolved_from, "auto")) {
+    cat("  decision  : ", .fb_squish(cert$decision_resolution_reason), "\n",
+        sep = "")
+  }
   cat(
     "  base      : ", cert$base$family, "/", cert$base$link,
     ", ", cert$base$n_observed, " rows, convergence ",
@@ -2490,6 +2643,13 @@ print.fb_select_certificate <- function(x, ...) {
   cat("  prediction : ", x$resampling$prediction, "\n", sep = "")
   cat("  scored at  : ", x$resampling$scoring_unit %||% "the fold", "\n",
       sep = "")
+  if (!is.na(x$structure_verdict %||% NA_character_)) {
+    cat("  structure  : ", x$structure_verdict, "\n", sep = "")
+  }
+  if (identical(x$decision_resolved_from, "auto")) {
+    cat("  decision   : resolved from \"auto\" -- ",
+        .fb_squish(x$decision_resolution_reason), "\n", sep = "")
+  }
   cat("  seed       : ", x$resampling$seed %||% "none", "\n", sep = "")
   cat(
     "  calibration_n: ", x$calibration_n,

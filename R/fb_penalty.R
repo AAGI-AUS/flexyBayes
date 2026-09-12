@@ -97,7 +97,10 @@
 #' (`group_lasso()`, `exclusive_lasso()`, `sparse_group_lasso()`,
 #' `group_exclusive()`, `adaptive()`) are withdrawn from this release and
 #' refuse by name. Their providers are not shipped, and a family without a
-#' provider is a promise rather than a method.
+#' provider is a promise rather than a method. This release names no
+#' successor for them: a structured-sparsity prior needs a prior, a
+#' provider and a gate that has been run, and none of the three exists
+#' here.
 #'
 #' @param ... One or more two-sided formulas, `target ~ family(...)`,
 #'   resolved in the order written.
@@ -415,8 +418,10 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
 # .fb_pen_parse_family() --- the right-hand side of one specification.
 #
 # The order matters. Withdrawn families are named before unknown ones, so a
-# caller who wrote `group_lasso()` is told it was removed and when it
-# returns, rather than that it never existed. Aliases resolve before
+# caller who wrote `group_lasso()` is told it was removed rather than that
+# it never existed. What the refusal does NOT do is say when it comes back:
+# a schedule with no dated decision behind it is a promise, and the release
+# record is the only place a withdrawal is described. Aliases resolve before
 # validation, so the argument contract is stated once per canonical family.
 .fb_pen_parse_family <- function(expr, envir = baseenv()) {
   # The head has to be a plain name as well as a call. `pkg::ridge(1)`
@@ -439,9 +444,7 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
       message = paste0(
         "`", fn, "()` is withdrawn from the public grammar in this release. ",
         "Its provider is not shipped, and a family whose provider does not ",
-        "exist is a promise rather than a method. The group, exclusive and ",
-        "adaptive families return in a later phase, each with its own ",
-        "provider-and-prior contract. Available now: ",
+        "exist is a promise rather than a method. Available now: ",
         paste(setdiff(.fb_pen_supported_families(), "none"), collapse = ", "),
         "."
       ),
