@@ -726,6 +726,159 @@ test_that("exact aggregation is eligible on the INLA path", {
   expect_true(isTRUE(plan$aggregation$eligible))
 })
 
+
+# --- (b) behaviour anchors: the joint shrinkage priors ----------------- #
+#
+# Each row is probed twice. The brms verdict is probed by compiling the
+# prior the family declares and asserting that brms accepts it -- the same
+# route test-penalty-stancode.R takes, here reduced to the one question the
+# matrix cell answers. The INLA verdict is probed against lgm_gate()'s
+# twelfth check, which is where the refusal is actually raised, rather than
+# against a message string.
+
+.cap_penalty_data <- function(n = 60L, seed = 4021L) {
+  set.seed(seed)
+  data.frame(
+    y = stats::rnorm(n),
+    p1 = stats::rnorm(n),
+    x1 = stats::rnorm(n),
+    x2 = stats::rnorm(n),
+    g = factor(rep(seq_len(6L), length.out = n)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# Compile one family's prior over the two candidates, and hand it to brms.
+# `class_wide` families cannot sit beside a protected coefficient row, so
+# their probe protects nothing beyond the intercept.
+.cap_penalty_compiles <- function(spec, protected = "p1") {
+  d <- .cap_penalty_data()
+  rhs <- if (identical(protected, character(0))) {
+    "x1 + x2"
+  } else {
+    paste0(protected, " + x1 + x2")
+  }
+  map <- flexyBayes:::.fb_sel_term_map(
+    stats::as.formula(paste0("~ ", rhs)), d
+  )
+  blocks <- flexyBayes:::.fb_pen_resolve(spec, map, protected = protected)
+  coef_all <- flexyBayes:::.fb_pen_brms_coef_names(
+    colnames(map$X)[map$assign != 0L]
+  )
+  out <- flexyBayes:::.fb_pen_compile_brms(
+    blocks, coef_all, n_train = nrow(d)
+  )
+  code <- brms::make_stancode(
+    stats::as.formula(paste0("y ~ ", rhs)),
+    d,
+    prior = out$prior,
+    stanvars = out$stanvars
+  )
+  list(blocks = blocks, code = code)
+}
+
+# The INLA verdict, read off the gate rather than off a message. The blocks
+# reach the gate on `fb$penalty_blocks`, which is where fb_select() puts
+# them.
+.cap_penalty_inla_refuses <- function(blocks) {
+  d <- .cap_penalty_data()
+  fb <- flexyBayes:::.build_ir_polymorphic(
+    fixed = y ~ p1 + x1 + x2,
+    random = ~g,
+    residual = NULL,
+    data = d,
+    family = "gaussian",
+    link = "identity",
+    weights = NULL,
+    known_matrices = list(),
+    prior = NULL,
+    prior_fixed_sd = 100,
+    prior_vc_sd = 1,
+    syntax = "auto"
+  )
+  fb$penalty_blocks <- blocks
+  gated <- flexyBayes:::lgm_gate(fb)
+  expect_true(flexyBayes:::is_lgm_refusal(gated))
+  expect_true("prior_family_unsupported_inla" %in%
+    vapply(gated$failures, function(f) f$rule_id, character(1L)))
+  # And the same model without the blocks passes the same check, so the
+  # refusal is the prior's and not the model's.
+  fb$penalty_blocks <- NULL
+  expect_false(flexyBayes:::is_lgm_refusal(flexyBayes:::lgm_gate(fb)))
+}
+
+test_that("a ridge shrinkage prior fits on brms and refuses on INLA", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("Ridge shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ ridge(scale = 0.4))
+  )
+  expect_true(any(grepl("normal_lpdf(b[", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("a laplace shrinkage prior fits on brms and refuses on INLA", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("Laplace shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ laplace(scale = 0.25))
+  )
+  expect_true(any(grepl("double_exponential_lpdf(b[", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("an elastic-net shrinkage prior fits on brms and refuses on INLA", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("Elastic-net shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ elastic_net(lambda = 0.1, alpha = 0.5))
+  )
+  expect_true(any(grepl("cand_idx", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("a regularised horseshoe fits on brms and refuses on INLA", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row(
+    "Regularised horseshoe shrinkage prior on candidate fixed effects"
+  )
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "fits")
+  # Class-wide: nothing protected beyond the intercept, which is the
+  # targeting rule the note states.
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 1)),
+    protected = character(0)
+  )
+  expect_true(any(grepl("hs_global", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("an R2D2 prior fits on brms and refuses on INLA", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("R2D2 shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ r2d2(mean_R2 = 0.4)),
+    protected = character(0)
+  )
+  expect_true(any(grepl("R2D2_phi", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+
 # --- coverage --------------------------------------------------------- #
 
 test_that("every capability row carries a behaviour anchor here", {
@@ -761,7 +914,12 @@ test_that("every capability row carries a behaviour anchor here", {
     "Grouped temporal AR1 field",
     "Univariate P-spline",
     "Observation weights (Gaussian, identity link)",
-    "Exact sufficient-statistic aggregation"
+    "Exact sufficient-statistic aggregation",
+    "Ridge shrinkage prior on candidate fixed effects",
+    "Laplace shrinkage prior on candidate fixed effects",
+    "Elastic-net shrinkage prior on candidate fixed effects",
+    "Regularised horseshoe shrinkage prior on candidate fixed effects",
+    "R2D2 shrinkage prior on candidate fixed effects"
   )
   expect_setequal(tab$model_class, probed)
 })

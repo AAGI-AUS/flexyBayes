@@ -10,7 +10,7 @@ genotype-by-environment covariance -- fit by approximation in seconds rather
 than by MCMC in minutes. Where a model is outside what an engine can
 represent, the package says so by name instead of fitting something else.
 
-> **Development version 0.10.0.9000.** Not on CRAN. Every export is at the
+> **Development version 0.11.0.** Not on CRAN. Every export is at the
 > experimental `lifecycle` stage and the API may change within the 0.x
 > series.
 
@@ -78,6 +78,33 @@ vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
 That interval cannot leave `[0, 1]`, because no draw of it can. A
 delta-method interval on the same quantity has no such guarantee.
 
+## Selecting over a candidate block
+
+`fb_select()` protects the model you already have and asks what a block of
+candidate fixed effects adds to it. The candidates carry a joint shrinkage
+prior, the covariance structure is integrated over rather than plugged in,
+and the submodel is chosen by projection predictive inference on folds cut at
+the cluster.
+
+``` r
+sel <- fb_select(
+  fit,
+  candidates = ~ rain + clay + elevation + ph,
+  penalty    = fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 2)),
+  resamples  = fb_resamples(unit = ~ site, v = 10L),
+  decision   = fb_decision(rule = "one_se"),
+  seed       = 20260912L
+)
+```
+
+Posterior draws under a continuous shrinkage prior contain no exact zeros, so
+"selected" is a named decision and never a property of the draws. Every
+result records four independent axes -- what was fitted, what fitted it,
+under what prior, and how the answer was read off -- and `benchmark = TRUE`
+adds a `glmnet` arm and a generalised-least-squares arm on the same folds,
+each carrying one of three declared equivalence levels. The words "same as
+glmnet" appear nowhere unqualified.
+
 ## What it fits
 
 One table, generated from the package's own capability object and checked
@@ -109,6 +136,11 @@ raises rather than fitting something else.
 | Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA's second-order random walk. brms has no lowering for the smooth basis. An analogue of ASReml's spline rather than a translation of it -- basis, scaling and prediction rule differ, and no equivalence has been established (see TRANSLATION.md). |
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA's `scale = w`; on brms a known offset on the sigma distributional parameter, NOT brms's own `weights()` addition term (a different, likelihood-power quantity per brms's own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (`weights_requires_gaussian`); `aggregate = TRUE` alongside weights also refuses by name (`weights_not_aggregatable`). |
 | Exact sufficient-statistic aggregation | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a | Exact cell-likelihood aggregation for iid exponential-family models with small cell count. The brms path has no aggregated emit. |
+| Ridge shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ ridge(scale))` | refuses | fits | A joint shrinkage prior over a declared block of candidate fixed effects, compiled to one coefficient-specific `normal` row per candidate so the block is targeted exactly and no protected coefficient is touched. INLA refuses at the twelfth structural check (`prior_family_unsupported_inla`): a scale-mixture prior over the fixed effects leaves the latent field non-Gaussian given the hyperparameters, which is the assumption the nested Laplace approximation rests on. |
+| Laplace shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ laplace(scale))` | refuses | fits | One coefficient-specific `double_exponential` row per candidate. The posterior mean is not a lasso estimate and the draws carry no exact zeros; the alias `lasso()` says so once per session. INLA refuses as for ridge. |
+| Elastic-net shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ elastic_net(lambda, alpha))` | refuses | fits | The canonical elastic-net density written as a `target +=` contribution over the candidate indices through `stanvars` and `check = FALSE`, so the block is targeted exactly while a protected coefficient keeps its own prior row. Fixed hyperparameters only in this release, because the normalising constant is then irrelevant. INLA refuses as for ridge. |
+| Regularised horseshoe shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ regularized_horseshoe(p0))` | refuses | fits | brms's native `horseshoe()`, with `par_ratio` set from `p0`. It is a class-wide prior: brms refuses a coefficient-specific row beside a class-wide special prior, so a base carrying protected fixed effects beyond the intercept refuses with `penalty_block_targeting_unsupported` unless `scope = "all_fixed"` is asked for, under which the protected coefficients sit under the global-local prior too and the certificate records the approximation. INLA refuses as for ridge. |
+| R2D2 shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))` | refuses | fits | brms's native `R2D2()`, whose scales are stated on the explained-variance grammar rather than on a coefficient scale, so `p0` is refused for it. Class-wide, with the same targeting rule as the regularised horseshoe. INLA refuses as for ridge. |
 
 `fits` -- the engine emits the structure and a test exercises it. `emits` -- the engine generates the structure and no live fit has yet confirmed it samples acceptably. `refuses` -- the request raises rather than fitting something else. `n/a` -- the class does not apply to that engine's interface.
 
@@ -128,7 +160,7 @@ row, is in `system.file("TRANSLATION.md", package = "flexyBayes")`.
 
 ## Documentation
 
-Four vignettes, meant to be read in order and to be enough to start work:
+Five vignettes, meant to be read in order and to be enough to start work:
 
 | Vignette | What it covers |
 |---|---|
@@ -136,6 +168,7 @@ Four vignettes, meant to be read in order and to be enough to start work:
 | `flexyBayes-02-bayesian` | Bayesian estimation in brief: priors, posteriors, and what changes in the output |
 | `flexyBayes-03-syntax` | Every ASReml spelling the package covers, what it is for, and what it does not cover |
 | `flexyBayes-04-illustration` | A worked analysis with ASReml and flexyBayes side by side, and what the posterior gives that REML cannot |
+| `flexyBayes-05-selection` | Selecting over a candidate block: the joint shrinkage prior, the projection decision, and what a benchmark against `glmnet` does and does not establish |
 
 ## Reporting problems
 

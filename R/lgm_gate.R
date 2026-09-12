@@ -98,7 +98,15 @@ lgm_gate <- function(
     # and refuses if the INLA projection exceeds the active
     # ceiling. See .lgm_check_memory_feasibility_inla() below for
     # the multiplier rationale.
-    .lgm_check_memory_feasibility_inla(fb, preflight)
+    .lgm_check_memory_feasibility_inla(fb, preflight),
+    # check 12 -- joint shrinkage priors. INLA's latent field is Gaussian
+    # given the hyperparameters, and a scale-mixture prior over the fixed
+    # effects is not: a regularised horseshoe is a global scale times
+    # per-coefficient local scales, and there is no hyperparameter
+    # configuration under which the nested Laplace approximation integrates
+    # it. The check exists because the alternative is a fit that runs, looks
+    # normal, and reports a posterior under a prior nobody asked for.
+    .lgm_check_prior_family_inla_support(fb)
     # post-fit numerical-confirm gate -- see emit_inla.
   )
 
@@ -1216,6 +1224,51 @@ print.lgm_refusal <- function(x, ...) {
       indexed_gb,
       multiplier,
       ceiling_gb
+    )
+  )
+}
+
+
+# Check 12 -- joint shrinkage prior families
+#
+# `fb$penalty_blocks` is written by the selection module before the gate runs
+# (R/fb_select.R): it is the resolved `fb_prior_blocks` list, one entry per
+# declared shrinkage block over the candidate fixed effects. A model that
+# carries none -- every model outside the selection module, and a selection
+# whose penalty is `NULL` -- passes this check trivially, which is what the
+# default of NULL is for.
+#
+# A block whose family is `none` is an explicit opt-OUT of shrinkage for the
+# coordinates it names, so it is not a scale mixture and does not refuse.
+# Every other family in the table is one, and INLA never approximates it.
+.lgm_check_prior_family_inla_support <- function(fb) {
+  blocks <- fb$penalty_blocks %||% list()
+  if (length(blocks) == 0L) {
+    return(.lgm_pass("prior_family_unsupported_inla"))
+  }
+  families <- vapply(
+    blocks,
+    function(b) as.character(b$family %||% "none")[[1L]],
+    character(1L)
+  )
+  shrinkage <- setdiff(unique(families), "none")
+  if (length(shrinkage) == 0L) {
+    return(.lgm_pass("prior_family_unsupported_inla"))
+  }
+  .lgm_fail(
+    "prior_family_unsupported_inla",
+    reason = paste0(
+      "the joint shrinkage prior(s) ",
+      paste(shrinkage, collapse = ", "),
+      " cannot be fitted by INLA: a scale-mixture prior over the fixed ",
+      "effects leaves the latent field non-Gaussian given the ",
+      "hyperparameters, which is the assumption the nested Laplace ",
+      "approximation is built on. Fit the reference model on brms, or ",
+      "select with penalty = NULL, which keeps every candidate protected."
+    ),
+    diagnostic = paste0(
+      "penalty block families: ",
+      paste(families, collapse = ", ")
     )
   )
 }

@@ -316,6 +316,73 @@
         models with small cell count. The brms path has no aggregated
         emit.",
       anchor = "test-aggregation-equivalence-backend.R"
+    ),
+    list(
+      model_class = "Ridge shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ ridge(scale))`",
+      inla = "refuses",
+      brms = "fits",
+      note = "A joint shrinkage prior over a declared block of candidate
+        fixed effects, compiled to one coefficient-specific `normal` row per
+        candidate so the block is targeted exactly and no protected
+        coefficient is touched. INLA refuses at the twelfth structural check
+        (`prior_family_unsupported_inla`): a scale-mixture prior over the
+        fixed effects leaves the latent field non-Gaussian given the
+        hyperparameters, which is the assumption the nested Laplace
+        approximation rests on.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = "Laplace shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ laplace(scale))`",
+      inla = "refuses",
+      brms = "fits",
+      note = "One coefficient-specific `double_exponential` row per
+        candidate. The posterior mean is not a lasso estimate and the draws
+        carry no exact zeros; the alias `lasso()` says so once per session.
+        INLA refuses as for ridge.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = "Elastic-net shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ elastic_net(lambda, alpha))`",
+      inla = "refuses",
+      brms = "fits",
+      note = "The canonical elastic-net density written as a `target +=`
+        contribution over the candidate indices through `stanvars` and
+        `check = FALSE`, so the block is targeted exactly while a protected
+        coefficient keeps its own prior row. Fixed hyperparameters only in
+        this release, because the normalising constant is then irrelevant.
+        INLA refuses as for ridge.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = paste(
+        "Regularised horseshoe shrinkage prior on candidate fixed effects"
+      ),
+      spelling = "`fb_penalty(term(...) ~ regularized_horseshoe(p0))`",
+      inla = "refuses",
+      brms = "fits",
+      note = "brms's native `horseshoe()`, with `par_ratio` set from `p0`.
+        It is a class-wide prior: brms refuses a coefficient-specific row
+        beside a class-wide special prior, so a base carrying protected
+        fixed effects beyond the intercept refuses with
+        `penalty_block_targeting_unsupported` unless `scope = \"all_fixed\"`
+        is asked for, under which the protected coefficients sit under the
+        global-local prior too and the certificate records the
+        approximation. INLA refuses as for ridge.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = "R2D2 shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))`",
+      inla = "refuses",
+      brms = "fits",
+      note = "brms's native `R2D2()`, whose scales are stated on the
+        explained-variance grammar rather than on a coefficient scale, so
+        `p0` is refused for it. Class-wide, with the same targeting rule as
+        the regularised horseshoe. INLA refuses as for ridge.",
+      anchor = "test-penalty-stancode.R"
     )
   )
 
