@@ -1,12 +1,16 @@
-# Refusal registry --- scaffold only at v0.3.8
+# Refusal registry --- the canonical refusal-reason vocabulary
 #
-# Container + registration helper for the canonical refusal-reason
-# vocabulary. Empty at v0.3.8: this release ships the registry
-# infrastructure without converting the ~30 existing refusal sites
-# scattered through dispatch.R, lgm_gate.R, structured_cov.R, and
-# emit_inla.R. Full population (one .register_refusal() call per
-# existing site) + the user-facing fb_refusals() accessor land at
-# v0.4.0.
+# Container, registration helper, and the user-facing fb_refusals()
+# accessor. Populated: 136 codes registered across versioned
+# .populate_refusal_registry_*() calls in .onLoad(), against 139 distinct
+# reason_code slugs thrown in R/.
+#
+# The header here described this file as "scaffold only at v0.3.8, empty,
+# full population lands at v0.4.0" until 2026-09-12, six minor versions
+# after that had happened, in a file 2,300 lines long. A registry that
+# understates itself is the same claim-surface drift the registry exists
+# to prevent elsewhere, so the count above is stated and the test at
+# test-refusal-registry-scaffold.R asserts it.
 #
 # Rationale: the deliberate choice here is to ship the container
 # without the migration risk of touching ~30 existing refusal sites

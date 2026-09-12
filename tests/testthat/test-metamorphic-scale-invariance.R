@@ -8,7 +8,11 @@
 # This file exists because of finding O04. `us(env):gen` on INLA returns a
 # genetic correlation of 0.147 where ASReml returns 0.930, and the thing that
 # made it undeniable was not the ASReml comparison -- it was multiplying the
-# response by ten and watching the correlation move to -0.622. That check
+# response by ten and watching the correlation move a long way. The single
+# value -0.622 that stood here is withdrawn: eight identical rescaled calls
+# span -0.894 to +0.686 and none converged, so the rescaled arm has no one
+# number to quote. What reproduces is the FAILURE of invariance, and that is
+# what the tripwire below asserts. That check
 # needs no licence, no second engine and no reference implementation. It took
 # under a minute to write and it had never been written, which is the whole
 # lesson: a metamorphic check is cheaper than an oracle and sometimes finds

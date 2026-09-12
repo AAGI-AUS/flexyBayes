@@ -5,10 +5,18 @@
 # and iid2d..iid5d carry the unstructured covariance across blocks.
 #
 # Two things about this structure are worth their own tests. The correlations
-# are shrunk toward each other by INLA's Wishart hyperprior, which is a real
-# property of the fit and not a defect; and the prior interlingua has nowhere
-# to put a standard-deviation prior, so an explicit one refuses rather than
-# being dropped.
+# are shrunk toward each other by INLA's Wishart hyperprior; and the prior
+# interlingua has nowhere to put a standard-deviation prior, so an explicit
+# one refuses rather than being dropped.
+#
+# The shrinkage used to be described here as "a real property of the fit and
+# not a defect". That is withdrawn. Finding O04 measured the genetic
+# correlation at 0.142 against ASReml's 0.930, and rescaling the response by
+# ten -- an exact transformation under which a correlation is invariant --
+# does not reproduce it. The INLA us() route is classified `analogue`, not
+# `covariance-family`, and is refused for selection. These tests assert what
+# the emitter EMITS and what the structure's parameters look like; they do
+# not assert that the numbers are right, and the test names below say so.
 
 .us_fixture <- function(seed = 41L, n_gen = 60L, n_rep = 5L,
                         sd_by_env = c(0.8, 1.2, 0.5), sd_resid = 0.35) {
@@ -74,7 +82,7 @@ test_that("us() beyond five levels refuses and names fa() instead", {
   expect_false("lgm_compatible" %in% res$capabilities)
 })
 
-test_that("INLA recovers the unstructured covariance", {
+test_that("INLA emits an iidKd field with the expected parameter shape", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)

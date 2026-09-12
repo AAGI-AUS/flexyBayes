@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=133
+      .refusal_registry: locked=TRUE n_keys=136
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -203,6 +203,9 @@
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer
+        selection_covariance_not_buildable
+        selection_covariance_not_positive_definite
+        selection_dense_reference_too_large
         smooth_variable_not_in_data
         stan_cannot_represent_ar1_field
         stan_cannot_represent_ar1_residual
