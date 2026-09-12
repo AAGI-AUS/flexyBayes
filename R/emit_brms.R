@@ -90,6 +90,8 @@ emit_brms <- function(
   verbose = TRUE,
   mcmc_verbose = TRUE,
   return_code = FALSE,
+  extra_prior = NULL,
+  stanvars = NULL,
   the_call = NULL,
   fixed = NULL,
   random = NULL,
@@ -165,6 +167,17 @@ emit_brms <- function(
     data2 = brms_data2,
     family = brms_family
   )
+  # Joint-block prior rows compiled outside the fb_prior() path (the
+  # selection module's shrinkage blocks) are merged after that check, not
+  # before it. Two reasons. They are already resolved against this model's
+  # own coefficient names by the compiler that built them, so the oracle
+  # would be re-answering a question already answered; and one of their
+  # routes is a verbatim `target +=` row carried by
+  # brms::set_prior(check = FALSE), which has no class, no coef and no
+  # group -- there is no triple for default_prior() to list, and the check
+  # would read the blank class as a class the model does not carry. brms
+  # validates these rows itself at brm() time.
+  brms_prior <- .fb_brms_merge_extra_prior(brms_prior, extra_prior)
 
   # -- return_code: skip the fit; emit the Stan code only -----------
   if (isTRUE(return_code)) {
@@ -175,6 +188,7 @@ emit_brms <- function(
         data2 = brms_data2,
         family = brms_family,
         prior = brms_prior,
+        stanvars = stanvars,
         silent = 2L
       ),
       error = function(e) {
@@ -227,6 +241,7 @@ emit_brms <- function(
         data2 = brms_data2,
         family = brms_family,
         prior = brms_prior,
+        stanvars = stanvars,
         chains = as.integer(chains),
         iter = iter,
         warmup = as.integer(warmup),
@@ -512,6 +527,52 @@ emit_brms <- function(
     )
   }
   invisible(TRUE)
+}
+
+
+# .fb_brms_merge_extra_prior() --- one prior data frame from two sources.
+#
+# `prior` is what .priors_to_brms() built from the IR; `extra` is a
+# compiled joint block (the selection module's shrinkage prior). Where
+# both name the same parameter -- the same (class, coef, group, resp,
+# dpar, nlpar) tuple -- the extra row wins, which is the resolution rule
+# the rest of the package already uses for overlapping specifications:
+# the later one, for the coordinates it names. A class-wide shrinkage
+# prior on `b` therefore REPLACES the default fixed-effect row rather
+# than joining it, because brms reads two rows for one parameter as a
+# specification error, not as a product of densities.
+.fb_brms_merge_extra_prior <- function(prior, extra) {
+  if (is.null(extra) || NROW(extra) == 0L) {
+    return(prior)
+  }
+  if (is.null(prior) || NROW(prior) == 0L) {
+    return(extra)
+  }
+  keys <- intersect(
+    c("class", "coef", "group", "resp", "dpar", "nlpar"),
+    intersect(names(prior), names(extra))
+  )
+  if (length(keys) == 0L) {
+    stop(
+      "emit_brms(): `extra_prior` does not carry the brms prior columns.",
+      call. = FALSE
+    )
+  }
+  tuple <- function(d) {
+    do.call(
+      paste,
+      c(lapply(keys, function(k) as.character(d[[k]])), list(sep = "\r"))
+    )
+  }
+  keep <- !(tuple(prior) %in% tuple(extra))
+  out <- rbind(
+    as.data.frame(prior)[keep, , drop = FALSE],
+    as.data.frame(extra)
+  )
+  rownames(out) <- NULL
+  # rbind() on data frames drops the brmsprior class, and brm() dispatches
+  # on it, so it is put back rather than left to chance.
+  structure(out, class = class(prior))
 }
 
 
