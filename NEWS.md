@@ -373,6 +373,48 @@ block on the intermediate representation refuses exactly as before.
   fixed-covariance, fixed-sigma substrate the exact-limit bridges test, and
   `?fb_penalty` and `?fb_select` now say so.
 
+## The correlated random slope on INLA is demoted to an analogue
+
+A validation run against ASReml 4.2.0.392 and lme4 found that `(x | g)` on
+INLA carries the defect the `us(f):g` row was demoted for, on a second
+route: the `iid2d` field rather than `iidKd`.
+
+On `lme4::sleepstudy` the slope variance comes back at 46.37 at the
+posterior mode -- 52.10 at the mean, 50.19 at the median -- against 35.076
+in ASReml and 35.072 in lme4. That is 32 per cent high at the mode, which is
+the summary a REML estimate is comparable to, while the intercept variance
+on the same fit is 7 per cent high and the residual 0.4 per cent. Rescaling
+the response by ten is an exact transformation under which a correlation is
+invariant, and it moves the reported intercept-slope correlation from 0.02
+to 0.969 while REML holds at 0.066; the ratio of the intercept standard
+deviation to the residual doubles on the same transformation. The
+numerical-confirm gate fires on the rescaled fit and stays quiet on the
+unscaled one, which is the fit a user runs.
+
+The row is reclassified from `covariance-family` to **`analogue`** in the
+translation registry, with the measurement in the row rather than in a note
+beneath it. The change propagates to `inst/TRANSLATION.md`, the shipped CSV,
+and -- through the capability matrix -- to `README.md` and
+`inst/KNOWN_ISSUES.md`, where it is open issue 2 beside the `us()` row.
+
+`fb_select()` refuses a base that carries the term on INLA
+(`selection_base_not_allowlisted`), because the selection substrate whitens
+by the base's own covariance and a block that is a third too large would set
+the rotation every score is read through. The refusal quotes the
+measurement and names the brms route, which the comparison did not exercise
+and which writes `(x | g)` natively; a brms base carrying the term stays
+admitted, and a test asserts that it does.
+
+The scale-invariance check in
+`tests/testthat/test-metamorphic-scale-invariance.R` gains the sibling
+tripwire. It asserts the ratio of the slope standard deviation to the
+residual, not the correlation: across three identical unscaled fits the
+ratio reproduces to the third digit while the correlation spans 0.048, and
+a metamorphic gate is only as reproducible as the component it reads. As
+with `us()`, the tripwire fails when the defect goes away and its message
+names the records to close. The cause is not established, and it is now
+shared between the two routes -- a repair has to cover both.
+
 ## Refusals
 
 The registry moves from 163 codes to 184. `selection_penalty_not_implemented`

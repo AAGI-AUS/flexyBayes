@@ -48,7 +48,9 @@
 # regardless of how a particular fit behaved: the measured genetic
 # correlation is 0.142 against ASReml's 0.930, and multiplying the response
 # by ten -- an exact transformation under which a correlation is invariant --
-# does not reproduce it.
+# does not reproduce it. A correlated random slope on INLA stays out on the
+# same measurement taken on a second route, and only on that engine: the brms
+# base is admitted.
 .fb_select_gate <- function(base) {
   if (!inherits(base, "flexybayes")) {
     stop(.fb_refusal_condition(
@@ -101,6 +103,31 @@
         "rescaling the response by ten does not reproduce it, so a rotation ",
         "built on that covariance would be badly misspecified while looking ",
         "perfectly reproducible."
+      )
+    ))
+  }
+
+  # A correlated random slope carries the same defect on a second route, and
+  # it is engine-specific rather than structural: brms writes `(x | g)`
+  # natively and stays admitted, while the INLA lowering does not reproduce
+  # the covariance a rotation would be built on.
+  if (
+    inherits(base, "flexybayes_inla") && "simple_slope_cor" %in% types
+  ) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_base_not_allowlisted",
+      message = paste0(
+        "fb_select(): the base carries a correlated random slope `(x | g)` ",
+        "fitted on INLA, which is not on the selection allowlist. On ",
+        "lme4::sleepstudy that route returns a slope variance of 46.4 at ",
+        "the posterior mode against 35.08 in ASReml and 35.07 in lme4, and ",
+        "multiplying the response by ten -- an exact transformation under ",
+        "which a correlation is invariant -- moves the intercept-slope ",
+        "correlation from 0.02 to 0.969 while REML holds at 0.066. The ",
+        "selection substrate whitens by the base's own covariance, so that ",
+        "block would set the rotation every score is read through. Refit ",
+        "the base with backend = \"brms\", which writes this term natively ",
+        "and is admitted here."
       )
     ))
   }

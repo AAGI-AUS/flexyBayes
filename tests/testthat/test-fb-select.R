@@ -180,6 +180,91 @@ test_that("an aggregated-route fit refuses by name, not by falling over", {
 })
 
 
+# --- the correlated random slope, and why the engine decides it --------- #
+#
+# Finding S01's defect D1. `(x | g)` on INLA lowers to an iid2d field whose
+# slope variance comes back 32 per cent above REML's at the posterior mode,
+# and whose intercept-slope correlation moves from 0.02 to 0.969 when the
+# response is multiplied by ten -- a transformation that changes no model.
+# The selection substrate whitens by the base's own covariance, so a base
+# carrying that block sets the rotation every score is read through.
+#
+# The refusal is engine-specific, and both halves are asserted. A gate that
+# refused the structure everywhere would be simpler and wrong: brms writes
+# `(x | g)` natively and the measurement says nothing against it.
+
+fb_sel_slope_data <- function(seed = 20260913L, J = 12L, m = 6L) {
+  set.seed(seed)
+  d <- data.frame(g = factor(rep(sprintf("G%02d", seq_len(J)), each = m)))
+  d$x <- stats::rnorm(nrow(d))
+  u <- stats::rnorm(J, sd = 0.8)
+  v <- stats::rnorm(J, sd = 0.4)
+  gi <- as.integer(d$g)
+  d$clay <- stats::rnorm(nrow(d))
+  d$y <- 2 + 0.6 * d$x + 0.4 * d$clay + u[gi] + v[gi] * d$x +
+    stats::rnorm(nrow(d), sd = 0.5)
+  d
+}
+
+
+test_that("an INLA base carrying a correlated random slope refuses by name", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- fb_sel_slope_data()
+  base <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ x + (x | g), data = d, backend = "inla", verbose = FALSE
+  )))
+  expect_error(
+    fb_select(base, ~ clay,
+              resamples = fb_resamples(unit = ~ g, v = 4L),
+              workflow = "unpenalized_benchmark", seed = 1L),
+    class = "flexybayes_refusal_selection_base_not_allowlisted"
+  )
+  # The refusal carries the measurement that put the structure out, not a
+  # bare verdict, and it names the route that is admitted.
+  expect_error(
+    fb_select(base, ~ clay,
+              resamples = fb_resamples(unit = ~ g, v = 4L),
+              workflow = "unpenalized_benchmark", seed = 1L),
+    "46.4 at the posterior mode against 35.08 in ASReml",
+    fixed = TRUE
+  )
+  expect_error(
+    fb_select(base, ~ clay,
+              resamples = fb_resamples(unit = ~ g, v = 4L),
+              workflow = "unpenalized_benchmark", seed = 1L),
+    "0.02 to 0.969",
+    fixed = TRUE
+  )
+  expect_error(
+    fb_select(base, ~ clay,
+              resamples = fb_resamples(unit = ~ g, v = 4L),
+              workflow = "unpenalized_benchmark", seed = 1L),
+    "backend = \"brms\"",
+    fixed = TRUE
+  )
+})
+
+
+test_that("a brms base carrying the same term stays admitted", {
+  # The negative control for the refusal above. Without it the gate passes
+  # for an implementation that refuses `(x | g)` on every engine, which
+  # would withdraw a capability the measurement does not touch.
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- fb_sel_slope_data()
+  base <- suppressWarnings(suppressMessages(fb_brms(
+    y ~ x + (x | g), data = d, chains = 1L, n_samples = 200L,
+    warmup = 200L, seed = 20260913L, verbose = FALSE, mcmc_verbose = FALSE
+  )))
+  expect_true("simple_slope_cor" %in%
+                vapply(base$fb$random_terms, function(t) t$type, character(1L)))
+  expect_true(flexyBayes:::.fb_select_gate(base))
+})
+
+
 # --- the certificate ----------------------------------------------------- #
 
 test_that("the certificate records the covariance, the estimand and the unit", {

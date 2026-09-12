@@ -293,3 +293,192 @@ test_that("the O04 rule is sensitive at its stated tolerance", {
   expect_identical(.o04_verdict(TRUE, 0.100, 0.149), "repaired")
   expect_identical(.o04_verdict(TRUE, 0.100, 0.151), "not_invariant")
 })
+
+
+# --- the correlated random slope: the same defect on a second route ---- #
+
+# Finding S01's defect D1. `(x | g)` on INLA is lowered to an iid2d field,
+# not to the iidKd field `us()` uses, and it fails the same two ways: the
+# slope variance is a third too large against REML, and rescaling the
+# response -- which changes no model -- moves the answer. The rule below is
+# the ratio form of the invariance test, because the ratio of the slope
+# standard deviation to the residual is what a rescaling leaves alone.
+#
+# Which quantity to assert was measured rather than chosen. Across three
+# identical unscaled fits the ratio came back 0.2761, 0.2821 and 0.2810,
+# reproducible to the third digit; the correlation over the same three fits
+# ran -0.021, -0.013, -0.017 against +0.027 on a fourth, a spread of 0.048
+# that sits on top of the 0.05 tolerance the us() rule uses. The correlation
+# is the headline of the finding and the ratio is the assertable half, which
+# is the lesson the nested-strata gate above already carries.
+.d1_ratio_verdict <- function(ok_10, r_1, r_10, tol = 0.10) {
+  if (is.na(ok_10)) {
+    return("unverified")
+  }
+  if (isFALSE(ok_10)) {
+    return("nonconverged")
+  }
+  if (!is.finite(r_1) || !is.finite(r_10) || r_1 <= 0) {
+    return("unverified")
+  }
+  if (abs(r_10 - r_1) > tol * r_1) {
+    return("not_invariant")
+  }
+  "repaired"
+}
+
+# The REML half, which needs no rescaling: a well-identified variance
+# component that both ASReml and lme4 agree on, against the posterior. A
+# relative gap of 15 per cent is the criterion SPEC.md Amendment 5 declared
+# for this comparison, and it is the one the row-19 slope variance failed.
+.d1_variance_verdict <- function(v_posterior, v_reml, tol = 0.15) {
+  if (!is.finite(v_posterior) || !is.finite(v_reml) || v_reml <= 0) {
+    return("unverified")
+  }
+  if (abs(v_posterior - v_reml) / v_reml > tol) {
+    return("not_reproduced")
+  }
+  "repaired"
+}
+
+
+test_that("(x | g) on INLA fails scale invariance -- tripwire for S01 D1", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  skip_on_ci()
+
+  e <- new.env()
+  utils::data("sleepstudy", package = "lme4", envir = e)
+  d <- e$sleepstudy
+
+  fit_of <- function(dat) {
+    suppressWarnings(flexybayes(Reaction ~ Days + (Days | Subject),
+                                data = dat, backend = "inla", verbose = FALSE))
+  }
+  component_of <- function(fit, nm) {
+    vc <- summary(fit)$varcomp
+    row <- vc[vc$component == nm, , drop = FALSE]
+    if (!nrow(row)) {
+      stop("no variance component named ", nm, call. = FALSE)
+    }
+    as.numeric(row$estimate[[1L]])
+  }
+  ratio_of <- function(fit) {
+    component_of(fit, "sd_Days_Subject") / component_of(fit, "sigma")
+  }
+
+  fit_1 <- fit_of(d)
+
+  # The REML oracle, refitted here rather than quoted. lme4 returned 612.100
+  # for the intercept variance, 35.0717 for the slope and 654.940 for the
+  # residual on this data, and ASReml 4.2.0.392 returned 612.170, 35.0763 and
+  # 655.028 -- agreement to five significant figures on all three, which is
+  # what makes the comparator sound and the disagreement below the package's.
+  vc_reml <- as.data.frame(lme4::VarCorr(
+    lme4::lmer(Reaction ~ Days + (Days | Subject), data = d, REML = TRUE)
+  ))
+  v_reml <- vc_reml$vcov[
+    vc_reml$grp == "Subject" & vc_reml$var1 == "Days" & is.na(vc_reml$var2)
+  ][[1L]]
+
+  v_posterior <- component_of(fit_1, "sd_Days_Subject")^2
+  expect_identical(
+    .d1_variance_verdict(v_posterior, v_reml),
+    "not_reproduced",
+    info = paste0(
+      "the INLA slope variance is ", signif(v_posterior, 4),
+      " against REML's ", signif(v_reml, 6),
+      ". If it has come inside 15 per cent this is a repair: close defect ",
+      "D1 of finding S01, re-run oracle row 19_v1_random_slope, reclassify ",
+      "the INLA correlated-slope row in R/translation_registry.R, update ",
+      "the capability-matrix note and KNOWN_ISSUES open issue 2, lift the ",
+      "refusal in .fb_select_gate(), and replace this tripwire with the ",
+      "invariance gate the two tests at the top of this file use."
+    )
+  )
+
+  # The metamorphic half. Rescaling the response is exact, so the ratio of
+  # the slope standard deviation to the residual is the same number at every
+  # scale -- REML returns 0.2314 whatever the scale -- and it must not decide
+  # whether the model fits at all. Measured at ten times the response: 2.007,
+  # 0.1105 and 0.0417 across three identical calls, one of which did not
+  # converge, against 0.281 unscaled.
+  d10 <- d
+  d10$Reaction <- 10 * d10$Reaction
+  fit_10 <- fit_of(d10)
+
+  verdict <- .d1_ratio_verdict(
+    ok_10 = summary(fit_10)$converge$ok,
+    r_1 = ratio_of(fit_1),
+    r_10 = ratio_of(fit_10)
+  )
+
+  expect_false(
+    identical(verdict, "unverified"),
+    info = paste0(
+      "the rescaled correlated-slope fit reports an UNVERIFIED convergence ",
+      "state, which is neither outcome this tripwire distinguishes. Read ",
+      "the diagnostics before going further; NA must not pass as though it ",
+      "were a result."
+    )
+  )
+  expect_false(
+    identical(verdict, "repaired"),
+    info = paste0(
+      "the tenfold-rescaled correlated-slope fit both converged AND ",
+      "reproduced the unscaled ratio of the slope standard deviation to ",
+      "the residual. Rescaling the response is exact, so that is what a ",
+      "correct fit does: defect D1 of finding S01 may be repaired. Re-run ",
+      "oracle row 19_v1_random_slope, reclassify the INLA correlated-slope ",
+      "row, lift the .fb_select_gate() refusal, and replace this tripwire ",
+      "with the invariance gate above."
+    )
+  )
+})
+
+
+test_that("the D1 ratio rule can reach all four of its verdicts", {
+  # Non-convergence, whatever the ratios did.
+  expect_identical(.d1_ratio_verdict(FALSE, 0.281, 0.281), "nonconverged")
+  expect_identical(.d1_ratio_verdict(FALSE, 0.281, 2.007), "nonconverged")
+
+  # Converged but not invariant: the measured rescaled values.
+  expect_identical(.d1_ratio_verdict(TRUE, 0.281, 2.007), "not_invariant")
+  expect_identical(.d1_ratio_verdict(TRUE, 0.281, 0.0417), "not_invariant")
+
+  # Converged AND invariant. This is the state that must make the tripwire
+  # red, because it is what a repaired iid2d lowering looks like.
+  expect_identical(.d1_ratio_verdict(TRUE, 0.281, 0.281), "repaired")
+  expect_identical(.d1_ratio_verdict(TRUE, 0.2314, 0.2320), "repaired")
+
+  # Unverified never passes as a result.
+  expect_identical(.d1_ratio_verdict(NA, 0.281, 2.007), "unverified")
+  expect_identical(.d1_ratio_verdict(TRUE, NA_real_, 0.281), "unverified")
+})
+
+
+test_that("the D1 ratio rule is sensitive at its stated tolerance", {
+  # Ten per cent of 0.280, so 0.0280: just inside and just outside.
+  expect_identical(.d1_ratio_verdict(TRUE, 0.280, 0.3070), "repaired")
+  expect_identical(.d1_ratio_verdict(TRUE, 0.280, 0.3090), "not_invariant")
+})
+
+
+test_that("the D1 variance rule reaches both of its verdicts and its edge", {
+  # The measurement: 46.37 at the mode, 49.5 to 52.5 at the mean of the
+  # squared standard deviation, against REML's 35.0717.
+  expect_identical(.d1_variance_verdict(46.37, 35.0717), "not_reproduced")
+  expect_identical(.d1_variance_verdict(52.10, 35.0717), "not_reproduced")
+
+  # A repair makes the tripwire red rather than leaving it asserting a
+  # defect that is gone.
+  expect_identical(.d1_variance_verdict(35.10, 35.0717), "repaired")
+
+  # The 15 per cent boundary, asserted rather than assumed.
+  expect_identical(.d1_variance_verdict(40.30, 35.0717), "repaired")
+  expect_identical(.d1_variance_verdict(40.40, 35.0717), "not_reproduced")
+
+  # A component the summary could not supply is not a pass.
+  expect_identical(.d1_variance_verdict(NA_real_, 35.0717), "unverified")
+})

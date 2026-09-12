@@ -263,19 +263,54 @@
       anchor = "test-known-covariance-inputs.R"
     ),
     list(
-      structure = "Correlated random slope",
+      structure = "Correlated random slope, on brms",
       spelling = "`(x | g)`",
       vintage = "lme4 / brms",
-      engine = "inla, brms",
+      engine = "brms",
       class = "covariance-family",
-      condition = paste(
-        "brms fits this natively. On INLA it is an iid2d block whose Wishart",
-        "scale is set from the data; repeated identical fits have returned",
-        "materially different modes where the correlation is weakly",
-        "identified."
+      condition = "brms writes the term verbatim and fits it natively.",
+      oracle = paste(
+        "Live emission and recovery tests; no current ASReml comparison on",
+        "this engine"
       ),
-      oracle = "Live INLA recovery tests against lme4; none against ASReml us(2):g",
       anchor = "test-correlated-random-slope.R"
+    ),
+    list(
+      structure = "Correlated random slope, on INLA",
+      spelling = "`(x | g)`",
+      vintage = "lme4 / brms",
+      engine = "inla",
+      class = "analogue",
+      condition = paste(
+        "Lowered to one iid2d field over a two-block index, carrying a joint",
+        "Wishart prior whose scale is set from the data, with the slope block",
+        "entering as a fixed-scaling copy. The prior geometry and the",
+        "parameter coordinates are not ASReml's, and a supplied SD prior is",
+        "refused rather than dropped. This row claimed covariance-family",
+        "until 2026-09-13, when a paired ASReml comparison measured a slope",
+        "variance a third too large and a metamorphic check found the fit is",
+        "not invariant to rescaling the response. Slope variances and",
+        "correlations from this route are not to be read as ASReml's, and",
+        "fb_select() refuses a base that carries this term on INLA."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.392 and lme4 at this anchor on lme4::sleepstudy,",
+        "oracle row 19 (finding S01, defect D1). The fixed effects, the",
+        "intercept variance and the residual agree; the slope variance does",
+        "not. ASReml returns 35.076 and lme4 35.072 against a posterior mode",
+        "of 46.37, a median of 50.19 and a mean of 52.10 -- 32 per cent high",
+        "at the mode, which is the summary a REML estimate is comparable to.",
+        "Rescaling the response by ten is exact and leaves a correlation",
+        "alone, and here it moves the intercept-slope correlation from 0.02",
+        "to 0.969 while REML holds at 0.066; the ratio of the intercept",
+        "standard deviation to the residual doubles on the same",
+        "transformation. The tenfold fit raises the package's own",
+        "numerical-confirm gate and the unscaled one does not, so the",
+        "protection fires on the fit a user will not run. This is the",
+        "us()/iidKd row's defect on a second route, so a repair has to cover",
+        "both; the cause is not established"
+      ),
+      anchor = "test-metamorphic-scale-invariance.R"
     ),
     list(
       structure = "Uncorrelated random slope",

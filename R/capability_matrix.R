@@ -100,7 +100,23 @@
         holds all three in a single iid2d field over a two-block index,
         with the slope block entering as a fixed-scaling copy weighted by
         `x`; brms writes `(x | g)` verbatim. Both report `sd_<g>`,
-        `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`. The iid2d
+        `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`. **On INLA this route
+        does not reproduce REML's covariance.** Paired against ASReml
+        4.2.0.392 and lme4 on `lme4::sleepstudy` the slope variance comes
+        back at 46.4 at the posterior mode -- 52.1 at the mean, 50.2 at the
+        median -- against 35.08 in ASReml and 35.07 in lme4, 32 per cent
+        high at the mode, while the intercept variance and the residual on
+        the same fit agree to 7 and 0.4 per cent. Rescaling the response by
+        ten is an exact transformation under which a correlation is
+        invariant, and here it moves the intercept-slope correlation from
+        0.02 to 0.969 while REML holds at 0.066. This is the same defect
+        the `us(f):g` row carries, on a second route -- iid2d rather than
+        iidKd -- so it is classified `analogue` in `inst/TRANSLATION.md`
+        rather than covariance-family. Read the slope variance and the
+        correlation from the brms route, which that comparison did not
+        exercise, or from ASReml; `fb_select()` refuses an INLA base
+        carrying this term. Measured in oracle row 19, written up as
+        defect D1 of finding S01. The iid2d
         hyperparameters are one joint Wishart with no standard-deviation
         slot, so on INLA an explicit SD prior refuses by name and the
         package default is reported as an engine default rather than as a
@@ -114,7 +130,7 @@
         to +0.75. Scaled, the same fit returns 25.7 to 26.9 against lme4's
         24.7, with the correlation between -0.07 and +0.15 around lme4's
         0.066.",
-      anchor = "test-correlated-random-slope.R"
+      anchor = "test-metamorphic-scale-invariance.R"
     ),
     list(
       model_class = "Nested / interaction random effects, multi-stratum",
