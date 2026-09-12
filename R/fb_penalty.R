@@ -290,6 +290,21 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
 
 
 .fb_pen_parse_selector_call <- function(call_expr, expr) {
+  # A call whose head is itself a call --- `pkg::helper(x)`, an inline
+  # function --- deparses to more than one string, and every branch below
+  # would then compare a length-3 vector to a name. That is the shape that
+  # used to reach base R as "the condition has length > 1", an R internals
+  # message about a formula the user wrote.
+  if (!is.name(call_expr[[1L]])) {
+    .fb_pen_stop_target(
+      expr,
+      paste0(
+        "`", .fb_prior_deparse(call_expr), "` is not a selector: term() ",
+        "takes everything(), matches(), bare term names or c(\"a\", \"b\"), ",
+        "written plainly and not through another call."
+      )
+    )
+  }
   fn <- as.character(call_expr[[1L]])
   inner <- as.list(call_expr[-1L])
 
@@ -392,12 +407,15 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
 # returns, rather than that it never existed. Aliases resolve before
 # validation, so the argument contract is stated once per canonical family.
 .fb_pen_parse_family <- function(expr, envir = baseenv()) {
-  if (!is.call(expr)) {
+  # The head has to be a plain name as well as a call. `pkg::ridge(1)`
+  # deparses head-first to three strings, and every comparison below would
+  # then be made against a length-3 vector rather than against a family name.
+  if (!is.call(expr) || !is.name(expr[[1L]])) {
     stop(.fb_refusal_condition(
       reason_code = "selection_penalty_family_unknown",
       message = paste0(
-        "the right-hand side must be a family call, for example ",
-        "`ridge(scale = 1)`. Got: ", .fb_prior_deparse(expr), "."
+        "the right-hand side must be a family call written plainly, for ",
+        "example `ridge(scale = 1)`. Got: ", .fb_prior_deparse(expr), "."
       )
     ))
   }

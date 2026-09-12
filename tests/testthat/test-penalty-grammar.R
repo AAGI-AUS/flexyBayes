@@ -558,6 +558,18 @@ fbpg_malformed <- list(
     spec = term(everything()) ~ 1,
     code = "selection_penalty_family_unknown", mutation = "wrong_type"
   ),
+  # A call whose head is itself a call deparses head-first to several
+  # strings. Comparing that against a family name is how a length-3
+  # condition used to escape as an R internals error about the user's own
+  # formula.
+  list(
+    spec = term(everything()) ~ flexyBayes::ridge(scale = 1),
+    code = "selection_penalty_family_unknown", mutation = "call_shape"
+  ),
+  list(
+    spec = term(base::c("x1")) ~ ridge(scale = 1),
+    code = "selection_penalty_target_unsupported", mutation = "call_shape"
+  ),
   list(
     spec = ~ridge(scale = 1),
     code = "selection_penalty_spec_malformed", mutation = "one_sided"
@@ -571,6 +583,27 @@ test_that("every malformed specification refuses with its named code", {
     expect_error(
       suppressMessages(fb_penalty(row$spec)),
       class = paste0("flexybayes_refusal_", row$code),
+      info = paste0(deparse(row$spec), collapse = " ")
+    )
+  }
+  flexyBayes:::.fb_pen_reset_alias_note()
+})
+
+
+test_that("every refusal message is one string", {
+  # A call whose head is itself a call deparses head-first to several
+  # strings, and a message built from that is a character vector rather than
+  # a sentence. The condition still carries the right class, so the class
+  # assertion above cannot see it; this is the check that can.
+  flexyBayes:::.fb_pen_reset_alias_note()
+  for (row in fbpg_malformed) {
+    cnd <- tryCatch(
+      suppressMessages(fb_penalty(row$spec)),
+      condition = function(e) e
+    )
+    expect_length(conditionMessage(cnd), 1L)
+    expect_true(
+      nzchar(conditionMessage(cnd)),
       info = paste0(deparse(row$spec), collapse = " ")
     )
   }
