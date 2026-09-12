@@ -21,6 +21,31 @@
   # roxygen emits the `S3method()` entries directly and no runtime
   # registerS3method() shim is needed. See R/tidiers.R.
 
+  # The selection module's posterior-predictive dispatcher is an INTERNAL
+  # generic, so roxygen emits no S3method() entry for it and UseMethod would
+  # otherwise find its methods only when the generic is called from inside
+  # this namespace. Registering them here makes dispatch work from a test
+  # frame and from any caller, without exporting either the generic or the
+  # methods. See R/selection_bayes_cv.R.
+  registerS3method(
+    ".fb_sel_posterior_predict_fold",
+    "flexybayes_brms",
+    .fb_sel_posterior_predict_fold.flexybayes_brms,
+    envir = asNamespace(pkgname)
+  )
+  registerS3method(
+    ".fb_sel_posterior_predict_fold",
+    "flexybayes_inla",
+    .fb_sel_posterior_predict_fold.flexybayes_inla,
+    envir = asNamespace(pkgname)
+  )
+  registerS3method(
+    ".fb_sel_posterior_predict_fold",
+    "default",
+    .fb_sel_posterior_predict_fold.default,
+    envir = asNamespace(pkgname)
+  )
+
   # Initialise the emit-once message latches into their fresh state.
   # The store lives in R/emit_state.R inside a package-private env so
   # it cannot be read or mutated via getOption() / options(); test
@@ -118,6 +143,10 @@
   # 0.11.0: the reference model's adequacy gates and the projection
   # provider's structure and family gates.
   .populate_refusal_registry_selection_projection()
+
+  # 0.11.0: the Bayesian selection route's absent-provider and runtime-budget
+  # refusals.
+  .populate_refusal_registry_selection_bayes_cv()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
