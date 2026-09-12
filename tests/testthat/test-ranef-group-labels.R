@@ -63,11 +63,101 @@ test_that("the label map covers every structured term type it claims", {
   }
 })
 
-test_that("the correlated slope's two index blocks share one label", {
+test_that("the correlated slope's two index blocks take distinct labels", {
+  # They used to share one. The iid2d field is laid out intercepts then
+  # slopes, so the two index names address two different blocks of
+  # deviations, and mapping both to `x | g` returned a list with two
+  # elements of the same name -- `ranef(fit)[["x | g"]]` reached only the
+  # first, and no caller could tell which block that was.
   d <- data.frame(y = stats::rnorm(40), x = stats::rnorm(40),
                   g = factor(rep(letters[1:8], each = 5)))
   fb <- fb_from_brms(y ~ x + (x | g), data = d)
   map <- .fb_inla_group_labels(fb)
-  expect_identical(unname(map[["g_cor_x_id"]]), "x | g")
+  expect_identical(unname(map[["g_cor_x_id"]]), "(Intercept) | g")
   expect_identical(unname(map[["g_cor_x_slope_id"]]), "x | g")
+})
+
+
+# --- the levels inside the table, not only the name on it -------------- #
+#
+# Finding S01's defect D2. `.fb_random_inla()` restored a level label only
+# where INLA's `ID` column came back CHARACTER, which is what a plain `~ g`
+# produces. Every structured term is indexed by an integer column
+# emit_inla() built, so `ID` is 1..n and the guard never fired: `rep:block`
+# on john.alpha reported levels "1" to "18" against ASReml's
+# `rep_R1:block_B1 ...`, and `(Days | Subject)` reported "1" to "36" with
+# the subject identifiers sitting unused on the fit. Two of the four BLUP
+# comparisons in the S01 programme could not be made at all, and aligning by
+# row order was refused because `interaction()` orders `rep` fastest while
+# ASReml orders it slowest -- a positional match would have been silently
+# wrong on exactly the row where it looked easiest.
+
+test_that("an interaction group reports the interaction's own levels", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("agridat")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  e <- new.env()
+  utils::data("john.alpha", package = "agridat", envir = e)
+  d <- e$john.alpha
+
+  fit <- suppressMessages(flexybayes(
+    yield ~ rep, random = ~ rep:block + gen,
+    data = d, backend = "inla", verbose = FALSE
+  ))
+  got <- ranef(fit)[["rep:block"]]$level
+
+  # The expected labels are written out here rather than taken from
+  # `interaction()`, which is the call the emitter itself makes: an oracle
+  # that shares the code under test proves self-consistency. The index is
+  # lexicographic with the FIRST variable slowest, so the order is
+  # `order(rep, block)` over the observed cells.
+  cells <- unique(d[c("rep", "block")])
+  cells <- cells[order(
+    as.integer(factor(cells$rep, levels = levels(factor(d$rep)))),
+    as.integer(factor(cells$block, levels = levels(factor(d$block))))
+  ), ]
+  expected <- paste0(cells$rep, ":", cells$block)
+
+  expect_identical(got, expected)
+  expect_length(got, 18L)
+  # And nothing that looks like a bare index survived.
+  expect_false(any(grepl("^[0-9]+$", got)))
+})
+
+test_that("a correlated slope reports two named blocks over the group's levels", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  e <- new.env()
+  utils::data("sleepstudy", package = "lme4", envir = e)
+  d <- e$sleepstudy
+
+  fit <- suppressWarnings(suppressMessages(flexybayes(
+    Reaction ~ Days + (Days | Subject),
+    data = d, backend = "inla", verbose = FALSE
+  )))
+  r <- ranef(fit)
+
+  # Two elements, and a caller can tell which is which. Both used to be
+  # called "Days | Subject", so `r[["Days | Subject"]]` reached one of the
+  # two blocks and there was no way to say which.
+  expect_identical(anyDuplicated(names(r)), 0L)
+  expect_setequal(names(r), c("(Intercept) | Subject", "Days | Subject"))
+
+  subjects <- levels(factor(d$Subject))
+  expect_length(subjects, 18L)
+  for (nm in names(r)) {
+    expect_identical(r[[nm]]$level, subjects, info = nm)
+    expect_identical(unique(r[[nm]]$group), nm)
+  }
+
+  # The two blocks are different numbers, not one block reported twice --
+  # the copy INLA emits for the slope carries the whole field, so reading
+  # the same rows out of both would return the intercepts under both names.
+  expect_false(isTRUE(all.equal(
+    r[["(Intercept) | Subject"]]$estimate,
+    r[["Days | Subject"]]$estimate
+  )))
 })

@@ -988,24 +988,45 @@
   # Single-bracket lookup: `labels[[nm]]` raises on a name the map does not
   # carry, which is the common case (a plain `~ g` needs no relabelling).
   relabel <- function(nm) if (nm %in% names(labels)) labels[[nm]] else nm
+  # The levels inside the table, for the terms INLA indexes by an integer
+  # column rather than by the factor itself. Without it those come back as
+  # 1..n and no BLUP can be matched by name (finding S01, defect D2).
+  level_specs <- if (is.null(fb)) {
+    list()
+  } else {
+    .fb_inla_group_levels(fb, object$data, object$level_labels)
+  }
   out <- lapply(names(sr), function(nm) {
     tab <- sr[[nm]]
     if (!is.data.frame(tab) || nrow(tab) == 0L) {
       return(NULL)
     }
     group_label <- relabel(nm)
-    # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
-    # for a group INLA's f() indexes by a relabelled factor; restore the
-    # user's own label the same way coef.flexybayes_inla() does for the
-    # fixed table, so ranef() -- which reaches this function via
-    # coef(what = "random") -- prints what the user wrote.
-    level_vals <- tab$ID %||% seq_len(nrow(tab))
-    if (is.character(level_vals)) {
-      level_vals <- .inla_restore_level_labels(
-        object$level_labels,
-        nm,
-        level_vals
-      )
+    spec <- level_specs[[nm]]
+    # A term with two index names reads one block of a longer field, so the
+    # spec carries the rows as well as the labels. The shape is checked
+    # rather than assumed: a table of another length is not the field this
+    # term indexed, and it keeps the generic path rather than being cut to
+    # fit.
+    if (!is.null(spec) &&
+          max(spec$rows) <= nrow(tab) &&
+          length(spec$rows) == length(spec$levels)) {
+      tab <- tab[spec$rows, , drop = FALSE]
+      level_vals <- spec$levels
+    } else {
+      # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
+      # for a group INLA's f() indexes by a relabelled factor; restore the
+      # user's own label the same way coef.flexybayes_inla() does for the
+      # fixed table, so ranef() -- which reaches this function via
+      # coef(what = "random") -- prints what the user wrote.
+      level_vals <- tab$ID %||% seq_len(nrow(tab))
+      if (is.character(level_vals)) {
+        level_vals <- .inla_restore_level_labels(
+          object$level_labels,
+          nm,
+          level_vals
+        )
+      }
     }
     .fb_random_rows(
       group = group_label,

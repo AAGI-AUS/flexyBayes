@@ -415,6 +415,35 @@ with `us()`, the tripwire fails when the defect goes away and its message
 names the records to close. The cause is not established, and it is now
 shared between the two routes -- a repair has to cover both.
 
+## `ranef()` on an INLA fit reports the levels the user wrote
+
+`.fb_random_inla()` restored a level label only where INLA returned the `ID`
+column as CHARACTER, which is what a plain `~ g` produces because INLA is
+handed the factor itself. Every structured term is indexed by an integer
+column the emitter builds, so `ID` came back as `1 ... n` and the guard never
+fired: `rep:block` on `agridat::john.alpha` reported levels `"1"` to `"18"`
+where ASReml reports `rep_R1:block_B1 ...`, and `(Days | Subject)` on
+`lme4::sleepstudy` reported `"1"` to `"36"` with the subject identifiers
+sitting unused on the fit.
+
+Two of the four BLUP comparisons in the September validation programme could
+not be made at all, and aligning by row order was refused rather than
+guessed: `interaction()` orders `rep` fastest and ASReml orders it slowest,
+so a positional match would have been silently wrong on exactly the row where
+it looked easiest.
+
+Levels now come from the grouping factor itself, composed in the order the
+emitter's index uses and in the user's own labels rather than the legalised
+ones. An interaction group reports the interaction level -- `R1:B1`, with the
+separator its group name already uses.
+
+The correlated random slope also returned **two list elements under one
+name**, because both of its index names mapped to the single label
+`<x> | <g>`; `ranef(fit)[["Days | Subject"]]` reached one of the two blocks
+with nothing to say which. The two blocks are now named for what they hold,
+`(Intercept) | <g>` and `<x> | <g>`, and each reports the group's own levels
+over its own half of the `iid2d` field rather than the whole field twice.
+
 ## Refusals
 
 The registry moves from 163 codes to 184. `selection_penalty_not_implemented`

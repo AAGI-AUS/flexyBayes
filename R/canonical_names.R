@@ -298,10 +298,20 @@ register_canonical_mapper <- function(backend, mapper) {
       )
       next
     }
+    # The two index names address two DIFFERENT blocks of one iid2d field --
+    # intercepts first, slopes second -- so they take two labels. Mapping
+    # both to `<x> | <g>` returned a list carrying two elements of the same
+    # name, and `ranef(fit)[["<x> | <g>"]]` reached only the first with
+    # nothing to say which block that was (finding S01, defect D2).
     if (identical(tt, "simple_slope_cor")) {
-      lab <- paste0(t$slope_var, " | ", t$var)
-      put(make.names(paste0(t$var, "_cor_", t$slope_var, "_id")), lab)
-      put(make.names(paste0(t$var, "_cor_", t$slope_var, "_slope_id")), lab)
+      put(
+        make.names(paste0(t$var, "_cor_", t$slope_var, "_id")),
+        paste0("(Intercept) | ", t$var)
+      )
+      put(
+        make.names(paste0(t$var, "_cor_", t$slope_var, "_slope_id")),
+        paste0(t$slope_var, " | ", t$var)
+      )
       next
     }
     if (identical(tt, "us_gxe")) {
@@ -327,6 +337,93 @@ register_canonical_mapper <- function(backend, mapper) {
           paste0(t$inner, " specific (", t$outer, " = ", lev, ")")
         )
       }
+      next
+    }
+  }
+  map
+}
+
+# .fb_inla_group_levels() --- generated index name -> the levels a reader
+# would recognise, and which rows of INLA's table they cover.
+#
+# The companion to .fb_inla_group_labels(). That map fixes the GROUP a
+# summary.random entry is reported under; this one fixes the LEVELS inside
+# it. emit_inla() indexes every structured term by an INTEGER column it
+# builds, so INLA's `ID` comes back as 1..n and the character-restoration
+# path in .fb_random_inla() -- written for the plain `~ g` case, where INLA
+# is handed the factor itself -- never fired. `rep:block` on john.alpha
+# reported levels "1" to "18" against ASReml's `rep_R1:block_B1 ...`, and
+# `(Days | Subject)` reported "1" to "36" with the subject identifiers
+# sitting unused on the fit, so a BLUP comparison by name could not be made
+# at all (finding S01, defect D2).
+#
+# Each entry is `list(levels, rows)`: the labels in index order, and the
+# rows of the INLA table they cover. `rows` spans the whole field for a
+# term with one index, and one block of a longer field where a term has
+# two -- which is how the correlated slope's iid2d is laid out.
+#
+# `data` is the fit's own copy, whose factor levels may have been legalised
+# for INLA; `level_labels` is the map back to what the user wrote, applied
+# per variable before the labels are composed, so the composition happens
+# once and in the user's own vocabulary.
+#
+# @noRd
+# @keywords internal
+.fb_inla_group_levels <- function(fb, data, level_labels = NULL) {
+  map <- list()
+  if (!is.data.frame(data)) {
+    return(map)
+  }
+  # A factor over `var`, relabelled from the legal levels back to the
+  # user's own. Level relabelling is 1:1 and order-preserving, so the level
+  # POSITIONS -- which are what the integer index points at -- are the same
+  # either way.
+  restored_factor <- function(var) {
+    f <- factor(data[[var]])
+    if (!is.null(level_labels)) {
+      levels(f) <- .inla_restore_level_labels(level_labels, var, levels(f))
+    }
+    f
+  }
+
+  for (t in fb$random_terms %||% list()) {
+    tt <- t$type %||% ""
+    if (tt %in% c("nested", "combo")) {
+      vars <- if (identical(tt, "nested")) {
+        c(t$outer, t$inner)
+      } else {
+        as.character(t$vars)
+      }
+      if (!all(vars %in% names(data))) {
+        next
+      }
+      # The same interaction emit_inla() indexes by: observed cells only,
+      # first variable slowest. Level k here is level k there. The
+      # separator is the one the group label already uses, so a level of
+      # `rep:block` reads `R1:B1`.
+      cells <- as.data.frame(lapply(vars, restored_factor))
+      names(cells) <- vars
+      levs <- levels(
+        interaction(cells, drop = TRUE, lex.order = TRUE, sep = ":")
+      )
+      map[[make.names(paste0(paste(vars, collapse = "_"), "_id"))]] <-
+        list(levels = levs, rows = seq_along(levs))
+      next
+    }
+    if (identical(tt, "simple_slope_cor")) {
+      if (!(t$var %in% names(data))) {
+        next
+      }
+      levs <- levels(restored_factor(t$var))
+      n_g <- length(levs)
+      # One iid2d field of length 2 * n_g, intercepts then slopes, and INLA
+      # returns the whole field under BOTH index names because the slope
+      # block enters as a copy. Each name therefore reads its own block out
+      # of a table that carries both.
+      map[[make.names(paste0(t$var, "_cor_", t$slope_var, "_id"))]] <-
+        list(levels = levs, rows = seq_len(n_g))
+      map[[make.names(paste0(t$var, "_cor_", t$slope_var, "_slope_id"))]] <-
+        list(levels = levs, rows = n_g + seq_len(n_g))
       next
     }
   }
