@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=163
+      .refusal_registry: locked=TRUE n_keys=184
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -177,6 +177,14 @@
         nested_index_name_collision
         nested_variable_not_in_data
         numeric_variable_in_random_interaction
+        penalty_block_overlap
+        penalty_block_targeting_unsupported
+        penalty_factor_contrast_ambiguous
+        penalty_hyperparameter_invalid
+        penalty_reference_model_inadequate
+        penalty_runtime_budget_exceeded
+        penalty_sampler_diagnostics_failed
+        penalty_scaling_column_constant
         pol_degree_invalid
         pp_check_requires_predictive_draws
         precision_not_in_known_matrices
@@ -188,6 +196,7 @@
         prior_argument_unknown
         prior_distribution_not_a_call
         prior_distribution_unknown
+        prior_family_unsupported_inla
         prior_hyperparameter_not_scalar
         prior_hyperparameter_out_of_domain
         prior_not_translatable_for_backend
@@ -198,6 +207,8 @@
         prior_target_not_a_single_name
         prior_target_not_in_model
         prior_target_unsupported
+        projection_family_unsupported
+        projection_structure_unsupported
         representation_unknown_for_preflight
         residual_type_unsupported_for_aggregation
         response_not_in_data
@@ -208,7 +219,9 @@
         selection_candidates_not_constant_within_term
         selection_covariance_not_buildable
         selection_covariance_not_positive_definite
+        selection_decision_invalid
         selection_dense_reference_too_large
+        selection_fallback_not_authorised
         selection_family_not_supported
         selection_fold_covariance_not_factorisable
         selection_fold_id_invalid
@@ -219,9 +232,17 @@
         selection_missing_response_estimand_unnamed
         selection_missing_response_in_objective
         selection_offset_absorbed_twice
+        selection_penalty_blocks_not_expressible
         selection_penalty_coordinate_basis_dependent
-        selection_penalty_not_implemented
+        selection_penalty_family_unknown
+        selection_penalty_family_withdrawn
+        selection_penalty_spec_malformed
+        selection_penalty_target_ambiguous
+        selection_penalty_target_not_in_model
+        selection_penalty_target_unsupported
         selection_preprocessing_leak
+        selection_provider_absent
+        selection_prox_mode_not_converged
         selection_rank_deficient_protected
         selection_reduction_absorption_unsupported
         selection_reduction_level_mismatch

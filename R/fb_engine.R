@@ -28,7 +28,12 @@
 # Tuning options an engine may carry. Restricted to the Monte-Carlo
 # sampler controls; an unrecognised option is rejected at construction
 # rather than silently dropped.
-.fb_engine_opt_names <- c("n_samples", "warmup", "chains")
+# `adapt_delta` joined the set at 0.11.0. The selection module's reference
+# fit defaults to 0.95 and the convergence contract refuses on a single
+# divergent transition, which is the contract working -- but without a lever
+# a caller who hits one has nothing to reach for but a different seed. It is
+# read by the routes that emit through Stan and ignored by the rest.
+.fb_engine_opt_names <- c("n_samples", "warmup", "chains", "adapt_delta")
 
 
 #' Construct an inference-engine specification

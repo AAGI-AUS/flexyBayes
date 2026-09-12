@@ -1061,3 +1061,153 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
   )
   out
 }
+
+
+# ---------------------------------------------------------------- #
+# Selection plans                                                   #
+# ---------------------------------------------------------------- #
+#
+# Contract: SPEC_bayesian_selection_v5_2026-09-12.md section 4.5 -- "fb_plan()
+# reports the prior route and the projection structure verdict before
+# anything runs, so a refusal is visible at plan time."
+#
+# `fb_select(..., plan = TRUE)` lands here. Everything it reports is derived
+# from the parsed model, the resolved prior blocks and the executed structure
+# gate; nothing is fitted, and the cost estimate is explicit that its per-fit
+# figure is the base model's own recorded wall time rather than a probe. A
+# plan that quietly paid for a fit would be the thing a plan exists to avoid.
+
+# .fb_plan_selection() --- the four resolved axes, the prior route, the
+# structure gate and the cost, without fitting.
+.fb_plan_selection <- function(base,
+                               axes,
+                               blocks = NULL,
+                               structure_gate = NULL,
+                               resamples = NULL,
+                               prediction = NULL,
+                               fits_per_fold = 0L,
+                               candidates = NULL,
+                               compiled = NULL,
+                               approximations = character(0)) {
+  n_folds <- if (is.null(resamples)) {
+    NA_integer_
+  } else if (identical(resamples$scheme, "explicit")) {
+    length(unique(resamples$fold_id))
+  } else {
+    as.integer(resamples$v) * as.integer(resamples$repeats)
+  }
+  per_fit <- .fb_select_base_seconds(base)
+  n_fits <- if (is.na(n_folds)) {
+    NA_integer_
+  } else {
+    as.integer(n_folds) * as.integer(fits_per_fold) + 1L
+  }
+
+  routes <- vapply(blocks %||% list(), function(b) b$route, character(1L))
+  gate_verdict <- if (is.null(structure_gate)) {
+    NA_character_
+  } else if (all(structure_gate$verdict == "supported")) {
+    "supported"
+  } else {
+    paste0(
+      "refuses: ",
+      paste(
+        structure_gate$feature[structure_gate$verdict != "supported"],
+        collapse = ", "
+      )
+    )
+  }
+
+  selection <- list(
+    workflow = axes$workflow,
+    provider = axes$provider,
+    prior = axes$prior,
+    decision = axes$decision,
+    prior_route = if (length(routes) == 0L) "none" else unique(routes),
+    blocks = lapply(blocks %||% list(), function(b) {
+      list(
+        id = b$id,
+        family = b$family,
+        target = b$target,
+        coef_names = b$coef_names,
+        hyperparameters = b$hyperparameters,
+        hyperparameter_mode = b$hyperparameter_mode,
+        route = b$route
+      )
+    }),
+    stanvars = !is.null(compiled$stanvars),
+    approximations = as.character(approximations),
+    structure_gate = structure_gate,
+    structure_verdict = gate_verdict,
+    candidates = if (is.null(candidates)) {
+      character(0)
+    } else {
+      attr(stats::terms(candidates, data = base$data), "term.labels")
+    },
+    prediction = prediction,
+    resampling = list(
+      unit = resamples$unit,
+      v = resamples$v,
+      repeats = resamples$repeats,
+      n_folds = n_folds
+    ),
+    cost = list(
+      per_fit_seconds = per_fit,
+      n_fits = n_fits,
+      seconds = if (is.na(n_fits)) NA_real_ else per_fit * n_fits,
+      source = "base_model_run_time",
+      note = paste0(
+        "the per-fit figure is the base model's own recorded wall time; the ",
+        "reference model carries a wider fixed part and a shrinkage prior, ",
+        "so this is a floor"
+      )
+    )
+  )
+
+  structure(list(selection = selection), class = c("fb_select_plan", "list"))
+}
+
+
+#' @export
+print.fb_select_plan <- function(x, ...) {
+  s <- x$selection
+  cat("== flexyBayes selection plan ", strrep("=", 28), "\n", sep = "")
+  cat("  Workflow:     ", s$workflow, "\n", sep = "")
+  cat("  Provider:     ", s$provider, "\n", sep = "")
+  cat("  Prior:        ", s$prior, "  (route ",
+      paste(s$prior_route, collapse = ", "), ")\n", sep = "")
+  cat("  Decision:     ", s$decision, "\n", sep = "")
+  cat("  Candidates:   ",
+      if (length(s$candidates) == 0L) "none" else
+        paste(s$candidates, collapse = ", "),
+      "\n", sep = "")
+  if (length(s$blocks) > 0L) {
+    cat("  Prior blocks:\n", sep = "")
+    for (b in s$blocks) {
+      cat("    ", b$id, ". ", b$target, " ~ ", b$family,
+          " over ", length(b$coef_names), " coefficient(s), ",
+          b$hyperparameter_mode, " hyperparameters\n", sep = "")
+    }
+    cat("  stanvars:     ", if (isTRUE(s$stanvars)) "yes" else "no", "\n",
+        sep = "")
+  }
+  cat("  Structure gate: ",
+      if (is.na(s$structure_verdict)) "not run for this decision"
+      else s$structure_verdict,
+      "\n", sep = "")
+  cat("  Folds:        ", s$resampling$n_folds,
+      ", prediction ", s$prediction %||% "not set", "\n", sep = "")
+  cat("  Cost estimate: ", format(round(s$cost$seconds, 1), nsmall = 1L),
+      "s over ", s$cost$n_fits, " fit(s) at ",
+      format(round(s$cost$per_fit_seconds, 2), nsmall = 2L),
+      "s each\n", sep = "")
+  cat("                 ", s$cost$note, "\n", sep = "")
+  if (length(s$approximations) > 0L) {
+    cat("  Approximations this route commits to:\n", sep = "")
+    for (a in s$approximations) {
+      cat("    - ", .fb_squish(a), "\n", sep = "")
+    }
+  }
+  cat("  Nothing was fitted.\n", sep = "")
+  invisible(x)
+}

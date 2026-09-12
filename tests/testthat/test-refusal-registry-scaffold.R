@@ -411,15 +411,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # and an aggregation asked for with no independent unit declared, without
   # which a one-standard-error rule is not reproducible
   # (selection_scoring_unit_undeclared) (= 160).
-  # The public verb adds three, all thrown by its gate before anything runs.
-  # A penalty was supplied and only the unpenalised corner is implemented
-  # (selection_penalty_not_implemented) (= 161); the base is not a fitted
+  # The public verb adds two, thrown by its gate before anything runs.
+  # (`selection_penalty_not_implemented`, which stood here at 0.10.0.9000
+  # while `penalty = NULL` was the only implemented corner, is withdrawn at
+  # 0.11.0: the penalty is implemented and nothing throws it.) The base is
+  # not a fitted
   # flexyBayes model, or its structure is not on the allowlist -- us() and
   # fa() on INLA stay out regardless of how a particular fit behaved
   # (selection_base_not_allowlisted) (= 162); and the response is not
   # Gaussian with an identity link, where the whitening identity is not
   # exact and no single V survives integrating the random effects
-  # (selection_family_not_supported) (= 163).
+  # (selection_family_not_supported) (= 162).
   #
   # The 0.11.0 selection module adds twenty-two, in five tranches, each
   # registered beside the site that throws it and each with a triggering
@@ -445,8 +447,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # twelfth check because a scale mixture leaves the latent field
   # non-Gaussian (prior_family_unsupported_inla) (= 184); and a decision
   # rule missing the number it needs, or carrying one it does not read
-  # (selection_decision_invalid) (= 185).
-  expect_equal(length(entries), 185L)
+  # (selection_decision_invalid) (= 184).
+  expect_false("selection_penalty_not_implemented" %in% entries)
+  expect_equal(length(entries), 184L)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
@@ -483,7 +486,6 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_fold_covariance_not_factorisable" %in% entries)
   expect_true("selection_leakage_detected" %in% entries)
   expect_true("selection_scoring_unit_undeclared" %in% entries)
-  expect_true("selection_penalty_not_implemented" %in% entries)
   expect_true("selection_base_not_allowlisted" %in% entries)
   expect_true("selection_family_not_supported" %in% entries)
   expect_true("selection_provider_absent" %in% entries)

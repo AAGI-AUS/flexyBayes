@@ -263,6 +263,32 @@
     logical(1L)
   ))
 
+  # The approximations this resolution commits to. They are settled here,
+  # before anything is fitted, so `plan = TRUE` reports the same list the
+  # certificate will carry rather than a shorter one.
+  approximations <- character(0)
+  if (length(left_alone) > 0L) {
+    approximations <- c(approximations, paste0(
+      "candidate_columns_not_standardised: ",
+      paste(unique(left_alone), collapse = ", "),
+      " are factor contrasts or interaction products with no data column ",
+      "to centre and scale, so their prior scale is on their own scale"
+    ))
+  }
+  if (!identical(penalty$scaling, "none")) {
+    approximations <- c(
+      approximations,
+      paste0(
+        "scaling_learned_on_all_rows: the reference model is one fit, so ",
+        "the standardising constants are the whole sample's rather than ",
+        "each training fold's"
+      )
+    )
+  }
+  if (isTRUE(scope_all_fixed)) {
+    approximations <- c(approximations, "protected_under_global_shrinkage")
+  }
+
   list(
     map = map,
     partition = part,
@@ -274,6 +300,7 @@
     reference_data = reference_data,
     unscaled_columns = unique(left_alone),
     scope_all_fixed = scope_all_fixed,
+    approximations = approximations,
     column_map = .fb_select_column_map(part, blocks, protected_labels)
   )
 }
@@ -968,7 +995,8 @@ fb_select <- function(base,
       prediction = prediction,
       fits_per_fold = if (isTRUE(decision$validate_search)) 1L else 0L,
       candidates = candidates,
-      compiled = resolved$compiled
+      compiled = resolved$compiled,
+      approximations = resolved$approximations
     ))
   }
 
@@ -1004,7 +1032,7 @@ fb_select <- function(base,
   cost$seconds <- cost$per_fit_seconds * cost$n_fits
   .fb_sel_bayes_check_budget(cost, budget)
 
-  fit <- .fb_sel_reference_fit(
+  reference_args <- list(
     base = base,
     candidates = candidates,
     prior = resolved$compiled$prior,
@@ -1014,28 +1042,20 @@ fb_select <- function(base,
     seed = seed,
     data = resolved$reference_data
   )
+  # The sampler's step-size target is a lever, not a default to be argued
+  # with: the contract's 0.95 is the floor, and the convergence gate refuses
+  # on a single divergent transition, so a caller who hits one needs
+  # somewhere to reach.
+  adapt_delta <- if (inherits(engine, "fb_engine")) {
+    engine$opts$adapt_delta
+  } else {
+    NULL
+  }
+  if (!is.null(adapt_delta)) {
+    reference_args$control <- list(adapt_delta = adapt_delta)
+  }
+  fit <- do.call(.fb_sel_reference_fit, reference_args)
   adequacy <- .fb_sel_require_adequate(fit, metric = metric, seed = seed)
-
-  approximations <- character(0)
-  if (length(resolved$unscaled_columns) > 0L) {
-    approximations <- c(approximations, paste0(
-      "candidate_columns_not_standardised: ",
-      paste(resolved$unscaled_columns, collapse = ", "),
-      " are factor contrasts or interaction products with no data column ",
-      "to centre and scale, so their prior scale is on their own scale"
-    ))
-  }
-  if (!identical(penalty$scaling, "none")) {
-    approximations <- c(
-      approximations,
-      "scaling_learned_on_all_rows: the reference model is one fit, so the
-       standardising constants are the whole sample's rather than each
-       training fold's"
-    )
-  }
-  if (isTRUE(resolved$scope_all_fixed)) {
-    approximations <- c(approximations, "protected_under_global_shrinkage")
-  }
 
   kappa <- .fb_sel_kappa(fit, resolved$blocks)
 
@@ -1043,13 +1063,25 @@ fb_select <- function(base,
   decision_result <- NULL
   folds <- .fb_sel_folds(resamples, base$data, seed = seed)
   if (identical(decision$method, "projection")) {
+    # The search and the predictive evaluation run on CLUSTERED draws
+    # rather than on the whole posterior. Left at projpred's own defaults
+    # the search projects every draw onto every submodel at every step and
+    # inside every fold, which on a 72-row mixed model with four candidates
+    # had not finished in twenty minutes -- the projection of a multilevel
+    # submodel is a fit per draw. These are the settings this release runs
+    # at; they are recorded on the object so a reader can see what the elpd
+    # column was computed from.
     projection <- .fb_sel_project(
       fit,
       folds = folds,
       protected_terms = protected_labels,
       decision = decision,
-      seed = seed
+      seed = seed,
+      nclusters = .FB_SEL_PROJECTION_NCLUSTERS,
+      nclusters_pred = .FB_SEL_PROJECTION_NCLUSTERS_PRED
     )
+    projection$settings$nclusters <- .FB_SEL_PROJECTION_NCLUSTERS
+    projection$settings$nclusters_pred <- .FB_SEL_PROJECTION_NCLUSTERS_PRED
     decision_result <- projection
   } else if (identical(decision$method, "posterior_threshold")) {
     decision_result <- .fb_sel_posterior_threshold(
@@ -1111,7 +1143,7 @@ fb_select <- function(base,
     decision_result = decision_result,
     benchmark = bench,
     metric = metric,
-    approximations = approximations,
+    approximations = resolved$approximations,
     calibration_n = nrow(base$data),
     provider_versions = .fb_select_provider_versions("brms", decision),
     dots = dots
@@ -1163,7 +1195,8 @@ fb_select <- function(base,
       prediction = prediction,
       fits_per_fold = 0L,
       candidates = candidates,
-      compiled = resolved$compiled
+      compiled = resolved$compiled,
+      approximations = resolved$approximations
     ))
   }
   .fb_sel_require_glmnet()
@@ -1215,14 +1248,7 @@ fb_select <- function(base,
     ),
     benchmark = bench,
     metric = metric,
-    approximations = if (length(resolved$unscaled_columns) > 0L) {
-      paste0(
-        "candidate_columns_not_standardised: ",
-        paste(resolved$unscaled_columns, collapse = ", ")
-      )
-    } else {
-      character(0)
-    },
+    approximations = resolved$approximations,
     refusals = bench$refusals,
     calibration_n = nrow(base$data),
     provider_versions = .fb_select_provider_versions("glmnet"),
@@ -1324,6 +1350,14 @@ fb_select <- function(base,
 
 
 # --- small helpers -------------------------------------------------------- #
+
+# The clustered-draw settings the projection search runs at. They are
+# constants rather than arguments in this release: they trade a small amount
+# of Monte-Carlo error in the elpd column for a search that finishes, and a
+# caller who wants the whole posterior projected can call the internal
+# search directly. Both travel onto the object and the certificate.
+.FB_SEL_PROJECTION_NCLUSTERS <- 20L
+.FB_SEL_PROJECTION_NCLUSTERS_PRED <- 100L
 
 # The two arguments the earlier signature carried. `metric` moved into
 # fb_decision(); the covariance summary is a property of the benchmark
@@ -1553,15 +1587,16 @@ tidy.fb_select <- function(x, ...) {
     )
   }
   chosen <- x$selection$chosen_terms %||% character(0)
+  n <- nrow(map)
   out <- data.frame(
     term = map$column,
     role = map$role,
     block = map$block,
     family = map$family,
     retained = map$column %in% chosen | map$role == "protected",
-    estimate = NA_real_,
-    std.error = NA_real_,
-    scale = "scientific",
+    estimate = rep(NA_real_, n),
+    std.error = rep(NA_real_, n),
+    scale = rep("scientific", n),
     stringsAsFactors = FALSE
   )
 

@@ -105,17 +105,11 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
-    reason_code = "selection_penalty_not_implemented",
-    description = paste0(
-      "fb_select(): a penalty was supplied, and only the unpenalised corner ",
-      "is implemented in this release."
-    ),
-    message_template = "fb_select(): a penalty is not implemented in this release.",
-    registered_in_adr = "SPEC v3 section 13",
-    plan_field = "selection_plan",
-    since_version = "0.10.0.9000"
-  )
+  # `selection_penalty_not_implemented` was registered at 0.10.0.9000, when
+  # `penalty = NULL` was the only implemented corner. It is withdrawn at
+  # 0.11.0 because the penalty is implemented and nothing throws it any
+  # more: a registered code with no throwing site is a string, and the
+  # registry is the count that public documents defer to.
 
   .register_refusal(
     reason_code = "selection_base_not_allowlisted",
