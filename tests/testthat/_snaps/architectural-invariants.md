@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=150
+      .refusal_registry: locked=TRUE n_keys=160
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -208,6 +208,12 @@
         selection_covariance_not_buildable
         selection_covariance_not_positive_definite
         selection_dense_reference_too_large
+        selection_fold_covariance_not_factorisable
+        selection_fold_id_invalid
+        selection_fold_level_absent
+        selection_fold_not_usable
+        selection_fold_variable_not_in_data
+        selection_leakage_detected
         selection_missing_response_estimand_unnamed
         selection_missing_response_in_objective
         selection_offset_absorbed_twice
@@ -217,6 +223,10 @@
         selection_reduction_absorption_unsupported
         selection_reduction_level_mismatch
         selection_reduction_term_not_in_fit
+        selection_resamples_underspecified
+        selection_scoring_unit_undeclared
+        selection_seed_required
+        selection_strata_not_constant_within_unit
         selection_weights_absorbed_twice
         selection_weights_loss_route_requires_residual_only
         selection_weights_not_positive

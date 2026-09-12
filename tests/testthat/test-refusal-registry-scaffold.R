@@ -393,7 +393,25 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # reaching the objective (selection_missing_response_in_objective) (= 149);
   # and a transformation learned from rows outside the training fold
   # (selection_preprocessing_leak) (= 150).
-  expect_equal(length(entries), 150L)
+  # Resampling, prediction and scoring add ten. A stochastic deal with no
+  # seed, never defaulted (selection_seed_required) (= 151); an assessment
+  # fold carrying a level absent from training, refused rather than dropped
+  # (selection_fold_level_absent) (= 152); a resampling unit given with no
+  # scheme and no fold_id, which is not a specification
+  # (selection_resamples_underspecified) (= 153); a fold_id that cuts through
+  # a unit (selection_fold_id_invalid) (= 154); a fold variable absent from
+  # the data (selection_fold_variable_not_in_data) (= 155); a stratifier that
+  # varies inside a unit (selection_strata_not_constant_within_unit) (= 156);
+  # a fold too small or degenerate to score (selection_fold_not_usable)
+  # (= 157); a training covariance block with no Cholesky factor, named
+  # rather than surfacing as a raw LAPACK error
+  # (selection_fold_covariance_not_factorisable) (= 158); a quantity that
+  # moved when the assessment rows were corrupted, which is leakage caught by
+  # the gate rather than argued about (selection_leakage_detected) (= 159);
+  # and an aggregation asked for with no independent unit declared, without
+  # which a one-standard-error rule is not reproducible
+  # (selection_scoring_unit_undeclared) (= 160).
+  expect_equal(length(entries), 160L)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
@@ -420,6 +438,16 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_missing_response_estimand_unnamed" %in% entries)
   expect_true("selection_missing_response_in_objective" %in% entries)
   expect_true("selection_preprocessing_leak" %in% entries)
+  expect_true("selection_seed_required" %in% entries)
+  expect_true("selection_fold_level_absent" %in% entries)
+  expect_true("selection_resamples_underspecified" %in% entries)
+  expect_true("selection_fold_id_invalid" %in% entries)
+  expect_true("selection_fold_variable_not_in_data" %in% entries)
+  expect_true("selection_strata_not_constant_within_unit" %in% entries)
+  expect_true("selection_fold_not_usable" %in% entries)
+  expect_true("selection_fold_covariance_not_factorisable" %in% entries)
+  expect_true("selection_leakage_detected" %in% entries)
+  expect_true("selection_scoring_unit_undeclared" %in% entries)
   expect_true("multivariate_smooth_unsupported" %in% entries)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)

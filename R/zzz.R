@@ -107,6 +107,10 @@
   # absorption refusals.
   .populate_refusal_registry_selection_weights()
 
+  # 0.10.0.9000: the selection module's resampling, prediction and scoring
+  # refusals, including the leakage gate.
+  .populate_refusal_registry_selection_resamples()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
