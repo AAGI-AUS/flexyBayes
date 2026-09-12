@@ -3,41 +3,20 @@
 #
 # Contract: SPEC_bayesian_selection_v5_2026-09-12.md section 10.
 #
-# Four codes, each with a triggering test in
+# Two codes registered here (the absent-provider and withdrawn-family codes
+# are shared with the Bayesian route and the grammar),
+# each with a triggering test in
 # `tests/testthat/test-selection-glmnet.R` or `test-selection-bridges.R`. A
 # registered code nobody has seen fire is a string, not a refusal, so none of
 # these is registered ahead of the site that raises it.
 
 .populate_refusal_registry_selection_glmnet <- function() {
-  .register_refusal(
-    reason_code = "selection_provider_absent",
-    description = paste0(
-      "fb_select(): the provider the requested workflow needs is not ",
-      "installed. The refusal names the package and the install line, and ",
-      "no substitute is fitted -- `fallback = \"none\"` is the default and a ",
-      "penalised-likelihood answer never appears under a Bayesian label."
-    ),
-    message_template = "fb_select(): the `%s` workflow needs the %s package, which is not installed.",
-    registered_in_adr = "SPEC v5 sections 3.3 and 10",
-    plan_field = "selection_plan",
-    since_version = "0.11.0"
-  )
+  # `selection_provider_absent` is registered once, by the Bayesian route
+  # (R/selection_bayes_cv_refusals.R), with a description covering every
+  # provider; the optimiser raises it without re-registering it.
 
-  .register_refusal(
-    reason_code = "selection_penalty_family_withdrawn",
-    description = paste0(
-      "fb_select(): a penalty family named in the v3 grammar has no provider ",
-      "in this release. The optimiser workflow serves ridge, laplace and ",
-      "elastic net only; the group, exclusive, sparse-group and adaptive ",
-      "families are withdrawn from the public grammar until each has its own ",
-      "provider-and-prior contract, because a family without a provider is a ",
-      "promise rather than a capability."
-    ),
-    message_template = "fb_select(): the penalty family `%s` has no provider in this release.",
-    registered_in_adr = "SPEC v5 section 8.3",
-    plan_field = "selection_plan",
-    since_version = "0.11.0"
-  )
+  # `selection_penalty_family_withdrawn` is registered once, by the grammar
+  # (R/penalty_refusals.R); the optimiser raises it without re-registering it.
 
   .register_refusal(
     reason_code = "selection_prox_mode_not_converged",
