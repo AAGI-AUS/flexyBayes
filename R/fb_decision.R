@@ -60,7 +60,12 @@
 #' @param rule `"one_se"` (default), `"min"` or `"tolerance"`.
 #' @param tolerance Nats per unit. Required by, and only used by,
 #'   `rule = "tolerance"`.
-#' @param search `"forward"` (default) or `"L1"`.
+#' @param search `"forward"`, the only search this release executes. `"L1"`
+#'   refuses with `projection_search_unsupported`: this module forces the
+#'   protected and random terms into every submodel through a `search_terms`
+#'   block written for a forward search, and no gate has run an L1 path
+#'   against that block and read the ranking back, so whether the forced
+#'   terms survive it is unmeasured.
 #' @param nterms_max Largest submodel the search considers. `NULL` (the
 #'   default) uses every eligible term.
 #' @param validate_search Whether the search itself is cross-validated.
@@ -100,6 +105,30 @@ fb_decision <- function(
   metric <- match.arg(metric)
   rule <- match.arg(rule)
   search <- match.arg(search)
+
+  # `L1` is refused at construction rather than passed on. It was stored,
+  # kept by the decision spec and handed to the provider, while this module
+  # forces the protected and random terms into every submodel through a
+  # `search_terms` construction written for a forward search. Nothing has
+  # run an L1 search against that construction and read the ranking back, so
+  # whether the forced block survives it is unmeasured -- and an unrun
+  # search is refused here on the same rule an unrun structure is.
+  if (identical(search, "L1")) {
+    stop(.fb_refusal_condition(
+      reason_code = "projection_search_unsupported",
+      message = paste0(
+        "fb_decision(): search = \"L1\" has no executed gate. The forward ",
+        "search is what this release runs: the protected fixed effects and ",
+        "the base model's random terms are forced into every submodel ",
+        "through a `search_terms` block that a forward search steps from ",
+        "one free term at a time. An L1 path over the projection has not ",
+        "been run against that block, so whether the forced terms survive ",
+        "it is unmeasured, and an unrun search is refused rather than ",
+        "passed to the provider. Use search = \"forward\"."
+      ),
+      search = search
+    ))
+  }
 
   if (!is.logical(validate_search) || length(validate_search) != 1L ||
       is.na(validate_search)) {

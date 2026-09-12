@@ -201,6 +201,38 @@ factor falls below one half is reported against `p0`, labelled
 near-orthogonal design, and a correlated candidate block does not have one
 shrinkage factor per coefficient at all.
 
+## Three silent wrong answers closed
+
+Found by the 2026-09-12 audit of this release's own selection work, and each
+one fired on the formulas the module exists to serve rather than on an edge.
+
+* **`tidy()` marked a chosen factor or interaction as dropped.** Retention
+  was matched by design-column name against a chosen set written in formula
+  terms, so a projection that kept `f` and `x1:f` reported `fB`, `fC`,
+  `x1:fB` and `x1:fC` as not retained. The column map now carries the term
+  each column came from, every decision records the vocabulary its chosen
+  set is written in, and retention is read at that vocabulary -- terms for
+  the projection, `full` and an optimiser support, coefficients for the
+  posterior threshold, which is the one decision that chooses column by
+  column. `tidy()` gains a `source_term` column.
+
+* **A mismatched scoring-unit key silently became row numbers.** When the
+  unit key and the provider's pointwise log predictive densities named
+  different numbers of observations, the aggregation replaced the key with
+  row numbers and carried on -- so the cluster-level standard error the
+  routine exists to compute became the row-level one it exists to avoid,
+  too small by roughly the square root of the cluster size, on exactly the
+  clustered models a unit was declared for. It now refuses with
+  `selection_scoring_unit_mismatch`, naming both lengths.
+
+* **`search = "L1"` was stored and passed to the provider.** It reached
+  `projpred::cv_varsel()` beside a `search_terms` block built for a forward
+  search, and no gate had run that combination and read the ranking back, so
+  whether the forced protected and random terms survive an L1 path is
+  unmeasured. `fb_decision(search = "L1")` now refuses at construction with
+  `projection_search_unsupported`. The forward search is the search this
+  release executes.
+
 ## Refusals
 
 The registry moves from 163 codes to 184. `selection_penalty_not_implemented`
@@ -219,6 +251,9 @@ more. New in this release:
 `selection_penalty_blocks_not_expressible`, `prior_family_unsupported_inla`
 and `selection_decision_invalid`. Each is registered beside the site that
 throws it and each is fired by a test.
+
+The audit close adds two more, taking the registry to 186:
+`selection_scoring_unit_mismatch` and `projection_search_unsupported`.
 
 ## Dependencies
 

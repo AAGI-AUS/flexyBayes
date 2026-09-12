@@ -12,11 +12,21 @@
 \item{...}{Ignored.}
 }
 \value{
-A \code{data.frame} with one row per design column: the column, its
-role, its block and family, whether the decision retained it, and, where
-a reference posterior was fitted, its posterior mean and standard
-deviation on the scientific scale.
+A \code{data.frame} with one row per design column: the column, the
+formula term it came from, its role, its block and family, whether the
+decision retained it, and, where a reference posterior was fitted, its
+posterior mean and standard deviation on the scientific scale.
 }
 \description{
 Tidy a selection into one row per candidate coefficient
+}
+\details{
+Retention is read at the vocabulary the decision actually chose in. A
+projection, a \code{full} decision and an optimiser support all choose FORMULA
+TERMS -- \code{f}, \code{x1:f} -- while the design carries contrast columns --
+\code{fB}, \code{x1:fB}. Matching a chosen term against a column name reports every
+factor and interaction column as dropped however the decision went, so
+the term recorded on the column map is what the match is made against. A
+posterior threshold is the one decision that chooses coefficient by
+coefficient, and its retention is matched on the column.
 }

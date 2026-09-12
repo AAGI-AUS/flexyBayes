@@ -29,14 +29,37 @@ test_that("the default is a validated projection on elpd at one standard error",
 test_that("the element names are the ones the projection reads", {
   # .fb_sel_decision_spec() copies by name, so a renamed element would be
   # silently dropped and the default used in its place.
-  d <- fb_decision(rule = "tolerance", tolerance = 0.25, search = "L1",
+  d <- fb_decision(rule = "tolerance", tolerance = 0.25, search = "forward",
                    nterms_max = 3L, validate_search = FALSE)
   spec <- .fb_sel_decision_spec(d)
   expect_identical(spec$rule, "tolerance")
   expect_identical(spec$tolerance, 0.25)
-  expect_identical(spec$search, "L1")
+  expect_identical(spec$search, "forward")
   expect_identical(spec$nterms_max, 3L)
   expect_false(spec$validate_search)
+})
+
+
+test_that("search = \"L1\" refuses at construction rather than reaching the provider", {
+  # The defect this closes: `L1` was stored, kept by the decision spec and
+  # passed to `projpred::cv_varsel()` beside a `search_terms` block built
+  # for a forward search. Nothing had run that combination, so the summary
+  # that called L1 "accepted, not executed" described a code path that did
+  # execute it.
+  err <- tryCatch(fb_decision(search = "L1"), error = function(e) e)
+  expect_s3_class(
+    err, "flexybayes_refusal_projection_search_unsupported"
+  )
+  expect_match(conditionMessage(err), "forward search", fixed = TRUE)
+  expect_match(conditionMessage(err), "forced", fixed = TRUE)
+
+  # The injected defect, shown red: the earlier construction stored the
+  # method and the spec carried it through to the provider argument.
+  smuggled <- .fb_sel_decision_spec(list(search = "L1"))
+  expect_identical(smuggled$search, "L1")
+
+  # And the negative control: the search this release does run builds.
+  expect_identical(fb_decision(search = "forward")$search, "forward")
 })
 
 

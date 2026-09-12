@@ -29,7 +29,12 @@ out-of-fold path.}
 \item{tolerance}{Nats per unit. Required by, and only used by,
 \code{rule = "tolerance"}.}
 
-\item{search}{\code{"forward"} (default) or \code{"L1"}.}
+\item{search}{\code{"forward"}, the only search this release executes. \code{"L1"}
+refuses with \code{projection_search_unsupported}: this module forces the
+protected and random terms into every submodel through a \code{search_terms}
+block written for a forward search, and no gate has run an L1 path
+against that block and read the ranking back, so whether the forced
+terms survive it is unmeasured.}
 
 \item{nterms_max}{Largest submodel the search considers. \code{NULL} (the
 default) uses every eligible term.}

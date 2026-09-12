@@ -301,13 +301,20 @@
     unscaled_columns = unique(left_alone),
     scope_all_fixed = scope_all_fixed,
     approximations = approximations,
-    column_map = .fb_select_column_map(part, blocks, protected_labels)
+    column_map = .fb_select_column_map(part, blocks, protected_labels, map)
   )
 }
 
 # .fb_select_column_map() --- one row per design column, with its role, its
-# block and the scaling constants that were actually applied to it.
-.fb_select_column_map <- function(part, blocks, protected_labels) {
+# block, the scaling constants that were actually applied to it, and the
+# FORMULA TERM the column came from.
+#
+# The term is not decoration. A decision over a formula chooses terms (`f`,
+# `x1:f`); a design carries contrast columns (`fB`, `x1:fB`). Matching a
+# chosen term against a column name reports every factor and interaction
+# column as dropped however the decision went, so the term travels beside
+# the column and `tidy()` reads retention off it.
+.fb_select_column_map <- function(part, blocks, protected_labels, map = NULL) {
   candidate_names <- colnames(part$Xp)
   block_of <- rep(NA_integer_, length(candidate_names))
   family_of <- rep(NA_character_, length(candidate_names))
@@ -323,8 +330,20 @@
     }
   }
   protected_names <- colnames(part$X0)
+  # The term each design column belongs to, read off the assignment map the
+  # resolver already built rather than parsed back out of the column name.
+  term_of <- function(columns, fallback) {
+    if (is.null(map) || is.null(map$columns)) {
+      return(as.character(fallback))
+    }
+    as.character(map$columns$term[columns])
+  }
   data.frame(
     column = c(protected_names, candidate_names),
+    term = c(
+      term_of(part$protected_columns, protected_names),
+      term_of(part$candidate_columns, candidate_names)
+    ),
     role = c(
       rep("protected", length(protected_names)),
       rep("candidate", length(candidate_names))
@@ -1246,6 +1265,7 @@ fb_select <- function(base,
       decision = "optimizer_support",
       chosen_terms = bench$arms$glmnet$selection$selected_terms %||%
         character(0),
+      chosen_vocabulary = "term",
       chosen_size = length(
         bench$arms$glmnet$selection$selected_terms %||% character(0)
       ),
@@ -1579,30 +1599,54 @@ print.fb_select <- function(x, digits = 4L, ...) {
 
 #' Tidy a selection into one row per candidate coefficient
 #'
+#' @details
+#' Retention is read at the vocabulary the decision actually chose in. A
+#' projection, a `full` decision and an optimiser support all choose FORMULA
+#' TERMS -- `f`, `x1:f` -- while the design carries contrast columns --
+#' `fB`, `x1:fB`. Matching a chosen term against a column name reports every
+#' factor and interaction column as dropped however the decision went, so
+#' the term recorded on the column map is what the match is made against. A
+#' posterior threshold is the one decision that chooses coefficient by
+#' coefficient, and its retention is matched on the column.
+#'
 #' @param x An `fb_select` object.
 #' @param ... Ignored.
-#' @returns A `data.frame` with one row per design column: the column, its
-#'   role, its block and family, whether the decision retained it, and, where
-#'   a reference posterior was fitted, its posterior mean and standard
-#'   deviation on the scientific scale.
+#' @returns A `data.frame` with one row per design column: the column, the
+#'   formula term it came from, its role, its block and family, whether the
+#'   decision retained it, and, where a reference posterior was fitted, its
+#'   posterior mean and standard deviation on the scientific scale.
 #' @export
 tidy.fb_select <- function(x, ...) {
   map <- x$column_map
   if (is.null(map)) {
     map <- data.frame(
-      column = character(0), role = character(0), block = integer(0),
-      family = character(0), centre = numeric(0), scale = numeric(0),
-      stringsAsFactors = FALSE
+      column = character(0), term = character(0), role = character(0),
+      block = integer(0), family = character(0), centre = numeric(0),
+      scale = numeric(0), stringsAsFactors = FALSE
     )
   }
+  if (is.null(map$term)) {
+    map$term <- map$column
+  }
   chosen <- x$selection$chosen_terms %||% character(0)
+  # The decision says which vocabulary its chosen set is written in; only
+  # the posterior threshold chooses coefficients, and everything else
+  # chooses terms. An absent field is a term-level decision, which is what
+  # every route that predates the field was.
+  vocabulary <- x$selection$chosen_vocabulary %||% "term"
+  retained <- if (identical(vocabulary, "coefficient")) {
+    map$column %in% chosen
+  } else {
+    map$term %in% chosen
+  }
   n <- nrow(map)
   out <- data.frame(
     term = map$column,
+    source_term = map$term,
     role = map$role,
     block = map$block,
     family = map$family,
-    retained = map$column %in% chosen | map$role == "protected",
+    retained = retained | map$role == "protected",
     estimate = rep(NA_real_, n),
     std.error = rep(NA_real_, n),
     scale = rep("scientific", n),

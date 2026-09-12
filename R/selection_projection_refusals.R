@@ -2,9 +2,10 @@
 #
 # Contract: SPEC_bayesian_selection_v5_2026-09-12.md section 10.
 #
-# Four codes, all of them gates that run before a decision is reported:
-# two on the reference model (its sampler and its fit to the data) and two
-# on the projection provider (the structure it was handed and the family).
+# Six codes, all of them gates that run before a decision is reported: two
+# on the reference model (its sampler and its fit to the data), two on the
+# projection provider (the structure it was handed and the family), one on
+# the scoring unit the elpd is aggregated at, and one on the search method.
 # Registered here as their throwing sites land, never in advance -- a
 # registered code with no triggering test is a string, not a refusal.
 #
@@ -65,6 +66,44 @@
       "reference is %s/%s."
     ),
     registered_in_adr = "SPEC v5 section 6.3",
+    plan_field = "selection_plan",
+    since_version = "0.11.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_scoring_unit_mismatch",
+    description = paste0(
+      "The scoring unit key and the provider's pointwise log predictive ",
+      "densities name different numbers of observations. The aggregation ",
+      "used to fall back to row numbers and carry on, which reports a ",
+      "standard error at the row rather than at the resampling unit -- too ",
+      "small by roughly the square root of the cluster size, and silently, ",
+      "on exactly the clustered models the unit was declared for. Both ",
+      "lengths are named so the caller can see which side moved."
+    ),
+    message_template = paste0(
+      "fb_select(): the scoring unit key names %s observation(s) and the ",
+      "provider returned %s pointwise log predictive densities."
+    ),
+    registered_in_adr = "SPEC v5 section 6.1",
+    plan_field = "selection_plan",
+    since_version = "0.11.0"
+  )
+
+  .register_refusal(
+    reason_code = "projection_search_unsupported",
+    description = paste0(
+      "A projection search method with no executed gate was asked for. ",
+      "`forward` is the search this release runs and validates. `L1` is a ",
+      "penalised path over the projection, and this module forces the ",
+      "protected and random terms into every submodel through a ",
+      "`search_terms` construction written for a forward search; no gate ",
+      "has run L1 against that construction and read the ranking back, so ",
+      "whether the forced block survives it is unmeasured. An unrun search ",
+      "refuses exactly as an unrun structure does."
+    ),
+    message_template = "fb_decision(): search = \"%s\" has no executed gate.",
+    registered_in_adr = "SPEC v5 section 6.1",
     plan_field = "selection_plan",
     since_version = "0.11.0"
   )

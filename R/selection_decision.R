@@ -24,6 +24,9 @@
   list(
     decision = "full",
     chosen_terms = as.character(candidate_terms %||% character(0)),
+    # The vocabulary the chosen set is written in, so a consumer matching
+    # against a design does not have to guess. `full` chooses formula terms.
+    chosen_vocabulary = "term",
     forced_terms = as.character(protected_terms %||% character(0)),
     chosen_size = length(candidate_terms %||% character(0)),
     label = paste0(
@@ -118,6 +121,9 @@
   list(
     decision = "posterior_threshold",
     chosen_terms = names(probability)[retained],
+    # This is the one decision that chooses coefficient by coefficient: the
+    # probability is a property of a single draw column, not of a term.
+    chosen_vocabulary = "coefficient",
     forced_terms = as.character(protected_terms %||% character(0)),
     chosen_size = sum(retained),
     coefficients = data.frame(

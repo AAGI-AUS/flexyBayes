@@ -222,6 +222,101 @@ test_that("tidy reports the reference posterior on the scientific scale", {
 })
 
 
+test_that("tidy retains a factor and an interaction by term, not by contrast column", {
+  # The defect this closes. Retention was `map$column %in% chosen_terms`.
+  # `chosen_terms` are formula term labels -- `f`, `x1:f` -- and `map$column`
+  # is model-matrix columns -- `fB`, `fC`, `x1:fB`, `x1:fC`. A projection
+  # that kept `x1` and `f` therefore reported every factor and interaction
+  # column as dropped, on exactly the formulas this package is written for.
+  #
+  # No sampler is involved: the column map and the decision are the whole
+  # of what `tidy()` reads for the retained flag.
+  set.seed(4021L)
+  d <- data.frame(
+    y = stats::rnorm(60),
+    p1 = stats::rnorm(60),
+    x1 = stats::rnorm(60),
+    f = factor(rep(c("A", "B", "C"), length.out = 60))
+  )
+  map <- .fb_sel_term_map(~ p1 + x1 + f + x1:f, d)
+  part <- .fb_sel_partition_design(map, protected = "p1")
+  column_map <- .fb_select_column_map(part, list(), "p1", map)
+
+  # The design really does carry contrast columns whose names are not the
+  # term labels, which is the precondition the defect needed.
+  expect_true(all(c("fB", "fC", "x1:fB", "x1:fC") %in% column_map$column))
+  expect_false(any(c("f", "x1:f") %in% column_map$column))
+
+  chosen <- c("x1", "f", "x1:f")
+  sel <- structure(
+    list(
+      workflow = "bayes", provider = "brms", prior = "ridge",
+      decision = "projection",
+      column_map = column_map,
+      blocks = NULL,
+      reference = NULL,
+      selection = list(
+        chosen_terms = chosen, chosen_vocabulary = "term", chosen_size = 3L
+      )
+    ),
+    class = "fb_select"
+  )
+  td <- tidy(sel)
+  retained <- stats::setNames(td$retained, td$term)
+
+  # The injected defect, shown red on this same table: the column-string
+  # rule marks every contrast column of a chosen factor as dropped.
+  by_column <- column_map$column %in% chosen | column_map$role == "protected"
+  expect_false(by_column[column_map$column == "fB"])
+  expect_false(by_column[column_map$column == "x1:fB"])
+
+  # And the term rule follows the term for every contrast column of it.
+  expect_true(retained[["x1"]])
+  expect_true(all(retained[c("fB", "fC")]))
+  expect_true(all(retained[c("x1:fB", "x1:fC")]))
+  expect_true(retained[["p1"]])
+  expect_identical(td$source_term[td$term == "x1:fB"], "x1:f")
+
+  # The negative control, and the other half of "follows the term": a term
+  # the decision did not keep is dropped at every one of its columns, so
+  # the rule is neither retaining everything nor splitting a term in two.
+  dropped <- structure(
+    list(
+      workflow = "bayes", provider = "brms", prior = "ridge",
+      decision = "projection",
+      column_map = column_map, blocks = NULL, reference = NULL,
+      selection = list(
+        chosen_terms = c("x1", "f"), chosen_vocabulary = "term",
+        chosen_size = 2L
+      )
+    ),
+    class = "fb_select"
+  )
+  td2 <- tidy(dropped)
+  expect_true(all(td2$retained[td2$source_term == "f"]))
+  expect_false(any(td2$retained[td2$source_term == "x1:f"]))
+  expect_true(td2$retained[td2$term == "x1"])
+
+  # A posterior threshold is the one decision written in coefficients, and
+  # it is still matched on the column.
+  coefwise <- structure(
+    list(
+      workflow = "bayes", provider = "brms", prior = "laplace",
+      decision = "posterior_threshold",
+      column_map = column_map, blocks = NULL, reference = NULL,
+      selection = list(
+        chosen_terms = "fB", chosen_vocabulary = "coefficient",
+        chosen_size = 1L
+      )
+    ),
+    class = "fb_select"
+  )
+  td3 <- tidy(coefwise)
+  expect_true(td3$retained[td3$term == "fB"])
+  expect_false(td3$retained[td3$term == "fC"])
+})
+
+
 test_that("a class-wide family over a protected fixed effect refuses, and names both ways forward", {
   fbsb_needs_brms()
   err <- tryCatch(

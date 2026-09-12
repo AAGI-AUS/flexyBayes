@@ -80,6 +80,43 @@ test_that("elpd and its standard error are aggregated at the unit, not the row",
 })
 
 
+test_that("a unit key of the wrong length refuses rather than falling back to rows", {
+  # The defect this closes. `.fb_sel_unit_elpd()` replaced a mismatched key
+  # with `seq_len(n)` and carried on, so the aggregation the function exists
+  # to perform -- spread ACROSS clusters -- silently became spread across
+  # rows, which on ten clusters of three is a standard error too small by
+  # roughly the square root of three. Nothing was reported.
+  fake <- fb_sel_fake_summaries()
+  short <- fake$unit_key[-1L]
+  expect_length(short, 29L)
+
+  err <- tryCatch(
+    .fb_sel_unit_elpd(fake$summaries, short),
+    error = function(e) e
+  )
+  expect_s3_class(
+    err, "flexybayes_refusal_selection_scoring_unit_mismatch"
+  )
+  # Both lengths are named, so the caller can see which side moved.
+  expect_match(conditionMessage(err), "29", fixed = TRUE)
+  expect_match(conditionMessage(err), "30", fixed = TRUE)
+
+  # The injected defect, shown red: the earlier fallback aggregated the same
+  # table at the row and returned thirty "units" for ten clusters, with a
+  # paired standard error smaller than the cluster-level one.
+  as_rows <- .fb_sel_unit_elpd(fake$summaries, NULL)
+  expect_identical(as_rows$n_units, 30L)
+  correct <- .fb_sel_unit_elpd(fake$summaries, fake$unit_key)
+  expect_identical(correct$n_units, 10L)
+  expect_lt(as_rows$table$se[[5L]], correct$table$se[[5L]])
+
+  # And the negative control: a key of the right length is accepted.
+  expect_identical(
+    .fb_sel_unit_elpd(fake$summaries, fake$unit_key)$n_units, 10L
+  )
+})
+
+
 test_that("a non-finite pointwise density is counted, not dropped", {
   fake <- fb_sel_fake_summaries()
   fake$summaries$sub[[3L]]$lppd[[2L]] <- -Inf

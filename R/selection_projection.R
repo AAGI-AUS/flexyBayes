@@ -445,10 +445,38 @@
 # unit before its spread is taken. Between-unit variance cancels in the
 # pairing, which is what makes the difference the better-identified
 # quantity and the one the decision rules use.
+#
+# A key of the wrong length REFUSES. It used to be replaced by row numbers
+# and the aggregation carried on, which turns the cluster-level standard
+# error this function exists to compute back into the row-level one it
+# exists to avoid --- too small by roughly the square root of the cluster
+# size, silently, on exactly the models the unit was declared for. The
+# mismatch is not hypothetical: brms dropping an incomplete row, a fold
+# vector built on the base's data while the provider scores the model
+# frame, or a subsetted `newdata` all change the pointwise length without
+# changing the attribute that travels with it.
 .fb_sel_unit_elpd <- function(summaries, unit_key = NULL) {
   ref_lppd <- as.numeric(summaries$ref$lppd)
   n <- length(ref_lppd)
-  if (is.null(unit_key) || length(unit_key) != n) {
+  if (!is.null(unit_key) && length(unit_key) != n) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_scoring_unit_mismatch",
+      message = paste0(
+        "fb_select(): the scoring unit key names ", length(unit_key),
+        " observation(s) and the provider returned ", n,
+        " pointwise log predictive densities. The two must be the same ",
+        "vector of rows: aggregating one against the other, or falling back ",
+        "to row numbers, reports a standard error at the row rather than at ",
+        "the resampling unit and the one-standard-error rule then reads a ",
+        "ruler too small by roughly the square root of the cluster size. ",
+        "Score on the rows the folds were cut from, or declare no unit and ",
+        "accept a row-level standard error."
+      ),
+      n_unit_key = length(unit_key),
+      n_pointwise = n
+    ))
+  }
+  if (is.null(unit_key)) {
     unit_key <- as.character(seq_len(n))
   }
   unit_key <- as.character(unit_key)
@@ -798,6 +826,9 @@
     elpd_by_size = unit_elpd$table,
     chosen_size = chosen$size,
     chosen_terms = chosen_terms,
+    # The search ranks and chooses FORMULA TERMS, so a consumer matching the
+    # chosen set against a design matches on the term, never on the column.
+    chosen_vocabulary = "term",
     forced_terms = forced,
     projected_draws = list(
       draws = projected,

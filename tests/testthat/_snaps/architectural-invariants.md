@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=184
+      .refusal_registry: locked=TRUE n_keys=186
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -208,6 +208,7 @@
         prior_target_not_in_model
         prior_target_unsupported
         projection_family_unsupported
+        projection_search_unsupported
         projection_structure_unsupported
         representation_unknown_for_preflight
         residual_type_unsupported_for_aggregation
@@ -248,6 +249,7 @@
         selection_reduction_level_mismatch
         selection_reduction_term_not_in_fit
         selection_resamples_underspecified
+        selection_scoring_unit_mismatch
         selection_scoring_unit_undeclared
         selection_seed_required
         selection_strata_not_constant_within_unit
