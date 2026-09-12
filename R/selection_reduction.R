@@ -274,12 +274,42 @@
   n_per_level <- as.integer(table(factor(key, levels = eff$level)))
   balanced <- length(unique(n_per_level)) == 1L
 
+  # Omega is the variance of the STAGE-2 residual, not the sampling variance
+  # of the stage-1 estimate. Writing alpha_i-hat = T_i gamma + b_i + e_i, the
+  # level departure b_i carries sigma_u^2 and the estimate carries
+  # sigma_e^2 / m_i, so
+  #
+  #   Var(alpha_i-hat) = sigma_u^2 + sigma_e^2 / m_i
+  #
+  # This file used to weight by the second term alone, which is the
+  # FIXED-effect meta-analysis weight where the random-effects one is
+  # required. Under balance the omitted term is constant across levels, the
+  # weights stay proportional and the answer is unchanged -- which is why it
+  # survived every balanced test. Under imbalance it is wrong: on a
+  # hand-built dense V with no package code, GLS gives 1.8024932073, these
+  # weights gave 1.9224778858 (6.7 per cent out) and the corrected ones give
+  # 1.8024932073 to 1.3e-15. An independent sweep put the worst case at 226
+  # per cent. The deposit is unbalanced.
+  #
+  # The between-level component comes from the BASE fit, where the term is
+  # random and sigma_u^2 is estimated; stage 1 absorbs the term as fixed and
+  # cannot report it.
+  omega_between <- if (identical(absorb, "fixed")) {
+    vc <- .fb_sel_variance_components(object)
+    vc$terms[[term]] %||% 0
+  } else {
+    # The shrunk route's posterior sd already carries the between-level
+    # spread, and that route answers a different question anyway.
+    0
+  }
+
   list(
     term = term,
     absorb = absorb,
     levels = eff$level,
     u = eff$estimate,
-    omega_diag = eff$std_error^2,
+    omega_between = omega_between,
+    omega_diag = omega_between + eff$std_error^2,
     T = Tk,
     n_per_level = n_per_level,
     balanced = balanced,

@@ -105,5 +105,41 @@
     since_version = "0.10.0.9000"
   )
 
+  .register_refusal(
+    reason_code = "selection_penalty_not_implemented",
+    description = paste0(
+      "fb_select(): a penalty was supplied, and only the unpenalised corner ",
+      "is implemented in this release."
+    ),
+    message_template = "fb_select(): a penalty is not implemented in this release.",
+    registered_in_adr = "SPEC v3 section 13",
+    plan_field = "selection_plan",
+    since_version = "0.10.0.9000"
+  )
+
+  .register_refusal(
+    reason_code = "selection_base_not_allowlisted",
+    description = paste0(
+      "fb_select(): the base model's structure is not on the selection ",
+      "allowlist, or the object is not a fitted flexyBayes model."
+    ),
+    message_template = "fb_select(): the base carries %s, which is not on the selection allowlist.",
+    registered_in_adr = "SPEC v3 section 10.1",
+    plan_field = "selection_plan",
+    since_version = "0.10.0.9000"
+  )
+
+  .register_refusal(
+    reason_code = "selection_family_not_supported",
+    description = paste0(
+      "fb_select(): the whitening identity is exact only for a Gaussian ",
+      "response with an identity link; every other family refuses."
+    ),
+    message_template = "fb_select(): the whitening identity is exact only for a Gaussian response with an identity link, and this fit is %s/%s.",
+    registered_in_adr = "SPEC v3 section 5.1",
+    plan_field = "selection_plan",
+    since_version = "0.10.0.9000"
+  )
+
   invisible(NULL)
 }

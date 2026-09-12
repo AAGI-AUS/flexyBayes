@@ -411,7 +411,16 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # and an aggregation asked for with no independent unit declared, without
   # which a one-standard-error rule is not reproducible
   # (selection_scoring_unit_undeclared) (= 160).
-  expect_equal(length(entries), 160L)
+  # The public verb adds three, all thrown by its gate before anything runs.
+  # A penalty was supplied and only the unpenalised corner is implemented
+  # (selection_penalty_not_implemented) (= 161); the base is not a fitted
+  # flexyBayes model, or its structure is not on the allowlist -- us() and
+  # fa() on INLA stay out regardless of how a particular fit behaved
+  # (selection_base_not_allowlisted) (= 162); and the response is not
+  # Gaussian with an identity link, where the whitening identity is not
+  # exact and no single V survives integrating the random effects
+  # (selection_family_not_supported) (= 163).
+  expect_equal(length(entries), 163L)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
@@ -448,6 +457,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_fold_covariance_not_factorisable" %in% entries)
   expect_true("selection_leakage_detected" %in% entries)
   expect_true("selection_scoring_unit_undeclared" %in% entries)
+  expect_true("selection_penalty_not_implemented" %in% entries)
+  expect_true("selection_base_not_allowlisted" %in% entries)
+  expect_true("selection_family_not_supported" %in% entries)
   expect_true("multivariate_smooth_unsupported" %in% entries)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)
