@@ -2509,8 +2509,10 @@ glance.fb_select <- function(x, ...) {
 #'   computed and cannot be recomputed on other rows.
 #' @param ... Ignored.
 #' @returns A `data.frame` of the per-unit out-of-fold scores, or a zero-row
-#'   frame with the same columns where no out-of-fold path ran (the
-#'   projection assesses inside `projpred` and writes no per-row table here).
+#'   frame with the same columns where no out-of-fold path ran. A projection
+#'   assesses inside `projpred` and writes no table here on its own; under
+#'   `benchmark = TRUE` the reference model is additionally scored out of
+#'   fold and that table is what this returns.
 #' @export
 augment.fb_select <- function(x, data = NULL, ...) {
   out <- x$clusters

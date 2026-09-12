@@ -16,8 +16,10 @@ computed and cannot be recomputed on other rows.}
 }
 \value{
 A \code{data.frame} of the per-unit out-of-fold scores, or a zero-row
-frame with the same columns where no out-of-fold path ran (the
-projection assesses inside \code{projpred} and writes no per-row table here).
+frame with the same columns where no out-of-fold path ran. A projection
+assesses inside \code{projpred} and writes no table here on its own; under
+\code{benchmark = TRUE} the reference model is additionally scored out of
+fold and that table is what this returns.
 }
 \description{
 Out-of-fold predictions from a selection
