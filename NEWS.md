@@ -388,8 +388,11 @@ the response by ten is an exact transformation under which a correlation is
 invariant, and it moves the reported intercept-slope correlation from 0.02
 to 0.969 while REML holds at 0.066; the ratio of the intercept standard
 deviation to the residual doubles on the same transformation. The
-numerical-confirm gate fires on the rescaled fit and stays quiet on the
-unscaled one, which is the fit a user runs.
+numerical-confirm gate does not separate the two: the unscaled fit reports
+mode status 0 and passes it on every call, and the rescaled fit passes it on
+some calls and not others -- five identical tenfold calls returned mode
+status 0, 0, 0, 2 and 6. The one protection a user has here therefore stays
+quiet on the fit that is wrong.
 
 The row is reclassified from `covariance-family` to **`analogue`** in the
 translation registry, with the measurement in the row rather than in a note

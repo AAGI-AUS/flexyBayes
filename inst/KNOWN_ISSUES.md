@@ -159,9 +159,13 @@ Each is reproducible on this release. Priority is for the MET use case.
    error. It fails the same metamorphic check: multiplying the response by
    ten leaves a correlation alone, and here it moves the intercept-slope
    correlation from 0.02 to 0.969 while REML holds at 0.066, and doubles the
-   ratio of the intercept standard deviation to the residual. The tenfold
-   fit raises the package's own numerical-confirm gate and the unscaled fit,
-   the one a user runs, does not. The row-19 comparison passed its
+   ratio of the intercept standard deviation to the residual. The
+   numerical-confirm gate does not separate the two: the unscaled fit
+   reports mode status 0 and passes it on every call, and the rescaled fit
+   passes it on some calls and not others -- five identical tenfold calls
+   returned mode status 0, 0, 0, 2 and 6, so the one protection a user has
+   here stays quiet on the fit that is wrong and fires on the rescaled fit
+   only sometimes. The row-19 comparison passed its
    correlation tolerance only because the true correlation on `sleepstudy`
    is near zero and a collapse toward zero lands inside it; a substrate with
    a real correlation would not. Until this is closed, read the slope
