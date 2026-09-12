@@ -311,7 +311,18 @@ test_that("the O04 rule is sensitive at its stated tolerance", {
 # that sits on top of the 0.05 tolerance the us() rule uses. The correlation
 # is the headline of the finding and the ratio is the assertable half, which
 # is the lesson the nested-strata gate above already carries.
-.d1_ratio_verdict <- function(ok_10, r_1, r_10, tol = 0.10) {
+.d1_ratio_verdict <- function(ok_10, r_1, r_10, tol = 0.10, refused = FALSE) {
+  # The rescaled arm need not return a fit at all. On lme4::sleepstudy the
+  # tenfold INLA fit intermittently exits its inla subprocess with an error
+  # and, after the retry, the package refuses by name
+  # (`inla_program_failed`). That is this defect in its strongest form --
+  # rescaling the response decided whether the model fits -- so it is a
+  # verdict here rather than an error that stops the test. Seen once in a
+  # full-suite run and not in fifteen isolated calls, so it is a branch that
+  # has to be handled and cannot be relied on to fire.
+  if (isTRUE(refused)) {
+    return("engine_refused")
+  }
   if (is.na(ok_10)) {
     return("unverified")
   }
@@ -406,12 +417,16 @@ test_that("(x | g) on INLA fails scale invariance -- tripwire for S01 D1", {
   # converge, against 0.281 unscaled.
   d10 <- d
   d10$Reaction <- 10 * d10$Reaction
-  fit_10 <- fit_of(d10)
+  # Only a typed refusal is absorbed. Any other error still stops the test,
+  # because an unexpected failure here is news rather than a verdict.
+  fit_10 <- tryCatch(fit_of(d10), flexybayes_refusal = function(cnd) cnd)
+  refused <- inherits(fit_10, "condition")
 
   verdict <- .d1_ratio_verdict(
-    ok_10 = summary(fit_10)$converge$ok,
+    ok_10 = if (refused) NA else summary(fit_10)$converge$ok,
     r_1 = ratio_of(fit_1),
-    r_10 = ratio_of(fit_10)
+    r_10 = if (refused) NA_real_ else ratio_of(fit_10),
+    refused = refused
   )
 
   expect_false(
@@ -455,6 +470,22 @@ test_that("the D1 ratio rule can reach all four of its verdicts", {
   # Unverified never passes as a result.
   expect_identical(.d1_ratio_verdict(NA, 0.281, 2.007), "unverified")
   expect_identical(.d1_ratio_verdict(TRUE, NA_real_, 0.281), "unverified")
+
+  # A rescaled arm that refused to fit at all, which the numbers cannot
+  # describe. It outranks every other branch, including one that would
+  # otherwise read as a repair.
+  expect_identical(
+    .d1_ratio_verdict(NA, 0.281, NA_real_, refused = TRUE), "engine_refused"
+  )
+  expect_identical(
+    .d1_ratio_verdict(TRUE, 0.281, 0.281, refused = TRUE), "engine_refused"
+  )
+  # And it is neither of the two states the tripwire treats as a problem,
+  # so a refusal leaves the tripwire green rather than erroring it out.
+  for (v in c("engine_refused", "nonconverged", "not_invariant")) {
+    expect_false(identical(v, "unverified"))
+    expect_false(identical(v, "repaired"))
+  }
 })
 
 
