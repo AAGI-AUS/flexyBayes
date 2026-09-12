@@ -251,6 +251,49 @@ carries `reference_fitted_on_brms` among its approximations. The check still
 fires where it means something: a genuine INLA fit request carrying a joint
 block on the intermediate representation refuses exactly as before.
 
+## The prior is calibrated against the information that is there
+
+* **`calibration_n` counts resampling units, not rows.** The
+  Piironen and Vehtari calibration of a global-local prior reads
+  `tau0 = (p0 / (p - p0)) * sigma / sqrt(n)`, and the elastic net's
+  canonical objective carries `n` in front of its penalty. Both were given
+  the row count. In a clustered design that overstates the information about
+  a coefficient by roughly the cluster size -- a hundred plots in ten sites
+  are not a hundred independent pieces of evidence about a site-level
+  covariate -- so the global scale came out too small and the prior
+  over-shrank. The number is now the count of resampling units where one was
+  declared, and the row count where none was; the certificate carries the
+  basis and the row count beside it, and the object prints the calibration
+  wherever the two differ.
+
+  brms derives the horseshoe's global scale from `par_ratio` and the number
+  of fitted rows and offers no way to say otherwise -- measured against
+  `brms::make_standata()`, `hs_scale_global = par_ratio / sqrt(N)` exactly.
+  The calibration is therefore moved by moving `par_ratio`, and the
+  certificate carries the canonical `p0 / (p - p0)` beside the ratio brms
+  was handed so a reader can see the second is the first re-expressed.
+
+* **A class-wide family refuses an unstandardised candidate column.** The
+  reference model is a re-emission of the formula rather than a
+  design-matrix fit, so a factor contrast or an interaction product has no
+  data column to centre and divide and is left on its own scale. brms puts
+  ONE global-local prior on the whole population-level vector, so a 0/1
+  dummy then sits under the same local scale as a numeric already at unit
+  standard deviation and the shrinkage applied is a property of the contrast
+  coding. `regularized_horseshoe` and `r2d2` now refuse with
+  `penalty_candidate_columns_unscaled`, naming the columns and the two ways
+  out. `ridge`, `laplace` and `elastic_net` state a scale per coefficient
+  and keep the `candidate_columns_not_standardised` approximation they
+  already carried.
+
+* **The mode-identity language carries its conditions everywhere.** A ridge
+  or Laplace prior's mode equals the corresponding penalised objective only
+  with the covariance plugged in and the residual scale held fixed. The
+  Bayesian route integrates the covariance and samples `sigma`, so no arm of
+  it reaches `map_exact_fixed_covariance`; the identity belongs to the
+  fixed-covariance, fixed-sigma substrate the exact-limit bridges test, and
+  `?fb_penalty` and `?fb_select` now say so.
+
 ## Refusals
 
 The registry moves from 163 codes to 184. `selection_penalty_not_implemented`
@@ -270,8 +313,9 @@ more. New in this release:
 and `selection_decision_invalid`. Each is registered beside the site that
 throws it and each is fired by a test.
 
-The audit close adds two more, taking the registry to 186:
-`selection_scoring_unit_mismatch` and `projection_search_unsupported`.
+The audit close adds three more, taking the registry to 187:
+`selection_scoring_unit_mismatch`, `projection_search_unsupported` and
+`penalty_candidate_columns_unscaled`.
 
 ## Dependencies
 

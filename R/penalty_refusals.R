@@ -155,5 +155,27 @@
     since_version = "0.11.0"
   )
 
+  .register_refusal(
+    reason_code = "penalty_candidate_columns_unscaled",
+    description = paste0(
+      "fb_penalty(): a class-wide global-local family -- the regularised ",
+      "horseshoe or R2D2 -- was aimed at a candidate block containing a ",
+      "design column the reference fit cannot standardise. The reference is ",
+      "a re-emission of the formula rather than a design-matrix fit, so a ",
+      "factor contrast or an interaction product has no data column to ",
+      "centre and divide, and brms puts ONE global-local prior on the whole ",
+      "population-level vector. A shared local scale then treats a 0/1 ",
+      "dummy as comparable to a numeric already at unit standard deviation, ",
+      "and the shrinkage applied is a property of the contrast coding. The ",
+      "coefficient-row families state a scale per column and are not ",
+      "affected; for them the departure stays an approximation on the ",
+      "certificate."
+    ),
+    message_template = "fb_penalty(): %s",
+    registered_in_adr = "SPEC v5 section 4.3",
+    plan_field = "selection_plan",
+    since_version = "0.11.0"
+  )
+
   invisible(NULL)
 }

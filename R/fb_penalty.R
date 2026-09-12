@@ -73,6 +73,18 @@
 #' exact zeros, so "selected" is always a named decision and never a property
 #' of the posterior.
 #'
+#' A `ridge` or `laplace` prior has a mode identity with the corresponding
+#' penalised objective **only with the covariance plugged in and the
+#' residual scale held fixed**. The Bayesian route does neither: it
+#' integrates the covariance and samples `sigma`, so the prior's own scale
+#' is not a multiple of `sigma` and the identity does not hold at the
+#' posterior it returns. It holds on the fixed-covariance, fixed-sigma
+#' substrate the exact-limit bridges test, and it is that substrate the
+#' equivalence level `map_exact_fixed_covariance` names. `elastic_net`
+#' carries the same caveat and one more: relative to a Gaussian likelihood
+#' its effective penalty is multiplied by `sigma`, which the optimiser it is
+#' compared against does not have.
+#'
 #' `regularized_horseshoe()` and `r2d2()` are class-wide in brms: they apply
 #' to every population-level coefficient except the intercept, and brms
 #' refuses a coefficient-specific row alongside them. A model with protected

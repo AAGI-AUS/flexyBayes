@@ -449,16 +449,19 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # rule missing the number it needs, or carrying one it does not read
   # (selection_decision_invalid) (= 184).
   #
-  # The 2026-09-12 audit close adds two here. A scoring unit key whose
-  # length does not match the provider's pointwise densities, refused
-  # rather than silently replaced by row numbers
-  # (selection_scoring_unit_mismatch) (= 185); and a projection search with
-  # no executed gate, which is `L1` (projection_search_unsupported)
-  # (= 186).
+  # The 2026-09-12 audit close adds three. A scoring unit key whose length
+  # does not match the provider's pointwise densities, refused rather than
+  # silently replaced by row numbers (selection_scoring_unit_mismatch)
+  # (= 185); a projection search with no executed gate, which is `L1`
+  # (projection_search_unsupported) (= 186); and a class-wide global-local
+  # family aimed at a candidate block containing a design column the
+  # re-emitted reference cannot standardise
+  # (penalty_candidate_columns_unscaled) (= 187).
   expect_false("selection_penalty_not_implemented" %in% entries)
-  expect_equal(length(entries), 186L)
+  expect_equal(length(entries), 187L)
   expect_true("selection_scoring_unit_mismatch" %in% entries)
   expect_true("projection_search_unsupported" %in% entries)
+  expect_true("penalty_candidate_columns_unscaled" %in% entries)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)

@@ -167,6 +167,68 @@
 }
 
 
+# --- the information a prior scale is calibrated against ------------------ #
+
+# .fb_select_calibration_n() --- the n a prior scale is stated against.
+#
+# The Piironen and Vehtari calibration of a global-local prior reads
+# `tau0 = (p0 / (p - p0)) * sigma / sqrt(n)`, and the elastic net's
+# canonical objective carries `n` in front of its penalty. Both were given
+# the ROW count. In a clustered design that overstates the information about
+# a coefficient by roughly the cluster size -- a hundred plots in ten sites
+# are not a hundred independent pieces of evidence about a site-level
+# covariate -- and the prior over-shrinks by a factor nobody sees.
+#
+# The number of resampling units is the calibration this module can state
+# from what the caller declared. It is not the effective sample size, and it
+# does not claim to be: it is the count of the blocks the folds treat as
+# independent, which is the same claim the standard errors are aggregated
+# under. Where no unit was declared, the rows ARE the units and the row
+# count is correct rather than a fallback -- and the basis says which.
+.fb_select_calibration_n <- function(resamples, data) {
+  unit <- if (is.null(resamples)) character(0) else resamples$unit
+  unit <- as.character(unit %||% character(0))
+  if (length(unit) == 0L || !all(unit %in% names(data))) {
+    return(list(
+      n = nrow(data),
+      basis = "rows",
+      unit = character(0),
+      n_rows = nrow(data)
+    ))
+  }
+  list(
+    n = length(unique(.fb_sel_key(data, unit))),
+    basis = "resampling_units",
+    unit = unit,
+    n_rows = nrow(data)
+  )
+}
+
+
+# .fb_select_calibration_normalise() --- accept either the resolved record
+# or a bare count, so a caller building a certificate by hand (which the
+# falsifiers do) is not obliged to construct the whole list.
+.fb_select_calibration_normalise <- function(calibration, base) {
+  n_rows <- nrow(base$data %||% data.frame())
+  if (is.null(calibration)) {
+    return(list(
+      n = n_rows, basis = "rows", unit = character(0), n_rows = n_rows
+    ))
+  }
+  if (is.list(calibration)) {
+    return(list(
+      n = calibration$n %||% n_rows,
+      basis = calibration$basis %||% "rows",
+      unit = as.character(calibration$unit %||% character(0)),
+      n_rows = calibration$n_rows %||% n_rows
+    ))
+  }
+  list(
+    n = calibration, basis = "rows", unit = character(0), n_rows = n_rows
+  )
+}
+
+
 # --- the penalty pipeline ------------------------------------------------ #
 
 # .fb_select_resolve_penalty() --- fb_penalty() to a compiled brms prior.
@@ -189,8 +251,10 @@
 .fb_select_resolve_penalty <- function(base,
                                        candidates,
                                        penalty,
-                                       protected_labels) {
+                                       protected_labels,
+                                       calibration = NULL) {
   data <- base$data
+  calibration <- calibration %||% .fb_select_calibration_n(NULL, data)
   candidate_labels <- attr(
     stats::terms(candidates, data = data),
     "term.labels"
@@ -234,13 +298,70 @@
     blocks[[i]] <- b
   }
 
+  # The information a prior scale is calibrated against. In clustered data
+  # the row count overstates it -- a hundred plots in ten sites carry
+  # nothing like a hundred independent pieces of evidence about a
+  # site-level covariate -- so the calibration is the number of resampling
+  # units where one was declared, and the row count only where none was.
+  blocks <- .fb_pen_calibrate_n(
+    blocks,
+    calibration_n = calibration$n,
+    n_rows = nrow(data)
+  )
+
+  # The class-wide families cannot be told which coefficient is on which
+  # scale: brms puts one global-local prior on the whole `b` vector, so an
+  # unstandardised 0/1 contrast column sits under the same local scale as a
+  # numeric already at unit standard deviation. That refuses rather than
+  # being certified as an approximation.
+  class_wide_unscaled <- if (length(left_alone) == 0L) {
+    character(0)
+  } else {
+    unique(unlist(lapply(blocks, function(b) {
+      if (!identical(b$route, "class_wide")) {
+        return(character(0))
+      }
+      intersect(candidate_names[unlist(b$columns)], left_alone)
+    }), use.names = FALSE))
+  }
+  if (length(class_wide_unscaled) > 0L) {
+    families <- paste(unique(vapply(
+      Filter(function(b) identical(b$route, "class_wide"), blocks),
+      function(b) b$family, character(1L)
+    )), collapse = ", ")
+    stop(.fb_refusal_condition(
+      reason_code = "penalty_candidate_columns_unscaled",
+      message = paste0(
+        "fb_penalty(): ", families, " is a class-wide global-local prior -- ",
+        "brms puts one of them on every population-level coefficient -- and ",
+        "these candidate design columns were left on their own scale: ",
+        paste(class_wide_unscaled, collapse = ", "),
+        ". They are factor contrasts or interaction products with no data ",
+        "column to centre and divide, so the reference fit, which is a ",
+        "re-emission of the formula rather than a design-matrix fit, cannot ",
+        "standardise them. A shared local-scale prior then treats a 0/1 ",
+        "dummy as comparable to a numeric already at unit standard ",
+        "deviation, and the shrinkage it applies is a property of the ",
+        "contrast coding rather than of the science. Two ways forward: use ",
+        "ridge(), laplace() or elastic_net(), which put one prior row on ",
+        "each coefficient and can therefore state a scale per column; or ",
+        "restrict the candidate block to numeric columns, which the ",
+        "re-emission can standardise."
+      ),
+      columns = class_wide_unscaled,
+      # Not `family`: it partially matches `family_class`, and the value
+      # would become a condition class rather than a field.
+      penalty_family = families
+    ))
+  }
+
   coef_names_all <- .fb_pen_brms_coef_names(
     colnames(map$X)[map$assign != 0L]
   )
   compiled <- .fb_pen_compile_brms(
     blocks,
     coef_names_all,
-    n_train = nrow(data)
+    n_train = calibration$n
   )
 
   # The data the reference fit is emitted on, with the standardisable
@@ -285,6 +406,15 @@
       )
     )
   }
+  if (!identical(calibration$basis, "rows")) {
+    approximations <- c(approximations, paste0(
+      "calibration_n_at_the_resampling_unit: the prior scales are ",
+      "calibrated against ", calibration$n, " ",
+      paste(calibration$unit, collapse = ", "), " rather than against ",
+      nrow(data), " rows, because rows inside a cluster are not ",
+      "independent pieces of evidence about a coefficient"
+    ))
+  }
   if (isTRUE(scope_all_fixed)) {
     approximations <- c(approximations, "protected_under_global_shrinkage")
   }
@@ -298,6 +428,7 @@
     candidate_names = candidate_names,
     coef_names_all = coef_names_all,
     reference_data = reference_data,
+    calibration = calibration,
     unscaled_columns = unique(left_alone),
     scope_all_fixed = scope_all_fixed,
     approximations = approximations,
@@ -383,11 +514,12 @@
                                    fallback_fired = FALSE,
                                    approximations = character(0),
                                    refusals = character(0),
-                                   calibration_n = NA_integer_,
+                                   calibration = NULL,
                                    provider_versions = list(),
                                    column_map = NULL,
                                    reference_engine = NA_character_) {
   conv <- .fb_convergence_verdict(base)
+  calibration <- .fb_select_calibration_normalise(calibration, base)
   bs <- try(.fb_sel_block_structure(base), silent = TRUE)
 
   block_record <- lapply(blocks %||% list(), function(b) {
@@ -503,11 +635,16 @@
         })
       },
       provider_versions = provider_versions,
-      # The number of rows a prior scale was calibrated against. It is on the
+      # The information a prior scale was calibrated against. It is on the
       # certificate rather than implied because in clustered data the row
-      # count overstates the information, and a reader has to be able to see
-      # by how much.
-      calibration_n = calibration_n,
+      # count overstates it, and a reader has to be able to see by how much:
+      # the basis says whether the number counts resampling units or rows,
+      # and `n_rows` sits beside it so the two can be compared without
+      # going back to the data.
+      calibration_n = calibration$n,
+      calibration_basis = calibration$basis,
+      calibration_unit = calibration$unit,
+      n_rows = calibration$n_rows,
       fallback_fired = isTRUE(fallback_fired),
       # Named because a reader must be able to see what was not exact.
       approximations = as.character(approximations),
@@ -671,7 +808,20 @@
 #' probability. Every comparison against an external optimiser carries one of
 #' three equivalence levels -- `map_exact_fixed_covariance`,
 #' `posterior_predictive_comparable` or `no_identity_expected` -- and none of
-#' them licenses the sentence "the same as glmnet".
+#' them licenses the sentence "the same as glmnet". The mode identity a
+#' ridge or Laplace prior has with a penalised objective holds only with the
+#' covariance plugged in and the residual scale held fixed; the Bayesian
+#' route integrates the covariance and samples `sigma`, so no arm of it
+#' reaches `map_exact_fixed_covariance`.
+#'
+#' Where the decision is `"projection"`, the search and the predictive
+#' evaluation run on CLUSTERED DRAWS rather than on the whole posterior --
+#' 20 clusters for the search, 100 for the evaluation. Projecting a
+#' multilevel submodel is a fit per draw, so projecting every draw at every
+#' search step inside every fold does not finish on a problem of the size
+#' this verb is for. Both counts are recorded on the result and on its
+#' certificate and printed on the object's first line, so a reader can see
+#' what the elpd column was computed from.
 #'
 #' `penalty = NULL` keeps its earlier meaning: every candidate is protected
 #' and the fit is the extended base model. Under `workflow = "bayes"` it
@@ -800,6 +950,11 @@ fb_select <- function(base,
 
   metric <- decision$metric
 
+  # The information the prior scales and the certificate are stated against.
+  # Resolved once, before any route branches, so every route reports the
+  # same number.
+  calibration <- .fb_select_calibration_n(resamples, base$data)
+
   # --- provider availability, and the one place a substitution may happen -- #
   fallback_fired <- FALSE
   requested_workflow <- workflow
@@ -916,7 +1071,7 @@ fb_select <- function(base,
       resamples = resamples,
       candidates = candidates,
       metric = metric,
-      calibration_n = nrow(base$data),
+      calibration = calibration,
       provider_versions = list(),
       dots = dots
     ))
@@ -937,7 +1092,8 @@ fb_select <- function(base,
       metric = metric,
       plan = plan,
       fallback_fired = fallback_fired,
-      requested_workflow = requested_workflow
+      requested_workflow = requested_workflow,
+      calibration = calibration
     ))
   }
 
@@ -1000,7 +1156,7 @@ fb_select <- function(base,
       benchmark = bench,
       metric = metric,
       approximations = character(0),
-      calibration_n = nrow(base$data),
+      calibration = calibration,
       provider_versions = .fb_select_provider_versions(cv$provider),
       dots = dots
     ))
@@ -1008,7 +1164,7 @@ fb_select <- function(base,
 
   # --- the Bayesian route, with a joint shrinkage prior -------------------- #
   resolved <- .fb_select_resolve_penalty(
-    base, candidates, penalty, protected_labels
+    base, candidates, penalty, protected_labels, calibration = calibration
   )
   prior_family <- paste(
     unique(vapply(resolved$blocks, function(b) b$family, character(1L))),
@@ -1185,7 +1341,7 @@ fb_select <- function(base,
     benchmark = bench,
     metric = metric,
     approximations = approximations,
-    calibration_n = nrow(base$data),
+    calibration = calibration,
     provider_versions = .fb_select_provider_versions("brms", decision),
     reference_engine = reference_engine,
     dots = dots
@@ -1213,9 +1369,10 @@ fb_select <- function(base,
                                  metric,
                                  plan,
                                  fallback_fired,
-                                 requested_workflow) {
+                                 requested_workflow,
+                                 calibration = NULL) {
   resolved <- .fb_select_resolve_penalty(
-    base, candidates, penalty, protected_labels
+    base, candidates, penalty, protected_labels, calibration = calibration
   )
   prior_family <- paste(
     unique(vapply(resolved$blocks, function(b) b$family, character(1L))),
@@ -1293,7 +1450,7 @@ fb_select <- function(base,
     metric = metric,
     approximations = resolved$approximations,
     refusals = bench$refusals,
-    calibration_n = nrow(base$data),
+    calibration = calibration,
     provider_versions = .fb_select_provider_versions("glmnet"),
     fallback_fired = fallback_fired,
     requested_workflow = requested_workflow,
@@ -1320,7 +1477,7 @@ fb_select <- function(base,
                                 metric = "elpd",
                                 approximations = character(0),
                                 refusals = character(0),
-                                calibration_n = NA_integer_,
+                                calibration = NULL,
                                 provider_versions = list(),
                                 fallback_fired = FALSE,
                                 requested_workflow = NULL,
@@ -1357,7 +1514,7 @@ fb_select <- function(base,
     fallback_fired = fallback_fired,
     approximations = approximations,
     refusals = c(refusals, benchmark$refusals %||% character(0)),
-    calibration_n = calibration_n,
+    calibration = calibration,
     provider_versions = provider_versions,
     column_map = column_map,
     reference_engine = reference_engine
@@ -1531,6 +1688,17 @@ print.fb_select <- function(x, digits = 4L, ...) {
     "\n",
     sep = ""
   )
+  # Printed only where it says something the row count does not: in a
+  # clustered design the prior scales are calibrated against the units, and
+  # a reader who saw only the row count would read a different prior.
+  if (!identical(cert$calibration_n, cert$n_rows)) {
+    cat(
+      "  prior n   : calibrated at ", cert$calibration_n, " ",
+      paste(cert$calibration_unit, collapse = ", "),
+      ", not at ", cert$n_rows, " rows\n",
+      sep = ""
+    )
+  }
   cat(
     "  covariance: ", cert$covariance$builder %||% "unknown builder", " / ",
     cert$covariance$estimand %||% "not recorded",
@@ -1913,7 +2081,20 @@ print.fb_select_certificate <- function(x, ...) {
   cat("  scored at  : ", x$resampling$scoring_unit %||% "the fold", "\n",
       sep = "")
   cat("  seed       : ", x$resampling$seed %||% "none", "\n", sep = "")
-  cat("  calibration_n: ", x$calibration_n, "\n", sep = "")
+  cat(
+    "  calibration_n: ", x$calibration_n,
+    if (identical(x$calibration_basis, "resampling_units")) {
+      paste0(
+        " (", paste(x$calibration_unit, collapse = ", "),
+        "; the prior scales are calibrated against these rather than ",
+        "against ", x$n_rows, " rows)"
+      )
+    } else {
+      " (rows; no resampling unit was declared, so a row is a unit)"
+    },
+    "\n",
+    sep = ""
+  )
   cat("  fallback   : ", if (isTRUE(x$fallback_fired)) "FIRED" else "none",
       "\n", sep = "")
   if (length(x$prior_blocks) > 0L) {

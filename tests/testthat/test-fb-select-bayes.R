@@ -135,7 +135,11 @@ test_that("a horseshoe with a projection decision records four axes", {
   expect_identical(cert$contract, "SPEC_bayesian_selection_v5_2026-09-12")
   expect_identical(cert$covariance$estimand, "integrated")
   expect_true(cert$covariance$integrated)
-  expect_identical(cert$calibration_n, nrow(fbsb_data_wide()))
+  # 20 sites of eight plots: the prior scales are calibrated against the 20
+  # sites, not against the 160 rows, and the certificate says which.
+  expect_identical(cert$calibration_n, 20L)
+  expect_identical(cert$n_rows, nrow(fbsb_data_wide()))
+  expect_identical(cert$calibration_basis, "resampling_units")
   expect_true("brms" %in% names(cert$provider_versions))
   expect_true("projpred" %in% names(cert$provider_versions))
 
@@ -686,6 +690,189 @@ test_that("plan = TRUE reports the axes, the blocks and the gate without fitting
   out <- paste(utils::capture.output(print(plan)), collapse = "\n")
   expect_match(out, "Nothing was fitted", fixed = TRUE)
   expect_match(out, "class_wide", fixed = TRUE)
+})
+
+
+# --- what the prior scales are calibrated against ------------------------ #
+
+test_that("calibration_n counts resampling units, and the certificate says so", {
+  # The defect this closes. `calibration_n` was `nrow(data)`, and the row
+  # count went into brms's horseshoe calibration and into the elastic net's
+  # canonical `n`. In a clustered design that overstates the information
+  # about a coefficient by roughly the cluster size, so the global scale is
+  # too small and the prior over-shrinks -- and the certificate reported the
+  # row count, so nothing said by how much.
+  set.seed(2026L)
+  d <- data.frame(site = factor(rep(sprintf("S%02d", seq_len(20L)), each = 10L)))
+  d$x1 <- stats::rnorm(nrow(d))
+  d$y <- stats::rnorm(nrow(d))
+  expect_identical(nrow(d), 200L)
+
+  at_unit <- .fb_select_calibration_n(fb_resamples(unit = ~site, v = 3L), d)
+  expect_identical(at_unit$n, 20L)
+  expect_identical(at_unit$basis, "resampling_units")
+  expect_identical(at_unit$n_rows, 200L)
+
+  # The injected defect, shown red on the same data: the row count is ten
+  # times the unit count, and it is what the earlier code passed on.
+  expect_identical(nrow(d), 10L * at_unit$n)
+
+  # And where no unit was declared a row IS a unit, which is correct rather
+  # than a fallback -- the basis says which.
+  at_rows <- .fb_select_calibration_n(fb_resamples(v = 3L), d)
+  expect_identical(at_rows$n, 200L)
+  expect_identical(at_rows$basis, "rows")
+
+  # The certificate prints the number, its basis and the row count beside
+  # it, so a reader can see the ratio without going back to the data.
+  base <- structure(
+    list(
+      fb = list(
+        family = "gaussian", link = "identity", source = "test",
+        fixed_terms = list(), random_terms = list()
+      ),
+      data = d
+    ),
+    class = c("flexybayes_brms", "flexybayes", "list")
+  )
+  cert <- .fb_select_certificate(
+    base = base,
+    axes = list(workflow = "bayes", provider = "brms",
+                prior = "regularized_horseshoe", decision = "full"),
+    cv = list(folds = list(), aggregated = NULL, prediction = "new_cluster",
+              seed = 1L, metric = "elpd", covariance_estimand = "integrated"),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    candidates = ~x1,
+    calibration = at_unit
+  )
+  expect_identical(cert$calibration_n, 20L)
+  expect_identical(cert$n_rows, 200L)
+  out <- paste(utils::capture.output(print(cert)), collapse = "\n")
+  expect_match(out, "calibration_n: 20", fixed = TRUE)
+  expect_match(out, "against 200 rows", fixed = TRUE)
+})
+
+
+test_that("the horseshoe global scale is moved to the unit, not left at the row", {
+  # brms derives its global scale from `par_ratio` and the number of FITTED
+  # ROWS, and it offers no way to say otherwise, so the calibration is moved
+  # by moving `par_ratio`. The relationship was measured against
+  # brms::make_standata() rather than read off the documentation:
+  # hs_scale_global = par_ratio / sqrt(N).
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  set.seed(2026L)
+  d <- data.frame(site = factor(rep(sprintf("S%02d", seq_len(20L)), each = 10L)))
+  for (v in paste0("x", 1:4)) d[[v]] <- stats::rnorm(nrow(d))
+  d$y <- stats::rnorm(nrow(d))
+
+  map <- .fb_sel_term_map(~ x1 + x2 + x3 + x4, d)
+  blocks <- .fb_pen_resolve(
+    fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 2)),
+    map,
+    protected = character(0)
+  )
+  canonical <- blocks[[1L]]$hyperparameters$par_ratio
+  expect_equal(canonical, 2 / (4 - 2))
+
+  moved <- .fb_pen_calibrate_n(blocks, calibration_n = 20L, n_rows = 200L)
+  h <- moved[[1L]]$hyperparameters
+  expect_equal(h$par_ratio_canonical, canonical)
+  expect_identical(h$calibration_n, 20)
+  # The global scale brms will derive is the canonical ratio over the square
+  # root of the UNIT count, which is the whole point of moving the ratio.
+  expect_equal(h$par_ratio / sqrt(200), canonical / sqrt(20))
+
+  # Measured against brms itself rather than against the algebra above.
+  compiled <- .fb_pen_compile_brms(
+    moved, .fb_pen_brms_coef_names(colnames(map$X)[map$assign != 0L]),
+    n_train = 20L
+  )
+  sdata <- brms::make_standata(
+    y ~ x1 + x2 + x3 + x4, d, prior = compiled$prior
+  )
+  expect_equal(sdata$hs_scale_global, canonical / sqrt(20), tolerance = 1e-10)
+
+  # The injected defect, shown red: left at the row count the same request
+  # gives a global scale smaller by the square root of the cluster size.
+  at_rows <- .fb_pen_calibrate_n(blocks, calibration_n = 200L, n_rows = 200L)
+  compiled_rows <- .fb_pen_compile_brms(
+    at_rows, .fb_pen_brms_coef_names(colnames(map$X)[map$assign != 0L]),
+    n_train = 200L
+  )
+  sdata_rows <- brms::make_standata(
+    y ~ x1 + x2 + x3 + x4, d, prior = compiled_rows$prior
+  )
+  expect_lt(sdata_rows$hs_scale_global, sdata$hs_scale_global)
+  expect_equal(
+    sdata$hs_scale_global / sdata_rows$hs_scale_global, sqrt(10),
+    tolerance = 1e-8
+  )
+})
+
+
+test_that("a class-wide family refuses an unstandardised candidate column", {
+  # Finding 6.3. The reference fit is a re-emission of the formula, so a
+  # factor contrast has no data column to centre and divide and is left at
+  # centre 0, scale 1. brms puts ONE global-local prior on the whole
+  # population-level vector, so that 0/1 dummy then sits under the same
+  # local scale as a numeric already at unit standard deviation. The
+  # coefficient-row families state a scale per column and keep the
+  # approximation they already carried.
+  fbsb_needs_brms()
+  set.seed(4021L)
+  d <- fbsb_data_wide()
+  d$f <- factor(rep(c("A", "B", "C"), length.out = nrow(d)))
+
+  base <- fbsb_memo("base_intercept_factor", suppressWarnings(fb_brms(
+    y ~ 1 + (1 | site), data = d, chains = 2L, n_samples = 500L,
+    warmup = 500L, seed = 20260912L, verbose = FALSE, mcmc_verbose = FALSE
+  )))
+
+  err <- tryCatch(
+    fb_select(
+      base, ~ x1 + x2 + f,
+      penalty = fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 2)),
+      resamples = fb_resamples(unit = ~site, v = 3L),
+      plan = TRUE, seed = 1L
+    ),
+    error = function(e) e
+  )
+  expect_s3_class(
+    err, "flexybayes_refusal_penalty_candidate_columns_unscaled"
+  )
+  # The columns are named, and so are the two ways out.
+  expect_match(conditionMessage(err), "fB", fixed = TRUE)
+  expect_match(conditionMessage(err), "fC", fixed = TRUE)
+  expect_match(conditionMessage(err), "ridge()", fixed = TRUE)
+  expect_match(conditionMessage(err), "numeric columns", fixed = TRUE)
+  expect_setequal(err$columns, c("fB", "fC"))
+
+  # The negative control, twice over. A coefficient-row family on the same
+  # block plans, and keeps the approximation rather than refusing.
+  ridge_plan <- fb_select(
+    base, ~ x1 + x2 + f,
+    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    decision = fb_decision(method = "full"),
+    plan = TRUE, seed = 1L
+  )
+  expect_s3_class(ridge_plan, "fb_select_plan")
+  expect_true(any(grepl(
+    "candidate_columns_not_standardised",
+    ridge_plan$selection$approximations, fixed = TRUE
+  )))
+
+  # And a numeric-only candidate block under the same class-wide family
+  # plans, so the refusal is the unstandardised column's and not the
+  # family's.
+  hs_plan <- fb_select(
+    base, ~ x1 + x2 + z1,
+    penalty = fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 1)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    plan = TRUE, seed = 1L
+  )
+  expect_s3_class(hs_plan, "fb_select_plan")
 })
 
 

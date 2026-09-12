@@ -605,6 +605,58 @@ print.fb_prior_blocks <- function(x, ...) {
 }
 
 
+# .fb_pen_calibrate_n() --- state the global scale against the information
+# that is actually there.
+#
+# Only the class-wide horseshoe reads an `n`. brms derives its global scale
+# from `par_ratio` and the number of FITTED ROWS, and the relationship was
+# measured against `brms::make_standata()` on this build rather than read
+# off the documentation: `hs_scale_global = par_ratio / sqrt(N)` exactly, at
+# N = 40, 90 and 160, and unchanged by the presence of a grouping term. The
+# Stan program then multiplies by sigma, which is the Piironen and Vehtari
+# `tau0 = par_ratio * sigma / sqrt(n)`.
+#
+# `N` there is the row count and brms offers no way to say otherwise, so the
+# calibration is moved by moving `par_ratio`:
+#
+#   par_ratio_fitted = par_ratio_canonical * sqrt(n_rows / calibration_n)
+#
+# which makes `hs_scale_global = par_ratio_canonical / sqrt(calibration_n)`.
+# The canonical ratio `p0 / (p - p0)` is kept beside it, so the certificate
+# reports both the number the contract states and the number brms was
+# handed, and a reader can see that the second is the first re-expressed
+# rather than a different prior guess.
+#
+# R2D2's grammar is on explained variance and carries no `n`, so it is left
+# alone; ridge and Laplace state a scale directly and carry none either.
+.fb_pen_calibrate_n <- function(blocks, calibration_n, n_rows) {
+  if (!is.numeric(calibration_n) || length(calibration_n) != 1L ||
+        !is.finite(calibration_n) || calibration_n < 1) {
+    stop(
+      ".fb_pen_calibrate_n(): `calibration_n` must be a single number of ",
+      "units, at least 1.",
+      call. = FALSE
+    )
+  }
+  for (i in seq_along(blocks)) {
+    b <- blocks[[i]]
+    if (!identical(b$family, "regularized_horseshoe")) {
+      next
+    }
+    canonical <- b$hyperparameters$par_ratio
+    if (is.null(canonical)) {
+      next
+    }
+    b$hyperparameters$par_ratio_canonical <- canonical
+    b$hyperparameters$par_ratio <- canonical * sqrt(n_rows / calibration_n)
+    b$hyperparameters$calibration_n <- as.numeric(calibration_n)
+    b$hyperparameters$n_rows <- as.numeric(n_rows)
+    blocks[[i]] <- b
+  }
+  blocks
+}
+
+
 # .fb_pen_assert_targeting() --- what brms will actually do with these blocks.
 #
 # A class-wide special prior is not aimable. brms puts it on every

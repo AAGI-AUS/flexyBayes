@@ -108,7 +108,20 @@ draws, and a posterior-threshold retention is not an inclusion
 probability. Every comparison against an external optimiser carries one of
 three equivalence levels -- \code{map_exact_fixed_covariance},
 \code{posterior_predictive_comparable} or \code{no_identity_expected} -- and none of
-them licenses the sentence "the same as glmnet".
+them licenses the sentence "the same as glmnet". The mode identity a
+ridge or Laplace prior has with a penalised objective holds only with the
+covariance plugged in and the residual scale held fixed; the Bayesian
+route integrates the covariance and samples \code{sigma}, so no arm of it
+reaches \code{map_exact_fixed_covariance}.
+
+Where the decision is \code{"projection"}, the search and the predictive
+evaluation run on CLUSTERED DRAWS rather than on the whole posterior --
+20 clusters for the search, 100 for the evaluation. Projecting a
+multilevel submodel is a fit per draw, so projecting every draw at every
+search step inside every fold does not finish on a problem of the size
+this verb is for. Both counts are recorded on the result and on its
+certificate and printed on the object's first line, so a reader can see
+what the elpd column was computed from.
 
 \code{penalty = NULL} keeps its earlier meaning: every candidate is protected
 and the fit is the extended base model. Under \code{workflow = "bayes"} it
