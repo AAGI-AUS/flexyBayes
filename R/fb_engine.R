@@ -48,9 +48,37 @@
 #' is a routing directive, not an engine; pass `backend = "auto"`
 #' directly for automatic routing.
 #'
+#' @section Recognised options:
+#'
+#' All four are sampler controls, read by the routes that emit through
+#' Stan and ignored by the rest. An unrecognised name is an error at
+#' construction rather than a silently dropped argument.
+#'
+#' \describe{
+#'   \item{`n_samples`}{Post-warmup draws to keep, per chain.}
+#'   \item{`warmup`}{Warmup iterations, per chain.}
+#'   \item{`chains`}{Number of chains.}
+#'   \item{`adapt_delta`}{Target acceptance probability for Stan's
+#'   step-size adaptation, between 0 and 1. Raising it makes the sampler
+#'   take smaller steps, which costs time and removes the divergent
+#'   transitions a smaller step would have avoided. brms's own default is
+#'   0.8; [fb_select()]'s reference fit starts from 0.95 instead, and a
+#'   value given here replaces that.}
+#' }
+#'
+#' `adapt_delta` is the lever to reach for when a selection run refuses
+#' with `penalty_sampler_diagnostics_failed`. The adequacy gate refuses on
+#' a single divergent transition, because a selection read off a posterior
+#' the sampler did not explore is a statement about the sampler; a
+#' heavy-tailed prior on a small trial reaches that threshold routinely.
+#' A regularised horseshoe on a 200-row design ended two transitions of
+#' six thousand in a divergence at the 0.95 default and completed cleanly
+#' at `fb_engine("brms", adapt_delta = 0.999)`.
+#'
 #' @param name Character(1): the engine, one of `"inla"`, `"brms"`.
 #' @param opts Named list of tuning options. Recognised names are
-#'   `n_samples`, `warmup`, `chains`; an unrecognised name is an error.
+#'   `n_samples`, `warmup`, `chains` and `adapt_delta`, described under
+#'   "Recognised options" below; an unrecognised name is an error.
 #' @param ... Tuning options given individually, merged into `opts`
 #'   (e.g. `fb_engine("brms", chains = 4L)`).
 #' @return An `fb_engine` object: a classed list with elements `name`,

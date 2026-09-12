@@ -444,6 +444,18 @@ with nothing to say which. The two blocks are now named for what they hold,
 `(Intercept) | <g>` and `<x> | <g>`, and each reports the group's own levels
 over its own half of the `iid2d` field rather than the whole field twice.
 
+## Documentation
+
+* **`?fb_engine` documents `adapt_delta`.** The help page listed the
+  recognised options as `n_samples`, `warmup` and `chains` while the
+  constructor had accepted a fourth since the start of this release. It is
+  the option that clears a selection run refused with
+  `penalty_sampler_diagnostics_failed`, and both selection runs in the
+  September validation programme hit that refusal, so a reader following the
+  documentation would have concluded the refusal could not be cleared. The
+  page now carries a "Recognised options" section giving all four, brms's own
+  0.8 default, the reference fit's 0.95, and the run that needed 0.999.
+
 ## Refusals
 
 The registry moves from 163 codes to 184. `selection_penalty_not_implemented`
