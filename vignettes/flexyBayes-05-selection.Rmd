@@ -138,7 +138,7 @@ fb_select(
 #>   stanvars:     no
 #>   Structure gate: supported
 #>   Folds:        3, prediction new_cluster
-#>   Cost estimate: 25.3s over 4 fit(s) at 6.31s each
+#>   Cost estimate: 27.2s over 4 fit(s) at 6.81s each
 #>                  the per-fit figure is the base model's own recorded wall time; the reference model carries a wider fixed part and a shrinkage prior, so this is a floor
 #>   Approximations this route commits to:
 #>     - scaling_learned_on_all_rows: the reference model is one fit, so the standardising constants are the whole sample's rather than each training fold's
@@ -2813,8 +2813,8 @@ sel <- fb_select(
 sel
 #> <fb_select> workflow bayes / provider brms / prior regularized_horseshoe / decision projection
 #>   base      : gaussian/identity, 200 rows, convergence ok
-#>   covariance: random_term_reduction / integrated (integrated by the engine, not plugged in)
-#>   resampling: 3 folds, prediction new_cluster, scored at NA
+#>   covariance: none: covariance integrated by the engine / integrated (integrated by the engine, not plugged in)
+#>   resampling: 3 folds, prediction new_cluster, scored at site
 #>   reference : adequacy pass -- 29 transition(s) reached the treedepth ceiling of 10; reported, not decisive
 #> 
 #>   decision  : projection
@@ -3086,13 +3086,13 @@ increment <- fb_select(
 increment
 #> <fb_select> workflow bayes / provider inla / prior none / decision full
 #>   base      : gaussian/identity, 200 rows, convergence ok
-#>   covariance: block_cholesky / integrated (integrated by the engine, not plugged in)
+#>   covariance: none: covariance integrated by the engine / integrated (integrated by the engine, not plugged in)
 #>   resampling: 3 folds, prediction new_cluster, scored at cluster
 #> 
 #>   out-of-fold elpd:
-#>     protected only : 20.0786
-#>     with candidates: 14.0362
-#>     improvement    : 6.0424  (20 independent cluster)
+#>     protected only : 20.0782
+#>     with candidates: 14.0371
+#>     improvement    : 6.0411  (20 independent cluster)
 ```
 
 
@@ -3102,7 +3102,7 @@ rnd(glance(increment)[, c(
   "protected_only", "full", "improvement", "n_units"
 )])
 #>   workflow provider prior metric protected_only   full improvement n_units
-#> 1    bayes     inla  none   elpd         20.079 14.036       6.042      20
+#> 1    bayes     inla  none   elpd         20.078 14.037       6.041      20
 ```
 
 The covariance estimand reads `integrated` because the engine integrated it,
@@ -3145,9 +3145,9 @@ object that did the work.
 sel$certificate
 #> <fb_select_certificate> SPEC_bayesian_selection_v5_2026-09-12
 #>   axes       : workflow bayes / provider brms / prior regularized_horseshoe / decision projection
-#>   covariance : random_term_reduction / integrated
+#>   covariance : none: covariance integrated by the engine / integrated
 #>   prediction : new_cluster
-#>   scored at  : NA
+#>   scored at  : site
 #>   seed       : 20260912
 #>   calibration_n: 200
 #>   fallback   : none
