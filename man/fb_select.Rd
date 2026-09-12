@@ -42,7 +42,13 @@ certificate.}
 Bayesian provider is absent, never after a failure.}
 
 \item{benchmark}{\code{TRUE} also runs the unpenalised generalised-least-squares
-arm and, where a penalty was given, the \code{glmnet} arm on the same folds.}
+arm and, where a penalty was given, the \code{glmnet} arm on the same folds
+-- and scores the reference model itself out of fold, so the arms have
+one loss at one unit to be placed beside. That last part is what the
+certificate's \code{predictive_side_by_side} stanza reports and what the
+equivalence level \code{posterior_predictive_comparable} requires; without
+it the certificate says so by name rather than claiming a comparison
+nobody made. It costs one reference refit per fold per model.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 

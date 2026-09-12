@@ -233,6 +233,41 @@ one fired on the formulas the module exists to serve rather than on an edge.
   `projection_search_unsupported`. The forward search is the search this
   release executes.
 
+## glmnet is a check that cannot be misread
+
+`posterior_predictive_comparable` says the arms were scored "on the same
+folds, target, loss, unit and candidate design". The Bayesian penalised route
+wrote no out-of-fold score at all -- it set `aggregated = NULL` -- so the
+label was printed about a comparison nobody had made.
+
+* **The penalised Bayesian route writes the same unit-level out-of-fold
+  table the `penalty = NULL` route writes** -- `elpd`, `rmse` and `nlpd` per
+  resampling unit, under the requested prediction target, on the folds the
+  projection used -- by reusing the per-fold machinery for the reference
+  model. It costs one reference refit per fold per model, so it runs under
+  `benchmark = TRUE` and the certificate says which of the two situations a
+  reader is in.
+
+* **The certificate splits the `glmnet` role in two.** `mode_oracle` carries
+  the Tier-1 claim and is populated only from an arm that solved the
+  canonical objective with the covariance plugged in and the residual scale
+  held fixed, and whose comparison against the primary answer was made under
+  the same two conditions -- so it is empty on every sampled route, and says
+  why. `predictive_side_by_side` carries the out-of-fold comparison and is
+  written only when the arms really do share one loss, at one unit, on one
+  set of folds; an arm that aggregated at a different number of units is
+  dropped and named rather than averaged in.
+
+* **`posterior_predictive_comparable` needs the shared table stated.** The
+  gate defaults to closed: a caller who has not built the table cannot reach
+  the level by forgetting. Horseshoe and R2D2 against `glmnet` stay
+  `no_identity_expected` whatever the table, because `glmnet` has no
+  representation of a scale mixture at all.
+
+* **The `glmnet` benchmark arm is scored at the resampling unit.** It scored
+  at the fold, so a side-by-side table would have put a twelve-site standard
+  error beside a two-fold one and called them one loss.
+
 ## An INLA-fitted base can carry a shrinkage prior
 
 `fb_select()` fits the reference model through brms whatever fitted the

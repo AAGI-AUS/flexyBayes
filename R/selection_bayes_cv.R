@@ -964,7 +964,8 @@
   candidate_sets = NULL,
   cluster = NULL,
   refit_fn = NULL,
-  probe_seconds = NULL
+  probe_seconds = NULL,
+  provider = NULL
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -974,7 +975,14 @@
 
   base <- .fb_sel_bayes_normalise_base(base, data)
   .fb_select_gate(base)
-  provider <- .fb_sel_bayes_provider(base)
+  # The engine that will do the FITTING, which is not always the engine that
+  # fitted the base: a reference model carrying a joint shrinkage prior is
+  # emitted on brms whatever the base was fitted by, and the fold loop has to
+  # take the brms branch for it -- brms fits the training rows and predicts
+  # on the assessment rows, while INLA carries the assessment rows into the
+  # fit with an NA response. Left to the base's class, an INLA base scored
+  # through a brms reference would read a Predictor block that is not there.
+  provider <- provider %||% .fb_sel_bayes_provider(base)
   spec <- .fb_sel_bayes_base_spec(base)
   data <- spec$data
 

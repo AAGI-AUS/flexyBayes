@@ -581,6 +581,176 @@ test_that("a horseshoe benchmark carries no identity, because glmnet has none", 
 })
 
 
+# --- the primary arm is scored, or the comparison is not claimed ---------- #
+
+test_that("the side-by-side stanza is absent until both arms share a loss", {
+  # The defect this closes, at the unit that decides it. The Bayesian
+  # penalised route set `aggregated = NULL`, so there was no out-of-fold
+  # score on the primary arm at all -- and the glmnet arm beside it was
+  # still labelled `posterior_predictive_comparable`, whose own definition
+  # is "scored on the same folds, target, loss, unit and candidate design".
+  arms <- list(
+    gls = list(
+      scores = data.frame(
+        model = c("protected_only", "full"), score = c(2, 1.5),
+        se = c(0.1, 0.1), n_units = c(12L, 12L),
+        se_unit = c("cluster", "cluster"), stringsAsFactors = FALSE
+      )
+    )
+  )
+
+  # No primary table: the stanza is absent and says what would produce one.
+  none <- .fb_select_predictive_side_by_side(NULL, arms, metric = "nlpd")
+  expect_false(none$available)
+  expect_match(none$reason, "benchmark = TRUE", fixed = TRUE)
+
+  # A primary table that agrees on the unit: the stanza is written.
+  primary <- data.frame(
+    model = rep("full", 12L),
+    fold = rep(c("Fold1", "Fold2"), each = 6L),
+    repeat_id = 1L,
+    cluster = sprintf("S%02d", seq_len(12L)),
+    n = 6L,
+    mse = stats::runif(12L),
+    rmse = stats::runif(12L),
+    elpd = stats::rnorm(12L),
+    nlpd = stats::runif(12L),
+    stringsAsFactors = FALSE
+  )
+  both <- .fb_select_predictive_side_by_side(
+    primary, arms, metric = "nlpd",
+    primary_folds = c("Fold1", "Fold2"),
+    benchmark_folds = c("Fold1", "Fold2")
+  )
+  expect_true(both$available)
+  expect_setequal(both$arms$arm, c("bayes", "gls"))
+  expect_true(all(both$arms$n_units == 12L))
+  expect_identical(both$metric, "nlpd")
+
+  # An arm that aggregated at a different number of units did not score the
+  # same loss, whatever the column is called.
+  disagreeing <- arms
+  disagreeing$gls$scores$n_units <- c(2L, 2L)
+  expect_false(
+    .fb_select_predictive_side_by_side(
+      primary, disagreeing, metric = "nlpd"
+    )$available
+  )
+
+  # And arms scored on different partitions are not placed side by side
+  # however well their unit counts happen to line up.
+  expect_false(
+    .fb_select_predictive_side_by_side(
+      primary, arms, metric = "nlpd",
+      primary_folds = c("Fold1", "Fold2"),
+      benchmark_folds = c("Fold1", "Fold2", "Fold3")
+    )$available
+  )
+})
+
+
+test_that("a ridge benchmark scores both arms on one loss and leaves the mode oracle empty", {
+  fbsb_needs_brms()
+  skip_if_not_installed("glmnet")
+  sel <- fbsb_memo("ridge_benchmark", suppressWarnings(fb_select(
+    fbsb_base(),
+    fbsb_candidates,
+    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    resamples = fb_resamples(unit = ~site, v = 2L),
+    decision = fb_decision(method = "full"),
+    benchmark = TRUE,
+    engine = fbsb_engine(),
+    seed = 20260912L
+  )))
+
+  # The primary arm now writes the same unit-level out-of-fold table the
+  # `penalty = NULL` route writes: protected baseline and reference, scored
+  # from posterior predictive draws at the resampling unit.
+  expect_true(is.data.frame(sel$scores))
+  expect_true(all(c("protected_only", "full") %in% sel$scores$model))
+  expect_false(is.null(sel$increment))
+  expect_true(all(
+    c("elpd", "rmse", "nlpd") %in% names(as.data.frame(sel$clusters))
+  ))
+
+  ps <- sel$certificate$predictive_side_by_side
+  expect_true(ps$available)
+  expect_true(all(c("bayes", "gls", "glmnet") %in% ps$arms$arm))
+  # One loss, one unit, and the same number of them on every arm.
+  expect_identical(length(unique(ps$arms$n_units)), 1L)
+  expect_identical(length(unique(ps$arms$unit)), 1L)
+
+  # The comparison is now one that happened, so the middle level is earned.
+  expect_identical(
+    sel$benchmark$glmnet$equivalence_level$level,
+    "posterior_predictive_comparable"
+  )
+  expect_true(
+    sel$benchmark$glmnet$equivalence_level$shared_predictive_table
+  )
+
+  # And the Tier-1 stanza is empty, because a sampled route integrates the
+  # covariance and samples sigma. It is a stanza rather than an absent
+  # field: "no mode oracle ran" is what a reader has to be told.
+  mo <- sel$certificate$mode_oracle
+  expect_false(mo$available)
+  expect_length(mo$arms, 0L)
+  expect_match(mo$reason, "held fixed", fixed = TRUE)
+
+  out <- paste(utils::capture.output(print(sel)), collapse = "\n")
+  expect_match(out, "side by side", fixed = TRUE)
+  expect_match(out, "mode oracle: none", fixed = TRUE)
+  cert_out <- paste(
+    utils::capture.output(print(sel$certificate)), collapse = "\n"
+  )
+  expect_match(cert_out, "mode oracle: none", fixed = TRUE)
+  expect_match(cert_out, "side by side", fixed = TRUE)
+})
+
+
+test_that("a horseshoe benchmark claims no identity against glmnet", {
+  fbsb_needs_brms()
+  skip_if_not_installed("glmnet")
+  sel <- fbsb_memo("hs_benchmark", suppressWarnings(fb_select(
+    fbsb_base_intercept(),
+    fbsb_candidates,
+    penalty = fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 2)),
+    resamples = fb_resamples(unit = ~site, v = 2L),
+    decision = fb_decision(method = "full"),
+    benchmark = TRUE,
+    engine = fbsb_engine(),
+    seed = 20260912L
+  )))
+
+  # glmnet has no representation of a scale mixture, so the optimiser arm
+  # does not run at all and the refusal is carried by name rather than the
+  # arm being reported with a level it did not earn.
+  expect_false("glmnet" %in% names(sel$benchmark))
+  expect_true(any(grepl(
+    "regularized_horseshoe", sel$certificate$refusals, fixed = TRUE
+  )))
+  # The level the family would carry, at every setting of the two
+  # conditions and with a shared table available.
+  for (shared in c(TRUE, FALSE)) {
+    expect_identical(
+      .fb_sel_equivalence_level(
+        "regularized_horseshoe", "glmnet", FALSE, FALSE,
+        shared_predictive_table = shared
+      )$level,
+      "no_identity_expected"
+    )
+  }
+
+  # The unpenalised arm and the Bayesian arm DO share a loss, and are
+  # reported side by side on it.
+  ps <- sel$certificate$predictive_side_by_side
+  expect_true(ps$available)
+  expect_setequal(ps$arms$arm, c("bayes", "gls"))
+  expect_identical(length(unique(ps$arms$n_units)), 1L)
+  expect_false(sel$certificate$mode_oracle$available)
+})
+
+
 # --- the fallback --------------------------------------------------------- #
 
 test_that("fallback = \"none\" refuses when the Bayesian provider is absent", {

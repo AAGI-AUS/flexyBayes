@@ -517,9 +517,15 @@
                                    calibration = NULL,
                                    provider_versions = list(),
                                    column_map = NULL,
-                                   reference_engine = NA_character_) {
+                                   reference_engine = NA_character_,
+                                   predictive_side_by_side = NULL) {
   conv <- .fb_convergence_verdict(base)
   calibration <- .fb_select_calibration_normalise(calibration, base)
+  predictive_side_by_side <- predictive_side_by_side %||%
+    .fb_select_predictive_side_by_side(
+      NULL, benchmark %||% list(),
+      metric = .fb_select_benchmark_metric(cv$metric %||% "elpd")
+    )
   bs <- try(.fb_sel_block_structure(base), silent = TRUE)
 
   block_record <- lapply(blocks %||% list(), function(b) {
@@ -584,11 +590,14 @@
         repeats = resamples$repeats,
         n_folds = length(cv$folds %||% list()),
         prediction = cv$prediction,
-        # The projection route scores at the resampling unit inside the
-        # search itself and carries no aggregated table, so the unit is read
-        # off the projection's own scoring record.
-        scoring_unit = cv$aggregated$se_unit[[1L]] %||%
-          projection$scoring$unit %||% NA_character_,
+        # The projection scores at the resampling unit inside the search
+        # itself, so where one ran its own record is the authority; the
+        # out-of-fold table's unit is the answer on every other route. The
+        # projection comes first because a `benchmark = TRUE` projection run
+        # now carries both, and the two name the unit differently -- the
+        # search by the grouping variable, the table by the kind of unit.
+        scoring_unit = projection$scoring$unit %||%
+          cv$aggregated$se_unit[[1L]] %||% "not scored out of fold",
         seed = cv$seed,
         metric = cv$metric
       ),
@@ -634,6 +643,15 @@
           )
         })
       },
+      # Two fields where one overloaded label used to sit. `mode_oracle` is
+      # the Tier-1 claim and is empty unless the covariance and the residual
+      # scale were both held fixed, which is never true of a sampled route;
+      # `predictive_side_by_side` is the out-of-fold comparison and is
+      # written only when the arms really do share one loss, one unit and
+      # one set of folds. Reading a glmnet support as a check on a posterior
+      # is the category error the split exists to prevent.
+      mode_oracle = .fb_select_mode_oracle(benchmark %||% list()),
+      predictive_side_by_side = predictive_side_by_side,
       provider_versions = provider_versions,
       # The information a prior scale was calibrated against. It is on the
       # certificate rather than implied because in clustered data the row
@@ -652,6 +670,315 @@
       contract = "SPEC_bayesian_selection_v5_2026-09-12"
     ),
     class = "fb_select_certificate"
+  )
+}
+
+
+# --- the primary arm's own out-of-fold score ------------------------------ #
+
+# .fb_select_reference_cv() --- the unit-level out-of-fold table for the
+# REFERENCE model, on the folds the rest of the selection uses.
+#
+# Why it has to exist. The `penalty = NULL` route has always written a
+# unit-level score table -- elpd, rmse and nlpd per resampling unit, under a
+# named prediction target, on named folds -- and the penalised route wrote
+# none. A `glmnet` arm was then placed beside a Bayesian answer under the
+# label `posterior_predictive_comparable`, whose own definition is "scored on
+# the same folds, target, loss, unit and candidate design". Nothing had been
+# scored on the Bayesian side at all, so the label described a comparison
+# that had not happened. The two are now scored the same way or the label is
+# not printed.
+#
+# Why it is `benchmark = TRUE` only. It costs one reference-model refit per
+# fold per model -- the protected baseline and the reference itself -- on top
+# of the projection's own refits. That is the price of a comparison, and it
+# is paid only by a caller who asked for one; the certificate says so where
+# it was not paid.
+#
+# The machinery is `.fb_sel_bayes_cv()`'s, unchanged: the same folds, the same
+# relabelling of held-out grouping levels, the same predictive draws and the
+# same aggregation. Only the refit differs, and it differs in exactly one
+# way -- the candidate block arrives under the compiled joint prior.
+.fb_select_reference_cv <- function(base,
+                                    candidates,
+                                    resolved,
+                                    protected_labels,
+                                    resamples,
+                                    prediction,
+                                    metric,
+                                    engine,
+                                    seed,
+                                    control = NULL) {
+  refit <- function(fold_data, fixed, fit_seed) {
+    extra <- setdiff(
+      attr(stats::terms(fixed, data = fold_data), "term.labels"),
+      protected_labels
+    )
+    if (length(extra) == 0L) {
+      # The protected baseline. There is no candidate coefficient for the
+      # compiled prior to name, so the fold is fitted without it -- which is
+      # what makes the pair an increment over a baseline rather than two
+      # runs of one model. It is fitted on brms like the reference, so the
+      # two halves of the increment come from one engine.
+      return(.fb_sel_bayes_refit(
+        base, fold_data, fixed, "brms",
+        engine = engine, seed = fit_seed
+      ))
+    }
+    args <- list(
+      base = base,
+      candidates = stats::as.formula(
+        paste0("~ ", paste(extra, collapse = " + "))
+      ),
+      prior = resolved$compiled$prior,
+      stanvars = resolved$compiled$stanvars,
+      column_map = resolved$column_map,
+      engine = engine,
+      seed = fit_seed,
+      data = fold_data
+    )
+    if (!is.null(control)) {
+      args$control <- control
+    }
+    do.call(.fb_sel_reference_fit, args)
+  }
+
+  .fb_sel_bayes_cv(
+    base = base,
+    candidates = candidates,
+    resamples = resamples,
+    prediction = prediction,
+    metric = metric,
+    engine = engine,
+    seed = seed,
+    # The reference model's data, so the fold refits see the same
+    # standardised candidate columns the reference itself was fitted on.
+    data = resolved$reference_data,
+    refit_fn = refit,
+    # The provider is brms whatever fitted the base: a joint shrinkage prior
+    # is always emitted there.
+    provider = "brms",
+    # The base's own recorded wall time, so the cost estimate costs no fit.
+    probe_seconds = .fb_select_base_seconds(base)
+  )
+}
+
+
+# --- the two stanzas that replace one overloaded label --------------------- #
+
+# .fb_select_mode_oracle() --- the Tier-1 stanza, and why it is usually empty.
+#
+# A mode identity is defined on ONE substrate: the whitened design with the
+# covariance plugged in and the residual scale held at unity. An arm reaches
+# this stanza only when it solved the canonical objective on that substrate
+# AND the comparison against the primary answer was made under the same two
+# conditions. A sampled Bayesian route integrates the covariance and samples
+# `sigma`, so the second never holds there and the stanza is empty on every
+# sampled run.
+#
+# It is a stanza rather than an absent field because "no mode oracle ran" is
+# the thing a reader has to be told: the arm's own internal fidelity to its
+# objective is recorded beside it, and reading that as a statement about the
+# posterior is the category error this split exists to prevent.
+.fb_select_mode_oracle <- function(arms) {
+  empty <- list(
+    available = FALSE,
+    level = "map_exact_fixed_covariance",
+    arms = character(0),
+    reason = paste0(
+      "no arm carries a mode oracle: the identity is defined only with the ",
+      "covariance plugged in and the residual scale held fixed, and the ",
+      "Bayesian route integrates the first and samples the second. The ",
+      "exact-limit bridges test that identity on the fixed-covariance ",
+      "substrate; a posterior is not on it."
+    )
+  )
+  if (length(arms) == 0L) {
+    return(empty)
+  }
+  qualifies <- vapply(
+    arms,
+    function(arm) {
+      own <- arm$provider_equivalence_level
+      comparison <- arm$equivalence_level
+      isTRUE(identical(own$level, "map_exact_fixed_covariance")) &&
+        isTRUE(comparison$covariance_fixed) &&
+        isTRUE(comparison$sigma_fixed)
+    },
+    logical(1L)
+  )
+  if (!any(qualifies)) {
+    return(empty)
+  }
+  list(
+    available = TRUE,
+    level = "map_exact_fixed_covariance",
+    arms = names(arms)[qualifies],
+    reason = paste0(
+      "the covariance and the residual scale were held fixed on both sides, ",
+      "so the posterior mode is the minimiser of the named penalised ",
+      "objective and a numerical oracle gates the claim."
+    )
+  )
+}
+
+
+# .fb_select_predictive_side_by_side() --- the arms' out-of-fold loss, on one
+# metric, at one unit, on one set of folds, or a named reason there is none.
+#
+# Every score here is re-aggregated from the arms' own per-cluster tables
+# through the same function, so "the same loss" is a property of the code
+# rather than of a sentence. The metric is the benchmark metric rather than
+# the decision's: the closed-form arms do not compute `elpd`, and a stanza
+# that placed an elpd beside an nlpd would be the defect this replaces in a
+# new spelling.
+#
+# The fold labels are compared, not assumed. Two arms built from one
+# `fb_resamples()` at one seed do get the same partition, but the stanza's
+# whole claim is "on one set of folds", and a claim that rests on an
+# argument rather than on a comparison is the class of defect the
+# certificate exists to close.
+.fb_select_predictive_side_by_side <- function(primary_clusters,
+                                               arms,
+                                               metric,
+                                               primary_folds = NULL,
+                                               benchmark_folds = NULL) {
+  absent <- function(reason) {
+    list(available = FALSE, arms = NULL, metric = metric, reason = reason)
+  }
+  if (!is.data.frame(primary_clusters) || nrow(primary_clusters) == 0L) {
+    return(absent(paste0(
+      "the primary arm carries no out-of-fold score table, so there is ",
+      "nothing to place beside a benchmark. `benchmark = TRUE` scores the ",
+      "reference model on the benchmark's own folds and is what makes this ",
+      "comparison available."
+    )))
+  }
+  if (length(arms) == 0L) {
+    return(absent(
+      "no benchmark arm ran, so the primary arm's table stands alone."
+    ))
+  }
+  if (!is.null(primary_folds) && !is.null(benchmark_folds) &&
+        !setequal(primary_folds, benchmark_folds)) {
+    return(absent(paste0(
+      "the arms were scored on different partitions -- the primary on ",
+      length(unique(primary_folds)), " fold(s), the benchmark on ",
+      length(unique(benchmark_folds)),
+      " -- so their out-of-fold losses are not comparable."
+    )))
+  }
+
+  score_of <- function(clusters, model) {
+    subset <- clusters[clusters$model == model, , drop = FALSE]
+    if (nrow(subset) == 0L) {
+      return(NULL)
+    }
+    summary <- tryCatch(
+      .fb_sel_aggregate_bayes_scores(subset, metric = metric, unit = "cluster"),
+      error = function(e) NULL
+    )
+    if (is.null(summary)) {
+      return(NULL)
+    }
+    data.frame(
+      model = model,
+      score = as.numeric(summary$score),
+      se = as.numeric(summary$se),
+      n_units = as.integer(summary$n_units),
+      unit = "cluster",
+      stringsAsFactors = FALSE
+    )
+  }
+
+  primary_model <- if ("full" %in% primary_clusters$model) {
+    "full"
+  } else {
+    utils::tail(unique(primary_clusters$model), 1L)
+  }
+  primary_row <- score_of(primary_clusters, primary_model)
+  if (is.null(primary_row)) {
+    return(absent(paste0(
+      "the primary arm's per-unit table carries no `", metric, "` column, ",
+      "so it cannot be scored on the loss the benchmark arms scored."
+    )))
+  }
+  rows <- list(cbind(arm = "bayes", primary_row, stringsAsFactors = FALSE))
+
+  for (nm in names(arms)) {
+    arm <- arms[[nm]]
+    agg <- arm$scores
+    if (is.data.frame(agg) && "full" %in% agg$model) {
+      row <- agg[agg$model == "full", , drop = FALSE]
+      rows[[length(rows) + 1L]] <- data.frame(
+        arm = nm, model = "full",
+        score = as.numeric(row$score[[1L]]),
+        se = as.numeric(row$se[[1L]]),
+        n_units = as.integer(row$n_units[[1L]]),
+        unit = as.character(row$se_unit[[1L]]),
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    chosen <- arm$selection
+    if (is.list(chosen) && is.data.frame(chosen$scores) &&
+          !is.null(chosen$selected_model)) {
+      row <- chosen$scores[chosen$scores$model == chosen$selected_model, ,
+                           drop = FALSE]
+      if (nrow(row) == 1L) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          arm = nm, model = as.character(chosen$selected_model),
+          score = as.numeric(row$score[[1L]]),
+          se = as.numeric(row$se[[1L]]),
+          n_units = as.integer(row$n_units[[1L]]),
+          unit = as.character(chosen$unit %||% NA_character_),
+          stringsAsFactors = FALSE
+        )
+      }
+    }
+  }
+  if (length(rows) < 2L) {
+    return(absent(paste0(
+      "no benchmark arm carries an out-of-fold score at the resampling ",
+      "unit, so the primary arm's own table stands alone."
+    )))
+  }
+  table <- do.call(rbind, rows)
+  # An arm that aggregated at a different number of units did not score the
+  # same loss, whatever the column is called. It is dropped and named rather
+  # than averaged in: a two-fold standard error beside a twelve-site one is
+  # the defect this stanza replaces, in a new spelling.
+  agrees <- table$n_units == table$n_units[[1L]]
+  dropped <- table$arm[!agrees]
+  table <- table[agrees, , drop = FALSE]
+  if (nrow(table) < 2L) {
+    return(absent(paste0(
+      "the arms aggregated at different numbers of units (",
+      paste(paste0(
+        do.call(rbind, rows)$arm, ": ", do.call(rbind, rows)$n_units
+      ), collapse = "; "),
+      "), so no two of them scored one loss at one unit."
+    )))
+  }
+  list(
+    available = TRUE,
+    excluded = dropped,
+    metric = metric,
+    arms = table,
+    reason = paste0(
+      "every arm's score is the out-of-fold `", metric, "` aggregated at ",
+      "the resampling unit on one set of folds, under one prediction ",
+      "target. Similar predictive risk is what this licenses; identical ",
+      "coefficients or supports are not.",
+      if (length(dropped) > 0L) {
+        paste0(
+          " Excluded for aggregating at a different number of units: ",
+          paste(dropped, collapse = ", "), "."
+        )
+      } else {
+        ""
+      }
+    )
   )
 }
 
@@ -681,7 +1008,8 @@
                                  metric,
                                  prior_family,
                                  blocks = NULL,
-                                 decision = NULL) {
+                                 decision = NULL,
+                                 shared_predictive_table = FALSE) {
   arms <- list()
   refusals <- character(0)
 
@@ -708,7 +1036,8 @@
       prior_family = prior_family,
       provider = "gls_reml_plugin",
       covariance_fixed = FALSE,
-      sigma_fixed = FALSE
+      sigma_fixed = FALSE,
+      shared_predictive_table = shared_predictive_table
     ),
     metric = gls$metric
   )
@@ -721,6 +1050,15 @@
         "stands; no substitute optimiser was chosen."
       ))
     } else {
+      # The scoring unit is the RESAMPLING unit, as it is on every other
+      # arm. Left at its own default the optimiser path scores at the fold,
+      # so a side-by-side table would have put a twelve-site standard error
+      # beside a two-fold one and called them one loss.
+      cluster_key <- if (length(resamples$unit %||% character(0)) > 0L) {
+        .fb_sel_key(base$data, resamples$unit)
+      } else {
+        NULL
+      }
       path <- tryCatch(
         .fb_sel_glmnet_path(
           substrate = gls$substrates,
@@ -733,7 +1071,7 @@
             benchmark = TRUE
           ),
           seed = seed,
-          cluster = NULL
+          cluster = cluster_key
         ),
         # A refusal IS an error condition (class `flexybayes_refusal` sits
         # above `error`), so one handler catches both and the reason code is
@@ -764,7 +1102,8 @@
             prior_family = prior_family,
             provider = "glmnet",
             covariance_fixed = FALSE,
-            sigma_fixed = FALSE
+            sigma_fixed = FALSE,
+            shared_predictive_table = shared_predictive_table
           )
         )
       }
@@ -855,7 +1194,13 @@
 #' @param fallback `"none"` (default) or `"glmnet"`. Fires only when the
 #'   Bayesian provider is absent, never after a failure.
 #' @param benchmark `TRUE` also runs the unpenalised generalised-least-squares
-#'   arm and, where a penalty was given, the `glmnet` arm on the same folds.
+#'   arm and, where a penalty was given, the `glmnet` arm on the same folds
+#'   -- and scores the reference model itself out of fold, so the arms have
+#'   one loss at one unit to be placed beside. That last part is what the
+#'   certificate's `predictive_side_by_side` stanza reports and what the
+#'   equivalence level `posterior_predictive_comparable` requires; without
+#'   it the certificate says so by name rather than claiming a comparison
+#'   nobody made. It costs one reference refit per fold per model.
 #' @param resamples An [fb_resamples()] specification.
 #' @param prediction `"new_cluster"` (default) or `"known_cluster"`. A
 #'   held-out cluster's own effect is not estimable from the training rows,
@@ -1057,7 +1402,8 @@ fb_select <- function(base,
       metric = .fb_select_benchmark_metric(metric),
       prior_family = "none",
       blocks = NULL,
-      decision = decision
+      decision = decision,
+      shared_predictive_table = TRUE
     )
     return(.fb_select_assemble(
       base = base,
@@ -1139,7 +1485,11 @@ fb_select <- function(base,
         metric = .fb_select_benchmark_metric(metric),
         prior_family = "none",
         blocks = NULL,
-        decision = decision
+        decision = decision,
+        # This route always writes a unit-level out-of-fold table, so the
+        # comparison the middle equivalence level names is one that
+        # happened.
+        shared_predictive_table = TRUE
       )
     }
     return(.fb_select_assemble(
@@ -1296,8 +1646,25 @@ fb_select <- function(base,
     )
   }
 
+  # The primary arm's own out-of-fold score, on the folds the projection
+  # used, so a benchmark placed beside it is placed beside something. It is
+  # `benchmark = TRUE` only because it costs a reference refit per fold per
+  # model; the certificate says which of the two situations a reader is in.
   bench <- NULL
+  reference_cv <- NULL
   if (isTRUE(benchmark)) {
+    reference_cv <- .fb_select_reference_cv(
+      base = base,
+      candidates = candidates,
+      resolved = resolved,
+      protected_labels = protected_labels,
+      resamples = resamples,
+      prediction = prediction,
+      metric = metric,
+      engine = engine,
+      seed = seed,
+      control = reference_args$control
+    )
     bench <- .fb_select_benchmark(
       base = base,
       candidates = candidates,
@@ -1309,7 +1676,8 @@ fb_select <- function(base,
       metric = .fb_select_benchmark_metric(metric),
       prior_family = prior_family,
       blocks = resolved$blocks,
-      decision = decision
+      decision = decision,
+      shared_predictive_table = !is.null(reference_cv$aggregated)
     )
   }
 
@@ -1323,7 +1691,12 @@ fb_select <- function(base,
     ),
     cv = list(
       folds = folds,
-      aggregated = NULL,
+      # NULL unless `benchmark = TRUE` asked for the reference model to be
+      # scored out of fold; the certificate's `predictive_side_by_side`
+      # stanza names that as the reason where it is absent.
+      aggregated = reference_cv$aggregated,
+      clusters = reference_cv$clusters,
+      rows = reference_cv$rows,
       metric = metric,
       prediction = prediction,
       seed = seed,
@@ -1411,7 +1784,8 @@ fb_select <- function(base,
     metric = .fb_select_benchmark_metric(metric),
     prior_family = prior_family,
     blocks = resolved$blocks,
-    decision = decision
+    decision = decision,
+    shared_predictive_table = TRUE
   )
   if (is.null(bench$arms$glmnet)) {
     stop(.fb_refusal_condition(
@@ -1501,6 +1875,20 @@ fb_select <- function(base,
     )
   }
 
+  fold_labels <- function(folds) {
+    if (length(folds %||% list()) == 0L) {
+      return(NULL)
+    }
+    vapply(folds, function(sp) as.character(sp$label), character(1L))
+  }
+  side_by_side <- .fb_select_predictive_side_by_side(
+    primary_clusters = cv$clusters,
+    arms = benchmark$arms %||% list(),
+    metric = .fb_select_benchmark_metric(cv$metric %||% metric),
+    primary_folds = fold_labels(cv$folds),
+    benchmark_folds = fold_labels(benchmark$folds)
+  )
+
   certificate <- .fb_select_certificate(
     base = base,
     axes = axes,
@@ -1517,7 +1905,8 @@ fb_select <- function(base,
     calibration = calibration,
     provider_versions = provider_versions,
     column_map = column_map,
-    reference_engine = reference_engine
+    reference_engine = reference_engine,
+    predictive_side_by_side = side_by_side
   )
 
   structure(
@@ -1780,6 +2169,27 @@ print.fb_select <- function(x, digits = 4L, ...) {
         sep = ""
       )
     }
+    ps <- cert$predictive_side_by_side
+    if (isTRUE(ps$available)) {
+      cat("    side by side, out-of-fold ", ps$metric,
+          " at the resampling unit:\n", sep = "")
+      for (i in seq_len(nrow(ps$arms))) {
+        cat("      ", format(ps$arms$arm[[i]], width = 8), " ",
+            format(round(ps$arms$score[[i]], digits), nsmall = 2L),
+            "  (", ps$arms$n_units[[i]], " ", ps$arms$unit[[i]], ")\n",
+            sep = "")
+      }
+    } else {
+      cat("    side by side: none -- ", .fb_squish(ps$reason), "\n", sep = "")
+    }
+    mo <- cert$mode_oracle
+    cat("    mode oracle: ",
+        if (isTRUE(mo$available)) {
+          paste(mo$arms, collapse = ", ")
+        } else {
+          "none"
+        },
+        " -- ", .fb_squish(mo$reason), "\n", sep = "")
   }
 
   if (length(cert$approximations) > 0L) {
@@ -2123,6 +2533,33 @@ print.fb_select_certificate <- function(x, ...) {
     for (nm in names(x$benchmark)) {
       cat("    ", nm, ": ", x$benchmark[[nm]]$equivalence_level, "\n",
           sep = "")
+    }
+  }
+  mo <- x$mode_oracle
+  if (!is.null(mo)) {
+    cat("  mode oracle: ",
+        if (isTRUE(mo$available)) {
+          paste0(paste(mo$arms, collapse = ", "), " [", mo$level, "]")
+        } else {
+          "none"
+        },
+        "\n", sep = "")
+    cat("               ", .fb_squish(mo$reason), "\n", sep = "")
+  }
+  ps <- x$predictive_side_by_side
+  if (!is.null(ps)) {
+    if (isTRUE(ps$available)) {
+      cat("  side by side (out-of-fold ", ps$metric,
+          ", at the resampling unit):\n", sep = "")
+      for (i in seq_len(nrow(ps$arms))) {
+        cat("    ", format(ps$arms$arm[[i]], width = 8), " ",
+            format(round(ps$arms$score[[i]], 4L), nsmall = 4L),
+            "  (se ", format(round(ps$arms$se[[i]], 4L), nsmall = 4L),
+            ", ", ps$arms$n_units[[i]], " ", ps$arms$unit[[i]], ")\n",
+            sep = "")
+      }
+    } else {
+      cat("  side by side: none -- ", .fb_squish(ps$reason), "\n", sep = "")
     }
   }
   cat("  approximations: ",

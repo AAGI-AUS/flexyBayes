@@ -411,13 +411,18 @@ test_that("the equivalence level table reads as section 8.1 writes it", {
 
   # Integrating the covariance, or leaving the residual scale free, changes
   # the estimand: predictive risk on common folds still compares, coefficients
-  # do not.
+  # do not -- and "on common folds" is a condition, not a figure of speech,
+  # so the middle level needs the shared table stated.
   expect_identical(
-    .fb_sel_equivalence_level("ridge", "glmnet", FALSE, TRUE)$level,
+    .fb_sel_equivalence_level(
+      "ridge", "glmnet", FALSE, TRUE, shared_predictive_table = TRUE
+    )$level,
     "posterior_predictive_comparable"
   )
   expect_identical(
-    .fb_sel_equivalence_level("laplace", "glmnet", TRUE, FALSE)$level,
+    .fb_sel_equivalence_level(
+      "laplace", "glmnet", TRUE, FALSE, shared_predictive_table = TRUE
+    )$level,
     "posterior_predictive_comparable"
   )
 
@@ -456,6 +461,53 @@ test_that("the equivalence level table reads as section 8.1 writes it", {
   )
   expect_error(
     .fb_sel_equivalence_level("ridge", "glmnet", NA, TRUE),
+    "must be TRUE or FALSE",
+    fixed = TRUE
+  )
+})
+
+
+test_that("the middle level is not reached without a shared out-of-fold score", {
+  # The defect this closes. `posterior_predictive_comparable` says the arms
+  # were scored "on the same folds, target, loss, unit and candidate
+  # design". The Bayesian penalised route wrote no out-of-fold score at all,
+  # so the label was printed about a comparison nobody had made. The flag
+  # defaults to FALSE: a caller who has not built the shared table cannot
+  # reach the level by forgetting.
+  no_table <- .fb_sel_equivalence_level("ridge", "glmnet", FALSE, FALSE)
+  expect_identical(no_table$level, "no_identity_expected")
+  expect_match(
+    no_table$reason, "no common out-of-fold score", fixed = TRUE
+  )
+  expect_match(no_table$reason, "benchmark = TRUE", fixed = TRUE)
+  expect_false(no_table$shared_predictive_table)
+
+  with_table <- .fb_sel_equivalence_level(
+    "ridge", "glmnet", FALSE, FALSE, shared_predictive_table = TRUE
+  )
+  expect_identical(with_table$level, "posterior_predictive_comparable")
+
+  # The flag cannot raise a comparison past what the family supports: a
+  # scale mixture glmnet has no representation of stays where it was.
+  expect_identical(
+    .fb_sel_equivalence_level(
+      "regularized_horseshoe", "glmnet", FALSE, FALSE,
+      shared_predictive_table = TRUE
+    )$level,
+    "no_identity_expected"
+  )
+  # Nor past the exact limit: with both conditions held the level is the
+  # Tier-1 one whatever the flag says.
+  expect_identical(
+    .fb_sel_equivalence_level(
+      "ridge", "glmnet", TRUE, TRUE, shared_predictive_table = FALSE
+    )$level,
+    "map_exact_fixed_covariance"
+  )
+  expect_error(
+    .fb_sel_equivalence_level(
+      "ridge", "glmnet", TRUE, TRUE, shared_predictive_table = NA
+    ),
     "must be TRUE or FALSE",
     fixed = TRUE
   )

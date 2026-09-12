@@ -649,18 +649,29 @@
 #                                   free, so the estimands differ and only
 #                                   predictive risk on common folds compares
 #   no_identity_expected            the provider has no representation of the
-#                                   family at all; the arms are reported side
-#                                   by side and nothing is claimed
+#                                   family at all, OR the two arms were never
+#                                   scored on one loss at one unit on one set
+#                                   of folds; the arms are reported side by
+#                                   side and nothing is claimed
 #
 # The rule that decides is deliberately narrow. `map_exact_fixed_covariance`
 # is the only level with a numerical gate behind it, so it is the only one
 # that may be reached by default, and it is reached only when every condition
 # the identity rests on is stated as true by the caller.
+#
+# `shared_predictive_table` is the middle level's own gate and it defaults to
+# FALSE. `posterior_predictive_comparable` says the arms were scored on the
+# same folds, target, loss, unit and candidate design -- and the Bayesian
+# penalised route did not write an out-of-fold score at all, so that sentence
+# was printed about a comparison nobody had made. It is now printed only when
+# the caller states that both arms carry the same unit-level table, and the
+# caller states it by having built one.
 .fb_sel_equivalence_level <- function(
   prior_family,
   provider,
   covariance_fixed,
-  sigma_fixed
+  sigma_fixed,
+  shared_predictive_table = FALSE
 ) {
   providers <- .fb_sel_equivalence_providers()
   if (
@@ -679,6 +690,9 @@
   }
   covariance_fixed <- flag(covariance_fixed, "covariance_fixed")
   sigma_fixed <- flag(sigma_fixed, "sigma_fixed")
+  shared_predictive_table <- flag(
+    shared_predictive_table, "shared_predictive_table"
+  )
 
   expressible <- providers[[provider]]
   level <- NULL
@@ -714,18 +728,37 @@
       },
       if (!sigma_fixed) "the residual scale is free"
     )
-    level <- "posterior_predictive_comparable"
-    reason <- paste0(
-      "`",
-      provider,
-      "` expresses a `",
-      prior_family,
-      "` penalty, but ",
-      paste(missing_condition, collapse = " and "),
-      ", so the two arms estimate different objects. Scored on the same ",
-      "folds, target, loss, unit and candidate design, their predictive ",
-      "risk is comparable; their coefficients and supports are not."
-    )
+    if (shared_predictive_table) {
+      level <- "posterior_predictive_comparable"
+      reason <- paste0(
+        "`",
+        provider,
+        "` expresses a `",
+        prior_family,
+        "` penalty, but ",
+        paste(missing_condition, collapse = " and "),
+        ", so the two arms estimate different objects. Scored on the same ",
+        "folds, target, loss, unit and candidate design, their predictive ",
+        "risk is comparable; their coefficients and supports are not."
+      )
+    } else {
+      level <- "no_identity_expected"
+      reason <- paste0(
+        "`",
+        provider,
+        "` expresses a `",
+        prior_family,
+        "` penalty, but ",
+        paste(missing_condition, collapse = " and "),
+        ", so no mode identity holds; and the two arms carry no common ",
+        "out-of-fold score -- one unit-level loss, on one set of folds, ",
+        "under one prediction target -- so their predictive risk was never ",
+        "compared either. The arms are reported side by side and nothing ",
+        "is claimed. `benchmark = TRUE` scores the Bayesian arm on the ",
+        "benchmark's own folds and is what makes the middle level ",
+        "available."
+      )
+    }
   }
 
   list(
@@ -734,7 +767,8 @@
     prior_family = prior_family,
     provider = provider,
     covariance_fixed = covariance_fixed,
-    sigma_fixed = sigma_fixed
+    sigma_fixed = sigma_fixed,
+    shared_predictive_table = shared_predictive_table
   )
 }
 
