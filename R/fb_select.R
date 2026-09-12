@@ -405,7 +405,12 @@
         estimand = cv$covariance_estimand %||% NA_character_,
         # The builder is a property of the base's own covariance, not of the
         # request, so it is derived from the fit rather than declared.
-        builder = if (inherits(bs, "try-error") || !isTRUE(bs$applicable)) {
+        # A builder assembles a plugged-in V; on a route where the engine
+        # integrates over the covariance there is no V to build and the
+        # field says so rather than naming a builder that never ran.
+        builder = if (identical(cv$covariance_estimand, "integrated")) {
+          "none: covariance integrated by the engine"
+        } else if (inherits(bs, "try-error") || !isTRUE(bs$applicable)) {
           "random_term_reduction"
         } else {
           "block_cholesky"
@@ -427,7 +432,11 @@
         repeats = resamples$repeats,
         n_folds = length(cv$folds %||% list()),
         prediction = cv$prediction,
-        scoring_unit = cv$aggregated$se_unit[[1L]] %||% NA_character_,
+        # The projection route scores at the resampling unit inside the
+        # search itself and carries no aggregated table, so the unit is read
+        # off the projection's own scoring record.
+        scoring_unit = cv$aggregated$se_unit[[1L]] %||%
+          projection$scoring$unit %||% NA_character_,
         seed = cv$seed,
         metric = cv$metric
       ),

@@ -18,7 +18,7 @@ authors:
     family-names: "Moldovan"
     email: "max.moldovan@adelaide.edu.au"
     orcid: "https://orcid.org/0000-0001-9680-8474"
-version: 0.10.0.9000
+version: 0.11.0
 date-released: "2026-09-11"
 license: MIT
 repository-code: "https://github.com/AAGI-AUS/flexyBayes"
