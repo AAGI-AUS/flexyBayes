@@ -477,7 +477,7 @@
   if (!identical(calibration$basis, "rows")) {
     approximations <- c(approximations, paste0(
       "calibration_n_at_the_resampling_unit: the prior scales are ",
-      "calibrated against ", calibration$n, " ",
+      "calibrated against ", calibration$n, " units of ",
       paste(calibration$unit, collapse = ", "), " rather than against ",
       nrow(data), " rows, because rows inside a cluster are not ",
       "independent pieces of evidence about a coefficient"
@@ -677,7 +677,7 @@
         # now carries both, and the two name the unit differently -- the
         # search by the grouping variable, the table by the kind of unit.
         scoring_unit = projection$scoring$unit %||%
-          cv$aggregated$se_unit[[1L]] %||% "not scored out of fold",
+          cv$aggregated$se_unit[[1L]] %||% NA_character_,
         seed = cv$seed,
         metric = cv$metric
       ),
@@ -2288,8 +2288,13 @@ print.fb_select <- function(x, digits = 4L, ...) {
     sep = ""
   )
   cat("  resampling: ", cert$resampling$n_folds, " folds, prediction ",
-      cert$resampling$prediction, ", scored at ",
-      cert$resampling$scoring_unit %||% "the fold", "\n", sep = "")
+      cert$resampling$prediction,
+      if (is.na(cert$resampling$scoring_unit %||% NA_character_)) {
+        ", no out-of-fold score on this route"
+      } else {
+        paste0(", scored at ", cert$resampling$scoring_unit)
+      },
+      "\n", sep = "")
 
   base_engine <- if (inherits(x$base, "flexybayes_inla")) {
     "inla"
@@ -2678,7 +2683,12 @@ print.fb_select_certificate <- function(x, ...) {
   cat("  covariance : ", x$covariance$builder %||% "unknown builder", " / ",
       x$covariance$estimand %||% "not recorded", "\n", sep = "")
   cat("  prediction : ", x$resampling$prediction, "\n", sep = "")
-  cat("  scored at  : ", x$resampling$scoring_unit %||% "the fold", "\n",
+  cat("  scored at  : ",
+      if (is.na(x$resampling$scoring_unit %||% NA_character_)) {
+        "no out-of-fold score on this route"
+      } else {
+        x$resampling$scoring_unit
+      }, "\n",
       sep = "")
   if (!is.na(x$structure_verdict %||% NA_character_)) {
     cat("  structure  : ", x$structure_verdict, "\n", sep = "")
