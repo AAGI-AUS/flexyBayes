@@ -111,6 +111,10 @@
   # refusals, including the leakage gate.
   .populate_refusal_registry_selection_resamples()
 
+  # 0.11.0: the joint-prior layer's grammar, resolution, targeting and
+  # scaling refusals.
+  .populate_refusal_registry_penalty()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
