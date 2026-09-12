@@ -111,6 +111,10 @@
   # refusals, including the leakage gate.
   .populate_refusal_registry_selection_resamples()
 
+  # 0.11.0: the reference model's adequacy gates and the projection
+  # provider's structure and family gates.
+  .populate_refusal_registry_selection_projection()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
