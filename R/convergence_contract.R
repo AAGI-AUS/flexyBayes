@@ -139,9 +139,135 @@
       mode_status = if (is.null(ms)) NA_real_ else as.numeric(ms),
       mlik = if (is.null(mlik)) NA_real_ else as.numeric(mlik),
       numerical_confirm = if (is.null(nc$pass)) NA else nc$pass,
-      max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_
+      max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_,
+      # The sampler items, carried as absent so the evidence list has one
+      # shape on both engines and a consumer can read a field without
+      # first asking which engine answered.
+      min_ess_tail = NA_real_, min_ebfmi = NA_real_,
+      n_max_treedepth = NA_integer_, max_treedepth = NA_real_
     ))
   )
+}
+
+# --- the NUTS evidence a summary table does not carry ------------------ #
+#
+# max R-hat, bulk ESS and the divergence count reach the verdict through
+# the summary slot .brms_convergence() wrote at fit time. Three further
+# items are properties of the sampler's own trajectory and are read off
+# the live brmsfit instead: treedepth saturation, E-BFMI, and tail ESS.
+# They are read here rather than recomputed from the summary because the
+# summary does not carry them at all -- an absent field is what audit A25
+# was about, and inventing one from what is present is the same mistake in
+# a new place.
+
+# Stan's guidance, and the reason the three items are not treated alike:
+# a divergence, an E-BFMI below 0.2 and a starved tail are evidence the
+# posterior was not explored correctly; saturating max treedepth is
+# evidence the sampler was slow, not that the answer is wrong. The first
+# two join the failure vote; treedepth is recorded and reported as
+# evidence, and does not flip the verdict.
+.FB_CONV_EBFMI_MIN <- 0.2
+
+# E-BFMI on one chain: the mean squared successive difference in energy
+# against the energy variance (Betancourt 2016, eq. 30).
+.fb_conv_ebfmi <- function(energy) {
+  energy <- energy[is.finite(energy)]
+  if (length(energy) < 2L) {
+    return(NA_real_)
+  }
+  denom <- sum((energy - mean(energy))^2)
+  if (!is.finite(denom) || denom <= 0) {
+    return(NA_real_)
+  }
+  sum(diff(energy)^2) / denom
+}
+
+# The sampler's own treedepth ceiling, read from the arguments the fit was
+# run with. Saturation is `treedepth == max_depth`, so the ceiling has to
+# come from the run rather than from Stan's documented default: a fit with
+# `control = list(max_treedepth = 12)` saturates at 12 and a hard-coded 10
+# would count twelve-deep trajectories that never hit the ceiling.
+.fb_conv_brms_max_treedepth <- function(brmsfit) {
+  sa <- tryCatch(brmsfit$fit@stan_args, error = function(e) NULL)
+  if (!is.list(sa) || length(sa) == 0L) {
+    return(NA_real_)
+  }
+  md <- unlist(
+    lapply(sa, function(a) a$max_depth %||% a$control$max_treedepth),
+    use.names = FALSE
+  )
+  md <- suppressWarnings(as.numeric(md))
+  md <- md[is.finite(md)]
+  if (length(md) == 0L) {
+    return(NA_real_)
+  }
+  max(md)
+}
+
+.fb_conv_brms_sampler_evidence <- function(fit) {
+  out <- list(
+    n_divergent = NA_integer_,
+    n_max_treedepth = NA_integer_,
+    max_treedepth = NA_real_,
+    min_ebfmi = NA_real_,
+    min_ess_tail = NA_real_
+  )
+  brmsfit <- fit$brms
+  if (is.null(brmsfit) || !requireNamespace("brms", quietly = TRUE)) {
+    return(out)
+  }
+
+  np <- tryCatch(brms::nuts_params(brmsfit), error = function(e) NULL)
+  if (
+    is.data.frame(np) &&
+      all(c("Parameter", "Value", "Chain") %in% names(np))
+  ) {
+    par <- as.character(np$Parameter)
+    div <- np$Value[par == "divergent__"]
+    if (length(div) > 0L) {
+      out$n_divergent <- as.integer(sum(div > 0, na.rm = TRUE))
+    }
+    td <- np$Value[par == "treedepth__"]
+    if (length(td) > 0L) {
+      ceiling_td <- .fb_conv_brms_max_treedepth(brmsfit)
+      out$max_treedepth <- max(td, na.rm = TRUE)
+      if (is.finite(ceiling_td)) {
+        out$n_max_treedepth <- as.integer(sum(td >= ceiling_td, na.rm = TRUE))
+      }
+    }
+    energy <- np[par == "energy__", , drop = FALSE]
+    if (nrow(energy) > 0L) {
+      per_chain <- vapply(
+        split(energy$Value, energy$Chain),
+        .fb_conv_ebfmi,
+        numeric(1L)
+      )
+      per_chain <- per_chain[is.finite(per_chain)]
+      if (length(per_chain) > 0L) {
+        out$min_ebfmi <- min(per_chain)
+      }
+    }
+  }
+
+  if (requireNamespace("posterior", quietly = TRUE)) {
+    tail_ess <- tryCatch(
+      posterior::summarise_draws(brmsfit, "ess_tail"),
+      error = function(e) NULL
+    )
+    if (is.data.frame(tail_ess) && "ess_tail" %in% names(tail_ess)) {
+      v <- stats::setNames(
+        as.numeric(tail_ess$ess_tail),
+        as.character(tail_ess$variable)
+      )
+      v <- .fb_drop_bookkeeping(v)
+      v <- v[is.finite(v)]
+      if (length(v) > 0L) {
+        out$min_ess_tail <- min(v)
+      }
+    }
+  }
+
+  out
 }
 
 .fb_conv_verdict_brms <- function(fit) {
@@ -150,15 +276,63 @@
   # already reports NA where the sampler diagnostics are absent, so the
   # verdict adopts its answer rather than re-deriving one with a second set
   # of thresholds that could drift from the first.
+  s <- .fb_conv_brms_sampler_evidence(fit)
+
+  ok <- d$ok
+  reasons <- d$reasons
+  fail <- function(reason) {
+    ok <<- FALSE
+    reasons <<- c(reasons, reason)
+  }
+
+  # A divergence count the summary slot did not carry, taken from the
+  # trajectory itself. Where both are present the summary's own count has
+  # already voted, so this only fills a gap.
+  if (
+    !isTRUE(is.finite(d$n_divergent)) &&
+      is.finite(s$n_divergent) &&
+      s$n_divergent > 0L
+  ) {
+    fail(sprintf(
+      "%d divergent transition%s",
+      s$n_divergent,
+      if (s$n_divergent == 1L) "" else "s"
+    ))
+  }
+  if (is.finite(s$min_ebfmi) && s$min_ebfmi < .FB_CONV_EBFMI_MIN) {
+    fail(sprintf(
+      "E-BFMI %.3f on the worst chain is below %.1f",
+      s$min_ebfmi,
+      .FB_CONV_EBFMI_MIN
+    ))
+  }
+  if (is.finite(s$min_ess_tail) && s$min_ess_tail < .FB_TRIANGULATE_ESS_MIN) {
+    fail(sprintf(
+      "min tail ESS %.0f is below %d",
+      s$min_ess_tail,
+      as.integer(.FB_TRIANGULATE_ESS_MIN)
+    ))
+  }
+  # Missing evidence never becomes TRUE: an NA from the summary layer
+  # stays NA when the trajectory evidence merely fails to contradict it.
+
   list(
     engine = "brms",
-    ok = d$ok,
-    reasons = d$reasons,
+    ok = ok,
+    reasons = as.character(reasons),
     evidence = list(
       mode_status = NA_real_, mlik = NA_real_, numerical_confirm = NA,
       max_rhat = d$max_rhat,
       min_ess_bulk = d$min_ess_bulk,
-      n_divergent = d$n_divergent
+      n_divergent = if (is.finite(d$n_divergent)) {
+        d$n_divergent
+      } else {
+        s$n_divergent
+      },
+      min_ess_tail = s$min_ess_tail,
+      min_ebfmi = s$min_ebfmi,
+      n_max_treedepth = s$n_max_treedepth,
+      max_treedepth = s$max_treedepth
     )
   )
 }
@@ -184,7 +358,9 @@
     reasons = "this fit records no convergence diagnostics",
     evidence = list(
       mode_status = NA_real_, mlik = NA_real_, numerical_confirm = NA,
-      max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_
+      max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_,
+      min_ess_tail = NA_real_, min_ebfmi = NA_real_,
+      n_max_treedepth = NA_integer_, max_treedepth = NA_real_
     )
   )
 }
