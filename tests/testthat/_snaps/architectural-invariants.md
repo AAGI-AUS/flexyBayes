@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=136
+      .refusal_registry: locked=TRUE n_keys=150
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -203,9 +203,23 @@
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer
+        selection_base_shape_unreadable
+        selection_candidates_not_constant_within_term
         selection_covariance_not_buildable
         selection_covariance_not_positive_definite
         selection_dense_reference_too_large
+        selection_missing_response_estimand_unnamed
+        selection_missing_response_in_objective
+        selection_offset_absorbed_twice
+        selection_penalty_coordinate_basis_dependent
+        selection_preprocessing_leak
+        selection_rank_deficient_protected
+        selection_reduction_absorption_unsupported
+        selection_reduction_level_mismatch
+        selection_reduction_term_not_in_fit
+        selection_weights_absorbed_twice
+        selection_weights_loss_route_requires_residual_only
+        selection_weights_not_positive
         smooth_variable_not_in_data
         stan_cannot_represent_ar1_field
         stan_cannot_represent_ar1_residual

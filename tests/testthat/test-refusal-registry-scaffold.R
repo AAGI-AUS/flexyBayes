@@ -360,7 +360,40 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # covariance reference was asked for above its size cap, since it is an
   # oracle for small cases and the deposit's V would be about 43 GB
   # (selection_dense_reference_too_large) (= 136).
-  expect_equal(length(entries), 136L)
+  # The random-term reduction adds five. The term asked for is not in the
+  # fit or its levels cannot be recovered (selection_reduction_term_not_in_fit)
+  # (= 137); a term reports a level absent from the data, so effects and
+  # covariates cannot be matched by name and a positional match would attach
+  # every covariate value to the wrong level
+  # (selection_reduction_level_mismatch) (= 138); a candidate is not constant
+  # within the term's levels or does not vary across them, which is the rule
+  # that makes the site / year asymmetry structural rather than something to
+  # audit afterwards (selection_candidates_not_constant_within_term) (= 139);
+  # the base fit does not carry the parsed model and data the builders read,
+  # as on the aggregated route (selection_base_shape_unreadable) (= 140); and
+  # absorbing the reduction term as fixed would leave further random terms,
+  # which needs a mixed refit this release does not do
+  # (selection_reduction_absorption_unsupported) (= 141).
+  # The design side adds two: X0 is rank deficient after whitening and the
+  # estimable span is named (selection_rank_deficient_protected) (= 142); and
+  # a coordinate-wise L1 component was aimed at a basis-dependent target,
+  # where within-factor selection is not contrast-invariant and this release
+  # does not pretend otherwise
+  # (selection_penalty_coordinate_basis_dependent) (= 143).
+  # Weights, offsets and missing responses add seven, all guarding the same
+  # clause -- that a quantity is absorbed exactly once. Non-positive weights
+  # (selection_weights_not_positive) (= 144); a weight in the covariance and
+  # in the provider loss, or twice in either (selection_weights_absorbed_twice)
+  # (= 145); the loss route used where V carries a random part, where the two
+  # weightings are not the same estimator (
+  # selection_weights_loss_route_requires_residual_only) (= 146); an offset
+  # added back twice (selection_offset_absorbed_twice) (= 147); a missing
+  # response admitted to a covariance block with no named estimand
+  # (selection_missing_response_estimand_unnamed) (= 148); a missing response
+  # reaching the objective (selection_missing_response_in_objective) (= 149);
+  # and a transformation learned from rows outside the training fold
+  # (selection_preprocessing_leak) (= 150).
+  expect_equal(length(entries), 150L)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
@@ -373,6 +406,20 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_covariance_not_buildable" %in% entries)
   expect_true("selection_covariance_not_positive_definite" %in% entries)
   expect_true("selection_dense_reference_too_large" %in% entries)
+  expect_true("selection_reduction_term_not_in_fit" %in% entries)
+  expect_true("selection_reduction_level_mismatch" %in% entries)
+  expect_true("selection_candidates_not_constant_within_term" %in% entries)
+  expect_true("selection_base_shape_unreadable" %in% entries)
+  expect_true("selection_reduction_absorption_unsupported" %in% entries)
+  expect_true("selection_rank_deficient_protected" %in% entries)
+  expect_true("selection_penalty_coordinate_basis_dependent" %in% entries)
+  expect_true("selection_weights_not_positive" %in% entries)
+  expect_true("selection_weights_absorbed_twice" %in% entries)
+  expect_true("selection_weights_loss_route_requires_residual_only" %in% entries)
+  expect_true("selection_offset_absorbed_twice" %in% entries)
+  expect_true("selection_missing_response_estimand_unnamed" %in% entries)
+  expect_true("selection_missing_response_in_objective" %in% entries)
+  expect_true("selection_preprocessing_leak" %in% entries)
   expect_true("multivariate_smooth_unsupported" %in% entries)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)

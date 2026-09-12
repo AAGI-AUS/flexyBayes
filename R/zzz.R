@@ -99,6 +99,14 @@
   # 0.10.0.9000: the selection module's covariance-builder refusals.
   .populate_refusal_registry_selection()
 
+  # 0.10.0.9000: the selection module's design-side refusals -- the
+  # protected reduction's rank deficiency and the coordinate-semantics gate.
+  .populate_refusal_registry_selection_design()
+
+  # 0.10.0.9000: the selection module's weight, offset and missing-response
+  # absorption refusals.
+  .populate_refusal_registry_selection_weights()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
