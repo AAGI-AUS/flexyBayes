@@ -420,7 +420,33 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # Gaussian with an identity link, where the whitening identity is not
   # exact and no single V survives integrating the random effects
   # (selection_family_not_supported) (= 163).
-  expect_equal(length(entries), 163L)
+  #
+  # The 0.11.0 selection module adds twenty-two, in five tranches, each
+  # registered beside the site that throws it and each with a triggering
+  # test. The joint-prior grammar and its compiler add nine
+  # (selection_penalty_spec_malformed, selection_penalty_target_unsupported,
+  # selection_penalty_target_not_in_model,
+  # selection_penalty_target_ambiguous, selection_penalty_family_unknown,
+  # penalty_hyperparameter_invalid, penalty_block_overlap,
+  # penalty_block_targeting_unsupported, penalty_factor_contrast_ambiguous)
+  # plus two the scaling and contrast rules need
+  # (penalty_scaling_column_constant, selection_penalty_family_withdrawn)
+  # (= 174). The reference model and the projection add four
+  # (penalty_sampler_diagnostics_failed, penalty_reference_model_inadequate,
+  # projection_structure_unsupported, projection_family_unsupported)
+  # (= 178). The per-fold Bayesian route adds two
+  # (selection_provider_absent, penalty_runtime_budget_exceeded) (= 180).
+  # The penalised-optimiser provider adds two
+  # (selection_prox_mode_not_converged,
+  # selection_penalty_blocks_not_expressible) (= 182). The public verb adds
+  # three: a Bayesian provider absent with the default `fallback = "none"`,
+  # where nothing is substituted (selection_fallback_not_authorised)
+  # (= 183); a joint shrinkage prior routed at INLA, refused by lgm_gate()'s
+  # twelfth check because a scale mixture leaves the latent field
+  # non-Gaussian (prior_family_unsupported_inla) (= 184); and a decision
+  # rule missing the number it needs, or carrying one it does not read
+  # (selection_decision_invalid) (= 185).
+  expect_equal(length(entries), 185L)
   expect_true("grammar_argument_duplicated" %in% entries)
   expect_true("prior_target_not_a_single_name" %in% entries)
   expect_true("grammar_arity_too_few" %in% entries)
@@ -460,6 +486,19 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_penalty_not_implemented" %in% entries)
   expect_true("selection_base_not_allowlisted" %in% entries)
   expect_true("selection_family_not_supported" %in% entries)
+  expect_true("selection_provider_absent" %in% entries)
+  expect_true("selection_fallback_not_authorised" %in% entries)
+  expect_true("prior_family_unsupported_inla" %in% entries)
+  expect_true("selection_decision_invalid" %in% entries)
+  expect_true("penalty_runtime_budget_exceeded" %in% entries)
+  expect_true("penalty_sampler_diagnostics_failed" %in% entries)
+  expect_true("penalty_reference_model_inadequate" %in% entries)
+  expect_true("projection_structure_unsupported" %in% entries)
+  expect_true("projection_family_unsupported" %in% entries)
+  expect_true("penalty_block_targeting_unsupported" %in% entries)
+  expect_true("penalty_block_overlap" %in% entries)
+  expect_true("penalty_hyperparameter_invalid" %in% entries)
+  expect_true("selection_penalty_family_withdrawn" %in% entries)
   expect_true("multivariate_smooth_unsupported" %in% entries)
   expect_true("stream_response_must_be_a_column" %in% entries)
   expect_true("nested_variable_not_in_data" %in% entries)

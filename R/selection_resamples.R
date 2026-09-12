@@ -30,96 +30,10 @@
 # original units, and every rotation happens inside a fold.
 
 # --- the resampling specification ------------------------------------ #
-
-# fb_resamples() --- the resampling scheme, as an object rather than as a
-# scattering of arguments.
 #
-# Normative (contract section 3.3): a `unit` alone is not a specification. It
-# says what may not be split, not how the splitting is done, so naming one
-# without also naming a scheme or an explicit `fold_id` refuses. The defaults
-# of `v` and `repeats` are the unit-free defaults and do not silently supply a
-# scheme to a grouped design.
-#
-# Not exported: `fb_select()` is the public surface and this constructor
-# reaches the user through its default argument.
-fb_resamples <- function(
-  unit = NULL,
-  v = 10L,
-  repeats = 1L,
-  fold_id = NULL,
-  strata = NULL
-) {
-  # Captured before anything is assigned to `v`: a later missing(v) reads
-  # FALSE once the argument has been overwritten, which would turn the
-  # fold_id conflict check below into a check that always fires.
-  v_named <- !missing(v)
-  scheme_named <- v_named || !missing(repeats) || !is.null(fold_id)
-
-  unit_vars <- .fb_sel_variables(unit, "unit")
-  strata_vars <- .fb_sel_variables(strata, "strata")
-
-  if (length(unit_vars) > 0L && !scheme_named) {
-    stop(.fb_refusal_condition(
-      reason_code = "selection_resamples_underspecified",
-      message = paste0(
-        "fb_resamples(): `unit` names ",
-        paste(unit_vars, collapse = ", "),
-        " but no resampling scheme was given. A grouping unit says what may ",
-        "not be split across a fold boundary, not how the splitting is ",
-        "done. Supply `v`, `repeats` or an explicit `fold_id`."
-      )
-    ))
-  }
-
-  v <- .fb_sel_count(v, "v", minimum = 2L)
-  repeats <- .fb_sel_count(repeats, "repeats", minimum = 1L)
-
-  if (!is.null(fold_id)) {
-    if (!is.atomic(fold_id) || length(fold_id) < 2L) {
-      stop(.fb_refusal_condition(
-        reason_code = "selection_fold_id_invalid",
-        message = paste0(
-          "fb_resamples(): `fold_id` must be an atomic vector with one entry ",
-          "per row of the data."
-        )
-      ))
-    }
-    if (v_named) {
-      stop(.fb_refusal_condition(
-        reason_code = "selection_fold_id_invalid",
-        message = paste0(
-          "fb_resamples(): `fold_id` and `v` were both given. An explicit ",
-          "partition and a scheme that would build one are two answers to ",
-          "the same question."
-        )
-      ))
-    }
-    if (repeats > 1L) {
-      stop(.fb_refusal_condition(
-        reason_code = "selection_fold_id_invalid",
-        message = paste0(
-          "fb_resamples(): `fold_id` is a single explicit partition, so ",
-          "`repeats = ",
-          repeats,
-          "` would repeat the same folds and report the repetition as ",
-          "independent evidence."
-        )
-      ))
-    }
-  }
-
-  structure(
-    list(
-      unit = unit_vars,
-      v = if (is.null(fold_id)) v else NA_integer_,
-      repeats = repeats,
-      fold_id = fold_id,
-      strata = strata_vars,
-      scheme = if (is.null(fold_id)) "v_fold" else "explicit"
-    ),
-    class = "fb_resamples"
-  )
-}
+# `fb_resamples()` is the public constructor and lives in R/fb_resamples.R,
+# beside the other classed inputs. Everything below reads the object it
+# returns; nothing below builds one.
 
 
 # .fb_sel_variables() --- a one-sided formula or a character vector, resolved
@@ -1194,7 +1108,7 @@ fb_resamples <- function(
 # .fb_sel_aggregate_scores() --- the reported score and its standard error, at
 # the declared independent unit.
 #
-# Averaging within the unit first is what makes the standard error honest. The
+# Averaging within the unit first is what makes the standard error correct. The
 # same cluster scored under three repeats is the same cluster measured three
 # times, not three independent pieces of evidence, and treating the three fold
 # scores as independent divides the standard error by a factor the data never

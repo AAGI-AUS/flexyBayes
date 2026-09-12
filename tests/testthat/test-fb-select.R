@@ -14,6 +14,21 @@
 # anything runs, the increment is computed against a protected-only baseline
 # from the SAME folds, and the certificate records what was done including
 # where it was approximate.
+#
+# The route these tests exercise now has a name. SPEC v5 section 2 makes the
+# closed-form GLS-on-a-plugged-in-fold-covariance computation
+# `workflow = "unpenalized_benchmark"` and reserves the default,
+# `workflow = "bayes"`, for the per-fold engine refit -- a different
+# estimator that integrates the covariance rather than plugging it in. Every
+# call below therefore names the workflow it was written for. The Bayesian
+# route has its own file, test-fb-select-bayes.R.
+#
+# One thing these tests used to assert is now a defect they would have
+# hidden. The certificate's covariance estimand was read from the public
+# `covariance` argument, which defaulted to `plugin_mean_covariance` while
+# the folds used `reml_plugin_covariance`. SPEC v5 section 9.2 closes that by
+# reading the field from the fold object; the assertions below read it the
+# same way.
 # =============================================================================
 
 
@@ -56,6 +71,7 @@ test_that("fb_select returns an increment over a protected-only baseline", {
     fb_sel_verb_base(d),
     candidates = ~ clay + rain + noise,
     resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark",
     seed = 20260912L
   )
 
@@ -79,11 +95,13 @@ test_that("a candidate block of pure noise does not earn a large increment", {
   d <- fb_sel_verb_data()
   real <- fb_select(
     fb_sel_verb_base(d), candidates = ~ clay + rain,
-    resamples = fb_resamples(unit = ~ site, v = 6L), seed = 20260912L
+    resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark", seed = 20260912L
   )
   noise_only <- fb_select(
     fb_sel_verb_base(d), candidates = ~ noise,
-    resamples = fb_resamples(unit = ~ site, v = 6L), seed = 20260912L
+    resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark", seed = 20260912L
   )
   expect_gt(real$increment$improvement, noise_only$increment$improvement)
 })
@@ -94,7 +112,8 @@ test_that("the same seed gives the same folds and the same answer", {
   base <- fb_sel_verb_base(d)
   args <- list(
     base = base, candidates = ~ clay + rain,
-    resamples = fb_resamples(unit = ~ site, v = 6L), seed = 4242L
+    resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark", seed = 4242L
   )
   a <- do.call(fb_select, args)
   b <- do.call(fb_select, args)
@@ -105,12 +124,35 @@ test_that("the same seed gives the same folds and the same answer", {
 
 # --- the gate ----------------------------------------------------------- #
 
-test_that("a penalty refuses, and names what is implemented", {
+test_that("a plain list of tuning arguments is not a penalty", {
+  # The earlier release's shape. It now refuses because a penalty is an
+  # <fb_penalty> that validated at construction, not because penalties are
+  # unimplemented -- and the message says which.
   d <- fb_sel_verb_data()
   expect_error(
     fb_select(fb_sel_verb_base(d), ~ clay, penalty = list(alpha = 1),
               resamples = fb_resamples(unit = ~ site, v = 6L), seed = 1L),
-    "a penalty is not implemented"
+    class = "flexybayes_refusal_selection_penalty_spec_malformed"
+  )
+  expect_error(
+    fb_select(fb_sel_verb_base(d), ~ clay, penalty = list(alpha = 1),
+              resamples = fb_resamples(unit = ~ site, v = 6L), seed = 1L),
+    "must be NULL or an <fb_penalty>",
+    fixed = TRUE
+  )
+})
+
+
+test_that("a penalty on the unpenalised benchmark arm refuses by name", {
+  d <- fb_sel_verb_data()
+  expect_error(
+    fb_select(
+      fb_sel_verb_base(d), ~ clay,
+      penalty = fb_penalty(term(everything()) ~ ridge(scale = 1)),
+      workflow = "unpenalized_benchmark",
+      resamples = fb_resamples(unit = ~ site, v = 6L), seed = 1L
+    ),
+    "has no penalty term"
   )
 })
 
@@ -132,7 +174,7 @@ test_that("an aggregated-route fit refuses by name, not by falling over", {
                     backend = "inla", verbose = FALSE)
   expect_error(
     fb_select(agg, ~ clay, resamples = fb_resamples(unit = ~ site, v = 6L),
-              seed = 1L),
+              workflow = "unpenalized_benchmark", seed = 1L),
     "does not carry the parsed model"
   )
 })
@@ -144,12 +186,20 @@ test_that("the certificate records the covariance, the estimand and the unit", {
   d <- fb_sel_verb_data()
   sel <- fb_select(
     fb_sel_verb_base(d), candidates = ~ clay + rain,
-    resamples = fb_resamples(unit = ~ site, v = 6L), seed = 20260912L
+    resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark", seed = 20260912L
   )
   cert <- sel$certificate
   expect_s3_class(cert, "fb_select_certificate")
-  expect_identical(cert$covariance$estimand, "plugin_mean_covariance")
+  # Read off the fold object, not off an argument. The public argument used
+  # to default to `plugin_mean_covariance` while the folds worked in
+  # `reml_plugin_covariance`, so the certificate described a computation
+  # that had not happened. It now cannot: the field is whatever the
+  # substrates carry, and a run whose folds disagreed reports both.
+  expect_identical(cert$covariance$estimand, "reml_plugin_covariance")
   expect_identical(cert$covariance$builder, "block_cholesky")
+  expect_identical(cert$workflow, "unpenalized_benchmark")
+  expect_identical(cert$provider, "gls_reml_plugin")
   expect_identical(cert$resampling$prediction, "new_cluster")
   expect_identical(cert$resampling$seed, 20260912L)
   # Convergence is the tri-state verdict, not a recomputed local rule.
@@ -162,7 +212,8 @@ test_that("glance reports the increment and how it was scored", {
   d <- fb_sel_verb_data()
   sel <- fb_select(
     fb_sel_verb_base(d), candidates = ~ clay + rain,
-    resamples = fb_resamples(unit = ~ site, v = 6L), seed = 20260912L
+    resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark", seed = 20260912L
   )
   g <- glance(sel)
   expect_identical(nrow(g), 1L)
@@ -178,10 +229,15 @@ test_that("print states the estimand rather than only the number", {
   d <- fb_sel_verb_data()
   sel <- fb_select(
     fb_sel_verb_base(d), candidates = ~ clay,
-    resamples = fb_resamples(unit = ~ site, v = 6L), seed = 20260912L
+    resamples = fb_resamples(unit = ~ site, v = 6L),
+    workflow = "unpenalized_benchmark", seed = 20260912L
   )
   out <- paste(utils::capture.output(print(sel)), collapse = "\n")
-  expect_match(out, "plugin_mean_covariance", fixed = TRUE)
+  expect_match(out, "reml_plugin_covariance", fixed = TRUE)
+  expect_match(out, "block_cholesky", fixed = TRUE)
   expect_match(out, "new_cluster", fixed = TRUE)
   expect_match(out, "independent", fixed = TRUE)
+  # And it never calls this route Bayesian.
+  expect_match(out, "unpenalized_benchmark", fixed = TRUE)
+  expect_match(out, "gls_reml_plugin", fixed = TRUE)
 })

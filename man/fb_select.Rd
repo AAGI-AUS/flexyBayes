@@ -2,17 +2,23 @@
 % Please edit documentation in R/fb_select.R
 \name{fb_select}
 \alias{fb_select}
-\title{Covariance-aware selection over a fitted flexyBayes model}
+\title{Bayesian selection over a fitted flexyBayes model}
 \usage{
 fb_select(
   base,
   candidates,
   penalty = NULL,
+  workflow = c("bayes", "penalized_optimizer"),
+  fallback = c("none", "glmnet"),
+  benchmark = FALSE,
   resamples = fb_resamples(),
   prediction = c("new_cluster", "known_cluster"),
-  covariance = "plugin_mean_covariance",
-  metric = c("rmse", "mse", "nlpd"),
-  seed = NULL
+  decision = fb_decision(),
+  engine = NULL,
+  seed = NULL,
+  budget = NULL,
+  plan = FALSE,
+  ...
 )
 }
 \arguments{
@@ -21,34 +27,101 @@ block and are never penalised.}
 
 \item{candidates}{A one-sided formula over columns of the base fit's data.}
 
-\item{penalty}{Reserved. Only \code{NULL} is implemented in this release, which
-protects every candidate and gives the extended base model, its
-out-of-fold score, and the increment over the base.}
+\item{penalty}{\code{NULL} (every candidate protected) or an \code{\link[=fb_penalty]{fb_penalty()}}
+declaring the joint shrinkage prior over the candidate block.}
 
-\item{resamples}{A resampling specification; see the internal
-\code{fb_resamples()} constructor.}
+\item{workflow}{\code{"bayes"} (default) or \code{"penalized_optimizer"}.}
+
+\item{fallback}{\code{"none"} (default) or \code{"glmnet"}. Fires only when the
+Bayesian provider is absent, never after a failure.}
+
+\item{benchmark}{\code{TRUE} also runs the unpenalised generalised-least-squares
+arm and, where a penalty was given, the \code{glmnet} arm on the same folds.}
+
+\item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 
 \item{prediction}{\code{"new_cluster"} (default) or \code{"known_cluster"}. A
 held-out cluster's own effect is not estimable from the training rows,
 so scoring it conditionally would reward the model for a random effect
 it was handed.}
 
-\item{covariance}{The covariance summary used to whiten. The default,
-\code{"plugin_mean_covariance"}, is exact: V is linear in the variances, so
-\code{E[V]} needs only the marginals.}
+\item{decision}{An \code{\link[=fb_decision]{fb_decision()}}: the method, metric, rule and search.}
 
-\item{metric}{\code{"rmse"}, \code{"mse"} or \code{"nlpd"}.}
+\item{engine}{An \code{\link[=fb_engine]{fb_engine()}} setting the sampler's chains, iterations
+and control for the reference fit.}
 
-\item{seed}{Required whenever the resampling draws more than once.}
+\item{seed}{Required. The sampler, the posterior predictive check and the
+projection search all consume the random-number stream, and a default
+seed is an unreproducible run that looks reproducible.}
+
+\item{budget}{Seconds. The route refuses before the first fit when the
+estimated cost exceeds it.}
+
+\item{plan}{\code{TRUE} returns the resolved axes, the prior blocks, the
+projection structure gate and a cost estimate without fitting anything.}
+
+\item{...}{Reserved. \code{metric} and \code{covariance} are accepted here for one
+release with a deprecation notice; \code{metric} now lives in
+\code{\link[=fb_decision]{fb_decision()}}, and the covariance summary is a property of the
+benchmark workflow and is read off the folds rather than declared.}
 }
 \value{
-An object of class \code{fb_select} carrying the out-of-fold scores,
-the increment over the protected model, and the selection certificate.
+An object of class \code{fb_select} carrying the four resolved axes,
+the reference fit, the column map, the decision, the out-of-fold scores,
+the increment over the protected model, the diagnostics, any benchmark
+arms, the folds and the certificate. With \code{plan = TRUE}, an object of
+class \code{fb_select_plan}.
 }
 \description{
-Scores a candidate block against a protected base model, out of fold, on
-data whitened by the base fit's own covariance. Folds are assigned on
-original observational units before any rotation, every quantity learned
-from data is learned inside the training fold, and the prediction estimand
-is named rather than implied.
+Fits a Bayesian reference model in which a declared block of candidate
+fixed effects carries a joint shrinkage prior and the covariance structure
+is integrated over rather than plugged in; selects a parsimonious submodel
+by projection predictive inference where the structure permits it, and
+refuses by name where it does not; and, on request, triangulates the
+result against an external penalised optimiser on the same folds.
+}
+\details{
+Every result records four independent fields rather than one \code{engine}
+argument, because conflating the inferential workflow with the software
+that ran it is how a penalised-likelihood mode comes to be reported under
+a Bayesian label:
+
+\describe{
+\item{\code{workflow}}{\code{"bayes"}, \code{"penalized_optimizer"} or
+\code{"unpenalized_benchmark"}.}
+\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"} or
+\code{"gls_reml_plugin"}.}
+\item{\code{prior}}{the joint prior, or \code{"none"}.}
+\item{\code{decision}}{\code{"full"}, \code{"projection"}, \code{"posterior_threshold"} or
+\code{"optimizer_support"}.}
+}
+
+Posterior draws under a continuous shrinkage prior contain no exact zeros,
+so "selected" is always a named decision and never a property of the
+draws, and a posterior-threshold retention is not an inclusion
+probability. Every comparison against an external optimiser carries one of
+three equivalence levels -- \code{map_exact_fixed_covariance},
+\code{posterior_predictive_comparable} or \code{no_identity_expected} -- and none of
+them licenses the sentence "the same as glmnet".
+
+\code{penalty = NULL} keeps its earlier meaning: every candidate is protected
+and the fit is the extended base model. Under \code{workflow = "bayes"} it
+refits the base's own engine inside every assessment fold and scores
+held-out clusters by posterior predictive draws, which is the genuinely
+Bayesian no-penalty reference and the correct baseline for every shrinkage
+family. The closed-form generalised-least-squares route on a plugged-in
+fold covariance remains available through \code{benchmark = TRUE} and is
+labelled \code{unpenalized_benchmark} wherever it appears.
+
+\code{fallback = "none"} is the default. A Bayesian request whose provider is
+absent refuses with \code{selection_provider_absent}, naming the package and
+the install line. \code{fallback = "glmnet"} is a deliberate choice; when it
+fires, \code{workflow} becomes \code{penalized_optimizer}, the object prints the
+substitution on its first line, and the certificate records
+\code{fallback_fired = TRUE}. There is no configuration that produces a
+penalised-likelihood answer under a Bayesian label.
+}
+\seealso{
+\code{\link[=fb_penalty]{fb_penalty()}} for the prior, \code{\link[=fb_resamples]{fb_resamples()}} for the folds,
+\code{\link[=fb_decision]{fb_decision()}} for the rule.
 }

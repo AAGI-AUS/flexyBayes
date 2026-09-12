@@ -56,13 +56,18 @@ reference:
       - fb_from_brms
   - title: Constructor nouns
     desc: >
-      The four classed input constructors: priors, covariance carriers,
-      approximation schemes, and engine selections.
+      The classed input constructors: priors, covariance carriers,
+      approximation schemes, engine selections, and the three the
+      selection module adds -- the joint shrinkage prior, the resampling
+      scheme and the decision rule.
     contents:
       - fb_prior
       - fb_cov
       - fb_approx
       - fb_engine
+      - fb_penalty
+      - fb_resamples
+      - fb_decision
       - is_fb_cov
       - is_fb_approx
       - is_fb_engine
@@ -159,14 +164,16 @@ reference:
 articles:
   - title: Read in order
     desc: >
-      Four pages, enough to start work: what a mixed model is, what
+      Five pages, enough to start work: what a mixed model is, what
       changes when it is estimated as a posterior, every ASReml spelling
-      the package covers, and one worked comparison.
+      the package covers, one worked comparison, and how a candidate
+      block is selected over.
     contents:
       - flexyBayes-01-mixed-models
       - flexyBayes-02-bayesian
       - flexyBayes-03-syntax
       - flexyBayes-04-illustration
+      - flexyBayes-05-selection
 
 redirects:
   # The eight-page tutorial deck was retired at 0.10.0.9000 and kept under

@@ -520,7 +520,13 @@
     search = "forward",
     nterms_max = NULL,
     validate_search = TRUE,
-    threshold = 0.5
+    threshold = 0.5,
+    # The practical effect size the posterior-threshold decision compares
+    # against. NULL here rather than 0: `fb_decision()` refuses to build a
+    # posterior-threshold decision without one, and a zero default would
+    # make P(|beta| > 0) the quantity, which is one under any continuous
+    # prior whatever the data say.
+    effect_size = NULL
   )
   if (!is.null(decision)) {
     if (!is.list(decision)) {
