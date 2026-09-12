@@ -111,6 +111,11 @@
   # refusals, including the leakage gate.
   .populate_refusal_registry_selection_resamples()
 
+  # 0.11.0: the penalised-optimiser provider -- an absent provider, a
+  # withdrawn penalty family, an uncertified proximal mode, and penalty
+  # blocks no single glmnet problem expresses.
+  .populate_refusal_registry_selection_glmnet()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
