@@ -150,6 +150,7 @@ fb_bcv_builder <- function(data, split, prediction = "new_cluster") {
 test_that("the Bayesian route runs on brms over three folds", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_installed("cmdstanr")
   withr::local_options(brms.backend = "cmdstanr")
 
   # A brms fit records its dataset as metadata only, so the data the folds are
@@ -196,6 +197,7 @@ test_that("the brms predictive draws agree with brms's own response sampler", {
   # itself returns, so it is measured against it rather than assumed.
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_installed("cmdstanr")
   withr::local_options(brms.backend = "cmdstanr")
 
   d <- fb_bcv_data()
@@ -653,6 +655,7 @@ test_that("known_cluster scores no worse than new_cluster when clusters split", 
 test_that("the brms arm reproduces its draws under the same seed and chains", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_installed("cmdstanr")
   withr::local_options(brms.backend = "cmdstanr")
 
   d <- fb_bcv_data()
