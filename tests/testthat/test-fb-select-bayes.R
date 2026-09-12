@@ -760,25 +760,96 @@ test_that("the certificate cannot disagree with the fold estimand", {
 })
 
 
-test_that("a joint shrinkage prior routed at INLA refuses by name", {
+test_that("an INLA-fitted base has its reference re-emitted on brms, and says so", {
+  # The defect this closes. `fb_select()` always fits the reference model
+  # through brms, but it ran lgm_gate()'s twelfth check on the BASE's IR
+  # whenever the base was INLA -- so an INLA user asking for a Laplace prior
+  # was told the prior was impossible on INLA, about a fit that was never
+  # going to INLA. The check belongs to the engine that will fit the
+  # reference.
   skip_on_cran()
   skip_if_not_installed("INLA")
   d <- fb_sel_bayes_data()
   base <- fbsb_memo("inla_base", flexybayes(
     y ~ p1, random = ~site, data = d, backend = "inla", verbose = FALSE
   ))
-  expect_error(
-    fb_select(
-      base, fbsb_candidates,
-      penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
-      resamples = fb_resamples(unit = ~site, v = 3L),
-      seed = 1L
-    ),
-    class = "flexybayes_refusal_prior_family_unsupported_inla"
+
+  plan <- fb_select(
+    base, fbsb_candidates,
+    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    decision = fb_decision(method = "full"),
+    plan = TRUE, seed = 1L
   )
+  expect_s3_class(plan, "fb_select_plan")
+  expect_identical(plan$selection$provider, "brms")
+  expect_identical(plan$selection$reference_engine, "brms")
+  expect_identical(plan$selection$base_engine, "inla")
+  expect_true(any(grepl(
+    "reference_fitted_on_brms", plan$selection$approximations, fixed = TRUE
+  )))
+  out <- paste(utils::capture.output(print(plan)), collapse = "\n")
+  expect_match(out, "the base was fitted by inla", fixed = TRUE)
+
+  # The check still fires where it means something: a genuine INLA fit
+  # request carrying a joint block on the IR is refused by the gate itself,
+  # which is where the refusal belongs.
+  fb_gate <- base$fb
+  fb_gate$penalty_blocks <- .fb_pen_resolve(
+    fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
+    .fb_sel_term_map(~ p1 + x1 + x2 + z1 + z2, d),
+    protected = "p1"
+  )
+  gated <- lgm_gate(fb_gate)
+  expect_true(is_lgm_refusal(gated))
+  expect_true("prior_family_unsupported_inla" %in%
+    vapply(gated$failures, function(f) f$rule_id, character(1L)))
   # The negative control: the same base with no joint block passes the same
   # gate, so the refusal is the prior's and not the model's.
   expect_silent(lgm_gate(base$fb))
+})
+
+
+test_that("an INLA base with a joint prior samples on brms", {
+  # The other half of the same finding, executed rather than planned. A
+  # small design on purpose: what is under test is the route, not the
+  # posterior.
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  skip_if_not_installed("cmdstanr")
+  d <- fb_sel_bayes_data(J = 15L, m = 6L)
+  base <- fbsb_memo("inla_base_wide", flexybayes(
+    y ~ p1, random = ~site, data = d, backend = "inla", verbose = FALSE
+  ))
+  sel <- fbsb_memo("inla_base_laplace", suppressWarnings(fb_select(
+    base, ~ x1 + x2,
+    penalty = fb_penalty(term(everything()) ~ laplace(0.5)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    decision = fb_decision(method = "full"),
+    engine = fb_engine("brms", chains = 4L, n_samples = 1500L,
+                       warmup = 1500L),
+    seed = 20260912L
+  )))
+
+  expect_identical(sel$workflow, "bayes")
+  expect_identical(sel$provider, "brms")
+  expect_identical(sel$prior, "laplace")
+  expect_identical(sel$certificate$reference_engine, "brms")
+  # It really did sample: the reference carries a brms posterior with the
+  # candidate coefficients in it.
+  expect_s3_class(sel$reference$brms, "brmsfit")
+  expect_true(all(
+    c("b_x1", "b_x2") %in% colnames(as.matrix(sel$reference$brms))
+  ))
+  # And the object says the reference was fitted by a different engine from
+  # the base, on its own first block rather than only on the certificate.
+  out <- paste(utils::capture.output(print(sel)), collapse = "\n")
+  expect_match(out, "fitted by brms", fixed = TRUE)
+  expect_match(out, "the base was fitted by inla", fixed = TRUE)
+  expect_true(any(grepl(
+    "reference_fitted_on_brms", sel$certificate$approximations, fixed = TRUE
+  )))
 })
 
 

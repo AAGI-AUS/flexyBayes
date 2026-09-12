@@ -1088,7 +1088,9 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                fits_per_fold = 0L,
                                candidates = NULL,
                                compiled = NULL,
-                               approximations = character(0)) {
+                               approximations = character(0),
+                               base_engine = NA_character_,
+                               reference_engine = NA_character_) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1123,6 +1125,10 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
     provider = axes$provider,
     prior = axes$prior,
     decision = axes$decision,
+    base_engine = base_engine,
+    # A joint shrinkage prior is always emitted on brms, so the engine that
+    # will fit the reference is not always the engine that fitted the base.
+    reference_engine = reference_engine,
     prior_route = if (length(routes) == 0L) "none" else unique(routes),
     blocks = lapply(blocks %||% list(), function(b) {
       list(
@@ -1177,6 +1183,12 @@ print.fb_select_plan <- function(x, ...) {
   cat("  Prior:        ", s$prior, "  (route ",
       paste(s$prior_route, collapse = ", "), ")\n", sep = "")
   cat("  Decision:     ", s$decision, "\n", sep = "")
+  if (!is.na(s$reference_engine %||% NA_character_) &&
+        !identical(s$reference_engine, s$base_engine)) {
+    cat("  Reference fit: ", s$reference_engine, " (the base was fitted by ",
+        s$base_engine, "; the parsed model is engine-independent and a ",
+        "scale-mixture prior is emitted on brms)\n", sep = "")
+  }
   cat("  Candidates:   ",
       if (length(s$candidates) == 0L) "none" else
         paste(s$candidates, collapse = ", "),

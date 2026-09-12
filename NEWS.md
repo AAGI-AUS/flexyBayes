@@ -233,6 +233,24 @@ one fired on the formulas the module exists to serve rather than on an edge.
   `projection_search_unsupported`. The forward search is the search this
   release executes.
 
+## An INLA-fitted base can carry a shrinkage prior
+
+`fb_select()` fits the reference model through brms whatever fitted the
+base -- the parsed model is engine-independent, and the reference is a
+re-emission of it with an extended fixed part and the base's own priors
+carried through the brms prior translation. `lgm_gate()`'s twelfth check
+nevertheless ran on the BASE's intermediate representation whenever the base
+was INLA, so a user with an INLA fit asking for a Laplace prior was told the
+prior was impossible on INLA -- about a fit that was never going to INLA.
+
+The check now applies to the engine that will fit the reference. An
+INLA-fitted base with a joint shrinkage prior samples on brms; the
+certificate records `reference_engine = "brms"`, the print method and the
+plan say the base was fitted by a different engine, and the certificate
+carries `reference_fitted_on_brms` among its approximations. The check still
+fires where it means something: a genuine INLA fit request carrying a joint
+block on the intermediate representation refuses exactly as before.
+
 ## Refusals
 
 The registry moves from 163 codes to 184. `selection_penalty_not_implemented`

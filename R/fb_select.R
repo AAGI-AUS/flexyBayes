@@ -385,7 +385,8 @@
                                    refusals = character(0),
                                    calibration_n = NA_integer_,
                                    provider_versions = list(),
-                                   column_map = NULL) {
+                                   column_map = NULL,
+                                   reference_engine = NA_character_) {
   conv <- .fb_convergence_verdict(base)
   bs <- try(.fb_sel_block_structure(base), silent = TRUE)
 
@@ -468,6 +469,12 @@
         )
       },
       prior_blocks = block_record,
+      # Which engine fitted the REFERENCE model, which is not always the
+      # engine that fitted the base: a joint shrinkage prior is always
+      # emitted on brms, whatever the base was fitted by, because the parsed
+      # model is engine-independent and INLA's latent field is Gaussian
+      # given the hyperparameters while a scale mixture is not.
+      reference_engine = reference_engine,
       reference = if (is.null(adequacy)) {
         NULL
       } else {
@@ -1008,6 +1015,31 @@ fb_select <- function(base,
     collapse = " + "
   )
 
+  # The reference model is fitted by brms whatever fitted the base. That is
+  # not a substitution: the parsed model is engine-independent, and the
+  # reference is a re-emission of it with an extended fixed part and the
+  # base's own priors carried through the brms prior translation.
+  #
+  # lgm_gate()'s twelfth check therefore belongs to the engine that WILL fit
+  # the reference, not to the engine that fitted the base. It used to run on
+  # the base's IR whenever the base was INLA, so an INLA user asking for a
+  # Laplace prior was told the prior was impossible on INLA -- on a fit that
+  # was never going to INLA. The check still fires where it means something:
+  # a genuine INLA fit request carrying a joint block on the IR (fb_inla(),
+  # fb_plan() routing at INLA) reaches it unchanged.
+  reference_engine <- "brms"
+  approximations <- resolved$approximations
+  if (!identical(engine_name, reference_engine)) {
+    approximations <- c(approximations, paste0(
+      "reference_fitted_on_brms: the base was fitted by ", engine_name,
+      " and the reference model carrying the joint shrinkage prior is ",
+      "re-emitted on brms with the base's structure and its own priors ",
+      "carried through, because a scale-mixture prior leaves the latent ",
+      "field non-Gaussian given the hyperparameters and the nested Laplace ",
+      "approximation is built on that assumption"
+    ))
+  }
+
   if (isTRUE(plan)) {
     return(.fb_plan_selection(
       base = base,
@@ -1024,29 +1056,10 @@ fb_select <- function(base,
       fits_per_fold = if (isTRUE(decision$validate_search)) 1L else 0L,
       candidates = candidates,
       compiled = resolved$compiled,
-      approximations = resolved$approximations
+      approximations = approximations,
+      base_engine = engine_name,
+      reference_engine = reference_engine
     ))
-  }
-
-  # The joint prior is on the IR before the gate reads it, so a request that
-  # routes at INLA refuses at the gate rather than at the emitter.
-  fb_gate <- base$fb
-  fb_gate$penalty_blocks <- resolved$blocks
-  if (identical(engine_name, "inla")) {
-    gated <- lgm_gate(fb_gate)
-    if (is_lgm_refusal(gated)) {
-      primary <- gated$failures[[1L]]
-      stop(.fb_refusal_condition(
-        reason_code = if (
-          identical(primary$rule_id, "prior_family_unsupported_inla")
-        ) {
-          "prior_family_unsupported_inla"
-        } else {
-          "selection_base_not_allowlisted"
-        },
-        message = paste0("fb_select(): ", primary$reason)
-      ))
-    }
   }
 
   cost <- .fb_sel_cost_estimate(
@@ -1171,9 +1184,10 @@ fb_select <- function(base,
     decision_result = decision_result,
     benchmark = bench,
     metric = metric,
-    approximations = resolved$approximations,
+    approximations = approximations,
     calibration_n = nrow(base$data),
     provider_versions = .fb_select_provider_versions("brms", decision),
+    reference_engine = reference_engine,
     dots = dots
   )
 }
@@ -1310,6 +1324,7 @@ fb_select <- function(base,
                                 provider_versions = list(),
                                 fallback_fired = FALSE,
                                 requested_workflow = NULL,
+                                reference_engine = NA_character_,
                                 dots = list()) {
   increment <- NULL
   agg <- cv$aggregated
@@ -1344,7 +1359,8 @@ fb_select <- function(base,
     refusals = c(refusals, benchmark$refusals %||% character(0)),
     calibration_n = calibration_n,
     provider_versions = provider_versions,
-    column_map = column_map
+    column_map = column_map,
+    reference_engine = reference_engine
   )
 
   structure(
@@ -1530,6 +1546,23 @@ print.fb_select <- function(x, digits = 4L, ...) {
       cert$resampling$prediction, ", scored at ",
       cert$resampling$scoring_unit %||% "the fold", "\n", sep = "")
 
+  base_engine <- if (inherits(x$base, "flexybayes_inla")) {
+    "inla"
+  } else if (inherits(x$base, "flexybayes_brms")) {
+    "brms"
+  } else {
+    NA_character_
+  }
+  if (!is.na(cert$reference_engine %||% NA_character_) &&
+        !identical(cert$reference_engine, base_engine)) {
+    cat(
+      "  reference : fitted by ", cert$reference_engine,
+      ", while the base was fitted by ", base_engine,
+      " (the parsed model is engine-independent; the base's priors are ",
+      "carried through)\n",
+      sep = ""
+    )
+  }
   if (!is.null(x$diagnostics$adequacy)) {
     ad <- x$diagnostics$adequacy
     cat("  reference : adequacy ", ad$verdict, sep = "")
@@ -1889,6 +1922,9 @@ print.fb_select_certificate <- function(x, ...) {
       cat("    ", b$id, ". ", b$target, " ~ ", b$family,
           " (", b$hyperparameter_mode, ", route ", b$route, ")\n", sep = "")
     }
+  }
+  if (!is.na(x$reference_engine %||% NA_character_)) {
+    cat("  reference  : fitted by ", x$reference_engine, "\n", sep = "")
   }
   if (!is.null(x$reference)) {
     cat("  reference  : adequacy ", x$reference$verdict,

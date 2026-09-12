@@ -329,7 +329,10 @@
         (`prior_family_unsupported_inla`): a scale-mixture prior over the
         fixed effects leaves the latent field non-Gaussian given the
         hyperparameters, which is the assumption the nested Laplace
-        approximation rests on.",
+        approximation rests on. An INLA-fitted base is not blocked by that
+        refusal -- `fb_select()` re-emits the reference model on brms with
+        the base's structure and priors carried through, and records the
+        re-emission on the certificate.",
       anchor = "test-penalty-stancode.R"
     ),
     list(
