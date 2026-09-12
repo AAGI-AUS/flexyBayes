@@ -647,27 +647,16 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
 }
 
 .fb_inla_diagnostics <- function(fit) {
-  nc <- fit$num_check
-  # The aggregated INLA path builds its own fit object and does not run
-  # the post-fit numerical confirm, so read it off the raw INLA object
-  # rather than reporting the diagnostics as unavailable.
-  if (is.null(nc) && !is.null(fit$inla)) {
-    nc <- tryCatch(.lgm_check_numerical(fit$inla), error = function(e) NULL)
-  }
-  if (is.null(nc)) {
-    return(list(
-      engine = "inla",
-      ok = NA,
-      reasons = "this fit records no numerical-confirm result",
-      max_rhat = NA_real_,
-      min_ess_bulk = NA_real_,
-      n_divergent = NA_integer_
-    ))
-  }
+  # Delegates to the one convergence contract. This function used to compute
+  # ok = isTRUE(nc$pass), and nc$pass is deliberately NA when no confirm
+  # ran, so isTRUE() reported an ABSENT confirmation as a FAILED fit. A
+  # second implementation of a tri-state rule is how A25 happened, so there
+  # is no longer a second implementation.
+  v <- .fb_convergence_verdict(fit)
   list(
     engine = "inla",
-    ok = isTRUE(nc$pass),
-    reasons = if (isTRUE(nc$pass)) character(0) else nc$reasons,
+    ok = v$ok,
+    reasons = v$reasons,
     max_rhat = NA_real_,
     min_ess_bulk = NA_real_,
     n_divergent = NA_integer_

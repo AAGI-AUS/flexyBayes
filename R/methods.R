@@ -193,9 +193,11 @@ print.flexybayes <- function(x, ...) {
 #'   [nobs()] for the design and observed counts on their own.
 #' @export
 summary.flexybayes <- function(object, ...) {
-  out <- .fb_summary_object(object)
-  print(out)
-  invisible(out)
+  # Compute and return, visibly. print.summary.flexybayes() does the
+  # printing, so a bare summary(fit) at the console still prints via
+  # auto-print, `s <- summary(fit)` is silent, and print(summary(fit))
+  # prints once rather than twice.
+  .fb_summary_object(object)
 }
 
 # .agg_prior_parametrization() --- which prior an aggregated fit ran
@@ -369,9 +371,11 @@ print.flexybayes_aggregated <- function(x, ...) {
 #'   [print.flexybayes_aggregated()] for the one-screen fit description.
 #' @export
 summary.flexybayes_aggregated <- function(object, ...) {
-  out <- .fb_summary_object(object)
-  print(out)
-  invisible(out)
+  # Compute and return, visibly. print.summary.flexybayes() does the
+  # printing, so a bare summary(fit) at the console still prints via
+  # auto-print, `s <- summary(fit)` is silent, and print(summary(fit))
+  # prints once rather than twice.
+  .fb_summary_object(object)
 }
 
 

@@ -58,7 +58,7 @@ suppressPackageStartupMessages(library(testthat))
 # a slot goes through this.
 .upc_summary <- function(fit) {
   out <- NULL
-  invisible(utils::capture.output(out <- summary(fit)))
+  invisible(utils::capture.output(print(out <- summary(fit))))
   out
 }
 

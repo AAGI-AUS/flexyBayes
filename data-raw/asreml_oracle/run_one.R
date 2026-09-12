@@ -79,7 +79,12 @@ if (inherits(asr, "error") || inherits(fb, "error")) {
 
 s <- summary(fb)
 record$asreml_converged <- isTRUE(asr$converge)
-record$flexybayes_converged <- isTRUE(s$converge$ok %||% TRUE)
+# Tri-state, and never defaulted. This line used to read
+# isTRUE(s$converge$ok %||% TRUE) against a field that did not exist, and
+# NULL %||% TRUE is TRUE, so it was a CONSTANT: no input produced FALSE and
+# all eight banked fixtures recorded a convergence that had not been
+# measured (audit A25). `ok` now exists and is TRUE / FALSE / NA.
+record$flexybayes_converged <- s$converge$ok
 record$asreml_loglik <- asr$loglik
 
 # ---- Layer 1 ---- #

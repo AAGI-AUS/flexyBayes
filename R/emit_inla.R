@@ -1261,7 +1261,9 @@ emit_inla <- function(
   restart_probe$fit <- NULL
   num_check$restart_probe <- restart_probe
   num_check$restart_adopted <- restart_adopted
-  if (!num_check$pass) {
+  # isFALSE, not `!`: `pass` is tri-state now and `if (NA)` is an error.
+  # An unverified fit is not warned about as though it had failed.
+  if (isFALSE(num_check$pass)) {
     warning(
       "flexyBayes: INLA numerical-confirm gate flagged: ",
       paste(num_check$reasons, collapse = "; "),
@@ -2439,9 +2441,19 @@ emit_inla <- function(
 # ---------------------------------------------------------------- #
 
 .lgm_check_numerical <- function(fit) {
-  pass <- TRUE
+  # `pass` starts as NA, not TRUE. The old version started from TRUE and
+  # only flipped on a field that was present AND bad, so an object carrying
+  # no diagnostics at all was returned as a passing confirmation having
+  # checked nothing. That is audit A25 point 3: a check that cannot fail on
+  # absent evidence is not a check. A confirmation is now TRUE only once at
+  # least one real check has run and none has failed.
+  checked <- 0L
+  pass <- NA
   reasons <- character(0)
 
+  if (!is.null(fit$mode$mode.status)) {
+    checked <- checked + 1L
+  }
   if (
     !is.null(fit$mode$mode.status) &&
       !isTRUE(fit$mode$mode.status == 0)
@@ -2458,10 +2470,18 @@ emit_inla <- function(
   }
 
   if (!is.null(fit$mlik) && nrow(fit$mlik) > 0L) {
+    checked <- checked + 1L
     if (!is.finite(fit$mlik[1, 1])) {
       pass <- FALSE
       reasons <- c(reasons, "marginal log-likelihood is non-finite")
     }
+  }
+
+  if (checked > 0L && !isFALSE(pass)) {
+    pass <- TRUE
+  }
+  if (checked == 0L) {
+    reasons <- c(reasons, "no numerical diagnostic was available to check")
   }
 
   list(pass = pass, reasons = reasons)
@@ -3041,7 +3061,13 @@ print.flexybayes_inla <- function(x, ...) {
   )
   cat(
     "  numerical confirm: ",
-    if (isTRUE(x$num_check$pass)) "PASS" else "FAIL",
+    if (isTRUE(x$num_check$pass)) {
+      "PASS"
+    } else if (isFALSE(x$num_check$pass)) {
+      "FAIL"
+    } else {
+      "UNVERIFIED"
+    },
     if (!isTRUE(x$num_check$pass)) {
       paste0(" (", paste(x$num_check$reasons, collapse = "; "), ")")
     } else {
@@ -3082,9 +3108,11 @@ print.flexybayes_inla <- function(x, ...) {
 #' @keywords internal
 #' @export
 summary.flexybayes_inla <- function(object, ...) {
-  out <- .fb_summary_object(object)
-  print(out)
-  invisible(out)
+  # Compute and return, visibly. print.summary.flexybayes() does the
+  # printing, so a bare summary(fit) at the console still prints via
+  # auto-print, `s <- summary(fit)` is silent, and print(summary(fit))
+  # prints once rather than twice.
+  .fb_summary_object(object)
 }
 
 

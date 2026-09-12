@@ -1426,13 +1426,24 @@
     # slot reported a failed check on a fit that never had one and the
     # printed line said "Numerical confirm: FAIL". Absent and failed are
     # different answers, and only one of them is true here.
+    # Tri-state throughout: absent, failed and unverified are three
+    # different answers and isTRUE() collapses the last two into the
+    # middle one.
     confirm <- if (is.null(object$num_check)) {
       NA
+    } else if (is.null(object$num_check$pass)) {
+      NA
     } else {
-      isTRUE(object$num_check$pass)
+      object$num_check$pass
     }
     return(list(
       engine = "INLA nested Laplace approximation",
+      # `ok` is TRUE / FALSE / NA and is the ONE field a consumer should
+      # read. It exists because two consumers previously read it when it
+      # did not, and supplied opposite defaults for the absence (A25).
+      # NA means the evidence needed to decide is not there; it never
+      # means "fine".
+      ok = .fb_convergence_verdict(object)$ok,
       mode_status = object$inla$mode$mode.status %||% NA_real_,
       mlik = mlik,
       kld_max = if (length(kld) == 0L) NA_real_ else max(kld),

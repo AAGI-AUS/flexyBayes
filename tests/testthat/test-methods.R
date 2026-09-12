@@ -156,8 +156,8 @@ test_that("print.flexybayes lists only the slots the fit carries", {
 
 test_that("summary.flexybayes produces output", {
   fit <- make_mock_flexybayes()
-  expect_output(summary(fit), "Fixed effects")
-  expect_output(summary(fit), "Variance components")
+  expect_output(print(summary(fit)), "Fixed effects")
+  expect_output(print(summary(fit)), "Variance components")
 })
 
 test_that("coef.flexybayes returns named numeric", {

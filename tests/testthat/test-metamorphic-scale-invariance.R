@@ -127,6 +127,29 @@ test_that("a variance ratio is invariant to rescaling the response (nested strat
 })
 
 
+# --- the tripwire's own rule ------------------------------------------ #
+
+# .o04_verdict() --- what the O04 tripwire concludes from one pair of fits.
+#
+# Extracted so it can be exercised on values a real fit will not produce on
+# demand. A disjunction asserted inline is not falsifiable by breaking the
+# implementation, because the surviving branch carries it; the failure mode
+# that matters here is the one where BOTH branches go quiet at once, and
+# that is only reachable by supplying the values.
+.o04_verdict <- function(ok_10, c_1, c_10, tol = 0.05) {
+  if (is.na(ok_10)) {
+    return("unverified")
+  }
+  if (isFALSE(ok_10)) {
+    return("nonconverged")
+  }
+  if (abs(c_10 - c_1) > tol) {
+    return("not_invariant")
+  }
+  "repaired"
+}
+
+
 test_that("us() on INLA fails scale invariance -- tripwire for finding O04", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("agridat")
@@ -199,12 +222,70 @@ test_that("us() on INLA fails scale invariance -- tripwire for finding O04", {
 
   # The rescaled half. Rescaling the response is an exact transformation and
   # must not decide whether the model fits at all.
+  # This assertion used to read isTRUE(summary(fit_10)$converge$ok) against a
+  # field that did not exist. isTRUE(NULL) is FALSE, so it passed for every
+  # fit -- clean, failed, and diagnostic-free were indistinguishable to it
+  # (audit A25). The field is real now and tri-state.
+  #
+  # The rule is a disjunction, because the defect is a failure of SCALE
+  # INVARIANCE and not a categorical claim that the rescaled fit never
+  # converges: during the 11 September audit one rescaled fit reported mode
+  # status 0 with a passing confirmation while moving the correlation from
+  # about 0.135 to -0.780.
+  #
+  # A disjunction cannot be falsified by breaking one branch -- the other
+  # simply carries it -- so the rule lives in .o04_verdict() and is
+  # falsified directly in the test below this one.
+  verdict <- .o04_verdict(
+    ok_10 = summary(fit_10)$converge$ok,
+    c_1 = c_1,
+    c_10 = correlation_of(fit_10)
+  )
+
   expect_false(
-    isTRUE(summary(fit_10)$converge$ok),
+    identical(verdict, "unverified"),
     info = paste0(
-      "the tenfold-rescaled us() fit now reports convergence. Measured ",
-      "0 of 8 identical calls converging on 2026-09-11, so this is a ",
-      "change worth reading rather than a flake -- see the note above."
+      "the rescaled us() fit reports an UNVERIFIED convergence state, which ",
+      "is neither outcome this tripwire distinguishes. Read the diagnostics ",
+      "before going further; NA must not pass as though it were a result."
     )
   )
+  expect_false(
+    identical(verdict, "repaired"),
+    info = paste0(
+      "the tenfold-rescaled us() fit both converged AND reproduced the ",
+      "unscaled correlation. Rescaling the response is exact, so that is ",
+      "what a correct fit does: finding O04 may be repaired. Re-run oracle ",
+      "scenarios 06_us_dim2 and 07_us_dim3, reclassify the INLA us() row, ",
+      "and replace this tripwire with the invariance gate above."
+    )
+  )
+})
+
+
+
+test_that("the O04 tripwire rule can reach all four of its verdicts", {
+  # Non-convergence, whatever the correlations did.
+  expect_identical(.o04_verdict(FALSE, 0.135, 0.135), "nonconverged")
+  expect_identical(.o04_verdict(FALSE, 0.135, -0.780), "nonconverged")
+
+  # Converged but not invariant: the audit's own counterexample.
+  expect_identical(.o04_verdict(TRUE, 0.135, -0.780), "not_invariant")
+
+  # Converged AND invariant. This is the state that must make the gate red,
+  # because it is what a repaired us() looks like and the tripwire's job is
+  # to notice a repair rather than to keep asserting a defect that is gone.
+  expect_identical(.o04_verdict(TRUE, 0.135, 0.135), "repaired")
+  expect_identical(.o04_verdict(TRUE, 0.930, 0.9315), "repaired")
+
+  # Unverified never passes as a result.
+  expect_identical(.o04_verdict(NA, 0.135, -0.780), "unverified")
+})
+
+
+test_that("the O04 rule is sensitive at its stated tolerance", {
+  # Just inside and just outside 0.05, so the boundary is asserted rather
+  # than assumed.
+  expect_identical(.o04_verdict(TRUE, 0.100, 0.149), "repaired")
+  expect_identical(.o04_verdict(TRUE, 0.100, 0.151), "not_invariant")
 })

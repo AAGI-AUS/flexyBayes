@@ -22,24 +22,17 @@
 # 73,341 observations is about 43 GB.
 
 
-# --- a quiet summary ------------------------------------------------ #
+# --- reading the base fit -------------------------------------------- #
 
-# .fb_sel_summary() --- summary(object) without the 67 lines.
+# .fb_sel_summary() --- the one place the module reads the fit's summary.
 #
-# summary.flexybayes_inla() and its two siblings call print() unconditionally
-# and return invisibly, so `s <- summary(fit)` prints and
-# `print(summary(fit))` prints twice. That is the wrong side of the S3
-# contract -- print.summary.flexybayes() already exists and is where the
-# printing belongs -- but the fix changes visible behaviour at fifteen test
-# call sites and in the vignettes, so it is not made here.
-#
-# The substrate calls summary() once per fold. Left alone, a ten-fold run
-# would emit several hundred lines of model summary into the console. This
-# wrapper is a local defence, not the repair.
+# It used to capture output, because summary.flexybayes_inla() printed 67
+# lines unconditionally and the substrate reads it once per fold. That is
+# fixed at the source now, so this is a plain call. It stays as a named
+# function because every fold goes through it and a future change to how
+# the base fit is read belongs in one place.
 .fb_sel_summary <- function(object) {
-  out <- NULL
-  utils::capture.output(out <- summary(object))
-  out
+  summary(object)
 }
 
 

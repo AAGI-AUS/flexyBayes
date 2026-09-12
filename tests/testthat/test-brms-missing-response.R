@@ -64,7 +64,7 @@ test_that("the sampled missing responses reach summary(fit)$missing", {
     verbose = FALSE, mcmc_verbose = FALSE
   )))
 
-  captured <- utils::capture.output(s <- summary(fit))
+  captured <- utils::capture.output(print(s <- summary(fit)))
   mv <- s$missing
   expect_s3_class(mv, "data.frame")
   expect_identical(
