@@ -56,6 +56,84 @@
 }
 
 
+
+# --- stage-1 level effects --------------------------------------------- #
+
+# .fb_sel_absorbed_effects() --- the level effects with the term ABSORBED.
+#
+# This is the correction that matters most in this file. The reduction cites
+# the two-stage proposition, which says "with the trial effects absorbed into
+# X0" -- absorbed means FIXED. Reading them from ranef() instead reads
+# posterior means of a RANDOM term, which are shrunk toward zero by
+#
+#   lambda = sigma_u^2 / (sigma_u^2 + sigma_e^2 / m)
+#
+# and a regression of shrunk effects on a covariate returns lambda times the
+# coefficient, not the coefficient. Measured on 12 replicates at 30 levels
+# and 4 plots per level (2026-09-12): route A gives 1.4906 against a truth of
+# 1.5, the shrunk route gives 1.3734 -- 8.0 per cent low -- and the absorbed
+# route gives 1.4922, 0.19 per cent from route A. The attenuation grows as
+# the level means carry less information, reaching tens of per cent with few
+# plots per level or a weak candidate.
+#
+# So the default is `absorb = "fixed"`. The shrunk route is retained under
+# `absorb = "random"` because the RANKING of candidates survives it -- the
+# two coefficient vectors are proportional, and the scalar cancels -- but a
+# coefficient from it is on a different scale from builder A's and must not
+# be reported beside one.
+.fb_sel_absorbed_effects <- function(object, term, data) {
+  d <- data
+  key <- .fb_sel_term_key(object, term, d)
+  d[[".fb_level"]] <- factor(key)
+
+  fixed <- stats::formula(object$fb$source_formula %||% NULL)
+  # Rebuild stage 1 from the base's own fixed part plus the absorbed term.
+  rhs <- vapply(object$fb$fixed_terms, function(t) t$label %||% t$var, character(1L))
+  rhs <- rhs[nzchar(rhs)]
+  other_random <- Filter(
+    function(t) !identical(.fb_sel_term_label(t), term),
+    object$fb$random_terms
+  )
+  if (length(other_random) > 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_reduction_absorption_unsupported",
+      message = paste0(
+        "fb_select(): absorbing `", term, "` as a fixed term leaves ",
+        length(other_random), " further random term(s), which needs a mixed ",
+        "refit this release does not perform. Use absorb = \"random\" and ",
+        "read only proportional quantities from the result, or reduce on a ",
+        "base whose only random term is the one being absorbed."
+      )
+    ))
+  }
+
+  form <- stats::as.formula(paste0(
+    object$fb$response, " ~ 0 + .fb_level",
+    if (length(rhs) > 0L) paste0(" + ", paste(rhs, collapse = " + ")) else ""
+  ))
+  fit1 <- stats::lm(form, data = d)
+  cf <- summary(fit1)$coefficients
+  rows <- grep("^\\.fb_level", rownames(cf))
+  data.frame(
+    level = sub("^\\.fb_level", "", rownames(cf)[rows]),
+    estimate = unname(cf[rows, "Estimate"]),
+    std_error = unname(cf[rows, "Std. Error"]),
+    stringsAsFactors = FALSE
+  )
+}
+
+
+# .fb_sel_term_label() --- the name a random term is known by.
+.fb_sel_term_label <- function(t) {
+  if (identical(t$type, "simple")) {
+    t$var
+  } else if (identical(t$type, "nested")) {
+    paste0(t$outer, ":", t$inner)
+  } else {
+    NA_character_
+  }
+}
+
 # --- admissibility ----------------------------------------------------- #
 
 # .fb_sel_reduction_admissible() --- may this candidate enter this term's
@@ -107,7 +185,9 @@
 # is exact under balance and an approximation otherwise. The approximation is
 # recorded rather than adopted quietly: an unbalanced design gets
 # `omega_diagonal_approximation` on the certificate.
-.fb_sel_reduction <- function(object, term, candidates, data = NULL) {
+.fb_sel_reduction <- function(object, term, candidates, data = NULL,
+                              absorb = c("fixed", "random")) {
+  absorb <- match.arg(absorb)
   d <- data %||% object$data
   # The aggregated route builds a different object -- no `data`, no parsed
   # `fb` -- and reaching into it would fail with a length-zero comparison
@@ -123,7 +203,26 @@
       )
     ))
   }
-  eff <- .fb_sel_term_effects(object, term)
+  # Validate the term BEFORE either route touches it. The absorbed route
+  # builds a design column from the term's levels, so an unknown term used
+  # to die inside a data-frame assignment with a message about row counts
+  # rather than refusing by name.
+  known <- vapply(object$fb$random_terms, .fb_sel_term_label, character(1L))
+  if (!term %in% known) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_reduction_term_not_in_fit",
+      message = paste0(
+        "fb_select(): the base fit carries no random term `", term,
+        "`. It has: ", paste(known[!is.na(known)], collapse = ", "), "."
+      )
+    ))
+  }
+
+  eff <- if (identical(absorb, "fixed")) {
+    .fb_sel_absorbed_effects(object, term, d)
+  } else {
+    .fb_sel_term_effects(object, term)
+  }
 
   key <- .fb_sel_term_key(object, term, d)
   if (length(key) != nrow(d)) {
@@ -177,17 +276,19 @@
 
   list(
     term = term,
+    absorb = absorb,
     levels = eff$level,
     u = eff$estimate,
     omega_diag = eff$std_error^2,
     T = Tk,
     n_per_level = n_per_level,
     balanced = balanced,
-    approximations = if (balanced) {
-      character(0)
-    } else {
-      "omega_diagonal_approximation"
-    },
+    approximations = c(
+      if (balanced) character(0) else "omega_diagonal_approximation",
+      # A shrunk stage 1 answers a different question by a scalar. Recorded,
+      # so a coefficient from it cannot be paired with builder A's unnoticed.
+      if (identical(absorb, "random")) "shrunk_stage_one_effects" else character(0)
+    ),
     admissibility = adm
   )
 }

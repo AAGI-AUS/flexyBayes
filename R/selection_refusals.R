@@ -93,5 +93,17 @@
     since_version = "0.10.0.9000"
   )
 
+  .register_refusal(
+    reason_code = "selection_reduction_absorption_unsupported",
+    description = paste0(
+      "fb_select(): absorbing the reduction term as fixed leaves further ",
+      "random terms, which needs a mixed refit this release does not do."
+    ),
+    message_template = "fb_select(): absorbing `%s` as a fixed term leaves %d further random term(s).",
+    registered_in_adr = "SPEC v3 section 4.3",
+    plan_field = "selection_plan",
+    since_version = "0.10.0.9000"
+  )
+
   invisible(NULL)
 }

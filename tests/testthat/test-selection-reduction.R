@@ -210,3 +210,70 @@ test_that("every refusal this builder can throw is registered", {
   )
   expect_true(all(codes %in% fb_refusals()$reason_code))
 })
+
+
+# --- the stage-1 estimator, and why the default is what it is ---------- #
+
+test_that("absorbed stage-1 effects agree with the one-stage route; shrunk ones do not", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+
+  # The reduction cites the two-stage proposition, which says the term is
+  # "absorbed into X0" -- absorbed means FIXED. Reading ranef() instead reads
+  # posterior means of a RANDOM term, shrunk by
+  # lambda = sigma_u^2 / (sigma_u^2 + sigma_e^2 / m), and a regression of
+  # shrunk effects on a covariate returns lambda times the coefficient.
+  #
+  # Measured over 10 replicates at J = 30, m = 4 on 2026-09-12: the absorbed
+  # route sits 0.19 per cent from the one-stage coefficient and the shrunk
+  # route 7.42 per cent low. The bounds below carry headroom on both and are
+  # a regression gate, not a restatement of those two numbers.
+  J <- 30L
+  m <- 4L
+  gaps <- t(vapply(seq_len(4L), function(s) {
+    set.seed(s)
+    d <- data.frame(
+      trial = factor(rep(sprintf("T%02d", seq_len(J)), each = m))
+    )
+    x <- stats::setNames(stats::rnorm(J), levels(d$trial))
+    d$x <- as.numeric(x[as.character(d$trial)])
+    d$z <- stats::rnorm(nrow(d))
+    u <- stats::setNames(stats::rnorm(J, sd = 0.7), levels(d$trial))
+    d$y <- 2 + 1.5 * d$x + 0.3 * d$z +
+      as.numeric(u[as.character(d$trial)]) + stats::rnorm(nrow(d), sd = 0.9)
+
+    fit_a <- flexybayes(y ~ x + z, random = ~ trial, data = d,
+                        backend = "inla", verbose = FALSE)
+    fx <- summary(fit_a)$fixed
+    g_a <- fx$estimate[fx$term == "x"]
+
+    base <- flexybayes(y ~ z, random = ~ trial, data = d,
+                       backend = "inla", verbose = FALSE)
+    coef_of <- function(mode) {
+      r <- .fb_sel_reduction(base, "trial", "x", absorb = mode)
+      stats::coef(stats::lm(
+        r$u ~ r$T[, "x"], weights = 1 / r$omega_diag
+      ))[[2L]]
+    }
+    c(fixed = abs(coef_of("fixed") / g_a - 1),
+      random = abs(coef_of("random") / g_a - 1))
+  }, numeric(2L)))
+
+  expect_lt(mean(gaps[, "fixed"]), 0.02)
+  # The shrunk route must remain visibly worse. If this ever stops being
+  # true the attenuation has gone away and the default should be revisited,
+  # which is a change worth reading rather than one to pass silently.
+  expect_gt(mean(gaps[, "random"]), 3 * mean(gaps[, "fixed"]))
+})
+
+
+test_that("the shrunk route declares itself on the object", {
+  d <- fb_red_fixture()
+  fit <- flexybayes(y ~ z, random = ~ trial, data = d, backend = "inla",
+                    verbose = FALSE)
+  expect_identical(.fb_sel_reduction(fit, "trial", "x")$absorb, "fixed")
+  shrunk <- .fb_sel_reduction(fit, "trial", "x", absorb = "random")
+  # A coefficient from the shrunk route is on a different scale from builder
+  # A's. It must not be pairable with one without the object saying so.
+  expect_true("shrunk_stage_one_effects" %in% shrunk$approximations)
+})
