@@ -1190,14 +1190,16 @@ test_that("a grouping column that also carries a fixed effect refuses", {
 })
 
 
-test_that("a fit class with no predictive method says so rather than guessing", {
+test_that("a fit class with no predictive route says so rather than guessing", {
+  # Dispatch is a plain inherits() branch over the two engines rather than an
+  # S3 generic, so this is the branch's own refusal and not a default method.
   expect_error(
     .fb_sel_posterior_predict_fold(
       structure(list(), class = "not_a_flexybayes_fit"),
       1L,
       data.frame(y = 1)
     ),
-    "no posterior predictive method",
+    "no posterior predictive route",
     fixed = TRUE
   )
 })

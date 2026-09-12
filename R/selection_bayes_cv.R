@@ -484,9 +484,12 @@
 # sampler is used as an independent check on this construction in the test
 # file, which is the right place for it.
 #
-# The methods live in this namespace alongside the generic, so UseMethod
-# finds them without an S3method() entry in NAMESPACE; the generic and its
-# methods are internal and never reach a user's search path.
+# Dispatch is a plain `inherits()` branch rather than an S3 generic. There
+# are exactly two engines and both are in this namespace, so a generic buys
+# nothing an extension point would use, and an internal UseMethod() needs a
+# runtime registerS3method() in .onLoad() before it resolves from a caller's
+# frame -- machinery for a two-way branch. An unknown class refuses here by
+# name rather than falling through to a default method.
 #
 # @return list(mu = <n_draws x n_assess>, sigma = <n_draws>, provider,
 #   n_draws, prediction).
@@ -498,20 +501,28 @@
   n_draws = 4000L,
   seed = NULL
 ) {
-  UseMethod(".fb_sel_posterior_predict_fold")
-}
-
-
-.fb_sel_posterior_predict_fold.default <- function(
-  fit,
-  assess_rows,
-  data,
-  prediction = c("new_cluster", "known_cluster"),
-  n_draws = 4000L,
-  seed = NULL
-) {
+  if (inherits(fit, "flexybayes_brms")) {
+    return(.fb_sel_predict_fold_brms(
+      fit,
+      assess_rows,
+      data,
+      prediction = prediction,
+      n_draws = n_draws,
+      seed = seed
+    ))
+  }
+  if (inherits(fit, "flexybayes_inla")) {
+    return(.fb_sel_predict_fold_inla(
+      fit,
+      assess_rows,
+      data,
+      prediction = prediction,
+      n_draws = n_draws,
+      seed = seed
+    ))
+  }
   stop(
-    "no posterior predictive method for a fit of class <",
+    "no posterior predictive route for a fit of class <",
     paste(class(fit), collapse = ", "),
     ">.",
     call. = FALSE
@@ -528,7 +539,7 @@
 # `draw_ids` selects the draws deterministically and by position, so the
 # `sigma` column read from the same draws matrix is aligned draw for draw.
 # A random subsample would not be.
-.fb_sel_posterior_predict_fold.flexybayes_brms <- function(
+.fb_sel_predict_fold_brms <- function(
   fit,
   assess_rows,
   data,
@@ -584,7 +595,7 @@
 # row shares, so the random effect in that Predictor entry is a draw from the
 # random-effect distribution rather than a conditional mean --- the marginal
 # predictive the contract's section 7 asks for.
-.fb_sel_posterior_predict_fold.flexybayes_inla <- function(
+.fb_sel_predict_fold_inla <- function(
   fit,
   assess_rows,
   data,

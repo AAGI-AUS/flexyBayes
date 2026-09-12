@@ -427,6 +427,17 @@ emit_brms <- function(
     list(
       glm = glm_obj,
       brms = brmsfit,
+      # The parsed model and the analysis data, on the same two slots the
+      # INLA emit writes them to (R/emit_inla.R). Before 0.11.0 only the
+      # INLA fit carried them, so every consumer that reads `$fb` / `$data`
+      # -- the selection substrate chief among them -- worked on one engine
+      # and refused on the other, and the refusal named the aggregated route
+      # rather than the missing slots. `$brms$data` is the model frame, which
+      # holds the model's own variables and nothing else; a candidate block
+      # names columns the model did not, so the analysis data has to be the
+      # thing that travels.
+      fb = fb,
+      data = data,
       extras = extras
     ),
     class = c("flexybayes_brms", "flexybayes", "list")
