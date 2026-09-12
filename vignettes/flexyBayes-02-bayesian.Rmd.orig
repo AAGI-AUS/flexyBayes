@@ -97,7 +97,7 @@ posterior rather than from the integration grid the fit was assembled on. The
 distinction matters only in the tails, and only for a functional -- but that
 is precisely where an interval is read.
 
-## A variance near zero stays honest
+## A variance near zero keeps its uncertainty
 
 REML can put a variance component exactly at zero and report a small standard
 error beside it, which reads as certainty that the effect is absent. It is

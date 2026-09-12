@@ -1,6 +1,6 @@
 Package: flexyBayes
 Title: Flexible Bayesian Mixed Models with 'ASReml' and 'brms' Syntax
-Version: 0.10.0.9000
+Version: 0.11.0
 Authors@R: c(
     person("Max", "Moldovan", email = "max.moldovan@adelaide.edu.au",
            role = c("aut", "cre"),
@@ -43,7 +43,9 @@ Suggests:
     memuse,
     bayesplot,
     posterior,
+    projpred,
     ggplot2,
+    glmnet,
     emmeans,
     estimability,
     marginaleffects,

@@ -733,7 +733,7 @@ print.lgm_refusal <- function(x, ...) {
 # naming differ, and a k-level unstructured covariance costs k(k+1)/2
 # parameters -- 210 at k = 20 -- which is exactly the problem the
 # factor-analytic structure exists to solve. Refusing by name and pointing at
-# fa() is the honest answer rather than emitting a model nobody can fit.
+# fa() is the correct answer rather than emitting a model nobody can fit.
 .FB_INLA_US_MAX_ORDER <- 5L
 
 .lgm_check_us_gxe_order <- function(fb) {

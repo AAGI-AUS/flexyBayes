@@ -1,3 +1,231 @@
+# flexyBayes 0.11.0
+
+`fb_select()` becomes a Bayesian verb. It fits a reference model in which a
+declared block of candidate fixed effects carries a joint shrinkage prior and
+the covariance structure is integrated over rather than plugged in; it selects
+a parsimonious submodel by projection predictive inference where the reference
+model's structure permits it, and refuses by name where it does not; and, on
+request, it triangulates the result against an external penalised optimiser on
+the same folds. It does not claim that posterior summaries are numerically
+identical to `glmnet`, and there is no configuration under which a penalised
+mode is reported under a Bayesian label.
+
+## Breaking changes
+
+* **`fb_select()`'s signature is four axes rather than one engine
+  argument.** `workflow`, `provider`, `prior` and `decision` are recorded
+  independently on every result, because conflating what was fitted with what
+  fitted it is how a penalised-likelihood mode comes to be described as a
+  posterior. `covariance`, `metric`, `alpha`, `lambda`, `stability` and
+  `sensitivity` leave the public signature. The metric now lives in
+  `fb_decision()`; path and stability quantities are properties of the
+  optimiser workflow and are returned only when it ran. `metric` and
+  `covariance` are still accepted for one release with a deprecation notice.
+
+* **The certificate's covariance estimand is read from the fold object, not
+  from an argument.** The public argument defaulted to
+  `plugin_mean_covariance` while the folds worked in
+  `reml_plugin_covariance`, so a certificate could describe a computation
+  that had not happened. Every field naming an estimand, a provider, a
+  convention or a route is now copied from the object that produced it. The
+  regression test injects a disagreement and requires the certificate to
+  follow the fold.
+
+* **Five penalty families are withdrawn from the public grammar.**
+  `group_lasso`, `exclusive_lasso`, `sparse_group_lasso`, `group_exclusive`
+  and `adaptive` have no provider in this release -- `sparsegl`, `grpreg` and
+  an internal proximal solver are not shipped -- and a family without a
+  provider is a promise rather than a capability. Naming one refuses with
+  `selection_penalty_family_withdrawn`. Their component traits remain in the
+  resolver, and their return is a later phase with its own gates.
+
+## New
+
+* **`fb_penalty()`** declares the joint shrinkage prior: `target ~ family(...)`
+  formulas resolved in written order against the model matrix's own
+  assignment map, never by string matching on names. Five families --
+  `ridge(scale)`, `laplace(scale)`, `elastic_net(lambda, alpha)`,
+  `regularized_horseshoe(p0, ...)` and `r2d2(mean_R2, prec_R2, cons_D2)` --
+  plus `none()` to exempt coordinates from shrinkage. Targets are
+  `term(everything())`, `term(x1, x2)`, `term(c("x1", "x2"))` and
+  `term(matches("^SLGA_"))`; the tidyselect vocabulary is deliberately not
+  supported.
+
+  `ridge`, `laplace` and `elastic_net` target the candidate block exactly --
+  the first two through coefficient-specific prior rows, the third through a
+  `target +=` contribution over the candidate indices carried in `stanvars`.
+  `regularized_horseshoe` and `r2d2` are class-wide: brms refuses a
+  coefficient-specific row beside a class-wide special prior, so a base
+  carrying protected fixed effects beyond the intercept refuses with
+  `penalty_block_targeting_unsupported` and the refusal names both ways
+  forward -- an exactly-targetable family, or `scope = "all_fixed"`, an
+  explicit opt-in under which the protected coefficients also sit under the
+  global-local prior and the certificate records
+  `protected_under_global_shrinkage`.
+
+* **`fb_resamples()`** becomes public unchanged: folds on original units
+  before any transformation, frozen factor levels, and an assessment fold
+  carrying a level the training fold never saw refused rather than dropped.
+
+* **`fb_decision()`** declares how the answer is read off -- the method
+  (`projection`, `full`, `posterior_threshold`), the metric, the rule
+  (`one_se`, `min`, `tolerance`) and the search. It validates at
+  construction, so a tolerance rule with no tolerance, or a posterior
+  threshold with no practical effect size, refuses before anything is fitted
+  rather than several minutes into a sampling run.
+
+  A posterior threshold is a decision rule and is labelled one everywhere it
+  appears. A continuous shrinkage prior puts no posterior mass at zero, so
+  the quantity it thresholds is not an inclusion probability.
+
+* **`penalty = NULL` has a provider.** Under `workflow = "bayes"` it refits
+  the base's own engine -- INLA or brms, whichever fitted the base -- inside
+  every assessment fold and scores held-out clusters from posterior
+  predictive draws. This is the genuinely Bayesian no-penalty reference and
+  the correct baseline for every shrinkage family. On INLA the assessment
+  rows enter the refit with an `NA` response and their held-out grouping
+  levels relabelled, so the predictive is marginal over the random effect
+  rather than conditional on a level the training rows never saw.
+
+* **`benchmark = TRUE`** runs the closed-form generalised-least-squares arm
+  and, where a penalty was given, the `glmnet` arm on the same folds, the
+  same prediction target and the same candidate design. The
+  generalised-least-squares arm is `workflow = "unpenalized_benchmark"`,
+  `provider = "gls_reml_plugin"`, and is never labelled Bayesian; it can also
+  be asked for on its own.
+
+* **`fallback = "none"` is the default.** A Bayesian request whose provider
+  is absent refuses with `selection_provider_absent` or
+  `selection_fallback_not_authorised`, naming the package and the install
+  line. `fallback = "glmnet"` is a deliberate choice, fires only on an absent
+  provider and never after a failure; when it fires the workflow becomes
+  `penalized_optimizer`, the object prints the substitution on its first
+  line, and the certificate records `fallback_fired = TRUE`.
+
+* **`fb_select(plan = TRUE)`** reports the resolved axes, the compiled prior
+  blocks and their route, the projection structure gate and a cost estimate
+  without fitting anything. The per-fit figure is the base model's own
+  recorded wall time and is labelled a floor rather than an estimate.
+
+* **`lgm_gate()` gains a twelfth structural check.** A joint shrinkage prior
+  routed at INLA refuses with `prior_family_unsupported_inla`: a scale
+  mixture leaves the latent field non-Gaussian given the hyperparameters,
+  which is the assumption the nested Laplace approximation is built on. The
+  capability matrix carries one row per family with `inla = "refuses"` and
+  `brms = "fits"`, each anchored on the generated-code assertions.
+
+* **Accessors**: `print()`, `tidy()`, `glance()`, `augment()` and
+  `plot(type = c("elpd_by_size", "rank_stability", "shrinkage",
+  "benchmark"))`.
+
+* **The projection search runs on clustered draws** -- 20 clusters for the
+  search, 100 for the predictive evaluation -- rather than on the whole
+  posterior. Projecting a multilevel submodel is a fit per draw, so
+  projecting every draw at every search step inside every fold does not
+  finish on a problem of the size this module is for. Both settings travel
+  on the result and on the certificate, so a reader can see what the elpd
+  column was computed from.
+
+## Every comparison declares what it does and does not claim
+
+Three equivalence levels, and every stored comparison carries exactly one.
+
+* `map_exact_fixed_covariance` -- the posterior mode under fixed covariance
+  and fixed residual scale is the minimiser of a named penalised objective,
+  and a numerical oracle gates the claim.
+* `posterior_predictive_comparable` -- the provider expresses the family, but
+  the covariance is integrated or the residual scale is free, so the
+  estimands differ and only predictive risk on common folds compares.
+* `no_identity_expected` -- the provider has no representation of the family
+  at all; the arms are reported side by side and nothing is claimed.
+
+A Bayesian arm always integrates the covariance and leaves the residual scale
+free, so a `glmnet` benchmark beside it is `posterior_predictive_comparable`
+for ridge, laplace and elastic net, and `no_identity_expected` for the
+regularised horseshoe and R2D2. The words "same as glmnet" appear nowhere
+unqualified.
+
+## The `glmnet` conventions are measured, not recalled
+
+Under `glmnet` 5.0 on this machine, with `standardize = FALSE`,
+`intercept = FALSE` and a convergence threshold of `1e-16`, the map from the
+canonical objective `0.5 ||z - A beta||^2 + pen(beta)` to `glmnet`'s own
+lambda was measured against two oracles that `glmnet` did not author -- the
+ridge closed form, and the canonical KKT residual:
+
+* the L1 part maps as `lambda_canonical / n`, KKT residual **9.8e-09**;
+* the L2 part does **not**. `glmnet` measures its ridge penalty against a
+  response scale, and the scale is the uncentred root mean square rather than
+  either standard deviation: `lambda_canonical * rms(y) / n` recovers the
+  closed form to a maximum absolute coefficient deviation of **1.3e-10**,
+  where leaving the response scale out gives 1.9e-02, the population standard
+  deviation 7.4e-03 and the sample standard deviation 7.2e-03.
+
+The convention is measured at run time by `.fb_sel_glmnet_convention()`,
+stored on the provider certificate as `provider_lambda_convention`, and
+pinned by a test. A change in `glmnet`'s convention turns that test red
+rather than moving the answer silently.
+
+## Projection refuses two structures it was measured against
+
+`projpred` 2.10.0's reference-model constructor was exercised cell by cell.
+Two structures the package fits are refused, and the refusal names the
+feature rather than reporting a generic failure:
+
+* **`(x || g)`**, the uncorrelated random slope. `get_refmodel()` rejects the
+  spelling; the two-term form `(1 | g) + (0 + x | g)` is accepted, and the
+  refusal says so.
+* **`(1 | gr(g, cov = K))`**, the known-covariance term `vm()` and `ped()`
+  lower to. `get_refmodel()` rejects a function call on the right-hand side
+  of a group term. The alternative the refusal names is
+  `decision = "full"`, which keeps the shrinkage posterior with no selection.
+
+`us()` and `fa()` translations and heterogeneous residual structures have no
+executed gate, so they refuse with `projection_structure_unsupported` too.
+Turning any of those rows green requires a test that runs it.
+
+## Adequacy is a gate, not a note
+
+Before any decision runs, the reference model must pass two checks. The
+tri-state convergence contract reads divergences, treedepth saturation,
+E-BFMI and bulk and tail effective sample size; a `fail` refuses with
+`penalty_sampler_diagnostics_failed`, and an unverified verdict is carried on
+the certificate and printed rather than being treated as a pass. A posterior
+predictive check on the observed mean and standard deviation must place both
+inside (0.005, 0.995), else `penalty_reference_model_inadequate` -- a
+projection inherits the reference model's misfit.
+
+For the regularised horseshoe the count of coefficients whose shrinkage
+factor falls below one half is reported against `p0`, labelled
+`orthogonal_design_kappa_approx`: the scalar formula holds for a standardised
+near-orthogonal design, and a correlated candidate block does not have one
+shrinkage factor per coefficient at all.
+
+## Refusals
+
+The registry moves from 163 codes to 184. `selection_penalty_not_implemented`
+is withdrawn, because the penalty is implemented and nothing throws it any
+more. New in this release:
+`selection_penalty_spec_malformed`, `selection_penalty_target_unsupported`,
+`selection_penalty_target_not_in_model`, `selection_penalty_target_ambiguous`,
+`selection_penalty_family_unknown`, `selection_penalty_family_withdrawn`,
+`penalty_hyperparameter_invalid`, `penalty_block_overlap`,
+`penalty_block_targeting_unsupported`, `penalty_factor_contrast_ambiguous`,
+`penalty_scaling_column_constant`, `penalty_sampler_diagnostics_failed`,
+`penalty_reference_model_inadequate`, `penalty_runtime_budget_exceeded`,
+`projection_structure_unsupported`, `projection_family_unsupported`,
+`selection_provider_absent`, `selection_fallback_not_authorised`,
+`selection_prox_mode_not_converged`,
+`selection_penalty_blocks_not_expressible`, `prior_family_unsupported_inla`
+and `selection_decision_invalid`. Each is registered beside the site that
+throws it and each is fired by a test.
+
+## Dependencies
+
+`Suggests` gains `projpred` and `glmnet`. Nothing moves to `Imports`, the
+package loads and checks with neither installed, and every
+provider-requiring test is gated on the provider being present.
+
 # flexyBayes 0.10.0.9000 (development version)
 
 * **`us(f):g` on INLA is no longer described as covariance-family equivalent

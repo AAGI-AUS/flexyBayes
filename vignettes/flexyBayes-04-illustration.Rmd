@@ -241,7 +241,8 @@ rnd(asreml_ref$met_varcomp[
 An estimate of 0.017 with a standard error of 0.137. A variance, with a
 standard error eight times its own size. flexyBayes reports that environment
 as a standard deviation of 0.27 with an interval from 0.06 to 1.02 -- wide,
-which is the honest answer, and positive throughout, which a variance must be.
+which is what the data support, and positive throughout, which a variance
+must be.
 
 # 4. What missing cells do, and do not, change
 
@@ -276,7 +277,8 @@ analyse whole trials the case for changing is weak.
 The case is in three places. A quantity near a boundary -- a small variance
 component, a high genetic correlation -- gets an interval that stays in the
 parameter space instead of one that leaves it. A small or damaged trial gets
-an interval that widens instead of a standard error whose
+an interval that widens with the loss of information instead of a standard
+error whose
 approximation has stopped holding. And any function of the variance
 components is available exactly, from one line, instead of through a
 linearisation.
