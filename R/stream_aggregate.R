@@ -157,6 +157,7 @@ flexybayes_stream <- function(
     family = family,
     prior = prior
   )
+  .refuse_offset_route(fb, "flexybayes_stream()")
 
   agg <- .fb_stream_aggregate(
     fb = fb,

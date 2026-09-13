@@ -551,6 +551,23 @@
 # site) already had an ad hoc untyped stop() for the identical fact.
 # One typed refusal at the dispatch choke point every route passes
 # through replaces all three.
+.refuse_offset_route <- function(fb, route) {
+  offsets <- fb$offsets %||% character(0)
+  if (!length(offsets)) {
+    return(invisible(NULL))
+  }
+  label <- paste0("`", offsets, "`", collapse = ", ")
+  stop(.fb_refusal_condition(
+    reason_code = "fixed_offset_unsupported",
+    message = paste0(
+      "The fixed formula carries ", label, ", and ", route,
+      " does not carry an offset."
+    ),
+    offsets = offsets,
+    route = route
+  ))
+}
+
 .refuse_non_binary_binomial_response <- function(fb, data) {
   if (!identical(fb$family %||% "", "binomial")) {
     return(invisible(NULL))
@@ -891,6 +908,10 @@
   # The IR keeps the parsed weights: the request stays on the record,
   # and the parser tests continue to cover it.
   .refuse_unsupported_weights(fb, weights)
+
+  # An offset is recorded at ingest; a route that does not yet carry one
+  # refuses by name rather than fitting the model without it.
+  .refuse_offset_route(fb, "flexybayes()")
 
   # Structures that parse for the formula catalogue and that no active
   # engine emits -- the residual-side AR1 spelling above all -- are refused

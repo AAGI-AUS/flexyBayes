@@ -468,9 +468,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # The fresh-review closure adds one: a projection decision asked to choose
   # on a metric other than elpd, refused before any fit
   # (projection_metric_unsupported) (= 191).
+  #
+  # Offsets in the fixed formula are recorded rather than refused at ingest,
+  # and add two: an offset that is not a finite number on every row
+  # (fixed_offset_invalid) (= 192), and a prediction whose new data lack a
+  # column an offset reads (newdata_offset_missing) (= 193).
+  # fixed_offset_unsupported stays for the routes that cannot carry one.
   expect_false("selection_penalty_not_implemented" %in% entries)
-  expect_equal(length(entries), 191L)
+  expect_equal(length(entries), 193L)
   expect_true("fixed_offset_unsupported" %in% entries)
+  expect_true("fixed_offset_invalid" %in% entries)
+  expect_true("newdata_offset_missing" %in% entries)
   expect_true("projection_metric_unsupported" %in% entries)
   expect_true("correlated_covariance_requires_brms" %in% entries)
   expect_true("inla_response_scale_unvalidated" %in% entries)

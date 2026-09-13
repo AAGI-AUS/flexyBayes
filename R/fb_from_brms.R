@@ -361,7 +361,8 @@ fb_from_brms <- function(
     priors = priors,
     data_summary = data_summary,
     capabilities = character(),
-    source = "brms"
+    source = "brms",
+    offsets = fixed_info$offsets
   )
 }
 

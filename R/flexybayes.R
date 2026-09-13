@@ -775,6 +775,8 @@ flexybayes <- function(
     # short-circuits before any code generation happens. Below the
     # 1e5-row threshold .maybe_preflight() returns NULL and the
     # review object's $preflight slot stays NULL (v0.2 behaviour).
+    .refuse_offset_route(fb, "review_code = TRUE")
+
     review_preflight <- .maybe_preflight(
       fb = fb,
       data = data,

@@ -148,7 +148,8 @@ fb_from_asreml <- function(
     priors = priors,
     data_summary = data_summary,
     capabilities = character(),
-    source = "asreml"
+    source = "asreml",
+    offsets = fixed_info$offsets
   )
 }
 

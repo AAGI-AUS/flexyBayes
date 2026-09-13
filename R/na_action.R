@@ -251,6 +251,9 @@
   collect(fb$fixed_terms)
   collect(fb$random_terms)
   collect(fb$residual_terms)
+  # An offset's columns are model variables too: a completed design cell
+  # needs its offset, and carrying one in from row 1 would invent it.
+  out <- c(out, .fb_offset_vars(fb$offsets))
   unique(out[!is.na(out) & nzchar(out)])
 }
 
