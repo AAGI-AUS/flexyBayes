@@ -1719,16 +1719,15 @@ emit_inla <- function(
 
       # v0.3.10: blocks-format vm/ped emits K
       # independent f() calls, one per block, each with its own
-      # generic0 precision and an INLA-default per-block precision
-      # hyperparameter. The K integer index columns + K per-block
-      # precision matrices are pre-computed in emit_inla()'s
-      # data_inla setup loop; here we only need the block count,
-      # which the resolved known_matrices entry surfaces directly.
-      # The per-block hyperparameter is left at INLA's
-      # loggamma(1, 5e-5) default --- no shared per-block prior at
-      # v0.3.10 (the priors-to-inla hyper_ctrl entry is keyed by
-      # term$var, so all K blocks share its parameters when the user
-      # supplies one via fb_prior()).
+      # generic0 precision and its own precision hyperparameter. The
+      # K integer index columns + K per-block precision matrices are
+      # pre-computed in emit_inla()'s data_inla setup loop; here we
+      # only need the block count, which the resolved known_matrices
+      # entry surfaces directly. Every block's hyperparameter takes the
+      # one prior keyed by term$var: the caller's fb_prior() entry when
+      # it names the term, and otherwise the package's bounded default,
+      # which .fb_inla_complete_priors() fills for that key whenever the
+      # fit carries a prior of any kind (R/inla_default_priors.R).
       if (!is.null(cov) && identical(cov$format, "blocks")) {
         blocks_value <- known_matrices[[cov$data]]
         K <- if (is.list(blocks_value)) length(blocks_value) else 0L

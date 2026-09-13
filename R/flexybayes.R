@@ -263,7 +263,9 @@
 #'   (`uniform(0, U)` with family-aware `U`: `5 * sd(y)` for Gaussian;
 #'   `5` on the logit scale for binomial / beta; `3` on the log scale
 #'   for Poisson / negative-binomial / gamma) for `sigma` and every
-#'   named random-effect group -- a weakly-informative choice for
+#'   named random-effect group, with the bound on the standard deviation
+#'   of an uncorrelated random slope divided by the standard deviation of
+#'   its numeric covariate on INLA -- a weakly-informative choice for
 #'   moderate group counts; for very small `J`, Gelman (2006), *Bayesian
 #'   Analysis* 1(3):515-534, recommends a half-t / half-Cauchy instead
 #'   (see the priors vignette). The legacy `lognormal(0, 1)` default
