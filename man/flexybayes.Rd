@@ -286,7 +286,12 @@ default) uses brms's own settings. A no-op on the INLA path, as
 \item{prior}{An optional \code{fb_prior()} object specifying priors via the
 PC-canonical hybrid DSL (preferred). When supplied it overrides
 \code{prior_vc_sd} for the variance components it covers. See
-\code{\link[=fb_prior]{fb_prior()}}.}
+\code{\link[=fb_prior]{fb_prior()}}. On INLA, a random-effect standard deviation the prior
+does not name takes the package's bounded default, \code{uniform(0, U)}
+with the family-aware \code{U} described under \code{prior_vc_sd} (divided by
+the covariate's standard deviation for an uncorrelated slope), rather
+than INLA's own hyperprior; \code{\link[=prior_summary]{prior_summary()}} lists what was filled.
+A standard deviation the prior does name is left exactly as written.}
 
 \item{prior_fixed_sd}{Numeric: SD for fixed-effect normal priors,
 applied uniformly to the intercept, factor contrasts, continuous
@@ -304,13 +309,20 @@ literature for regression coefficients (e.g. Gelman et al. 2008,
 supply it}, on every backend: brms receives one \code{normal(0, sd)}
 row per fixed-effect class, and INLA receives \code{control.fixed} with
 \code{prec = 1 / sd^2} on the slopes and the intercept alike. Left
-unsupplied, each engine keeps its own
-fixed-effect default -- brms's flat coefficients and
-response-centred \code{student_t} intercept, INLA's \code{prec = 0.001} and
-flat intercept -- because replacing a response-centred intercept
-prior with \code{normal(0, 100)} is a different model for any response
-far from zero. \code{\link[=prior_summary]{prior_summary()}} names which of the two a fit ran
-under.}
+unsupplied, brms keeps its own fixed-effect default -- flat
+coefficients and a response-centred \code{student_t} intercept -- because
+replacing a response-centred intercept prior with \code{normal(0, 100)} is
+a different model for any response far from zero. INLA gives each
+column built from a numeric variable the covariate-scaled default
+\code{normal(0, 1e5 * sd(y) / sd(x))} on an identity link and
+\code{normal(0, sqrt(1000) / sd(x))} on a log or logit link, so a
+covariate's units do not change the fit, and keeps its own
+\code{prec = 0.001} on factor contrasts and its flat intercept.
+\code{\link[=prior_summary]{prior_summary()}} names what a fit ran under. A supplied value is
+never rescaled by a covariate: it is a standard deviation in response
+units per covariate unit, so on a covariate recorded in small units
+(a large coefficient) it can bind -- measure the covariate in natural
+units, or leave the argument unsupplied on INLA.}
 
 \item{prior_vc_sd}{Numeric: hyperparameter for the legacy
 \code{lognormal(0, prior_vc_sd)} variance-component prior. \strong{Note:}

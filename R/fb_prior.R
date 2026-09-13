@@ -840,7 +840,60 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Gelman (2006, Bayesian Analysis 1(3):515-534) recommends a half-t /
 # half-Cauchy instead -- available via fb_prior(); see the priors
 # vignette.
-.default_uniform_scale <- function(data, response, family, link = NULL) {
+#
+# `resp_sd`, when given, is the response standard deviation read from
+# somewhere other than `data` -- the streamed route holds only a head sample
+# of the rows and reads it off the full sufficient statistics instead.
+.default_uniform_scale <- function(data, response, family, link = NULL,
+                                   resp_sd = NULL) {
+  link_class <- .fb_default_link_class(family, link)
+
+  if (identical(link_class, "logit")) {
+    return(list(scale = 5, basis = "logit_uniform"))
+  }
+
+  if (identical(link_class, "log")) {
+    return(list(scale = 3, basis = "log_link_uniform"))
+  }
+
+  if (!is.null(resp_sd)) {
+    sdv <- resp_sd
+    if (!is.finite(sdv) || sdv <= 0) {
+      sdv <- 1.0
+    }
+    return(list(
+      scale = .FB_UNIFORM_SD_MULTIPLIER * sdv,
+      basis = "identity_sd_uniform"
+    ))
+  }
+
+  y <- if (!is.null(data) && response %in% names(data)) {
+    data[[response]]
+  } else {
+    NULL
+  }
+
+  if (!is.numeric(y)) {
+    return(list(scale = 1.0, basis = "identity_default_uniform"))
+  }
+  yv <- as.numeric(y)
+  yv <- yv[is.finite(yv)]
+  if (length(yv) < 2L) {
+    return(list(scale = 1.0, basis = "identity_too_small_uniform"))
+  }
+  sdv <- stats::sd(yv)
+  if (!is.finite(sdv) || sdv <= 0) {
+    sdv <- 1.0
+  }
+  list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
+}
+
+# Which scale a default prior is written on: "logit" and "log" for the links
+# whose linear predictor is unit-free, "identity" for everything whose
+# linear predictor carries the response's units. Shared by the
+# variance-component default above and the fixed-effect default on INLA
+# (R/inla_default_priors.R), so the two cannot classify a family differently.
+.fb_default_link_class <- function(family, link = NULL) {
   fam <- if (inherits(family, "family")) {
     family$family
   } else {
@@ -868,32 +921,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     fam %in% c("binomial", "binary", "beta")
 
   if (is_logit_link) {
-    return(list(scale = 5, basis = "logit_uniform"))
+    return("logit")
   }
-
   if (is_log_link) {
-    return(list(scale = 3, basis = "log_link_uniform"))
+    return("log")
   }
-
-  y <- if (!is.null(data) && response %in% names(data)) {
-    data[[response]]
-  } else {
-    NULL
-  }
-
-  if (!is.numeric(y)) {
-    return(list(scale = 1.0, basis = "identity_default_uniform"))
-  }
-  yv <- as.numeric(y)
-  yv <- yv[is.finite(yv)]
-  if (length(yv) < 2L) {
-    return(list(scale = 1.0, basis = "identity_too_small_uniform"))
-  }
-  sdv <- stats::sd(yv)
-  if (!is.finite(sdv) || sdv <= 0) {
-    sdv <- 1.0
-  }
-  list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
+  "identity"
 }
 
 # Construct the v0.1 default uniform prior fb_prior() for a model.
@@ -924,9 +957,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   family,
   link = NULL,
   random_groups = character(0),
-  vm_ped_groups = character(0)
+  vm_ped_groups = character(0),
+  resp_sd = NULL
 ) {
-  scl <- .default_uniform_scale(data, response, family, link)
+  scl <- .default_uniform_scale(data, response, family, link, resp_sd = resp_sd)
   specs <- list(list(
     target = list(type = "sigma"),
     spec = list(family = "uniform", args = list(lower = 0, upper = scl$scale))

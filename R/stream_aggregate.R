@@ -172,17 +172,33 @@ flexybayes_stream <- function(
 
   # The IR was built from a head sample, so the response scale is read from
   # the full sufficient statistics rather than from the head.
+  resp_sd <- NULL
   if (identical(family, "gaussian")) {
     ss <- agg$sufficient_stats
     n <- sum(ss$n_k)
     resp_var <- (sum(ss$S2_k) - sum(ss$S1_k)^2 / n) / (n - 1)
-    scale_refusal <- .fb_inla_response_scale_refusal(
-      fb$response,
-      if (n > 1 && resp_var >= 0) sqrt(resp_var) else NA_real_
-    )
+    resp_sd <- if (n > 1 && resp_var >= 0) sqrt(resp_var) else NA_real_
+    scale_refusal <- .fb_inla_response_scale_refusal(fb$response, resp_sd)
     if (!is.null(scale_refusal)) {
       stop(scale_refusal)
     }
+  }
+
+  # No prior stated: the package's bounded default, as flexybayes() builds it
+  # for an in-memory fit, with the response scale read from the same full
+  # statistics. Left to INLA's own hyperprior on the standardised response, 20
+  # identical streamed fits of a four-block design gave a block SD above 1e6
+  # on 10 and an engine failure on 4.
+  if (is.null(prior)) {
+    targets <- .fb_default_prior_targets(fb)
+    fb$priors <- .default_uniform_prior(
+      data = NULL,
+      response = fb$response,
+      family = family,
+      random_groups = targets$shared,
+      vm_ped_groups = targets$vm_ped,
+      resp_sd = resp_sd
+    )
   }
 
   .fb_stream_emit(
@@ -1045,6 +1061,11 @@ flexybayes_stream <- function(
 
   if (!is.null(fit$extras) && !is.null(fit$extras$aggregation_meta)) {
     fit$extras$aggregation_meta$streamed <- TRUE
+  }
+  # The IR, and with it the prior the fit ran under, as the in-memory routes
+  # attach it in .dispatch_backend(); prior_summary() reads it from here.
+  if (!is.null(fit$extras)) {
+    fit$extras$fb_terms <- fb
   }
 
   # D10 / WP-D: emit_gaussian_aggregated() / emit_count_aggregated() set

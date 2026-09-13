@@ -142,6 +142,11 @@ emit_count_aggregated <- function(
   } else {
     list()
   }
+  # A random-intercept SD the caller left unstated takes the package default,
+  # as on the per-row route (R/inla_default_priors.R). On the log and logit
+  # links its bound is a constant, so no data are needed.
+  completion <- .fb_inla_complete_priors(fb, hyper_ctrl, data = NULL)
+  hyper_ctrl <- completion$hyper_ctrl
   inla_form <- .agg_count_inla_formula(
     fb,
     fb_aggregated,
@@ -190,6 +195,7 @@ emit_count_aggregated <- function(
   list(
     backend = "inla",
     inla = inla_fit,
+    prior_completion = completion$record,
     fixed_form = inla_form,
     K = fb_aggregated$K,
     N = fb_aggregated$N
@@ -364,12 +370,19 @@ emit_count_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
+      # The standard deviations the INLA fit filled with the package default.
+      prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a
       # per-row fit of the same model read as comparable to
       # triangulate(). See R/model_fingerprint.R.
-      fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
+      fingerprint = .fb_model_fingerprint(
+        fb,
+        data,
+        prior_vc_sd = prior_vc_sd,
+        completion = engine_out$prior_completion
+      ),
       parse_info = list(
         fixed = list(
           response = fb$response,

@@ -181,9 +181,9 @@ prior_summary.default <- function(object, ...) {
       "student_t on the intercept, centred on the response"
     ),
     "inla" = paste0(
-      "INLA's own control.fixed defaults -- prec = 0.001 on the slopes ",
-      "(a standard deviation near 32), and prec.intercept = 0, which is ",
-      "flat"
+      "INLA's own control.fixed defaults -- prec = 0.001 (a standard ",
+      "deviation near 32, in standard deviations of the response on a ",
+      "Gaussian identity-link fit), and prec.intercept = 0, which is flat"
     ),
     "the engine's own fixed-effect default"
   )
@@ -406,6 +406,20 @@ prior_summary.default <- function(object, ...) {
   out$engine_default <- .prior_summary_engine_default(object)
   out$residual_lowered_to <- .prior_summary_residual_lowering(object)
 
+  # What an INLA fit carries that nobody stated (R/inla_default_priors.R): a
+  # standard deviation filled with the package default, a default slope
+  # bound divided by its covariate's standard deviation, and the
+  # covariate-scaled default on each numeric fixed effect. The declaration
+  # printed above is what was stated; these are what was added to it.
+  completion <- object$extras$prior_completion
+  out$filled_priors <- .prior_summary_spec_strings(completion$filled)
+  out$covariate_scaled_priors <- .prior_summary_spec_strings(
+    completion$covariate_scaled
+  )
+  out$covariate_sd <- completion$covariate_sd %||% numeric(0)
+  out$fixed_default_sd <- completion$fixed_default_sd %||% numeric(0)
+  out$fixed_default_multiplier <- completion$fixed_default_multiplier
+
   # brms is the authority on what reached Stan, so on a brms fit the
   # engine's own table is carried rather than reconstructed. This is what
   # closes the gap the declaration alone leaves: a retargeted residual
@@ -443,21 +457,72 @@ prior_summary.default <- function(object, ...) {
     )
   } else {
     named <- x$fixed_b_named %||% character(0)
+    scaled <- x$fixed_default_sd %||% numeric(0)
+    other <- if (length(scaled)) "other " else ""
     cat(
       "    prior_fixed_sd:  not supplied -- ",
+      if (length(scaled)) {
+        paste0(
+          "each numeric column carries the covariate-scaled default\n",
+          "      normal(0, K u / sd(column)), K = ",
+          format(signif(x$fixed_default_multiplier %||% NA_real_, 6)),
+          ", u = sd(y) on an identity link and 1 otherwise:\n",
+          paste0(
+            "        ", names(scaled), " ~ normal(0, ",
+            format(signif(scaled, 6)), ")",
+            collapse = "\n"
+          ),
+          "\n      "
+        )
+      } else {
+        ""
+      },
       if (length(named)) {
         paste0(
-          "every fixed effect except ",
+          "every ", other, "fixed effect except ",
           paste(paste0("`", named, "`"), collapse = ", "),
           "\n      (given a prior by the fb_prior() row below) carries "
         )
       } else {
-        "the fixed effects carry "
+        paste0("the ", other, "fixed effects carry ")
       },
       x$fixed_sd_engine_default,
       "\n",
       sep = ""
     )
+  }
+  invisible(NULL)
+}
+
+# Spec strings keyed by canonical parameter name, for the priors an INLA fit
+# added to its declaration.
+.prior_summary_spec_strings <- function(specs) {
+  out <- character(0)
+  for (s in specs %||% list()) {
+    key <- .fb_prior_spec_parameter(s)
+    if (!is.na(key)) {
+      out[[key]] <- .fb_prior_spec_string(s)
+    }
+  }
+  out
+}
+
+# One section of added priors, each with the covariate SD its bound was
+# divided by where there was one.
+.prior_summary_cat_added <- function(heading, priors, covariate_sd) {
+  if (length(priors) == 0L) {
+    return(invisible(NULL))
+  }
+  cat("\n  ", heading, "\n", sep = "")
+  for (nm in names(priors)) {
+    group <- sub("^sd_", "", nm)
+    divisor <- if (group %in% names(covariate_sd)) {
+      paste0("  (bound divided by the covariate SD, ",
+             format(signif(covariate_sd[[group]], 6)), ")")
+    } else {
+      ""
+    }
+    cat("    ", nm, " ~ ", priors[[nm]], divisor, "\n", sep = "")
   }
   invisible(NULL)
 }
@@ -524,6 +589,17 @@ print.prior_summary_flexybayes <- function(x, ...) {
   )
 
   # ---- What the declaration above does not say ------------------------
+
+  .prior_summary_cat_added(
+    "Filled with the package default (no prior was stated for these):",
+    x$filled_priors %||% character(0),
+    x$covariate_sd %||% numeric(0)
+  )
+  .prior_summary_cat_added(
+    "The package default as this engine ran it:",
+    x$covariate_scaled_priors %||% character(0),
+    x$covariate_sd %||% numeric(0)
+  )
 
   if (length(x$not_applied) > 0L) {
     cat("\n  Declared but not applied on this engine:\n", sep = "")
