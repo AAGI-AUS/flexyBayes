@@ -343,6 +343,20 @@ emit_gaussian_aggregated <- function(
   N <- fb_aggregated$N
   agg$ybar_k <- agg$S1_k / agg$n_k
 
+  # The aggregated Gaussian fit runs on the standardised response as the
+  # per-row one does (R/inla_standardise.R). The centre and scale come from
+  # the cell statistics; a cell mean and the within-cell sum of squares
+  # transform with the response.
+  standardisation <- .fb_inla_standardisation_from_stats(
+    fb,
+    n = sum(agg$n_k),
+    s1 = sum(agg$S1_k),
+    s2 = sum(agg$S2_k),
+    n_cells = K
+  )
+  agg$ybar_k <- (agg$ybar_k - standardisation$centre) / standardisation$scale
+  WSS_total <- WSS_total / standardisation$scale^2
+
   # Pull per-RI hyperpriors from the same priors_to_inla() translation
   # the per-row emit_inla() uses, so the aggregated + per-row INLA fits
   # share the random-intercept prior shape. The residual prior is NOT
@@ -363,6 +377,7 @@ emit_gaussian_aggregated <- function(
     list()
   }
 
+  hyper_ctrl <- .fb_inla_standardise_hyper(hyper_ctrl, standardisation)
   fixed_form <- .agg_emit_inla_formula(fb, fb_aggregated, ri_plan, hyper_ctrl)
 
   # Custom-prior expression on the gaussian-precision hyperparameter:
@@ -425,15 +440,23 @@ emit_gaussian_aggregated <- function(
     .fb_prior_scalar_value(fb, "fixed_sd"),
     coef_names = setdiff(fb_aggregated$fixed_cols, "(Intercept)")
   )
+  control_fixed <- .fb_inla_standardise_control_fixed(
+    control_fixed,
+    standardisation
+  )
   if (length(control_fixed)) {
     inla_call$control.fixed <- control_fixed
   }
 
-  inla_fit <- do.call(INLA::inla, inla_call)
+  inla_fit <- .fb_inla_back_transform(
+    do.call(INLA::inla, inla_call),
+    standardisation
+  )
 
   list(
     backend = "inla",
     inla = inla_fit,
+    response_standardisation = standardisation,
     fixed_form = fixed_form,
     custom_prior = custom_prior_expr,
     K = K,
@@ -589,6 +612,8 @@ emit_gaussian_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
+      # The centre and scale the INLA fit ran on; the draw accessors read it.
+      response_standardisation = engine_out$response_standardisation,
       # Built from the PRE-aggregation data on purpose. Aggregation is a
       # computational route to the same likelihood, not a different model,
       # so an aggregated fit and a per-row fit of the same model must read

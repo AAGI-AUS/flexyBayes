@@ -45,9 +45,9 @@
   # is built with control.compute = list(config = TRUE) (see
   # R/emit_inla.R), so config is not the failure mode here.
   samples <- tryCatch(
-    INLA::inla.posterior.sample(
+    .fb_inla_posterior_sample(
+      object,
       as.integer(n_samples),
-      object$inla,
       num.threads = "1:1"
     ),
     error = function(e) {

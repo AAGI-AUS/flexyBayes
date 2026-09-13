@@ -48,7 +48,7 @@
     return(post)
   }
   smp <- tryCatch(
-    INLA::inla.hyperpar.sample(n_draws, object$inla),
+    .fb_inla_hyperpar_sample(object, n_draws),
     error = function(e) NULL
   )
   if (is.null(smp) || !is.matrix(smp) || nrow(smp) != n_draws) {

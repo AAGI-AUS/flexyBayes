@@ -1270,14 +1270,29 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Before 0.9.2 the INLA route consumed no legacy scalar at all: a fit
 # passed `prior_vc_sd = 3` ran under INLA's own log-gamma precision
 # default while `prior_summary()` printed the lognormal in its header.
-.inla_lognormal_sd_expr <- function(scale) {
+#
+# A location mu on log sigma, which the standardised INLA fit needs
+# (R/inla_standardise.R), generalises the last term to
+# -(theta / 2 + mu)^2 / (2 s^2); at mu = 0 the expression is unchanged.
+.inla_lognormal_sd_expr <- function(scale, location = 0) {
+  if (identical(location, 0)) {
+    return(sprintf(
+      paste0(
+        "expression: s=%.16g;",
+        " return( -log(2.0) - log(s) - 0.5*log(2*3.141592653589793)",
+        " - (theta*theta)/(8.0*s*s) );"
+      ),
+      scale
+    ))
+  }
   sprintf(
     paste0(
-      "expression: s=%.16g;",
+      "expression: s=%.16g; mu=%.16g; u=theta/2.0+mu;",
       " return( -log(2.0) - log(s) - 0.5*log(2*3.141592653589793)",
-      " - (theta*theta)/(8.0*s*s) );"
+      " - (u*u)/(2.0*s*s) );"
     ),
-    scale
+    scale,
+    location
   )
 }
 

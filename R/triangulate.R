@@ -1005,7 +1005,7 @@ fb_as_draws_simple.flexybayes_inla <- function(fit, n_samples = 1000L, ...) {
   # enforces (the worker count is reported as "N simultaneous processes
   # spawned").
   samples <- tryCatch(
-    INLA::inla.posterior.sample(n_samples, fit$inla, num.threads = "1:1"),
+    .fb_inla_posterior_sample(fit, n_samples, num.threads = "1:1"),
     error = function(e) {
       stop(
         "INLA::inla.posterior.sample() failed: ",

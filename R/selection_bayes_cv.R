@@ -619,9 +619,9 @@
   if (sample_seed == 0L) {
     sample_seed <- 1L
   }
-  draws <- INLA::inla.posterior.sample(
-    n = as.integer(n_draws),
-    result = fit$inla,
+  draws <- .fb_inla_posterior_sample(
+    fit,
+    as.integer(n_draws),
     seed = sample_seed,
     num.threads = "1:1"
   )

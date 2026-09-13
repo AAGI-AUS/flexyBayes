@@ -14,6 +14,11 @@
 # parameter fails here exactly as it would in `brm()`), and the INLA hyper
 # specification as it is spliced into the formula INLA is handed. Neither is
 # re-read from the flexyBayes object that produced it.
+#
+# A Gaussian fit on INLA runs on the response standardised to unit standard
+# deviation, so a prior arrives restated on that scale: a standard-deviation
+# scale divided by sd(y), a fixed-effect precision multiplied by sd(y)^2. The
+# expected values below take sd(y) from the data, not from the fit.
 # =============================================================================
 
 .arrival_data <- function(seed = 20260818L) {
@@ -101,8 +106,9 @@ test_that("an accepted fb_prior() spec reaches INLA with the values written", {
     family = "gaussian",
     prior = fb_prior(sd(group = "g") ~ half_normal(scale = 1.5))
   )
+  s_y <- stats::sd(d$y)
   expect_match(form, "hyper = list(prec = list(prior =", fixed = TRUE)
-  expect_match(form, "s=1.5", fixed = TRUE)
+  expect_match(form, sprintf("s=%.16g;", 1.5 / s_y), fixed = TRUE)
 
   form_pc <- .inla_emit_formula(
     y ~ x,
@@ -112,7 +118,11 @@ test_that("an accepted fb_prior() spec reaches INLA with the values written", {
     prior = fb_prior(sd(group = "g") ~ pc(upper = 2, prob = 0.05))
   )
   expect_match(form_pc, "pc.prec", fixed = TRUE)
-  expect_match(form_pc, "param = c(2, 0.05)", fixed = TRUE)
+  expect_match(
+    form_pc,
+    paste0("param = c(", paste(c(2 / s_y, 0.05), collapse = ", "), ")"),
+    fixed = TRUE
+  )
 })
 
 # --- the substitution the sweep caught cannot recur ---------------------- #
@@ -166,9 +176,11 @@ test_that("prior_fixed_sd reaches INLA's control.fixed when it is supplied", {
     prior_fixed_sd = 7,
     return_code = TRUE
   ))
-  expect_equal(emitted$control_fixed$prec, 1 / 49)
-  expect_equal(emitted$control_fixed$prec.intercept, 1 / 49)
+  s_y <- stats::sd(d$y)
+  expect_equal(emitted$control_fixed$prec, s_y^2 / 49)
+  expect_equal(emitted$control_fixed$prec.intercept, s_y^2 / 49)
   expect_equal(emitted$control_fixed$mean, 0)
+  expect_equal(emitted$control_fixed$mean.intercept, -mean(d$y) / s_y)
 })
 
 test_that("an unsupplied prior_fixed_sd leaves each engine's own default", {
@@ -207,9 +219,15 @@ test_that("prior_vc_sd reaches INLA as the same density brms receives", {
     prior_vc_sd = 3
   )
   # lognormal(0, 3) on the SD scale, written in INLA's log-precision
-  # parameterisation: log p(theta) is quadratic in theta with s = 3.
-  expect_match(form, "expression: s=3;", fixed = TRUE)
-  expect_match(form, "(theta*theta)/(8.0*s*s)", fixed = TRUE)
+  # parameterisation: log p(theta) is quadratic in theta with s = 3. On the
+  # standardised response the SD is divided by sd(y), so the log-scale
+  # location moves to -log(sd(y)) and the log-scale sd stays 3.
+  expect_match(
+    form,
+    sprintf("expression: s=3; mu=%.16g;", -log(stats::sd(d$y))),
+    fixed = TRUE
+  )
+  expect_match(form, "(u*u)/(2.0*s*s)", fixed = TRUE)
 
   skip_if_not_installed("brms")
   lines <- .brms_prior_lines(

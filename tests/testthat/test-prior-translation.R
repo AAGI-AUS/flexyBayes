@@ -110,19 +110,26 @@ test_that("the rendered menu is derived from the table, not re-listed", {
 
 # --- (2) arrival: INLA -------------------------------------------------- #
 
+# A Gaussian fit on INLA runs on the response standardised to unit standard
+# deviation, so a stated prior arrives restated on that scale: a
+# standard-deviation scale divided by sd(y), a rate multiplied by it, a
+# fixed-effect mean divided by it and its precision multiplied by sd(y)^2.
+# The expected values below take sd(y) from the data, not from the fit.
+
 test_that("every translatable INLA variance-component cell reaches the hyper string", {
   skip_if_not_installed("INLA")
   .pt_silence()
+  s_y <- stats::sd(.pt_data()$y)
   cases <- list(
     list(
       "half_normal",
       fb_prior(sd(group = "g") ~ half_normal(scale = 1.5)),
-      "s=1.5"
+      sprintf("s=%.16g;", 1.5 / s_y)
     ),
     list(
       "uniform",
       fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 5)),
-      "5"
+      sprintf("U=%.16g;", 5 / s_y)
     ),
     list(
       "pc",
@@ -156,8 +163,12 @@ test_that("the sigma cell reaches control.family rather than the formula", {
   hyper <- fit$inla$.args$control.family[[1L]]$hyper
   slot <- Filter(function(h) isTRUE(h$short.name == "prec"), hyper)[[1L]]
   expect_true(grepl("pc.prec", slot$prior, fixed = TRUE))
-  # -log(alpha) / U must recover the requested rate exactly.
-  expect_equal(-log(slot$param[[2L]]) / slot$param[[1L]], 3)
+  # -log(alpha) / U must recover the requested rate exactly, restated on the
+  # standardised response.
+  expect_equal(
+    -log(slot$param[[2L]]) / slot$param[[1L]],
+    3 * stats::sd(.pt_data()$y)
+  )
 })
 
 test_that("exponential on an SD target IS the PC prior, checked numerically", {
@@ -180,8 +191,9 @@ test_that("a b() prior reaches INLA's control.fixed by coefficient name", {
   fit <- .pt_fit(fb_prior(b("x") ~ normal(mean = 1, sd = 4)), "inla")
   expect_false(inherits(fit, "condition"))
   cf <- fit$inla$.args$control.fixed
-  expect_equal(cf$mean$x, 1)
-  expect_equal(cf$prec$x, 1 / 16)
+  s_y <- stats::sd(.pt_data()$y)
+  expect_equal(cf$mean$x, 1 / s_y)
+  expect_equal(cf$prec$x, s_y^2 / 16)
 })
 
 test_that("the b() route composes with the prior_fixed_sd scalar", {
@@ -200,8 +212,9 @@ test_that("the b() route composes with the prior_fixed_sd scalar", {
   ))
   cf <- fit$inla$.args$control.fixed
   # The named entry wins for `x`; the scalar is the default for the rest.
-  expect_equal(cf$prec$x, 1 / 4)
-  expect_equal(cf$prec$default, 1 / 49)
+  s_y <- stats::sd(d$y)
+  expect_equal(cf$prec$x, s_y^2 / 4)
+  expect_equal(cf$prec$default, s_y^2 / 49)
 })
 
 test_that("the six full-specification INLA cells stay green", {
@@ -246,7 +259,9 @@ test_that("the six full-specification INLA cells stay green", {
       error = function(e) e
     )
     expect_false(inherits(fit, "condition"), label = fam)
-    expect_equal(fit$inla$.args$control.fixed$prec$x, 1 / 16, label = fam)
+    # Only the Gaussian fit runs on a standardised response.
+    expected <- if (identical(fam, "gaussian")) stats::sd(d$y)^2 / 16 else 1 / 16
+    expect_equal(fit$inla$.args$control.fixed$prec$x, expected, label = fam)
   }
 })
 

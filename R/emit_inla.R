@@ -589,6 +589,24 @@ emit_inla <- function(
   # paths that do not carry blocks-format terms via the
   # known_matrices default empty list.
   inla_family <- .resolve_inla_family(fb)
+  # A Gaussian fit with the identity link runs on a standardised response,
+  # with every prior restated on those coordinates and the result mapped
+  # back before it is stored (R/inla_standardise.R).
+  standardisation <- if (
+    identical(inla_family, "gaussian") &&
+      (is.null(fb$link) || identical(fb$link, "identity"))
+  ) {
+    .fb_inla_standardisation(fb, data)
+  } else {
+    NULL
+  }
+  if (!is.null(standardisation)) {
+    hyper_ctrl <- .fb_inla_standardise_hyper(hyper_ctrl, standardisation)
+    control_fixed <- .fb_inla_standardise_control_fixed(
+      control_fixed,
+      standardisation
+    )
+  }
   control_family <- .build_inla_control_family(hyper_ctrl, family = inla_family)
 
   if (return_code) {
@@ -596,12 +614,14 @@ emit_inla <- function(
       formula = .build_inla_formula(
         fb,
         hyper_ctrl = hyper_ctrl,
-        known_matrices = known_matrices
+        known_matrices = known_matrices,
+        standardisation = standardisation
       ),
       family = inla_family,
       hyper = hyper_ctrl,
       control_family = control_family,
-      control_fixed = control_fixed
+      control_fixed = control_fixed,
+      response_standardisation = standardisation
     )))
   }
 
@@ -615,6 +635,23 @@ emit_inla <- function(
   # known_matrices entry shadows a data column, preserving the
   # package's no-silent-failure identity.
   data_inla <- as.list(data)
+  # The standardised response, as a column of its own. The user's columns
+  # stay as they are.
+  if (!is.null(standardisation)) {
+    if (.FB_INLA_STANDARDISED_RESPONSE %in% names(data)) {
+      stop(.fb_refusal_condition(
+        reason_code = "nested_index_name_collision",
+        message = paste0(
+          "Fitting a Gaussian model on INLA needs a column named `",
+          .FB_INLA_STANDARDISED_RESPONSE,
+          "`, and `data` already has one. Rename that column."
+        )
+      ))
+    }
+    data_inla[[.FB_INLA_STANDARDISED_RESPONSE]] <-
+      (as.numeric(.fb_response_values(fb, data)) - standardisation$centre) /
+      standardisation$scale
+  }
   # v0.3.10: blocks-format vm/ped terms generate
   # K per-block precision matrices that need to live in `data_inla`
   # alongside the integer index columns, since INLA looks up Cmatrix
@@ -1119,6 +1156,10 @@ emit_inla <- function(
         )
       ))
     }
+    if (!is.null(standardisation)) {
+      y_vec <- (as.numeric(y_vec) - standardisation$centre) /
+        standardisation$scale
+    }
     mat_y <- matrix(NA_real_, nrow = nrow(data), ncol = nlevels(sec_f))
     mat_y[cbind(seq_len(nrow(data)), as.integer(sec_f))] <- as.numeric(y_vec)
     data_inla[[.FB_INLA_SECTIONED_RESPONSE]] <- mat_y
@@ -1136,7 +1177,8 @@ emit_inla <- function(
     fb,
     hyper_ctrl = hyper_ctrl,
     known_matrices = known_matrices,
-    sectioned_response = !is.null(sectioned)
+    sectioned_response = !is.null(sectioned),
+    standardisation = standardisation
   )
   if (verbose) {
     cat(
@@ -1261,6 +1303,20 @@ emit_inla <- function(
   restart_probe$fit <- NULL
   num_check$restart_probe <- restart_probe
   num_check$restart_adopted <- restart_adopted
+
+  # Every reading of the fit below is taken on the original scale. The
+  # restart probe compared two fits on the standardised scale, where their
+  # difference is the same; its recorded levels are moved with the fit.
+  if (!is.null(standardisation)) {
+    fit <- .fb_inla_back_transform(fit, standardisation)
+    mlik_shift <- standardisation$n_obs * log(standardisation$scale)
+    for (nm in c("mlik_original", "mlik_restart")) {
+      if (is.numeric(num_check$restart_probe[[nm]])) {
+        num_check$restart_probe[[nm]] <-
+          num_check$restart_probe[[nm]] - mlik_shift
+      }
+    }
+  }
   # isFALSE, not `!`: `pass` is tri-state now and `if (NA)` is an error.
   # An unverified fit is not warned about as though it had failed.
   if (isFALSE(num_check$pass)) {
@@ -1369,6 +1425,9 @@ emit_inla <- function(
         run_time = elapsed,
         the_call = the_call,
         formula = inla_form,
+        # The centre and scale the fit ran on, NULL for a fit that was not
+        # standardised. The draw accessors read it to map draws back.
+        response_standardisation = standardisation,
         # What has to match before this fit can be compared with another
         # engine's -- the same slot, built by the same function, as the
         # brms emit fills. See R/model_fingerprint.R.
@@ -1429,7 +1488,8 @@ emit_inla <- function(
   fb,
   hyper_ctrl = list(),
   known_matrices = list(),
-  sectioned_response = FALSE
+  sectioned_response = FALSE,
+  standardisation = NULL
 ) {
   rhs_terms <- character(0)
 
@@ -1894,6 +1954,8 @@ emit_inla <- function(
   # in emit_inla(); everything to the right of the tilde is unchanged.
   lhs <- if (isTRUE(sectioned_response)) {
     .FB_INLA_SECTIONED_RESPONSE
+  } else if (!is.null(standardisation)) {
+    .FB_INLA_STANDARDISED_RESPONSE
   } else {
     fb$response
   }

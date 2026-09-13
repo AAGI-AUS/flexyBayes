@@ -224,10 +224,13 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
   )
   expect_named(
     res,
-    c("formula", "family", "hyper", "control_family", "control_fixed")
+    c("formula", "family", "hyper", "control_family", "control_fixed",
+      "response_standardisation")
   )
   expect_s3_class(res$formula, "formula")
   expect_identical(res$family, "gaussian")
+  # A Gaussian fit runs on the standardised response, and says so.
+  expect_equal(res$response_standardisation$scale, stats::sd(d$y))
   # control_family is empty when the user supplies no sigma prior;
   # populated when fb_prior(sigma ~ pc(...)) is passed.
   expect_identical(res$control_family, list())
