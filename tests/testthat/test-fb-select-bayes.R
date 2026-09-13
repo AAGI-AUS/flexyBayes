@@ -153,10 +153,15 @@ test_that("a horseshoe with a projection decision records four axes", {
 
   # The block is exact here -- nothing is protected beyond the intercept --
   # so the global-shrinkage approximation is NOT claimed. The one that is
-  # claimed is the scaling: the reference model is one fit, so the
-  # standardising constants are the whole sample's.
+  # claimed is the projection's own search, whose k-fold refits reuse the
+  # reference fit's whole-sample preprocessing. Whole-sample scaling is no
+  # longer claimed for the out-of-fold scores, which learn it per fold.
   expect_false("protected_under_global_shrinkage" %in% cert$approximations)
   expect_true(any(grepl(
+    "projection_search_folds_reuse_whole_sample_preprocessing",
+    cert$approximations, fixed = TRUE
+  )))
+  expect_false(any(grepl(
     "scaling_learned_on_all_rows", cert$approximations, fixed = TRUE
   )))
 })

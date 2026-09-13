@@ -326,7 +326,14 @@
 
 # --- the penalty pipeline ------------------------------------------------ #
 
-# .fb_select_resolve_penalty() --- fb_penalty() to a compiled brms prior.
+# .fb_select_fit_candidate_transform() --- fb_penalty() to a compiled brms
+# prior, learned on the rows it is given.
+#
+# It is the fit half of a fit/apply pair. The reference posterior calls it on
+# the whole sample; the out-of-fold score calls it on each fold's analysis
+# rows, so every constant it learns -- the centres and scales, the
+# coefficient map, `calibration_n`, `n_train` and the compiled prior -- is a
+# function of the rows handed to it and of nothing else.
 #
 # Four steps, in the order the contract fixes them, and each of them is a
 # function a sibling unit owns: resolve the targets against the model matrix
@@ -343,13 +350,20 @@
 # did not move, and the certificate records the departure by name. Silently
 # dividing the coefficient of an unstandardised column by a standard
 # deviation would be a wrong answer with a right-looking provenance.
-.fb_select_resolve_penalty <- function(base,
-                                       candidates,
-                                       penalty,
-                                       protected_labels,
-                                       calibration = NULL) {
-  data <- base$data
-  calibration <- calibration %||% .fb_select_calibration_n(NULL, data)
+#' Resolve a penalty against the rows given
+#'
+#' @param data The rows every constant is learned on.
+#' @param candidates,penalty,protected_labels As for `fb_select()`.
+#' @param calibration A `.fb_select_calibration_n()` record for `data`.
+#' @return The resolved blocks, the compiled prior, the column map and the
+#'   constants `.fb_select_apply_candidate_transform()` reads.
+#' @noRd
+#' @keywords internal
+.fb_select_fit_candidate_transform <- function(data,
+                                               candidates,
+                                               penalty,
+                                               protected_labels,
+                                               calibration) {
   candidate_labels <- attr(
     stats::terms(candidates, data = data),
     "term.labels"
@@ -459,18 +473,32 @@
     n_train = calibration$n
   )
 
-  # The data the reference fit is emitted on, with the standardisable
-  # candidate columns centred and scaled by the constants just stored.
-  reference_data <- data
-  for (b in blocks) {
-    for (k in seq_along(b$coef_names)) {
-      column <- candidate_names[b$columns[[k]]]
-      if (isTRUE(scalable[[column]]) && !identical(b$scale[[k]], 1)) {
-        reference_data[[column]] <-
-          (data[[column]] - b$centre[[k]]) / b$scale[[k]]
-      }
-    }
-  }
+  # The constants the apply step reads: one row per candidate column in a
+  # block, and whether the apply step moves it.
+  constants <- do.call(rbind, c(
+    list(data.frame(
+      column = character(0), block = integer(0), centre = numeric(0),
+      scale = numeric(0), standardised = logical(0),
+      stringsAsFactors = FALSE
+    )),
+    lapply(blocks, function(b) {
+      columns <- candidate_names[b$columns]
+      data.frame(
+        column = columns,
+        block = rep(b$id, length(columns)),
+        centre = as.numeric(b$centre),
+        scale = as.numeric(b$scale),
+        standardised = vapply(
+          seq_along(columns),
+          function(k) {
+            isTRUE(scalable[[columns[[k]]]]) && !identical(b$scale[[k]], 1)
+          },
+          logical(1L)
+        ),
+        stringsAsFactors = FALSE
+      )
+    })
+  ))
 
   scope_all_fixed <- any(vapply(
     blocks,
@@ -479,27 +507,82 @@
     logical(1L)
   ))
 
-  # The approximations this resolution commits to. They are settled here,
-  # before anything is fitted, so `plan = TRUE` reports the same list the
-  # certificate will carry rather than a shorter one.
+  list(
+    map = map,
+    partition = part,
+    blocks = blocks,
+    compiled = compiled,
+    candidate_labels = candidate_labels,
+    candidate_names = candidate_names,
+    coef_names_all = coef_names_all,
+    calibration = calibration,
+    n_train = calibration$n,
+    n_rows = nrow(data),
+    constants = constants,
+    unscaled_columns = unique(left_alone),
+    scope_all_fixed = scope_all_fixed,
+    column_map = .fb_select_column_map(part, blocks, protected_labels, map)
+  )
+}
+
+
+#' Put a learned candidate transform on a data frame
+#'
+#' The apply half of the fit/apply pair: centres and scales the standardised
+#' candidate columns by the stored constants and leaves every other column
+#' as it was. It reads the constants and nothing about the rows it is given.
+#'
+#' @param data A data frame carrying the candidate columns.
+#' @param transform A `.fb_select_fit_candidate_transform()` result.
+#' @return `data`, with the standardised columns transformed.
+#' @noRd
+#' @keywords internal
+.fb_select_apply_candidate_transform <- function(data, transform) {
+  constants <- transform$constants
+  for (i in which(constants$standardised)) {
+    column <- constants$column[[i]]
+    data[[column]] <-
+      (data[[column]] - constants$centre[[i]]) / constants$scale[[i]]
+  }
+  data
+}
+
+
+#' Resolve a penalty for the whole-sample reference posterior
+#'
+#' The fit step on every row, the apply step on the same rows, and the
+#' approximations the resolution commits to. They are settled before
+#' anything is fitted, so `plan = TRUE` reports the list the certificate
+#' will carry.
+#'
+#' @param base A normalised base fit carrying `$data`.
+#' @param candidates,penalty,protected_labels As for `fb_select()`.
+#' @param calibration A `.fb_select_calibration_n()` record, or `NULL`.
+#' @return The fit step's result plus `reference_data` and `approximations`.
+#' @noRd
+#' @keywords internal
+.fb_select_resolve_penalty <- function(base,
+                                       candidates,
+                                       penalty,
+                                       protected_labels,
+                                       calibration = NULL) {
+  data <- base$data
+  calibration <- calibration %||% .fb_select_calibration_n(NULL, data)
+  resolved <- .fb_select_fit_candidate_transform(
+    data, candidates, penalty, protected_labels, calibration
+  )
+  resolved$reference_data <- .fb_select_apply_candidate_transform(
+    data, resolved
+  )
+
   approximations <- character(0)
-  if (length(left_alone) > 0L) {
+  if (length(resolved$unscaled_columns) > 0L) {
     approximations <- c(approximations, paste0(
       "candidate_columns_not_standardised: ",
-      paste(unique(left_alone), collapse = ", "),
+      paste(resolved$unscaled_columns, collapse = ", "),
       " are factor contrasts or interaction products with no data column ",
       "to centre and scale, so their prior scale is on their own scale"
     ))
-  }
-  if (!identical(penalty$scaling, "none")) {
-    approximations <- c(
-      approximations,
-      paste0(
-        "scaling_learned_on_all_rows: the reference model is one fit, so ",
-        "the standardising constants are the whole sample's rather than ",
-        "each training fold's"
-      )
-    )
   }
   if (!identical(calibration$basis, "rows")) {
     approximations <- c(approximations, paste0(
@@ -510,24 +593,110 @@
       "independent pieces of evidence about a coefficient"
     ))
   }
-  if (isTRUE(scope_all_fixed)) {
+  if (isTRUE(resolved$scope_all_fixed)) {
     approximations <- c(approximations, "protected_under_global_shrinkage")
   }
+  resolved$approximations <- approximations
+  resolved
+}
 
+
+#' The fold-local candidate transform an out-of-fold score learns
+#'
+#' Returns the `fold_transform` that `.fb_sel_bayes_cv()` calls with a
+#' fold's analysis rows. It re-resolves the penalty on those rows and returns
+#' the fit step's result, the apply step and the record the certificate
+#' carries.
+#'
+#' @param candidates,penalty,protected_labels,resamples As for `fb_select()`.
+#' @return A function of the analysis rows.
+#' @noRd
+#' @keywords internal
+.fb_select_fold_transform <- function(candidates,
+                                      penalty,
+                                      protected_labels,
+                                      resamples) {
+  function(analysis_data) {
+    calibration <- .fb_select_calibration_n(resamples, analysis_data)
+    transform <- .fb_select_fit_candidate_transform(
+      analysis_data, candidates, penalty, protected_labels, calibration
+    )
+    list(
+      transform = transform,
+      apply = function(frame) {
+        .fb_select_apply_candidate_transform(frame, transform)
+      },
+      record = .fb_select_transform_record(transform)
+    )
+  }
+}
+
+
+#' What a fold's transform learned, in the form the certificate stores
+#'
+#' @param transform A `.fb_select_fit_candidate_transform()` result.
+#' @return A list of the constants, the calibration, `n_train`, the row
+#'   count and the compiled prior rows as text.
+#' @noRd
+#' @keywords internal
+.fb_select_transform_record <- function(transform) {
+  prior <- transform$compiled$prior
   list(
-    map = map,
-    partition = part,
-    blocks = blocks,
-    compiled = compiled,
-    candidate_labels = candidate_labels,
-    candidate_names = candidate_names,
-    coef_names_all = coef_names_all,
-    reference_data = reference_data,
-    calibration = calibration,
-    unscaled_columns = unique(left_alone),
-    scope_all_fixed = scope_all_fixed,
-    approximations = approximations,
-    column_map = .fb_select_column_map(part, blocks, protected_labels, map)
+    constants = transform$constants,
+    calibration_n = transform$calibration$n,
+    calibration_basis = transform$calibration$basis,
+    n_train = transform$n_train,
+    n_rows = transform$n_rows,
+    coef_names = transform$coef_names_all,
+    prior = if (is.null(prior)) {
+      character(0)
+    } else {
+      paste0(
+        prior$class,
+        ifelse(nzchar(prior$coef), paste0(":", prior$coef), ""),
+        " ~ ", prior$prior
+      )
+    }
+  )
+}
+
+
+#' The fold-local preprocessing of an out-of-fold run, flattened
+#'
+#' @param cv A `.fb_sel_bayes_cv()` result, or any list.
+#' @return `NULL` where no fold-local transform ran; otherwise
+#'   `list(learned_on, constants, folds)`, the constants one row per fold
+#'   and column, the folds one row per fold.
+#' @noRd
+#' @keywords internal
+.fb_select_fold_preprocessing <- function(cv) {
+  by_fold <- cv$preprocessing$by_fold
+  if (!isTRUE(cv$preprocessing$fold_local_transform) ||
+        length(by_fold) == 0L) {
+    return(NULL)
+  }
+  labels <- names(by_fold)
+  list(
+    learned_on = cv$preprocessing$learned_on,
+    constants = do.call(rbind, lapply(labels, function(label) {
+      cbind(
+        fold = rep(label, nrow(by_fold[[label]]$constants)),
+        by_fold[[label]]$constants,
+        stringsAsFactors = FALSE
+      )
+    })),
+    folds = do.call(rbind, lapply(labels, function(label) {
+      r <- by_fold[[label]]
+      data.frame(
+        fold = label,
+        n_rows = r$n_rows,
+        calibration_n = r$calibration_n,
+        calibration_basis = r$calibration_basis,
+        n_train = r$n_train,
+        prior = paste(r$prior, collapse = "; "),
+        stringsAsFactors = FALSE
+      )
+    }))
   )
 }
 
@@ -615,7 +784,8 @@
                                    reference_engine = NA_character_,
                                    predictive_side_by_side = NULL,
                                    structure_gate = NULL,
-                                   decision_resolution = NULL) {
+                                   decision_resolution = NULL,
+                                   fold_preprocessing = NULL) {
   conv <- .fb_convergence_verdict(base)
   calibration <- .fb_select_calibration_normalise(calibration, base)
   predictive_side_by_side <- predictive_side_by_side %||%
@@ -770,6 +940,11 @@
       calibration_basis = calibration$basis,
       calibration_unit = calibration$unit,
       n_rows = calibration$n_rows,
+      # The constants each fold's out-of-fold score was computed under,
+      # learned on that fold's analysis rows: centres and scales per column,
+      # and per fold the calibration, `n_train` and the compiled prior. NULL
+      # where no fold-local transform ran.
+      fold_preprocessing = fold_preprocessing,
       fallback_fired = isTRUE(fallback_fired),
       # Named because a reader must be able to see what was not exact.
       approximations = as.character(approximations),
@@ -802,21 +977,30 @@
 # is paid only by a caller who asked for one; the certificate says so where
 # it was not paid.
 #
-# The machinery is `.fb_sel_bayes_cv()`'s, unchanged: the same folds, the same
+# The machinery is `.fb_sel_bayes_cv()`'s: the same folds, the same
 # relabelling of held-out grouping levels, the same predictive draws and the
-# same aggregation. Only the refit differs, and it differs in exactly one
-# way -- the candidate block arrives under the compiled joint prior.
+# same aggregation. Two things differ. The candidate block arrives under a
+# joint prior, and that prior -- with the standardising constants, the
+# coefficient map, `calibration_n` and `n_train` it is stated against -- is
+# re-resolved on each fold's analysis rows rather than taken from the
+# whole-sample reference fit. A scale learned on every row would let an
+# assessment row's covariate values set the training fold's shrinkage.
+#
+# Where the decision is a projection, `decision_terms` names the chosen
+# submodel, and each fold's reference is projected onto it and scored on the
+# same assessment rows: the decision stage's out-of-fold score.
 .fb_select_reference_cv <- function(base,
                                     candidates,
-                                    resolved,
+                                    penalty,
                                     protected_labels,
                                     resamples,
                                     prediction,
                                     metric,
                                     engine,
                                     seed,
-                                    control = NULL) {
-  refit <- function(fold_data, fixed, fit_seed) {
+                                    control = NULL,
+                                    decision_terms = NULL) {
+  refit <- function(fold_data, fixed, fit_seed, fold_state) {
     extra <- setdiff(
       attr(stats::terms(fixed, data = fold_data), "term.labels"),
       protected_labels
@@ -832,14 +1016,16 @@
         engine = engine, seed = fit_seed
       ))
     }
+    # The fold's own prior and column map, resolved on its analysis rows.
+    transform <- fold_state$transform
     args <- list(
       base = base,
       candidates = stats::as.formula(
         paste0("~ ", paste(extra, collapse = " + "))
       ),
-      prior = resolved$compiled$prior,
-      stanvars = resolved$compiled$stanvars,
-      column_map = resolved$column_map,
+      prior = transform$compiled$prior,
+      stanvars = transform$compiled$stanvars,
+      column_map = transform$column_map,
       engine = engine,
       seed = fit_seed,
       data = fold_data
@@ -850,6 +1036,21 @@
     do.call(.fb_sel_reference_fit, args)
   }
 
+  derived <- NULL
+  if (length(decision_terms) > 0L) {
+    derived <- list(
+      projected_submodel = function(fits, inputs, fit_seed) {
+        .fb_sel_projected_predictive(
+          fits$full,
+          newdata = inputs$assess_data,
+          predictor_terms = decision_terms,
+          response = base$fb$response,
+          seed = fit_seed
+        )
+      }
+    )
+  }
+
   .fb_sel_bayes_cv(
     base = base,
     candidates = candidates,
@@ -858,15 +1059,19 @@
     metric = metric,
     engine = engine,
     seed = seed,
-    # The reference model's data, so the fold refits see the same
-    # standardised candidate columns the reference itself was fitted on.
-    data = resolved$reference_data,
+    # The data as supplied. Each fold standardises its candidate columns with
+    # its own constants, so nothing is transformed before the folds are cut.
+    data = base$data,
     refit_fn = refit,
     # The provider is brms whatever fitted the base: a joint shrinkage prior
     # is always emitted there.
     provider = "brms",
     # The base's own recorded wall time, so the cost estimate costs no fit.
-    probe_seconds = .fb_select_base_seconds(base)
+    probe_seconds = .fb_select_base_seconds(base),
+    fold_transform = .fb_select_fold_transform(
+      candidates, penalty, protected_labels, resamples
+    ),
+    derived_models = derived
   )
 }
 
@@ -1724,6 +1929,22 @@ fb_select <- function(base,
       "approximation is built on that assumption"
     ))
   }
+  # The projection's own k-fold search refits the reference through brms,
+  # which reuses the reference fit's data and compiled prior. The benchmark's
+  # out-of-fold tables re-resolve both on each fold's analysis rows; the
+  # search inside the provider cannot, and the record says so.
+  if (identical(decision$method, "projection")) {
+    approximations <- c(approximations, paste0(
+      "projection_search_folds_reuse_whole_sample_preprocessing: the ",
+      "projection's k-fold search refits the reference model through brms, ",
+      "which reuses the reference fit's standardised data, compiled prior ",
+      "and calibration, so the constants and prior scales inside the ",
+      "search's folds are the whole sample's and the elpd-by-size curve ",
+      "that chooses the submodel is not strictly out of fold. The ",
+      "benchmark's out-of-fold tables learn every constant on each fold's ",
+      "analysis rows"
+    ))
+  }
 
   if (isTRUE(plan)) {
     return(.fb_plan_selection(
@@ -1846,14 +2067,15 @@ fb_select <- function(base,
     reference_cv <- .fb_select_reference_cv(
       base = base,
       candidates = candidates,
-      resolved = resolved,
+      penalty = penalty,
       protected_labels = protected_labels,
       resamples = resamples,
       prediction = prediction,
       metric = metric,
       engine = engine,
       seed = seed,
-      control = reference_args$control
+      control = reference_args$control,
+      decision_terms = projection$chosen_terms
     )
     bench <- .fb_select_benchmark(
       base = base,
@@ -1887,6 +2109,7 @@ fb_select <- function(base,
       aggregated = reference_cv$aggregated,
       clusters = reference_cv$clusters,
       rows = reference_cv$rows,
+      preprocessing = reference_cv$preprocessing,
       metric = metric,
       prediction = prediction,
       seed = seed,
@@ -2107,7 +2330,8 @@ fb_select <- function(base,
     reference_engine = reference_engine,
     predictive_side_by_side = side_by_side,
     structure_gate = structure_gate,
-    decision_resolution = decision_resolution
+    decision_resolution = decision_resolution,
+    fold_preprocessing = .fb_select_fold_preprocessing(cv)
   )
 
   structure(

@@ -950,6 +950,21 @@
 # and the per-unit elpd is kept unnegated on the cluster table --- so an
 # increment written `protected_only - full` is positive when the candidates
 # help, whichever metric was asked for.
+#
+# Two optional hooks serve the penalised reference, whose prior is stated on
+# standardised candidate columns:
+#
+#   `fold_transform(analysis_data)`  learns a preprocessing on a fold's
+#       analysis rows and returns `list(apply, record, ...)`. It is handed
+#       those rows and nothing else, so no constant it learns can have been
+#       read from an assessment row. `apply` is then put on both halves of
+#       the fold, the state is passed to `refit_fn` as a fourth argument, and
+#       `record` is kept on the fold's substrate.
+#   `derived_models`  a named list of `function(fits, inputs, fit_seed)`
+#       returning `list(mu, sigma)` for the assessment rows from the fold's
+#       fitted models --- a decision product, such as a projection, that is
+#       read off a fit rather than fitted itself. Each is scored and
+#       aggregated like a fitted model.
 .fb_sel_bayes_cv <- function(
   base,
   candidates,
@@ -965,7 +980,9 @@
   cluster = NULL,
   refit_fn = NULL,
   probe_seconds = NULL,
-  provider = NULL
+  provider = NULL,
+  fold_transform = NULL,
+  derived_models = NULL
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -1066,7 +1083,19 @@
       random = spec$random_vars,
       prediction = prediction
     )
+
+    # The fold's preprocessing learns on its analysis rows alone, and the
+    # same constants are applied to both halves of the fold.
+    fold_state <- NULL
+    if (!is.null(fold_transform)) {
+      fold_state <- fold_transform(data[split$train_rows, , drop = FALSE])
+      inputs$engine_data <- fold_state$apply(inputs$engine_data)
+      inputs$train_data <- fold_state$apply(inputs$train_data)
+      inputs$assess_data <- fold_state$apply(inputs$assess_data)
+      inputs$preprocessing <- fold_state$record
+    }
     substrates[[split$label]] <- inputs
+    fold_fits <- list()
 
     for (s in seq_along(sets)) {
       name <- names(sets)[[s]]
@@ -1087,8 +1116,13 @@
         inputs$train_data
       }
       t_fit <- proc.time()
-      fit <- refit_fn(fold_data, fixed, fit_seed)
+      fit <- if (is.null(fold_state)) {
+        refit_fn(fold_data, fixed, fit_seed)
+      } else {
+        refit_fn(fold_data, fixed, fit_seed, fold_state)
+      }
       fit_seconds <- c(fit_seconds, unname((proc.time() - t_fit)["elapsed"]))
+      fold_fits[[name]] <- fit
 
       predictive <- if (identical(provider, "inla")) {
         .fb_sel_posterior_predict_fold(
@@ -1122,6 +1156,25 @@
       rows[[length(rows) + 1L]] <- scored$rows
       clusters[[name]] <- c(clusters[[name]], list(scored$clusters))
     }
+
+    # Decision products read off this fold's fits, scored on the same
+    # assessment rows under the same prediction target and the same scorer.
+    for (k in seq_along(derived_models)) {
+      name <- names(derived_models)[[k]]
+      fit_seed <- base_seed + 1000L * f + length(sets) + k
+      predictive <- derived_models[[k]](fold_fits, inputs, fit_seed)
+      scored <- .fb_sel_bayes_score_fold(
+        inputs$assessment$y,
+        predictive$mu,
+        predictive$sigma,
+        cluster_key[split$assess_rows],
+        label = split$label,
+        repeat_id = split$repeat_id,
+        model = name
+      )
+      rows[[length(rows) + 1L]] <- scored$rows
+      clusters[[name]] <- c(clusters[[name]], list(scored$clusters))
+    }
   }
   elapsed <- unname((proc.time() - t_start)["elapsed"])
 
@@ -1134,7 +1187,11 @@
       se = summary$se,
       n_units = summary$n_units,
       se_unit = summary$unit,
-      complexity = length(sets[[name]])
+      complexity = if (name %in% names(sets)) {
+        length(sets[[name]])
+      } else {
+        NA_integer_
+      }
     )
   }))
 
@@ -1159,6 +1216,14 @@
       character(1L)
     )),
     score_orientation = "loss",
+    # Everything this route learns inside a fold -- the engine refit and any
+    # fold-local preprocessing -- reads the analysis rows alone, and the
+    # per-fold preprocessing records say what was learned there.
+    preprocessing = list(
+      learned_on = "analysis_rows",
+      fold_local_transform = !is.null(fold_transform),
+      by_fold = lapply(substrates, function(z) z$preprocessing)
+    ),
     n_draws = n_draws,
     fits_per_fold = length(sets),
     timing = list(
