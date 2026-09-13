@@ -54,6 +54,29 @@
   }
 
   tt <- tryCatch(terms(fixed, data = data), error = function(e) terms(fixed))
+  # terms() files `offset(z)` under its own attribute, not among the term
+  # labels read below, so an offset was dropped and the model fitted without
+  # it -- on INLA and on brms, with no message. Neither emitter carries an
+  # offset, so it is refused here, where every route ingests the fixed
+  # formula.
+  offset_idx <- attr(tt, "offset")
+  if (!is.null(offset_idx)) {
+    offsets <- vapply(
+      as.list(attr(tt, "variables"))[-1L][offset_idx],
+      function(e) paste(deparse(e), collapse = ""),
+      character(1L)
+    )
+    stop(.fb_refusal_condition(
+      reason_code = "fixed_offset_unsupported",
+      message = paste0(
+        "The fixed formula carries ",
+        paste0("`", offsets, "`", collapse = ", "),
+        ", and flexyBayes fits no offset on either engine. For a Gaussian ",
+        "model with an identity link, subtract the offset from the response ",
+        "instead: `y - z ~ x` fits `y ~ x + offset(z)`."
+      )
+    ))
+  }
   intercept <- attr(tt, "intercept") == 1
   term_labels <- attr(tt, "term.labels")
 

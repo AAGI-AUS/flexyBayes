@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=189
+      .refusal_registry: locked=TRUE n_keys=190
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -145,6 +145,7 @@
         fb_cov_missing_matrix
         fb_cov_type_unknown
         fit_lacks_posterior_draws
+        fixed_offset_unsupported
         fixed_smoother_not_supported
         formula_not_two_sided
         grammar_argument_duplicated

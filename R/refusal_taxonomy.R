@@ -2589,7 +2589,8 @@ print.fb_refusals_table <- function(x, ...) {
 # raises. See also .fb_check_grammar_arity() and .fb_literal_count().
 # 2026-09-13 -- INLA containment. Estimated correlation matrices are fitted
 # on brms only, and Gaussian fits on INLA refuse above the response scale
-# at which they were measured correct.
+# at which they were measured correct. An offset() in the fixed formula,
+# which was dropped without a message on both engines, refuses at ingest.
 .populate_refusal_registry_inla_containment <- function() {
   .register_refusal(
     reason_code = "correlated_covariance_requires_brms",
@@ -2629,6 +2630,24 @@ print.fb_refusals_table <- function(x, ...) {
     ),
     registered_in_adr = "cairn 2026-09-13-inla-gaussian-standardised-response",
     plan_field = "rejected_routes",
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "fixed_offset_unsupported",
+    description = paste0(
+      "An offset() term in the fixed formula. terms() records an offset ",
+      "apart from the term labels, and the fixed-formula parser read only ",
+      "the labels, so the offset was dropped and the model fitted without it ",
+      "on both engines, with no message. Neither emitter carries an offset, ",
+      "so the term is refused where the fixed formula is ingested."
+    ),
+    message_template = paste0(
+      "The fixed formula carries %s, and flexyBayes fits no offset on either ",
+      "engine. For a Gaussian model with an identity link, subtract the ",
+      "offset from the response instead: `y - z ~ x` fits `y ~ x + offset(z)`."
+    ),
+    registered_in_adr = "cairn 2026-09-13-fixed-formula-offset-refused",
+    plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )
   invisible(NULL)

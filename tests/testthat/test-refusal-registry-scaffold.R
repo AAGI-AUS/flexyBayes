@@ -462,9 +462,11 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # matrix sent to INLA (correlated_covariance_requires_brms) (= 188); and a
   # Gaussian INLA fit whose response standard deviation exceeds the bound
   # its fits were measured correct up to (inla_response_scale_unvalidated)
-  # (= 189).
+  # (= 189). An offset() term in the fixed formula, which the parser dropped
+  # without a message on both engines (fixed_offset_unsupported) (= 190).
   expect_false("selection_penalty_not_implemented" %in% entries)
-  expect_equal(length(entries), 189L)
+  expect_equal(length(entries), 190L)
+  expect_true("fixed_offset_unsupported" %in% entries)
   expect_true("correlated_covariance_requires_brms" %in% entries)
   expect_true("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_scoring_unit_mismatch" %in% entries)
