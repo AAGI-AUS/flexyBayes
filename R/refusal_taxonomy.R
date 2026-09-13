@@ -2662,7 +2662,7 @@ print.fb_refusals_table <- function(x, ...) {
       "The fixed formula carries %s, and %s. An offset has to be a finite ",
       "number on each row of the data."
     ),
-    registered_in_adr = "cairn 2026-09-13-fixed-formula-offsets",
+    registered_in_adr = "0.11.0.9000 fixed-formula offsets",
     plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )
@@ -2677,7 +2677,7 @@ print.fb_refusals_table <- function(x, ...) {
       "The model carries %s, and `newdata` has no column %s. Add the column ",
       "to `newdata`."
     ),
-    registered_in_adr = "cairn 2026-09-13-fixed-formula-offsets",
+    registered_in_adr = "0.11.0.9000 fixed-formula offsets",
     plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )
