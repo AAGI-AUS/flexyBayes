@@ -754,6 +754,105 @@
 
 # --- the certificate ----------------------------------------------------- #
 
+# How the prior's hyperparameters were treated, and how the selection reused
+# the data. Ridge, Laplace and elastic-net reference fits are Bayesian
+# conditional on penalty values the caller fixed; they do not learn the
+# global penalty strength. The global-local families sample their scales
+# with the coefficients. An optimiser tunes its lambda on the folds. A
+# single "Bayesian" label cannot tell these apart, so the certificate does.
+
+#' How one prior block's hyperparameters were treated
+#'
+#' @param block A resolved prior block.
+#' @param workflow The resolved workflow.
+#' @return `"fixed_user"`, `"calibrated_rule"`, `"tuned_external"` or
+#'   `"hierarchical"`; `NA` for an explicitly unpenalised block.
+#' @noRd
+#' @keywords internal
+.fb_select_block_treatment <- function(block, workflow) {
+  if (identical(block$route %||% "", "none")) {
+    return(NA_character_)
+  }
+  if (identical(workflow, "penalized_optimizer")) {
+    return("tuned_external")
+  }
+  switch(
+    block$hyperparameter_mode %||% "",
+    fixed = "fixed_user",
+    learned = "hierarchical",
+    NA_character_
+  )
+}
+
+
+#' The hyperparameter treatments of a run's prior blocks
+#'
+#' @param blocks The resolved prior blocks, or `NULL`.
+#' @param workflow The resolved workflow.
+#' @return The distinct treatments in block order; empty where no joint prior
+#'   was declared.
+#' @noRd
+#' @keywords internal
+.fb_select_hyperparameter_treatment <- function(blocks, workflow) {
+  treatments <- vapply(
+    blocks %||% list(),
+    .fb_select_block_treatment,
+    character(1L),
+    workflow = workflow
+  )
+  unique(treatments[!is.na(treatments)])
+}
+
+
+#' How the selection reused the data it is scored on
+#'
+#' @param axes The resolved axes.
+#' @param projection The projection result, or `NULL`.
+#' @return `list(level, reason)`, the level one of `"none"`,
+#'   `"decision_reads_reference_posterior"`, `"decision_on_scored_folds"` or
+#'   `"tuning_on_scored_folds"`.
+#' @noRd
+#' @keywords internal
+.fb_select_data_reuse <- function(axes, projection = NULL) {
+  reuse <- function(level, reason) list(level = level, reason = reason)
+  if (identical(axes$workflow, "penalized_optimizer")) {
+    return(reuse("tuning_on_scored_folds", paste0(
+      "the optimiser's lambda is chosen on the out-of-fold curve over these ",
+      "folds and the chosen model's score is read off the same curve, so it ",
+      "is not a nested estimate"
+    )))
+  }
+  if (!identical(axes$workflow, "bayes") || identical(axes$prior, "none")) {
+    return(reuse(
+      "none", "every candidate is protected, so nothing is chosen from the data"
+    ))
+  }
+  switch(
+    axes$decision,
+    projection = reuse("decision_on_scored_folds", paste0(
+      "the submodel size is chosen on the elpd curve over these folds",
+      if (isTRUE(projection$settings$validate_search)) {
+        ", with the search repeated inside each fold"
+      } else {
+        paste0(
+          ", and the search was not repeated inside the folds, so that ",
+          "curve is optimistic"
+        )
+      },
+      "; a decision-stage score on the same folds is not a nested estimate"
+    )),
+    posterior_threshold = reuse("decision_reads_reference_posterior", paste0(
+      "the retained set is a fixed rule applied to the one posterior fitted ",
+      "on every row; no fold score enters the choice"
+    )),
+    reuse("none", paste0(
+      "decision = \"full\" chooses nothing: the answer is the one reference ",
+      "posterior, whose hyperparameters were declared or learned inside it"
+    ))
+  )
+}
+
+
 # .fb_select_certificate() --- what was done, and every place it was
 # approximate.
 #
@@ -811,6 +910,7 @@
       coef_names = b$coef_names,
       hyperparameters = b$hyperparameters,
       hyperparameter_mode = b$hyperparameter_mode,
+      hyperparameter_treatment = .fb_select_block_treatment(b, axes$workflow),
       route = b$route,
       scaling = b$scaling,
       centre = b$centre,
@@ -895,6 +995,13 @@
         )
       },
       prior_blocks = block_record,
+      # Whether the penalty strength was fixed by the caller, set by a rule,
+      # tuned on the folds or learned inside the posterior, and how the
+      # selection reused the data it is scored on.
+      hyperparameter_treatment = .fb_select_hyperparameter_treatment(
+        blocks, axes$workflow
+      ),
+      selection_data_reuse = .fb_select_data_reuse(axes, projection),
       # Which engine fitted the REFERENCE model, which is not always the
       # engine that fitted the base: a joint shrinkage prior is always
       # emitted on brms, whatever the base was fitted by, because the parsed
@@ -3318,6 +3425,14 @@ print.fb_select_certificate <- function(x, ...) {
       cat("    ", b$id, ". ", b$target, " ~ ", b$family,
           " (", b$hyperparameter_mode, ", route ", b$route, ")\n", sep = "")
     }
+  }
+  if (length(x$hyperparameter_treatment) > 0L) {
+    cat("  hyperparameters: ",
+        paste(x$hyperparameter_treatment, collapse = ", "), "\n", sep = "")
+  }
+  if (!is.null(x$selection_data_reuse)) {
+    cat("  data reuse : ", x$selection_data_reuse$level, " -- ",
+        .fb_squish(x$selection_data_reuse$reason), "\n", sep = "")
   }
   if (!is.na(x$reference_engine %||% NA_character_)) {
     cat("  reference  : fitted by ", x$reference_engine, "\n", sep = "")
