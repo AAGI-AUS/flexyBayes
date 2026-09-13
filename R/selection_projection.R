@@ -327,6 +327,52 @@
 }
 
 
+#' The metric a projection decision is asked to choose on
+#'
+#' The projection search and its size rules read pointwise log predictive
+#' densities, so the only metric it chooses on is `elpd`. This is checked
+#' against the RESOLVED method, so a `method = "auto"` that resolves to the
+#' projection is held to it as well, and `fb_select()` calls it before the
+#' provider check, the budget and the first fit.
+#'
+#' @param method The resolved decision method.
+#' @param metric The decision metric.
+#' @param requested_method The method the caller wrote, for the message.
+#' @return `TRUE`, invisibly, or a `projection_metric_unsupported` refusal.
+#' @noRd
+#' @keywords internal
+.fb_sel_require_projection_metric <- function(method,
+                                              metric,
+                                              requested_method = method) {
+  if (!identical(method, "projection") || identical(metric, "elpd")) {
+    return(invisible(TRUE))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "projection_metric_unsupported",
+    message = paste0(
+      "fb_select(): the projection decision chooses a submodel on elpd, and ",
+      "metric = \"", metric, "\" was asked for",
+      if (identical(requested_method, "auto")) {
+        paste0(
+          " with method = \"auto\", which resolves to the projection on this ",
+          "model's green structure gate"
+        )
+      } else {
+        ""
+      },
+      ". The search and its size rules read pointwise log predictive ",
+      "densities; `", metric, "` is scored by the out-of-fold path, not by ",
+      "the projection. Nothing was fitted. Use metric = \"elpd\" with the ",
+      "projection, or method = \"full\" or \"posterior_threshold\" with ",
+      "benchmark = TRUE to have `", metric, "` scored out of fold."
+    ),
+    decision_method = method,
+    requested_method = requested_method,
+    metric = metric
+  ))
+}
+
+
 # --- folds ------------------------------------------------------------- #
 
 # .fb_sel_projpred_folds() --- an <fb_sel_folds> as projpred's fold vector.
@@ -718,14 +764,7 @@
   .fb_sel_require_projectable(fit)
 
   spec <- .fb_sel_decision_spec(decision)
-  if (!identical(spec$metric, "elpd")) {
-    stop(
-      ".fb_sel_project(): the projection decision is on elpd in this ",
-      "release; `", spec$metric, "` is scored by the out-of-fold path, not ",
-      "by the projection.",
-      call. = FALSE
-    )
-  }
+  .fb_sel_require_projection_metric("projection", spec$metric)
 
   fold_vector <- .fb_sel_projpred_folds(folds)
   unit_key <- attr(fold_vector, "unit_key")
@@ -860,5 +899,82 @@
       projpred_version = as.character(vs$projpred_version)
     ),
     timing = list(cv_varsel = t_search, project = t_project)
+  )
+}
+
+
+#' Projected predictive draws for new rows
+#'
+#' Projects a reference fit onto a named submodel and returns, draw for
+#' draw, the projected linear predictor on `newdata` and the projected
+#' residual scale, in the shape `.fb_sel_bayes_score_fold()` scores. The
+#' draws are thinned rather than clustered, so each carries the same weight
+#' and a log-mean-exp over them is the predictive density; row `s` of the
+#' linear predictor and row `s` of the projected draws describe the same
+#' projected draw. Under `new_cluster` the grouping levels of `newdata` are
+#' ones the fit has not seen, and projpred draws their effects from the
+#' projected group-level distribution.
+#'
+#' @param fit A reference fit carrying `$brms`, or a `brmsfit`.
+#' @param newdata The rows to predict, on the fit's own column scale.
+#' @param predictor_terms The submodel's terms, the forced block included.
+#' @param response The response column name.
+#' @param ndraws Projected draws.
+#' @param seed Seed for the projection and for new-level effect draws.
+#' @return `list(mu, sigma, provider, n_draws)`, `mu` draws by rows.
+#' @noRd
+#' @keywords internal
+.fb_sel_projected_predictive <- function(fit,
+                                         newdata,
+                                         predictor_terms,
+                                         response,
+                                         ndraws = 400L,
+                                         seed = NULL) {
+  .check_installed(
+    "projpred",
+    "Package 'projpred' is required for the projection decision. ",
+    "Install via:\n  install.packages('projpred')\n"
+  )
+  brmsfit <- if (inherits(fit, "brmsfit")) fit else fit$brms
+  if (is.null(brmsfit)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_base_shape_unreadable",
+      message = paste0(
+        "fb_select(): the projected predictive draws are read off a fold's ",
+        "reference fit, and this object carries no brms fit."
+      )
+    ))
+  }
+  seed <- as.integer(seed %||% 1L)
+  ndraws <- min(as.integer(ndraws), brms::ndraws(brmsfit))
+
+  # projpred refuses a missing response in `newdata` even where only the
+  # linear predictor is read. The assessment rows carry NA there by design,
+  # so a constant stands in: the linear predictor does not read it, and the
+  # log density projpred computes from it is not used.
+  newdata[[response]] <- 0
+
+  projected <- .fb_sel_with_seed(seed, {
+    prj <- projpred::project(
+      projpred::get_refmodel(brmsfit),
+      predictor_terms = predictor_terms,
+      ndraws = ndraws,
+      seed = seed
+    )
+    linpred <- projpred::proj_linpred(
+      prj,
+      newdata = newdata,
+      transform = TRUE,
+      integrated = FALSE,
+      .seed = seed
+    )
+    list(prj = prj, pred = linpred$pred)
+  })
+  sigma <- as.numeric(as.matrix(projected$prj)[, "sigma"])
+  list(
+    mu = matrix(projected$pred, nrow = length(sigma)),
+    sigma = sigma,
+    provider = "projpred",
+    n_draws = length(sigma)
   )
 }

@@ -45,10 +45,14 @@ Bayesian provider is absent, never after a failure.}
 arm and, where a penalty was given, the \code{glmnet} arm on the same folds
 -- and scores the reference model itself out of fold, so the arms have
 one loss at one unit to be placed beside. That last part is what the
-certificate's \code{predictive_side_by_side} stanza reports and what the
-equivalence level \code{posterior_predictive_comparable} requires; without
-it the certificate says so by name rather than claiming a comparison
-nobody made. It costs one reference refit per fold per model.}
+certificate's \code{reference_predictive} and \code{decision_predictive} tables
+report -- the full-design models at one stage, the chosen models at the
+other, each written only when every arm shares one score contract --
+and what the equivalence level \code{posterior_predictive_comparable}
+requires; without it the certificate says so by name rather than
+claiming a comparison nobody made. It costs one reference refit per
+fold per model, and each fold's preprocessing and prior are learned on
+that fold's analysis rows.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 

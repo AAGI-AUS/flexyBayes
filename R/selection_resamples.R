@@ -1337,6 +1337,10 @@
     # estimated once per fold and plugged in. It is never labelled Bayesian.
     workflow = "unpenalized_benchmark",
     provider = "gls_reml_plugin",
+    # Every quantity a fold learns -- the REML components, the candidate
+    # standardisation and the pilot fit -- is read off its training rows,
+    # which the leakage gate holds each substrate to.
+    preprocessing = list(learned_on = "analysis_rows"),
     # Read from the fold objects, never from an argument. Each substrate
     # carries the estimand of the `fb_sel_cov_spec` it actually worked in,
     # which `.fb_sel_reml_components()` set; a certificate built from this

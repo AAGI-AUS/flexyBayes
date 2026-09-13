@@ -2,10 +2,11 @@
 #
 # Contract: SPEC_bayesian_selection_v5_2026-09-12.md section 10.
 #
-# Six codes, all of them gates that run before a decision is reported: two
+# Seven codes, all of them gates that run before a decision is reported: two
 # on the reference model (its sampler and its fit to the data), two on the
 # projection provider (the structure it was handed and the family), one on
-# the scoring unit the elpd is aggregated at, and one on the search method.
+# the scoring unit the elpd is aggregated at, one on the search method, and
+# one on the metric the projection is asked to choose on.
 # Registered here as their throwing sites land, never in advance -- a
 # registered code with no triggering test is a string, not a refusal.
 #
@@ -103,6 +104,26 @@
       "refuses exactly as an unrun structure does."
     ),
     message_template = "fb_decision(): search = \"%s\" has no executed gate.",
+    registered_in_adr = "SPEC v5 section 6.1",
+    plan_field = "selection_plan",
+    since_version = "0.11.0"
+  )
+
+  .register_refusal(
+    reason_code = "projection_metric_unsupported",
+    description = paste0(
+      "A projection decision was asked for, by name or through ",
+      "`method = \"auto\"` resolving to it, with a metric other than `elpd`. ",
+      "The projection search and its size rules read pointwise log ",
+      "predictive densities, so `rmse` and `nlpd` are not quantities it can ",
+      "choose on. The pair is validated before the provider check, the ",
+      "budget and the first fit, and `plan = TRUE` refuses identically, so ",
+      "an invalid request costs no reference fit."
+    ),
+    message_template = paste0(
+      "fb_select(): the projection decision chooses on elpd, and ",
+      "metric = \"%s\" was asked for."
+    ),
     registered_in_adr = "SPEC v5 section 6.1",
     plan_field = "selection_plan",
     since_version = "0.11.0"

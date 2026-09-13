@@ -464,9 +464,14 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # its fits were measured correct up to (inla_response_scale_unvalidated)
   # (= 189). An offset() term in the fixed formula, which the parser dropped
   # without a message on both engines (fixed_offset_unsupported) (= 190).
+  #
+  # The fresh-review closure adds one: a projection decision asked to choose
+  # on a metric other than elpd, refused before any fit
+  # (projection_metric_unsupported) (= 191).
   expect_false("selection_penalty_not_implemented" %in% entries)
-  expect_equal(length(entries), 190L)
+  expect_equal(length(entries), 191L)
   expect_true("fixed_offset_unsupported" %in% entries)
+  expect_true("projection_metric_unsupported" %in% entries)
   expect_true("correlated_covariance_requires_brms" %in% entries)
   expect_true("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_scoring_unit_mismatch" %in% entries)

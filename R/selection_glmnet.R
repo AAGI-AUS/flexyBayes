@@ -1059,6 +1059,10 @@
       equivalence_level = equivalence,
       decision = decision,
       selection = selection,
+      # The per-unit out-of-fold table of every fitted model on the path,
+      # keyed by model name (`fixed_1`, `benchmark_<k>`), so a comparison
+      # re-aggregates the model it names rather than a summary of it.
+      clusters_by_model = computed$clusters_by_model,
       covariance_estimand = substrates[[1L]]$covariance_estimand,
       prediction = substrates[[1L]]$prediction,
       folds = labels,

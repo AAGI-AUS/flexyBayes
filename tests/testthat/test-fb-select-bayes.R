@@ -153,10 +153,15 @@ test_that("a horseshoe with a projection decision records four axes", {
 
   # The block is exact here -- nothing is protected beyond the intercept --
   # so the global-shrinkage approximation is NOT claimed. The one that is
-  # claimed is the scaling: the reference model is one fit, so the
-  # standardising constants are the whole sample's.
+  # claimed is the projection's own search, whose k-fold refits reuse the
+  # reference fit's whole-sample preprocessing. Whole-sample scaling is no
+  # longer claimed for the out-of-fold scores, which learn it per fold.
   expect_false("protected_under_global_shrinkage" %in% cert$approximations)
   expect_true(any(grepl(
+    "projection_search_folds_reuse_whole_sample_preprocessing",
+    cert$approximations, fixed = TRUE
+  )))
+  expect_false(any(grepl(
     "scaling_learned_on_all_rows", cert$approximations, fixed = TRUE
   )))
 })
@@ -185,6 +190,26 @@ test_that("the projection chose a size, forced the protected terms and labelled 
   expect_true(sel$certificate$projection$optimistic)
   out <- paste(utils::capture.output(print(sel)), collapse = "\n")
   expect_match(out, "optimistic", fixed = TRUE)
+})
+
+
+test_that("the projection's own site refuses a non-elpd metric by class", {
+  # The late plain stop() inside `.fb_sel_project()` is retired: a caller that
+  # reaches the projection directly, past the verb's early check, meets the
+  # same typed refusal rather than a bare error.
+  fbsb_needs_brms()
+  skip_if_not_installed("projpred")
+  sel <- fbsb_cache[["hs_projection"]]
+  skip_if(is.null(sel), "the projection run is not in this file's cache")
+  expect_error(
+    .fb_sel_project(
+      sel$reference,
+      folds = sel$folds,
+      decision = fb_decision(method = "projection", metric = "rmse"),
+      seed = 1L
+    ),
+    class = "flexybayes_refusal_projection_metric_unsupported"
+  )
 })
 
 
@@ -583,68 +608,60 @@ test_that("a horseshoe benchmark carries no identity, because glmnet has none", 
 
 # --- the primary arm is scored, or the comparison is not claimed ---------- #
 
-test_that("the side-by-side stanza is absent until both arms share a loss", {
+test_that("the stage tables say why they are absent, and substitute nothing", {
   # The defect this closes, at the unit that decides it. The Bayesian
   # penalised route set `aggregated = NULL`, so there was no out-of-fold
   # score on the primary arm at all -- and the glmnet arm beside it was
   # still labelled `posterior_predictive_comparable`, whose own definition
   # is "scored on the same folds, target, loss, unit and candidate design".
-  arms <- list(
-    gls = list(
-      scores = data.frame(
-        model = c("protected_only", "full"), score = c(2, 1.5),
-        se = c(0.1, 0.1), n_units = c(12L, 12L),
-        se_unit = c("cluster", "cluster"), stringsAsFactors = FALSE
-      )
-    )
+  # The contract itself is tested in test-fb-select-score-contract.R; this
+  # is the wiring that decides which arms reach each stage.
+  base <- structure(
+    list(
+      fb = list(response = "y", family = "gaussian", link = "identity"),
+      data = data.frame(y = stats::rnorm(4L))
+    ),
+    class = c("flexybayes_brms", "flexybayes", "list")
   )
+  arms <- list(gls = list())
 
-  # No primary table: the stanza is absent and says what would produce one.
-  none <- .fb_select_predictive_side_by_side(NULL, arms, metric = "nlpd")
-  expect_false(none$available)
-  expect_match(none$reason, "benchmark = TRUE", fixed = TRUE)
-
-  # A primary table that agrees on the unit: the stanza is written.
-  primary <- data.frame(
-    model = rep("full", 12L),
-    fold = rep(c("Fold1", "Fold2"), each = 6L),
-    repeat_id = 1L,
-    cluster = sprintf("S%02d", seq_len(12L)),
-    n = 6L,
-    mse = stats::runif(12L),
-    rmse = stats::runif(12L),
-    elpd = stats::rnorm(12L),
-    nlpd = stats::runif(12L),
-    stringsAsFactors = FALSE
+  # No primary table: both stages are absent and say what would produce one.
+  none <- .fb_select_stage_tables(
+    base,
+    axes = list(workflow = "bayes", prior = "ridge", decision = "full"),
+    cv = list(clusters = NULL, metric = "elpd"),
+    benchmark = list(arms = arms),
+    metric = "nlpd"
   )
-  both <- .fb_select_predictive_side_by_side(
-    primary, arms, metric = "nlpd",
-    primary_folds = c("Fold1", "Fold2"),
-    benchmark_folds = c("Fold1", "Fold2")
-  )
-  expect_true(both$available)
-  expect_setequal(both$arms$arm, c("bayes", "gls"))
-  expect_true(all(both$arms$n_units == 12L))
-  expect_identical(both$metric, "nlpd")
+  expect_false(none$reference$available)
+  expect_match(none$reference$reason, "benchmark = TRUE", fixed = TRUE)
+  expect_false(none$decision$available)
 
-  # An arm that aggregated at a different number of units did not score the
-  # same loss, whatever the column is called.
-  disagreeing <- arms
-  disagreeing$gls$scores$n_units <- c(2L, 2L)
-  expect_false(
-    .fb_select_predictive_side_by_side(
-      primary, disagreeing, metric = "nlpd"
-    )$available
+  # A posterior threshold defines no predictive distribution: the decision
+  # stage names that, and the reference is not put in its place.
+  threshold <- .fb_select_stage_tables(
+    base,
+    axes = list(
+      workflow = "bayes", prior = "laplace", decision = "posterior_threshold"
+    ),
+    cv = list(clusters = NULL, metric = "elpd"),
+    benchmark = NULL,
+    metric = "nlpd"
   )
+  expect_false(threshold$decision$available)
+  expect_match(threshold$decision$reason, "posterior threshold", fixed = TRUE)
+  expect_null(threshold$decision$arms)
 
-  # And arms scored on different partitions are not placed side by side
-  # however well their unit counts happen to line up.
-  expect_false(
-    .fb_select_predictive_side_by_side(
-      primary, arms, metric = "nlpd",
-      primary_folds = c("Fold1", "Fold2"),
-      benchmark_folds = c("Fold1", "Fold2", "Fold3")
-    )$available
+  # With every candidate protected there is no decision at all.
+  protected <- .fb_select_stage_tables(
+    base,
+    axes = list(workflow = "bayes", prior = "none", decision = "full"),
+    cv = list(clusters = NULL, metric = "elpd"),
+    benchmark = NULL,
+    metric = "nlpd"
+  )
+  expect_match(
+    protected$decision$reason, "every candidate is protected", fixed = TRUE
   )
 })
 
@@ -673,12 +690,34 @@ test_that("a ridge benchmark scores both arms on one loss and leaves the mode or
     c("elpd", "rmse", "nlpd") %in% names(as.data.frame(sel$clusters))
   ))
 
-  ps <- sel$certificate$predictive_side_by_side
+  ps <- sel$certificate$reference_predictive
   expect_true(ps$available)
   expect_true(all(c("bayes", "gls", "glmnet") %in% ps$arms$arm))
-  # One loss, one unit, and the same number of them on every arm.
+  expect_true(all(ps$arms$stage == "reference"))
+  # One contract, one loss, one unit, and the same number of them on every
+  # arm.
+  expect_length(unique(ps$arms$contract_hash), 1L)
   expect_identical(length(unique(ps$arms$n_units)), 1L)
   expect_identical(length(unique(ps$arms$unit)), 1L)
+
+  # The decision stage places the models each procedure chose: decision =
+  # "full" keeps every candidate, so the Bayesian choice is the reference,
+  # beside the optimiser's own chosen lambda -- under a contract that
+  # differs from the reference stage's in the stage and nothing else.
+  dp <- sel$certificate$decision_predictive
+  expect_true(dp$available)
+  expect_setequal(dp$arms$arm, c("bayes", "glmnet"))
+  expect_identical(dp$arms$model[dp$arms$arm == "bayes"], "full")
+  expect_match(dp$arms$model[dp$arms$arm == "glmnet"], "^benchmark_")
+  expect_true(all(dp$arms$stage == "decision"))
+  expect_identical(
+    .fb_select_contract_differences(ps$contract, dp$contract), "stage"
+  )
+
+  # The fold-local constants are on the certificate, one row per fold.
+  fp <- sel$certificate$fold_preprocessing
+  expect_identical(fp$learned_on, "analysis_rows")
+  expect_identical(nrow(fp$folds), length(sel$folds))
 
   # The comparison is now one that happened, so the middle level is earned.
   expect_identical(
@@ -698,13 +737,16 @@ test_that("a ridge benchmark scores both arms on one loss and leaves the mode or
   expect_match(mo$reason, "held fixed", fixed = TRUE)
 
   out <- paste(utils::capture.output(print(sel)), collapse = "\n")
-  expect_match(out, "side by side", fixed = TRUE)
+  expect_match(out, "reference stage", fixed = TRUE)
+  expect_match(out, "decision stage", fixed = TRUE)
   expect_match(out, "mode oracle: none", fixed = TRUE)
   cert_out <- paste(
     utils::capture.output(print(sel$certificate)), collapse = "\n"
   )
   expect_match(cert_out, "mode oracle: none", fixed = TRUE)
-  expect_match(cert_out, "side by side", fixed = TRUE)
+  expect_match(cert_out, "reference stage", fixed = TRUE)
+  expect_match(cert_out, ps$contract$hash, fixed = TRUE)
+  expect_match(cert_out, "fold prep", fixed = TRUE)
 })
 
 
@@ -741,13 +783,75 @@ test_that("a horseshoe benchmark claims no identity against glmnet", {
     )
   }
 
-  # The unpenalised arm and the Bayesian arm DO share a loss, and are
-  # reported side by side on it.
-  ps <- sel$certificate$predictive_side_by_side
+  # The unpenalised arm and the Bayesian arm DO share a contract at the
+  # reference stage, and are reported side by side on it.
+  ps <- sel$certificate$reference_predictive
   expect_true(ps$available)
   expect_setequal(ps$arms$arm, c("bayes", "gls"))
   expect_identical(length(unique(ps$arms$n_units)), 1L)
   expect_false(sel$certificate$mode_oracle$available)
+  # With no optimiser arm, the decision stage has one arm and no comparison.
+  expect_false(sel$certificate$decision_predictive$available)
+  expect_null(sel$certificate$decision_predictive$arms)
+})
+
+
+test_that("a projection benchmark scores the chosen submodel at the decision stage", {
+  # The defect this closes. The one side-by-side table placed the Bayesian
+  # reference beside the optimiser's SELECTED model, and the projection's
+  # chosen submodel was not in it at all. Both stages are now scored under
+  # one contract each, on a live run.
+  fbsb_needs_brms()
+  skip_if_not_installed("projpred")
+  skip_if_not_installed("glmnet")
+  sel <- fbsb_memo("laplace_projection_benchmark", suppressWarnings(fb_select(
+    fbsb_base(),
+    fbsb_candidates,
+    penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.4)),
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    decision = fb_decision(method = "projection", validate_search = FALSE),
+    benchmark = TRUE,
+    engine = fbsb_engine(),
+    seed = 20260912L
+  )))
+  cert <- sel$certificate
+  ref <- cert$reference_predictive
+  dec <- cert$decision_predictive
+
+  expect_true(ref$available)
+  expect_true(dec$available)
+  expect_true(all(ref$arms$stage == "reference"))
+  expect_true(all(dec$arms$stage == "decision"))
+  expect_identical(ref$arms$model[ref$arms$arm == "bayes"], "full")
+  expect_identical(
+    dec$arms$model[dec$arms$arm == "bayes"], "projected_submodel"
+  )
+  expect_match(dec$arms$model[dec$arms$arm == "glmnet"], "^benchmark_")
+  expect_length(unique(ref$arms$contract_hash), 1L)
+  expect_length(unique(dec$arms$contract_hash), 1L)
+  expect_identical(
+    .fb_select_contract_differences(ref$contract, dec$contract), "stage"
+  )
+  # The projected submodel is scored on its own draws: its score is not the
+  # reference's under another name.
+  expect_false(isTRUE(all.equal(
+    dec$arms$score[dec$arms$arm == "bayes"],
+    ref$arms$score[ref$arms$arm == "bayes"]
+  )))
+  expect_true("projected_submodel" %in% sel$clusters$model)
+
+  # The out-of-fold score learned its constants per fold, and the search
+  # inside the provider is named as the place it did not.
+  expect_identical(cert$fold_preprocessing$learned_on, "analysis_rows")
+  expect_identical(nrow(cert$fold_preprocessing$folds), 3L)
+  expect_true(any(grepl(
+    "projection_search_folds_reuse_whole_sample_preprocessing",
+    cert$approximations, fixed = TRUE
+  )))
+
+  out <- paste(utils::capture.output(print(sel)), collapse = "\n")
+  expect_match(out, "reference stage", fixed = TRUE)
+  expect_match(out, "projected_submodel", fixed = TRUE)
 })
 
 
