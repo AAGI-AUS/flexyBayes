@@ -154,28 +154,25 @@ test_that("a design cell completed under augment needs its offset", {
 # --- routes ---------------------------------------------------------------- #
 
 test_that("a fitting route that does not carry an offset refuses by name", {
-  skip_if_not_installed("lme4")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  d <- .off_sleepstudy()
-  for (backend in c("auto", "inla")) {
-    .off_expect_refusal(
-      flexybayes(
-        Reaction ~ Days + offset(Days),
-        random = ~ Subject,
-        data = d,
-        backend = backend,
-        verbose = FALSE
-      ),
-      "fixed_offset_unsupported",
-      "`offset(Days)`"
-    )
-  }
   cells <- data.frame(
     f = factor(rep(sprintf("f%d", 1:4), length.out = 120)),
     g = factor(rep(sprintf("g%02d", 1:12), each = 10)),
     z = stats::rnorm(120)
   )
   cells$y <- stats::rnorm(120, 10) + cells$z
+  .off_expect_refusal(
+    flexybayes(
+      y ~ f + offset(z),
+      random = ~ g,
+      data = cells,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
+    ),
+    "fixed_offset_unsupported",
+    "`offset(z)`"
+  )
   .off_expect_refusal(
     suppressMessages(flexybayes_stream(
       y ~ f + offset(z),
@@ -256,4 +253,147 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
   hand <- coef(fit)[["(Intercept)"]] + coef(fit)[["Days"]] * d$Days +
     re[as.character(d$Subject)] + d$Days
   expect_equal(unname(fitted(fit)), unname(hand), tolerance = 1e-8)
+})
+
+# --- INLA, per row --------------------------------------------------------- #
+
+.off_inla <- function(...) {
+  suppressMessages(flexybayes(
+    ...,
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE
+  ))
+}
+
+test_that("a per-row Gaussian INLA fit with an offset matches lme4", {
+  # Five identical calls returned the same coefficients to 1.1e-13, and
+  # they differed from lme4 with the offset by 8.4e-12 (intercept) and
+  # 1.6e-12 (Days) (2026-09-13). The tolerance is 1e-6; dropping the offset
+  # moves Days by 1.
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_sleepstudy()
+  fit <- .off_inla(Reaction ~ Days + offset(Days), random = ~ Subject, data = d)
+  ref <- lme4::fixef(
+    lme4::lmer(Reaction ~ Days + offset(Days) + (1 | Subject), data = d)
+  )
+  expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 1e-6)
+  expect_lt(abs(coef(fit)[["Days"]] - ref[["Days"]]), 1e-6)
+
+  # offset(Days) is the model without it with the Days coefficient raised by
+  # exactly one, so the two fits share every fitted value. Measured over six
+  # pairs of identical calls (2026-09-13): the coefficients agree to 1.8e-13,
+  # while the fitted values, read from INLA's per-row marginals, differ by
+  # 2.3e-5 to 4.8e-5 between the two spellings and by up to 1.3e-5 between
+  # identical calls of one spelling. The fitted-value tolerance is 1e-3;
+  # the offset it has to carry reaches 9.
+  plain <- .off_inla(Reaction ~ Days, random = ~ Subject, data = d)
+  expect_lt(abs(coef(plain)[["Days"]] - coef(fit)[["Days"]] - 1), 1e-6)
+  expect_lt(max(abs(fitted(fit) - fitted(plain))), 1e-3)
+  expect_lt(
+    max(abs(residuals(fit) - (d$Reaction - fitted(plain)))),
+    1e-3
+  )
+
+  # Each posterior draw's Predictor row is the fixed part, the subject's
+  # deviation and the offset, in that draw (measured to 5.7e-14).
+  draw <- .fb_inla_posterior_sample(fit, 2L, num.threads = "1:1")[[1L]]$latent
+  rn <- rownames(draw)
+  eta <- draw["(Intercept):1", 1L] + draw["Days:1", 1L] * d$Days +
+    draw[grep("^Subject:", rn), 1L][as.integer(d$Subject)]
+  expect_lt(
+    max(abs(draw[grep("^Predictor:", rn), 1L] - eta - d$Days)),
+    1e-8
+  )
+})
+
+test_that("a Poisson INLA fit with offset(log(E)) matches glmer", {
+  # INLA against glmer's Laplace fit on this design: 3.6e-4 on the intercept
+  # and 2.7e-7 on the slope, with five identical calls within 1.7e-9
+  # (2026-09-13). Without the offset the intercept is 2.57 against 0.26.
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  set.seed(20260913)
+  n <- 400
+  g <- factor(sprintf("g%02d", rep(1:20, each = 20)))
+  x <- stats::rnorm(n)
+  E <- stats::runif(n, 0.5, 20)
+  u <- stats::rnorm(20, 0, 0.4)
+  d <- data.frame(
+    y = stats::rpois(n, E * exp(0.3 + 0.5 * x + u[as.integer(g)])),
+    x = x,
+    g = g,
+    E = E
+  )
+  ref <- lme4::fixef(lme4::glmer(
+    y ~ x + offset(log(E)) + (1 | g),
+    family = stats::poisson,
+    data = d
+  ))
+  fit <- .off_inla(
+    y ~ x + offset(log(E)), random = ~ g, family = "poisson", data = d
+  )
+  expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 2e-3)
+  expect_lt(abs(coef(fit)[["x"]] - ref[["x"]]), 1e-5)
+  # The stored linear predictor carries log(E) (measured to 1.4e-4).
+  eta <- coef(fit)[["(Intercept)"]] + coef(fit)[["x"]] * x +
+    fit$inla$summary.random$g$mean[as.integer(g)] + log(E)
+  expect_lt(max(abs(fit$inla$summary.linear.predictor$mean - eta)), 1e-3)
+})
+
+test_that("a Bernoulli INLA fit with an offset matches glmer", {
+  # INLA against glmer: 3.6e-3 on the intercept, 4.9e-3 on the slope, two
+  # identical calls identical (2026-09-13). Without the offset the slope is
+  # 0.536 against 0.610.
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  set.seed(7)
+  n <- 600
+  g <- factor(rep(1:30, each = 20))
+  x <- stats::rnorm(n)
+  o <- stats::rnorm(n, 0, 0.8)
+  u <- stats::rnorm(30, 0, 0.5)
+  d <- data.frame(
+    y = stats::rbinom(n, 1, stats::plogis(-0.3 + 0.7 * x + o + u[as.integer(g)])),
+    x = x,
+    g = g,
+    o = o
+  )
+  ref <- lme4::fixef(lme4::glmer(
+    y ~ x + offset(o) + (1 | g),
+    family = stats::binomial,
+    data = d
+  ))
+  fit <- .off_inla(y ~ x + offset(o), random = ~ g, family = "binomial", data = d)
+  expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 0.02)
+  expect_lt(abs(coef(fit)[["x"]] - ref[["x"]]), 0.02)
+})
+
+test_that("an offset on a sectioned residual shifts the fit exactly", {
+  # Two Gaussian likelihoods, one per section. offset(Days) against the fit
+  # without it: Days differs by 1 - 3.9e-7 and the intercept by 6.7e-7
+  # (2026-09-13). The tolerance is 1e-5.
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_sleepstudy()
+  d$half <- factor(ifelse(d$Days >= 5, "late", "early"))
+  res <- ~ dsum(~ units | half)
+  with_off <- .off_inla(
+    Reaction ~ Days + offset(Days), random = ~ Subject, residual = res, data = d
+  )
+  plain <- .off_inla(Reaction ~ Days, random = ~ Subject, residual = res, data = d)
+  expect_lt(abs(coef(plain)[["Days"]] - coef(with_off)[["Days"]] - 1), 1e-5)
+  expect_lt(
+    abs(coef(plain)[["(Intercept)"]] - coef(with_off)[["(Intercept)"]]),
+    1e-5
+  )
 })

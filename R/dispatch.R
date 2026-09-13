@@ -1305,9 +1305,6 @@
         backend == "inla" ||
           (backend == "auto" && inla_installed)
       ) {
-        # Outside the tryCatch below, so the refusal is not read as an INLA
-        # failure and re-routed.
-        .refuse_offset_route(fb, "the per-row INLA route")
         # Explicit backend = "inla" surfaces any
         # emit_inla() error directly (the user asked for INLA; the true
         # diagnostic must not be masked, and a flexyBayes-side contract
