@@ -62,7 +62,9 @@
 #' whole, or the legacy `prior_vc_sd` scalar -- each target of
 #' `.fb_inla_sd_targets()` with no entry in the `priors_to_inla()` list the
 #' emit built from what was stated takes the bounded uniform default. A fit
-#' with no prior at all is left alone.
+#' with no prior at all is left alone: every public route resolves one
+#' before it reaches an emit (flexybayes() builds the auto-default and
+#' flexybayes_stream() attaches it), so that case is a direct internal call.
 #'
 #' Each added entry is marked `meta$package_chosen`, which is how the formula
 #' builder tells it from a stated prior on a structure that refuses one.
