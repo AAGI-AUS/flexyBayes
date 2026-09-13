@@ -70,8 +70,8 @@
 # standard deviation this is INLA's own prec = 0.001, so a fit on a
 # unit-scale covariate does not change (Poisson and Bernoulli random-intercept
 # fits, 30 groups of 8, standard-normal x: 0.508836677 against 0.508836662,
-# and 0.231425423 against 0.231425542). A wider value is not free on these links. On a perfectly
-# separated Bernoulli design (200 rows, 20 groups) the coefficient was 70
+# and 0.231425423 against 0.231425542). A wider value is not free on these
+# links. On a perfectly separated Bernoulli design (200 rows, 20 groups) the coefficient was 70
 # under INLA's default and 76 at sqrt(1000); at 100 the INLA engine failed,
 # and at 1000, 1e4 and 1e6 it returned 369, 764 and 1476 -- every converged
 # fit with mode.status 0 and the numerical-confirm gate passing.
