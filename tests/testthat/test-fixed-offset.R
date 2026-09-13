@@ -958,3 +958,63 @@ test_that("projection refuses an offset base, and the other layers carry it", {
     1e-3
   )
 })
+
+# --- the two engines on one offset model ----------------------------------- #
+
+test_that("brms and INLA agree on an offset model under one stated prior", {
+  # lme4::sleepstudy, Reaction ~ Days + offset(Days) + (1 | Subject), uniform
+  # priors on both standard deviations. brms at four seeds (4 chains, 2000
+  # draws each) against INLA (2026-09-13): at most 0.77 apart on the
+  # intercept, 0.031 on Days, 0.50 on the subject SD and 0.044 on the
+  # residual SD, inside brms's own spread across the seeds (0.75, 0.038,
+  # 0.39, 0.025). The same model without the offset gave 0.40, 0.007, 0.38
+  # and 0.049. Tolerances 2, 0.1, 1.5 and 0.15; a dropped offset on either
+  # engine moves Days by 1.
+  skip_if_not_installed("brms")
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  skip_on_ci()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_sleepstudy()
+  prior <- fb_prior(
+    sd(group = "Subject") ~ uniform(lower = 0, upper = 250),
+    sigma ~ uniform(lower = 0, upper = 250)
+  )
+  read <- function(fit) {
+    vc <- summary(fit)$varcomp
+    c(
+      coef(fit)[["(Intercept)"]],
+      coef(fit)[["Days"]],
+      vc$estimate[vc$component == "sd_Subject"],
+      vc$estimate[vc$component == "sigma"]
+    )
+  }
+  inla_fit <- .off_inla(
+    Reaction ~ Days + offset(Days), random = ~ Subject, data = d, prior = prior
+  )
+  brms_fit <- suppressMessages(flexybayes(
+    Reaction ~ Days + offset(Days),
+    random = ~ Subject,
+    data = d,
+    prior = prior,
+    backend = "brms",
+    chains = 4L,
+    warmup = 1000L,
+    n_samples = 2000L,
+    seed = 1L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  ))
+  gap <- abs(read(brms_fit) - read(inla_fit))
+  expect_lt(gap[[1L]], 2)
+  expect_lt(gap[[2L]], 0.1)
+  expect_lt(gap[[3L]], 1.5)
+  expect_lt(gap[[4L]], 0.15)
+  # One model on both engines: the fingerprints agree, so triangulate() does
+  # not refuse the pair.
+  expect_null(.fb_fingerprint_first_difference(
+    brms_fit$extras$fingerprint,
+    inla_fit$extras$fingerprint
+  ))
+})
