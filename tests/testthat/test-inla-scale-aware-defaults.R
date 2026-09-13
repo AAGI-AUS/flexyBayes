@@ -369,13 +369,18 @@ test_that("the streamed default bound equals the per-row bound on the same data"
                    "shared_default")
 })
 
-test_that("a multi-way random interaction takes the bounded default", {
-  skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+.sad_three_way <- function() {
   set.seed(20260913L)
   d <- expand.grid(a = factor(1:3), b = factor(1:3), cc = factor(1:2), rep = 1:4)
   d$y <- 50 + stats::rnorm(18L, 0, 4)[as.integer(interaction(d$a, d$b, d$cc))] +
     stats::rnorm(nrow(d), 0, 8)
+  d
+}
+
+test_that("a multi-way random interaction takes the bounded default", {
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .sad_three_way()
 
   emitted <- .sad_quiet(flexybayes(
     fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
@@ -388,6 +393,53 @@ test_that("a multi-way random interaction takes the bounded default", {
     "f(a_b_cc_id, model = \"iid\", hyper",
     fixed = TRUE
   )
+})
+
+test_that("a stated prior on a multi-way random interaction reaches INLA", {
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .sad_three_way()
+
+  # Before, the reachability check did not list the colon-joined key of a
+  # multi-way interaction, and this call was refused with
+  # prior_target_not_in_model although the default fills the same key.
+  emitted <- .sad_quiet(flexybayes(
+    fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+    prior = fb_prior(sd(group = "a:b:cc") ~ uniform(lower = 0, upper = 20)),
+    return_code = TRUE
+  ))
+  # The caller's bound restated on the standardised response, and nothing
+  # else: not the default's 5 sd(y), and not marked as the package's choice.
+  expected <- 20 / stats::sd(d$y)
+  entry <- emitted$hyper[["a:b:cc"]]
+  expect_equal(entry$meta$upper, expected, tolerance = 1e-12)
+  expect_null(entry$meta$package_chosen)
+  # The same bound in the f() term INLA reads.
+  form <- .sad_formula_text(emitted$formula)
+  pattern <- paste0(
+    "^.*f\\(a_b_cc_id, model = \"iid\", hyper = list\\(prec = list\\(",
+    "prior = \"expression: U=([^;]+);.*$"
+  )
+  expect_match(form, pattern)
+  expect_equal(as.numeric(sub(pattern, "\\1", form)), expected, tolerance = 1e-12)
+
+  # A key this model does not carry is still refused: an interaction naming a
+  # factor the model does not have, and a two-way interaction of its factors.
+  refused <- list(
+    fb_prior(sd(group = "a:b:zz") ~ uniform(lower = 0, upper = 20)),
+    fb_prior(sd(group = "a:b") ~ uniform(lower = 0, upper = 20))
+  )
+  for (prior in refused) {
+    err <- tryCatch(
+      .sad_quiet(flexybayes(
+        fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
+        prior = prior, return_code = TRUE
+      )),
+      error = function(e) e
+    )
+    expect_s3_class(err, "flexybayes_prior_target_absent")
+    expect_identical(err$reason_code, "prior_target_not_in_model")
+  }
 })
 
 test_that("each block of a blocks-format vm() takes the default under a partial prior", {

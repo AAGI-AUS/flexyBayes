@@ -2390,9 +2390,12 @@ emit_inla <- function(
 # The reachable set is the one the default-prior walker uses
 # (`.fb_default_prior_targets()`), widened by every random term's own
 # variable so a term outside the walker is not refused for being outside
-# the walker. `sigma` is always reachable: the residual scale is dropped
-# by family, not by term, and that drop is deliberate and documented in
-# R/family_traits.R.
+# the walker, and by the INLA targets the walker does not list
+# (`.fb_inla_sd_targets()`): a multi-way interaction `a:b:c` has no single
+# variable of its own, and its colon-joined key is the one the formula
+# builder reads and the package default fills. `sigma` is always reachable:
+# the residual scale is dropped by family, not by term, and that drop is
+# deliberate and documented in R/family_traits.R.
 .check_inla_hyper_keys_reachable <- function(fb, hyper_ctrl) {
   keys <- setdiff(names(hyper_ctrl), "sigma")
   if (!length(keys)) {
@@ -2405,7 +2408,12 @@ emit_inla <- function(
       c(term$var, term$inner, term$outer, term$slope_var)
     }
   ))
-  available <- unique(c(targets$shared, targets$vm_ped, term_vars))
+  available <- unique(c(
+    targets$shared,
+    targets$vm_ped,
+    .fb_inla_sd_targets(fb)$shared,
+    term_vars
+  ))
   available <- available[nzchar(available %||% character(0))]
   missing_keys <- setdiff(keys, available)
   if (!length(missing_keys)) {
