@@ -77,7 +77,9 @@
       brms = "fits",
       note = "Two independent iid fields on INLA, one for the intercept and
         one for the slope, checked against lme4's REML fit of the same
-        model. Reported as `sd_<g>` and `sd_<x>_<g>`.",
+        model. Reported as `sd_<g>` and `sd_<x>_<g>` on INLA and as `sd_<g>`
+        and `sd_<g>__<x>` on brms; triangulate() maps both to the INLA
+        spelling.",
       anchor = "test-inla-slope-and-interaction-verified.R"
     ),
     list(
@@ -93,44 +95,22 @@
     list(
       model_class = "Correlated random slope",
       spelling = "`(x | g)`",
-      inla = "fits",
+      inla = "refuses",
       brms = "fits",
       note = "The uncorrelated slope with the correlation freed: one
-        intercept SD, one slope SD and the correlation between them. INLA
-        holds all three in a single iid2d field over a two-block index,
-        with the slope block entering as a fixed-scaling copy weighted by
-        `x`; brms writes `(x | g)` verbatim. Both report `sd_<g>`,
-        `sd_<x>_<g>` and `cor_<g>__Intercept__<x>`. **On INLA this route
-        does not reproduce REML's covariance.** Paired against ASReml
-        4.2.0.392 and lme4 on `lme4::sleepstudy` the slope variance comes
-        back at 46.4 at the posterior mode -- 52.1 at the mean, 50.2 at the
-        median -- against 35.08 in ASReml and 35.07 in lme4, 32 per cent
-        high at the mode, while the intercept variance and the residual on
-        the same fit agree to 7 and 0.4 per cent. Rescaling the response by
-        ten is an exact transformation under which a correlation is
-        invariant, and here it moves the intercept-slope correlation from
-        0.02 to 0.969 while REML holds at 0.066. This is the same defect
-        the `us(f):g` row carries, on a second route -- iid2d rather than
-        iidKd -- so it is classified `analogue` in `inst/TRANSLATION.md`
-        rather than covariance-family. Read the slope variance and the
-        correlation from the brms route, which that comparison did not
-        exercise, or from ASReml; `fb_select()` refuses an INLA base
-        carrying this term. Measured in oracle row 19, written up as
-        defect D1 of finding S01. The iid2d
-        hyperparameters are one joint Wishart with no standard-deviation
-        slot, so on INLA an explicit SD prior refuses by name and the
-        package default is reported as an engine default rather than as a
-        prior that reached the fit. The joint Wishart's scale matrix is set
-        from the response's own variance, and the slope block from the
-        response variance per unit of the slope variable. Leaving INLA's
-        default there -- a scale matrix of ones, so a prior centred on unit
-        variances -- makes the mode non-unique on any response that is not
-        near unit scale: on `lme4::sleepstudy` eight identical calls
-        returned intercept SDs from 0.5 to 54.8 and correlations from -1.00
-        to +0.75. Scaled, the same fit returns 25.7 to 26.9 against lme4's
-        24.7, with the correlation between -0.07 and +0.15 around lme4's
-        0.066.",
-      anchor = "test-metamorphic-scale-invariance.R"
+        intercept SD, one slope SD and the correlation between them. brms
+        writes `(x | g)` verbatim and reports `sd_<g>`, `sd_<g>__<x>` and
+        `cor_<g>__Intercept__<x>`. Estimated correlation matrices are
+        fitted on brms only: INLA refuses by name
+        (`correlated_covariance_requires_brms`) and `backend = \"auto\"`
+        routes to brms. The INLA route was one iid2d field under a joint
+        Wishart prior, and paired against ASReml 4.2.0.392 and lme4 on
+        `lme4::sleepstudy` it returned a slope variance of 46.4 at the
+        posterior mode against 35.08 and 35.07, while rescaling the
+        response by ten moved the intercept-slope correlation from 0.02 to
+        0.969 where REML holds at 0.066 (oracle row 19, defect D1 of
+        finding S01).",
+      anchor = "test-inla-containment.R"
     ),
     list(
       model_class = "Nested / interaction random effects, multi-stratum",
@@ -159,23 +139,17 @@
     list(
       model_class = "Unstructured genotype-by-environment covariance",
       spelling = "`~ us(f):g`",
-      inla = "fits",
+      inla = "refuses",
       brms = "fits",
-      note = "One iidKd field on INLA (k = 2..5; wider refuses and names
-        fa()), `(0 + f | g)` on brms. **On INLA this route does not
-        reproduce ASReml's covariance.** Paired against ASReml 4.2.0.392 on
-        `agridat::besag.met` it returns a genetic correlation of 0.142 where
-        ASReml returns 0.930, and 0.198, 0.231 and 0.320 where ASReml returns
-        0.898, 0.915 and 0.955 over three environments, with genotype
-        variances four to five times larger while the residual agrees
-        closely. The gap reproduces across refits, so it is a stable wrong
-        answer rather than a noisy one. Rescaling the response by ten is an
-        exact transformation and must not decide whether the model fits, and
-        here it does: across eight identical rescaled calls none converged and
-        the returned correlation spanned -0.894 to +0.686. Read the
-        correlations from the brms route, which was not exercised in that
-        comparison, or from ASReml. An explicit SD prior refuses on INLA because iidKd has no
-        slot for one. The correlated sibling of
+      note = "`(0 + f | g)` on brms. Estimated correlation matrices are
+        fitted on brms only: INLA refuses by name
+        (`correlated_covariance_requires_brms`) and `backend = \"auto\"`
+        routes to brms. The INLA route was one iidKd field under a joint
+        Wishart prior, and paired against ASReml 4.2.0.392 on
+        `agridat::besag.met` it returned a genetic correlation of 0.142
+        where ASReml returns 0.930, while eight identical calls on the
+        response rescaled by ten none converged and returned correlations
+        from -0.894 to +0.686 (finding O04). The correlated sibling of
         the diagonal structure --
         `k(k+1)/2` parameters against `diag()`'s `k`. At one observation
         per cell the residual variance is confounded with the diagonal
@@ -544,6 +518,33 @@
 
 .FB_CAPABILITY_MARKER_BEGIN <- "<!-- capability-matrix:begin -->"
 .FB_CAPABILITY_MARKER_END <- "<!-- capability-matrix:end -->"
+
+#' Render the capability table as the engine prose in `?flexybayes`
+#'
+#' The `backend` argument's "What each engine represents" paragraph is
+#' generated from `.fb_capability_matrix()` when the documentation is built,
+#' so it cannot state a capability the table does not. A test compares the
+#' committed `man/flexybayes.Rd` against a fresh render.
+#'
+#' @returns A single string of plain prose.
+#'
+#' @noRd
+#' @keywords internal
+.fb_capability_engine_prose <- function() {
+  tab <- .fb_capability_matrix()
+  classes <- function(engine, verdicts) {
+    paste(tab$model_class[tab[[engine]] %in% verdicts], collapse = "; ")
+  }
+  paste0(
+    "INLA fits: ", classes("inla", c("fits", "emits")), ". ",
+    "INLA refuses: ", classes("inla", "refuses"), ". ",
+    "brms fits: ", classes("brms", c("fits", "emits")), ". ",
+    "brms refuses: ", classes("brms", "refuses"), ". ",
+    "A Gaussian fit on INLA also refuses when the response standard ",
+    "deviation exceeds ", .FB_INLA_RESPONSE_SD_MAX,
+    " (inla_response_scale_unvalidated)."
+  )
+}
 
 # --- splice -------------------------------------------------------- #
 

@@ -2587,6 +2587,53 @@ print.fb_refusals_table <- function(x, ...) {
 # variable, and a silently discarded surplus argument. The contract in
 # R/grammar_contract.R closes all four at one locus; these are the codes it
 # raises. See also .fb_check_grammar_arity() and .fb_literal_count().
+# 2026-09-13 -- INLA containment. Estimated correlation matrices are fitted
+# on brms only, and Gaussian fits on INLA refuse above the response scale
+# at which they were measured correct.
+.populate_refusal_registry_inla_containment <- function() {
+  .register_refusal(
+    reason_code = "correlated_covariance_requires_brms",
+    description = paste0(
+      "An estimated correlation matrix -- a correlated random slope (x | g) ",
+      "or an unstructured us(f):g -- was sent to INLA. INLA carries it as an ",
+      "iid2d or iidKd field under a joint Wishart prior that couples the ",
+      "variances and the correlations, and on that route the fitted ",
+      "covariance did not match REML's and was not invariant to rescaling ",
+      "the response. flexyBayes fits these structures on brms."
+    ),
+    message_template = paste0(
+      "%s estimates a correlation matrix, and flexyBayes fits estimated ",
+      "correlation matrices on brms only. Pass backend = \"brms\", or leave ",
+      "backend = \"auto\", which routes there."
+    ),
+    registered_in_adr = paste0(
+      "cairn 2026-09-13-estimated-correlation-matrices-brms-only"
+    ),
+    plan_field = "rejected_routes",
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "inla_response_scale_unvalidated",
+    description = paste0(
+      "A Gaussian fit on INLA whose response standard deviation exceeds the ",
+      "bound up to which INLA's Gaussian fits were measured correct. Above ",
+      "it INLA returned wrong variance components on data with a known ",
+      "answer, some with every convergence check passing. The bound is a ",
+      "proxy from that measurement and stands until fitting on a ",
+      "standardised response is validated."
+    ),
+    message_template = paste0(
+      "The response `%s` has a standard deviation of %s, and Gaussian fits ",
+      "on INLA are validated only up to %s. Rescale the response, or pass ",
+      "backend = \"brms\"."
+    ),
+    registered_in_adr = "cairn 2026-09-13-inla-gaussian-standardised-response",
+    plan_field = "rejected_routes",
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}
+
 .populate_refusal_registry_grammar_contract <- function() {
   .register_refusal(
     reason_code = "grammar_arity_too_few",

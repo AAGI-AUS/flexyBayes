@@ -56,7 +56,7 @@ One variance component per term unless the term says otherwise.
 | `~ rep:block` | A nested stratum. Use when blocks are nested in replicates and each stratum has its own error. This is the alpha-design case. | both |
 | `~ gen:env` | An interaction random effect: genotype-by-environment deviations with a single variance. The cheapest multi-environment model. | both |
 | `~ diag(env):gen` | One genotype variance **per environment**, no covariance between them. Use when environments differ in how much genetic variation they express, and you do not need the correlations. `idh()` and `at()` are synonyms. | both |
-| `~ us(env):gen` | The full unstructured covariance across environments: every variance and every correlation. Use when the number of environments is small (up to five here) and the correlations are the question. | both |
+| `~ us(env):gen` | The full unstructured covariance across environments: every variance and every correlation. Use when the number of environments is small (up to five here) and the correlations are the question. | brms |
 | `~ fa(env, k):gen` | Factor-analytic: a few common factors plus a variance specific to each environment. Use when there are many environments and `us()` would ask for more parameters than the trial can support. This is the standard multi-environment-trial model. | INLA |
 | `~ vm(gen, K)` | A random effect with a known covariance, from a genomic relationship matrix. Genomic prediction. | both |
 | `~ ped(animal, A)` | The same with a pedigree relationship matrix, the animal model. ASReml 4 removed `ped()` in favour of `vm()`, so this is the ASReml 3 spelling, kept for compatibility; write `vm(animal, A)` for new work. | both |
@@ -65,7 +65,7 @@ One variance component per term unless the term says otherwise.
 | `~ ar1(t):g` | The same within each level of `g` and independent across levels: repeated measures on many units. | INLA |
 | `~ at(trial):ar1(row):ar1(col)` | One field realisation per trial, with the correlations shared across trials. | INLA |
 | `~ spl(x)` | A penalised spline, emitted as INLA's second-order random walk. Use when a covariate's effect is smooth but not a known shape. This is an analogue of ASReml's spline rather than a translation of it: the basis, the scaling and the prediction rule differ, and no equivalence has been established. | INLA |
-| `(x \| g)` | A random slope correlated with the random intercept. Use when units differ both in level and in response to `x`, and the relationship between the two matters. | both |
+| `(x \| g)` | A random slope correlated with the random intercept. Use when units differ both in level and in response to `x`, and the relationship between the two matters. | brms |
 | `(x \|\| g)` | The same with the correlation fixed at zero. Use when the correlation is not of interest. | both |
 
 Not every spelling in the table below is a translation of the same kind. Some

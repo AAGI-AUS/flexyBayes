@@ -207,43 +207,43 @@ fb_sel_slope_data <- function(seed = 20260913L, J = 12L, m = 6L) {
 }
 
 
-test_that("an INLA base carrying a correlated random slope refuses by name", {
-  skip_on_cran()
+test_that("a correlated random slope cannot reach selection through an INLA base", {
+  # INLA refuses the structure outright since 2026-09-13, so no new INLA
+  # base carries it.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- fb_sel_slope_data()
-  base <- suppressWarnings(suppressMessages(flexybayes(
-    y ~ x + (x | g), data = d, backend = "inla", verbose = FALSE
-  )))
   expect_error(
-    fb_select(base, ~ clay,
-              resamples = fb_resamples(unit = ~ g, v = 4L),
-              workflow = "unpenalized_benchmark", seed = 1L),
+    suppressWarnings(suppressMessages(flexybayes(
+      y ~ x + (x | g), data = d, backend = "inla", verbose = FALSE
+    ))),
+    class = "flexybayes_refusal_correlated_covariance_requires_brms"
+  )
+
+  # The selection gate keeps its own refusal for a base fitted on INLA
+  # before that, which a saved object can still be. The stub carries what
+  # the gate reads: the class, the parsed model and the data.
+  fb <- fb_from_brms(y ~ x + (x | g), data = d, family = "gaussian")
+  fb$link <- fb$link %||% "identity"
+  base <- structure(
+    list(fb = fb, data = d),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+  expect_error(
+    flexyBayes:::.fb_select_gate(base),
     class = "flexybayes_refusal_selection_base_not_allowlisted"
   )
   # The refusal carries the measurement that put the structure out, not a
   # bare verdict, and it names the route that is admitted.
   expect_error(
-    fb_select(base, ~ clay,
-              resamples = fb_resamples(unit = ~ g, v = 4L),
-              workflow = "unpenalized_benchmark", seed = 1L),
+    flexyBayes:::.fb_select_gate(base),
     "46.4 at the posterior mode against 35.08 in ASReml",
     fixed = TRUE
   )
-  expect_error(
-    fb_select(base, ~ clay,
-              resamples = fb_resamples(unit = ~ g, v = 4L),
-              workflow = "unpenalized_benchmark", seed = 1L),
-    "0.02 to 0.969",
-    fixed = TRUE
-  )
-  expect_error(
-    fb_select(base, ~ clay,
-              resamples = fb_resamples(unit = ~ g, v = 4L),
-              workflow = "unpenalized_benchmark", seed = 1L),
-    "backend = \"brms\"",
-    fixed = TRUE
-  )
+  expect_error(flexyBayes:::.fb_select_gate(base), "0.02 to 0.969",
+               fixed = TRUE)
+  expect_error(flexyBayes:::.fb_select_gate(base), "backend = \"brms\"",
+               fixed = TRUE)
 })
 
 

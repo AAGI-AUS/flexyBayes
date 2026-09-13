@@ -1558,12 +1558,18 @@ emit_inla <- function(
       # None was near lme4's REML answer of 24.7. It was reported as an
       # INLA limitation. It was our default.
       #
-      # Scaling the Wishart to the data removes it. R is on the VARIANCE
-      # scale (established by fitting the three candidates), so the
-      # intercept block takes var(y) and the slope block var(y)/var(x) --
-      # the slope's variance in the units the slope is measured in. With
-      # that, the same eight calls agree to three decimal places and
-      # recover 26.9 and 7.3 against lme4's 24.7 and 5.9.
+      # Scaling the Wishart to the data made the calls agree with each other
+      # and did not make them right. R is on the VARIANCE scale (established
+      # by fitting the three candidates), so the intercept block takes
+      # var(y) and the slope block var(y)/var(x). With that, the same eight
+      # calls agree to three decimal places, and the answer they agree on is
+      # still wrong: a slope variance of 46.4 at the mode against REML's
+      # 35.07, and an intercept-slope correlation that moves from 0.02 to
+      # 0.969 when the response is multiplied by ten. The Wishart couples
+      # the variances and the correlation at any scale, and INLA reproduces
+      # Stan under an identical Wishart, so lgm_gate() refuses this
+      # structure on INLA (check 1b) and this branch is not reached from a
+      # user call.
       user_prior <- (!is.null(hyper_ctrl[[gtag]]) ||
         !is.null(hyper_ctrl[[paste0(sv, "_", gtag)]])) &&
         is.null(attr(fb$priors, "fb_prior_default_basis"))

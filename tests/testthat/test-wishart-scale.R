@@ -11,6 +11,15 @@
 # standard deviations from 0.50 to 54.8 and correlations from -1.00 to +0.75,
 # none near lme4's REML answer. It was recorded as a property of INLA. It was
 # the default.
+#
+# Scaling the Wishart made the calls agree with each other, and the answer
+# they agreed on was still wrong: the slope variance came back a third above
+# REML's and the correlation moved when the response was rescaled. Under an
+# identical Wishart Stan returns what INLA returns, so the prior itself couples
+# the variances and the correlation. Since 2026-09-13 the gate refuses both
+# structures on INLA and fits them on brms. The helpers below still build the
+# argument for the retained emit branches, and their tests stay; the recovery
+# test that used to run on INLA now asserts the refusal and runs on brms.
 
 test_that("the Wishart argument carries the response's scale", {
   d <- data.frame(
@@ -66,37 +75,52 @@ test_that("the emitted formula carries the scaled Wishart", {
   expect_match(txt, "theta1", fixed = TRUE)
 })
 
-test_that("the correlated slope recovers a large-scale response, repeatably", {
-  # The regression this exists for. On the unit-scale default these five
-  # calls disagreed by more than the parameter itself.
+test_that("the correlated slope on sleepstudy refuses on INLA", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
-  skip_on_cran()
-  withr::local_options(
-    flexyBayes.silence_default_prior_note = TRUE,
-    flexyBayes.silence_boundary_collapse_warning = TRUE
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  data(sleepstudy, package = "lme4")
+  expect_error(
+    suppressMessages(flexybayes(
+      Reaction ~ Days + (Days | Subject), data = sleepstudy,
+      backend = "inla", return_code = TRUE, verbose = FALSE
+    )),
+    class = "flexybayes_refusal_correlated_covariance_requires_brms"
   )
+})
+
+test_that("the correlated slope on sleepstudy is fitted on brms, near REML", {
+  # The recovery this file used to assert on INLA, on the engine that now
+  # fits the structure. lme4 is the oracle: 24.74 for the intercept standard
+  # deviation, 5.92 for the slope and 0.066 for the correlation. Eighteen
+  # subjects make the posterior for a standard deviation right-skewed, so
+  # the posterior mean sits above the REML estimate and the tolerance is
+  # relative and loose; the correlation is weakly identified at this size and
+  # is held only to its neighbourhood.
+  skip_if_not_installed("brms")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   data(sleepstudy, package = "lme4")
 
-  got <- t(vapply(seq_len(3L), function(i) {
-    f <- suppressMessages(suppressWarnings(flexybayes(
-      Reaction ~ Days + (Days | Subject), data = sleepstudy,
-      backend = "inla", verbose = FALSE
-    )))
-    v <- summary(f)$varcomp
-    g <- stats::setNames(v$estimate, v$component)
-    c(g[["sd_Subject"]], g[["cor_Subject__Intercept__Days"]])
-  }, numeric(2L)))
+  fit <- suppressMessages(suppressWarnings(flexybayes(
+    Reaction ~ Days + (Days | Subject), data = sleepstudy,
+    backend = "auto", chains = 2L, n_samples = 800L, warmup = 400L,
+    seed = 20260913L, verbose = FALSE, mcmc_verbose = FALSE
+  )))
+  expect_s3_class(fit, "flexybayes_brms")
+  v <- summary(fit)$varcomp
+  g <- stats::setNames(v$estimate, v$component)
 
   ref <- lme4::lmer(Reaction ~ Days + (Days | Subject), data = sleepstudy)
   vc <- as.data.frame(lme4::VarCorr(ref))
-  ref_sd <- vc$sdcor[vc$grp == "Subject" & vc$var1 == "(Intercept)" &
-                       is.na(vc$var2)]
+  ref_sd_int <- vc$sdcor[vc$grp == "Subject" & vc$var1 == "(Intercept)" &
+                           is.na(vc$var2)]
+  ref_sd_slope <- vc$sdcor[vc$grp == "Subject" & vc$var1 == "Days" &
+                             is.na(vc$var2)]
+  ref_cor <- vc$sdcor[!is.na(vc$var2)]
 
-  # Near lme4 rather than fifty times away from it.
-  expect_equal(mean(got[, 1L]), ref_sd, tolerance = 0.25)
-  # And repeatable: the correlation used to span nearly the whole of
-  # [-1, 1] across identical calls.
-  expect_lt(diff(range(got[, 2L])), 0.5)
-  expect_lt(diff(range(got[, 1L])), 5)
+  expect_equal(unname(g[["sd_Subject"]]), ref_sd_int, tolerance = 0.30)
+  expect_equal(unname(g[["sd_Subject__Days"]]), ref_sd_slope, tolerance = 0.30)
+  expect_lt(abs(g[["cor_Subject__Intercept__Days"]] - ref_cor), 0.5)
 })

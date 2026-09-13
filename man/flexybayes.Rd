@@ -387,18 +387,9 @@ silenceable via \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} (ga
 \code{options(flexyBayes.silence_auto_inla_missing_note = TRUE)} (INLA not
 installed).
 
-\strong{What each engine represents.} INLA takes simple iid random
-effects, P-splines, the sparse-precision and pedigree carriers of
-\code{vm()} / \code{ped()}, and separable AR1 fields; it refuses
-heterogeneous variances (\code{diag} / \code{idh} / \code{at}), unstructured \code{us()},
-interaction random effects, and heterogeneous residuals. brms takes
-interaction random effects \code{(1 | a:b)}, uncorrelated random slopes
-\code{(x || g)}, heterogeneous genotype variances (\code{diag} / \code{idh} / \code{at}),
-unstructured \code{us(f):g}, per-level residual variances
-(\code{dsum(~ units | f)}), and the dense / Cholesky / precision carriers
-of \code{vm()} / \code{ped()}; it refuses correlated random slopes \code{(x | g)},
-AR1 residual structures, \code{corh()}, factor-analytic GxE, and splines.
-The generated per-class table is in \code{README.md} and
+\strong{What each engine represents.}
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Factor-analytic genotype-by-environment covariance; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation. INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Multi-trait covariance; Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline. A Gaussian fit on INLA also refuses when the response standard deviation exceeds 150 (inla_response_scale_unvalidated).
+The per-class table with its notes is in \code{README.md} and
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 
 \strong{Caution (small-group random effects).} Both engines apply the same

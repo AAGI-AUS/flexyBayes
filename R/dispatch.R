@@ -1121,18 +1121,25 @@
         # caught on its own.
         msg <- paste(utils::capture.output(print(gated)), collapse = "\n")
         primary_rule <- gated$primary_rule %||% NA_character_
+        # A rule that names a registered refusal of its own raises that
+        # code, and keeps inla_gate_refused as a class beneath it so every
+        # handler written against the generic code still catches it.
+        primary_code <- gated$failures[[1L]]$reason_code
         stop(.fb_refusal_condition(
-          reason_code = "inla_gate_refused",
+          reason_code = primary_code %||% "inla_gate_refused",
           # The printed refusal already opens with what happened, so a
           # second header above it said the same thing twice -- which is
           # how a refusal grows to sixteen lines one reasonable addition
           # at a time.
           message = msg,
-          family_class = if (!is.na(primary_rule)) {
-            paste0("flexybayes_lgm_", primary_rule)
-          } else {
-            character(0)
-          },
+          family_class = c(
+            if (!is.null(primary_code)) {
+              "flexybayes_refusal_inla_gate_refused"
+            },
+            if (!is.na(primary_rule)) {
+              paste0("flexybayes_lgm_", primary_rule)
+            }
+          ) %||% character(0),
           lgm_refusal = gated,
           rule_id = primary_rule
         ))
@@ -1775,6 +1782,15 @@
   # chunk) + the count emit. Both produce the same <fb_aggregated> shape
   # downstream methods consume.
   if (identical(fb$family, "gaussian")) {
+    # An explicit backend = "inla" reaches this emit without lgm_gate(), so
+    # the response-scale bound the gate applies is applied here as well.
+    scale_refusal <- .fb_inla_response_scale_refusal(
+      fb$response,
+      .fb_response_sd(fb, data)
+    )
+    if (!is.null(scale_refusal)) {
+      stop(scale_refusal)
+    }
     fb_aggregated <- .fb_aggregate_gaussian(fb, fb_dataset_meta)
     fit <- emit_gaussian_aggregated(
       fb = fb,

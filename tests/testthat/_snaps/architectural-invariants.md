@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=187
+      .refusal_registry: locked=TRUE n_keys=189
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -130,6 +130,7 @@
         conditional_loglik_not_available
         cor_slope_prior_not_translatable_inla
         corh_no_equicorrelation_representation
+        correlated_covariance_requires_brms
         cov_arg_not_fb_cov
         covariate_zero_fill_not_supported
         design_memory_exceeds_ceiling
@@ -158,6 +159,7 @@
         heterogeneous_residual_multiple_factors
         inla_gate_refused
         inla_program_failed
+        inla_response_scale_unvalidated
         inla_variable_used_twice
         interaction_not_representable
         known_matrices_data_name_collision

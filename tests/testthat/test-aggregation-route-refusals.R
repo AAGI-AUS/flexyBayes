@@ -27,12 +27,13 @@
     blk = factor(seq_len(4L))
   )
   d$y <- 10 + as.numeric(d$trt) * 0.5 + stats::rnorm(nrow(d), 0, 0.3)
-  # Six levels, deliberately. These route tests need a model the GATE
-  # refuses on INLA so that no aggregated route resolves. Until 0.10.0.9000
-  # any us() was gate-refused; us() now fits on INLA up to five levels, so
-  # the vehicle is a SIX-level us(), which exceeds INLA's iidKd range and is
-  # refused by .lgm_check_us_gxe_order(). The mechanism under test is
-  # unchanged: gate refusal above, plan-eligibility gate below.
+  # These route tests need a model the GATE refuses on INLA so that no
+  # aggregated route resolves. Any us() is that model: estimated correlation
+  # matrices are fitted on brms only, and the gate refuses them
+  # (.lgm_check_correlated_covariance()). Six levels, which also exceed
+  # INLA's iidKd range, date from when us() fitted on INLA up to five. The
+  # mechanism under test is unchanged: gate refusal above, plan-eligibility
+  # gate below.
   d$g2 <- factor(rep(seq_len(6L), length.out = nrow(d)))
   d
 }

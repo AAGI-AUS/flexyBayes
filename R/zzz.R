@@ -132,6 +132,10 @@
   # joint shrinkage prior routed at INLA, and an incomplete decision rule.
   .populate_refusal_registry_selection_verb()
 
+  # 2026-09-13: INLA containment -- estimated correlation matrices go to
+  # brms, and Gaussian INLA fits refuse above the validated response scale.
+  .populate_refusal_registry_inla_containment()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

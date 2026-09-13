@@ -78,6 +78,13 @@ lgm_gate <- function(
 
   checks <- list(
     .lgm_check_family(fb), # check 1
+    # check 1b -- estimated correlation matrices go to brms. Ahead of the
+    # structural checks so that the refusal a user reads first is the one
+    # that names where the model is fitted.
+    .lgm_check_correlated_covariance(fb),
+    # check 1c -- Gaussian fits on INLA are validated only up to a response
+    # standard deviation of .FB_INLA_RESPONSE_SD_MAX.
+    .lgm_check_response_scale(fb),
     .lgm_check_predictor(fb), # check 2
     .lgm_check_distributional(fb), # check 3
     .lgm_check_re_prior(fb), # check 4
@@ -220,11 +227,16 @@ print.lgm_refusal <- function(x, ...) {
 # ---------------------------------------------------------------- #
 #
 # Each check returns a list:
-#   list(rule_id    = character(1),
-#        pass       = logical(1),
-#        reason     = character(1) or NULL,
-#        diagnostic = character(1) or NULL,
-#        warning    = character(1) or NULL)
+#   list(rule_id     = character(1),
+#        pass        = logical(1),
+#        reason      = character(1) or NULL,
+#        diagnostic  = character(1) or NULL,
+#        warning     = character(1) or NULL,
+#        reason_code = character(1) or NULL)
+#
+# `reason_code` names a registered refusal. When the primary failure
+# carries one, an explicit backend = "inla" request raises that code rather
+# than the generic inla_gate_refused.
 
 .lgm_pass <- function(rule_id, warning = NULL) {
   list(
@@ -236,13 +248,14 @@ print.lgm_refusal <- function(x, ...) {
   )
 }
 
-.lgm_fail <- function(rule_id, reason, diagnostic = NULL) {
+.lgm_fail <- function(rule_id, reason, diagnostic = NULL, reason_code = NULL) {
   list(
     rule_id = rule_id,
     pass = FALSE,
     reason = reason,
     diagnostic = diagnostic,
-    warning = NULL
+    warning = NULL,
+    reason_code = reason_code
   )
 }
 
@@ -692,11 +705,125 @@ print.lgm_refusal <- function(x, ...) {
   # to be conditional on a runtime verification artefact, retired at
   # 0.10.0.9000 -- the agreement it asserted is checked in the suite
   # against lme4, which is where every other capability claim here lives.
-  # "simple_slope_cor" is the same model with the correlation freed: one
-  # iid2d field over a two-block index, plus a copy carrying the slope.
-  c(
-    "simple", "ide", "id", "spline", "simple_slope_uncor",
-    "simple_slope_cor"
+  # "simple_slope_cor" is not a member: the INLA emit still builds its
+  # iid2d field, and .lgm_check_correlated_covariance() refuses it.
+  c("simple", "ide", "id", "spline", "simple_slope_uncor")
+}
+
+# Check 1b -- estimated correlation matrices are fitted on brms.
+#
+# INLA carries an estimated correlation matrix as an iid2d or iidKd field
+# whose hyperparameters take one joint Wishart prior. That prior couples
+# the variances and the correlations whatever its scale, and fitted on INLA
+# neither structure reproduced REML's covariance nor stayed invariant to
+# rescaling the response: us(env):gen on agridat::besag.met returned a
+# genetic correlation of 0.142 against ASReml's 0.930, and (Days | Subject)
+# on lme4::sleepstudy a slope variance a third above REML's. brms fits both
+# under separate standard-deviation and correlation priors, so the gate
+# refuses them here and backend = "auto" routes them there. The INLA emit
+# branches remain; readmitting either structure is its own decision.
+.FB_INLA_CORRELATED_COV_TYPES <- c("simple_slope_cor", "us_gxe")
+
+.lgm_check_correlated_covariance <- function(fb) {
+  rule_id <- "correlated_covariance_requires_brms"
+  hits <- Filter(
+    function(t) (t$type %||% "") %in% .FB_INLA_CORRELATED_COV_TYPES,
+    fb$random_terms %||% list()
+  )
+  if (length(hits) == 0L) {
+    return(.lgm_pass(rule_id))
+  }
+  spellings <- vapply(hits, .fb_correlated_cov_spelling, character(1L))
+  .lgm_fail(
+    rule_id,
+    paste0(
+      paste(spellings, collapse = " and "),
+      " estimates a correlation matrix, and flexyBayes fits estimated ",
+      "correlation matrices on brms only. On INLA the term is one iid2d or ",
+      "iidKd field under a joint Wishart prior that couples the variances ",
+      "and the correlations, and on that route the fitted covariance did ",
+      "not match REML's and changed when the response was rescaled. Pass ",
+      "backend = \"brms\", or leave backend = \"auto\", which routes there."
+    ),
+    diagnostic = paste0(
+      "fb$random_terms type(s): ",
+      paste(vapply(hits, function(t) t$type, character(1L)), collapse = ", ")
+    ),
+    reason_code = rule_id
+  )
+}
+
+# The user's spelling of a correlated term, for the refusal message.
+.fb_correlated_cov_spelling <- function(term) {
+  if (identical(term$type, "us_gxe")) {
+    return(paste0("`us(", term$outer, "):", term$inner, "`"))
+  }
+  paste0("`(", term$slope_var, " | ", term$var, ")`")
+}
+
+# Check 1c -- the response scale of a Gaussian fit on INLA.
+#
+# Every Gaussian fit on INLA was measured wrong at large response scale:
+# the plain random intercept on lme4::sleepstudy was stable at response
+# standard deviations of 56 to 169 and returned variance ratios between
+# 0.03 and 6.99 against REML's 1.198 from 282 upward, several of those fits
+# passing the numerical-confirm gate. The bound below is a proxy taken from
+# that measurement rather than a property of any data set, and it stands
+# until fitting on a standardised response is validated. The standard
+# deviation is recorded on the IR at ingest (.fb_response_sd()).
+.FB_INLA_RESPONSE_SD_MAX <- 150
+
+.lgm_check_response_scale <- function(fb) {
+  rule_id <- "inla_response_scale_unvalidated"
+  fam_name <- if (inherits(fb$family, "family")) {
+    fb$family$family
+  } else {
+    as.character(fb$family %||% "")
+  }
+  s <- fb$data_summary$response_sd
+  if (
+    !identical(tolower(fam_name), "gaussian") ||
+      !is.numeric(s) ||
+      length(s) != 1L ||
+      !is.finite(s) ||
+      s <= .FB_INLA_RESPONSE_SD_MAX
+  ) {
+    return(.lgm_pass(rule_id))
+  }
+  .lgm_fail(
+    rule_id,
+    .fb_inla_response_scale_message(fb$response, s),
+    diagnostic = paste0("response_sd = ", signif(s, 4)),
+    reason_code = rule_id
+  )
+}
+
+# Shared by the gate and by the two Gaussian INLA routes that do not pass
+# through it (an explicit aggregated fit and a streamed fit).
+.fb_inla_response_scale_message <- function(response, s) {
+  paste0(
+    "The response `", response, "` has a standard deviation of ",
+    format(signif(s, 3), big.mark = ","), ", and Gaussian fits on INLA are ",
+    "validated only up to ", .FB_INLA_RESPONSE_SD_MAX, ". Above that INLA ",
+    "returned wrong variance components on data whose correct answer is ",
+    "known, some with every convergence check passing. The bound is a proxy ",
+    "taken from that measurement, not a property of this data set. Rescale ",
+    "the response -- kg/ha to t/ha, for example -- and fit again, or pass ",
+    "backend = \"brms\"; backend = \"auto\" routes there."
+  )
+}
+
+# The typed condition the aggregated and streamed Gaussian INLA routes
+# raise, or NULL when the response is within the validated range.
+.fb_inla_response_scale_refusal <- function(response, s) {
+  if (!is.numeric(s) || length(s) != 1L || !is.finite(s) ||
+        s <= .FB_INLA_RESPONSE_SD_MAX) {
+    return(NULL)
+  }
+  .fb_refusal_condition(
+    reason_code = "inla_response_scale_unvalidated",
+    message = .fb_inla_response_scale_message(response, s),
+    response_sd = s
   )
 }
 
@@ -883,6 +1010,11 @@ print.lgm_refusal <- function(x, ...) {
 .lgm_check_random_term_inla_support <- function(fb) {
   bad_terms <- list()
   for (term in fb$random_terms) {
+    # Refused by check 1b with its own reason; listing it here as well
+    # would add a second message calling it an emit gap, which it is not.
+    if ((term$type %||% "") %in% .FB_INLA_CORRELATED_COV_TYPES) {
+      next
+    }
     if (!.is_supported_random_term_for_inla(term)) {
       bad_terms[[length(bad_terms) + 1L]] <- term
     }
@@ -961,8 +1093,7 @@ print.lgm_refusal <- function(x, ...) {
   }
   if (
     term$type %in%
-      c("simple", "ide", "id", "spline", "simple_slope_uncor",
-        "simple_slope_cor")
+      c("simple", "ide", "id", "spline", "simple_slope_uncor")
   ) {
     return(TRUE)
   }
@@ -979,14 +1110,8 @@ print.lgm_refusal <- function(x, ...) {
   if (identical(term$type, "at_simple") && is.null(term$level)) {
     return(TRUE)
   }
-  # us(f):g -- an unstructured covariance across the levels of f. INLA writes
-  # it as one iidKd field over a blocked index. iid2d..iid5d cover k = 2..5;
-  # beyond that INLA's iidkd uses a different parameterisation, and a k-level
-  # unstructured covariance has k(k+1)/2 parameters, which is why fa() exists.
-  # The size limit is enforced in .lgm_check_us_gxe_order().
-  if (identical(term$type, "us_gxe")) {
-    return(TRUE)
-  }
+  # us(f):g is not accepted here: the INLA emit still builds its iidKd
+  # field, and .lgm_check_correlated_covariance() refuses it.
   # fa(f, k):g -- a factor-analytic covariance. INLA writes each common
   # factor once as an iid field and again per level as a SCALED COPY, and
   # the copy's scaling parameter IS the loading. Identifiability (k <

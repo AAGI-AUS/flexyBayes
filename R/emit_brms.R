@@ -1588,9 +1588,14 @@ emit_brms <- function(
 
 # Build the variance_comps table -- same shape as the INLA path
 # (component, estimate, sd, q2.5, q97.5).
+#
+# The correlations of a correlated slope `(x | g)` and of `us(f):g` are read
+# as well. They used to be dropped here, so a brms fit of either structure
+# reported its standard deviations and not the correlation the structure
+# exists to estimate -- on the one engine that fits those structures.
 .brms_variance_comps <- function(brmsfit, draws_mat) {
   cn <- colnames(draws_mat)
-  vc_cols <- cn[grepl("^sd_", cn) | cn == "sigma"]
+  vc_cols <- cn[grepl("^sd_", cn) | grepl("^cor_", cn) | cn == "sigma"]
   if (length(vc_cols) == 0L) {
     return(data.frame(
       component = character(0),
@@ -1630,10 +1635,11 @@ emit_brms <- function(
   out
 }
 
-# brms VC names: sd_<group>__Intercept -> sd_<group>; sigma stays.
+# brms VC names: sd_<group>__Intercept -> sd_<group>; sigma and brms's own
+# cor_<group>__<a>__<b> stay as they are.
 .brms_vc_canonical_name <- function(nm) {
-  if (identical(nm, "sigma")) {
-    return("sigma")
+  if (identical(nm, "sigma") || startsWith(nm, "cor_")) {
+    return(nm)
   }
   bare <- sub("^sd_", "", nm)
   bare <- sub("__Intercept$", "", bare)

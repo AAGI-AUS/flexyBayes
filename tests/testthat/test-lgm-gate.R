@@ -639,8 +639,9 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
 
 test_that("an explicit inla request refused by the gate raises a typed condition", {
   # The vehicle is a model the gate refuses, and it has to keep being one.
-  # us(env):gen was the original choice and now fits at k <= 5; six levels
-  # still refuse, by the order check that names fa() instead.
+  # us(env):gen is refused on INLA at any order: estimated correlation
+  # matrices are fitted on brms. Its rule names a refusal code of its own,
+  # which the condition carries above the generic one.
   d <- data.frame(
     y = stats::rnorm(60L),
     x = stats::rnorm(60L),
@@ -659,6 +660,10 @@ test_that("an explicit inla request refused by the gate raises a typed condition
     condition = function(e) e
   )
 
+  expect_s3_class(err, "flexybayes_refusal_correlated_covariance_requires_brms")
+  expect_identical(err$reason_code, "correlated_covariance_requires_brms")
+  # The generic code stays beneath it, so a handler written against it
+  # still catches this refusal.
   expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
   expect_s3_class(err, "flexybayes_refusal")
   expect_s3_class(err, "error")
@@ -687,17 +692,22 @@ test_that("a gate refusal through the fb_inla() pin is typed and names its rule"
   # pass. residual_term_type_inla is therefore no longer reachable from the
   # formula surface -- it remains as a defence, and the unit test above
   # exercises it directly on a hand-built IR.
+  #
+  # The second vehicle was a six-level us(), refused by the budget; us() is
+  # now refused first by the correlated-covariance rule. One variance per
+  # level over twenty levels is 21 hyperparameters, refused by the budget
+  # alone.
   d <- data.frame(
-    y = stats::rnorm(60L),
-    x = stats::rnorm(60L),
-    env = factor(rep(letters[1:6], each = 10L)),
-    gen = factor(rep(seq_len(10L), times = 6L))
+    y = stats::rnorm(200L),
+    x = stats::rnorm(200L),
+    env = factor(rep(sprintf("e%02d", seq_len(20L)), each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 20L))
   )
 
   err <- tryCatch(
     suppressMessages(fb_inla(
       fixed = y ~ x,
-      random = ~ us(env):gen,
+      random = ~ diag(env):gen,
       data = d,
       verbose = FALSE
     )),

@@ -170,6 +170,21 @@ flexybayes_stream <- function(
     return(agg)
   }
 
+  # The IR was built from a head sample, so the response scale is read from
+  # the full sufficient statistics rather than from the head.
+  if (identical(family, "gaussian")) {
+    ss <- agg$sufficient_stats
+    n <- sum(ss$n_k)
+    resp_var <- (sum(ss$S2_k) - sum(ss$S1_k)^2 / n) / (n - 1)
+    scale_refusal <- .fb_inla_response_scale_refusal(
+      fb$response,
+      if (n > 1 && resp_var >= 0) sqrt(resp_var) else NA_real_
+    )
+    if (!is.null(scale_refusal)) {
+      stop(scale_refusal)
+    }
+  }
+
   .fb_stream_emit(
     fb = fb,
     agg = agg,

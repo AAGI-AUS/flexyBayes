@@ -101,6 +101,24 @@
   val
 }
 
+# .fb_response_sd() --- the response's standard deviation over its finite
+# values, or NA when there is no numeric response to measure.
+#
+# Recorded on the IR at ingest so the INLA response-scale check in
+# lgm_gate() reads the same number on every route that gates a model --
+# the fit, fb_plan(), and the aggregated route's backend resolution.
+.fb_response_sd <- function(fb, data) {
+  y <- .fb_response_values(fb, data)
+  if (!is.numeric(y)) {
+    return(NA_real_)
+  }
+  y <- y[is.finite(y)]
+  if (length(y) < 2L) {
+    return(NA_real_)
+  }
+  stats::sd(y)
+}
+
 # The smoother spellings other packages use on the fixed side. mgcv and
 # brms write `s(x)`; flexyBayes writes `random = ~ spl(x)` and emits it
 # as INLA's rw2. Before 0.9.2 an `s(x)` in the fixed part fell through to

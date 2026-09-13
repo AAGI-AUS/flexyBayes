@@ -309,7 +309,10 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   if (!is.finite(x_upper) || x_upper <= 0) {
     x_upper <- 1
   }
-  xlim <- c(0, x_upper * 1.1)
+  # A correlation row can be negative, and an axis pinned at zero would
+  # draw it off the panel.
+  x_lower <- suppressWarnings(min(c(0, vc$q2.5, vc$estimate), na.rm = TRUE))
+  xlim <- c(x_lower * 1.1, x_upper * 1.1)
 
   plot(
     vc$estimate,

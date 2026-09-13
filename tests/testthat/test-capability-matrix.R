@@ -90,6 +90,57 @@ test_that("the committed capability blocks equal a fresh render", {
   }
 })
 
+test_that("the engine prose in ?flexybayes equals a fresh render", {
+  # The backend argument's "What each engine represents" paragraph is
+  # generated from the table when the documentation is built. Before it was,
+  # the hand-written paragraph said INLA refused diag() and us() and brms
+  # refused (x | g), each false for several releases while the table was
+  # right.
+  path <- .cap_pkg_file("man/flexybayes.Rd")
+  skip_if(is.na(path), "man/flexybayes.Rd is not in the installed tree")
+  squish <- function(x) gsub("[[:space:]]+", " ", paste(x, collapse = " "))
+  expect_true(
+    grepl(
+      squish(flexyBayes:::.fb_capability_engine_prose()),
+      squish(readLines(path, warn = FALSE)),
+      fixed = TRUE
+    ),
+    label = "man/flexybayes.Rd is stale -- re-run devtools::document()"
+  )
+})
+
+test_that("the translation registry and the capability table agree on refusals", {
+  # Two tables describe the same structures from two sides -- whether an
+  # engine fits a structure, and what the fit promises -- and a refusal
+  # recorded in one and not the other is the drift both exist to prevent.
+  # Rows are matched on spelling; every engine a translation row names must
+  # carry `refuses` exactly when the row's class is `refused`.
+  cap <- flexyBayes:::.fb_capability_matrix()
+  reg <- flexyBayes:::.fb_translation_registry()
+  norm <- function(s) gsub("[`~[:space:]]", "", s)
+  checked <- 0L
+  for (i in seq_len(nrow(reg))) {
+    hit <- cap[norm(cap$spelling) == norm(reg$spelling[[i]]), , drop = FALSE]
+    if (nrow(hit) != 1L) {
+      next
+    }
+    for (engine in strsplit(reg$engine[[i]], ",[[:space:]]*")[[1L]]) {
+      expect_identical(
+        identical(hit[[engine]], "refuses"),
+        identical(reg$class[[i]], "refused"),
+        label = paste0(
+          reg$structure[[i]], " on ", engine, ": capability verdict ",
+          hit[[engine]], ", translation class ", reg$class[[i]]
+        )
+      )
+      checked <- checked + 1L
+    }
+  }
+  # The four rows the 2026-09-13 containment changed, plus the corh() and
+  # uncorrelated-slope rows, match on spelling today.
+  expect_gte(checked, 8L)
+})
+
 # --- (b) behaviour anchors -------------------------------------------- #
 
 .cap_data <- function(seed = 11L) {
@@ -307,17 +358,22 @@ test_that("a factor-by-numeric fixed interaction fits on brms only", {
   )
 })
 
-test_that("a correlated random slope emits on both", {
+test_that("a correlated random slope refuses on INLA and emits on brms", {
+  skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row("Correlated random slope")
   d <- .cap_data()
-  for (engine in c("inla", "brms")) {
-    .cap_expect(
-      .cap_emit(engine, y ~ x + (x | gen), data = d),
-      if (identical(engine, "inla")) r$inla else r$brms,
-      engine
-    )
-  }
+  .cap_expect(
+    .cap_emit("inla", y ~ x + (x | gen), data = d),
+    r$inla,
+    "INLA",
+    condition_class = "flexybayes_refusal_correlated_covariance_requires_brms"
+  )
+  .cap_expect(
+    .cap_emit("brms", y ~ x + (x | gen), data = d),
+    r$brms,
+    "brms"
+  )
 })
 
 test_that("interaction random effects fit on brms and refuse on INLA", {
@@ -368,7 +424,8 @@ test_that("us(f):g fits on brms only", {
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ us(env):gen, data = d),
     r$inla,
-    "INLA"
+    "INLA",
+    condition_class = "flexybayes_refusal_correlated_covariance_requires_brms"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ us(env):gen, data = d),

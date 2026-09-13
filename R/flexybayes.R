@@ -325,18 +325,9 @@
 #'   `options(flexyBayes.silence_auto_inla_missing_note = TRUE)` (INLA not
 #'   installed).
 #'
-#'   **What each engine represents.** INLA takes simple iid random
-#'   effects, P-splines, the sparse-precision and pedigree carriers of
-#'   `vm()` / `ped()`, and separable AR1 fields; it refuses
-#'   heterogeneous variances (`diag` / `idh` / `at`), unstructured `us()`,
-#'   interaction random effects, and heterogeneous residuals. brms takes
-#'   interaction random effects `(1 | a:b)`, uncorrelated random slopes
-#'   `(x || g)`, heterogeneous genotype variances (`diag` / `idh` / `at`),
-#'   unstructured `us(f):g`, per-level residual variances
-#'   (`dsum(~ units | f)`), and the dense / Cholesky / precision carriers
-#'   of `vm()` / `ped()`; it refuses correlated random slopes `(x | g)`,
-#'   AR1 residual structures, `corh()`, factor-analytic GxE, and splines.
-#'   The generated per-class table is in `README.md` and
+#'   **What each engine represents.**
+#'   `r flexyBayes:::.fb_capability_engine_prose()`
+#'   The per-class table with its notes is in `README.md` and
 #'   `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
 #'
 #'   **Caution (small-group random effects).** Both engines apply the same

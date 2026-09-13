@@ -457,8 +457,16 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # family aimed at a candidate block containing a design column the
   # re-emitted reference cannot standardise
   # (penalty_candidate_columns_unscaled) (= 187).
+  #
+  # The 2026-09-13 INLA containment adds two. An estimated correlation
+  # matrix sent to INLA (correlated_covariance_requires_brms) (= 188); and a
+  # Gaussian INLA fit whose response standard deviation exceeds the bound
+  # its fits were measured correct up to (inla_response_scale_unvalidated)
+  # (= 189).
   expect_false("selection_penalty_not_implemented" %in% entries)
-  expect_equal(length(entries), 187L)
+  expect_equal(length(entries), 189L)
+  expect_true("correlated_covariance_requires_brms" %in% entries)
+  expect_true("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_scoring_unit_mismatch" %in% entries)
   expect_true("projection_search_unsupported" %in% entries)
   expect_true("penalty_candidate_columns_unscaled" %in% entries)
