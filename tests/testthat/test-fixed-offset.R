@@ -284,18 +284,19 @@ test_that("a per-row Gaussian INLA fit with an offset matches lme4", {
   expect_lt(abs(coef(fit)[["Days"]] - ref[["Days"]]), 1e-6)
 
   # offset(Days) is the model without it with the Days coefficient raised by
-  # exactly one, so the two fits share every fitted value. Measured over six
-  # pairs of identical calls (2026-09-13): the coefficients agree to 1.8e-13,
-  # while the fitted values, read from INLA's per-row marginals, differ by
-  # 2.3e-5 to 4.8e-5 between the two spellings and by up to 1.3e-5 between
-  # identical calls of one spelling. The fitted-value tolerance is 1e-3;
+  # exactly one, so the two fits share every fitted value. The default
+  # priors of the two differ slightly, since each reads the spread of its
+  # own y - o. Measured over five pairs of these calls (2026-09-13): the
+  # coefficients agree to 9.1e-14, while the fitted values, read from INLA's
+  # per-row marginals, differ by 4.3e-3 to 4.5e-3 at INLA's default thread
+  # setting and by 5.6e-5 on one thread. The fitted-value tolerance is 0.05;
   # the offset it has to carry reaches 9.
   plain <- .off_inla(Reaction ~ Days, random = ~ Subject, data = d)
   expect_lt(abs(coef(plain)[["Days"]] - coef(fit)[["Days"]] - 1), 1e-6)
-  expect_lt(max(abs(fitted(fit) - fitted(plain))), 1e-3)
+  expect_lt(max(abs(fitted(fit) - fitted(plain))), 0.05)
   expect_lt(
     max(abs(residuals(fit) - (d$Reaction - fitted(plain)))),
-    1e-3
+    0.05
   )
 
   # Each posterior draw's Predictor row is the fixed part, the subject's
@@ -378,8 +379,10 @@ test_that("a Bernoulli INLA fit with an offset matches glmer", {
 
 test_that("an offset on a sectioned residual shifts the fit exactly", {
   # Two Gaussian likelihoods, one per section. offset(Days) against the fit
-  # without it: Days differs by 1 - 3.9e-7 and the intercept by 6.7e-7
-  # (2026-09-13). The tolerance is 1e-5.
+  # without it, five pairs at INLA's default thread setting (2026-09-13):
+  # Days differs by 1 within 3.6e-5 and the intercept by up to 6.0e-5; under
+  # one stated prior on one thread the gaps reached 8.0e-5 and 1.4e-4. The
+  # tolerance is 1e-3; without the offset Days moves by 1.
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
@@ -391,9 +394,123 @@ test_that("an offset on a sectioned residual shifts the fit exactly", {
     Reaction ~ Days + offset(Days), random = ~ Subject, residual = res, data = d
   )
   plain <- .off_inla(Reaction ~ Days, random = ~ Subject, residual = res, data = d)
-  expect_lt(abs(coef(plain)[["Days"]] - coef(with_off)[["Days"]] - 1), 1e-5)
+  expect_lt(abs(coef(plain)[["Days"]] - coef(with_off)[["Days"]] - 1), 1e-3)
   expect_lt(
     abs(coef(plain)[["(Intercept)"]] - coef(with_off)[["(Intercept)"]]),
-    1e-5
+    1e-3
   )
+})
+
+# --- standardisation and default priors ----------------------------------- #
+
+.off_large <- function(sd_o, seed = 20260913L) {
+  set.seed(seed)
+  n_g <- 30L
+  per <- 20L
+  n <- n_g * per
+  g <- factor(sprintf("g%02d", rep(seq_len(n_g), each = per)))
+  x <- stats::rnorm(n)
+  o <- stats::rnorm(n, 0, sd_o)
+  u <- stats::rnorm(n_g, 0, 2)
+  data.frame(
+    y = o + 5 + 1.5 * x + u[as.integer(g)] + stats::rnorm(n, 0, 3),
+    x = x,
+    g = g,
+    o = o
+  )
+}
+
+test_that("the scale an offset model is fitted on is read from y - o", {
+  # A 600-row design whose offset has standard deviation 1000: sd(y) = 999.3,
+  # sd(y - o) = 4.11. Read from y, the response-scale bound of 150 refuses
+  # the fit; read from y - o it fits, and three identical calls were 2.0e-6
+  # (intercept), 1.0e-4 (slope), 0.103 (random-effect SD, a posterior mean
+  # against REML, 4.3 per cent) and 5.7e-3 (residual SD) from lme4, the same
+  # distances as at sd(o) = 0, 30 and 100 under either reading (2026-09-13).
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_large(1000)
+  w <- d$y - d$o
+
+  ir <- fb_from_asreml(y ~ x + offset(o), random = ~ g, data = d)
+  expect_equal(ir$data_summary$response_sd, stats::sd(w), tolerance = 1e-12)
+
+  fit <- .off_inla(y ~ x + offset(o), random = ~ g, data = d)
+  spec <- fit$extras$response_standardisation
+  expect_equal(spec$centre, mean(w), tolerance = 1e-12)
+  expect_equal(spec$scale, stats::sd(w), tolerance = 1e-12)
+  # The shared default bound, U = 5 sd, reads the same quantity; read from
+  # y it would be 5 x 999.3.
+  expect_equal(
+    attr(fit$extras$fb_terms$priors, "fb_prior_default_scale"),
+    5 * stats::sd(w),
+    tolerance = 1e-12
+  )
+
+  ref_fit <- lme4::lmer(y ~ x + offset(o) + (1 | g), data = d)
+  ref <- lme4::fixef(ref_fit)
+  vc <- summary(fit)$varcomp
+  expect_lt(abs(coef(fit)[["(Intercept)"]] - ref[["(Intercept)"]]), 1e-4)
+  expect_lt(abs(coef(fit)[["x"]] - ref[["x"]]), 1e-3)
+  expect_lt(
+    abs(vc$estimate[vc$component == "sd_g"] -
+      attr(lme4::VarCorr(ref_fit)$g, "stddev")[[1L]]),
+    0.3
+  )
+  expect_lt(
+    abs(vc$estimate[vc$component == "sigma"] - stats::sigma(ref_fit)),
+    0.05
+  )
+})
+
+test_that("an offset model is invariant to rescaling the response and offset", {
+  # Response and offset multiplied by k in {0.01, 1, 1000}, the fit divided
+  # back by k. Over three identical calls at each k (2026-09-13) the means
+  # of the rescaled intercept, slope, random-effect SD, residual SD and first
+  # fitted value ranged across k by 7.0e-10, 2.8e-8, 9.9e-7, 1.1e-7 and
+  # 2.1e-7, inside the ranges of identical calls at one k (up to 1.3e-9,
+  # 5.5e-8, 5.1e-6, 4.0e-7 and 4.0e-7). Relative tolerances: 1e-5 on the
+  # coefficients and fitted values, 1e-3 on the standard deviations, whose
+  # identical-call range is 1.9e-4 of their value.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  set.seed(20260914L)
+  n_g <- 30L
+  per <- 20L
+  n <- n_g * per
+  g <- factor(sprintf("g%02d", rep(seq_len(n_g), each = per)))
+  x <- stats::rnorm(n)
+  o <- stats::rnorm(n)
+  u <- stats::rnorm(n_g, 0, 0.02)
+  base <- data.frame(
+    y = o + 0.05 + 0.015 * x + u[as.integer(g)] + stats::rnorm(n, 0, 0.03),
+    x = x,
+    g = g,
+    o = o
+  )
+  read <- function(k) {
+    d <- base
+    d$yk <- d$y * k
+    d$ok <- d$o * k
+    fit <- .off_inla(yk ~ x + offset(ok), random = ~ g, data = d)
+    vc <- summary(fit)$varcomp
+    list(
+      coef = unname(coef(fit)) / k,
+      sd = c(
+        vc$estimate[vc$component == "sd_g"],
+        vc$estimate[vc$component == "sigma"]
+      ) / k,
+      fitted = fitted(fit) / k
+    )
+  }
+  unit <- read(1)
+  for (k in c(0.01, 1000)) {
+    scaled <- read(k)
+    expect_equal(scaled$coef, unit$coef, tolerance = 1e-5)
+    expect_equal(scaled$sd, unit$sd, tolerance = 1e-3)
+    expect_equal(scaled$fitted, unit$fitted, tolerance = 1e-5)
+  }
 })

@@ -224,14 +224,28 @@
   val
 }
 
-# .fb_response_sd() --- the response's standard deviation over its finite
-# values, or NA when there is no numeric response to measure.
+# .fb_working_response() --- the response minus the model's offsets: the
+# quantity whose scale the rest of the linear predictor and the residual
+# carry. The response itself when the model has no offset.
+.fb_working_response <- function(fb, data) {
+  y <- .fb_response_values(fb, data)
+  off <- .fb_offset_values(fb, data)
+  if (is.null(off) || !is.numeric(y)) {
+    return(y)
+  }
+  y - off
+}
+
+# .fb_response_sd() --- the standard deviation of the working response over
+# its finite values, or NA when there is no numeric response to measure.
 #
 # Recorded on the IR at ingest so the INLA response-scale check in
 # lgm_gate() reads the same number on every route that gates a model --
-# the fit, fb_plan(), and the aggregated route's backend resolution.
+# the fit, fb_plan(), and the aggregated route's backend resolution. On an
+# offset model it is the spread of y - o, the scale the standardised fit and
+# the default priors read.
 .fb_response_sd <- function(fb, data) {
-  y <- .fb_response_values(fb, data)
+  y <- .fb_working_response(fb, data)
   if (!is.numeric(y)) {
     return(NA_real_)
   }

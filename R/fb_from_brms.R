@@ -342,7 +342,10 @@ fb_from_brms <- function(
   data_summary <- list(
     n = nrow(data),
     known_matrices = character(0),
-    response_sd = .fb_response_sd(list(response = response), data)
+    response_sd = .fb_response_sd(
+      list(response = response, offsets = fixed_info$offsets),
+      data
+    )
   )
 
   if (!is.null(override_n_rows)) {

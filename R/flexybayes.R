@@ -691,7 +691,10 @@ flexybayes <- function(
       family = family,
       link = link,
       random_groups = prior_targets$shared,
-      vm_ped_groups = prior_targets$vm_ped
+      vm_ped_groups = prior_targets$vm_ped,
+      # On an offset model the bound U = 5 sd reads y - o, on both engines,
+      # as the INLA standardisation does (R/inla_standardise.R).
+      resp_sd = if (length(fb$offsets)) .fb_response_sd(fb, data) else NULL
     )
     fb$priors <- unif_default
     prior <- unif_default

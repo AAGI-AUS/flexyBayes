@@ -203,6 +203,12 @@
     !is.null(attr(stated, "fb_prior_default_basis"))
   slope_sd <- .fb_inla_slope_covariate_sd(fb, data)
 
+  # On an offset model the bound is read from y - o, as the standardisation
+  # is (R/inla_standardise.R).
+  if (is.null(resp_sd) && length(fb$offsets) && is.data.frame(data)) {
+    resp_sd <- .fb_response_sd(fb, data)
+  }
+
   filled <- list()
   if (has_prior) {
     targets <- .fb_inla_sd_targets(fb)
@@ -284,11 +290,12 @@
 
 # The response unit a fixed-effect default is written in: sd(y) where the
 # linear predictor carries the response's units, 1 on a log or logit link.
+# sd(y - o) on a model with an offset o.
 .fb_inla_fixed_prior_unit <- function(fb, data) {
   if (!identical(.fb_default_link_class(fb$family, fb$link), "identity")) {
     return(1)
   }
-  y <- suppressWarnings(as.numeric(.fb_response_values(fb, data)))
+  y <- suppressWarnings(as.numeric(.fb_working_response(fb, data)))
   y <- y[is.finite(y)]
   s <- if (length(y) >= 2L) stats::sd(y) else NA_real_
   if (!is.finite(s) || s <= 0) 1 else s
