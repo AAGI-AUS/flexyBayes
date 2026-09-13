@@ -834,10 +834,22 @@
   candidates = NULL,
   random = character(0),
   prediction = c("new_cluster", "known_cluster"),
-  cov_spec = NULL
+  cov_spec = NULL,
+  offsets = character(0)
 ) {
   prediction <- match.arg(prediction)
   y <- as.numeric(data[[response]])
+  # A Gaussian offset is subtracted here, before anything is whitened or
+  # learned, and the fold works in y - o from then on. The components, the
+  # pilot fit, the predictions and the scored residuals are all of y - o, and
+  # a residual of y - o against a prediction of y - o is the residual of y
+  # against the prediction plus the offset, so no add-back is needed to
+  # score. It is evaluated on the data this call receives, so the leakage
+  # gate's perturbed rebuilds see their own offsets.
+  off <- .fb_offset_total(offsets, data)
+  if (!is.null(off)) {
+    y <- y - off
+  }
 
   protected_design <- .fb_sel_design(protected, data)
   candidate_design <- if (is.null(candidates)) {
@@ -1226,7 +1238,8 @@
   prediction = c("new_cluster", "known_cluster"),
   candidate_sets = NULL,
   cluster = NULL,
-  metric = c("rmse", "mse", "nlpd")
+  metric = c("rmse", "mse", "nlpd"),
+  offsets = character(0)
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -1273,7 +1286,8 @@
       protected = protected,
       candidates = candidates,
       random = random,
-      prediction = prediction
+      prediction = prediction,
+      offsets = offsets
     )
     substrates[[split$label]] <- substrate
 

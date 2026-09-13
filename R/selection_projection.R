@@ -260,6 +260,22 @@
       reason = "the fixed part is what the search selects over (probe C2)"
     )
   )
+  # An offset reaches the brms reference model, and whether projpred carries
+  # it into every projected submodel and its predictions has not been run
+  # here, so the cell refuses as the other unrun cells do and
+  # `decision = "auto"` resolves to the full shrinkage posterior.
+  if (length(ir$offsets)) {
+    rows[[length(rows) + 1L]] <- .fb_sel_gate_row(
+      paste0("offset: ", paste(ir$offsets, collapse = " + ")),
+      list(
+        verdict = "unrun",
+        reason = paste0(
+          "no gate has been executed for an offset under projection, and ",
+          "an unrun cell refuses"
+        )
+      )
+    )
+  }
 
   random_labels <- .fb_sel_random_labels(ir)
   types <- vapply(

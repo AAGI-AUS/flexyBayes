@@ -1767,7 +1767,10 @@
     resamples = resamples,
     seed = seed,
     prediction = prediction,
-    metric = metric
+    metric = metric,
+    # The base's offset, subtracted from the response in each fold before
+    # whitening; the penalised optimiser reads the same substrates.
+    offsets = base$fb$offsets %||% character(0)
   )
   arms$gls <- list(
     workflow = gls$workflow,
