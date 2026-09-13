@@ -1719,16 +1719,15 @@ emit_inla <- function(
 
       # v0.3.10: blocks-format vm/ped emits K
       # independent f() calls, one per block, each with its own
-      # generic0 precision and an INLA-default per-block precision
-      # hyperparameter. The K integer index columns + K per-block
-      # precision matrices are pre-computed in emit_inla()'s
-      # data_inla setup loop; here we only need the block count,
-      # which the resolved known_matrices entry surfaces directly.
-      # The per-block hyperparameter is left at INLA's
-      # loggamma(1, 5e-5) default --- no shared per-block prior at
-      # v0.3.10 (the priors-to-inla hyper_ctrl entry is keyed by
-      # term$var, so all K blocks share its parameters when the user
-      # supplies one via fb_prior()).
+      # generic0 precision and its own precision hyperparameter. The
+      # K integer index columns + K per-block precision matrices are
+      # pre-computed in emit_inla()'s data_inla setup loop; here we
+      # only need the block count, which the resolved known_matrices
+      # entry surfaces directly. Every block's hyperparameter takes the
+      # one prior keyed by term$var: the caller's fb_prior() entry when
+      # it names the term, and otherwise the package's bounded default,
+      # which .fb_inla_complete_priors() fills for that key whenever the
+      # fit carries a prior of any kind (R/inla_default_priors.R).
       if (!is.null(cov) && identical(cov$format, "blocks")) {
         blocks_value <- known_matrices[[cov$data]]
         K <- if (is.list(blocks_value)) length(blocks_value) else 0L
@@ -2390,9 +2389,12 @@ emit_inla <- function(
 # The reachable set is the one the default-prior walker uses
 # (`.fb_default_prior_targets()`), widened by every random term's own
 # variable so a term outside the walker is not refused for being outside
-# the walker. `sigma` is always reachable: the residual scale is dropped
-# by family, not by term, and that drop is deliberate and documented in
-# R/family_traits.R.
+# the walker, and by the INLA targets the walker does not list
+# (`.fb_inla_sd_targets()`): a multi-way interaction `a:b:c` has no single
+# variable of its own, and its colon-joined key is the one the formula
+# builder reads and the package default fills. `sigma` is always reachable:
+# the residual scale is dropped by family, not by term, and that drop is
+# deliberate and documented in R/family_traits.R.
 .check_inla_hyper_keys_reachable <- function(fb, hyper_ctrl) {
   keys <- setdiff(names(hyper_ctrl), "sigma")
   if (!length(keys)) {
@@ -2405,7 +2407,12 @@ emit_inla <- function(
       c(term$var, term$inner, term$outer, term$slope_var)
     }
   ))
-  available <- unique(c(targets$shared, targets$vm_ped, term_vars))
+  available <- unique(c(
+    targets$shared,
+    targets$vm_ped,
+    .fb_inla_sd_targets(fb)$shared,
+    term_vars
+  ))
   available <- available[nzchar(available %||% character(0))]
   missing_keys <- setdiff(keys, available)
   if (!length(missing_keys)) {

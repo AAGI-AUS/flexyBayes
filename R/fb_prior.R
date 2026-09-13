@@ -1208,10 +1208,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: variance-component prior default is uniform(0, ",
+    "flexyBayes: variance-component prior default is uniform(0, U), U = ",
     format(scale, digits = 3),
-    ") on every SD (residual sigma + ",
-    "every named random-effect group): a weakly-informative choice ",
+    ", on the residual sigma and every named random-effect group; on INLA ",
+    "the SD of an uncorrelated random slope on a numeric covariate x takes ",
+    "uniform(0, U / sd(x)) instead. This is a weakly-informative choice ",
     "for moderate group counts. For very small groups, Gelman (2006) ",
     "recommends a half-Cauchy instead -- see ?fb_prior. Scale basis = \"",
     basis,
