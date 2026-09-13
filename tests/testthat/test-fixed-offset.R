@@ -157,7 +157,7 @@ test_that("a fitting route that does not carry an offset refuses by name", {
   skip_if_not_installed("lme4")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sleepstudy()
-  for (backend in c("auto", "inla", "brms")) {
+  for (backend in c("auto", "inla")) {
     .off_expect_refusal(
       flexybayes(
         Reaction ~ Days + offset(Days),
@@ -188,4 +188,72 @@ test_that("a fitting route that does not carry an offset refuses by name", {
     "fixed_offset_unsupported",
     "`offset(z)`"
   )
+})
+
+# --- brms ------------------------------------------------------------------ #
+
+test_that("the brms formula carries each offset verbatim", {
+  set.seed(5L)
+  d <- data.frame(
+    y = stats::rnorm(24),
+    x = stats::rnorm(24),
+    g = factor(rep(1:6, 4)),
+    E = stats::runif(24, 1, 5)
+  )
+  ir <- fb_from_asreml(
+    y ~ x + offset(log(E)) + offset(x), random = ~ g, data = d
+  )
+  expect_identical(
+    deparse(.fb_to_brms_formula(ir)),
+    "y ~ x + offset(log(E)) + offset(x) + (1 | g)"
+  )
+  ir0 <- fb_from_asreml(y ~ 0 + offset(x), random = ~ g, data = d)
+  expect_identical(
+    deparse(.fb_to_brms_formula(ir0)),
+    "y ~ offset(x) - 1 + (1 | g)"
+  )
+})
+
+test_that("a brms fit carries the offset into Stan and matches lme4", {
+  # Four seeds of this call (2 chains, 1000 draws each) put the Days
+  # posterior mean 0.034 or less from lme4's 9.467286 with the offset, a
+  # spread of 0.067 across seeds (2026-09-13); without the offset the
+  # coefficient is 10.47, a full unit away. The tolerance is 0.2.
+  skip_if_not_installed("brms")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  skip_on_ci()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_sleepstudy()
+  fit <- flexybayes(
+    Reaction ~ Days + offset(Days),
+    random = ~ Subject,
+    data = d,
+    backend = "brms",
+    chains = 2L,
+    warmup = 500L,
+    n_samples = 1000L,
+    seed = 3L,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  )
+  expect_match(
+    paste(deparse(fit$brms$formula$formula), collapse = ""),
+    "offset(Days)",
+    fixed = TRUE
+  )
+  expect_identical(
+    as.numeric(brms::standata(fit$brms)$offsets),
+    as.numeric(d$Days)
+  )
+  ref <- lme4::fixef(
+    lme4::lmer(Reaction ~ Days + offset(Days) + (1 | Subject), data = d)
+  )
+  expect_lt(abs(coef(fit)[["Days"]] - ref[["Days"]]), 0.2)
+  # The fitted values include the offset: posterior means of the intercept,
+  # the slope and each subject's deviation, plus Days, by hand.
+  re <- brms::ranef(fit$brms)$Subject[, "Estimate", "Intercept"]
+  hand <- coef(fit)[["(Intercept)"]] + coef(fit)[["Days"]] * d$Days +
+    re[as.character(d$Subject)] + d$Days
+  expect_equal(unname(fitted(fit)), unname(hand), tolerance = 1e-8)
 })

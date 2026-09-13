@@ -623,6 +623,10 @@ emit_brms <- function(
     character(1)
   )
   fixed_labels <- fixed_labels[!is.na(fixed_labels)]
+  # The offsets travel verbatim: brms evaluates `offset(log(E))` against the
+  # data itself, into the Stan data as `offsets`, and again against `newdata`
+  # at prediction.
+  fixed_labels <- c(fixed_labels, fb$offsets %||% character(0))
 
   fixed_rhs <- if (length(fixed_labels) > 0L) {
     paste(fixed_labels, collapse = " + ")

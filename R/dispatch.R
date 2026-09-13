@@ -909,10 +909,6 @@
   # and the parser tests continue to cover it.
   .refuse_unsupported_weights(fb, weights)
 
-  # An offset is recorded at ingest; a route that does not yet carry one
-  # refuses by name rather than fitting the model without it.
-  .refuse_offset_route(fb, "flexybayes()")
-
   # Structures that parse for the formula catalogue and that no active
   # engine emits -- the residual-side AR1 spelling above all -- are refused
   # by name here, in one vocabulary, rather than as an lgm_gate() print on
@@ -1309,6 +1305,9 @@
         backend == "inla" ||
           (backend == "auto" && inla_installed)
       ) {
+        # Outside the tryCatch below, so the refusal is not read as an INLA
+        # failure and re-routed.
+        .refuse_offset_route(fb, "the per-row INLA route")
         # Explicit backend = "inla" surfaces any
         # emit_inla() error directly (the user asked for INLA; the true
         # diagnostic must not be masked, and a flexyBayes-side contract
@@ -1802,6 +1801,7 @@
   # family-generic streaming aggregator over the in-memory data (one
   # chunk) + the count emit. Both produce the same <fb_aggregated> shape
   # downstream methods consume.
+  .refuse_offset_route(fb, "the aggregated route")
   if (identical(fb$family, "gaussian")) {
     # An explicit backend = "inla" reaches this emit without lgm_gate(), so
     # the response-scale bound the gate applies is applied here as well.
