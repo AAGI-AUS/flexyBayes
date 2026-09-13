@@ -222,7 +222,8 @@
 #'   `prior_vc_sd` for the variance components it covers. See
 #'   [fb_prior()]. On INLA, a random-effect standard deviation the prior
 #'   does not name takes the package's bounded default, `uniform(0, U)`
-#'   with the family-aware `U` described under `prior_vc_sd`, rather
+#'   with the family-aware `U` described under `prior_vc_sd` (divided by
+#'   the covariate's standard deviation for an uncorrelated slope), rather
 #'   than INLA's own hyperprior; [prior_summary()] lists what was filled.
 #'   A standard deviation the prior does name is left exactly as written.
 #' @param prior_fixed_sd Numeric: SD for fixed-effect normal priors,

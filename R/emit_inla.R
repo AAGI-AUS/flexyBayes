@@ -567,8 +567,9 @@ emit_inla <- function(
   # brms's own parser error and here was not reported at all.
   .check_inla_hyper_keys_reachable(fb, hyper_ctrl)
   # Every random-effect standard deviation the caller left unstated takes the
-  # package's bounded default (R/inla_default_priors.R). Run after the
-  # reachability check, which is a check on what the caller wrote.
+  # package's bounded default, and a default bound on a slope follows its
+  # covariate's units (R/inla_default_priors.R). Run after the reachability
+  # check, which is a check on what the caller wrote.
   completion <- .fb_inla_complete_priors(fb, hyper_ctrl, data)
   hyper_ctrl <- completion$hyper_ctrl
   # A variable that keys both a fixed term and an f() term is a formula
@@ -1433,8 +1434,10 @@ emit_inla <- function(
         # The centre and scale the fit ran on, NULL for a fit that was not
         # standardised. The draw accessors read it to map draws back.
         response_standardisation = standardisation,
-        # The standard deviations this fit filled with the package default,
-        # which nobody stated. prior_summary() reads it.
+        # The priors this fit carries that nobody stated: the standard
+        # deviations filled with the package default and the default slope
+        # bounds divided by their covariate's standard deviation.
+        # prior_summary() reads it.
         prior_completion = completion$record,
         # What has to match before this fit can be compared with another
         # engine's -- the same slot, built by the same function, as the

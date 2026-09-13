@@ -288,7 +288,8 @@ PC-canonical hybrid DSL (preferred). When supplied it overrides
 \code{prior_vc_sd} for the variance components it covers. See
 \code{\link[=fb_prior]{fb_prior()}}. On INLA, a random-effect standard deviation the prior
 does not name takes the package's bounded default, \code{uniform(0, U)}
-with the family-aware \code{U} described under \code{prior_vc_sd}, rather
+with the family-aware \code{U} described under \code{prior_vc_sd} (divided by
+the covariate's standard deviation for an uncorrelated slope), rather
 than INLA's own hyperprior; \code{\link[=prior_summary]{prior_summary()}} lists what was filled.
 A standard deviation the prior does name is left exactly as written.}
 
