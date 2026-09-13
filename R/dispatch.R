@@ -1782,15 +1782,6 @@
   # chunk) + the count emit. Both produce the same <fb_aggregated> shape
   # downstream methods consume.
   if (identical(fb$family, "gaussian")) {
-    # An explicit backend = "inla" reaches this emit without lgm_gate(), so
-    # the response-scale bound the gate applies is applied here as well.
-    scale_refusal <- .fb_inla_response_scale_refusal(
-      fb$response,
-      .fb_response_sd(fb, data)
-    )
-    if (!is.null(scale_refusal)) {
-      stop(scale_refusal)
-    }
     fb_aggregated <- .fb_aggregate_gaussian(fb, fb_dataset_meta)
     fit <- emit_gaussian_aggregated(
       fb = fb,

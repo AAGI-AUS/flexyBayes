@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=191
+      .refusal_registry: locked=TRUE n_keys=190
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -160,7 +160,6 @@
         heterogeneous_residual_multiple_factors
         inla_gate_refused
         inla_program_failed
-        inla_response_scale_unvalidated
         inla_variable_used_twice
         interaction_not_representable
         known_matrices_data_name_collision

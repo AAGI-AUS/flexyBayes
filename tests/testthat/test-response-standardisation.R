@@ -11,21 +11,7 @@
 #     raw call is sound, with the same priors written out in raw units here;
 #   * metamorphic invariance: multiplying the response or a slope covariate by
 #     a constant changes no model, so a scale-free summary must not move.
-#
-# The response-scale refusal still stands on the dispatch route, so the
-# large-scale cells lift it locally; the tests exercise the fit, not the
-# refusal, which test-inla-containment.R covers.
 # =============================================================================
-
-.rs_lift_scale_refusal <- function(env = parent.frame()) {
-  testthat::local_mocked_bindings(
-    .lgm_check_response_scale = function(fb) {
-      .lgm_pass("inla_response_scale_unvalidated")
-    },
-    .fb_inla_response_scale_refusal = function(response, s) NULL,
-    .env = env
-  )
-}
 
 .rs_sleepstudy <- function(multiplier = 1, days_multiplier = 1) {
   e <- new.env()
@@ -232,7 +218,6 @@ test_that("a default-prior fit does not move when the response is rescaled", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
-  .rs_lift_scale_refusal()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   cells <- lapply(c(0.01, 1, 1000), function(k) {
@@ -260,7 +245,6 @@ test_that("an uncorrelated slope does not move under response or covariate scale
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
-  .rs_lift_scale_refusal()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   cells <- lapply(list(c(1, 1), c(100, 1), c(1, 1000), c(100, 1000)), function(k) {
@@ -285,7 +269,6 @@ test_that("draws are taken on the original scale", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
-  .rs_lift_scale_refusal()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   fit <- suppressWarnings(flexybayes(
@@ -319,7 +302,6 @@ test_that("draws are taken on the original scale", {
 test_that("the aggregated route matches the per-row fixed effects at large scale", {
   skip_if_not_installed("INLA")
   skip_on_cran()
-  .rs_lift_scale_refusal()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   set.seed(20260913L)

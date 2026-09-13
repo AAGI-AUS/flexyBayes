@@ -539,10 +539,7 @@
     "INLA fits: ", classes("inla", c("fits", "emits")), ". ",
     "INLA refuses: ", classes("inla", "refuses"), ". ",
     "brms fits: ", classes("brms", c("fits", "emits")), ". ",
-    "brms refuses: ", classes("brms", "refuses"), ". ",
-    "A Gaussian fit on INLA also refuses when the response standard ",
-    "deviation exceeds ", .FB_INLA_RESPONSE_SD_MAX,
-    " (inla_response_scale_unvalidated)."
+    "brms refuses: ", classes("brms", "refuses"), "."
   )
 }
 

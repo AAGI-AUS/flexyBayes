@@ -82,9 +82,6 @@ lgm_gate <- function(
     # structural checks so that the refusal a user reads first is the one
     # that names where the model is fitted.
     .lgm_check_correlated_covariance(fb),
-    # check 1c -- Gaussian fits on INLA are validated only up to a response
-    # standard deviation of .FB_INLA_RESPONSE_SD_MAX.
-    .lgm_check_response_scale(fb),
     .lgm_check_predictor(fb), # check 2
     .lgm_check_distributional(fb), # check 3
     .lgm_check_re_prior(fb), # check 4
@@ -759,72 +756,6 @@ print.lgm_refusal <- function(x, ...) {
     return(paste0("`us(", term$outer, "):", term$inner, "`"))
   }
   paste0("`(", term$slope_var, " | ", term$var, ")`")
-}
-
-# Check 1c -- the response scale of a Gaussian fit on INLA.
-#
-# Every Gaussian fit on INLA was measured wrong at large response scale:
-# the plain random intercept on lme4::sleepstudy was stable at response
-# standard deviations of 56 to 169 and returned variance ratios between
-# 0.03 and 6.99 against REML's 1.198 from 282 upward, several of those fits
-# passing the numerical-confirm gate. The bound below is a proxy taken from
-# that measurement rather than a property of any data set, and it stands
-# until fitting on a standardised response is validated. The standard
-# deviation is recorded on the IR at ingest (.fb_response_sd()).
-.FB_INLA_RESPONSE_SD_MAX <- 150
-
-.lgm_check_response_scale <- function(fb) {
-  rule_id <- "inla_response_scale_unvalidated"
-  fam_name <- if (inherits(fb$family, "family")) {
-    fb$family$family
-  } else {
-    as.character(fb$family %||% "")
-  }
-  s <- fb$data_summary$response_sd
-  if (
-    !identical(tolower(fam_name), "gaussian") ||
-      !is.numeric(s) ||
-      length(s) != 1L ||
-      !is.finite(s) ||
-      s <= .FB_INLA_RESPONSE_SD_MAX
-  ) {
-    return(.lgm_pass(rule_id))
-  }
-  .lgm_fail(
-    rule_id,
-    .fb_inla_response_scale_message(fb$response, s),
-    diagnostic = paste0("response_sd = ", signif(s, 4)),
-    reason_code = rule_id
-  )
-}
-
-# Shared by the gate and by the two Gaussian INLA routes that do not pass
-# through it (an explicit aggregated fit and a streamed fit).
-.fb_inla_response_scale_message <- function(response, s) {
-  paste0(
-    "The response `", response, "` has a standard deviation of ",
-    format(signif(s, 3), big.mark = ","), ", and Gaussian fits on INLA are ",
-    "validated only up to ", .FB_INLA_RESPONSE_SD_MAX, ". Above that INLA ",
-    "returned wrong variance components on data whose correct answer is ",
-    "known, some with every convergence check passing. The bound is a proxy ",
-    "taken from that measurement, not a property of this data set. Rescale ",
-    "the response -- kg/ha to t/ha, for example -- and fit again, or pass ",
-    "backend = \"brms\"; backend = \"auto\" routes there."
-  )
-}
-
-# The typed condition the aggregated and streamed Gaussian INLA routes
-# raise, or NULL when the response is within the validated range.
-.fb_inla_response_scale_refusal <- function(response, s) {
-  if (!is.numeric(s) || length(s) != 1L || !is.finite(s) ||
-        s <= .FB_INLA_RESPONSE_SD_MAX) {
-    return(NULL)
-  }
-  .fb_refusal_condition(
-    reason_code = "inla_response_scale_unvalidated",
-    message = .fb_inla_response_scale_message(response, s),
-    response_sd = s
-  )
 }
 
 # Allowlist: residual-term types that emit_inla()'s residual-term guard

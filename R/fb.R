@@ -131,8 +131,7 @@ fb_from_asreml <- function(
 
   data_summary <- list(
     n = nrow(data),
-    known_matrices = names(known_matrices),
-    response_sd = .fb_response_sd(list(response = fixed_info$response), data)
+    known_matrices = names(known_matrices)
   )
 
   new_fb_terms(
