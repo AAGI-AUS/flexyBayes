@@ -286,7 +286,11 @@ default) uses brms's own settings. A no-op on the INLA path, as
 \item{prior}{An optional \code{fb_prior()} object specifying priors via the
 PC-canonical hybrid DSL (preferred). When supplied it overrides
 \code{prior_vc_sd} for the variance components it covers. See
-\code{\link[=fb_prior]{fb_prior()}}.}
+\code{\link[=fb_prior]{fb_prior()}}. On INLA, a random-effect standard deviation the prior
+does not name takes the package's bounded default, \code{uniform(0, U)}
+with the family-aware \code{U} described under \code{prior_vc_sd}, rather
+than INLA's own hyperprior; \code{\link[=prior_summary]{prior_summary()}} lists what was filled.
+A standard deviation the prior does name is left exactly as written.}
 
 \item{prior_fixed_sd}{Numeric: SD for fixed-effect normal priors,
 applied uniformly to the intercept, factor contrasts, continuous

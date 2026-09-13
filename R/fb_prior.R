@@ -840,7 +840,13 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Gelman (2006, Bayesian Analysis 1(3):515-534) recommends a half-t /
 # half-Cauchy instead -- available via fb_prior(); see the priors
 # vignette.
-.default_uniform_scale <- function(data, response, family, link = NULL) {
+#
+# `resp_sd`, when given, is the response standard deviation read from
+# somewhere other than `data` -- the aggregated and streamed routes read it
+# off the sufficient statistics, and the streamed route holds only a head
+# sample of the rows.
+.default_uniform_scale <- function(data, response, family, link = NULL,
+                                   resp_sd = NULL) {
   fam <- if (inherits(family, "family")) {
     family$family
   } else {
@@ -873,6 +879,17 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
   if (is_log_link) {
     return(list(scale = 3, basis = "log_link_uniform"))
+  }
+
+  if (!is.null(resp_sd)) {
+    sdv <- resp_sd
+    if (!is.finite(sdv) || sdv <= 0) {
+      sdv <- 1.0
+    }
+    return(list(
+      scale = .FB_UNIFORM_SD_MULTIPLIER * sdv,
+      basis = "identity_sd_uniform"
+    ))
   }
 
   y <- if (!is.null(data) && response %in% names(data)) {
@@ -924,9 +941,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   family,
   link = NULL,
   random_groups = character(0),
-  vm_ped_groups = character(0)
+  vm_ped_groups = character(0),
+  resp_sd = NULL
 ) {
-  scl <- .default_uniform_scale(data, response, family, link)
+  scl <- .default_uniform_scale(data, response, family, link, resp_sd = resp_sd)
   specs <- list(list(
     target = list(type = "sigma"),
     spec = list(family = "uniform", args = list(lower = 0, upper = scl$scale))

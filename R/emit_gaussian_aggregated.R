@@ -377,6 +377,18 @@ emit_gaussian_aggregated <- function(
     list()
   }
 
+  # A random-intercept SD the caller left unstated takes the package default,
+  # as on the per-row route (R/inla_default_priors.R). The bound is read off
+  # the cell statistics, which hold the whole response on the streamed route
+  # where `data` is a head sample.
+  completion <- .fb_inla_complete_priors(
+    fb,
+    hyper_ctrl,
+    data,
+    resp_sd = standardisation$scale
+  )
+  hyper_ctrl <- completion$hyper_ctrl
+
   hyper_ctrl <- .fb_inla_standardise_hyper(hyper_ctrl, standardisation)
   fixed_form <- .agg_emit_inla_formula(fb, fb_aggregated, ri_plan, hyper_ctrl)
 
@@ -457,6 +469,7 @@ emit_gaussian_aggregated <- function(
     backend = "inla",
     inla = inla_fit,
     response_standardisation = standardisation,
+    prior_completion = completion$record,
     fixed_form = fixed_form,
     custom_prior = custom_prior_expr,
     K = K,
@@ -614,11 +627,18 @@ emit_gaussian_aggregated <- function(
       run_time = elapsed,
       # The centre and scale the INLA fit ran on; the draw accessors read it.
       response_standardisation = engine_out$response_standardisation,
+      # The standard deviations the INLA fit filled with the package default.
+      prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose. Aggregation is a
       # computational route to the same likelihood, not a different model,
       # so an aggregated fit and a per-row fit of the same model must read
       # as comparable to triangulate(). See R/model_fingerprint.R.
-      fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
+      fingerprint = .fb_model_fingerprint(
+        fb,
+        data,
+        prior_vc_sd = prior_vc_sd,
+        completion = engine_out$prior_completion
+      ),
       parse_info = list(
         # Mirror emit_inla()'s fixed-info shape so confint /
         # summary / methods.R downstream consumers see the same

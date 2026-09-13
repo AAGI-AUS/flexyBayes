@@ -566,6 +566,11 @@ emit_inla <- function(
   # half of field-sweep FS-20, where the same mistake on brms surfaced as
   # brms's own parser error and here was not reported at all.
   .check_inla_hyper_keys_reachable(fb, hyper_ctrl)
+  # Every random-effect standard deviation the caller left unstated takes the
+  # package's bounded default (R/inla_default_priors.R). Run after the
+  # reachability check, which is a check on what the caller wrote.
+  completion <- .fb_inla_complete_priors(fb, hyper_ctrl, data)
+  hyper_ctrl <- completion$hyper_ctrl
   # A variable that keys both a fixed term and an f() term is a formula
   # INLA refuses -- its own message is "Key [x] is used twice and that is
   # not allowed". Caught here so the user is told which variable and what
@@ -1428,10 +1433,18 @@ emit_inla <- function(
         # The centre and scale the fit ran on, NULL for a fit that was not
         # standardised. The draw accessors read it to map draws back.
         response_standardisation = standardisation,
+        # The standard deviations this fit filled with the package default,
+        # which nobody stated. prior_summary() reads it.
+        prior_completion = completion$record,
         # What has to match before this fit can be compared with another
         # engine's -- the same slot, built by the same function, as the
         # brms emit fills. See R/model_fingerprint.R.
-        fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd)
+        fingerprint = .fb_model_fingerprint(
+          fb,
+          data,
+          prior_vc_sd = prior_vc_sd,
+          completion = completion$record
+        )
       )
     ),
     # The INLA fit wears the shared `flexybayes` parent, as the brms fit
@@ -1630,8 +1643,8 @@ emit_inla <- function(
       # Stan under an identical Wishart, so lgm_gate() refuses this
       # structure on INLA (check 1b) and this branch is not reached from a
       # user call.
-      user_prior <- (!is.null(hyper_ctrl[[gtag]]) ||
-        !is.null(hyper_ctrl[[paste0(sv, "_", gtag)]])) &&
+      user_prior <- (.inla_hyper_stated(hyper_ctrl[[gtag]]) ||
+        .inla_hyper_stated(hyper_ctrl[[paste0(sv, "_", gtag)]])) &&
         is.null(attr(fb$priors, "fb_prior_default_basis"))
       if (isTRUE(user_prior)) {
         stop(.fb_refusal_condition(
@@ -1807,7 +1820,7 @@ emit_inla <- function(
       # different matter: dropping one the user wrote would be the
       # silent-prior-loss this package fixed in the sectioned residual, so
       # it refuses by name.
-      user_prior <- !is.null(hyper_ctrl[[term$inner]]) &&
+      user_prior <- .inla_hyper_stated(hyper_ctrl[[term$inner]]) &&
         is.null(attr(fb$priors, "fb_prior_default_basis"))
       if (isTRUE(user_prior)) {
         stop(.fb_refusal_condition(
@@ -1960,6 +1973,13 @@ emit_inla <- function(
     fb$response
   }
   stats::as.formula(paste0(lhs, " ~ ", rhs))
+}
+
+# Does a hyper entry carry a prior the caller stated? An entry the package
+# filled in (R/inla_default_priors.R) is not one, so a structure that refuses
+# a stated prior it has no slot for does not refuse the package's own.
+.inla_hyper_stated <- function(entry) {
+  !is.null(entry) && !isTRUE(entry$meta$package_chosen)
 }
 
 # Build the `hyper = list(prec = list(prior = ..., param = ...))`

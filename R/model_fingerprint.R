@@ -24,9 +24,13 @@
 # Build the fingerprint for one fit. `prior_vc_sd` is the legacy scalar
 # the caller would have used had no fb_prior() been supplied; it is
 # recorded so a legacy-bridge fit says which scalar it ran under.
-.fb_model_fingerprint <- function(fb, data, prior_vc_sd = NA_real_) {
+# `completion` is the record an INLA emit keeps of the priors it added to
+# what was stated (R/inla_default_priors.R); NULL on every other route.
+.fb_model_fingerprint <- function(fb, data, prior_vc_sd = NA_real_,
+                                  completion = NULL) {
   forms <- .fb_canonical_model_strings(fb)
   priors <- .fb_prior_record(fb, prior_vc_sd = prior_vc_sd)
+  priors <- .fb_prior_record_completion(priors, completion)
 
   list(
     version = 1L,
@@ -388,6 +392,29 @@
     sources = sources,
     engine_default = engine_default
   )
+}
+
+# The standard deviations an INLA fit filled with the package default
+# because the caller stated no prior for them (R/inla_default_priors.R). Each
+# is recorded under its own source, so the record tells a prior the caller
+# wrote from one the package chose on this engine. A filled parameter is no
+# longer an engine default, so it leaves that list.
+.fb_prior_record_completion <- function(priors, completion) {
+  if (is.null(completion)) {
+    return(priors)
+  }
+  for (s in completion$filled %||% list()) {
+    key <- .fb_prior_spec_parameter(s)
+    if (is.na(key)) {
+      next
+    }
+    priors$recorded[[key]] <- .fb_prior_spec_string(s)
+    priors$sources[[key]] <- "filled_default"
+  }
+  priors$engine_default <- priors$engine_default[
+    !(names(priors$engine_default) %in% names(priors$recorded))
+  ]
+  priors
 }
 
 # fb_prior target -> canonical parameter name. Fixed-effect and smooth

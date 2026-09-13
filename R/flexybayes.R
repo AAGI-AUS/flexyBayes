@@ -220,7 +220,11 @@
 #' @param prior An optional `fb_prior()` object specifying priors via the
 #'   PC-canonical hybrid DSL (preferred). When supplied it overrides
 #'   `prior_vc_sd` for the variance components it covers. See
-#'   [fb_prior()].
+#'   [fb_prior()]. On INLA, a random-effect standard deviation the prior
+#'   does not name takes the package's bounded default, `uniform(0, U)`
+#'   with the family-aware `U` described under `prior_vc_sd`, rather
+#'   than INLA's own hyperprior; [prior_summary()] lists what was filled.
+#'   A standard deviation the prior does name is left exactly as written.
 #' @param prior_fixed_sd Numeric: SD for fixed-effect normal priors,
 #'   applied uniformly to the intercept, factor contrasts, continuous
 #'   slopes, factor x continuous interactions, and `I()`-expression

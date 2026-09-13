@@ -407,9 +407,13 @@ test_that("adding a term under a user prior leaves it to the engine", {
   expect_match(cells[["sigma"]], "^uniform\\(")
   expect_match(cells[["sd_Block"]], "^uniform\\(")
   expect_identical(unname(cells[["sigma"]]), unname(cells[["sd_Block"]]))
-  # The term the user never named follows the engine, exactly as it would
-  # have on a first fit that added it.
-  expect_identical(unname(cells[["sd_Site"]]), "engine default")
+  # The term the user never named is treated exactly as it would have been on
+  # a first fit that added it: on INLA, an unstated standard deviation takes
+  # the package's bounded default, uniform(0, 5 sd(y)).
+  expect_identical(
+    unname(cells[["sd_Site"]]),
+    sprintf("uniform(lower=0, upper=%.12g)", 5 * stats::sd(d$y))
+  )
   # The prior is still theirs, not re-decided into a policy.
   expect_identical(prior_summary(refit)$default_origin, "user")
 })

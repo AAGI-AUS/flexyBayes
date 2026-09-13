@@ -325,6 +325,11 @@
       }
     }
   }
+  # A standard deviation an INLA fit filled on its own ran under that prior,
+  # whatever the declaration says (R/inla_default_priors.R).
+  for (key in names(ps$filled_priors %||% character(0))) {
+    recorded[[key]] <- unname(ps$filled_priors[[key]])
+  }
   engine_default <- names(ps$engine_default %||% character(0))
   legacy <- identical(ps$kind, "legacy_scalar")
   bridged <- if (legacy) {

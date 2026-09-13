@@ -406,6 +406,12 @@ prior_summary.default <- function(object, ...) {
   out$engine_default <- .prior_summary_engine_default(object)
   out$residual_lowered_to <- .prior_summary_residual_lowering(object)
 
+  # A standard deviation an INLA fit filled with the package default because
+  # nobody stated a prior for it (R/inla_default_priors.R). The declaration
+  # printed above is what was stated; this is what was added to it.
+  completion <- object$extras$prior_completion
+  out$filled_priors <- .prior_summary_spec_strings(completion$filled)
+
   # brms is the authority on what reached Stan, so on a brms fit the
   # engine's own table is carried rather than reconstructed. This is what
   # closes the gap the declaration alone leaves: a retargeted residual
@@ -458,6 +464,31 @@ prior_summary.default <- function(object, ...) {
       "\n",
       sep = ""
     )
+  }
+  invisible(NULL)
+}
+
+# Spec strings keyed by canonical parameter name, for the priors an INLA fit
+# added to its declaration.
+.prior_summary_spec_strings <- function(specs) {
+  out <- character(0)
+  for (s in specs %||% list()) {
+    key <- .fb_prior_spec_parameter(s)
+    if (!is.na(key)) {
+      out[[key]] <- .fb_prior_spec_string(s)
+    }
+  }
+  out
+}
+
+# One section of added priors.
+.prior_summary_cat_added <- function(heading, priors) {
+  if (length(priors) == 0L) {
+    return(invisible(NULL))
+  }
+  cat("\n  ", heading, "\n", sep = "")
+  for (nm in names(priors)) {
+    cat("    ", nm, " ~ ", priors[[nm]], "\n", sep = "")
   }
   invisible(NULL)
 }
@@ -524,6 +555,11 @@ print.prior_summary_flexybayes <- function(x, ...) {
   )
 
   # ---- What the declaration above does not say ------------------------
+
+  .prior_summary_cat_added(
+    "Filled with the package default (no prior was stated for these):",
+    x$filled_priors %||% character(0)
+  )
 
   if (length(x$not_applied) > 0L) {
     cat("\n  Declared but not applied on this engine:\n", sep = "")
