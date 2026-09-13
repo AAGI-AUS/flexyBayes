@@ -2588,8 +2588,7 @@ print.fb_refusals_table <- function(x, ...) {
 # R/grammar_contract.R closes all four at one locus; these are the codes it
 # raises. See also .fb_check_grammar_arity() and .fb_literal_count().
 # 2026-09-13 -- INLA containment. Estimated correlation matrices are fitted
-# on brms only, and Gaussian fits on INLA refuse above the response scale
-# at which they were measured correct. An offset() in the fixed formula,
+# on brms only. An offset() in the fixed formula,
 # which was dropped without a message on both engines, refuses at ingest.
 .populate_refusal_registry_inla_containment <- function() {
   .register_refusal(
@@ -2610,25 +2609,6 @@ print.fb_refusals_table <- function(x, ...) {
     registered_in_adr = paste0(
       "cairn 2026-09-13-estimated-correlation-matrices-brms-only"
     ),
-    plan_field = "rejected_routes",
-    since_version = "0.11.0.9000"
-  )
-  .register_refusal(
-    reason_code = "inla_response_scale_unvalidated",
-    description = paste0(
-      "A Gaussian fit on INLA whose response standard deviation exceeds the ",
-      "bound up to which INLA's Gaussian fits were measured correct. Above ",
-      "it INLA returned wrong variance components on data with a known ",
-      "answer, some with every convergence check passing. The bound is a ",
-      "proxy from that measurement and stands until fitting on a ",
-      "standardised response is validated."
-    ),
-    message_template = paste0(
-      "The response `%s` has a standard deviation of %s, and Gaussian fits ",
-      "on INLA are validated only up to %s. Rescale the response, or pass ",
-      "backend = \"brms\"."
-    ),
-    registered_in_adr = "cairn 2026-09-13-inla-gaussian-standardised-response",
     plan_field = "rejected_routes",
     since_version = "0.11.0.9000"
   )

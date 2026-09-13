@@ -468,12 +468,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # The fresh-review closure adds one: a projection decision asked to choose
   # on a metric other than elpd, refused before any fit
   # (projection_metric_unsupported) (= 191).
+  #
+  # Removing the response-scale refusal takes one away. Every Gaussian INLA
+  # fit now runs on a standardised response under scale-aware default
+  # priors, so a large response standard deviation no longer refuses
+  # (inla_response_scale_unvalidated) (= 190).
   expect_false("selection_penalty_not_implemented" %in% entries)
-  expect_equal(length(entries), 191L)
+  expect_false("inla_response_scale_unvalidated" %in% entries)
+  expect_equal(length(entries), 190L)
   expect_true("fixed_offset_unsupported" %in% entries)
   expect_true("projection_metric_unsupported" %in% entries)
   expect_true("correlated_covariance_requires_brms" %in% entries)
-  expect_true("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_scoring_unit_mismatch" %in% entries)
   expect_true("projection_search_unsupported" %in% entries)
   expect_true("penalty_candidate_columns_unscaled" %in% entries)

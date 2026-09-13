@@ -133,7 +133,7 @@
   .populate_refusal_registry_selection_verb()
 
   # 2026-09-13: INLA containment -- estimated correlation matrices go to
-  # brms, and Gaussian INLA fits refuse above the validated response scale.
+  # brms.
   .populate_refusal_registry_inla_containment()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).

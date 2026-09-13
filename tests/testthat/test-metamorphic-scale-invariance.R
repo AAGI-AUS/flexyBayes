@@ -19,8 +19,7 @@
 #
 #   * a GATE on the structures the ASReml oracle has validated. These assert
 #     invariance and must pass. If one starts failing, a fit that was right
-#     has become wrong. Both sit at response standard deviations below the
-#     bound above which a Gaussian INLA fit refuses.
+#     has become wrong.
 #
 #   * the refusal of the two structures, at the original scale and rescaled,
 #     so that neither scale can put them back on INLA.

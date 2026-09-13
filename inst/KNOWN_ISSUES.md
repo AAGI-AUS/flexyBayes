@@ -117,26 +117,7 @@ two, a model ASReml cannot fit and INLA can).
 
 Each is reproducible on this release. Priority is for the MET use case.
 
-1. **Gaussian fits on INLA go wrong at large response scale, and refuse
-   there.** Every Gaussian model on INLA was measured wrong once the
-   response standard deviation reaches the low hundreds, with no warning.
-   On `lme4::sleepstudy` the plain random intercept is stable at response
-   standard deviations of 56 to 169, and from 282 upward it returned ratios
-   of the subject variance to the residual between 0.03 and 6.99 against
-   REML's 1.198, several of those fits passing the numerical-confirm gate.
-   A simulated correlated slope on a kilogram scale returned a residual
-   standard deviation of 0.13 against a truth of 250. Fitting on a
-   standardised response returned 1.218 at every scale from the original to
-   a thousandfold. Until that fix is validated, a Gaussian fit on INLA whose
-   response standard deviation exceeds 150 refuses by name
-   (`inla_response_scale_unvalidated`), naming the two ways forward:
-   rescale the response, kg/ha to t/ha for example, or fit on brms, which
-   `backend = "auto"` does. The bound is a proxy from the `sleepstudy`
-   measurement rather than a property of any data set. The validations and
-   applications banked so far sit at response standard deviations of 0.6 to
-   56 and are unaffected. The measurement is in
-   `oracle_work/inla_scale_diagnosis_2026-09-13/FINDINGS.md`.
-2. **Estimated correlation matrices are fitted on brms only.** `us(f):g`
+1. **Estimated correlation matrices are fitted on brms only.** `us(f):g`
    and the correlated random slope `(x | g)` refuse on INLA by name
    (`correlated_covariance_requires_brms`), and `backend = "auto"` routes
    both to brms. On INLA each was one `iidKd` or `iid2d` field under a joint
@@ -151,21 +132,21 @@ Each is reproducible on this release. Priority is for the MET use case.
    prior couples the variances and the correlations whatever the response
    scale. Readmitting either structure on INLA would take a prior that
    separates the two, which INLA's built-in models do not provide.
-3. **Take the combined MET fit to realistic scale.** The emit and one live
+2. **Take the combined MET fit to realistic scale.** The emit and one live
    fit are in place (120 rows, 4 chains, clean diagnostics). What is missing
    is the same check on a trial series of realistic size, where
    `adapt_delta` and the rest of Stan's `control` list start to matter.
    Those are reachable -- `flexybayes()` and `fb_brms()` forward `seed` and
    `control` to `brms::brm()` -- so the gap is the run, not the route.
    *Closes the package's headline gap.*
-4. **INLA: interaction / nested random effects.** Map `a:b` to
+3. **INLA: interaction / nested random effects.** Map `a:b` to
    `f(interaction(a, b), model = "iid")` and characterise the finest-stratum
    collapse rather than refusing categorically. *Unblocks GxE on the fast
    engine.*
-5. **Heteroscedastic residual on INLA.** A hierarchical / few-stratum
+4. **Heteroscedastic residual on INLA.** A hierarchical / few-stratum
    reformulation. The full many-independent-variance form is outside INLA's
    envelope -- do not promise it.
-6. **Exact aggregation of a factor interaction.** The per-row INLA path
+5. **Exact aggregation of a factor interaction.** The per-row INLA path
    fits `y ~ a*b` on any family (see the resolved list below), but the
    aggregated path cannot: it expands the fixed effects to a model matrix
    and names its columns in the INLA formula, and INLA does not resolve a
@@ -175,11 +156,11 @@ Each is reproducible on this release. Priority is for the MET use case.
    `marginals.fixed` and the latent field together, so the posterior is
    never labelled with a synthesised token. *Restores compression on the
    replicated factorial where it is most useful.*
-7. **Aggregated-binomial input.** No clean `cbind(success, failure)` or
+6. **Aggregated-binomial input.** No clean `cbind(success, failure)` or
    `trials =` on the main fit entry. The streaming path has `trials` but the
    modelling entry does not. Today the only working form is Bernoulli long
    expansion. *Usability.*
-8. **Observation weights outside the Gaussian/identity case.** `weights =`
+7. **Observation weights outside the Gaussian/identity case.** `weights =`
    now fits (0.9.3) for the Gaussian family on an identity link, on both
    engines, in the ASReml / lme4 / `glm(weights=)` precision sense --
    checked against an analytic oracle and matching `lme4::lmer(weights=)`
@@ -191,7 +172,7 @@ Each is reproducible on this release. Priority is for the MET use case.
    weights refuses (`weights_not_aggregatable`) because the closed-form
    sufficient statistics do not carry a per-observation weight through
    the compression.
-9. **A bounded uniform prior whose upper bound cuts into the posterior can
+8. **A bounded uniform prior whose upper bound cuts into the posterior can
    crash the INLA binary.** *Symptom*: the `inla` subprocess exits with a
    segmentation fault, INLA retries once with improved initial values and
    the retry crashes too, and `backend = "inla"` then raises `INLA fit
@@ -215,7 +196,7 @@ Each is reproducible on this release. Priority is for the MET use case.
    engine produced it, so a fit can always be traced to its engine.
    *The crash is upstream. What remains ours is that the re-route is a
    message rather than a refusal you have to acknowledge.*
-10. **The autoregressive field can lose its signal on an incomplete grid.**
+9. **The autoregressive field can lose its signal on an incomplete grid.**
    *Symptom*: the field standard deviation runs to a floor near 0.01, both
    correlations sit at approximately zero with credible intervals spanning
    almost the whole of `[-1, 1]`, and the variance the field should have
@@ -251,6 +232,24 @@ Each is reproducible on this release. Priority is for the MET use case.
 Listed rather than deleted, because a reader who met one of these needs to
 know it went away. Each was re-checked live against this tree.
 
+- **Gaussian fits on INLA at large response scale.** Every Gaussian model on
+  INLA was measured wrong once the response standard deviation reached the
+  low hundreds: on `lme4::sleepstudy` the plain random intercept returned
+  ratios of the subject variance to the residual between 0.03 and 6.99
+  against REML's 1.198, several of those fits passing the numerical-confirm
+  gate. Every Gaussian INLA fit now runs on a standardised response, and the
+  result is mapped back to the original units exactly. The default priors
+  the package chooses are scaled by the response and by each covariate. On
+  `lme4::sleepstudy` the default-prior fit agrees across response
+  multipliers from 0.01 to 1000. The refusal of a Gaussian INLA fit whose
+  response standard deviation exceeds 150
+  (`inla_response_scale_unvalidated`) is gone: an explicit
+  `backend = "inla"`, `fb_inla()`, `backend = "auto"`, the aggregated route
+  and the streamed route each fit a response on a thousandfold scale and
+  agree with the same model fitted on the original one. The checks are in
+  `tests/testthat/test-response-standardisation.R`,
+  `tests/testthat/test-inla-scale-aware-defaults.R` and
+  `tests/testthat/test-inla-containment.R`.
 - **INLA interaction fixed effect on the binomial path.** `y ~ a*b` with
   `family = "binomial"` and `backend = "inla"` was recorded as failing
   inside INLA with `object 'a_b' not found`. The per-row path fits it: on

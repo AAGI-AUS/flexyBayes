@@ -1,20 +1,22 @@
 # =============================================================================
 # INLA containment (2026-09-13).
 #
-# Two refusals, each a recorded decision:
+# Estimated correlation matrices -- the correlated random slope (x | g) and
+# us(f):g -- are fitted on brms only (correlated_covariance_requires_brms),
+# a recorded decision.
 #
-#   * estimated correlation matrices -- the correlated random slope (x | g)
-#     and us(f):g -- are fitted on brms only
-#     (correlated_covariance_requires_brms);
-#   * a Gaussian fit on INLA refuses when the response standard deviation
-#     exceeds .FB_INLA_RESPONSE_SD_MAX (inla_response_scale_unvalidated).
+# The same change made a Gaussian fit on INLA refuse when the response
+# standard deviation exceeded 150 (inla_response_scale_unvalidated). That
+# refusal is removed: every Gaussian INLA fit now runs on a standardised
+# response under scale-aware default priors. The second half of this file
+# checks that a large-scale response fits, and fits the same model as the
+# response on its original scale, on every route the refusal was written on.
 #
 # A refusal protects the route it is written on and no other, so every route
 # that can put a model on INLA is exercised here: the gate, an explicit
 # backend = "inla" fit, the fb_inla() pin, fb_plan() under "auto", the
 # aggregated route and the streamed route, the last two of which do not pass
-# through the gate. The scale check reads a standard deviation recorded at
-# ingest, so each ingest path is checked for recording it.
+# through the gate.
 # =============================================================================
 
 .ct_rules <- function(res) {
@@ -131,192 +133,170 @@ test_that("auto routes both structures to brms before anything is fitted", {
 
 # --- the response scale ------------------------------------------------ #
 
-test_that("the scale bound sits at 150 and is read for Gaussian fits only", {
-  expect_identical(.FB_INLA_RESPONSE_SD_MAX, 150)
+# Each route fits a response one thousand times its original scale and is
+# compared with the same model on the original response, which is that
+# response divided by the multiplier. Multiplying the response by a constant
+# changes no model, so every fixed effect and every standard deviation,
+# divided by the multiplier, is the same number. The expected values are
+# therefore a second fit, never a number read off the code.
+#
+# Tolerances, from ten identical fits at each scale on each route (INLA
+# 26.8.7), as the largest relative difference of any estimate, within one
+# scale or between a large-scale fit and a reference fit:
+#
+#   fixed effects        at most 2.9e-15 on the per-row routes and 9.8e-12
+#                        on the aggregated and streamed routes. Tolerance
+#                        1e-9, the allowance test-inla-scale-aware-defaults.R
+#                        makes for engine output that differs between
+#                        platforms in its last digits.
+#   standard deviations  at most 4.9e-6 on the per-row routes (sd_Subject)
+#                        and 7.3e-7 on the aggregated and streamed routes.
+#                        Tolerance 1.5e-5, about three times the larger.
+#
+# The block design has twenty blocks because a block standard deviation
+# over four ran 2 per cent apart between identical aggregated fits at either
+# scale; over twenty it holds to 7.3e-7. Before the response was
+# standardised a thousandfold fit on sleepstudy returned ratios of the
+# subject variance to the residual between 0.03 and 6.99 against 1.198,
+# orders of magnitude outside either tolerance.
+.ct_multiplier <- 1000
+.ct_tol <- list(fixed = 1e-9, sd = 1.5e-5)
 
-  below <- fb_from_asreml(fixed = y ~ x, random = ~ g, data = .ct_scaled(149.9))
-  above <- fb_from_asreml(fixed = y ~ x, random = ~ g, data = .ct_scaled(150.1))
-  expect_false("inla_response_scale_unvalidated" %in% .ct_rules(lgm_gate(below)))
-  res <- lgm_gate(above)
-  expect_identical(res$primary_rule, "inla_response_scale_unvalidated")
-  expect_identical(res$failures[[1L]]$reason_code,
-                   "inla_response_scale_unvalidated")
-
-  # Counts with a standard deviation in the thousands are not a Gaussian
-  # fit, and the defect was measured on Gaussian fits.
-  set.seed(3L)
-  dp <- data.frame(g = factor(rep(letters[1:10], each = 12L)))
-  dp$y <- stats::rpois(nrow(dp), lambda = rep(c(50, 5000), each = 60L))
-  fp <- fb_from_asreml(fixed = y ~ 1, random = ~ g, data = dp,
-                       family = "poisson")
-  expect_gt(fp$data_summary$response_sd, 150)
-  expect_false("inla_response_scale_unvalidated" %in% .ct_rules(lgm_gate(fp)))
-})
-
-test_that("the refusal says the bound is a proxy and names both ways forward", {
-  skip_if_not_installed("INLA")
-  skip_if_not_installed("lme4")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  err <- tryCatch(
-    suppressMessages(flexybayes(
-      Reaction ~ Days + (1 | Subject), data = .ct_sleepstudy(10),
-      backend = "inla", return_code = TRUE, verbose = FALSE
-    )),
-    error = function(e) e
-  )
-  expect_s3_class(err, "flexybayes_refusal_inla_response_scale_unvalidated")
-  expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
-  msg <- conditionMessage(err)
-  expect_match(msg, "standard deviation of 563", fixed = TRUE)
-  expect_match(msg, "proxy", fixed = TRUE)
-  expect_match(msg, "Rescale the response", fixed = TRUE)
-  expect_match(msg, "backend = \"brms\"", fixed = TRUE)
-
-  # The engine pin reaches the same refusal.
-  expect_error(
-    suppressMessages(fb_inla(
-      Reaction ~ Days + (1 | Subject), data = .ct_sleepstudy(10),
-      return_code = TRUE, verbose = FALSE
-    )),
-    class = "flexybayes_refusal_inla_response_scale_unvalidated"
-  )
-})
-
-test_that("sleepstudy times ten goes to brms under auto, and fits on INLA at x1", {
-  skip_if_not_installed("INLA")
-  skip_if_not_installed("brms")
-  skip_if_not_installed("lme4")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-
-  p10 <- fb_plan(Reaction ~ Days + (1 | Subject), data = .ct_sleepstudy(10),
-                 backend = "auto")
-  expect_identical(p10$backend_chosen, "brms")
-  expect_identical(p10$gate_primary_rule, "inla_response_scale_unvalidated")
-
-  p1 <- fb_plan(Reaction ~ Days + (1 | Subject), data = .ct_sleepstudy(1),
-                backend = "auto")
-  expect_identical(p1$backend_chosen, "inla")
-
-  skip_on_cran()
-  fit <- suppressWarnings(suppressMessages(flexybayes(
-    Reaction ~ Days + (1 | Subject), data = .ct_sleepstudy(1),
-    backend = "inla", verbose = FALSE
-  )))
-  expect_s3_class(fit, "flexybayes_inla")
-})
-
-test_that("the standard deviation is recorded on every ingest path", {
-  skip_if_not_installed("lme4")
-  d <- .ct_sleepstudy(10)
-  s <- stats::sd(d$Reaction)
-
-  expect_equal(
-    fb_from_asreml(fixed = Reaction ~ Days, random = ~ Subject,
-                   data = d)$data_summary$response_sd,
-    s
-  )
-  expect_equal(
-    fb_from_brms(Reaction ~ Days + (1 | Subject), data = d)$
-      data_summary$response_sd,
-    s
-  )
-
-  # A transformed response is measured as evaluated, not as the column it
-  # names: the logarithm of a large response is on a small scale, and ten
-  # times a moderate one is not.
-  d1 <- .ct_sleepstudy(1)
-  logged <- fb_from_asreml(fixed = log(Reaction) ~ Days, random = ~ Subject,
-                           data = d1)
-  expect_lt(logged$data_summary$response_sd, 1)
-  tenfold <- fb_from_asreml(fixed = I(10 * Reaction) ~ Days,
-                            random = ~ Subject, data = d1)
-  expect_equal(tenfold$data_summary$response_sd, s)
-  expect_identical(lgm_gate(tenfold)$primary_rule,
-                   "inla_response_scale_unvalidated")
-
-  # A response with gaps is still measured and still gated. The missing-
-  # response policy adds or drops only rows whose response is missing, so
-  # the standard deviation recorded at ingest is the one the gate reads.
-  skip_if_not_installed("brms")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  d_na <- d
-  d_na$Reaction[c(3L, 40L)] <- NA_real_
-  p <- suppressMessages(flexybayes(
-    Reaction ~ Days + (1 | Subject), data = d_na, backend = "auto",
-    plan = TRUE
-  ))
-  expect_identical(p$gate_primary_rule, "inla_response_scale_unvalidated")
-})
-
-test_that("the aggregated route applies the bound to an explicit INLA request", {
-  # An explicit backend = "inla" reaches the aggregated emit without the
-  # gate, so the bound is applied there directly.
-  skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+.ct_blocks <- function(multiplier = 1) {
   set.seed(20260913L)
   d <- expand.grid(
-    rep = seq_len(20L),
+    rep = seq_len(4L),
     trt = factor(seq_len(5L)),
-    blk = factor(seq_len(4L))
+    blk = factor(seq_len(20L))
   )
-  d$y <- 10 + as.numeric(d$trt) * 0.5 + stats::rnorm(nrow(d), 0, 0.3)
-  d_big <- d
-  d_big$y <- 1000 * d_big$y
+  d$y <- multiplier * (10 + as.numeric(d$trt) * 0.5 +
+                         stats::rnorm(nrow(d), 0, 0.3) +
+                         stats::rnorm(20L, 0, 0.4)[as.integer(d$blk)])
+  d
+}
 
-  expect_error(
-    suppressMessages(flexybayes(
-      fixed = y ~ trt, random = ~ blk, data = d_big,
-      backend = "inla", aggregate = TRUE, verbose = FALSE
-    )),
-    class = "flexybayes_refusal_inla_response_scale_unvalidated"
+# A large-scale fit is a converged INLA fit of the same model as the
+# reference: the same estimates, each divided by the multiplier.
+.ct_expect_same_model <- function(big, reference) {
+  expect_s3_class(big, "flexybayes_inla")
+  expect_true(isTRUE(summary(big)$converge$ok))
+  fixed_big <- coef(big) / .ct_multiplier
+  fixed_ref <- coef(reference)
+  expect_identical(names(fixed_big), names(fixed_ref))
+  expect_lt(max(abs(fixed_big - fixed_ref) / abs(fixed_ref)), .ct_tol$fixed)
+
+  vc_big <- summary(big)$varcomp
+  vc_ref <- summary(reference)$varcomp
+  expect_identical(vc_big$component, vc_ref$component)
+  sd_big <- vc_big$estimate / .ct_multiplier
+  expect_lt(max(abs(sd_big - vc_ref$estimate) / vc_ref$estimate), .ct_tol$sd)
+}
+
+test_that("the gate admits a Gaussian model at any response scale", {
+  skip_if_not_installed("lme4")
+  d <- .ct_sleepstudy(.ct_multiplier)
+  expect_gt(stats::sd(d$Reaction), 150)
+
+  expect_s3_class(
+    lgm_gate(fb_from_brms(Reaction ~ Days + (1 | Subject), data = d)),
+    "fb_terms"
   )
-
-  # The negative control: the same design at its own scale takes the
-  # aggregated route.
-  skip_on_cran()
-  fit <- suppressMessages(flexybayes(
-    fixed = y ~ trt, random = ~ blk, data = d,
-    backend = "inla", aggregate = TRUE, verbose = FALSE
-  ))
-  expect_s3_class(fit, "flexybayes_aggregated")
+  expect_s3_class(
+    lgm_gate(fb_from_asreml(fixed = Reaction ~ Days, random = ~ Subject,
+                            data = d)),
+    "fb_terms"
+  )
+  # A transformed response is gated as evaluated, and ten times a large one
+  # is admitted too.
+  expect_s3_class(
+    lgm_gate(fb_from_asreml(fixed = I(10 * Reaction) ~ Days,
+                            random = ~ Subject, data = d)),
+    "fb_terms"
+  )
 })
 
-test_that("the streamed route reads the full data's scale, not the head's", {
-  # flexybayes_stream() builds its IR from a head sample -- the first 1e5
-  # rows -- and reaches the aggregated emit without the gate. The head below
-  # is on a small scale and the rest of the source is not, so a check reading
-  # the head's standard deviation would pass: about 1 in the head against
-  # about 577 over the whole source.
+test_that("a large-scale response fits on INLA through backend, pin and auto", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("lme4")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d_big <- .ct_sleepstudy(.ct_multiplier)
+  d_ref <- d_big
+  d_ref$Reaction <- d_ref$Reaction / .ct_multiplier
+
+  reference <- suppressWarnings(flexybayes(
+    Reaction ~ Days + (1 | Subject), data = d_ref, backend = "inla",
+    verbose = FALSE
+  ))
+
+  explicit <- suppressWarnings(flexybayes(
+    Reaction ~ Days + (1 | Subject), data = d_big, backend = "inla",
+    verbose = FALSE
+  ))
+  .ct_expect_same_model(explicit, reference)
+
+  pinned <- suppressWarnings(fb_inla(
+    Reaction ~ Days + (1 | Subject), data = d_big, verbose = FALSE
+  ))
+  .ct_expect_same_model(pinned, reference)
+
+  # Under "auto" the plan names INLA and the gate accepts, where the refusal
+  # used to route this model to brms before anything was fitted.
+  p <- fb_plan(Reaction ~ Days + (1 | Subject), data = d_big,
+               backend = "auto")
+  expect_identical(p$backend_chosen, "inla")
+  expect_identical(p$gate_outcome, "accept")
+  expect_true(p$will_fit)
+  auto <- suppressWarnings(flexybayes(
+    Reaction ~ Days + (1 | Subject), data = d_big, backend = "auto",
+    verbose = FALSE
+  ))
+  .ct_expect_same_model(auto, reference)
+})
+
+test_that("a large-scale response fits on the aggregated route", {
+  # An explicit backend = "inla" reaches the aggregated emit without the
+  # gate, which is why the refusal was written there separately.
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  set.seed(20260913L)
-  n_head <- 100000L
-  n <- 150000L
-  d <- data.frame(
-    f = factor(sample(paste0("f", seq_len(5L)), n, replace = TRUE)),
-    g = factor(sample(paste0("g", seq_len(20L)), n, replace = TRUE))
-  )
-  d$y <- c(stats::rnorm(n_head, 5, 1), stats::rnorm(n - n_head, 5, 1000))
-  expect_lt(stats::sd(d$y[seq_len(n_head)]), 150)
+  d_big <- .ct_blocks(.ct_multiplier)
+  expect_gt(stats::sd(d_big$y), 150)
+  d_ref <- d_big
+  d_ref$y <- d_ref$y / .ct_multiplier
 
-  expect_error(
-    suppressMessages(flexybayes_stream(
-      y ~ f,
-      random = ~ g,
-      source = d,
-      backend = "inla",
-      chunk_rows = 50000L,
-      verbose = FALSE
-    )),
-    class = "flexybayes_refusal_inla_response_scale_unvalidated"
-  )
+  fit_of <- function(d) {
+    suppressWarnings(flexybayes(
+      fixed = y ~ trt, random = ~ blk, data = d,
+      backend = "inla", aggregate = TRUE, verbose = FALSE
+    ))
+  }
+  big <- fit_of(d_big)
+  reference <- fit_of(d_ref)
+  expect_s3_class(big, "flexybayes_aggregated")
+  expect_s3_class(reference, "flexybayes_aggregated")
+  .ct_expect_same_model(big, reference)
+})
 
-  # Without the fit, the aggregation itself is not refused: the bound is a
-  # statement about INLA's Gaussian fit, not about the data.
-  agg <- suppressMessages(flexybayes_stream(
-    y ~ f, random = ~ g, source = d, backend = "inla",
-    chunk_rows = 50000L, fit = FALSE, verbose = FALSE
-  ))
-  expect_s3_class(agg, "fb_aggregated")
+test_that("a large-scale response fits on the streamed route", {
+  # flexybayes_stream() reaches the aggregated emit without the gate. A small
+  # source read in chunks of 150 rows keeps the test fast and still streams:
+  # 400 rows arrive in three chunks.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d_big <- .ct_blocks(.ct_multiplier)
+  d_ref <- d_big
+  d_ref$y <- d_ref$y / .ct_multiplier
+
+  fit_of <- function(d) {
+    suppressWarnings(suppressMessages(flexybayes_stream(
+      y ~ trt, random = ~ blk, source = d, backend = "inla",
+      chunk_rows = 150L, verbose = FALSE
+    )))
+  }
+  big <- fit_of(d_big)
+  reference <- fit_of(d_ref)
+  expect_s3_class(big, "flexybayes_aggregated")
+  .ct_expect_same_model(big, reference)
 })

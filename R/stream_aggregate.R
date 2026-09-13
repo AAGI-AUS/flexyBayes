@@ -178,10 +178,6 @@ flexybayes_stream <- function(
     n <- sum(ss$n_k)
     resp_var <- (sum(ss$S2_k) - sum(ss$S1_k)^2 / n) / (n - 1)
     resp_sd <- if (n > 1 && resp_var >= 0) sqrt(resp_var) else NA_real_
-    scale_refusal <- .fb_inla_response_scale_refusal(fb$response, resp_sd)
-    if (!is.null(scale_refusal)) {
-      stop(scale_refusal)
-    }
   }
 
   # No prior stated: the package's bounded default, as flexybayes() builds it
