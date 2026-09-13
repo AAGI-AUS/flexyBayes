@@ -842,42 +842,17 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # vignette.
 #
 # `resp_sd`, when given, is the response standard deviation read from
-# somewhere other than `data` -- the aggregated and streamed routes read it
-# off the sufficient statistics, and the streamed route holds only a head
-# sample of the rows.
+# somewhere other than `data` -- the streamed route holds only a head sample
+# of the rows and reads it off the full sufficient statistics instead.
 .default_uniform_scale <- function(data, response, family, link = NULL,
                                    resp_sd = NULL) {
-  fam <- if (inherits(family, "family")) {
-    family$family
-  } else {
-    as.character(family)
-  }
-  fam <- tolower(fam %||% "gaussian")
-  link_name <- if (!is.null(link)) {
-    tolower(link)
-  } else if (inherits(family, "family")) {
-    tolower(family$link)
-  } else {
-    NULL
-  }
-  is_log_link <- isTRUE(link_name == "log") ||
-    fam %in%
-      c(
-        "poisson",
-        "negative_binomial",
-        "negbinom",
-        "nbinomial",
-        "gamma",
-        "hurdle_gamma"
-      )
-  is_logit_link <- isTRUE(link_name == "logit") ||
-    fam %in% c("binomial", "binary", "beta")
+  link_class <- .fb_default_link_class(family, link)
 
-  if (is_logit_link) {
+  if (identical(link_class, "logit")) {
     return(list(scale = 5, basis = "logit_uniform"))
   }
 
-  if (is_log_link) {
+  if (identical(link_class, "log")) {
     return(list(scale = 3, basis = "log_link_uniform"))
   }
 
@@ -911,6 +886,47 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     sdv <- 1.0
   }
   list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
+}
+
+# Which scale a default prior is written on: "logit" and "log" for the links
+# whose linear predictor is unit-free, "identity" for everything whose
+# linear predictor carries the response's units. Shared by the
+# variance-component default above and the fixed-effect default on INLA
+# (R/inla_default_priors.R), so the two cannot classify a family differently.
+.fb_default_link_class <- function(family, link = NULL) {
+  fam <- if (inherits(family, "family")) {
+    family$family
+  } else {
+    as.character(family)
+  }
+  fam <- tolower(fam %||% "gaussian")
+  link_name <- if (!is.null(link)) {
+    tolower(link)
+  } else if (inherits(family, "family")) {
+    tolower(family$link)
+  } else {
+    NULL
+  }
+  is_log_link <- isTRUE(link_name == "log") ||
+    fam %in%
+      c(
+        "poisson",
+        "negative_binomial",
+        "negbinom",
+        "nbinomial",
+        "gamma",
+        "hurdle_gamma"
+      )
+  is_logit_link <- isTRUE(link_name == "logit") ||
+    fam %in% c("binomial", "binary", "beta")
+
+  if (is_logit_link) {
+    return("logit")
+  }
+  if (is_log_link) {
+    return("log")
+  }
+  "identity"
 }
 
 # Construct the v0.1 default uniform prior fb_prior() for a model.

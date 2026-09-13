@@ -181,9 +181,9 @@ prior_summary.default <- function(object, ...) {
       "student_t on the intercept, centred on the response"
     ),
     "inla" = paste0(
-      "INLA's own control.fixed defaults -- prec = 0.001 on the slopes ",
-      "(a standard deviation near 32), and prec.intercept = 0, which is ",
-      "flat"
+      "INLA's own control.fixed defaults -- prec = 0.001 (a standard ",
+      "deviation near 32, in standard deviations of the response on a ",
+      "Gaussian identity-link fit), and prec.intercept = 0, which is flat"
     ),
     "the engine's own fixed-effect default"
   )
@@ -407,8 +407,9 @@ prior_summary.default <- function(object, ...) {
   out$residual_lowered_to <- .prior_summary_residual_lowering(object)
 
   # What an INLA fit carries that nobody stated (R/inla_default_priors.R): a
-  # standard deviation filled with the package default, and a default slope
-  # bound divided by its covariate's standard deviation. The declaration
+  # standard deviation filled with the package default, a default slope
+  # bound divided by its covariate's standard deviation, and the
+  # covariate-scaled default on each numeric fixed effect. The declaration
   # printed above is what was stated; these are what was added to it.
   completion <- object$extras$prior_completion
   out$filled_priors <- .prior_summary_spec_strings(completion$filled)
@@ -416,6 +417,8 @@ prior_summary.default <- function(object, ...) {
     completion$covariate_scaled
   )
   out$covariate_sd <- completion$covariate_sd %||% numeric(0)
+  out$fixed_default_sd <- completion$fixed_default_sd %||% numeric(0)
+  out$fixed_default_multiplier <- completion$fixed_default_multiplier
 
   # brms is the authority on what reached Stan, so on a brms fit the
   # engine's own table is carried rather than reconstructed. This is what
@@ -454,16 +457,34 @@ prior_summary.default <- function(object, ...) {
     )
   } else {
     named <- x$fixed_b_named %||% character(0)
+    scaled <- x$fixed_default_sd %||% numeric(0)
+    other <- if (length(scaled)) "other " else ""
     cat(
       "    prior_fixed_sd:  not supplied -- ",
+      if (length(scaled)) {
+        paste0(
+          "each numeric column carries the covariate-scaled default\n",
+          "      normal(0, K u / sd(column)), K = ",
+          format(signif(x$fixed_default_multiplier %||% NA_real_, 6)),
+          ", u = sd(y) on an identity link and 1 otherwise:\n",
+          paste0(
+            "        ", names(scaled), " ~ normal(0, ",
+            format(signif(scaled, 6)), ")",
+            collapse = "\n"
+          ),
+          "\n      "
+        )
+      } else {
+        ""
+      },
       if (length(named)) {
         paste0(
-          "every fixed effect except ",
+          "every ", other, "fixed effect except ",
           paste(paste0("`", named, "`"), collapse = ", "),
           "\n      (given a prior by the fb_prior() row below) carries "
         )
       } else {
-        "the fixed effects carry "
+        paste0("the ", other, "fixed effects carry ")
       },
       x$fixed_sd_engine_default,
       "\n",

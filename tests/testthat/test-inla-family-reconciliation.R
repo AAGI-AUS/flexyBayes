@@ -180,6 +180,10 @@ test_that("a beta fit on INLA carries a residual prior under phi", {
     return_code = TRUE
   ))
   expect_identical(emitted$family, "beta")
-  expect_length(emitted$control_fixed, 0L)
+  # No fixed-effect prior was stated: the numeric column takes the
+  # covariate-scaled default on the logit scale, normal(0, sqrt(1000) / sd(x)),
+  # and nothing else is written.
+  expect_equal(emitted$control_fixed$prec, list(x = stats::sd(d$beta$x)^2 / 1000))
+  expect_named(emitted$control_fixed, c("mean", "prec"))
   expect_named(emitted$control_family$hyper, "phi")
 })

@@ -242,13 +242,20 @@
 #'   supply it**, on every backend: brms receives one `normal(0, sd)`
 #'   row per fixed-effect class, and INLA receives `control.fixed` with
 #'   `prec = 1 / sd^2` on the slopes and the intercept alike. Left
-#'   unsupplied, each engine keeps its own
-#'   fixed-effect default -- brms's flat coefficients and
-#'   response-centred `student_t` intercept, INLA's `prec = 0.001` and
-#'   flat intercept -- because replacing a response-centred intercept
-#'   prior with `normal(0, 100)` is a different model for any response
-#'   far from zero. [prior_summary()] names which of the two a fit ran
-#'   under.
+#'   unsupplied, brms keeps its own fixed-effect default -- flat
+#'   coefficients and a response-centred `student_t` intercept -- because
+#'   replacing a response-centred intercept prior with `normal(0, 100)` is
+#'   a different model for any response far from zero. INLA gives each
+#'   column built from a numeric variable the covariate-scaled default
+#'   `normal(0, 1e5 * sd(y) / sd(x))` on an identity link and
+#'   `normal(0, sqrt(1000) / sd(x))` on a log or logit link, so a
+#'   covariate's units do not change the fit, and keeps its own
+#'   `prec = 0.001` on factor contrasts and its flat intercept.
+#'   [prior_summary()] names what a fit ran under. A supplied value is
+#'   never rescaled by a covariate: it is a standard deviation in response
+#'   units per covariate unit, so on a covariate recorded in small units
+#'   (a large coefficient) it can bind -- measure the covariate in natural
+#'   units, or leave the argument unsupplied on INLA.
 #' @param prior_vc_sd Numeric: hyperparameter for the legacy
 #'   `lognormal(0, prior_vc_sd)` variance-component prior. **Note:**
 #'   when both `prior` and `prior_vc_sd` are left at their defaults,

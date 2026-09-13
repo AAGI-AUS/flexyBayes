@@ -1435,10 +1435,16 @@ emit_inla <- function(
         # standardised. The draw accessors read it to map draws back.
         response_standardisation = standardisation,
         # The priors this fit carries that nobody stated: the standard
-        # deviations filled with the package default and the default slope
-        # bounds divided by their covariate's standard deviation.
-        # prior_summary() reads it.
-        prior_completion = completion$record,
+        # deviations filled with the package default, the default slope
+        # bounds divided by their covariate's standard deviation, and the
+        # covariate-scaled fixed-effect defaults. prior_summary() reads it.
+        prior_completion = c(
+          completion$record,
+          list(
+            fixed_default_sd = .fb_inla_default_fixed_sd(fb, data),
+            fixed_default_multiplier = .fb_inla_fixed_sd_multiplier(fb)
+          )
+        ),
         # What has to match before this fit can be compared with another
         # engine's -- the same slot, built by the same function, as the
         # brms emit fills. See R/model_fingerprint.R.
@@ -2285,6 +2291,17 @@ emit_inla <- function(
     available = coef_names %||% .fb_inla_fixed_coef_names(fb, data)
   )
   if (!scalar_supplied) {
+    # A numeric column nobody gave a prior takes the covariate-scaled default
+    # (R/inla_default_priors.R), written per coefficient so a `b()` row keeps
+    # its own entry and every other coefficient keeps INLA's.
+    default_sd <- .fb_inla_default_fixed_sd(fb, data)
+    if (length(default_sd)) {
+      per_coef$mean <- c(
+        per_coef$mean,
+        as.list(stats::setNames(rep(0, length(default_sd)), names(default_sd)))
+      )
+      per_coef$prec <- c(per_coef$prec, as.list(1 / default_sd^2))
+    }
     return(per_coef)
   }
   if (

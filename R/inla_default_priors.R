@@ -10,15 +10,18 @@
 #     bounded uniform default, uniform(0, U), with U = 5 sd(y) on an identity
 #     link and a constant on a log or logit link (.default_uniform_scale());
 #   * the standard deviation of an uncorrelated slope is in response units
-#     per covariate unit, so its default bound is U / sd(x).
+#     per covariate unit, so its default bound is U / sd(x);
+#   * a numeric fixed-effect column with no stated prior takes
+#     normal(0, K sd(y) / sd(x_j)), with sd(y) replaced by 1 and a smaller K
+#     on a log or logit link.
 #
 # A Gaussian identity-link fit runs on a standardised response
 # (R/inla_standardise.R), and each of these is stated in original units and
 # restated on those coordinates with the stated priors. Before this file,
 # anything unstated took INLA's own default on the standardised coordinates,
-# which is scale-free in the response and blind to every covariate, and two
-# failures followed. Each was silent: INLA reported mode.status 0 and the
-# numerical-confirm gate passed.
+# which is scale-free in the response and blind to every covariate, and
+# three failures followed. Each was silent: INLA reported mode.status 0 and
+# the numerical-confirm gate passed.
 #
 #   * An unstated random-intercept SD degenerated. On a 400-row design with
 #     four blocks (true SD 2) and only the residual prior stated, 20 of 20
@@ -28,8 +31,56 @@
 #   * lme4::sleepstudy with `(Dx || Subject)` and Dx = Days / 1000: the
 #     default bound 5 sd(y) = 282 on the slope SD sat just above the fitted
 #     279 (0.279 per day, against 6.45 at Dx = Days).
+#   * The same fit carried INLA's prec = 0.001 on the Dx coefficient, on the
+#     standardised coordinates, and returned 8.64 per day against lme4's
+#     10.4673; widening that one prior restored 10.4673. On Poisson and
+#     Bernoulli fits with x / 1000 the coefficient fell to 41 and 4.4 per
+#     cent of its value at x.
 #
-# A prior the caller states is never rescaled by a covariate.
+# A prior the caller states is never rescaled by a covariate: a response-unit
+# prior such as `prior_fixed_sd = 100` is exactly that on every coefficient,
+# and on a covariate recorded in small units it can bind.
+
+# The fixed-effect multiplier K, by link class (.fb_default_link_class()).
+#
+# Identity link: 1e5. The default is meant to leave a coefficient where the
+# data put it, as REML and brms's flat default do, and the width costs
+# nothing there: with a design of full column rank the Gaussian posterior of
+# the fixed effects is proper under a flat prior. Measured on INLA 26.8.7,
+# lme4::sleepstudy, `Reaction ~ Dx + (Dx || Subject)` with Dx = Days * c,
+# the slope bound scaled, and the coefficient read as coef(Dx) * c against
+# lme4's REML 10.4672859596 (three identical calls at each of c = 0.001, 1
+# and 1000):
+#
+#   K           at c = 1         distance from lme4   range across c
+#   10          10.4665088       7.8e-4               1.1e-6
+#   sqrt(1000)  10.4672082       7.8e-5               1.3e-7
+#   100         10.4672782       7.8e-6               1.1e-8
+#   1000        10.46728588      7.8e-8               1.1e-10
+#   1e4         10.4672859588    7.8e-10              1.1e-12
+#   1e5         10.4672859596    7.7e-12              0
+#
+# The unscaled default this replaces gave 10.4672766 at c = 1 (9.4e-6 from
+# lme4), with a run-to-run range of 1.5e-10 over 20 identical calls, and
+# 8.64 at c = 0.001. K = 1e5 is the smallest power of ten whose distance from
+# lme4 is inside that run-to-run range at all three scales, and at c = 1 it
+# shrinks less than the default it replaces.
+#
+# Log and logit links: sqrt(1000), about 31.6. On a covariate with unit
+# standard deviation this is INLA's own prec = 0.001, so a fit on a
+# unit-scale covariate does not change (Poisson and Bernoulli random-intercept
+# fits, 30 groups of 8, standard-normal x: 0.508836677 against 0.508836662,
+# and 0.231425423 against 0.231425542). A wider value is not free on these links. On a perfectly
+# separated Bernoulli design (200 rows, 20 groups) the coefficient was 70
+# under INLA's default and 76 at sqrt(1000); at 100 the INLA engine failed,
+# and at 1000, 1e4 and 1e6 it returned 369, 764 and 1476 -- every converged
+# fit with mode.status 0 and the numerical-confirm gate passing.
+.FB_INLA_FIXED_SD_MULTIPLIER <- c(identity = 1e5, log = sqrt(1000), logit = sqrt(1000))
+
+# K for a model, read off its link class.
+.fb_inla_fixed_sd_multiplier <- function(fb) {
+  .FB_INLA_FIXED_SD_MULTIPLIER[[.fb_default_link_class(fb$family, fb$link)]]
+}
 
 
 # --- random-effect standard deviations ------------------------------------ #
@@ -202,4 +253,113 @@
       covariate_sd = slope_sd[names(slope_sd) %in% names(added)]
     )
   )
+}
+
+
+# --- fixed effects --------------------------------------------------------- #
+
+# The fixed part of the model as a one-sided formula over its term labels,
+# or NULL when it has none.
+.fb_inla_fixed_design_formula <- function(fb) {
+  labels <- vapply(
+    fb$fixed_terms %||% list(),
+    function(term) {
+      term$label %||%
+        term$var %||%
+        paste(term$vars %||% character(0), collapse = ":")
+    },
+    character(1)
+  )
+  labels <- labels[nzchar(labels)]
+  if (!length(labels)) {
+    return(NULL)
+  }
+  stats::as.formula(paste0("~ ", paste(labels, collapse = " + ")))
+}
+
+# The response unit a fixed-effect default is written in: sd(y) where the
+# linear predictor carries the response's units, 1 on a log or logit link.
+.fb_inla_fixed_prior_unit <- function(fb, data) {
+  if (!identical(.fb_default_link_class(fb$family, fb$link), "identity")) {
+    return(1)
+  }
+  y <- suppressWarnings(as.numeric(.fb_response_values(fb, data)))
+  y <- y[is.finite(y)]
+  s <- if (length(y) >= 2L) stats::sd(y) else NA_real_
+  if (!is.finite(s) || s <= 0) 1 else s
+}
+
+#' The covariate-scaled default prior SD of each numeric fixed effect
+#'
+#' `normal(0, K u / sd(x_j))` for every design column that carries a numeric
+#' variable -- a continuous term, a factor-by-covariate interaction, a
+#' transformed covariate -- where `u` is `.fb_inla_fixed_prior_unit()` and
+#' `K` is `.fb_inla_fixed_sd_multiplier()`.
+#'
+#' A column built from factors alone is left to INLA's own default. Its 0/1
+#' coding carries no covariate unit, and its coefficient is a difference
+#' between level means, in response units: INLA's `prec = 0.001` on the
+#' standardised coordinates is `normal(0, 31.6 sd(y))` on the original ones,
+#' already in those units. Scaling a contrast by the standard deviation of
+#' its indicator would make the prior depend on how many rows each level
+#' has, which is not a unit. The intercept keeps INLA's flat prior.
+#'
+#' Empty when the caller supplied `prior_fixed_sd`, which is a statement
+#' about every coefficient; a coefficient named by a `b()` row keeps that
+#' row. Empty too when `data` is not a data frame: the aggregated routes
+#' hold the design as cell contrasts, and a numeric column never reaches
+#' them.
+#'
+#' @param fb An `fb_terms` object.
+#' @param data The data the fit is built from.
+#' @returns A named numeric vector of prior standard deviations, in the
+#'   original units, keyed by design column name.
+#' @noRd
+#' @keywords internal
+.fb_inla_default_fixed_sd <- function(fb, data) {
+  if (!is.data.frame(data) || .fb_prior_scalar_supplied(fb, "fixed_sd")) {
+    return(numeric(0))
+  }
+  form <- .fb_inla_fixed_design_formula(fb)
+  if (is.null(form)) {
+    return(numeric(0))
+  }
+  mf <- stats::model.frame(form, data = data)
+  tt <- attr(mf, "terms")
+  mm <- stats::model.matrix(tt, mf)
+  factors <- attr(tt, "factors")
+  assign <- attr(mm, "assign")
+  categorical <- vapply(
+    mf,
+    function(v) is.factor(v) || is.character(v) || is.logical(v),
+    logical(1)
+  )
+  named <- if (inherits(fb$priors, "fb_prior")) {
+    unlist(lapply(fb$priors$specs, function(s) {
+      if (identical(s$target$type, "b")) s$target$name else NULL
+    }))
+  } else {
+    character(0)
+  }
+  unit <- .fb_inla_fixed_prior_unit(fb, data)
+  multiplier <- .fb_inla_fixed_sd_multiplier(fb)
+
+  out <- numeric(0)
+  for (j in seq_len(ncol(mm))) {
+    a <- assign[[j]]
+    nm <- colnames(mm)[[j]]
+    if (a == 0L || nm %in% named) {
+      next
+    }
+    vars <- rownames(factors)[factors[, a] > 0]
+    if (isTRUE(all(categorical[vars]))) {
+      next
+    }
+    s <- stats::sd(mm[, j])
+    if (!is.finite(s) || s <= 0) {
+      next
+    }
+    out[[nm]] <- multiplier * unit / s
+  }
+  out
 }

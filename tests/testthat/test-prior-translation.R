@@ -495,6 +495,9 @@ test_that("prior_summary() does not claim the engine default for a b() row", {
     utils::capture.output(print(prior_summary(fit2))),
     collapse = " "
   )
-  expect_match(txt2, "the fixed effects carry", fixed = TRUE)
+  # `x` is numeric and unnamed, so it carries the covariate-scaled default and
+  # is listed; the engine-default sentence covers the other coefficients.
+  expect_match(txt2, "x ~ normal(0, ", fixed = TRUE)
+  expect_match(txt2, "the other fixed effects carry", fixed = TRUE)
   expect_false(grepl("except", txt2, fixed = TRUE))
 })

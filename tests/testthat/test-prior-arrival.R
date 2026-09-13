@@ -183,7 +183,7 @@ test_that("prior_fixed_sd reaches INLA's control.fixed when it is supplied", {
   expect_equal(emitted$control_fixed$mean.intercept, -mean(d$y) / s_y)
 })
 
-test_that("an unsupplied prior_fixed_sd leaves each engine's own default", {
+test_that("an unsupplied prior_fixed_sd leaves brms's default and scales INLA's", {
   skip_if_not_installed("INLA")
   d <- .arrival_data()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -195,7 +195,13 @@ test_that("an unsupplied prior_fixed_sd leaves each engine's own default", {
     backend = "inla",
     return_code = TRUE
   ))
-  expect_length(emitted$control_fixed, 0L)
+  # INLA gives the numeric column the covariate-scaled default
+  # normal(0, 1e5 sd(y) / sd(x)), which on the standardised response is a
+  # precision of sd(x)^2 / 1e10, and leaves the intercept on its own flat
+  # prior. Nothing blanket is written, since nothing was supplied.
+  expect_named(emitted$control_fixed, c("mean", "prec"))
+  expect_equal(emitted$control_fixed$mean, list(x = 0))
+  expect_equal(emitted$control_fixed$prec, list(x = stats::sd(d$x)^2 / 1e10))
 
   skip_if_not_installed("brms")
   lines <- .brms_prior_lines(
