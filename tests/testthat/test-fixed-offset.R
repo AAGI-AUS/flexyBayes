@@ -217,6 +217,23 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
   hand <- coef(fit)[["(Intercept)"]] + coef(fit)[["Days"]] * d$Days +
     re[as.character(d$Subject)] + d$Days
   expect_equal(unname(fitted(fit)), unname(hand), tolerance = 1e-8)
+
+  # A population-level prediction on new data is linear in the draws, so its
+  # posterior mean is the posterior-mean coefficients applied to newdata plus
+  # the offset evaluated there.
+  nd <- data.frame(Days = c(0, 3.5, 9), Subject = d$Subject[1:3])
+  hand_nd <- coef(fit)[["(Intercept)"]] + coef(fit)[["Days"]] * nd$Days +
+    nd$Days
+  expect_equal(
+    unname(predict(fit, newdata = nd, re_formula = NA)),
+    hand_nd,
+    tolerance = 1e-8
+  )
+  .off_expect_refusal(
+    predict(fit, newdata = nd[, "Subject", drop = FALSE]),
+    "newdata_offset_missing",
+    "`Days`"
+  )
 })
 
 # --- INLA, per row --------------------------------------------------------- #
@@ -663,4 +680,133 @@ test_that("a binomial offset refuses the aggregated routes by name", {
     backend = "inla", verbose = FALSE
   ))
   expect_identical(auto$exactness, "exact")
+})
+
+# --- prediction and the recorded model ------------------------------------ #
+
+.off_pred_data <- function() {
+  set.seed(20260915L)
+  n <- 480L
+  d <- data.frame(
+    f = factor(rep(sprintf("f%d", 1:4), length.out = n)),
+    g = factor(rep(sprintf("g%02d", 1:12), each = n / 12))
+  )
+  fe <- c(f1 = 0, f2 = 0.5, f3 = -0.3, f4 = 0.8)
+  d$x <- stats::rnorm(n)
+  d$z <- stats::rnorm(n, 0, 2)
+  d$y <- 3 + fe[as.character(d$f)] + 0.4 * d$x +
+    stats::rnorm(12, 0, 0.4)[as.integer(d$g)] + d$z + stats::rnorm(n, 0, 0.7)
+  d
+}
+
+test_that("predict() on INLA carries the offset where it predicts", {
+  # Against X b + z by hand the in-sample and new-data predictions and the
+  # classify table matched to 0 (2026-09-13), so the tolerances are 1e-10.
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("emmeans")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_pred_data()
+  fit <- .off_inla(y ~ f + x + offset(z), random = ~ g, data = d)
+  b <- coef(fit)
+
+  X <- stats::model.matrix(~ f + x, d)
+  expect_lt(
+    max(abs(predict(fit) - (as.numeric(X %*% b[colnames(X)]) + d$z))),
+    1e-10
+  )
+
+  nd <- data.frame(
+    f = factor(c("f1", "f3", "f4"), levels = levels(d$f)),
+    x = c(-1, 0, 2),
+    z = c(10, -5, 0.25)
+  )
+  Xn <- stats::model.matrix(~ f + x, nd)
+  expect_lt(
+    max(abs(predict(fit, newdata = nd) -
+      (as.numeric(Xn %*% b[colnames(Xn)]) + nd$z))),
+    1e-10
+  )
+  err <- .off_expect_refusal(
+    predict(fit, newdata = nd[, c("f", "x")]),
+    "newdata_offset_missing",
+    c("`offset(z)`", "`z`")
+  )
+  expect_identical(err$missing, "z")
+
+  # emmeans evaluates the offset on its reference grid, where each covariate
+  # sits at its mean: b0 + b_f + b_x mean(x) + mean(z) by hand. Without the
+  # offset every mean would be 0.064 lower.
+  cl <- predict(fit, classify = "f")
+  hand <- b[["(Intercept)"]] + c(0, b[["ff2"]], b[["ff3"]], b[["ff4"]]) +
+    b[["x"]] * mean(d$x) + mean(d$z)
+  expect_lt(max(abs(cl$estimate - hand)), 1e-10)
+})
+
+test_that("predict() on brms refuses new data that lack an offset column", {
+  # The guard runs before brms is asked for anything, so a fit object that
+  # carries the model description is enough to exercise it.
+  skip_if_not_installed("brms")
+  skip_if_not_installed("lme4")
+  d <- .off_sleepstudy()
+  ir <- fb_from_asreml(
+    Reaction ~ Days + offset(log(Days + 1)), random = ~ Subject, data = d
+  )
+  stub <- structure(
+    list(brms = list(), extras = list(fb_terms = ir)),
+    class = c("flexybayes_brms", "flexybayes", "list")
+  )
+  .off_expect_refusal(
+    predict(stub, newdata = data.frame(Subject = d$Subject[1:2])),
+    "newdata_offset_missing",
+    c("`offset(log(Days + 1))`", "`Days`")
+  )
+})
+
+test_that("the fingerprint, triangulate() and the printed surfaces record it", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_pred_data()
+  fit <- .off_inla(y ~ f + x + offset(z), random = ~ g, data = d)
+  plain <- .off_inla(y ~ f + x, random = ~ g, data = d)
+
+  expect_identical(fit$extras$fingerprint$offset, "offset(z)")
+  expect_identical(plain$extras$fingerprint$offset, "<none>")
+  diff <- .fb_fingerprint_first_difference(
+    fit$extras$fingerprint,
+    plain$extras$fingerprint
+  )
+  expect_identical(diff$element, "offset")
+  # A fingerprint recorded before the element existed described a model with
+  # no offset, and still compares clean against one.
+  old <- plain$extras$fingerprint
+  old$offset <- NULL
+  expect_null(.fb_fingerprint_first_difference(old, plain$extras$fingerprint))
+  .off_expect_refusal(
+    triangulate(fit, plain),
+    "triangulate_incomparable_fits",
+    "differ on the offset"
+  )
+
+  ps <- prior_summary(fit)
+  expect_identical(ps$offsets, "offset(z)")
+  expect_true(any(grepl(
+    "Offset: offset(z)", utils::capture.output(print(ps)), fixed = TRUE
+  )))
+
+  expect_identical(summary(fit)$offset, "offset(z)")
+  expect_false("offset" %in% names(summary(plain)))
+
+  plan <- fb_plan(y ~ f + offset(z), random = ~ g, data = d)
+  expect_identical(plan$offsets, "offset(z)")
+  expect_identical(
+    plan$aggregation$offset_route,
+    "offset_subtracted_in_cell_statistics"
+  )
+  expect_true(any(grepl(
+    "Offset:                  offset(z)",
+    utils::capture.output(print(plan)),
+    fixed = TRUE
+  )))
 })

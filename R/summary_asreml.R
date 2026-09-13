@@ -1616,6 +1616,12 @@
   if (!is.null(field)) {
     out$spatial_field <- field
   }
+  # Present only on a model with an offset, for the same reason: a model
+  # without one has nothing to record.
+  offsets <- .fb_fit_ir(object)$offsets
+  if (length(offsets)) {
+    out$offset <- offsets
+  }
 
   attr(out, "fit") <- object
   out
@@ -1658,6 +1664,9 @@
     cat("  Residual :", deparse(ci$residual), "\n")
   }
   ir <- .fb_fit_ir(object)
+  if (length(ir$offsets)) {
+    cat("  Offset   :", paste(ir$offsets, collapse = " + "), "\n")
+  }
   model <- .fb_model_line(ir)
   if (!is.na(model)) {
     cat("  Model    :", model, "\n")

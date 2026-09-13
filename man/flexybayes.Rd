@@ -70,7 +70,22 @@ universal entry's model slot: it accepts the ASReml \code{fixed} form
 bar-grouped formula such as \code{response ~ x + (1 | g)} (in which case
 the grouping lives in the formula and \code{random} / \code{residual} must be
 left \code{NULL}). The grammar is detected from the call shape; use
-\code{syntax} to force it.}
+\code{syntax} to force it.
+
+\strong{Offsets.} \code{offset()} terms in the fixed formula enter the linear
+predictor with a fixed coefficient of one on both engines, and several
+add. Each is evaluated against \code{data} and has to be a finite number on
+every row (\code{fixed_offset_invalid} otherwise). brms receives the terms
+in its formula; INLA receives the evaluated offset through \code{inla()}'s
+\code{offset} argument, and a Gaussian identity-link fit reads its centre,
+scale and default priors from the response minus the offset. The
+aggregated route carries an offset exactly on the Gaussian family
+(subtracted before the cell statistics are taken) and the Poisson
+family (as exposure), and refuses one on the binomial family
+(\code{fixed_offset_unsupported}), where \code{aggregate = "auto"} takes the
+per-row route. \code{predict()} on new data evaluates the offset there and
+refuses when a column it reads is absent (\code{newdata_offset_missing}).
+An \code{offset()} in \code{random} or \code{residual} is refused.}
 
 \item{random}{One-sided formula: \code{~ random_terms} using ASReml syntax.
 "Parsed" and "fitted" are not the same claim, so the term catalogue is

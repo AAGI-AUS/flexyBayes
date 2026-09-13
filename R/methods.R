@@ -188,6 +188,9 @@ print.flexybayes <- function(x, ...) {
 #'       deviations are read off precision marginals and only a monotone
 #'       summary survives the reciprocal square root exactly. The same
 #'       table the printed field panel renders, unrounded.}
+#'     \item{`offset`}{**Present only on a fit whose fixed formula carries
+#'       `offset()` terms**, and absent otherwise: the offset calls as
+#'       written, in formula order. Each has a fixed coefficient of one.}
 #'   }
 #' @seealso [prior_summary()] for the full resolved prior, and
 #'   [nobs()] for the design and observed counts on their own.

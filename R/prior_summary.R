@@ -340,6 +340,15 @@ prior_summary.default <- function(object, ...) {
 
   out$declaration_only <- isTRUE(declaration_only)
 
+  # The offsets the model carries. An offset has a fixed coefficient of one
+  # and no prior, and on an identity link the package's default bounds and
+  # scales are read from the response minus the offset.
+  out$offsets <- fb_terms$offsets %||% character(0)
+  out$offset_scale_note <- length(out$offsets) > 0L && identical(
+    .fb_default_link_class(fb_terms$family, fb_terms$link),
+    "identity"
+  )
+
   # Which scalar prior arguments the caller wrote, and therefore which of
   # them this fit actually carries. Before 0.9.2 the printed summary
   # asserted `prior_fixed_sd` and `prior_vc_sd` unconditionally while
@@ -589,6 +598,23 @@ print.prior_summary_flexybayes <- function(x, ...) {
   )
 
   # ---- What the declaration above does not say ------------------------
+
+  if (length(x$offsets)) {
+    cat(
+      "\n  Offset: ", paste(x$offsets, collapse = " + "), "\n",
+      "    a fixed coefficient of one, with no prior",
+      if (isTRUE(x$offset_scale_note)) {
+        paste0(
+          "; the default bounds and scales\n",
+          "    are read from the response minus the offset"
+        )
+      } else {
+        ""
+      },
+      "\n",
+      sep = ""
+    )
+  }
 
   .prior_summary_cat_added(
     "Filled with the package default (no prior was stated for these):",
