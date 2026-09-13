@@ -1798,7 +1798,6 @@
   # family-generic streaming aggregator over the in-memory data (one
   # chunk) + the count emit. Both produce the same <fb_aggregated> shape
   # downstream methods consume.
-  .refuse_offset_route(fb, "the aggregated route")
   if (identical(fb$family, "gaussian")) {
     # An explicit backend = "inla" reaches this emit without lgm_gate(), so
     # the response-scale bound the gate applies is applied here as well.

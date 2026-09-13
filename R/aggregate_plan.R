@@ -177,6 +177,24 @@
     reason_codes <- c(reason_codes, "count_weights_not_aggregatable")
   }
 
+  # ---- Offsets ---- #
+  # A Gaussian offset is subtracted from the response before the cell
+  # statistics are taken, which reproduces the per-row likelihood exactly
+  # however the offset varies inside a cell. A Poisson offset o multiplies
+  # the exposure by exp(o), exact because independent Poissons with a shared
+  # rate add. A cell total of Bernoulli rows whose offsets differ is not
+  # binomial, so that route refuses and the per-row route takes the model.
+  offset_route <- if (!length(fb_ir$offsets)) {
+    "none"
+  } else if (identical(fam, "gaussian")) {
+    "offset_subtracted_in_cell_statistics"
+  } else if (identical(fam, "poisson")) {
+    "offset_folded_into_exposure"
+  } else {
+    reason_codes <- c(reason_codes, "fixed_offset_unsupported")
+    "fixed_offset_unsupported"
+  }
+
   # ---- Fixed-effect term scope ---- #
   #
   # The cell key is the set of VARIABLES the cell-constant predictors
@@ -305,7 +323,8 @@
       requires_materialisation = FALSE,
       K_est = NA_integer_,
       N = N,
-      compression_est = NA_real_
+      compression_est = NA_real_,
+      offset_route = offset_route
     ))
   }
 
@@ -317,7 +336,8 @@
       requires_materialisation = TRUE,
       K_est = NA_integer_,
       N = N,
-      compression_est = NA_real_
+      compression_est = NA_real_,
+      offset_route = offset_route
     ))
   }
 
@@ -335,7 +355,8 @@
       requires_materialisation = TRUE,
       K_est = NA_integer_,
       N = N,
-      compression_est = NA_real_
+      compression_est = NA_real_,
+      offset_route = offset_route
     ))
   }
 
@@ -359,7 +380,8 @@
       requires_materialisation = FALSE,
       K_est = NA_integer_,
       N = N,
-      compression_est = NA_real_
+      compression_est = NA_real_,
+      offset_route = offset_route
     )
     plan$K_est_double <- overflow$K_est
     plan$overflow_refusal <- overflow
@@ -390,7 +412,8 @@
       requires_materialisation = FALSE,
       K_est = K_est,
       N = N,
-      compression_est = compression_est
+      compression_est = compression_est,
+      offset_route = offset_route
     ))
   }
 
@@ -407,7 +430,8 @@
     requires_materialisation = FALSE,
     K_est = K_est,
     N = N,
-    compression_est = compression_est
+    compression_est = compression_est,
+    offset_route = offset_route
   )
 }
 
@@ -420,6 +444,13 @@
 # tell a user what to do about them. Returns "" for the rest, so the
 # refusal message reads the same as before where nothing is to be added.
 .agg_refusal_note <- function(reason_codes) {
+  if ("fixed_offset_unsupported" %in% reason_codes) {
+    return(paste0(
+      " A binomial cell total is binomial only when every row in the cell",
+      " shares one success probability, and rows whose offsets differ do",
+      " not. The per-row route fits this model."
+    ))
+  }
   if (
     "aggregated_interaction_column_not_representable" %in% reason_codes
   ) {
@@ -519,7 +550,8 @@
   requires_materialisation,
   K_est,
   N,
-  compression_est
+  compression_est,
+  offset_route = "none"
 ) {
   structure(
     list(
@@ -529,7 +561,13 @@
       requires_materialisation = isTRUE(requires_materialisation),
       K_est = K_est,
       N = as.integer(N),
-      compression_est = compression_est
+      compression_est = compression_est,
+      # How the model's offsets reach the cell statistics: "none",
+      # "offset_subtracted_in_cell_statistics" (Gaussian),
+      # "offset_folded_into_exposure" (Poisson), or the refusal code
+      # "fixed_offset_unsupported" (binomial), which is also in
+      # `reason_codes`.
+      offset_route = offset_route
     ),
     class = c("fb_aggregation_plan", "list")
   )
@@ -563,6 +601,9 @@ print.fb_aggregation_plan <- function(x, ...) {
       "\n",
       sep = ""
     )
+  }
+  if (!identical(x$offset_route %||% "none", "none")) {
+    cat("  offset_route:             ", x$offset_route, "\n", sep = "")
   }
 
   if (length(x$cell_key_terms)) {

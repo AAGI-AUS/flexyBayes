@@ -601,6 +601,12 @@ emit_gaussian_aggregated <- function(
     posterior_summary,
     ri_plan
   )
+  # The cell statistics were taken on y - o, so the offset is added back to
+  # each row's fitted value here.
+  off_row <- .fb_offset_values(fb, data)
+  if (!is.null(off_row)) {
+    fitted_row <- fitted_row + off_row
+  }
   y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
 

@@ -151,42 +151,6 @@ test_that("a design cell completed under augment needs its offset", {
   expect_match(conditionMessage(err), "z", fixed = TRUE)
 })
 
-# --- routes ---------------------------------------------------------------- #
-
-test_that("a fitting route that does not carry an offset refuses by name", {
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  cells <- data.frame(
-    f = factor(rep(sprintf("f%d", 1:4), length.out = 120)),
-    g = factor(rep(sprintf("g%02d", 1:12), each = 10)),
-    z = stats::rnorm(120)
-  )
-  cells$y <- stats::rnorm(120, 10) + cells$z
-  .off_expect_refusal(
-    flexybayes(
-      y ~ f + offset(z),
-      random = ~ g,
-      data = cells,
-      backend = "inla",
-      aggregate = TRUE,
-      verbose = FALSE
-    ),
-    "fixed_offset_unsupported",
-    "`offset(z)`"
-  )
-  .off_expect_refusal(
-    suppressMessages(flexybayes_stream(
-      y ~ f + offset(z),
-      random = ~ g,
-      source = cells,
-      backend = "inla",
-      fit = FALSE,
-      verbose = FALSE
-    )),
-    "fixed_offset_unsupported",
-    "`offset(z)`"
-  )
-})
-
 # --- brms ------------------------------------------------------------------ #
 
 test_that("the brms formula carries each offset verbatim", {
@@ -513,4 +477,190 @@ test_that("an offset model is invariant to rescaling the response and offset", {
     expect_equal(scaled$sd, unit$sd, tolerance = 1e-3)
     expect_equal(scaled$fitted, unit$fitted, tolerance = 1e-5)
   }
+})
+
+# --- aggregated and streamed routes ---------------------------------------- #
+
+# A replicated factorial the aggregated route compresses: 480 rows in 48
+# cells, an offset that varies inside every cell, and one INLA thread, as the
+# aggregation equivalence tests are run.
+.off_cells <- function() {
+  set.seed(20260915L)
+  n <- 480L
+  d <- data.frame(
+    f = factor(rep(sprintf("f%d", 1:4), length.out = n)),
+    g = factor(rep(sprintf("g%02d", 1:12), each = n / 12))
+  )
+  fe <- c(f1 = 0, f2 = 0.5, f3 = -0.3, f4 = 0.8)
+  u <- stats::rnorm(12, 0, 0.4)
+  d$z <- stats::rnorm(n, 0, 2)
+  d$y <- 3 + fe[as.character(d$f)] + u[as.integer(d$g)] + d$z +
+    stats::rnorm(n, 0, 0.7)
+  d$E <- stats::runif(n, 1, 10)
+  d$count <- stats::rpois(
+    n,
+    d$E * exp(0.2 + fe[as.character(d$f)] + u[as.integer(d$g)])
+  )
+  d$bin <- stats::rbinom(n, 1, stats::plogis(-0.2 + fe[as.character(d$f)] + d$z / 2))
+  d
+}
+
+.off_route <- function(route, fixed, family, d, ...) {
+  prior <- fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 10))
+  suppressMessages(switch(
+    route,
+    per_row = flexybayes(
+      fixed, random = ~ g, data = d, family = family, prior = prior,
+      backend = "inla", aggregate = FALSE, verbose = FALSE, ...
+    ),
+    aggregated = flexybayes(
+      fixed, random = ~ g, data = d, family = family, prior = prior,
+      backend = "inla", aggregate = TRUE, verbose = FALSE, ...
+    ),
+    stream = flexybayes_stream(
+      fixed, random = ~ g, source = d, family = family, prior = prior,
+      backend = "inla", chunk_rows = 100, verbose = FALSE, ...
+    )
+  ))
+}
+
+.off_fixed <- function(fit) {
+  stats::setNames(fit$inla$summary.fixed$mean, rownames(fit$inla$summary.fixed))
+}
+
+.off_hyper <- function(fit) {
+  stats::setNames(
+    fit$inla$summary.hyperpar$mean,
+    rownames(fit$inla$summary.hyperpar)
+  )
+}
+
+test_that("aggregated and streamed Gaussian fits with an offset are exact", {
+  # Against the per-row fit, three calls of each route (2026-09-13): fixed
+  # effects within 6.6e-12 and hyperparameters within 1.9e-6 relative; a
+  # second per-row call differs by 6.4e-12 and 2.2e-7. Tolerances 1e-8 and
+  # 1e-4 relative, the second as test-aggregation-equivalence-backend.R uses.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  threads <- INLA::inla.getOption("num.threads")
+  INLA::inla.setOption(num.threads = "1:1")
+  withr::defer(INLA::inla.setOption(num.threads = threads))
+  d <- .off_cells()
+
+  plan <- .fb_aggregation_plan(
+    fb_from_asreml(y ~ f + offset(z), random = ~ g, data = d),
+    .fb_dataset(d)
+  )
+  expect_true(plan$eligible)
+  expect_identical(plan$offset_route, "offset_subtracted_in_cell_statistics")
+
+  per_row <- .off_route("per_row", y ~ f + offset(z), "gaussian", d)
+  for (route in c("aggregated", "stream")) {
+    fit <- .off_route(route, y ~ f + offset(z), "gaussian", d)
+    expect_identical(fit$exactness, "aggregated_exact")
+    b <- .off_fixed(fit)
+    expect_lt(max(abs(b[names(.off_fixed(per_row))] - .off_fixed(per_row))), 1e-8)
+    h <- .off_hyper(fit)
+    expect_equal(
+      unname(h[names(.off_hyper(per_row))]),
+      unname(.off_hyper(per_row)),
+      tolerance = 1e-4
+    )
+  }
+
+  # The per-row fixed-part fitted values carry the offset back: X b + z by
+  # hand (measured exact to 0 and 8.9e-16).
+  agg <- .off_route("aggregated", y ~ f + offset(z), "gaussian", d)
+  X <- stats::model.matrix(~ f, d)
+  hand <- as.numeric(X %*% coef(agg)[colnames(X)]) + d$z
+  expect_lt(max(abs(agg$glm$fitted.values - hand)), 1e-10)
+  expect_lt(max(abs(agg$glm$residuals - (d$y - hand))), 1e-10)
+})
+
+test_that("a Poisson offset reaches the aggregated route as exposure", {
+  # Against the per-row fit of count ~ f + offset(log(E)), three calls each
+  # (2026-09-13): the aggregated and the streamed fit within 4.5e-10 (fixed)
+  # and 5.7e-9 relative (hyperparameters), a second per-row call within
+  # 1.5e-10 and 1.8e-9; the streamed fit written with exposure = "E" and no
+  # offset within 9.6e-10 and 9.3e-9. Without the offset the aggregated
+  # intercept is 1.95 against 0.26.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  threads <- INLA::inla.getOption("num.threads")
+  INLA::inla.setOption(num.threads = "1:1")
+  withr::defer(INLA::inla.setOption(num.threads = threads))
+  d <- .off_cells()
+
+  plan <- .fb_aggregation_plan(
+    fb_from_asreml(count ~ f + offset(log(E)), random = ~ g, data = d,
+                   family = "poisson"),
+    .fb_dataset(d)
+  )
+  expect_true(plan$eligible)
+  expect_identical(plan$offset_route, "offset_folded_into_exposure")
+
+  per_row <- .off_route("per_row", count ~ f + offset(log(E)), "poisson", d)
+  check <- function(fit) {
+    b <- .off_fixed(fit)
+    expect_lt(max(abs(b[names(.off_fixed(per_row))] - .off_fixed(per_row))), 1e-7)
+    h <- .off_hyper(fit)
+    expect_equal(
+      unname(h[names(.off_hyper(per_row))]),
+      unname(.off_hyper(per_row)),
+      tolerance = 1e-6
+    )
+  }
+  agg <- .off_route("aggregated", count ~ f + offset(log(E)), "poisson", d)
+  check(agg)
+  check(.off_route("stream", count ~ f + offset(log(E)), "poisson", d))
+  check(.off_route("stream", count ~ f, "poisson", d, exposure = "E"))
+
+  X <- stats::model.matrix(~ f, d)
+  expect_lt(
+    max(abs(agg$glm$linear.predictors -
+      (as.numeric(X %*% coef(agg)[colnames(X)]) + log(d$E)))),
+    1e-10
+  )
+})
+
+test_that("a binomial offset refuses the aggregated routes by name", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .off_cells()
+  plan <- .fb_aggregation_plan(
+    fb_from_asreml(bin ~ f + offset(z / 2), random = ~ g, data = d,
+                   family = "binomial"),
+    .fb_dataset(d)
+  )
+  expect_false(plan$eligible)
+  expect_true("fixed_offset_unsupported" %in% plan$reason_codes)
+  expect_identical(plan$offset_route, "fixed_offset_unsupported")
+
+  err <- tryCatch(
+    .off_route("aggregated", bin ~ f + offset(z / 2), "binomial", d),
+    error = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_aggregate_refusal")
+  expect_true("fixed_offset_unsupported" %in% err$reason_codes)
+  expect_match(
+    conditionMessage(err),
+    "binomial only when every row in the cell shares one success probability",
+    fixed = TRUE
+  )
+
+  .off_expect_refusal(
+    .off_route("stream", bin ~ f + offset(z / 2), "binomial", d),
+    "fixed_offset_unsupported",
+    "aggregated binomial route"
+  )
+
+  # aggregate = "auto" takes the per-row route, which carries the offset.
+  auto <- suppressMessages(flexybayes(
+    bin ~ f + offset(z / 2), random = ~ g, data = d, family = "binomial",
+    backend = "inla", verbose = FALSE
+  ))
+  expect_identical(auto$exactness, "exact")
 })
