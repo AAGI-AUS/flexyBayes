@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=190
+      .refusal_registry: locked=TRUE n_keys=192
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -145,6 +145,7 @@
         fb_cov_missing_matrix
         fb_cov_type_unknown
         fit_lacks_posterior_draws
+        fixed_offset_invalid
         fixed_offset_unsupported
         fixed_smoother_not_supported
         formula_not_two_sided
@@ -178,6 +179,7 @@
         multivariate_smooth_unsupported
         nested_index_name_collision
         nested_variable_not_in_data
+        newdata_offset_missing
         numeric_variable_in_random_interaction
         penalty_block_overlap
         penalty_block_targeting_unsupported

@@ -131,7 +131,11 @@ fb_from_asreml <- function(
 
   data_summary <- list(
     n = nrow(data),
-    known_matrices = names(known_matrices)
+    known_matrices = names(known_matrices),
+    response_sd = .fb_response_sd(
+      list(response = fixed_info$response, offsets = fixed_info$offsets),
+      data
+    )
   )
 
   new_fb_terms(
@@ -147,7 +151,8 @@ fb_from_asreml <- function(
     priors = priors,
     data_summary = data_summary,
     capabilities = character(),
-    source = "asreml"
+    source = "asreml",
+    offsets = fixed_info$offsets
   )
 }
 

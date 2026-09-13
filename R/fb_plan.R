@@ -254,6 +254,11 @@ fb_plan <- function(
       (agg_plan$K %||% NA_integer_)
     },
     N = preflight$n_rows %||% NA_real_,
+    offset_route = if (is.null(agg_plan)) {
+      NA_character_
+    } else {
+      agg_plan$offset_route %||% "none"
+    },
     ratio = if (
       is.null(agg_plan) ||
         is.null(agg_plan$K) ||
@@ -442,6 +447,7 @@ fb_plan <- function(
       data_name = data_name %||% NA_character_,
       backend_requested = backend,
       backend_chosen = chosen_backend,
+      offsets = fb$offsets %||% character(0),
       path = chosen_path,
       reason_code = chosen_reason,
       will_fit = will_fit_final,
@@ -798,6 +804,19 @@ print.fb_plan <- function(x, ...) {
   cat("  Backend requested:       ", x$backend_requested, "\n", sep = "")
   cat("  Backend chosen:          ", x$backend_chosen, "\n", sep = "")
   cat("  Path:                    ", x$path, "\n", sep = "")
+  if (length(x$offsets)) {
+    route <- x$aggregation$offset_route %||% NA_character_
+    cat(
+      "  Offset:                  ", paste(x$offsets, collapse = " + "),
+      if (!is.na(route) && !identical(route, "none")) {
+        paste0("  (aggregated route: ", route, ")")
+      } else {
+        ""
+      },
+      "\n",
+      sep = ""
+    )
+  }
   cat("  Routing policy version:  ", x$routing_policy_version, "\n", sep = "")
 
   if (!is.na(x$gate_outcome)) {

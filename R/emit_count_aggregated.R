@@ -342,6 +342,12 @@ emit_count_aggregated <- function(
     posterior_summary,
     ri_plan
   )
+  # A Poisson offset reached the fit as exposure; each row's linear predictor
+  # carries it.
+  off_row <- .fb_offset_values(fb, data)
+  if (!is.null(off_row)) {
+    eta_row <- eta_row + off_row
+  }
   fitted_row <- .agg_count_inverse_link(eta_row, fb$family)
   y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row

@@ -16,6 +16,14 @@
 
 #' The centre and scale a Gaussian INLA fit is run on
 #'
+#' On a model with an offset o both are read from y - o, not from y. The
+#' model is y = o + eta, so on the standardised coordinates the fit runs on
+#' (y - m) / s with offset o / s, and what the likelihood and every prior
+#' see is (y - o - m) / s. Read from y instead, a large offset makes s the
+#' spread of the offset rather than of the model, which is the case the
+#' standardisation exists to remove (the measurement is in the commit that
+#' made this choice and in test-fixed-offset.R).
+#'
 #' @param fb An `fb_terms` object.
 #' @param data The data the fit is built from.
 #' @returns A list with `centre`, `scale` and `n_obs`, the number of finite
@@ -23,7 +31,7 @@
 #' @noRd
 #' @keywords internal
 .fb_inla_standardisation <- function(fb, data) {
-  y <- suppressWarnings(as.numeric(.fb_response_values(fb, data)))
+  y <- suppressWarnings(as.numeric(.fb_working_response(fb, data)))
   y <- y[is.finite(y)]
   scale <- if (length(y) >= 2L) stats::sd(y) else NA_real_
   centre <- if (isTRUE(fb$intercept) && length(y) > 0L) mean(y) else 0

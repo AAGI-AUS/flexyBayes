@@ -526,6 +526,8 @@ emit_inla <- function(
   # user's own before printing.
   level_map <- .inla_legalise_factor_levels(fb, data)
   data <- level_map$data
+  # The summed offset on the rows this fit is handed, or NULL.
+  offset_values <- .fb_offset_values(fb, data)
 
   # `seed` and `control` are Stan sampler settings threaded through from
   # the public entry point. INLA's nested Laplace approximation has no
@@ -1194,6 +1196,9 @@ emit_inla <- function(
       sep = ""
     )
     cat("  formula: ", .fb_display_inla_formula(inla_form), "\n", sep = "")
+    if (length(fb$offsets)) {
+      cat("  offset:  ", paste(fb$offsets, collapse = " + "), "\n", sep = "")
+    }
     cat("  family:  ", inla_family, "\n", sep = "")
     cat(paste(rep("-", 60), collapse = ""), "\n\n")
   }
@@ -1221,6 +1226,23 @@ emit_inla <- function(
   )
   if (length(control_fixed)) {
     inla_args$control.fixed <- control_fixed
+  }
+  # The offset reaches INLA through inla()'s `offset` argument, evaluated
+  # here from the model description, rather than as `offset()` in the
+  # formula. INLA 26.8.7 honours the two identically -- in the fixed
+  # effects, the stored linear predictor and fitted values, and the
+  # Predictor rows of inla.posterior.sample(), for the Gaussian, Poisson,
+  # binomial, negative binomial, gamma, beta and lognormal families -- but
+  # the formula spelling would have INLA evaluate the expression a second
+  # time in its own environment, where a name that is not a column can bind
+  # to a workspace object. On the standardised response the offset is o / s;
+  # the centre is absorbed by the intercept (R/inla_standardise.R).
+  if (!is.null(offset_values)) {
+    inla_args$offset <- if (is.null(standardisation)) {
+      offset_values
+    } else {
+      offset_values / standardisation$scale
+    }
   }
   # C6: weights lowered for the Gaussian family, identity link only --
   # INLA's scale = is a per-observation precision multiplier on the

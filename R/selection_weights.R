@@ -515,6 +515,23 @@
     V_random <- V_random + vc$terms[[nm]] * tcrossprod(Z[[nm]])
   }
 
+  # The base model's own offset is the offset of this problem. A second one
+  # declared on top of it would be subtracted twice, so the two are not
+  # combined.
+  base_offset <- .fb_offset_values(object$fb, object$data)
+  if (!is.null(base_offset) && !is.null(offset)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_offset_absorbed_twice",
+      message = paste0(
+        "fb_select(): the offset does not round-trip; the base model already ",
+        "carries ", paste0("`", object$fb$offsets, "`", collapse = ", "),
+        " and a second offset was declared. The base's offset is absorbed ",
+        "from the model; declare none here."
+      )
+    ))
+  }
+  offset <- offset %||% base_offset
+
   out <- .fb_sel_absorb(
     y = object$data[[object$fb$response]],
     X = X,

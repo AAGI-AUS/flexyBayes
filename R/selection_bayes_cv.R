@@ -181,6 +181,8 @@
     protected = protected,
     protected_labels = labels,
     random_vars = random_vars %||% character(0),
+    # The base's offsets travel into every fold refit's formula.
+    offsets = base$fb$offsets %||% character(0),
     data = base$data
   )
 }
@@ -381,8 +383,11 @@
 # --- the per-fold refit ------------------------------------------------- #
 
 # .fb_sel_bayes_fixed() --- the fixed formula for one candidate subset.
-.fb_sel_bayes_fixed <- function(response, protected_labels, candidate_labels) {
-  right <- c(protected_labels, candidate_labels)
+.fb_sel_bayes_fixed <- function(response,
+                                protected_labels,
+                                candidate_labels,
+                                offsets = character(0)) {
+  right <- c(protected_labels, candidate_labels, offsets)
   stats::as.formula(paste0(
     response,
     " ~ ",
@@ -881,7 +886,8 @@
           .fb_sel_bayes_fixed(
             spec$response,
             spec$protected_labels,
-            character(0)
+            character(0),
+            spec$offsets
           ),
           provider,
           seed = 1L
@@ -1008,7 +1014,12 @@
   # the candidates.
   .fb_sel_require_columns(
     data,
-    unique(c(spec$response, all.vars(spec$protected), spec$random_vars)),
+    unique(c(
+      spec$response,
+      all.vars(spec$protected),
+      spec$random_vars,
+      .fb_offset_vars(spec$offsets)
+    )),
     "data"
   )
 
@@ -1102,7 +1113,8 @@
       fixed <- .fb_sel_bayes_fixed(
         spec$response,
         spec$protected_labels,
-        candidate_labels[sets[[name]]]
+        candidate_labels[sets[[name]]],
+        spec$offsets
       )
       # Deterministic per fold and per model, so one run reproduces another
       # and two models on one fold are not handed the same stream.

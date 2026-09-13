@@ -382,7 +382,10 @@ logLik.flexybayes_inla <- function(object, ...) {
 #'
 #' @param object A `flexybayes_inla` fit.
 #' @param newdata Optional data frame; defaults to the fit data. Ignored,
-#'   with a warning, when `classify` is supplied.
+#'   with a warning, when `classify` is supplied. On a model with an
+#'   `offset()` the prediction includes the offset evaluated on `newdata`,
+#'   so `newdata` needs every column the offset reads; an absent one
+#'   refuses with `newdata_offset_missing` rather than being taken as zero.
 #' @param type `"response"` or `"link"`.
 #' @param se.fit Logical: also return delta-method standard errors from
 #'   the fixed-effect covariance.
@@ -424,6 +427,7 @@ predict.flexybayes_inla <- function(
     )
   }
 
+  supplied <- !is.null(newdata)
   if (is.null(newdata)) {
     # C4/FS-26: .fb_fit_data(), not the raw object$data -- the latter is
     # the level-legalised copy the fit was built against, and
@@ -434,10 +438,16 @@ predict.flexybayes_inla <- function(
     # see R/ecosystem_support.R's .fb_fit_data()).
     newdata <- .fb_fit_data(object)
   }
+  # The offset on the rows predicted at, read before the design matrix so an
+  # absent offset column refuses by name rather than inside model.frame().
+  off <- .fb_offset_values(.fb_fit_ir(object), newdata, newdata = supplied)
   trms <- stats::delete.response(stats::terms(formula(object)))
   bhat <- coef(object)
   X <- .fb_fixef_model_matrix(trms, newdata, names(bhat), .fb_fit_data(object))
   eta <- as.numeric(X %*% bhat)
+  if (!is.null(off)) {
+    eta <- eta + off
+  }
 
   if (!se.fit) {
     return(eta)

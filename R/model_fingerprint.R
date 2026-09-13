@@ -36,6 +36,7 @@
     version = 1L,
     response = fb$response %||% NA_character_,
     fixed = forms$fixed,
+    offset = .fb_fingerprint_offsets(fb),
     random = forms$random,
     residual = forms$residual,
     family = as.character(fb$family %||% NA_character_)[1L],
@@ -54,6 +55,7 @@
 .FB_FINGERPRINT_ELEMENTS <- c(
   "response",
   "fixed",
+  "offset",
   "random",
   "residual",
   "family",
@@ -67,6 +69,7 @@
 .FB_FINGERPRINT_LABELS <- c(
   response = "the response variable",
   fixed = "the fixed-effect structure",
+  offset = "the offset",
   random = "the random-effect structure",
   residual = "the residual structure",
   family = "the response family",
@@ -82,8 +85,11 @@
 # the earliest difference is usually the cause of the later ones.
 .fb_fingerprint_first_difference <- function(fp_a, fp_b) {
   for (el in .FB_FINGERPRINT_ELEMENTS) {
-    va <- fp_a[[el]] %||% NA_character_
-    vb <- fp_b[[el]] %||% NA_character_
+    # A fingerprint built before offsets were recorded carries no `offset`
+    # element, and it described a model with none.
+    absent <- if (identical(el, "offset")) "<none>" else NA_character_
+    va <- fp_a[[el]] %||% absent
+    vb <- fp_b[[el]] %||% absent
     if (!identical(va, vb)) {
       return(list(
         element = el,
@@ -205,6 +211,17 @@
     random = one_side(fb$random_terms),
     residual = residual
   )
+}
+
+# The offsets, sorted because they add, or "<none>". Two fits whose models
+# differ only by an offset share every term string, so without this element
+# triangulate() would compare them as one model.
+.fb_fingerprint_offsets <- function(fb) {
+  offsets <- fb$offsets %||% character(0)
+  if (!length(offsets)) {
+    return("<none>")
+  }
+  paste(sort(offsets), collapse = " + ")
 }
 
 # ---------------------------------------------------------------- #

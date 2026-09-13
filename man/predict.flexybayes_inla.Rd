@@ -18,7 +18,10 @@
 \item{object}{A \code{flexybayes_inla} fit.}
 
 \item{newdata}{Optional data frame; defaults to the fit data. Ignored,
-with a warning, when \code{classify} is supplied.}
+with a warning, when \code{classify} is supplied. On a model with an
+\code{offset()} the prediction includes the offset evaluated on \code{newdata},
+so \code{newdata} needs every column the offset reads; an absent one
+refuses with \code{newdata_offset_missing} rather than being taken as zero.}
 
 \item{type}{\code{"response"} or \code{"link"}.}
 

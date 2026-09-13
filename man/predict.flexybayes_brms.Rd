@@ -20,7 +20,10 @@
 \item{object}{A \code{flexybayes_brms} object.}
 
 \item{newdata}{Optional data.frame at which to predict. When
-omitted, returns the in-sample posterior summary.}
+omitted, returns the in-sample posterior summary. On a model with an
+\code{offset()} brms evaluates the offset on \code{newdata}, so \code{newdata} needs
+every column the offset reads; an absent one refuses with
+\code{newdata_offset_missing} rather than being taken as zero.}
 
 \item{type}{\code{"response"} (default; posterior_epred) or \code{"link"}
 (posterior_linpred).}

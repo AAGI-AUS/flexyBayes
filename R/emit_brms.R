@@ -623,6 +623,10 @@ emit_brms <- function(
     character(1)
   )
   fixed_labels <- fixed_labels[!is.na(fixed_labels)]
+  # The offsets travel verbatim: brms evaluates `offset(log(E))` against the
+  # data itself, into the Stan data as `offsets`, and again against `newdata`
+  # at prediction.
+  fixed_labels <- c(fixed_labels, fb$offsets %||% character(0))
 
   fixed_rhs <- if (length(fixed_labels) > 0L) {
     paste(fixed_labels, collapse = " + ")
@@ -1983,7 +1987,10 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #'
 #' @param object A `flexybayes_brms` object.
 #' @param newdata Optional data.frame at which to predict. When
-#'   omitted, returns the in-sample posterior summary.
+#'   omitted, returns the in-sample posterior summary. On a model with an
+#'   `offset()` brms evaluates the offset on `newdata`, so `newdata` needs
+#'   every column the offset reads; an absent one refuses with
+#'   `newdata_offset_missing` rather than being taken as zero.
 #' @param type `"response"` (default; posterior_epred) or `"link"`
 #'   (posterior_linpred).
 #' @param re_formula Forwarded to brms; `NULL` (default) includes
@@ -2047,6 +2054,12 @@ predict.flexybayes_brms <- function(
     get("posterior_linpred", envir = asNamespace("brms"))
   } else {
     get("posterior_epred", envir = asNamespace("brms"))
+  }
+  # brms evaluates the offset against `newdata` itself; an absent offset
+  # column is refused here by name, before brms reports it as a missing
+  # object.
+  if (!is.null(newdata)) {
+    .fb_offset_values(.fb_fit_ir(object), newdata, newdata = TRUE)
   }
 
   post_mat <- if (is.null(newdata)) {

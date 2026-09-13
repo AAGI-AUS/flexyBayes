@@ -54,12 +54,22 @@
 #' Supported families are `"gaussian"` (identity link), `"binomial"`,
 #' and `"poisson"`. For binomial data supply `trials` to name the column
 #' of trial counts (a 0/1 response is treated as Bernoulli with one trial
-#' per row). For poisson data supply `exposure` to name an exposure /
-#' offset column.
+#' per row). For poisson data supply `exposure` to name an exposure
+#' column.
+#'
+#' An `offset()` in `fixed` is carried exactly on two of the three
+#' families. On `"gaussian"` it is subtracted from the response before the
+#' cell statistics are taken, which reproduces the per-row likelihood
+#' however the offset varies inside a cell. On `"poisson"`, `offset(o)`
+#' multiplies each row's exposure by `exp(o)`, so `offset(log(E))` and
+#' `exposure = "E"` fit the same model; given both, they multiply. On
+#' `"binomial"` a cell total of rows whose offsets differ is not binomial,
+#' and the call refuses with `fixed_offset_unsupported`.
 #'
 #' @param fixed A two-sided formula `response ~ fixed_terms`. The fixed
 #'   terms must be factors or factor interactions; a continuous term
-#'   forces one cell per row and is refused.
+#'   forces one cell per row and is refused. `offset()` terms are allowed
+#'   on the Gaussian and Poisson families; see Details.
 #' @param random A one-sided formula of random-intercept grouping factors,
 #'   ASReml style (for example `~ geno`), or `NULL` for no random terms.
 #' @param source The data source. One of: a length-1 character path to an
@@ -72,8 +82,9 @@
 #'   or `"poisson"`.
 #' @param trials For `family = "binomial"`, the name of the trials-count
 #'   column, or `NULL` for Bernoulli (one trial per row).
-#' @param exposure For `family = "poisson"`, the name of the exposure /
-#'   offset column, or `NULL` for unit exposure.
+#' @param exposure For `family = "poisson"`, the name of the exposure
+#'   column, or `NULL` for unit exposure. An `offset(log(E))` in `fixed`
+#'   is the same model as `exposure = "E"`.
 #' @param backend The estimation backend. `"inla"` is the default and the
 #'   only active choice: INLA is the one engine with an aggregated emit.
 #'   Any other value -- including a formerly-registered engine name this
@@ -661,7 +672,10 @@ flexybayes_stream <- function(
 
   response <- fb$response
   family <- fb$family
-  read_cols <- unique(c(response, key_cols, trials, exposure))
+  offsets <- fb$offsets %||% character(0)
+  read_cols <- unique(c(
+    response, key_cols, trials, exposure, .fb_offset_vars(offsets)
+  ))
 
   acc <- NULL
   n_total <- 0
@@ -682,7 +696,8 @@ flexybayes_stream <- function(
       response,
       family,
       trials,
-      exposure
+      exposure,
+      offsets
     )
     acc <- .fb_stream_fold(acc, partial, key_cols)
     n_total <- n_total + nrow(chunk)
@@ -731,7 +746,8 @@ flexybayes_stream <- function(
   response,
   family,
   trials,
-  exposure
+  exposure,
+  offsets = character(0)
 ) {
   # The value columns are named `.y` / `.m` / `.e` -- symbols that are
   # NOT local variables -- so the substitute() idiom below inlines the
@@ -740,8 +756,15 @@ flexybayes_stream <- function(
   # columns. Counts and sums are doubles for overflow safety past 2^31.
   kdt <- data.table::as.data.table(chunk[key_cols])
   data.table::set(kdt, j = ".y", value = as.numeric(chunk[[response]]))
+  # The offsets of this chunk's rows. Gaussian: subtracted from the response
+  # before the statistics are taken. Poisson: exp(offset) multiplies the
+  # exposure. The binomial route refuses an offset in its scope check.
+  off <- .fb_offset_total(offsets, as.data.frame(chunk))
 
   if (identical(family, "gaussian")) {
+    if (!is.null(off)) {
+      data.table::set(kdt, j = ".y", value = kdt[[".y"]] - off)
+    }
     expr <- substitute(
       kdt[,
         list(n_k = as.double(.N), S1_k = sum(.y), S2_k = sum(.y * .y)),
@@ -768,6 +791,22 @@ flexybayes_stream <- function(
       rep(1, nrow(kdt))
     } else {
       as.numeric(chunk[[exposure]])
+    }
+    if (!is.null(off)) {
+      ev <- ev * exp(off)
+      if (!all(is.finite(ev))) {
+        stop(.fb_refusal_condition(
+          reason_code = "fixed_offset_invalid",
+          message = paste0(
+            "The fixed formula carries ",
+            paste0("`", offsets, "`", collapse = ", "),
+            ", and on the aggregated Poisson route the exposure is ",
+            "multiplied by exp(offset), which overflows on this data. Fit ",
+            "the per-row route, which carries the offset on the log scale."
+          ),
+          offset = offsets
+        ))
+      }
     }
     data.table::set(kdt, j = ".e", value = ev)
     expr <- substitute(
@@ -930,6 +969,11 @@ flexybayes_stream <- function(
         "'; gaussian aggregation requires identity."
       )
     )
+  }
+
+  # A cell total of Bernoulli rows whose offsets differ is not binomial.
+  if (identical(fb$family, "binomial")) {
+    .refuse_offset_route(fb, "the aggregated binomial route")
   }
 
   for (t in fb$fixed_terms) {

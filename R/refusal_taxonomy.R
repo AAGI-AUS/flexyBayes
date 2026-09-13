@@ -2615,18 +2615,49 @@ print.fb_refusals_table <- function(x, ...) {
   .register_refusal(
     reason_code = "fixed_offset_unsupported",
     description = paste0(
-      "An offset() term in the fixed formula. terms() records an offset ",
-      "apart from the term labels, and the fixed-formula parser read only ",
-      "the labels, so the offset was dropped and the model fitted without it ",
-      "on both engines, with no message. Neither emitter carries an offset, ",
-      "so the term is refused where the fixed formula is ingested."
+      "An offset() term in the fixed formula on a route that cannot carry ",
+      "it. The parser records every offset on the model description, and a ",
+      "route with no exact lowering for it refuses by name rather than ",
+      "fitting the model without the offset, which is what happened before ",
+      "offsets were recorded."
     ),
     message_template = paste0(
-      "The fixed formula carries %s, and flexyBayes fits no offset on either ",
-      "engine. For a Gaussian model with an identity link, subtract the ",
-      "offset from the response instead: `y - z ~ x` fits `y ~ x + offset(z)`."
+      "The fixed formula carries %s, and %s does not carry an offset."
     ),
     registered_in_adr = "cairn 2026-09-13-fixed-formula-offset-refused",
+    plan_field = "rejected_routes",
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "fixed_offset_invalid",
+    description = paste0(
+      "An offset() term that does not evaluate against the data to a ",
+      "finite number on every row: a name that is not a column, a factor or ",
+      "character value, a length that is not the row count, or a missing or ",
+      "infinite value. An offset enters the linear predictor with a fixed ",
+      "coefficient of one, so an NA would be read as zero by one engine and ",
+      "drop the row on the other."
+    ),
+    message_template = paste0(
+      "The fixed formula carries %s, and %s. An offset has to be a finite ",
+      "number on each row of the data."
+    ),
+    registered_in_adr = "0.11.0.9000 fixed-formula offsets",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "newdata_offset_missing",
+    description = paste0(
+      "predict() on new data from a model with an offset, where the new data ",
+      "lack a column the offset reads. The offset is part of every ",
+      "prediction and is never taken to be zero."
+    ),
+    message_template = paste0(
+      "The model carries %s, and `newdata` has no column %s. Add the column ",
+      "to `newdata`."
+    ),
+    registered_in_adr = "0.11.0.9000 fixed-formula offsets",
     plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )

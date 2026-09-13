@@ -473,10 +473,18 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # fit now runs on a standardised response under scale-aware default
   # priors, so a large response standard deviation no longer refuses
   # (inla_response_scale_unvalidated) (= 190).
+  #
+  # Offsets in the fixed formula are recorded rather than refused at ingest,
+  # and add two: an offset that is not a finite number on every row
+  # (fixed_offset_invalid) (= 191), and a prediction whose new data lack a
+  # column an offset reads (newdata_offset_missing) (= 192).
+  # fixed_offset_unsupported stays for the routes that cannot carry one.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 190L)
+  expect_equal(length(entries), 192L)
   expect_true("fixed_offset_unsupported" %in% entries)
+  expect_true("fixed_offset_invalid" %in% entries)
+  expect_true("newdata_offset_missing" %in% entries)
   expect_true("projection_metric_unsupported" %in% entries)
   expect_true("correlated_covariance_requires_brms" %in% entries)
   expect_true("selection_scoring_unit_mismatch" %in% entries)

@@ -14,6 +14,21 @@
 #'   the grouping lives in the formula and `random` / `residual` must be
 #'   left `NULL`). The grammar is detected from the call shape; use
 #'   `syntax` to force it.
+#'
+#'   **Offsets.** `offset()` terms in the fixed formula enter the linear
+#'   predictor with a fixed coefficient of one on both engines, and several
+#'   add. Each is evaluated against `data` and has to be a finite number on
+#'   every row (`fixed_offset_invalid` otherwise). brms receives the terms
+#'   in its formula; INLA receives the evaluated offset through `inla()`'s
+#'   `offset` argument, and a Gaussian identity-link fit reads its centre,
+#'   scale and default priors from the response minus the offset. The
+#'   aggregated route carries an offset exactly on the Gaussian family
+#'   (subtracted before the cell statistics are taken) and the Poisson
+#'   family (as exposure), and refuses one on the binomial family
+#'   (`fixed_offset_unsupported`), where `aggregate = "auto"` takes the
+#'   per-row route. `predict()` on new data evaluates the offset there and
+#'   refuses when a column it reads is absent (`newdata_offset_missing`).
+#'   An `offset()` in `random` or `residual` is refused.
 #' @param random One-sided formula: `~ random_terms` using ASReml syntax.
 #'   "Parsed" and "fitted" are not the same claim, so the term catalogue is
 #'   two lists.
@@ -693,7 +708,10 @@ flexybayes <- function(
       family = family,
       link = link,
       random_groups = prior_targets$shared,
-      vm_ped_groups = prior_targets$vm_ped
+      vm_ped_groups = prior_targets$vm_ped,
+      # On an offset model the bound U = 5 sd reads y - o, on both engines,
+      # as the INLA standardisation does (R/inla_standardise.R).
+      resp_sd = if (length(fb$offsets)) .fb_response_sd(fb, data) else NULL
     )
     fb$priors <- unif_default
     prior <- unif_default

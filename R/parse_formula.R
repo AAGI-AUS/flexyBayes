@@ -55,28 +55,13 @@
 
   tt <- tryCatch(terms(fixed, data = data), error = function(e) terms(fixed))
   # terms() files `offset(z)` under its own attribute, not among the term
-  # labels read below, so an offset was dropped and the model fitted without
-  # it -- on INLA and on brms, with no message. Neither emitter carries an
-  # offset, so it is refused here, where every route ingests the fixed
-  # formula.
-  offset_idx <- attr(tt, "offset")
-  if (!is.null(offset_idx)) {
-    offsets <- vapply(
-      as.list(attr(tt, "variables"))[-1L][offset_idx],
-      function(e) paste(deparse(e), collapse = ""),
-      character(1L)
-    )
-    stop(.fb_refusal_condition(
-      reason_code = "fixed_offset_unsupported",
-      message = paste0(
-        "The fixed formula carries ",
-        paste0("`", offsets, "`", collapse = ", "),
-        ", and flexyBayes fits no offset on either engine. For a Gaussian ",
-        "model with an identity link, subtract the offset from the response ",
-        "instead: `y - z ~ x` fits `y ~ x + offset(z)`."
-      )
-    ))
-  }
+  # labels read below. Before 0.11.0.9000 only the labels were read, so an
+  # offset was dropped and the model fitted without it on both engines, with
+  # no message. The offsets are recorded here, where every route ingests the
+  # fixed formula, and evaluated once against the data so an offset that
+  # cannot be one refuses before any route is chosen.
+  offsets <- .fb_offset_labels(tt)
+  .fb_offset_total(offsets, data)
   intercept <- attr(tt, "intercept") == 1
   term_labels <- attr(tt, "term.labels")
 
@@ -88,8 +73,123 @@
     response = response,
     response_is_expression = response_is_expression,
     intercept = intercept,
-    terms = term_info
+    terms = term_info,
+    offsets = offsets
   )
+}
+
+# ---------------------------------------------------------------- #
+# Offsets in the fixed formula                                      #
+# ---------------------------------------------------------------- #
+
+# .fb_offset_labels() --- the offset() calls a terms object carries, as
+# written and in formula order: `offset(log(E))`, not `log(E)`. The full call
+# is what the brms formula carries verbatim and what the fingerprint and the
+# printed surfaces name.
+.fb_offset_labels <- function(tt) {
+  idx <- attr(tt, "offset")
+  if (is.null(idx)) {
+    return(character(0))
+  }
+  vapply(
+    as.list(attr(tt, "variables"))[-1L][idx],
+    function(e) paste(deparse(e, width.cutoff = 500L), collapse = " "),
+    character(1L)
+  )
+}
+
+# .fb_offset_vars() --- every data column the offsets read.
+.fb_offset_vars <- function(offsets) {
+  unique(unlist(lapply(offsets, function(lbl) all.vars(str2lang(lbl)))))
+}
+
+# .fb_offset_total() --- the offsets evaluated against `data` and summed, or
+# NULL when the model carries none.
+#
+# Each offset is evaluated as the response expression is, with baseenv() as
+# the enclosure (see .parse_fixed()): base transforms resolve, and a name
+# that is not a column refuses rather than binding to a workspace object of
+# the right length. Several offsets add, as they do in lm() and lme4. An
+# offset is a known part of the linear predictor on every row the engine is
+# handed, so anything but a finite numeric vector of one value per row
+# refuses by name: an NA would be read as a zero by one engine and drop the
+# row on the other.
+#
+# `newdata = TRUE` is prediction, where an absent column is the caller's
+# omission rather than a malformed model and refuses under its own code.
+.fb_offset_total <- function(offsets, data, newdata = FALSE) {
+  if (!length(offsets)) {
+    return(NULL)
+  }
+  n <- nrow(data)
+  total <- numeric(n)
+  for (lbl in offsets) {
+    expr <- str2lang(lbl)
+    inner <- if (length(expr) == 2L) expr[[2L]] else NULL
+    absent <- setdiff(all.vars(expr), names(data))
+    if (isTRUE(newdata) && length(absent) > 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "newdata_offset_missing",
+        message = paste0(
+          "The model carries `", lbl, "`, and `newdata` has no column ",
+          paste0("`", absent, "`", collapse = ", "), ". A prediction from ",
+          "an offset model needs the offset on every new row; it is not ",
+          "taken to be zero. Add the column to `newdata`."
+        ),
+        offset = lbl,
+        missing = absent
+      ))
+    }
+    val <- if (is.null(inner)) {
+      NULL
+    } else {
+      tryCatch(
+        eval(inner, envir = data, enclos = baseenv()),
+        error = function(e) e
+      )
+    }
+    problem <- if (is.null(inner)) {
+      "offset() takes exactly one argument"
+    } else if (inherits(val, "error")) {
+      paste0(
+        "it does not evaluate against the data (",
+        conditionMessage(val),
+        ")"
+      )
+    } else if (!is.numeric(val) || is.factor(val) || !is.atomic(val)) {
+      paste0("it evaluates to a ", class(val)[[1L]], " rather than a number")
+    } else if (length(val) != n) {
+      paste0("it has ", length(val), " values for ", n, " rows")
+    } else if (!all(is.finite(val))) {
+      bad <- which(!is.finite(val))
+      paste0(
+        "it is not finite at row(s) ",
+        paste(utils::head(bad, 10L), collapse = ", "),
+        if (length(bad) > 10L) ", ..." else ""
+      )
+    } else {
+      NULL
+    }
+    if (!is.null(problem)) {
+      stop(.fb_refusal_condition(
+        reason_code = "fixed_offset_invalid",
+        message = paste0(
+          "The fixed formula carries `", lbl, "`, and ", problem, ". An ",
+          "offset enters the linear predictor on every row with a fixed ",
+          "coefficient of one, so it has to be a finite number on each row ",
+          "of the data."
+        ),
+        offset = lbl
+      ))
+    }
+    total <- total + as.numeric(val)
+  }
+  total
+}
+
+# .fb_offset_values() --- the summed offset of a model on `data`, or NULL.
+.fb_offset_values <- function(fb, data, newdata = FALSE) {
+  .fb_offset_total(fb$offsets %||% character(0), data, newdata = newdata)
 }
 
 # .fb_response_values() --- the response, whether it names a column or is an
@@ -122,6 +222,36 @@
     return(NULL)
   }
   val
+}
+
+# .fb_working_response() --- the response minus the model's offsets: the
+# quantity whose scale the rest of the linear predictor and the residual
+# carry. The response itself when the model has no offset.
+.fb_working_response <- function(fb, data) {
+  y <- .fb_response_values(fb, data)
+  off <- .fb_offset_values(fb, data)
+  if (is.null(off) || !is.numeric(y)) {
+    return(y)
+  }
+  y - off
+}
+
+# .fb_response_sd() --- the standard deviation of the working response over
+# its finite values, or NA when there is no numeric response to measure.
+#
+# Recorded on the IR's data summary at ingest, and read by the default
+# priors: on an offset model it is the spread of y - o, the scale the
+# standardised fit and the bounded default priors use.
+.fb_response_sd <- function(fb, data) {
+  y <- .fb_working_response(fb, data)
+  if (!is.numeric(y)) {
+    return(NA_real_)
+  }
+  y <- y[is.finite(y)]
+  if (length(y) < 2L) {
+    return(NA_real_)
+  }
+  stats::sd(y)
 }
 
 # The smoother spellings other packages use on the fixed side. mgcv and

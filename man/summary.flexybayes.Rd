@@ -68,6 +68,9 @@ estimate is the posterior median, because the standard
 deviations are read off precision marginals and only a monotone
 summary survives the reciprocal square root exactly. The same
 table the printed field panel renders, unrounded.}
+\item{\code{offset}}{\strong{Present only on a fit whose fixed formula carries
+\code{offset()} terms}, and absent otherwise: the offset calls as
+written, in formula order. Each has a fixed coefficient of one.}
 }
 }
 \description{
