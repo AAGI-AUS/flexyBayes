@@ -188,6 +188,26 @@ test_that("the projection chose a size, forced the protected terms and labelled 
 })
 
 
+test_that("the projection's own site refuses a non-elpd metric by class", {
+  # The late plain stop() inside `.fb_sel_project()` is retired: a caller that
+  # reaches the projection directly, past the verb's early check, meets the
+  # same typed refusal rather than a bare error.
+  fbsb_needs_brms()
+  skip_if_not_installed("projpred")
+  sel <- fbsb_cache[["hs_projection"]]
+  skip_if(is.null(sel), "the projection run is not in this file's cache")
+  expect_error(
+    .fb_sel_project(
+      sel$reference,
+      folds = sel$folds,
+      decision = fb_decision(method = "projection", metric = "rmse"),
+      seed = 1L
+    ),
+    class = "flexybayes_refusal_projection_metric_unsupported"
+  )
+})
+
+
 test_that("the shrinkage factors are reported with the label their formula earns", {
   fbsb_needs_brms()
   skip_if_not_installed("projpred")

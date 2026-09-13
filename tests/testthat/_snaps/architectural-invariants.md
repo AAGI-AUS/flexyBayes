@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=189
+      .refusal_registry: locked=TRUE n_keys=190
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered
@@ -211,6 +211,7 @@
         prior_target_not_in_model
         prior_target_unsupported
         projection_family_unsupported
+        projection_metric_unsupported
         projection_search_unsupported
         projection_structure_unsupported
         representation_unknown_for_preflight

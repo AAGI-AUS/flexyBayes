@@ -1422,6 +1422,18 @@ fb_select <- function(base,
     reason = resolved_decision$reason
   )
 
+  # The decision and its metric are one request. A pair the projection cannot
+  # choose on refuses here, on the resolved method, before the provider check,
+  # the budget and the first fit -- and before the `plan = TRUE` branch, so
+  # the plan returns the same verdict the run would.
+  if (identical(workflow, "bayes") && !is.null(penalty)) {
+    .fb_sel_require_projection_metric(
+      decision$method,
+      decision$metric,
+      requested_method = decision$requested_method
+    )
+  }
+
   # The information the prior scales and the certificate are stated against.
   # Resolved once, before any route branches, so every route reports the
   # same number.

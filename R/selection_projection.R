@@ -327,6 +327,52 @@
 }
 
 
+#' The metric a projection decision is asked to choose on
+#'
+#' The projection search and its size rules read pointwise log predictive
+#' densities, so the only metric it chooses on is `elpd`. This is checked
+#' against the RESOLVED method, so a `method = "auto"` that resolves to the
+#' projection is held to it as well, and `fb_select()` calls it before the
+#' provider check, the budget and the first fit.
+#'
+#' @param method The resolved decision method.
+#' @param metric The decision metric.
+#' @param requested_method The method the caller wrote, for the message.
+#' @return `TRUE`, invisibly, or a `projection_metric_unsupported` refusal.
+#' @noRd
+#' @keywords internal
+.fb_sel_require_projection_metric <- function(method,
+                                              metric,
+                                              requested_method = method) {
+  if (!identical(method, "projection") || identical(metric, "elpd")) {
+    return(invisible(TRUE))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "projection_metric_unsupported",
+    message = paste0(
+      "fb_select(): the projection decision chooses a submodel on elpd, and ",
+      "metric = \"", metric, "\" was asked for",
+      if (identical(requested_method, "auto")) {
+        paste0(
+          " with method = \"auto\", which resolves to the projection on this ",
+          "model's green structure gate"
+        )
+      } else {
+        ""
+      },
+      ". The search and its size rules read pointwise log predictive ",
+      "densities; `", metric, "` is scored by the out-of-fold path, not by ",
+      "the projection. Nothing was fitted. Use metric = \"elpd\" with the ",
+      "projection, or method = \"full\" or \"posterior_threshold\" with ",
+      "benchmark = TRUE to have `", metric, "` scored out of fold."
+    ),
+    decision_method = method,
+    requested_method = requested_method,
+    metric = metric
+  ))
+}
+
+
 # --- folds ------------------------------------------------------------- #
 
 # .fb_sel_projpred_folds() --- an <fb_sel_folds> as projpred's fold vector.
@@ -718,14 +764,7 @@
   .fb_sel_require_projectable(fit)
 
   spec <- .fb_sel_decision_spec(decision)
-  if (!identical(spec$metric, "elpd")) {
-    stop(
-      ".fb_sel_project(): the projection decision is on elpd in this ",
-      "release; `", spec$metric, "` is scored by the out-of-fold path, not ",
-      "by the projection.",
-      call. = FALSE
-    )
-  }
+  .fb_sel_require_projection_metric("projection", spec$metric)
 
   fold_vector <- .fb_sel_projpred_folds(folds)
   unit_key <- attr(fold_vector, "unit_key")
