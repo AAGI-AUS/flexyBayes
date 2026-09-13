@@ -983,18 +983,34 @@
   # INLA names each summary.random entry after the index column emit_inla()
   # built for the term, so a structured term arrives as `rep_block_id` rather
   # than `rep:block`. Map it back to what the user wrote.
-  fb <- object$extras$fb_terms
-  labels <- if (is.null(fb)) character(0) else .fb_inla_group_labels(fb)
+  # emit_inla() stores the IR as `fb`; flexybayes() also attaches it as
+  # `extras$fb_terms`. Reading only the second left a fit made by a direct
+  # emit_inla() call -- the one route by which a gate-refused us(f):g or
+  # (x | g) reaches this function -- with every generated name and index.
+  fb <- object$extras$fb_terms %||% object$fb
+  # A blocks-format vm() / ped() is sized by its carrier, which the IR does
+  # not hold and the call record does.
+  known_matrices <- object$extras$call_info$known_matrices
+  labels <- if (is.null(fb)) {
+    character(0)
+  } else {
+    .fb_inla_group_labels(fb, known_matrices)
+  }
   # Single-bracket lookup: `labels[[nm]]` raises on a name the map does not
   # carry, which is the common case (a plain `~ g` needs no relabelling).
   relabel <- function(nm) if (nm %in% names(labels)) labels[[nm]] else nm
   # The levels inside the table, for the terms INLA indexes by an integer
   # column rather than by the factor itself. Without it those come back as
-  # 1..n and no BLUP can be matched by name (finding S01, defect D2).
+  # 1..n and no BLUP can be matched by name (findings S01 / N5).
   level_specs <- if (is.null(fb)) {
     list()
   } else {
-    .fb_inla_group_levels(fb, object$data, object$level_labels)
+    .fb_inla_group_levels(
+      fb,
+      object$data,
+      object$level_labels,
+      known_matrices
+    )
   }
   out <- lapply(names(sr), function(nm) {
     tab <- sr[[nm]]
@@ -1006,11 +1022,23 @@
     # A term with two index names reads one block of a longer field, so the
     # spec carries the rows as well as the labels. The shape is checked
     # rather than assumed: a table of another length is not the field this
-    # term indexed, and it keeps the generic path rather than being cut to
-    # fit.
-    if (!is.null(spec) &&
-          max(spec$rows) <= nrow(tab) &&
-          length(spec$rows) == length(spec$levels)) {
+    # term indexed, so it is neither relabelled nor cut to fit, and the
+    # disagreement is reported rather than left to pass as a result.
+    if (!is.null(spec) && nrow(tab) != spec$n_field) {
+      warning(
+        "flexyBayes: the INLA random-effect table for `",
+        group_label,
+        "` has ",
+        nrow(tab),
+        " rows where the term indexes ",
+        spec$n_field,
+        ", so its levels are reported as INLA's integer index rather than ",
+        "matched to the data.",
+        call. = FALSE
+      )
+      spec <- NULL
+    }
+    if (!is.null(spec)) {
       tab <- tab[spec$rows, , drop = FALSE]
       level_vals <- spec$levels
     } else {
