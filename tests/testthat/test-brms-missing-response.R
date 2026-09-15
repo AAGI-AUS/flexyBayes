@@ -219,10 +219,11 @@ test_that("a missing lognormal response is sampled and matches deletion", {
 })
 
 test_that("a missing Student-t response is refused by name on brms", {
-  # brms accepts mi() for student(), and the brms grammar passes that family
-  # object through, but emit_brms() has no translation for it: admitting the
-  # family here ended in an untyped emitter error instead of a refusal. `t`,
-  # the INLA spelling, reaches no brms route and is refused with it.
+  # brms accepts mi() for student(), but emit_brms() has no translation for
+  # it: admitting the family here ended in an untyped emitter error. The
+  # brms::student() family object now stops earlier, at the family gate, as
+  # the string does. `t`, the INLA spelling, reaches no brms route and is
+  # refused by the augmentation gate itself.
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_lognormal_data()
@@ -231,7 +232,7 @@ test_that("a missing Student-t response is refused by name on brms", {
       y ~ 1 + (1 | blk), data = d, family = brms::student(),
       backend = "brms", na_action = "augment", return_code = TRUE
     )),
-    class = "flexybayes_refusal_brms_cannot_augment_nongaussian"
+    class = "flexybayes_refusal_unsupported_family"
   )
   expect_error(
     .fb_brms_missing_response_mode(list(response = "y", family = "t"), d),

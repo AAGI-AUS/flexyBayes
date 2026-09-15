@@ -1101,9 +1101,8 @@ emit_brms <- function(
 #
 # Student-t stays out although brms accepts it: emit_brms() has no
 # translation for the family, so admitting it here ended in an untyped
-# emitter error. lognormal reaches brms only as a brms::lognormal() family
-# object in the brms grammar; the family string is refused earlier, by
-# .resolve_family().
+# emitter error. .resolve_family() admits lognormal for brms only, as the
+# name "lognormal" or a brms::lognormal() family object.
 #
 # Refusing is not a limitation being papered over. Under ignorability the
 # parameter posterior is the same whether the cell is imputed or omitted,

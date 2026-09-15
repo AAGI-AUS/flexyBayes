@@ -8,8 +8,8 @@
 # is loaded.
 #
 # Supported (v0.1):
-# - Gaussian / binomial / poisson / Gamma / lognormal / beta family
-#   names; default link or explicit override.
+# - The families .resolve_family() admits, as a name or a family
+#   object; default link, the object's own link, or explicit override.
 # - Linear fixed effects (factor / continuous / interaction /
 #   I() expressions) -- re-parsed via the existing .parse_fixed
 #   helper for byte-identity with the asreml ingest path.
@@ -32,9 +32,9 @@
 # - Distributional regression and addition terms (`cens`, `trunc`,
 #   `trials`, `se`, `mi`, `weights()` inside formula; the
 #   `weights` argument is supported instead).
-# - Multivariate / hurdle / mixture / categorical families (caught
-#   by lgm_gate post-construction or by the family-name check
-#   here).
+# - Multivariate / mixture / categorical families, and every other
+#   family .resolve_family() does not admit (refused by that gate
+#   here, for a family name and a family object alike).
 #
 # Future iterations will use brms::brmsterms() for the full
 # v0.1 ingest set and add full random-slope translation,
@@ -205,19 +205,15 @@ fb_from_brms <- function(
   }
 
   # ------------------------- Family + link ----------------------- #
-  if (inherits(family, "family")) {
-    fam_name <- family$family
-    link_name <- if (!is.null(link)) link else family$link
-  } else if (is.character(family) && length(family) == 1L) {
-    fl <- .resolve_family(family, link)
-    fam_name <- fl$family
-    link_name <- fl$link
-  } else {
-    stop(
-      "`family` must be a character(1) name or a `family()` object.",
-      call. = FALSE
-    )
-  }
+  # A family object goes through the same gate as its name. Reading
+  # `family$family` straight off the object let this grammar fit families
+  # the string spelling refuses (brms::lognormal() on either engine) and
+  # send others to an untyped emitter error (brms::student()).
+  # .resolve_family() reads the object's name, keeps the link the object
+  # supplies, and refuses a `link =` that contradicts it.
+  fl <- .resolve_family(family, link)
+  fam_name <- fl$family
+  link_name <- fl$link
 
   # ------------------------- Response --------------------------- #
   response <- deparse(formula[[2]])

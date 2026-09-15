@@ -799,7 +799,8 @@
 
   # -- family support (utils.R::.resolve_family) ---------------------
   # .resolve_family() is the single family gate every user entry
-  # passes through (asreml via fb.R, brms via fb_from_brms.R). It
+  # passes through (asreml via fb.R, brms via fb_from_brms.R), for a
+  # family name and a family object alike. It
   # admits only the families flexyBayes can emit; any other family --
   # including those INLA's likelihood roster recognises but flexyBayes
   # has no emit path for (e.g. survival / time-to-event) -- is refused
@@ -814,8 +815,8 @@
     message_template = paste0(
       "Unsupported family \"%s\". flexyBayes supports: gaussian, ",
       "binomial, binary, poisson, negative_binomial, negbinom, ",
-      "gamma, beta. Other families (including survival / ",
-      "time-to-event and multivariate responses) are planned future ",
+      "gamma, beta, hurdle_gamma, lognormal. Other families (including ",
+      "survival / time-to-event and multivariate responses) are planned future ",
       "work; see fb_refusals()."
     ),
     registered_in_adr = "audit-2026-05-30",
@@ -2111,8 +2112,9 @@
     description = paste0(
       "aggregate = TRUE with no aggregated emit route available -- ",
       "either the named backend carries no aggregated path at all, or ",
-      "no aggregated backend resolves for the model. Raised at two ",
-      "sites with site-specific messages. Untyped before 0.9.2."
+      "no aggregated backend resolves for the model, including a family ",
+      "or link flexybayes_stream() does not aggregate. Raised with ",
+      "site-specific messages. Untyped before 0.9.2."
     ),
     message_template = "%s",
     registered_in_adr = "Execution grid EG-2026-08-19-001",

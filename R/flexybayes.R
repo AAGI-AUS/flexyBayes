@@ -126,11 +126,14 @@
 #'   error -- use `residual` instead.
 #' @param data A data.frame containing all variables referenced in the formulas.
 #' @param family Character: `"gaussian"`, `"binomial"`, `"poisson"`,
-#'   `"negative_binomial"`, `"gamma"`, `"beta"`, or `"hurdle_gamma"`
-#'   (brms only -- INLA's likelihood roster has no counterpart, so the
-#'   family gate refuses it there and `backend = "auto"` routes to brms).
-#'   A `stats` family object (`binomial()`, `gaussian()`) is also
-#'   accepted and supplies its own link, so `Gamma()` means the inverse
+#'   `"negative_binomial"`, `"gamma"`, `"beta"`, `"hurdle_gamma"` or
+#'   `"lognormal"`. The last two are brms only: INLA's likelihood roster
+#'   has no hurdle gamma, and no INLA lognormal fit is validated, so the
+#'   family gate refuses both there and `backend = "auto"` routes them to
+#'   brms.
+#'   A family object (`binomial()`, `gaussian()`, `brms::lognormal()`) is
+#'   also accepted, goes through the same gate as
+#'   its name, and supplies its own link, so `Gamma()` means the inverse
 #'   link it names rather than the log link `family = "gamma"` defaults
 #'   to. Passing a family object together with a contradicting `link` is
 #'   refused rather than resolved. A family outside this set is refused
@@ -726,8 +729,10 @@ flexybayes <- function(
     unif_default <- .default_uniform_prior(
       data = data,
       response = fb$response,
-      family = family,
-      link = link,
+      # The family and link the gate resolved, which also covers a family
+      # generator passed unevaluated (`family = poisson`).
+      family = fb$family,
+      link = fb$link,
       random_groups = prior_targets$shared,
       vm_ped_groups = prior_targets$vm_ped,
       # On an offset model the bound U = 5 sd reads y - o, on both engines,
