@@ -269,3 +269,155 @@ test_that("the two codes describe two different boundaries", {
                                  "aggregation_route_unavailable"],
                "no aggregated emit route", fixed = TRUE)
 })
+
+# ---------------------------------------------------------------- #
+# 6. Site 4 -- a family or link the aggregated route cannot take    #
+# ---------------------------------------------------------------- #
+#
+# .fb_aggregation_plan()'s family / link scope check (R/aggregate_plan.R)
+# runs before the term-shape loops, so a family or link reason is always
+# plan$reason_codes[1] when either fires. On aggregate = TRUE with
+# backend = "inla" it used to reach .maybe_aggregate_gaussian()'s generic
+# ineligibility branch, which built the refusal by hand
+# (`structure(class = c("flexybayes_aggregate_refusal", "error",
+# "condition"), ...)`) rather than through .fb_refusal_condition() --
+# a class, but not a registered one, and not reachable by
+# `class = "flexybayes_refusal_<reason_code>"`, the contract every other
+# refusal in this file is asserted against above.
+#
+# Both facts already have a name elsewhere. A non-canonical link
+# (binomial(link = "probit"), poisson(link = "sqrt")) is exactly what
+# lgm_gate()'s family_allowlist rule refuses for an explicit
+# backend = "inla" request on the three aggregatable families -- the
+# aggregation canon link (identity / logit / log) is each one's INLA
+# default (U-LINK-1) -- so it now raises inla_gate_refused, the same code
+# the per-row route already raises for the same pair. A family outside
+# {gaussian, binomial, poisson} (gamma is admitted by the family gate and
+# fits fine on INLA per row; it just has no aggregated emit) now raises
+# aggregation_route_unavailable, the code already registered for "no
+# aggregated backend resolves for the model" two sections above.
+
+.agg_link_trial <- function(seed = 1L) {
+  set.seed(seed)
+  d <- data.frame(g = factor(rep(seq_len(6L), each = 8L)))
+  eta <- 0.3 + stats::rnorm(6L, 0, 0.3)[as.integer(d$g)]
+  d$y_bin <- stats::rbinom(48L, 1L, stats::plogis(eta))
+  d$y_poi <- stats::rpois(48L, exp(eta))
+  d$y_gam <- stats::rgamma(48L, shape = 2, rate = 2 * exp(-eta))
+  d
+}
+
+test_that("aggregate = TRUE with a non-canonical link raises inla_gate_refused", {
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  d <- .agg_link_trial()
+
+  d$y <- d$y_bin
+  expect_error(
+    suppressMessages(flexybayes(
+      y ~ 1 + (1 | g), data = d, family = stats::binomial(link = "probit"),
+      backend = "inla", aggregate = TRUE, verbose = FALSE
+    )),
+    class = "flexybayes_refusal_inla_gate_refused"
+  )
+
+  d$y <- d$y_poi
+  expect_error(
+    suppressMessages(flexybayes(
+      y ~ 1 + (1 | g), data = d, family = stats::poisson(link = "sqrt"),
+      backend = "inla", aggregate = TRUE, verbose = FALSE
+    )),
+    class = "flexybayes_refusal_inla_gate_refused"
+  )
+})
+
+test_that(
+  "aggregate = TRUE with a family the aggregated route cannot take raises aggregation_route_unavailable",
+  {
+    withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+    d <- .agg_link_trial()
+    d$y <- d$y_gam
+
+    err <- tryCatch(
+      suppressMessages(flexybayes(
+        y ~ 1 + (1 | g), data = d, family = "gamma",
+        backend = "inla", aggregate = TRUE, verbose = FALSE
+      )),
+      error = function(e) e
+    )
+    expect_s3_class(err, "flexybayes_refusal_aggregation_route_unavailable")
+    expect_s3_class(err, "flexybayes_refusal")
+    expect_identical(err$reason_code, "aggregation_route_unavailable")
+    expect_match(conditionMessage(err), "gamma", fixed = TRUE)
+
+    # The family scope check does not depend on which backend was asked
+    # for, so "auto" reaches the same reason.
+    err_auto <- tryCatch(
+      suppressMessages(flexybayes(
+        y ~ 1 + (1 | g), data = d, family = "gamma",
+        backend = "auto", aggregate = TRUE, verbose = FALSE
+      )),
+      error = function(e) e
+    )
+    expect_s3_class(
+      err_auto,
+      "flexybayes_refusal_aggregation_route_unavailable"
+    )
+  }
+)
+
+test_that("flexybayes_stream() with a non-canonical link or family refuses typed", {
+  d <- .agg_link_trial()
+
+  d_bin <- d
+  d_bin$y <- d_bin$y_bin
+  expect_error(
+    flexybayes_stream(
+      fixed = y ~ 1, random = ~g, source = d_bin,
+      family = stats::binomial(link = "probit"), fit = FALSE, verbose = FALSE
+    ),
+    class = "flexybayes_refusal_aggregation_route_unavailable"
+  )
+
+  d_poi <- d
+  d_poi$y <- d_poi$y_poi
+  expect_error(
+    flexybayes_stream(
+      fixed = y ~ 1, random = ~g, source = d_poi,
+      family = stats::poisson(link = "sqrt"), fit = FALSE, verbose = FALSE
+    ),
+    class = "flexybayes_refusal_aggregation_route_unavailable"
+  )
+
+  d_gam <- d
+  d_gam$y <- d_gam$y_gam
+  expect_error(
+    flexybayes_stream(
+      fixed = y ~ 1, random = ~g, source = d_gam,
+      family = "gamma", fit = FALSE, verbose = FALSE
+    ),
+    class = "flexybayes_refusal_aggregation_route_unavailable"
+  )
+})
+
+test_that("the default link still aggregates on both entries", {
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_auto_fallback_note = TRUE
+  )
+  d <- .agg_link_trial()
+  d$y <- d$y_bin
+
+  fit <- suppressMessages(flexybayes(
+    y ~ 1 + (1 | g), data = d, family = "binomial",
+    backend = "inla", aggregate = TRUE, verbose = FALSE
+  ))
+  expect_s3_class(fit, "flexybayes_aggregated")
+
+  agg <- flexybayes_stream(
+    fixed = y ~ 1, random = ~g, source = d,
+    family = "binomial", fit = FALSE, verbose = FALSE
+  )
+  expect_s3_class(agg, "fb_aggregated")
+})
