@@ -140,9 +140,9 @@
     reason_code = "selection_formula_transform_not_fold_local",
     description = paste0(
       "fb_select(): a formula variable of the base or the candidates takes ",
-      "a value on a row that depends on other rows, such as scale(x), ",
-      "poly(x, 2) or I(x - mean(x)), so a fold's training rows would read ",
-      "its assessment rows. The benchmark route learns scale(), poly(), ",
+      "a value on a row that depends on other rows, so a fold's training ",
+      "rows would read its assessment rows. The benchmark route learns ",
+      "scale(), poly(), ",
       "splines::ns() and splines::bs() on each fold's training rows and ",
       "refuses any other such transform; the Bayesian route, whose engines ",
       "evaluate the formula over the rows they are handed, refuses every ",
