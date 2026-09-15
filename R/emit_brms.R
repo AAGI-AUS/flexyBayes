@@ -423,7 +423,15 @@ emit_brms <- function(
       brms_prior = brms_prior,
       # Which prior became which brms prior row, as brms reports it back
       # (R/model_manifest.R).
-      manifest = .fb_manifest_brms(fb, brms_prior, brmsfit, tagged_prior)
+      manifest = .fb_manifest_brms(fb, brms_prior, brmsfit, tagged_prior),
+      # The versions, threads and seed the fit ran with
+      # (R/reproducibility_record.R). `cores` reaches brm() only through
+      # `...`, and brms keeps no record of it on the fit.
+      reproducibility = .fb_repro_record_brms(
+        brmsfit,
+        seed = seed,
+        cores = list(...)[["cores"]]
+      )
     ),
     class = "flexybayes_extras"
   )

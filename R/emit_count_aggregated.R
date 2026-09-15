@@ -446,6 +446,9 @@ emit_count_aggregated <- function(
       # Every bounded prior checked against the fit
       # (R/inla_support_audit.R).
       support_audit = engine_out[["support_audit"]],
+      # The versions, threads and seed the fit ran with
+      # (R/reproducibility_record.R).
+      reproducibility = .fb_repro_record_inla(engine_out[["inla"]], seed),
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a

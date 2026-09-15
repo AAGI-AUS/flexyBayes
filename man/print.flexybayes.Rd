@@ -27,4 +27,10 @@ print, so the three cannot disagree about what the fit is. Sampler
 lines print only on an engine that sampled: a nested Laplace
 approximation has no chains and no warmup, and reporting them over one
 tells a reader the fit is stochastic when it is not.
+
+The header closes with three lines read from
+\code{fit$extras$reproducibility}: the R, flexyBayes and engine versions; the
+thread settings (INLA's \code{num.threads}, or the chains, cores and threads
+per chain on brms, with \code{OMP_NUM_THREADS}); and the seed supplied, with
+the seed Stan ran with on brms. \code{\link[=summary]{summary()}} opens with the same header.
 }

@@ -221,15 +221,26 @@
 #' @param n_samples Integer: number of posterior samples per chain.
 #' @param warmup Integer: number of warmup (burn-in) iterations per chain.
 #' @param chains Integer: number of MCMC chains.
-#' @param seed Integer or `NULL`: the sampler's random seed, forwarded to
-#'   `brms::brm(seed = )`. Two brms fits of the same model to the same data
-#'   under the same seed return identical draws. `set.seed()` before the
-#'   call does not achieve this -- Stan draws from its own stream -- so a
-#'   posterior quoted to more than about two significant figures needs this
-#'   argument. `NULL` (the default) leaves the seed to brms and the run is
-#'   not reproducible. The INLA path is a deterministic Laplace
-#'   approximation and has no random stream, so the argument is a no-op
-#'   there and says so once.
+#' @param seed Integer or `NULL`: the seed for the sampler, on the engine
+#'   that samples.
+#'
+#'   On brms it is forwarded to `brms::brm(seed = )` and fixes Stan's
+#'   draws: two fits of the same model to the same data under the same seed,
+#'   chains and backend return identical draws. With `NULL` (the default)
+#'   brms passes no seed and Stan runs with one drawn for it. On the
+#'   cmdstanr backend that draw comes from R's random-number stream, so it
+#'   follows `set.seed()` only when nothing else draws from the stream
+#'   first. Either way the seed Stan ran with is kept at
+#'   `fit$extras$reproducibility$seed$as_run`, and a refit under that value
+#'   returns the same draws. Draws taken later from the fitted object, such
+#'   as `brms::posterior_epred()` on new levels, follow R's random-number
+#'   stream and not this seed.
+#'
+#'   On INLA the seed has no effect: `INLA::inla()` takes no seed, and the
+#'   argument says once that it was not used. Repeated INLA fits agree to
+#'   the precision of its optimiser, and a seed does not change that. The
+#'   thread setting an INLA fit ran with is recorded beside the engine
+#'   versions, in the same record.
 #' @param control A named list of sampler control settings or `NULL`,
 #'   forwarded to `brms::brm(control = )`. This is the route to
 #'   `adapt_delta` and `max_treedepth`: `control = list(adapt_delta = 0.95)`
@@ -429,7 +440,9 @@
 #'     accessors.}
 #'   \item{`$extras`}{Additional outputs: posterior `summary`, `convergence`
 #'     diagnostics, `variance_comps`, `blups`, `predictions`, generated `code`,
-#'     `param_names`, `parse_info`, `call_info`, `run_time`, `model_info`.}
+#'     `param_names`, `parse_info`, `call_info`, `run_time`, `model_info`,
+#'     and `reproducibility`: the R, flexyBayes and engine versions, the
+#'     thread settings and the seed the fit ran with, which `print()` shows.}
 #' }
 #'
 #' If `return_code = TRUE`, returns the generated backend code instead: a

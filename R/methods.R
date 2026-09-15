@@ -13,6 +13,12 @@
 #' approximation has no chains and no warmup, and reporting them over one
 #' tells a reader the fit is stochastic when it is not.
 #'
+#' The header closes with three lines read from
+#' `fit$extras$reproducibility`: the R, flexyBayes and engine versions; the
+#' thread settings (INLA's `num.threads`, or the chains, cores and threads
+#' per chain on brms, with `OMP_NUM_THREADS`); and the seed supplied, with
+#' the seed Stan ran with on brms. [summary()] opens with the same header.
+#'
 #' @param x A fitted `flexybayes` object of any backend.
 #' @param ... Ignored, present for compatibility with the generic.
 #' @returns Invisibly, `x` unchanged. Called for the description it
@@ -290,7 +296,8 @@ summary.flexybayes <- function(object, ...) {
 #' = ...)`. The header names the fit's own family
 #' (`aggregated-gaussian`, `aggregated-binomial`, `aggregated-poisson`).
 #' Includes the `exactness` field and the cell compression ratio (when
-#' N/K >= 2).
+#' N/K >= 2), and the versions, threads and seed the fit ran with, as
+#' [print.flexybayes()] prints them.
 #'
 #' @param x   A `<flexybayes_aggregated>` object, as returned by a fit
 #'   run on the aggregated representation.
@@ -312,6 +319,12 @@ print.flexybayes_aggregated <- function(x, ...) {
   cat("  random:    ", mi$n_random, "\n")
   cat("  backend:   ", bd$backend, "(path =", bd$path, ")\n")
   cat("  runtime:   ", round(x$extras$run_time, 2), "sec\n")
+  # The versions, threads and seed the fit ran with
+  # (R/reproducibility_record.R).
+  repro <- .fb_repro_lines(x)
+  for (nm in names(repro)) {
+    cat(sprintf("  %-12s%s\n", paste0(tolower(nm), ":"), repro[[nm]]))
+  }
   # Truth display as adjacent lines (v0.3.8).
   cat("  Representation: ", .repr_label_for_fit(x, bd), "\n", sep = "")
   cat("  Engine:         ", .engine_label_for_fit(x, bd), "\n", sep = "")

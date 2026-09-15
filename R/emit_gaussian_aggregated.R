@@ -640,6 +640,9 @@ emit_gaussian_aggregated <- function(
       # Every bounded prior checked against the fit
       # (R/inla_support_audit.R).
       support_audit = engine_out$support_audit,
+      # The versions, threads and seed the fit ran with
+      # (R/reproducibility_record.R).
+      reproducibility = .fb_repro_record_inla(engine_out$inla, seed),
       # The standard deviations the INLA fit filled with the package default.
       prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose. Aggregation is a
