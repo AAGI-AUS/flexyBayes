@@ -519,9 +519,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # to build from or fold (stream_source_no_rows) (= 208). The no-cell-key
   # model-shape refusal reuses the existing aggregation_route_unavailable
   # code; no code is added for it.
+  #
+  # The score contract adds one: an arm's contract whose hash cannot be
+  # verified (selection_score_contract_unverifiable) (= 209).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 208L)
+  expect_equal(length(entries), 209L)
+  expect_true("selection_score_contract_unverifiable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)
   expect_true("stream_source_no_rows" %in% entries)
   expect_true("prior_support_violated" %in% entries)

@@ -1268,33 +1268,130 @@
 # beside the others' choices. A stage with no score says so; nothing is
 # substituted into it.
 
-#' A content checksum of a string
+# The canonical encoding the score contract hashes. Every value is written
+# with an explicit type tag, explicit lengths and little-endian byte order,
+# so one input gives one byte stream under any R version and on any
+# platform. `serialize()` is not used: its header carries the version of R
+# that wrote it. The digest is MD5, through tools::md5sum() over a temporary
+# file (DEC-HASH-01), which needs nothing beyond base R and keeps the R floor.
+# MD5 identifies the bytes here; it is not used for security, and the
+# contract makes no claim against a constructed collision.
+.FB_SCORE_CONTRACT_VERSION <- 2L
+
+
+#' Write one value of the score contract's canonical encoding
 #'
-#' Two independent polynomial hashes over the string's code points, each
-#' modulo a prime below 2^31, written as two eight-digit hexadecimal groups.
-#' A deterministic fingerprint for telling score contracts apart, not a
-#' cryptographic digest.
+#' One ASCII tag byte, then the value, with every integer a 32-bit and every
+#' double a 64-bit little-endian number. `S` character: the count, the byte
+#' length of each element after `enc2utf8()` (`-1` for `NA`), then the bytes
+#' of the elements that are not `NA`. `I` integer and `L` logical: the count,
+#' then the values (`NA` is the smallest 32-bit integer). `D` double: the
+#' count, an `I` record of the positions holding `NA`, an `I` record of the
+#' positions holding `NaN`, then the values with `NA`, `NaN` and `-0` written
+#' as `+0`, because the bit pattern of a `NaN` depends on the platform. `F`
+#' factor: an `S` record of the levels, then an `I` record of the codes. A
+#' matrix is written as its values in column order.
 #'
-#' @param text A single string.
-#' @return A string of the form `"xxxxxxxx-xxxxxxxx"`.
+#' @param con An open binary connection.
+#' @param x An atomic vector or factor.
+#' @return `NULL`, invisibly.
 #' @noRd
 #' @keywords internal
-.fb_select_hash <- function(text) {
-  codes <- as.numeric(utf8ToInt(enc2utf8(as.character(text))))
-  moduli <- c(2147483629, 2147483587)
-  multipliers <- c(257, 263)
-  groups <- vapply(
-    seq_along(moduli),
-    function(k) {
-      h <- 0
-      for (code in codes) {
-        h <- (h * multipliers[[k]] + code) %% moduli[[k]]
-      }
-      sprintf("%08x", as.integer(h))
-    },
-    character(1L)
-  )
-  paste(groups, collapse = "-")
+.fb_select_write_value <- function(con, x) {
+  int32 <- function(v) {
+    writeBin(as.integer(v), con, size = 4L, endian = "little")
+  }
+  tag <- function(t) writeBin(charToRaw(t), con)
+  if (length(x) > .Machine$integer.max) {
+    stop(
+      "the score contract's encoding counts in 32-bit integers, and this ",
+      "value has ", length(x), " elements.",
+      call. = FALSE
+    )
+  }
+  if (is.factor(x)) {
+    tag("F")
+    .fb_select_write_value(con, levels(x))
+    .fb_select_write_value(con, as.integer(unclass(x)))
+  } else if (is.character(x)) {
+    x <- enc2utf8(x)
+    absent <- is.na(x)
+    bytes <- nchar(x, type = "bytes")
+    bytes[absent] <- -1L
+    tag("S")
+    int32(length(x))
+    int32(bytes)
+    writeBin(charToRaw(paste(x[!absent], collapse = "")), con)
+  } else if (is.logical(x) || is.integer(x)) {
+    tag(if (is.logical(x)) "L" else "I")
+    int32(length(x))
+    int32(x)
+  } else if (is.double(x)) {
+    values <- as.double(x)
+    nan <- is.nan(values)
+    tag("D")
+    int32(length(values))
+    .fb_select_write_value(con, which(is.na(values) & !nan))
+    .fb_select_write_value(con, which(nan))
+    values[is.na(values) | values == 0] <- 0
+    writeBin(values, con, size = 8L, endian = "little")
+  } else {
+    stop(
+      "the score contract has no canonical encoding for a value of type `",
+      typeof(x), "`.",
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}
+
+
+#' Write one named field of the score contract's canonical encoding
+#'
+#' @param con An open binary connection.
+#' @param name The field's name, written as a one-element `S` record.
+#' @param x The field's value.
+#' @return `NULL`, invisibly.
+#' @noRd
+#' @keywords internal
+.fb_select_write_field <- function(con, name, x) {
+  .fb_select_write_value(con, as.character(name))
+  .fb_select_write_value(con, x)
+}
+
+
+#' The MD5 digest of one part of the score contract
+#'
+#' The part is written behind a header naming it and the encoding version to
+#' a temporary file in `tempdir()`, hashed by `tools::md5sum()`, and the file
+#' is removed on exit. MD5 identifies the bytes; it is not used for security.
+#'
+#' @param label The part's name.
+#' @param write A function of one open binary connection that writes the
+#'   part's fields.
+#' @return 32 lower-case hexadecimal characters.
+#' @noRd
+#' @keywords internal
+.fb_select_digest <- function(label, write) {
+  path <- tempfile("fb_score_contract_", tmpdir = tempdir(), fileext = ".bin")
+  on.exit(unlink(path), add = TRUE)
+  con <- file(path, open = "wb")
+  con_open <- TRUE
+  on.exit(if (con_open) close(con), add = TRUE, after = FALSE)
+  .fb_select_write_field(con, "label", label)
+  .fb_select_write_field(con, "version", .FB_SCORE_CONTRACT_VERSION)
+  write(con)
+  close(con)
+  con_open <- FALSE
+  digest <- unname(tools::md5sum(path))
+  if (length(digest) != 1L || is.na(digest)) {
+    stop(
+      "the score contract's digest of `", label, "` could not be read back ",
+      "from its temporary file.",
+      call. = FALSE
+    )
+  }
+  digest
 }
 
 
@@ -1305,16 +1402,28 @@
 #' when the units are sorted -- so one partition under two labellings has
 #' one contract, and two partitions under one labelling do not.
 #'
+#' The response and the design enter by their values, each digested through
+#' the canonical encoding (`.fb_select_write_value()`): the response resolved
+#' through the fit's own resolver, with the offsets the benchmark scorer
+#' subtracts, and every design column over all rows before fold-local
+#' preprocessing. A rescaled covariate or a transformed response under an
+#' unchanged name gives a different contract. The hash is recomputed from the
+#' stored fields by `.fb_select_contract_hash()`, which is how a stage table
+#' verifies it.
+#'
 #' @param folds An `<fb_sel_folds>`.
 #' @param data The data the folds index.
-#' @param response The response column name.
+#' @param response The response as written: a column name or an expression
+#'   over the columns.
 #' @param prediction The prediction target.
 #' @param metric The metric the comparison is scored at.
-#' @param design_columns The protected and candidate design column names.
+#' @param design The design matrix the arm was scored on (`cv$design`): the
+#'   protected and candidate columns over all rows, named.
 #' @param learned_on Where the arm's fold-learned quantities were learned.
 #' @param stage `"reference"` or `"decision"`.
 #' @param scoring_unit The unit the arm aggregated at; `NULL` reads the
 #'   folds' resampling unit, or `"row"` where none was declared.
+#' @param offsets The model's offset expressions.
 #' @return An `fb_select_score_contract`.
 #' @noRd
 #' @keywords internal
@@ -1323,10 +1432,11 @@
                                       response,
                                       prediction,
                                       metric,
-                                      design_columns,
+                                      design,
                                       learned_on,
                                       stage,
-                                      scoring_unit = NULL) {
+                                      scoring_unit = NULL,
+                                      offsets = character(0)) {
   # The fold of every scored row, per repeat -----
   n <- attr(folds, "n_rows") %||% nrow(data)
   unit_key <- attr(folds, "unit_key") %||% as.character(seq_len(n))
@@ -1357,7 +1467,55 @@
     )
   }))
 
-  # The remaining fields, and the checksum over all of them -----
+  # The values the arm was scored on, digested -----
+  if (!is.matrix(design) || is.null(colnames(design)) ||
+        nrow(design) != nrow(data)) {
+    stop(
+      "the score contract needs the design matrix the arm was scored on, ",
+      "with named columns and one row per row of the data.",
+      call. = FALSE
+    )
+  }
+  y <- .fb_response_values(list(response = response), data)
+  if (is.null(y)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_fold_variable_not_in_data",
+      message = paste0(
+        "fb_select(): the response `", response, "` is neither a column of ",
+        "the data nor an expression that evaluates over its rows, so the ",
+        "score contract has no response values to identify."
+      )
+    ))
+  }
+  # Both scorers read a numeric response through as.numeric().
+  if (is.numeric(y) || is.logical(y)) {
+    y <- as.double(y)
+  }
+  offsets <- sort(as.character(offsets), method = "radix")
+  response_values <- .fb_select_digest("response", function(con) {
+    .fb_select_write_field(con, "expression", as.character(response))
+    .fb_select_write_field(con, "values", y)
+    .fb_select_write_field(con, "offsets", offsets)
+    if (length(offsets) > 0L) {
+      .fb_select_write_field(
+        con, "offset_values", as.double(.fb_offset_total(offsets, data))
+      )
+    }
+  })
+  # Columns in radix order of their names, so the column order of the matrix
+  # is not part of the contract and the row order within a column is.
+  columns <- order(colnames(design), method = "radix")
+  design_values <- .fb_select_digest("design", function(con) {
+    .fb_select_write_field(con, "dim", dim(design))
+    .fb_select_write_field(con, "columns", colnames(design)[columns])
+    for (j in columns) {
+      .fb_select_write_field(
+        con, colnames(design)[[j]], as.double(design[, j])
+      )
+    }
+  })
+
+  # The remaining fields, and the hash over all of them -----
   if (is.null(scoring_unit)) {
     scoring_unit <- attr(folds, "unit")
     if (length(scoring_unit) == 0L) {
@@ -1365,39 +1523,119 @@
     }
   }
   fields <- list(
+    version = .FB_SCORE_CONTRACT_VERSION,
     unit_to_fold = unit_to_fold,
     row_fold = canonical_rows,
     scoring_unit = as.character(scoring_unit),
     prediction = as.character(prediction),
     response = list(
-      name = response,
-      digest = .fb_column_digest(response, data[[response]])
+      name = as.character(response),
+      offsets = offsets,
+      values = response_values
     ),
     metric = as.character(metric),
     design_columns = sort(
-      unique(as.character(design_columns)), method = "radix"
+      unique(as.character(colnames(design))), method = "radix"
     ),
+    design_values = design_values,
     learned_on = as.character(learned_on),
     stage = as.character(stage)
   )
-  text <- paste(c(
-    paste0("unit_to_fold=", paste(
-      unit_to_fold$repeat_id, unit_to_fold$unit, unit_to_fold$fold,
-      sep = ":", collapse = ","
-    )),
-    paste0("row_fold=", paste(canonical_rows, collapse = ",")),
-    paste0("scoring_unit=", paste(fields$scoring_unit, collapse = "+")),
-    paste0("prediction=", fields$prediction),
-    paste0("response=", response, "|", fields$response$digest),
-    paste0("metric=", fields$metric),
-    paste0("design_columns=", paste(fields$design_columns, collapse = ",")),
-    paste0("learned_on=", fields$learned_on),
-    paste0("stage=", fields$stage)
-  ), collapse = "\n")
   structure(
-    c(fields, list(units = units, hash = .fb_select_hash(text))),
+    c(fields, list(units = units, hash = .fb_select_contract_hash(fields))),
     class = "fb_select_score_contract"
   )
+}
+
+
+#' The hash of a score contract, recomputed from its fields
+#'
+#' The fold maps and the scalar fields are written through the canonical
+#' encoding beside the two value digests, so the hash depends on every value
+#' and is recomputed without the data.
+#'
+#' @param contract A score contract, or the list of its fields.
+#' @return 32 lower-case hexadecimal characters.
+#' @noRd
+#' @keywords internal
+.fb_select_contract_hash <- function(contract) {
+  .fb_select_digest("contract", function(con) {
+    map <- contract$unit_to_fold
+    .fb_select_write_field(con, "repeat_id", as.integer(map$repeat_id))
+    .fb_select_write_field(con, "unit", as.character(map$unit))
+    .fb_select_write_field(con, "fold", as.integer(map$fold))
+    .fb_select_write_field(
+      con, "row_fold_dim", as.integer(dim(contract$row_fold))
+    )
+    .fb_select_write_field(con, "row_fold", as.integer(contract$row_fold))
+    for (field in c("scoring_unit", "prediction")) {
+      .fb_select_write_field(con, field, as.character(contract[[field]]))
+    }
+    .fb_select_write_field(
+      con, "response_name", as.character(contract$response$name)
+    )
+    .fb_select_write_field(
+      con, "response_offsets", as.character(contract$response$offsets)
+    )
+    .fb_select_write_field(
+      con, "response_values", as.character(contract$response$values)
+    )
+    for (field in c(
+      "metric", "design_columns", "design_values", "learned_on", "stage"
+    )) {
+      .fb_select_write_field(con, field, as.character(contract[[field]]))
+    }
+  })
+}
+
+
+#' Verify a score contract before it is compared, or refuse by name
+#'
+#' A contract is verified when it carries this release's version, an MD5
+#' hash, and a hash equal to the one recomputed from its fields. A contract
+#' written before score contracts identified values carries no version field
+#' and a polynomial checksum over names, and neither can be checked against
+#' the values.
+#'
+#' @param contract The arm's score contract.
+#' @param arm The arm's name, for the message.
+#' @return `TRUE`, invisibly; otherwise a
+#'   `selection_score_contract_unverifiable` refusal.
+#' @noRd
+#' @keywords internal
+.fb_select_verify_contract <- function(contract, arm) {
+  hash <- contract[["hash"]]
+  problem <- if (!inherits(contract, "fb_select_score_contract")) {
+    "it is not a score contract"
+  } else if (is.null(contract[["version"]])) {
+    paste0(
+      "it carries no version field, so it was written before score ",
+      "contracts identified values"
+    )
+  } else if (!identical(contract[["version"]], .FB_SCORE_CONTRACT_VERSION)) {
+    paste0(
+      "it is version ", paste(format(contract[["version"]]), collapse = " "),
+      ", and this release verifies version ", .FB_SCORE_CONTRACT_VERSION
+    )
+  } else if (!is.character(hash) || length(hash) != 1L ||
+               !grepl("^[0-9a-f]{32}$", hash)) {
+    "its hash is not an MD5 digest of the canonical encoding"
+  } else if (!identical(.fb_select_contract_hash(contract), hash)) {
+    "its hash does not match its fields"
+  } else {
+    NULL
+  }
+  if (!is.null(problem)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_score_contract_unverifiable",
+      message = paste0(
+        "fb_select(): the score contract of the `", arm, "` arm cannot be ",
+        "verified: ", problem, ". Its out-of-fold score is not placed ",
+        "beside another arm's."
+      )
+    ))
+  }
+  invisible(TRUE)
 }
 
 
@@ -1410,29 +1648,11 @@
 .fb_select_contract_differences <- function(a, b) {
   fields <- c(
     "unit_to_fold", "row_fold", "scoring_unit", "prediction", "response",
-    "metric", "design_columns", "learned_on", "stage"
+    "metric", "design_columns", "design_values", "learned_on", "stage"
   )
   fields[!vapply(
     fields, function(f) identical(a[[f]], b[[f]]), logical(1L)
   )]
-}
-
-
-#' The design columns an out-of-fold object was scored under
-#'
-#' @param cv An out-of-fold object carrying `design_columns` or substrates.
-#' @return The protected and candidate column names.
-#' @noRd
-#' @keywords internal
-.fb_select_design_columns <- function(cv) {
-  if (!is.null(cv$design_columns)) {
-    return(cv$design_columns)
-  }
-  substrate <- cv$substrates[[1L]]
-  if (is.null(substrate)) {
-    return(character(0))
-  }
-  c(colnames(substrate$x_protected), colnames(substrate$x_candidate))
 }
 
 
@@ -1441,7 +1661,9 @@
 #' Each entry is `list(arm, model, clusters, contract, label)` and the first
 #' is the primary arm. An arm enters the table only when its contract agrees
 #' with the primary's field for field and the units its table scored are the
-#' units its contract names; every other arm is listed with the reason.
+#' units its contract names; every other arm is listed with the reason. A
+#' contract whose hash cannot be verified refuses with
+#' `selection_score_contract_unverifiable`.
 #' Scores are re-aggregated from the per-unit tables through one function.
 #'
 #' @param stage `"reference"` or `"decision"`.
@@ -1484,6 +1706,12 @@
     }
     if (!is.null(clusters)) {
       clusters <- clusters[clusters$model == entry$model, , drop = FALSE]
+    }
+    # An arm that carries a score table is compared only once its contract's
+    # hash is verified against its fields; the primary is verified first. An
+    # arm with no table is excluded below for that reason.
+    if (!is.null(clusters) && nrow(clusters) > 0L) {
+      .fb_select_verify_contract(entry$contract, entry$arm)
     }
     differing <- .fb_select_contract_differences(
       primary$contract, entry$contract
@@ -1603,16 +1831,22 @@
 .fb_select_stage_tables <- function(base, axes, cv, benchmark, metric) {
   arms <- benchmark$arms %||% list()
   contract_of <- function(source, stage, scoring_unit = NULL) {
+    # A source that recorded no design scored nothing and carries no
+    # contract; an arm that reaches a comparison without one refuses there.
+    if (is.null(source$design)) {
+      return(NULL)
+    }
     .fb_select_score_contract(
       folds = source$folds,
       data = base$data,
       response = base$fb$response,
       prediction = source$prediction,
       metric = metric,
-      design_columns = .fb_select_design_columns(source),
+      design = source$design,
       learned_on = source$preprocessing$learned_on %||% NA_character_,
       stage = stage,
-      scoring_unit = scoring_unit
+      scoring_unit = scoring_unit,
+      offsets = base$fb$offsets %||% character(0)
     )
   }
   bayes <- identical(axes$workflow, "bayes")
@@ -1950,7 +2184,9 @@
 #'   one loss at one unit to be placed beside. That last part is what the
 #'   certificate's `reference_predictive` and `decision_predictive` tables
 #'   report -- the full-design models at one stage, the chosen models at the
-#'   other, each written only when every arm shares one score contract --
+#'   other, each written only when every arm shares one score contract,
+#'   which identifies the folds, the response and every design column by
+#'   their values --
 #'   and what the equivalence level `posterior_predictive_comparable`
 #'   requires; without it the certificate says so by name rather than
 #'   claiming a comparison nobody made. It costs one reference refit per
@@ -2574,7 +2810,7 @@ fb_select <- function(base,
       # The folds the out-of-fold score was computed on where one ran, which
       # is what its score contract is read from.
       folds = reference_cv$folds %||% folds,
-      design_columns = .fb_select_design_columns(reference_cv),
+      design = reference_cv$design,
       # NULL unless `benchmark = TRUE` asked for the reference model to be
       # scored out of fold; the certificate's two predictive tables name
       # that as the reason where it is absent.

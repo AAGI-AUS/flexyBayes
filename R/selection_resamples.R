@@ -419,6 +419,24 @@
 }
 
 
+# .fb_sel_scored_design() --- the design an arm's folds are scored on: the
+# protected block beside the candidate block without its intercept, over all
+# rows and before any fold-local preprocessing, as each fold's substrate
+# builds it. The score contract hashes its values, so it is recorded once on
+# the out-of-fold object.
+.fb_sel_scored_design <- function(protected, candidates, data) {
+  x_protected <- .fb_sel_design(protected, data)$X
+  if (is.null(candidates)) {
+    return(x_protected)
+  }
+  x_candidate <- .fb_sel_design(candidates, data)$X
+  cbind(
+    x_protected,
+    x_candidate[, colnames(x_candidate) != "(Intercept)", drop = FALSE]
+  )
+}
+
+
 # .fb_sel_check_fold_levels() --- an assessment fold carrying a level absent
 # from its training rows is a named outcome, never a silent drop.
 #
@@ -1392,6 +1410,9 @@
   list(
     folds = folds,
     substrates = substrates,
+    # The design every fold was cut from, recorded once: the values the
+    # score contract identifies.
+    design = .fb_sel_scored_design(protected, candidates, data),
     rows = data.table::rbindlist(rows),
     clusters = data.table::rbindlist(by_model),
     by_model = by_model,

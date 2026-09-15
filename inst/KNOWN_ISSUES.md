@@ -269,12 +269,17 @@ Each is reproducible on this release. Priority is for the MET use case.
     its training rows, the rows the response-scaled defaults already read. A
     fit with `na_action = "augment"` reads the same rows, so the covariates
     of rows without a response leave its defaults unchanged.
-13. **The selection certificate identifies columns by name.** The score
-    contract that decides whether two arms' out-of-fold scores are
-    comparable hashes column names: rescaling a covariate between arms
-    (`x1` to `1000 * x1 + 17`) leaves its digest unchanged, and a
-    transformed response is summarised without its values. *What is open*:
-    hash the values the arms were scored on.
+13. **Closed: the selection certificate identifies the values it scored.**
+    The score contract that decides whether two arms' out-of-fold scores
+    are comparable hashes the values of the response and of every design
+    column the arms were scored on. The response is read through the
+    model's own transformation, with its offsets, and the design columns
+    over all rows before fold-local preprocessing. The values pass through
+    a canonical byte encoding that reads the same under every R version,
+    and the contract carries a version field. Rescaling a covariate between
+    arms (`x1` to `1000 * x1 + 17`), or transforming the response under an
+    unchanged name, gives a different contract, and a contract whose hash
+    cannot be verified refuses with `selection_score_contract_unverifiable`.
 14. **The boundary warning on a random slope depends on the covariate's
     units.** The warning for a variance component pinned at zero compares
     the slope's standard deviation with a threshold that does not account

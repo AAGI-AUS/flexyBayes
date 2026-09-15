@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=208
+      .refusal_registry: locked=TRUE n_keys=209
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -267,6 +267,7 @@
         selection_reduction_level_mismatch
         selection_reduction_term_not_in_fit
         selection_resamples_underspecified
+        selection_score_contract_unverifiable
         selection_scoring_unit_mismatch
         selection_scoring_unit_undeclared
         selection_seed_required
