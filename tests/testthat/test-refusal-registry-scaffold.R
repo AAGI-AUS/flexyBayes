@@ -517,8 +517,8 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # a named model column absent from the source
   # (stream_model_column_not_in_source) (= 207), and a source with no rows
   # to build from or fold (stream_source_no_rows) (= 208). The no-cell-key
-  # model-shape refusal reuses aggregation_route_unavailable rather than
-  # adding a code.
+  # model-shape refusal reuses the existing aggregation_route_unavailable
+  # code; no code is added for it.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
   expect_equal(length(entries), 208L)
