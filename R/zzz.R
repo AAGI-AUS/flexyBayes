@@ -156,6 +156,11 @@
   # 2026-09-16: an INLA fit outside the bound of a stated prior.
   .populate_refusal_registry_prior_support()
 
+  # 2026-09-16: flexybayes_stream()'s own model-shape and data-availability
+  # refusals -- a model column absent from the source, and a source with
+  # no rows to build from or fold.
+  .populate_refusal_registry_stream_shape()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

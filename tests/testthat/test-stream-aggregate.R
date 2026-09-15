@@ -212,9 +212,89 @@ test_that("out-of-scope models are refused before any fit", {
     ),
     "continuous|out of scope|cell"
   )
-  # Intercept-only -> no factor cell key, refused.
+  # Intercept-only -> no factor cell key, refused, typed
+  # (U-STREAM-SHAPE-1: untyped before 0.13.0).
   expect_error(
     flexybayes_stream(y ~ 1, source = df, fit = FALSE, verbose = FALSE),
-    "factor cell-key|does not compress"
+    "factor cell-key|does not compress",
+    class = "flexybayes_refusal_aggregation_route_unavailable"
+  )
+})
+
+# U-STREAM-SHAPE-1 (2026-09-16, U-FAM-GATE-1 finding 2): every model-shape
+# and data-availability refusal flexybayes_stream() itself raises is a typed
+# <flexybayes_refusal>, not a bare stop(). Each block below fails on the
+# unfixed base, where the site raised a plain <simpleError>.
+test_that("a model with no factor cell-key term refuses typed", {
+  set.seed(1L)
+  n <- 200L
+  df <- data.frame(
+    y = stats::rnorm(n),
+    geno = factor(sample(1:5, n, replace = TRUE))
+  )
+  # Intercept-only, no random term: nothing to aggregate by.
+  expect_error(
+    flexybayes_stream(y ~ 1, source = df, fit = FALSE, verbose = FALSE),
+    class = "flexybayes_refusal_aggregation_route_unavailable"
+  )
+  # Same shape read from an .fst file, so the refusal fires before the
+  # source kind matters.
+  skip_if_not_installed("fst")
+  path <- withr::local_tempfile(fileext = ".fst")
+  fst::write_fst(df, path)
+  expect_error(
+    flexybayes_stream(y ~ 1, source = path, fit = FALSE, verbose = FALSE),
+    class = "flexybayes_refusal_aggregation_route_unavailable"
+  )
+})
+
+test_that("a model column absent from the source refuses typed", {
+  set.seed(2L)
+  n <- 100L
+  df <- data.frame(
+    y = stats::rnorm(n),
+    geno = factor(sample(1:5, n, replace = TRUE))
+  )
+  # `random` names a grouping factor the source does not carry.
+  err <- expect_error(
+    flexybayes_stream(
+      y ~ geno,
+      random = ~does_not_exist,
+      source = df,
+      fit = FALSE,
+      verbose = FALSE
+    ),
+    class = "flexybayes_refusal_stream_model_column_not_in_source"
+  )
+  expect_match(conditionMessage(err), "does_not_exist", fixed = TRUE)
+})
+
+test_that("a source with no rows to build from refuses typed", {
+  set.seed(3L)
+  n <- 20L
+  df <- data.frame(
+    y = stats::rnorm(n),
+    geno = factor(sample(1:5, n, replace = TRUE))
+  )
+  # Zero-row source: the head sample itself has nothing to read.
+  expect_error(
+    flexybayes_stream(
+      y ~ geno,
+      source = df[0L, ],
+      fit = FALSE,
+      verbose = FALSE
+    ),
+    class = "flexybayes_refusal_stream_source_no_rows"
+  )
+  # A generator whose head sample succeeds but whose chunk reads return
+  # nothing (the main read loop, not the head sample, finds zero rows).
+  calls <- 0L
+  gen <- function(i) {
+    calls <<- calls + 1L
+    if (calls == 1L) df else NULL
+  }
+  expect_error(
+    flexybayes_stream(y ~ geno, source = gen, fit = FALSE, verbose = FALSE),
+    class = "flexybayes_refusal_stream_source_no_rows"
   )
 })

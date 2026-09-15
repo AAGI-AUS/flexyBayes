@@ -512,9 +512,18 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # Fold isolation adds one: a random term that cannot take a new level
   # under prediction = "new_cluster"
   # (selection_new_cluster_not_representable) (= 206).
+  #
+  # flexybayes_stream()'s own shape and data-availability refusals add two:
+  # a named model column absent from the source
+  # (stream_model_column_not_in_source) (= 207), and a source with no rows
+  # to build from or fold (stream_source_no_rows) (= 208). The no-cell-key
+  # model-shape refusal reuses the existing aggregation_route_unavailable
+  # code; no code is added for it.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 206L)
+  expect_equal(length(entries), 208L)
+  expect_true("stream_model_column_not_in_source" %in% entries)
+  expect_true("stream_source_no_rows" %in% entries)
   expect_true("prior_support_violated" %in% entries)
   expect_true("response_not_finite" %in% entries)
   expect_true("streamed_rows_not_retained" %in% entries)

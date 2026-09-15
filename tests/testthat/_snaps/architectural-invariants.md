@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=206
+      .refusal_registry: locked=TRUE n_keys=208
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -280,7 +280,9 @@
         stan_cannot_represent_structured_cov
         stan_cannot_represent_structured_residual
         str_not_representable
+        stream_model_column_not_in_source
         stream_response_must_be_a_column
+        stream_source_no_rows
         streamed_rows_not_retained
         tensor_smooth_unsupported
         term_in_fixed_and_random

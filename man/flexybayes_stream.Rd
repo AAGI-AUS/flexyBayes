@@ -93,7 +93,12 @@ seconds; a design that keys on a continuous covariate does not
 compress and is refused before any chunk is read. Continuous fixed
 effects, random slopes, structured covariance, and smooth terms break
 the cell-constant linear-predictor property and are likewise refused
--- pass the data to \code{\link[=flexybayes]{flexybayes()}} per row for those models.
+-- pass the data to \code{\link[=flexybayes]{flexybayes()}} per row for those models. The
+model needs at least one factor cell-key term -- a fixed factor, a
+factor interaction, or a random grouping factor named in \code{random} --
+to aggregate by; an intercept-only model (\code{fixed = y ~ 1}, no
+\code{random}) has nothing to compress and is refused by name
+(\code{aggregation_route_unavailable}).
 
 Supported families for a fit are \code{"binomial"} and \code{"poisson"}. A
 \code{"gaussian"} fit refuses by name

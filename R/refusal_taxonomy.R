@@ -2732,6 +2732,47 @@ print.fb_refusals_table <- function(x, ...) {
   invisible(NULL)
 }
 
+# .populate_refusal_registry_stream_shape() -- flexybayes_stream()'s own
+# model-shape and data-availability refusals, untyped before 0.13.0
+# (U-FAM-GATE-1 finding 2). The route-availability boundary reuses
+# aggregation_route_unavailable at its call site (R/stream_aggregate.R,
+# .fb_stream_aggregate()): an intercept-only model has no factor cell-key
+# term to aggregate by, which is the same "nothing routes into the
+# aggregated representation" fact as a family or link the streamed path
+# does not carry, and the remedy is identical -- fit the model per row
+# with flexybayes(). The two codes below cover the two boundaries that
+# fact does not reach: a named model column absent from the source, and
+# a source that returns no rows to build from or fold.
+.populate_refusal_registry_stream_shape <- function() {
+  .register_refusal(
+    reason_code = "stream_model_column_not_in_source",
+    description = paste0(
+      "flexybayes_stream() reads named columns off the source chunk by ",
+      "chunk, so every column the model names -- the response, a fixed ",
+      "or random term, `trials`, or `exposure` -- has to be present in ",
+      "the source's head sample. Untyped before 0.13.0."
+    ),
+    message_template = "%s",
+    registered_in_adr = "U-STREAM-SHAPE-1 (2026-09-16)",
+    plan_field = NA_character_,
+    since_version = "0.13.0"
+  )
+  .register_refusal(
+    reason_code = "stream_source_no_rows",
+    description = paste0(
+      "flexybayes_stream() found no rows to work with: either the head ",
+      "sample used to build the model, or the full read across every ",
+      "chunk of the source, returned zero rows. There is nothing to ",
+      "aggregate. Untyped before 0.13.0."
+    ),
+    message_template = "%s",
+    registered_in_adr = "U-STREAM-SHAPE-1 (2026-09-16)",
+    plan_field = NA_character_,
+    since_version = "0.13.0"
+  )
+  invisible(NULL)
+}
+
 .populate_refusal_registry_aggregation_containment <- function() {
   .register_refusal(
     reason_code = "aggregation_residual_prior_not_composed",
