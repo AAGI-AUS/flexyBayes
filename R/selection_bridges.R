@@ -803,7 +803,7 @@
   if (!is.list(convention)) {
     stop("`convention` must be a measured convention list.", call. = FALSE)
   }
-  scale <- convention$response_scale
+  scale <- convention[["response_scale"]]
   if (
     !is.numeric(scale) ||
       length(scale) != 1L ||

@@ -248,10 +248,11 @@ fb_plan <- function(
     } else {
       (agg_plan$reason_codes %||% character(0L))
     },
+    # The aggregation plan names its cell count `K_est`.
     K = if (is.null(agg_plan)) {
       NA_integer_
     } else {
-      (agg_plan$K %||% NA_integer_)
+      (agg_plan[["K_est"]] %||% NA_integer_)
     },
     N = preflight$n_rows %||% NA_real_,
     offset_route = if (is.null(agg_plan)) {
@@ -261,13 +262,13 @@ fb_plan <- function(
     },
     ratio = if (
       is.null(agg_plan) ||
-        is.null(agg_plan$K) ||
-        is.na(agg_plan$K) ||
-        agg_plan$K == 0L
+        is.null(agg_plan[["K_est"]]) ||
+        is.na(agg_plan[["K_est"]]) ||
+        agg_plan[["K_est"]] == 0L
     ) {
       NA_real_
     } else {
-      preflight$n_rows / agg_plan$K
+      preflight$n_rows / agg_plan[["K_est"]]
     }
   )
 
