@@ -1334,6 +1334,8 @@ emit_brms <- function(
       }
     )
   }
+  # lognormal and beta pass no link: the family gate admits each on its
+  # default link only (.fb_family_links(), R/utils.R).
   if (fam == "lognormal") {
     return(get("lognormal", envir = ns)())
   }

@@ -141,7 +141,17 @@
 #'   engines', the refusal says so and `inst/KNOWN_ISSUES.md` records it.
 #' @param link Character or NULL: override the default link function
 #'   (e.g., `"probit"` for binomial). Leave it unset when `family` is a
-#'   family object, which carries its own link.
+#'   family object, which carries its own link. The links fitted, default
+#'   first: gaussian `identity`, `log`, `inverse`, `logit`, `probit`,
+#'   `cloglog`, `cauchit`; binomial `logit`, `probit`, `probit_approx`,
+#'   `cloglog`, `cauchit`, `softit`, `identity`, `log`; poisson `log`,
+#'   `identity`, `sqrt`; negative_binomial `log`, `identity`, `sqrt`,
+#'   `softplus`, `squareplus`; gamma `log`, `identity`, `inverse`;
+#'   hurdle_gamma `log`, `identity`, `inverse`, `softplus`, `squareplus`;
+#'   beta `logit`; lognormal `identity`. `backend = "inla"` takes the default
+#'   link only, refusing any other by name (`inla_gate_refused`), and
+#'   `backend = "auto"` fits another link on brms. A link outside the list
+#'   is refused by name (`unsupported_family`) on every backend.
 #' @param known_matrices Named list of matrices referred to in the random
 #'   formula (e.g., `list(Gmat = G_mat, Amat = A_mat)`). The carrier is
 #'   declared with the [fb_cov()] constructor inside the random term:
