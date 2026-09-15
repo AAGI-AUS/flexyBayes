@@ -1378,6 +1378,12 @@ emit_inla <- function(
   num_check$restart_probe <- restart_probe
   num_check$restart_adopted <- restart_adopted
 
+  # Every bounded prior is checked against the fit INLA returned, before
+  # anything is mapped back, because the bounds INLA received are on the
+  # scale it fitted (R/inla_support_audit.R).
+  support_audit <- .fb_inla_support_audit(fit, standardisation)
+  .fb_inla_enforce_support(support_audit, "per_row")
+
   # Every reading of the fit below is taken on the original scale. The
   # restart probe compared two fits on the standardised scale, where their
   # difference is the same; its recorded levels are moved with the fit.
@@ -1538,7 +1544,10 @@ emit_inla <- function(
         ),
         # Which prior became which engine slot, the route and the evidence
         # (R/model_manifest.R). prior_summary() and summary() read it.
-        manifest = manifest
+        manifest = manifest,
+        # Every bounded prior checked against the fit
+        # (R/inla_support_audit.R).
+        support_audit = support_audit
       )
     ),
     # The INLA fit wears the shared `flexybayes` parent, as the brms fit
@@ -1560,9 +1569,8 @@ emit_inla <- function(
   # here must not discard what the engine returned. It is surfaced as a
   # warning naming the cause, not swallowed: the fit comes back with an
   # empty variance-component table and the user is told why. The warning
-  # does not vouch for the posterior, because a marginal that cannot be
-  # integrated has come from a mode outside a stated bound
-  # (inst/KNOWN_ISSUES.md, issue 17).
+  # does not vouch for the posterior: the support audit covers only the
+  # bounded priors (R/inla_support_audit.R).
   out$extras$variance_comps <- tryCatch(
     .inla_variance_comps(out),
     error = function(e) {
@@ -1571,10 +1579,9 @@ emit_inla <- function(
         "table could not be built (",
         conditionMessage(e),
         "). ",
-        "summary(fit)$varcomp will be empty. A hyperparameter marginal ",
-        "that cannot be integrated can come from a mode outside a stated ",
-        "prior bound, so read fit$inla$summary.hyperpar against the ",
-        "bounds before using this fit.",
+        "summary(fit)$varcomp will be empty. Every mode under a bounded ",
+        "prior passed the support check in fit$extras$support_audit; ",
+        "read fit$inla$summary.hyperpar before using this fit.",
         call. = FALSE
       )
       NULL
@@ -2992,10 +2999,10 @@ emit_inla <- function(
       "flexyBayes: the hyperparameter(s) ",
       paste(unavailable, collapse = ", "),
       " carry no usable posterior marginal, so no variance-component row ",
-      "was written for them and summary() will not report them. A marginal ",
-      "that is missing or cannot be integrated can come from a mode outside ",
-      "a stated prior bound, so read fit$inla$summary.hyperpar against the ",
-      "bounds before using this fit, and check that control.compute = ",
+      "was written for them and summary() will not report them. Read ",
+      "fit$inla$summary.hyperpar, and fit$extras$support_audit for the ",
+      "modes under a bounded prior, before using this fit, and check that ",
+      "control.compute = ",
       "list(return.marginals = TRUE), which is the flexyBayes default, ",
       "reached the engine.",
       call. = FALSE
