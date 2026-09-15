@@ -49,7 +49,12 @@
 #' compress and is refused before any chunk is read. Continuous fixed
 #' effects, random slopes, structured covariance, and smooth terms break
 #' the cell-constant linear-predictor property and are likewise refused
-#' -- pass the data to [flexybayes()] per row for those models.
+#' -- pass the data to [flexybayes()] per row for those models. The
+#' model needs at least one factor cell-key term -- a fixed factor, a
+#' factor interaction, or a random grouping factor named in `random` --
+#' to aggregate by; an intercept-only model (`fixed = y ~ 1`, no
+#' `random`) has nothing to compress and is refused by name
+#' (`aggregation_route_unavailable`).
 #'
 #' Supported families for a fit are `"binomial"` and `"poisson"`. A
 #' `"gaussian"` fit refuses by name
@@ -620,21 +625,30 @@ flexybayes_stream <- function(
   # .fst factor-level dictionaries come from the data itself.
   head <- src$head(head_n)
   if (is.null(head) || nrow(head) == 0L) {
-    stop(
-      "The source returned no rows for the head sample; no data to ",
-      "build the model from.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "stream_source_no_rows",
+      message = paste0(
+        "flexybayes_stream() refused: the source returned no rows for ",
+        "the head sample, so there is no data to build the model from. ",
+        "Point `source` at a non-empty dataset."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
   }
   model_cols <- .fb_stream_model_cols(fixed, random, trials, exposure)
   missing <- setdiff(model_cols, names(head))
   if (length(missing)) {
-    stop(
-      "Model columns absent from the data source: ",
-      paste(missing, collapse = ", "),
-      ".",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "stream_model_column_not_in_source",
+      message = paste0(
+        "flexybayes_stream() refused: the model names column(s) not on ",
+        "the data source: ",
+        paste(missing, collapse = ", "),
+        ". Correct the column name(s) in `fixed`, `random`, `trials` or ",
+        "`exposure`, or point `source` at data that carries them."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
   }
   head[]
 }
@@ -673,12 +687,17 @@ flexybayes_stream <- function(
 
   key_cols <- .fb_stream_key_cols(fb)
   if (!length(key_cols)) {
-    stop(
-      "Streaming aggregation needs at least one factor cell-key term ",
-      "(a fixed factor or a random grouping factor). An intercept-only ",
-      "model does not compress.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "aggregation_route_unavailable",
+      message = paste0(
+        "flexybayes_stream() refused: the model has no factor cell-key ",
+        "term -- a fixed factor, a factor interaction, or a random ",
+        "grouping factor -- so it has nothing to aggregate by; an ",
+        "intercept-only model does not compress. Fit this model per row ",
+        "with flexybayes()."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
   }
 
   # The streaming route reads named columns off disk chunk by chunk, so a
@@ -739,10 +758,15 @@ flexybayes_stream <- function(
     i <- i + 1L
   }
   if (is.null(acc) || nrow(acc) == 0L) {
-    stop(
-      "No rows were read from the source; nothing to aggregate.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "stream_source_no_rows",
+      message = paste0(
+        "flexybayes_stream() refused: no rows were read from the ",
+        "source, so there is nothing to aggregate. Point `source` at a ",
+        "non-empty dataset."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
   }
 
   .fb_stream_finalise(fb, acc, key_cols, n_total, family)
