@@ -49,7 +49,8 @@ emit_count_aggregated <- function(
   control = NULL,
   na_action = NULL,
   requested_backend = NULL,
-  requested_aggregate = NULL
+  requested_aggregate = NULL,
+  row_scale = NULL
 ) {
   backend <- match.arg(backend)
   fam <- fb$family
@@ -102,7 +103,8 @@ emit_count_aggregated <- function(
     na_action = na_action,
     verbose = verbose,
     requested_backend = requested_backend,
-    requested_aggregate = requested_aggregate
+    requested_aggregate = requested_aggregate,
+    row_scale = row_scale
   )
 }
 
@@ -378,7 +380,8 @@ emit_count_aggregated <- function(
   na_action = NULL,
   verbose = TRUE,
   requested_backend = NULL,
-  requested_aggregate = NULL
+  requested_aggregate = NULL,
+  row_scale = NULL
 ) {
   posterior_summary <- .agg_count_inla_summarise(
     engine_out, fb_aggregated, ri_plan
@@ -397,7 +400,12 @@ emit_count_aggregated <- function(
   if (!is.null(off_row)) {
     eta_row <- eta_row + off_row
   }
-  fitted_row <- .agg_count_inverse_link(eta_row, fb$family)
+  # Each row's fitted value is its cell's as INLA reports it: the posterior
+  # mean of the inverse-linked cell predictor, random effects included.
+  # `eta_row` is the fixed part alone, so its inverse link is not one.
+  fitted_row <- .agg_count_row_fitted(
+    fb, fb_aggregated, data, engine_out$inla, off_row, row_scale
+  )
   y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
 
@@ -487,7 +495,7 @@ emit_count_aggregated <- function(
         verbose = verbose
       ),
       model_info = list(
-        n_obs = fb_aggregated$N,
+        n_obs = .fb_row_count_value(fb_aggregated$N),
         n_cells = fb_aggregated$K,
         n_fixed = length(fb$fixed_terms) + isTRUE(fb$intercept),
         n_random = length(fb$random_terms),
@@ -537,6 +545,68 @@ emit_count_aggregated <- function(
 
 #' @noRd
 #' @keywords internal
-.agg_count_inverse_link <- function(eta, family) {
-  switch(family, binomial = stats::plogis(eta), poisson = exp(eta), eta)
+.agg_count_row_fitted <- function(
+  fb,
+  fb_aggregated,
+  data,
+  inla_fit,
+  off_row = NULL,
+  row_scale = NULL
+) {
+  cell <- .agg_count_cell_of_row(fb, fb_aggregated, data)
+  out <- inla_fit$summary.fitted.values$mean[cell]
+  # INLA leaves the exposure E out of a Poisson fitted value (measured: without
+  # it a within-cell offset missed the per-row fit by 57 counts), so a row's
+  # exp(offset), which the cell exposure absorbed, multiplies it back in.
+  if (identical(fb$family, "poisson") && !is.null(off_row)) {
+    out <- out * exp(off_row)
+  }
+  if (!is.null(row_scale)) {
+    out <- out * row_scale
+  }
+  out
+}
+
+# The cell of each row of `data`, as a row index into the sufficient
+# statistics, which is also the row order of the data INLA fitted. A cell is
+# keyed by its fixed-effect design row and its random-intercept groups, the
+# `cell_key_cols` .fb_stream_finalise() records.
+#' @noRd
+#' @keywords internal
+.agg_count_cell_of_row <- function(fb, fb_aggregated, data) {
+  fixed_cols <- fb_aggregated$fixed_cols
+  random_cols <- fb_aggregated$random_cols
+  fixed_form <- .fb_aggregate_fixed_formula(fb)
+  x_row <- if (is.null(fixed_form)) {
+    matrix(
+      1,
+      nrow = nrow(data),
+      ncol = 1L,
+      dimnames = list(NULL, "(Intercept)")
+    )
+  } else {
+    stats::model.matrix(fixed_form, data = data)
+  }
+  ss <- fb_aggregated$sufficient_stats
+  key_of <- function(cols) {
+    do.call(paste, c(unname(cols), sep = "\r"))
+  }
+  row_key <- key_of(c(
+    lapply(fixed_cols, function(cn) as.character(x_row[, cn])),
+    lapply(random_cols, function(g) as.character(data[[g]]))
+  ))
+  cell_key <- key_of(c(
+    lapply(fixed_cols, function(cn) as.character(ss[[cn]])),
+    lapply(random_cols, function(g) as.character(ss[[g]]))
+  ))
+  cell <- match(row_key, cell_key)
+  if (anyNA(cell)) {
+    stop(
+      "flexyBayes internal error: ", sum(is.na(cell)), " row(s) of the data ",
+      "match no cell of the aggregated fit, so their fitted values cannot ",
+      "be read.",
+      call. = FALSE
+    )
+  }
+  cell
 }

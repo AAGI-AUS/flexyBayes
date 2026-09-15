@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=197
+      .refusal_registry: locked=TRUE n_keys=203
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -109,6 +109,7 @@
         at_field_per_level_hyper_not_representable
         at_level_conditioning_unsupported
         augment_cell_not_determinable
+        augment_not_available_inla
         auto_no_active_route
         binomial_response_not_binary
         block_not_positive_definite
@@ -170,11 +171,13 @@
         known_matrix_dim_mismatch
         known_matrix_dimnames_mismatch
         known_matrix_level_mismatch
+        log_density_producer_unavailable
         loo_requires_sampler_draws
         low_rank_rank_exceeds_basis
         low_rank_rank_invalid
         low_rank_scheme_required
         low_rank_smooth_unsupported
+        marginaleffects_link_not_supported
         met_summary_not_available
         missing_covariate_not_supported
         missing_response_refused
@@ -199,6 +202,7 @@
         precision_not_positive_definite
         precision_not_square
         precision_not_symmetric
+        predict_link_not_supported
         prior_argument_duplicated
         prior_argument_missing
         prior_argument_unknown
@@ -274,12 +278,14 @@
         stan_cannot_represent_structured_residual
         str_not_representable
         stream_response_must_be_a_column
+        streamed_rows_not_retained
         tensor_smooth_unsupported
         term_in_fixed_and_random
         triangulate_incomparable_fits
         unknown_backend
         unsupported_family
         update_call_not_reconstructable
+        update_streamed_fit_not_supported
         update_unnamed_argument_not_supported
         us_gxe_prior_not_translatable_inla
         variogram_requires_design_index

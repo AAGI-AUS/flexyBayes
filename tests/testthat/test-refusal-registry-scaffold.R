@@ -492,9 +492,21 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # prior_vc_sd beside an fb_prior() (prior_vc_sd_superseded_by_prior)
   # (= 196), and a marginal likelihood the engine did not compute
   # (evidence_not_computed) (= 197).
+  #
+  # Accessors on aggregated and streamed count fits add six: a row accessor on
+  # a streamed fit that keeps only its head sample
+  # (streamed_rows_not_retained) (= 198), update() on a streamed fit
+  # (update_streamed_fit_not_supported) (= 199), and four refusals an INLA fit
+  # already gave, now typed: augment() (augment_not_available_inla) (= 200),
+  # fb_log_posterior() (log_density_producer_unavailable) (= 201), and
+  # predict() and a marginaleffects prediction on a non-identity link
+  # (predict_link_not_supported, marginaleffects_link_not_supported) (= 203).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 197L)
+  expect_equal(length(entries), 203L)
+  expect_true("streamed_rows_not_retained" %in% entries)
+  expect_true("update_streamed_fit_not_supported" %in% entries)
+  expect_true("log_density_producer_unavailable" %in% entries)
   expect_true("prior_family_has_no_residual_scale" %in% entries)
   expect_true("prior_vc_sd_superseded_by_prior" %in% entries)
   expect_true("evidence_not_computed" %in% entries)

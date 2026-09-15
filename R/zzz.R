@@ -145,6 +145,11 @@
   # engine did not compute.
   .populate_refusal_registry_model_manifest()
 
+  # 2026-09-15: accessors on aggregated and streamed count fits -- a streamed
+  # fit's head sample and re-fit, and the refusals an INLA fit gives for
+  # augment(), a log-density and a prediction on a non-identity link.
+  .populate_refusal_registry_aggregated_accessors()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

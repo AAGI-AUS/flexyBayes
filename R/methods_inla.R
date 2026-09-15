@@ -416,15 +416,17 @@ predict.flexybayes_inla <- function(
   }
   fam <- family(object)
   if (!identical(fam$link, "identity")) {
-    stop(
-      "predict.flexybayes_inla() currently supports the identity ",
-      "link only; this fit uses link '",
-      fam$link,
-      "'. Work with ",
-      "the posterior draws via fb_as_draws_simple() for non-identity ",
-      "links.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "predict_link_not_supported",
+      message = paste0(
+        "predict.flexybayes_inla() currently supports the identity ",
+        "link only; this fit uses link '",
+        fam$link,
+        "'. Work with ",
+        "the posterior draws via fb_as_draws_simple() for non-identity ",
+        "links."
+      )
+    ))
   }
 
   supplied <- !is.null(newdata)

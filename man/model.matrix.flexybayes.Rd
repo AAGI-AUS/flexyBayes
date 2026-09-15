@@ -28,4 +28,8 @@ at \verb{$data} and recovers its fixed-effect formula through
 \code{\link[=formula.flexybayes_inla]{formula.flexybayes_inla()}}. An object supplying neither is refused by
 name, since \code{model.matrix()} on a \code{NULL} formula silently returns the
 intercept-only matrix of the calling frame's data.
+
+An aggregated fit keeps its call rather than a formula under \verb{$glm} and
+recovers the formula the same way. A streamed fit that keeps fewer rows
+than it was fitted to refuses by name (\code{streamed_rows_not_retained}).
 }

@@ -20,6 +20,7 @@
     "emmeans",
     "Package 'emmeans' is required for this method."
   )
+  .fb_aggregated_rows_held(object, "emmeans::recover_data()")
   trms <- .fb_fixef_terms(object)
   data <- .fb_fit_data(object)
   if (is.null(data)) {

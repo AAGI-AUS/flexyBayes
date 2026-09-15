@@ -866,11 +866,7 @@ test_that("the aggregated object keeps every other frozen promise", {
   # computational route, not a smaller dataset.
   expect_identical(s$n_design, 1000L)
   expect_identical(s$n_observed, 1000L)
-  # Compared by value: the count route carries its row count as a double
-  # (exact past the integer limit), while the summary reports an integer.
-  # The accessor contract that should make the two types agree is tested
-  # separately.
-  expect_equal(s$n_design, stats::nobs(fit))
+  expect_identical(s$n_design, stats::nobs(fit))
   # $random is the same six-column table per grouping factor.
   expect_true(is.list(s$random))
   expect_true("g" %in% names(s$random))
@@ -941,8 +937,7 @@ test_that("the ASReml-hands accessors answer on an aggregated fit", {
   expect_true(is.data.frame(miss))
   expect_identical(nrow(miss), 0L)
 
-  # By value, for the reason given in the frozen-promise test above.
-  expect_equal(stats::nobs(fit, type = "design"), 1000)
+  expect_identical(stats::nobs(fit, type = "design"), 1000L)
   expect_identical(stats::nobs(fit, type = "observed"), 1000L)
 
   cls <- predict(fit, classify = "f")
