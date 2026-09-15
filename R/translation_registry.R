@@ -91,7 +91,7 @@
   "Factor-analytic covariance" =
     "one-to-many: one field per common factor and one per level",
   "Known covariance or precision carrier" =
-    "one-to-many: one field per block in blocks format, one field otherwise",
+    "one-to-one: one field; a blocks carrier is refused on both engines",
   "Pedigree relationship carrier" = "one-to-one",
   "Correlated random slope, on brms" =
     "one-to-one: the intercept and slope standard deviations each take a row",

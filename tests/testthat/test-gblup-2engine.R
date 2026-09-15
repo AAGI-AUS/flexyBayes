@@ -40,10 +40,12 @@ test_that(".fb_brms_data2() materialises each carrier to the relationship covari
   expect_equal(unname(d2p$Qp), G, tolerance = 1e-8, ignore_attr = TRUE)
 })
 
-test_that(".fb_brms_covname() refuses the INLA-only carriers on brms", {
+test_that(".fb_brms_covname() refuses the block and low-rank carriers on brms", {
+  # A block carrier is refused on INLA as well, so the message names the
+  # precision carrier of the block-diagonal inverse, which both engines fit.
   expect_error(
     flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "blocks")),
-    "INLA-only"
+    "precision carrier of the block-diagonal inverse"
   )
   expect_error(
     flexyBayes:::.fb_brms_covname(.gblup_term(fmt = "low_rank")),

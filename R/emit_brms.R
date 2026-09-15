@@ -1145,13 +1145,24 @@ emit_brms <- function(
 
 # Resolve the covariance-matrix symbol a vm() / ped() term references on
 # the brms route. brms reaches GBLUP / pedigree BLUP only through an
-# exact dense-able carrier (dense / chol / precision); the block-
-# diagonal and low-rank carriers are INLA-only and are refused loudly
-# rather than mis-rendered.
+# exact dense-able carrier (dense / chol / precision), so the block-
+# diagonal and low-rank carriers are refused by name. INLA refuses a block
+# carrier too, so that message names the precision carrier of the
+# block-diagonal inverse, which both engines fit.
 .fb_brms_covname <- function(term) {
   cov <- term$cov_representation
   fmt <- (cov$format %||% "dense")
-  if (fmt %in% c("blocks", "low_rank")) {
+  if (identical(fmt, "blocks")) {
+    stop(
+      "emit_brms() supports vm() / ped() only with an exact dense-able ",
+      "covariance carrier (dense / chol / precision), and the \"blocks\" ",
+      "carrier is refused on INLA as well. Pass the precision carrier of ",
+      "the block-diagonal inverse, fb_cov(Q, type = \"precision\") with ",
+      "Q = Matrix::bdiag(lapply(blocks, solve)).",
+      call. = FALSE
+    )
+  }
+  if (identical(fmt, "low_rank")) {
     stop(
       "emit_brms() supports vm() / ped() only with an exact dense-able ",
       "covariance carrier (dense / chol / precision); the \"",

@@ -227,8 +227,10 @@
       spelling = "`~ vm(g, K)`, `~ ped(a, A)`",
       inla = "fits",
       brms = "fits",
-      note = "INLA takes the sparse-precision, pedigree-precision and
-        block carriers, and brms additionally takes dense and Cholesky.
+      note = "INLA takes the sparse-precision and pedigree-precision
+        carriers and refuses a dense, Cholesky or block carrier by name;
+        brms takes dense, Cholesky and precision and refuses a block
+        carrier.
         Under `fb_select()`: shrinkage yes, projection no. A joint
         shrinkage prior over candidate fixed effects fits on a base
         carrying one of these terms, but the term lowers to
