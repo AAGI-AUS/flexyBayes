@@ -5,7 +5,7 @@
 # the seed it ran with, and print() and summary() show them. The expected
 # values are read here from R, the engines and the environment, not from the
 # record: `R.version.string`, `utils::packageVersion()`,
-# `cmdstanr::cmdstan_version()`, `INLA::inla.getOption("num.threads")` and the
+# CmdStan's own version, `INLA::inla.getOption("num.threads")` and the
 # `num_threads` CmdStan writes. A seed Stan drew for itself is checked by
 # refitting under the recorded value and comparing the draws.
 
@@ -27,6 +27,13 @@
 
 .vr_omp <- function() {
   Sys.getenv("OMP_NUM_THREADS", unset = NA_character_)
+}
+
+# The CmdStan installation cmdstanr reports. cmdstanr is not a declared
+# dependency, so it is reached by name at run time, behind
+# skip_if_not_installed("cmdstanr") in every block that calls this.
+.vr_cmdstan_version <- function() {
+  as.character(getExportedValue("cmdstanr", "cmdstan_version")())
 }
 
 # The Gaussian and count design of test-prior-support-audit.R.
@@ -230,7 +237,7 @@
         label,
         "CmdStan version",
         rec$engine_versions[["CmdStan"]],
-        as.character(cmdstanr::cmdstan_version())
+        .vr_cmdstan_version()
       ),
       .vr_compare(label, "chains", rec$threads$chains, as.integer(chains)),
       .vr_compare(
@@ -292,7 +299,7 @@
     want <- c(
       want,
       paste("brms", .vr_version("brms")),
-      paste("CmdStan", as.character(cmdstanr::cmdstan_version())),
+      paste("CmdStan", .vr_cmdstan_version()),
       paste("Stan ran with", .vr_show(rec$seed$as_run))
     )
   }
