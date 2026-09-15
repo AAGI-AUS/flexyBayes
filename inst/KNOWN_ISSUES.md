@@ -278,31 +278,39 @@ Each is reproducible on this release. Priority is for the MET use case.
     variance-component table.** The fit completes, and `summary()`'s
     variance-component table for such a term is empty. The cause has not
     been diagnosed.
-16. **A weakly identified, zero-heavy count model can end in an INLA
-    failure where 0.10.0 fitted it.** On a Poisson model with a random
-    intercept over many clusters of two and almost every response zero, the
-    group standard deviation is barely identified and its posterior runs to
-    the upper edge of the default bound (2.97 against 3 on one such design).
-    On some draws of that design INLA's program aborts, and
-    `backend = "inla"` refuses with `inla_program_failed`. The class is the
-    one issue 8 describes; the mechanism for this design is not established.
-    *Workaround*: state `sd(group = ...) ~ half_normal(scale = 1)`, which
-    fits the same design, or fit on brms.
-17. **On INLA, a fit can return with a standard deviation far outside its
-    stated uniform bound.** On a Poisson model with two random intercepts
-    (six and three levels, the second with no effect) under the default
-    uniform bound of 3 on each standard deviation, identical runs differ.
-    In 13 of 24 runs across 0.10.0, 0.11.0 and this release, INLA's mode
-    for the six-level term's precision was 4.7e-07 or 5.4e-07, a standard
-    deviation near 1,400, where the prior's log-density is -1e10. On the
-    other runs, and on brms (median 0.53, 95% interval 0.17 to 2.11), the
-    same standard deviation is well inside the bound. The only signal is
-    the warning that the variance-component table could not be built,
-    because INLA's marginal for that precision cannot be integrated.
-    Whether issue 16 shares the cause is not established. *Workaround*:
-    when that warning appears, read `fit$inla$summary.hyperpar` against the
-    stated bounds before using the fit, and fit on brms if a mode lies
-    outside them.
+16. **A Poisson response that is almost all zeros, with a weakly identified
+    group, can crash INLA's program, and `backend = "inla"` refuses it.** On
+    a Poisson model with a random intercept over 28 clusters of two and 3
+    non-zero counts in 56 rows, INLA's program stops with a segmentation
+    fault after the mode is found, while it integrates over the group
+    precision. It happens on every release from 0.10.0 to 0.12.0 and under
+    INLA 26.08.07 and 25.10.19, and the package refuses with
+    `inla_program_failed`. The same design with 7 non-zero counts fits. It
+    is not a regression: the execution-grid cell that recorded 0.10.0 as
+    fitting drew the 7-count response, and a fixture added to the grid
+    later moved the random-number state so the cell drew the 3-count one.
+    The cause inside INLA is not established. *Workaround*: state
+    `sd(group = ...) ~ half_normal(scale = 1.53)`, which fitted the 3-count
+    design in 3 of 3 runs, or fit on brms.
+17. **On INLA, a hyperparameter marginal can lie far outside a stated
+    uniform bound, and the fit is refused.** On a Poisson model with two
+    random intercepts, one of which splits the rows exactly as a fixed
+    factor does, under the default uniform bound of 3 on each standard
+    deviation, the duplicated term's mode lies on the bound. INLA estimates
+    curvature by stepping across the bound, where the prior's log-density
+    is -1e10. Under INLA 26.08.07, in 45 of 100 identical runs the marginal
+    for the other term's precision had its mode near 5e-07, a standard
+    deviation near 1,400, while INLA's optimiser mode and brms (median 0.53,
+    95% interval 0.17 to 2.11) were inside the bound; under INLA 25.10.19,
+    100 of 100 runs stayed inside. 0.12.0 returned such a fit with a
+    warning. From 0.12.1 every INLA fit is checked against INLA's own record
+    of its priors, a fit whose mode or reported interval lies outside a
+    bound is refused with `prior_support_violated`, and the check is kept in
+    `fit$extras$support_audit`. *Workaround*: drop a random term that
+    duplicates a fixed factor, state
+    `sd(group = ...) ~ half_normal(scale = 1.53)` (no runaway fit in 24 runs
+    of the same design; posterior median 0.505 against 0.489 on brms), or
+    fit on brms.
 
 ## Closed since the previous revision
 
