@@ -25,7 +25,13 @@ fb_select(
 \item{base}{A fitted flexyBayes model. Its fixed effects are the protected
 block and are never penalised.}
 
-\item{candidates}{A one-sided formula over columns of the base fit's data.}
+\item{candidates}{A one-sided formula over columns of the base fit's data.
+A transform whose value on a row depends on other rows, in the
+candidates or in the base's fixed part, is learned inside each fold or
+refused: the benchmark workflows learn \code{scale()}, \code{poly()},
+\code{splines::ns()} and \code{splines::bs()} on each fold's training rows and
+refuse any other such transform, and the Bayesian route's fold refits
+refuse every one, with \code{selection_formula_transform_not_fold_local}.}
 
 \item{penalty}{\code{NULL} (every candidate protected) or an \code{\link[=fb_penalty]{fb_penalty()}}
 declaring the joint shrinkage prior over the candidate block.}
@@ -52,7 +58,11 @@ and what the equivalence level \code{posterior_predictive_comparable}
 requires; without it the certificate says so by name rather than
 claiming a comparison nobody made. It costs one reference refit per
 fold per model, and each fold's preprocessing and prior are learned on
-that fold's analysis rows.}
+that fold's analysis rows. A projection's submodel is scored with terms
+searched again on each fold's reference fit, at the size the
+whole-sample decision chose. The \code{glmnet} arm's tuning point is reported
+as \code{s = lambda / lambda_max}, each fold's \code{lambda_max} read on its
+training rows, beside the lambda that point is on each fold.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 

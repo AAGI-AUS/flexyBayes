@@ -518,12 +518,15 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (stream_model_column_not_in_source) (= 207), and a source with no rows
   # to build from or fold (stream_source_no_rows) (= 208). The no-cell-key
   # model-shape refusal reuses the existing aggregation_route_unavailable
-  # code; no code is added for it.
+  # code; no code is added for it. The second fold-isolation unit adds one:
+  # a formula variable whose value on a row depends on other rows
+  # (selection_formula_transform_not_fold_local) (= 209).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 208L)
+  expect_equal(length(entries), 209L)
   expect_true("stream_model_column_not_in_source" %in% entries)
   expect_true("stream_source_no_rows" %in% entries)
+  expect_true("selection_formula_transform_not_fold_local" %in% entries)
   expect_true("prior_support_violated" %in% entries)
   expect_true("response_not_finite" %in% entries)
   expect_true("streamed_rows_not_retained" %in% entries)

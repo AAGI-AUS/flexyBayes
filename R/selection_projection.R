@@ -731,6 +731,68 @@
   c(block, paste0(block, " + ", free))
 }
 
+# .fb_sel_chosen_terms() --- the terms of the first `size` ranking entries.
+#
+# The forced block is one ranking entry carrying several terms; every other
+# entry is a single term. Only the block is expanded, by identity against the
+# string `.fb_sel_search_terms()` built -- splitting every entry on "+" would
+# take `I(a + b)` apart as well.
+.fb_sel_chosen_terms <- function(ranking, size, forced) {
+  entries <- if (size > 0L) utils::head(ranking, size) else character(0)
+  forced_block <- if (length(forced) > 0L) {
+    paste(forced, collapse = " + ")
+  } else {
+    ""
+  }
+  unique(unlist(
+    lapply(entries, function(e) if (identical(e, forced_block)) forced else e),
+    use.names = FALSE
+  ))
+}
+
+# .fb_sel_fold_search() --- the projection search, repeated on one fold's
+# reference fit, to the size the whole-sample decision chose.
+#
+# The decision stage scores the chosen submodel on each fold's assessment
+# rows. Projecting every fold onto the terms the whole-sample search chose
+# scores a choice those assessment rows helped make. This search reads the
+# fold's reference, which was fitted to its training rows alone, so the terms
+# a fold is scored with are chosen without its assessment rows. The size stays
+# the whole sample's: it is tuned on the scored folds, and the certificate's
+# data-reuse record says so.
+#
+# `search` carries the size, the forced terms and the whole-sample search's
+# own settings, read off its `vsel` object. Only the ranking is read, so the
+# performance evaluation reuses the search's projections (`refit_prj =
+# FALSE`).
+.fb_sel_fold_search <- function(fit, search, seed) {
+  brmsfit <- if (inherits(fit, "brmsfit")) fit else fit$brms
+  if (is.null(brmsfit)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_base_shape_unreadable",
+      message = paste0(
+        "fb_select(): the decision stage searches a fold's reference brms ",
+        "fit, and this object carries none."
+      )
+    ))
+  }
+  all_terms <- .fb_sel_reference_terms(brmsfit)
+  forced <- intersect(all_terms, search$forced)
+  free <- setdiff(all_terms, forced)
+  seed <- as.integer(seed)
+  vs <- .fb_sel_with_seed(seed, projpred::varsel(
+    projpred::get_refmodel(brmsfit),
+    method = search$method,
+    nterms_max = search$nterms_max,
+    search_terms = .fb_sel_search_terms(forced, free),
+    nclusters = search$nclusters,
+    refit_prj = FALSE,
+    verbose = FALSE,
+    seed = seed
+  ))
+  .fb_sel_chosen_terms(projpred::ranking(vs)$fulldata, search$size, forced)
+}
+
 # .fb_sel_project() --- the projection predictive decision.
 #
 # Everything the object records is read off the run: the settings from the
@@ -841,27 +903,7 @@
   floor_size <- if (length(forced) > 0L) 1L else 0L
   chosen <- .fb_sel_decide(unit_elpd, spec, floor_size = floor_size)
   ranking_full <- rk$fulldata
-  chosen_entries <- if (chosen$size > 0L) {
-    utils::head(ranking_full, chosen$size)
-  } else {
-    character(0)
-  }
-  # The forced block is one ranking entry carrying several terms; every
-  # other entry is a single term. Only the block is expanded, by identity
-  # against the string this function built -- splitting every entry on "+"
-  # would take `I(a + b)` apart as well.
-  forced_block <- if (length(forced) > 0L) {
-    paste(forced, collapse = " + ")
-  } else {
-    ""
-  }
-  chosen_terms <- unique(unlist(
-    lapply(
-      chosen_entries,
-      function(e) if (identical(e, forced_block)) forced else e
-    ),
-    use.names = FALSE
-  ))
+  chosen_terms <- .fb_sel_chosen_terms(ranking_full, chosen$size, forced)
 
   t0 <- proc.time()
   prj <- .fb_sel_with_seed(seed, projpred::project(

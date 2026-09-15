@@ -343,6 +343,24 @@ Each is reproducible on this release. Priority is for the MET use case.
     deviation of the response, or fit on brms. *What is open*: the default
     prior (the release plan moves it to a half-normal prior on both engines
     in 0.13.0).
+18. **Formula transforms that read other rows are refused on the Bayesian
+    selection route.** `fb_select()` refits the model formula on every fold,
+    and INLA evaluates it over the fold's training and assessment rows
+    together, so `scale(z1)` in a candidate formula was centred and scaled
+    with the assessment rows included: in one fold refit a single assessment
+    value moved the coefficient of `scale(z1)` from 0.10 to 0.52. The
+    Bayesian route (the penalty-free fold refits, the out-of-fold score of
+    `benchmark = TRUE`, and the projection's k-fold search) now refuses any
+    formula variable whose value on a row depends on other rows with
+    `selection_formula_transform_not_fold_local`, before anything is fitted.
+    The benchmark workflows learn `scale()`, `poly()`, `splines::ns()` and
+    `splines::bs()` on each fold's training rows and apply them to its
+    assessment rows, and refuse any other such transform, such as
+    `I(x - mean(x))`. *Workaround*: name the untransformed column (a
+    penalty's candidate standardisation is learned inside each fold), or
+    write the transform as a rule of one row at a time, such as `I(x^2)`.
+    *What is open*: carrying the training rows' transform parameters into
+    the INLA and brms fold refits.
 
 ## Closed since the previous revision
 

@@ -28,6 +28,16 @@
 #   and a random slope or a three-way interaction reached the covariance
 #   builder as nothing, or as its factors fitted as separate intercepts.
 #
+#   The lasso grid. One grid, anchored at the largest lambda_max across
+#   folds, put each fold's grid where its assessment rows helped set it. The
+#   oracles are glmnet's own lambda_max on each fold's training payload, and
+#   invariance of a fold's grid under a value only in its assessment rows.
+#
+#   Formula transforms. `scale()`, `poly()` and splines in a formula were
+#   evaluated over all rows. The oracles are R's own safe prediction through
+#   a training-row model frame, and invariance; a transform with no such
+#   rule, and every transform on the Bayesian route, refuses by name.
+#
 # Comparisons are `identical()`: every quantity here is computed by the same
 # arithmetic on the same values in the same order, so a difference is a
 # change of input rows, not rounding.
@@ -578,39 +588,232 @@ test_that("an extreme value only in the assessment rows moves nothing the benchm
 })
 
 
-test_that("the lasso grid starts at the largest of the folds' own training-row anchors", {
+test_that("each fold's lasso grid is its own training-row lambda_max times one data-free s sequence", {
   skip_if_not_installed("glmnet")
   d <- fbfi_data()
-  cv <- .fb_sel_cv(
-    d, "y", ~x, ~ z1 + z2, random = "site",
-    resamples = fb_resamples(unit = ~site, v = 3L), seed = 1L
-  )
+  split <- fbfi_folds(d)[[1L]]
   blocks <- list(list(
-    family = "elastic_net",
+    family = "laplace",
     columns = c(1L, 2L),
-    hyperparameters = list(lambda = 1e-3, alpha = 0.5)
+    hyperparameters = list(scale = 0.2)
   ))
-  path <- .fb_sel_glmnet_path(
-    cv$substrates, blocks, folds = cv$folds,
-    decision = list(n_lambda = 4L), seed = 1L
+  path_on <- function(frame) {
+    cv <- .fb_sel_cv(
+      frame, "y", ~x, ~ z1 + z2, random = "site",
+      resamples = fb_resamples(unit = ~site, v = 3L), seed = 1L
+    )
+    list(
+      cv = cv,
+      path = .fb_sel_glmnet_path(
+        cv$substrates, blocks, folds = cv$folds,
+        decision = list(n_lambda = 4L), seed = 1L
+      )
+    )
+  }
+  benchmark_grid <- function(path, fold) {
+    pc <- path$path_coordinates
+    pc$lambda_canonical[pc$arm == "benchmark" & pc$fold == fold]
+  }
+  clean <- path_on(d)
+  # An extreme response in one assessment row of fold 1, which folds 2 and 3
+  # train on.
+  extreme <- d
+  extreme$y[split$assess_rows[[1L]]] <- 1e3
+  moved <- path_on(extreme)
+  selection <- clean$path$selection
+  s <- exp(seq(0, log(1e-3), length.out = 4L))
+
+  # Each fold's anchor against glmnet's own on that fold's training payload.
+  # The first point of glmnet's default path is its lambda_max on glmnet's
+  # scale, the canonical lambda divided by the training row count.
+  for (substrate in clean$cv$substrates) {
+    payload <- .fb_sel_glmnet_reduction(substrate, c(1L, 2L))$payload
+    fit <- glmnet::glmnet(
+      payload$x, payload$y, family = "gaussian", alpha = 1,
+      standardize = FALSE, intercept = FALSE
+    )
+    expect_equal(
+      selection$lambda_max[[substrate$label]],
+      nrow(payload$x) * fit$lambda[[1L]],
+      tolerance = 1e-12
+    )
+    expect_identical(
+      benchmark_grid(clean$path, substrate$label),
+      selection$lambda_max[[substrate$label]] * s
+    )
+  }
+
+  # Fold 1's anchor and grid are bit-identical under a value only in its
+  # assessment rows, and the folds that train on that row did move, so the
+  # check is not vacuous.
+  expect_identical(
+    moved$path$selection$lambda_max[[split$label]],
+    selection$lambda_max[[split$label]]
   )
-  alpha <- path$penalty$alpha_composite
-  anchors <- vapply(
-    cv$substrates,
-    function(s) {
-      payload <- .fb_sel_glmnet_reduction(s, c(1L, 2L))$payload
-      max(abs(drop(crossprod(payload$x, payload$y)))) / alpha
-    },
-    numeric(1L)
+  expect_identical(
+    benchmark_grid(moved$path, split$label),
+    benchmark_grid(clean$path, split$label)
   )
-  grid <- path$path_coordinates$lambda_canonical[
-    path$path_coordinates$arm == "benchmark"
-  ]
-  # Non-vacuous: the data anchor, not the declared lambda, tops the grid.
-  expect_gt(max(anchors), path$penalty$lambda_composite)
-  # The grid is evenly spaced in log lambda, so its first point is the
-  # anchor through exp(log()), the arithmetic the grid itself uses.
-  expect_identical(max(grid), exp(log(max(anchors))))
+  others <- setdiff(names(selection$lambda_max), split$label)
+  expect_false(identical(
+    moved$path$selection$lambda_max[others],
+    selection$lambda_max[others]
+  ))
+
+  # The tuning report: one s, and the lambda that s is on each fold.
+  expect_identical(selection$tuning_scale, "s = lambda / lambda_max")
+  expect_true(selection$selected_s %in% s)
+  expect_identical(
+    selection$selected_lambda_canonical,
+    selection$lambda_max * selection$selected_s
+  )
+})
+
+
+# --- (v b) formula transforms learn on the training rows, or refuse ------ #
+
+test_that("a transform in a benchmark formula is learned on each fold's training rows and applied to its assessment rows", {
+  d <- fbfi_data()
+  split <- fbfi_folds(d)[[1L]]
+  train <- d[split$train_rows, , drop = FALSE]
+  extreme <- d
+  extreme$z1[split$assess_rows[[1L]]] <- 1e3
+  extreme$x[split$assess_rows[[2L]]] <- -1e3
+  cases <- list(
+    list(protected = ~x, candidates = ~ scale(z1) + z2),
+    list(protected = ~x, candidates = ~ poly(z1, 2) + z2),
+    list(protected = ~x, candidates = ~ splines::ns(z1, 3) + z2),
+    list(protected = ~ scale(x), candidates = ~z2)
+  )
+  # R's own safe prediction, written out: a model frame of the training rows
+  # carries each transform's parameters, and evaluating its terms over all
+  # rows applies them.
+  safe_design <- function(f) {
+    tt <- stats::terms(stats::model.frame(f, train))
+    stats::model.matrix(tt, stats::model.frame(tt, d))
+  }
+  for (case in cases) {
+    label <- paste(deparse(case$candidates), deparse(case$protected))
+    build <- function(frame) {
+      .fb_sel_fold_substrate(
+        frame, split, "y", case$protected, case$candidates, random = "site"
+      )
+    }
+    clean <- build(d)
+    expect_identical(build(d)$learned, clean$learned, label = label)
+    moved <- build(extreme)
+    expect_identical(moved$learned, clean$learned, label = label)
+    expect_identical(
+      moved$x_candidate[split$train_rows, , drop = FALSE],
+      clean$x_candidate[split$train_rows, , drop = FALSE],
+      label = label
+    )
+    expect_identical(clean$x_protected, safe_design(case$protected), label = label)
+    X <- safe_design(case$candidates)
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+    block <- X[split$train_rows, , drop = FALSE]
+    spread <- apply(block, 2L, stats::sd)
+    spread[!is.finite(spread) | spread < sqrt(.Machine$double.eps)] <- 1
+    expect_identical(
+      clean$x_candidate,
+      sweep(sweep(X, 2L, colMeans(block), "-"), 2L, spread, "/"),
+      label = label
+    )
+  }
+})
+
+
+test_that("a transform with no training-row rule refuses by name on the benchmark route, and a row-wise one passes", {
+  d <- fbfi_data()
+  split <- fbfi_folds(d)[[1L]]
+  refused <- list(~ I(z1 - mean(z1)) + z2, ~ rank(z1) + z2, ~ cut(z1, 3) + z2)
+  for (f in refused) {
+    err <- tryCatch(
+      .fb_sel_fold_substrate(d, split, "y", ~x, f, random = "site"),
+      error = function(e) e
+    )
+    expect_s3_class(
+      err, "flexybayes_refusal_selection_formula_transform_not_fold_local"
+    )
+    expect_match(conditionMessage(err), deparse(f[[2L]][[2L]]), fixed = TRUE)
+  }
+  extreme <- d
+  extreme$z1[split$assess_rows[[1L]]] <- 1e3
+  extreme$o[split$assess_rows[[1L]]] <- 1e3
+  for (f in list(~ log(o) + z2, ~ poly(z1, 2, raw = TRUE) + z2, ~ I(10 * z1) + z2)) {
+    clean <- .fb_sel_fold_substrate(d, split, "y", ~x, f, random = "site")
+    moved <- .fb_sel_fold_substrate(extreme, split, "y", ~x, f, random = "site")
+    expect_identical(moved$learned, clean$learned)
+  }
+})
+
+
+test_that("the Bayesian fold refits refuse a transform by name before anything is fitted", {
+  d <- fbfi_data()
+  base <- fbfi_stub(d, y ~ x + (1 | site))
+  reached <- 0L
+  refit <- function(...) {
+    reached <<- reached + 1L
+    stop("the refit was reached", call. = FALSE)
+  }
+  run <- function(candidates) {
+    tryCatch(
+      .fb_sel_bayes_cv(
+        base, candidates,
+        resamples = fb_resamples(unit = ~site, v = 3L),
+        metric = "elpd",
+        seed = 1L,
+        refit_fn = refit,
+        probe_seconds = 1
+      ),
+      error = function(e) e
+    )
+  }
+  err <- run(~ scale(z1))
+  expect_s3_class(
+    err, "flexybayes_refusal_selection_formula_transform_not_fold_local"
+  )
+  expect_match(conditionMessage(err), "scale(z1)", fixed = TRUE)
+  expect_identical(reached, 0L)
+  expect_identical(conditionMessage(run(~z1)), "the refit was reached")
+  expect_identical(reached, 1L)
+})
+
+
+test_that("the projection and benchmark routes refuse a transform before the reference model is sampled", {
+  skip_if_not_installed("brms")
+  skip_if_not_installed("projpred")
+  d <- fbfi_data()
+  base <- fbfi_stub(d, y ~ x + (1 | site), class = "flexybayes_brms")
+  reached <- 0L
+  local_mocked_bindings(
+    .fb_sel_reference_fit = function(...) {
+      reached <<- reached + 1L
+      stop("the reference fit was reached", call. = FALSE)
+    }
+  )
+  run <- function(candidates, method, benchmark) {
+    tryCatch(
+      fb_select(
+        base, candidates,
+        penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.4)),
+        decision = fb_decision(method = method),
+        benchmark = benchmark,
+        resamples = fb_resamples(unit = ~site, v = 3L),
+        seed = 1L
+      ),
+      error = function(e) e
+    )
+  }
+  for (setting in list(c("projection", "FALSE"), c("full", "TRUE"))) {
+    err <- run(~ scale(z1) + z2, setting[[1L]], as.logical(setting[[2L]]))
+    expect_s3_class(
+      err, "flexybayes_refusal_selection_formula_transform_not_fold_local"
+    )
+  }
+  expect_identical(reached, 0L)
+  err <- run(~ z1 + z2, "projection", FALSE)
+  expect_identical(conditionMessage(err), "the reference fit was reached")
 })
 
 
