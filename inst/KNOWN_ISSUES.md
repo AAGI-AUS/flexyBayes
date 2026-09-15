@@ -312,6 +312,17 @@ Each is reproducible on this release. Priority is for the MET use case.
     of the same design; posterior median 0.505 against 0.489 on brms), or
     fit on brms.
 
+    The same check refuses a fit whose mode is inside the bound when INLA's
+    reported interval reaches past it, which happens on a weakly identified
+    component with few levels. On `agridat::john.alpha` with
+    `random = ~ rep + rep:block`, the default bound on `rep` (three levels)
+    is 3.05 and INLA's interval runs from 0.17 to 3.65, so the default INLA
+    fit is refused in 8 of 8 repeats. *Workaround*: state a half-normal prior
+    on the standard deviations, for example with scale the standard
+    deviation of the response, or fit on brms. *What is open*: the default
+    prior (the release plan moves it to a half-normal prior on both engines
+    in 0.13.0).
+
 ## Closed since the previous revision
 
 Listed rather than deleted, because a reader who met one of these needs to

@@ -23,6 +23,15 @@ family, penalty family, engine or exported function is added.
   `fit$extras$support_audit` (known issue 17). This corrects the 0.12.0
   statement that a stated bound binds on INLA.
 
+  The check also refuses a fit whose mode is inside the bound when INLA's
+  reported interval reaches past it. A uniform prior cuts the posterior off
+  at the bound, so such an interval misstates the posterior. This happens on
+  a weakly identified component with few levels: on `agridat::john.alpha`
+  with `random = ~ rep + rep:block`, the default bound on `rep` (three
+  levels) is 3.05 and INLA's interval runs from 0.17 to 3.65, so the default
+  INLA fit is refused, in 8 of 8 repeats. A half-normal prior on the standard
+  deviations fits the same model on INLA, and brms fits it under the default.
+
 * **`na_action = "augment"` on brms refuses a missing Student-t response** by
   name (`brms_cannot_augment_nongaussian`). 0.12.0 admitted the family and
   stopped with an untyped emitter error. Augmentation on brms is admitted for
@@ -57,10 +66,13 @@ family, penalty family, engine or exported function is added.
 
 * `API_STABILITY.md` pins to the 0.12.x line.
 
-* **The default variance prior is unchanged.** It stays the uniform bound on
-  each standard deviation, on both engines. No execution-grid cell that
-  fitted in 0.12.0 is refused by the check, and the full test suite passes
-  with it.
+* **The default variance prior is unchanged in this release.** It stays the
+  uniform bound on each standard deviation, on both engines. No
+  execution-grid cell that fitted in 0.12.0 is refused by the check, but the
+  `john.alpha` design above, the data of a validated ASReml comparison, is.
+  The release plan therefore moves the default to a half-normal prior on
+  both engines in 0.13.0. Three tests whose fixtures had a weakly identified
+  component now state a half-normal prior or a wider bound.
 
 # flexyBayes 0.12.0
 
