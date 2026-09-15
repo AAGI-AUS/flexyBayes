@@ -347,9 +347,15 @@ test_that("a block-diagonal vm() reports each block's own genotypes", {
   d <- data.frame(geno = factor(rep(levs, 5L)))
   d$y <- 10 + stats::rnorm(7L, 0, 1.5)[as.integer(d$geno)] +
     stats::rnorm(nrow(d), 0, 0.3)
+  # Under the default uniform bound INLA's interval for the four-level
+  # block runs past the bound, 1.09 to 8.98 against 6.78, and the support
+  # audit refuses the fit (8 of 8 repeats). This test reads labels, so the
+  # blocks' standard deviation takes a half-normal prior, which has no bound
+  # to cross; every block takes the prior keyed by the term's variable.
   fit <- suppressMessages(flexybayes(
     y ~ 1, random = ~ vm(geno, cov = fb_cov(Bk, type = "blocks")),
     data = d, known_matrices = list(Bk = blocks),
+    prior = fb_prior(sd(group = "geno") ~ half_normal(scale = stats::sd(d$y))),
     backend = "inla", verbose = FALSE
   ))
   r <- ranef(fit)

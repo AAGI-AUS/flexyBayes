@@ -217,13 +217,14 @@ test_that("a user fb_prior() is the prior the re-fit runs under", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   .upc_silence()
-  # The bound sits clear of the posterior mass. A uniform whose upper
-  # bound cuts into it (upper = 3 against an sd_Block near 2.27) makes
-  # the inla binary abort, which is an upstream matter and not what this
-  # file is measuring.
+  # The bound sits clear of the posterior mass, reported interval included.
+  # A uniform whose upper bound cuts into it (upper = 3 against an sd_Block
+  # near 2.27) makes the inla binary abort, and at upper = 6 INLA's interval
+  # for Block reaches 6.05, which the support audit refuses (8 of 8
+  # repeats). Neither is what this file is measuring.
   priors <- fb_prior(
-    sigma ~ uniform(lower = 0, upper = 6),
-    sd(group = "Block") ~ uniform(lower = 0, upper = 6)
+    sigma ~ uniform(lower = 0, upper = 20),
+    sd(group = "Block") ~ uniform(lower = 0, upper = 20)
   )
   fit <- suppressMessages(flexybayes(
     y ~ Trt + x, random = ~Block, data = .upc_data(), backend = "inla",
