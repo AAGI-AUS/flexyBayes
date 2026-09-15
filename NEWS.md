@@ -108,11 +108,15 @@ mode is reported under a Bayesian label.
   recorded wall time and is labelled a floor rather than an estimate.
 
 * **`lgm_gate()` gains a twelfth structural check.** A joint shrinkage prior
-  routed at INLA refuses with `prior_family_unsupported_inla`: a scale
-  mixture leaves the latent field non-Gaussian given the hyperparameters,
-  which is the assumption the nested Laplace approximation is built on. The
-  capability matrix carries one row per family with `inla = "refuses"` and
-  `brms = "fits"`, each anchored on the generated-code assertions.
+  on a model routed at INLA refuses with `prior_family_unsupported_inla`. A
+  Laplace, horseshoe or R2D2 prior is Gaussian given one local scale per
+  coefficient, so the model can be written as a latent Gaussian model, but
+  it then carries a hyperparameter for every coefficient, and INLA's
+  integration is built for a few. No public call reaches the check, because
+  `fb_select()` fits every shrinkage prior on brms (see "An INLA-fitted base
+  can carry a shrinkage prior" below). The capability matrix carries one row
+  per family with `inla = "n/a"` and `brms = "fits"`, each anchored on the
+  generated-code assertions.
 
 * **Accessors**: `print()`, `tidy()`, `glance()`, `augment()` and
   `plot(type = c("elpd_by_size", "rank_stability", "shrinkage",
@@ -322,13 +326,13 @@ nevertheless ran on the BASE's intermediate representation whenever the base
 was INLA, so a user with an INLA fit asking for a Laplace prior was told the
 prior was impossible on INLA -- about a fit that was never going to INLA.
 
-The check now applies to the engine that will fit the reference. An
-INLA-fitted base with a joint shrinkage prior samples on brms; the
-certificate records `reference_engine = "brms"`, the print method and the
-plan say the base was fitted by a different engine, and the certificate
-carries `reference_fitted_on_brms` among its approximations. The check still
-fires where it means something: a genuine INLA fit request carrying a joint
-block on the intermediate representation refuses exactly as before.
+The check no longer runs on the base. An INLA-fitted base with a joint
+shrinkage prior samples on brms; the certificate records
+`reference_engine = "brms"`, the print method and the plan say the base was
+fitted by a different engine, and the certificate carries
+`reference_fitted_on_brms` among its approximations. No public call reaches
+the check now: `fb_select()` is the only verb that takes a shrinkage prior,
+and it always fits on brms. The check stays as an internal guard.
 
 ## The prior is calibrated against the information that is there
 

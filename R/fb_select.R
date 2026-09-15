@@ -163,9 +163,9 @@
 
 # .fb_select_required_providers() --- the packages a request needs, by name.
 #
-# The Bayesian route with a joint prior is brms and nothing else: INLA never
-# approximates a scale-mixture prior, and lgm_gate()'s twelfth check refuses
-# such a request there rather than fitting a nearby model. `projpred` joins
+# The Bayesian route with a joint prior is brms and nothing else: the
+# reference model is re-emitted on brms whatever engine fitted the base, and
+# no public call hands a joint shrinkage prior to INLA. `projpred` joins
 # the set only when the projection decision was asked for, so a
 # `decision = "full"` run on a machine without it still works.
 .fb_select_required_providers <- function(engine, penalty, decision) {
@@ -2354,13 +2354,13 @@ fb_select <- function(base,
   # reference is a re-emission of it with an extended fixed part and the
   # base's own priors carried through the brms prior translation.
   #
-  # lgm_gate()'s twelfth check therefore belongs to the engine that WILL fit
-  # the reference, not to the engine that fitted the base. It used to run on
-  # the base's IR whenever the base was INLA, so an INLA user asking for a
-  # Laplace prior was told the prior was impossible on INLA -- on a fit that
-  # was never going to INLA. The check still fires where it means something:
-  # a genuine INLA fit request carrying a joint block on the IR (fb_inla(),
-  # fb_plan() routing at INLA) reaches it unchanged.
+  # lgm_gate()'s twelfth check therefore does not run on the base. It used
+  # to run on the base's IR whenever the base was INLA, so an INLA user
+  # asking for a Laplace prior was told the prior was impossible on INLA --
+  # on a fit that was never going to INLA. No public call reaches that check
+  # now: fb_select() is the only verb that takes a shrinkage prior, and
+  # nothing in R/ writes a penalty block onto the IR. It stays as an
+  # internal guard.
   reference_engine <- "brms"
   approximations <- resolved$approximations
   if (!identical(engine_name, reference_engine)) {
@@ -2368,9 +2368,10 @@ fb_select <- function(base,
       "reference_fitted_on_brms: the base was fitted by ", engine_name,
       " and the reference model carrying the joint shrinkage prior is ",
       "re-emitted on brms with the base's structure and its own priors ",
-      "carried through, because a scale-mixture prior leaves the latent ",
-      "field non-Gaussian given the hyperparameters and the nested Laplace ",
-      "approximation is built on that assumption"
+      "carried through, because INLA does not fit a joint shrinkage prior: ",
+      "a Laplace, horseshoe or R2D2 prior is Gaussian only given a local ",
+      "scale per coefficient, and INLA's integration is built for a few ",
+      "hyperparameters"
     ))
   }
   # The projection's own k-fold search refits the reference through brms,

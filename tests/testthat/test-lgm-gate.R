@@ -511,10 +511,10 @@ test_that("lgm_gate() ignores acknowledgement without force", {
 # Check 12 — joint shrinkage prior families                        #
 # ---------------------------------------------------------------- #
 #
-# SPEC_bayesian_selection_v5_2026-09-12.md section 4.5. The blocks reach the
-# gate on `fb$penalty_blocks`, which is where fb_select() puts them before
-# the gate runs, so a request that would route at INLA refuses at the gate
-# rather than at the emitter.
+# SPEC_bayesian_selection_v5_2026-09-12.md section 4.5. The check reads
+# `fb$penalty_blocks`, which nothing in R/ writes: fb_select() fits its
+# reference model on brms, so no public call reaches it. These tests set the
+# field to exercise the check as an internal guard.
 
 mk_penalty_block <- function(family, id = 1L) {
   list(
@@ -559,7 +559,7 @@ test_that("every shrinkage family refuses at INLA, and the reason names it", {
     r <- flexyBayes:::.lgm_check_prior_family_inla_support(fb)
     expect_false(r$pass, info = family)
     expect_match(r$reason, family, fixed = TRUE)
-    expect_match(r$reason, "non-Gaussian", fixed = TRUE)
+    expect_match(r$reason, "not fitted on INLA", fixed = TRUE)
     expect_match(r$diagnostic, family, fixed = TRUE)
   }
 })

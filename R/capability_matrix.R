@@ -335,43 +335,44 @@
     list(
       model_class = "Ridge shrinkage prior on candidate fixed effects",
       spelling = "`fb_penalty(term(...) ~ ridge(scale))`",
-      inla = "refuses",
+      inla = "n/a",
       brms = "fits",
       note = "A joint shrinkage prior over a declared block of candidate
         fixed effects, compiled to one coefficient-specific `normal` row per
         candidate so the block is targeted exactly and no protected
-        coefficient is touched. INLA refuses at the twelfth structural check
-        (`prior_family_unsupported_inla`): a scale-mixture prior over the
-        fixed effects leaves the latent field non-Gaussian given the
-        hyperparameters, which is the assumption the nested Laplace
-        approximation rests on. An INLA-fitted base is not blocked by that
-        refusal -- `fb_select()` re-emits the reference model on brms with
-        the base's structure and priors carried through, and records the
-        re-emission on the certificate.",
+        coefficient is touched. Only `fb_select()` takes a shrinkage prior,
+        and it fits its reference model on brms whatever engine fitted the
+        base, carrying the base's structure and priors through and recording
+        the re-emission on the certificate. No call asks INLA to fit one,
+        and INLA has no implementation of the block.",
       anchor = "test-penalty-stancode.R"
     ),
     list(
       model_class = "Laplace shrinkage prior on candidate fixed effects",
       spelling = "`fb_penalty(term(...) ~ laplace(scale))`",
-      inla = "refuses",
+      inla = "n/a",
       brms = "fits",
       note = "One coefficient-specific `double_exponential` row per
         candidate. The posterior mean is not a lasso estimate and the draws
         carry no exact zeros; the alias `lasso()` says so once per session.
-        INLA refuses as for ridge.",
+        Fitted on brms, as for ridge. A Laplace prior is Gaussian given one
+        local scale per coefficient, so the model can be written as a latent
+        Gaussian model, but it then carries a hyperparameter for every
+        coefficient, and INLA's numerical integration is built for models
+        with a few hyperparameters.",
       anchor = "test-penalty-stancode.R"
     ),
     list(
       model_class = "Elastic-net shrinkage prior on candidate fixed effects",
       spelling = "`fb_penalty(term(...) ~ elastic_net(lambda, alpha))`",
-      inla = "refuses",
+      inla = "n/a",
       brms = "fits",
       note = "The canonical elastic-net density written as a `target +=`
         contribution over the candidate indices through `stanvars` and
         `check = FALSE`, so the block is targeted exactly while a protected
         coefficient keeps its own prior row. Fixed hyperparameters only in
         this release, because the normalising constant is then irrelevant.
-        INLA refuses as for ridge.",
+        Fitted on brms, as for ridge.",
       anchor = "test-penalty-stancode.R"
     ),
     list(
@@ -379,7 +380,7 @@
         "Regularised horseshoe shrinkage prior on candidate fixed effects"
       ),
       spelling = "`fb_penalty(term(...) ~ regularized_horseshoe(p0))`",
-      inla = "refuses",
+      inla = "n/a",
       brms = "fits",
       note = "brms's native `horseshoe()`, with `par_ratio` set from `p0`
         and calibrated against the number of resampling units rather than
@@ -396,13 +397,15 @@
         `protected_under_global_shrinkage`. A candidate block containing a
         design column the re-emitted reference cannot standardise -- a
         factor contrast, an interaction product -- refuses with
-        `penalty_candidate_columns_unscaled`. INLA refuses as for ridge.",
+        `penalty_candidate_columns_unscaled`. Fitted on brms, as for ridge;
+        like the Laplace prior, it is Gaussian only given a local scale per
+        coefficient.",
       anchor = "test-penalty-stancode.R"
     ),
     list(
       model_class = "R2D2 shrinkage prior on candidate fixed effects",
       spelling = "`fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))`",
-      inla = "refuses",
+      inla = "n/a",
       brms = "fits",
       note = "brms's native `R2D2()`, whose scales are stated on the
         explained-variance grammar rather than on a coefficient scale, so
@@ -411,7 +414,7 @@
         intercept-only, otherwise `laplace()`, `ridge()` or
         `elastic_net()`, or `scope = \"all_fixed\"` with the named
         approximation. Unstandardised candidate columns refuse as for the
-        horseshoe. INLA refuses as for ridge.",
+        horseshoe. Fitted on brms, as for ridge.",
       anchor = "test-penalty-stancode.R"
     )
   )

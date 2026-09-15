@@ -821,9 +821,10 @@ test_that("exact Gaussian aggregation refuses by name on the INLA path", {
 # Each row is probed twice. The brms verdict is probed by compiling the
 # prior the family declares and asserting that brms accepts it -- the same
 # route test-penalty-stancode.R takes, here reduced to the one question the
-# matrix cell answers. The INLA verdict is probed against lgm_gate()'s
-# twelfth check, which is where the refusal is actually raised, rather than
-# against a message string.
+# matrix cell answers. The INLA cell is `n/a`: no public call hands a
+# shrinkage prior to INLA, because fb_select() fits its reference model on
+# brms. The internal guard behind that, lgm_gate()'s twelfth check, is still
+# probed, read off the gate rather than off a message string.
 
 .cap_penalty_data <- function(n = 60L, seed = 4021L) {
   set.seed(seed)
@@ -866,9 +867,8 @@ test_that("exact Gaussian aggregation refuses by name on the INLA path", {
   list(blocks = blocks, code = code)
 }
 
-# The INLA verdict, read off the gate rather than off a message. The blocks
-# reach the gate on `fb$penalty_blocks`, which is where fb_select() puts
-# them.
+# The internal guard, read off the gate rather than off a message. Nothing
+# in R/ writes `fb$penalty_blocks`, so the test sets it to reach the check.
 .cap_penalty_inla_refuses <- function(blocks) {
   d <- .cap_penalty_data()
   fb <- flexyBayes:::.build_ir_polymorphic(
@@ -896,11 +896,11 @@ test_that("exact Gaussian aggregation refuses by name on the INLA path", {
   expect_false(flexyBayes:::is_lgm_refusal(flexyBayes:::lgm_gate(fb)))
 }
 
-test_that("a ridge shrinkage prior fits on brms and refuses on INLA", {
+test_that("a ridge shrinkage prior fits on brms and INLA is never asked", {
   skip_on_cran()
   skip_if_not_installed("brms")
   r <- .cap_row("Ridge shrinkage prior on candidate fixed effects")
-  expect_identical(r$inla, "refuses")
+  expect_identical(r$inla, "n/a")
   expect_identical(r$brms, "fits")
   got <- .cap_penalty_compiles(
     fb_penalty(term(everything()) ~ ridge(scale = 0.4))
@@ -909,11 +909,11 @@ test_that("a ridge shrinkage prior fits on brms and refuses on INLA", {
   .cap_penalty_inla_refuses(got$blocks)
 })
 
-test_that("a laplace shrinkage prior fits on brms and refuses on INLA", {
+test_that("a laplace shrinkage prior fits on brms and INLA is never asked", {
   skip_on_cran()
   skip_if_not_installed("brms")
   r <- .cap_row("Laplace shrinkage prior on candidate fixed effects")
-  expect_identical(r$inla, "refuses")
+  expect_identical(r$inla, "n/a")
   expect_identical(r$brms, "fits")
   got <- .cap_penalty_compiles(
     fb_penalty(term(everything()) ~ laplace(scale = 0.25))
@@ -922,11 +922,11 @@ test_that("a laplace shrinkage prior fits on brms and refuses on INLA", {
   .cap_penalty_inla_refuses(got$blocks)
 })
 
-test_that("an elastic-net shrinkage prior fits on brms and refuses on INLA", {
+test_that("an elastic-net shrinkage prior fits on brms and INLA is never asked", {
   skip_on_cran()
   skip_if_not_installed("brms")
   r <- .cap_row("Elastic-net shrinkage prior on candidate fixed effects")
-  expect_identical(r$inla, "refuses")
+  expect_identical(r$inla, "n/a")
   expect_identical(r$brms, "fits")
   got <- .cap_penalty_compiles(
     fb_penalty(term(everything()) ~ elastic_net(lambda = 0.1, alpha = 0.5))
@@ -935,13 +935,13 @@ test_that("an elastic-net shrinkage prior fits on brms and refuses on INLA", {
   .cap_penalty_inla_refuses(got$blocks)
 })
 
-test_that("a regularised horseshoe fits on brms and refuses on INLA", {
+test_that("a regularised horseshoe fits on brms and INLA is never asked", {
   skip_on_cran()
   skip_if_not_installed("brms")
   r <- .cap_row(
     "Regularised horseshoe shrinkage prior on candidate fixed effects"
   )
-  expect_identical(r$inla, "refuses")
+  expect_identical(r$inla, "n/a")
   expect_identical(r$brms, "fits")
   # Class-wide: nothing protected beyond the intercept, which is the
   # targeting rule the note states.
@@ -953,11 +953,11 @@ test_that("a regularised horseshoe fits on brms and refuses on INLA", {
   .cap_penalty_inla_refuses(got$blocks)
 })
 
-test_that("an R2D2 prior fits on brms and refuses on INLA", {
+test_that("an R2D2 prior fits on brms and INLA is never asked", {
   skip_on_cran()
   skip_if_not_installed("brms")
   r <- .cap_row("R2D2 shrinkage prior on candidate fixed effects")
-  expect_identical(r$inla, "refuses")
+  expect_identical(r$inla, "n/a")
   expect_identical(r$brms, "fits")
   got <- .cap_penalty_compiles(
     fb_penalty(term(everything()) ~ r2d2(mean_R2 = 0.4)),

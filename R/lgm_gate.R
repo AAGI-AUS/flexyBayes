@@ -1287,16 +1287,21 @@ print.lgm_refusal <- function(x, ...) {
 
 # Check 12 -- joint shrinkage prior families
 #
-# `fb$penalty_blocks` is written by the selection module before the gate runs
-# (R/fb_select.R): it is the resolved `fb_prior_blocks` list, one entry per
-# declared shrinkage block over the candidate fixed effects. A model that
-# carries none -- every model outside the selection module, and a selection
-# whose penalty is `NULL` -- passes this check trivially, which is what the
-# default of NULL is for.
+# `fb$penalty_blocks` would hold the resolved `fb_prior_blocks` list, one
+# entry per declared shrinkage block over the candidate fixed effects. No
+# public call reaches this check: nothing in R/ writes that field, and
+# fb_select(), the only verb that takes a shrinkage prior, re-emits its
+# reference model on brms whatever engine fitted the base (R/fb_select.R).
+# The check is kept as an internal guard, so that a joint block handed to
+# the INLA route by future code refuses at the gate instead of reaching the
+# emitter. A model that carries none passes trivially.
 #
 # A block whose family is `none` is an explicit opt-OUT of shrinkage for the
-# coordinates it names, so it is not a scale mixture and does not refuse.
-# Every other family in the table is one, and INLA never approximates it.
+# coordinates it names and does not refuse. A Laplace, regularised horseshoe
+# or R2D2 prior is Gaussian given one local scale per coefficient, so the
+# model can be written as a latent Gaussian model, but it then carries a
+# hyperparameter for every coefficient and INLA's integration is built for a
+# few. Ridge and elastic-net blocks have no INLA implementation.
 .lgm_check_prior_family_inla_support <- function(fb) {
   blocks <- fb$penalty_blocks %||% list()
   if (length(blocks) == 0L) {
@@ -1316,11 +1321,15 @@ print.lgm_refusal <- function(x, ...) {
     reason = paste0(
       "the joint shrinkage prior(s) ",
       paste(shrinkage, collapse = ", "),
-      " cannot be fitted by INLA: a scale-mixture prior over the fixed ",
-      "effects leaves the latent field non-Gaussian given the ",
-      "hyperparameters, which is the assumption the nested Laplace ",
-      "approximation is built on. Fit the reference model on brms, or ",
-      "select with penalty = NULL, which keeps every candidate protected."
+      " are not fitted on INLA. A Laplace, regularised horseshoe or R2D2 ",
+      "prior is Gaussian given one local scale per coefficient, so the ",
+      "model can be written as a latent Gaussian model, but it then carries ",
+      "a hyperparameter for every coefficient in the block, and INLA's ",
+      "numerical integration is built for models with a few ",
+      "hyperparameters. Ridge and elastic-net blocks have no INLA ",
+      "implementation. Fit the reference model on brms, as fb_select() ",
+      "does, or select with penalty = NULL, which keeps every candidate ",
+      "protected."
     ),
     diagnostic = paste0(
       "penalty block families: ",

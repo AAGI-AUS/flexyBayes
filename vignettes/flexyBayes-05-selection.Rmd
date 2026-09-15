@@ -2991,10 +2991,11 @@ increment$certificate$covariance$estimand
 #> [1] "integrated"
 ```
 
-A joint shrinkage prior on an INLA-fitted base is not refused. INLA cannot
-fit one -- a scale mixture leaves the latent field non-Gaussian given the
-hyperparameters, which is the assumption the nested Laplace approximation is
-built on -- but the reference model was never going to INLA. The parsed model
+A joint shrinkage prior on an INLA-fitted base is not refused. INLA does not
+fit one -- a Laplace, horseshoe or R2D2 prior is Gaussian only given a local
+scale for every coefficient, and written that way the model carries far more
+hyperparameters than INLA's integration is built for -- but the reference
+model was never going to INLA. The parsed model
 is engine-independent, so the reference is re-emitted on brms with the base's
 structure and its own priors carried through, and the certificate records
 which engine fitted which.
