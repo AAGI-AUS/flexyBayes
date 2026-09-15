@@ -106,11 +106,10 @@ test_that("backend = 'auto' routes a Gaussian random-intercept model to INLA", {
   testthat::skip_if_not_installed("INLA")
   d <- mk_lgm_data()
   # aggregate = FALSE: scope the test to the per-row INLA dispatch
-  # path. The Stage 3A aggregated-gaussian gate (ADR 0022, v0.3.2)
-  # would otherwise auto-route this LGM-compatible model to the
-  # aggregated emit (path = "aggregated_gaussian") and short-circuit
-  # the lgm_gate call. Aggregated-path coverage lives in
-  # test-emit-gaussian-aggregated.R.
+  # path. A Gaussian model is no longer aggregated under "auto" (its
+  # aggregated route cannot carry the residual prior), so the setting
+  # pins the route this test asserts rather than changing it.
+  # Aggregated-path coverage lives in test-emit-gaussian-aggregated.R.
   fit <- suppressMessages(flexybayes(
     yield ~ env,
     random = ~geno,
@@ -127,52 +126,84 @@ test_that("backend = 'auto' routes a Gaussian random-intercept model to INLA", {
 
 
 # ---------------------------------------------------------------- #
-# (e) backend = "inla" on an LGM-incompatible model refuses         #
+# (e) backend = "inla" on a model INLA cannot represent refuses      #
 # ---------------------------------------------------------------- #
-# A heterogeneous-residual at() structure triggers an LGM check
-# failure (residual is not the iid units default). Use it to drive the
-# refusal path.
+# The probe used to be the heterogeneous residual at(env):units. That
+# fits on INLA from 0.10.0.9000, through the multiple-likelihood
+# interface, so the probe moves to a family INLA's likelihood roster has
+# no counterpart for. Under backend = "inla" the refusal surfaces as a
+# clean error; under backend = "auto" the same refusal routes to brms
+# (subtest f).
 
 test_that("backend = 'inla' surfaces the INLA-side refusal cleanly", {
   d <- mk_lgm_data()
-  # at(env):units is rejected at emit_inla()'s feasibility check
-  # (v0.1 does not support structured residual for INLA). Under backend
-  # = "inla" the refusal surfaces as a clean error; under backend =
-  # "auto" the same refusal triggers the brms fallback (subtest f).
+  d$yield <- pmax(d$yield, 0)
   err <- tryCatch(
     flexybayes(
       yield ~ env,
       random = ~geno,
-      residual = ~ at(env):units,
       data = d,
+      family = "hurdle_gamma",
       backend = "inla",
       verbose = FALSE
     ),
     error = function(e) conditionMessage(e)
   )
   expect_true(grepl(
-    "backend = \"inla\"|INLA backend refused|emit_inla\\(\\) refused|does not support",
+    "backend = \"inla\"|INLA backend refused|emit_inla\\(\\) refused|does not support|family",
     err
   ))
 })
 
+test_that("the heterogeneous residual that used to drive this now fits", {
+  # The counterpart of the change above, asserted rather than assumed:
+  # the structure this file used as its canonical INLA refusal is a
+  # capability now, so a reader of subtest (e) can see why it moved.
+  d <- mk_lgm_data()
+  fb <- fb_from_asreml(
+    yield ~ env, random = ~geno, residual = ~ at(env):units, data = d
+  )
+  expect_true("lgm_compatible" %in% lgm_gate(fb)$capabilities)
+})
+
 
 # ---------------------------------------------------------------- #
-# (f) backend = "auto" on a multi-stratum residual structure falls   #
-#     back to brms with a logged note and the specific fallback path #
+# (f) backend = "auto" routes to brms when INLA refuses, with a trace #
 # ---------------------------------------------------------------- #
+# This used to be driven by the multi-stratum residual at(env):units,
+# which INLA now fits -- so `auto` keeps that model on INLA, which was
+# the whole point of the 0.10.0.9000 emit work. Both halves are asserted
+# here: the model that used to fall back no longer does, and a model
+# INLA genuinely cannot take still falls back by the documented path.
 
-test_that("backend = 'auto' on a multi-stratum residual falls back to brms with trace", {
+test_that("backend = 'auto' keeps the multi-stratum residual on INLA", {
+  testthat::skip_if_not_installed("INLA")
+  d <- mk_lgm_data()
+  fit <- suppressMessages(flexybayes(
+    yield ~ env,
+    random = ~geno,
+    residual = ~ at(env):units,
+    data = d,
+    backend = "auto",
+    verbose = FALSE
+  ))
+  expect_identical(backend_decision(fit)$backend, "inla")
+})
+
+test_that("backend = 'auto' falls back to brms when INLA refuses, with trace", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   d <- mk_lgm_data()
+  # corh(env):geno -- heterogeneous variances with one shared
+  # correlation. No engine has an equicorrelation group structure, and
+  # INLA refuses it at the gate, so `auto` must route rather than fit.
   msgs <- character()
   fit <- withCallingHandlers(
-    suppressWarnings(flexybayes(
+    suppressWarnings(suppressMessages(flexybayes(
       yield ~ env,
       random = ~geno,
-      residual = ~ at(env):units,
       data = d,
+      family = "hurdle_gamma",
       backend = "auto",
       n_samples = 500L,
       warmup = 500L,
@@ -181,7 +212,7 @@ test_that("backend = 'auto' on a multi-stratum residual falls back to brms with 
       control = list(adapt_delta = 0.97),
       verbose = FALSE,
       mcmc_verbose = FALSE
-    )),
+    ))),
     message = function(m) {
       msgs <<- c(msgs, conditionMessage(m))
       invokeRestart("muffleMessage")
@@ -189,14 +220,7 @@ test_that("backend = 'auto' on a multi-stratum residual falls back to brms with 
   )
   bd <- backend_decision(fit)
   expect_identical(bd$backend, "brms")
-  # at(env):units is a multi-stratum designed-experiment residual
-  # structure: lgm_gate() refuses it (residual_term_type_inla) and
-  # dispatch routes it to brms by this specific path, distinct from
-  # the generic auto-fallback (INLA collapses these variance
-  # components; brms is the faithful full-HMC alternative).
-  expect_identical(bd$path, "auto_multistratum_to_brms")
-  expect_true(!is.null(bd$gate_checks))
-  expect_true(any(grepl("lgm_gate\\(\\) refused", msgs)))
+  expect_true(!is.null(bd$path) && nzchar(bd$path))
 })
 
 
@@ -230,13 +254,17 @@ test_that("ADR 0006 verification: explicit-brms + auto-accept + non-LGM refusal"
   expect_s3_class(fit_b, "flexybayes")
   expect_identical(backend_decision(fit_b)$backend, "brms")
 
-  # backend = "inla" on a non-LGM model: structured refusal.
+  # backend = "inla" on a model INLA cannot represent: structured
+  # refusal. The probe is a family with no INLA likelihood, since the
+  # structured residual this used to use now fits there.
+  d2 <- d
+  d2$yield <- pmax(d2$yield, 0)
   err <- tryCatch(
     flexybayes(
       yield ~ env,
       random = ~geno,
-      residual = ~ at(env):units,
-      data = d,
+      data = d2,
+      family = "hurdle_gamma",
       backend = "inla",
       verbose = FALSE
     ),

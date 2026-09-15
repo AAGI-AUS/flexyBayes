@@ -43,10 +43,11 @@ GEV route today.
 }
 \examples{
 set.seed(1)
-y <- rgev(200L, location = 10, scale = 2, shape = 0.1)
-fit <- fb_gev(y)
+y <- flexyBayes:::rgev(200L, location = 10, scale = 2, shape = 0.1)
+fit <- flexyBayes:::fb_gev(y)
 fit$estimates
 }
 \seealso{
 \code{\link[=fb_family_gev]{fb_family_gev()}}, \code{\link[=rgev]{rgev()}}, \code{\link[=tidy.fb_gev_fit]{tidy.fb_gev_fit()}}
 }
+\keyword{internal}

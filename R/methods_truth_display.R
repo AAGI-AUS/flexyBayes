@@ -73,9 +73,43 @@
   # the label itself rather than relying on the one vignette that
   # defines the split.
   if (identical(exact, "exact")) {
+    cond <- .fb_conditional_translation_note(fit)
+    if (nzchar(cond)) {
+      return(paste0("exact emit, conditional translation (", cond, ")"))
+    }
     return("exact (model, not inference)")
   }
   exact
+}
+
+# .fb_conditional_translation_note() --- the translation caveat for a fit.
+#
+# The Representation: line reports whether the EMIT carries a structural
+# approximation. A reader takes it for more than that: "exact" reads as "this
+# is the model ASReml would fit". For most terms the two coincide. For a
+# factor-analytic term they do not -- the loadings are anchored to one for
+# factor j at level j, taken from factor-level order, and that spans the
+# factor-analytic family only where the leading loading block supports the
+# anchoring. The 2026-09-11 audit found FA(1) and FA(2) summaries printing
+# `Representation: exact (model, not inference)` on exactly that lowering.
+#
+# The note is driven by the translation registry rather than written here, so
+# a term whose class changes carries the change onto this line.
+#
+# @noRd
+.fb_conditional_translation_note <- function(fit) {
+  rt <- fit$extras$parse_info$random %||% list()
+  types <- vapply(rt, function(t) as.character(t$type %||% ""), character(1L))
+  if (!any(types %in% c("fa", "fa_gxe"))) {
+    return("")
+  }
+  reg <- .fb_translation_registry()
+  row <- reg[reg$class == "conditional" &
+    grepl("fa(", reg$spelling, fixed = TRUE), , drop = FALSE]
+  if (nrow(row) == 0L) {
+    return("")
+  }
+  "anchored fa(); see TRANSLATION.md"
 }
 
 # .engine_label_for_fit() --- the Engine: line content. Maps the

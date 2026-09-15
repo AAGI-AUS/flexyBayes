@@ -9,11 +9,11 @@
 \arguments{
 \item{x}{A fitted \code{flexybayes} object.}
 
-\item{...}{Passed to \code{\link[brms:loo.brmsfit]{brms::loo()}} on the brms path; ignored on the
+\item{...}{Passed to \code{\link[brms:loo]{brms::loo()}} on the brms path; ignored on the
 refusal paths.}
 }
 \value{
-On a brms-engine fit, the \code{loo} object \code{\link[brms:loo.brmsfit]{brms::loo()}} returns.
+On a brms-engine fit, the \code{loo} object \code{\link[brms:loo]{brms::loo()}} returns.
 Otherwise the method does not return: it raises a refusal of class
 \code{flexybayes_refusal_loo_requires_sampler_draws}, or
 \code{flexybayes_refusal_fit_lacks_posterior_draws} when the fit carries
@@ -21,7 +21,7 @@ no posterior.
 }
 \description{
 A method for the \pkg{loo} package's \code{loo()} generic. On a fit from
-the \strong{brms} engine the call passes through to \code{\link[brms:loo.brmsfit]{brms::loo()}}, which
+the \strong{brms} engine the call passes through to \code{\link[brms:loo]{brms::loo()}}, which
 computes PSIS-LOO from the pointwise log-likelihood Stan stored, and
 returns \pkg{loo}'s own object -- \code{elpd_loo}, \code{p_loo}, \code{looic} and the
 Pareto-k diagnostics, unchanged.

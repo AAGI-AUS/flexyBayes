@@ -16,3 +16,7 @@ one.}
 \description{
 Test whether an object is an \code{fb_engine} specification
 }
+\examples{
+is_fb_engine(fb_engine("inla"))
+is_fb_engine("inla")
+}

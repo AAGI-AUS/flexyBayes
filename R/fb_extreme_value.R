@@ -45,9 +45,9 @@
 #'
 #' @seealso [fb_gev()]
 #' @examples
-#' fam <- fb_family_gev()
+#' fam <- flexyBayes:::fb_family_gev()
 #' fam$parameters
-#' @export
+#' @keywords internal
 fb_family_gev <- function() {
   structure(
     list(
@@ -103,9 +103,9 @@ fb_family_gev <- function() {
 #' @seealso [fb_gev()]
 #' @examples
 #' set.seed(1)
-#' y <- rgev(100L, location = 10, scale = 2, shape = 0.15)
+#' y <- flexyBayes:::rgev(100L, location = 10, scale = 2, shape = 0.15)
 #' summary(y)
-#' @export
+#' @keywords internal
 rgev <- function(n, location, scale, shape = 0) {
   .check_positive_scalar(scale, "scale")
   u <- stats::runif(n)
@@ -151,10 +151,10 @@ rgev <- function(n, location, scale, shape = 0) {
 #' @seealso [fb_family_gev()], [rgev()], [tidy.fb_gev_fit()]
 #' @examples
 #' set.seed(1)
-#' y <- rgev(200L, location = 10, scale = 2, shape = 0.1)
-#' fit <- fb_gev(y)
+#' y <- flexyBayes:::rgev(200L, location = 10, scale = 2, shape = 0.1)
+#' fit <- flexyBayes:::fb_gev(y)
 #' fit$estimates
-#' @export
+#' @keywords internal
 fb_gev <- function(
   y,
   return_periods = c(10, 50, 100),
@@ -266,8 +266,9 @@ fb_gev <- function(
 #' @seealso [fb_gev()]
 #' @examples
 #' set.seed(1)
-#' fit <- fb_gev(rgev(200L, 10, 2, 0.1))
+#' fit <- flexyBayes:::fb_gev(flexyBayes:::rgev(200L, 10, 2, 0.1))
 #' tidy(fit)
+#' @keywords internal
 #' @export
 tidy.fb_gev_fit <- function(x, ...) {
   x$estimates
@@ -278,6 +279,7 @@ tidy.fb_gev_fit <- function(x, ...) {
 #' @param x An `fb_gev_fit` object.
 #' @param ... Currently unused; present for generic compatibility.
 #' @returns `x`, invisibly.
+#' @keywords internal
 #' @export
 print.fb_gev_fit <- function(x, ...) {
   cat("Generalised extreme value fit  [flexyBayes]\n")

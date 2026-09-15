@@ -49,9 +49,11 @@
 #' a backend the full model would not reach live (FS-22). Both
 #' spellings now route through the same grammar detection
 #' `flexybayes()` uses (`syntax = "auto"` by default), so
-#' `fb_plan(fixed = ..., random = ..., residual = ..., data = ...)` and
-#' `flexybayes(fixed = ..., random = ..., residual = ..., data = ...,
-#' plan = TRUE)` plan the identical model.
+#' `fb_plan(y ~ x, random = ..., residual = ..., data = ...)` and
+#' `flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ...,
+#' plan = TRUE)` plan the identical model. Note the two spellings of the
+#' fixed part: `fb_plan()` takes it positionally as `formula`, the entry
+#' point takes it as `fixed`.
 #'
 #' @param formula     Either a brms-style two-sided formula such as
 #'   `y ~ x + s(z) + (1 | g)`, or (when `random` and/or `residual` are
@@ -246,21 +248,27 @@ fb_plan <- function(
     } else {
       (agg_plan$reason_codes %||% character(0L))
     },
+    # The aggregation plan names its cell count `K_est`.
     K = if (is.null(agg_plan)) {
       NA_integer_
     } else {
-      (agg_plan$K %||% NA_integer_)
+      (agg_plan[["K_est"]] %||% NA_integer_)
     },
     N = preflight$n_rows %||% NA_real_,
+    offset_route = if (is.null(agg_plan)) {
+      NA_character_
+    } else {
+      agg_plan$offset_route %||% "none"
+    },
     ratio = if (
       is.null(agg_plan) ||
-        is.null(agg_plan$K) ||
-        is.na(agg_plan$K) ||
-        agg_plan$K == 0L
+        is.null(agg_plan[["K_est"]]) ||
+        is.na(agg_plan[["K_est"]]) ||
+        agg_plan[["K_est"]] == 0L
     ) {
       NA_real_
     } else {
-      preflight$n_rows / agg_plan$K
+      preflight$n_rows / agg_plan[["K_est"]]
     }
   )
 
@@ -336,18 +344,30 @@ fb_plan <- function(
   # and the live fit -- which never reaches the aggregated emitter for a
   # gate-refused model -- went to brms instead. A plan that names a route
   # dispatch would not take is worse than no plan at all.
+  #
+  # A Gaussian model is not fitted on the aggregated representation, whose
+  # Gaussian route cannot yet carry the residual prior: "auto" plans the
+  # per-row route, and aggregate = TRUE plans no route, as dispatch refuses
+  # it (aggregation_residual_prior_not_composed).
   gate_accepted <- identical(gate_outcome, "accept")
+  aggregation_reachable <- isTRUE(agg$eligible) &&
+    gate_accepted &&
+    !preflight_refused &&
+    inla_installed &&
+    backend != "brms"
+  gaussian_contained <- identical(fb$family, "gaussian")
   if (
     (isTRUE(aggregate) || identical(aggregate, "auto")) &&
-      isTRUE(agg$eligible) &&
-      gate_accepted &&
-      !preflight_refused &&
-      inla_installed &&
-      backend != "brms"
+      aggregation_reachable &&
+      !gaussian_contained
   ) {
     chosen_backend <- "inla"
     chosen_path <- "aggregated_inla"
-    chosen_reason <- "gaussian_aggregated_eligible"
+    chosen_reason <- "count_aggregated_eligible"
+  } else if (isTRUE(aggregate) && aggregation_reachable && gaussian_contained) {
+    chosen_backend <- NA_character_
+    chosen_path <- "aggregation_residual_prior_not_composed"
+    chosen_reason <- "aggregation_residual_prior_not_composed"
   } else {
     chosen_backend <- routing$chosen_backend
     chosen_path <- routing$reason_code
@@ -440,6 +460,7 @@ fb_plan <- function(
       data_name = data_name %||% NA_character_,
       backend_requested = backend,
       backend_chosen = chosen_backend,
+      offsets = fb$offsets %||% character(0),
       path = chosen_path,
       reason_code = chosen_reason,
       will_fit = will_fit_final,
@@ -796,6 +817,19 @@ print.fb_plan <- function(x, ...) {
   cat("  Backend requested:       ", x$backend_requested, "\n", sep = "")
   cat("  Backend chosen:          ", x$backend_chosen, "\n", sep = "")
   cat("  Path:                    ", x$path, "\n", sep = "")
+  if (length(x$offsets)) {
+    route <- x$aggregation$offset_route %||% NA_character_
+    cat(
+      "  Offset:                  ", paste(x$offsets, collapse = " + "),
+      if (!is.na(route) && !identical(route, "none")) {
+        paste0("  (aggregated route: ", route, ")")
+      } else {
+        ""
+      },
+      "\n",
+      sep = ""
+    )
+  }
   cat("  Routing policy version:  ", x$routing_policy_version, "\n", sep = "")
 
   if (!is.na(x$gate_outcome)) {
@@ -1058,4 +1092,210 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
     row.names = row.names %||% "1"
   )
   out
+}
+
+
+# ---------------------------------------------------------------- #
+# Selection plans                                                   #
+# ---------------------------------------------------------------- #
+#
+# Contract: SPEC_bayesian_selection_v5_2026-09-12.md section 4.5 -- "fb_plan()
+# reports the prior route and the projection structure verdict before
+# anything runs, so a refusal is visible at plan time."
+#
+# `fb_select(..., plan = TRUE)` lands here. Everything it reports is derived
+# from the parsed model, the resolved prior blocks and the executed structure
+# gate; nothing is fitted, and the cost estimate is explicit that its per-fit
+# figure is the base model's own recorded wall time rather than a probe. A
+# plan that quietly paid for a fit would be the thing a plan exists to avoid.
+
+# .fb_plan_selection() --- the four resolved axes, the prior route, the
+# structure gate and the cost, without fitting.
+.fb_plan_selection <- function(base,
+                               axes,
+                               blocks = NULL,
+                               structure_gate = NULL,
+                               resamples = NULL,
+                               prediction = NULL,
+                               fits_per_fold = 0L,
+                               candidates = NULL,
+                               compiled = NULL,
+                               approximations = character(0),
+                               base_engine = NA_character_,
+                               reference_engine = NA_character_,
+                               decision_resolution = NULL) {
+  n_folds <- if (is.null(resamples)) {
+    NA_integer_
+  } else if (identical(resamples$scheme, "explicit")) {
+    length(unique(resamples$fold_id))
+  } else {
+    as.integer(resamples$v) * as.integer(resamples$repeats)
+  }
+  per_fit <- .fb_select_base_seconds(base)
+  n_fits <- if (is.na(n_folds)) {
+    NA_integer_
+  } else {
+    as.integer(n_folds) * as.integer(fits_per_fold) + 1L
+  }
+
+  routes <- vapply(blocks %||% list(), function(b) b$route, character(1L))
+  gate_verdict <- if (is.null(structure_gate)) {
+    NA_character_
+  } else if (all(structure_gate$verdict == "supported")) {
+    "supported"
+  } else {
+    paste0(
+      "refuses: ",
+      paste(
+        structure_gate$feature[structure_gate$verdict != "supported"],
+        collapse = ", "
+      )
+    )
+  }
+
+  selection <- list(
+    workflow = axes$workflow,
+    provider = axes$provider,
+    prior = axes$prior,
+    decision = axes$decision,
+    decision_requested = decision_resolution$requested %||% axes$decision,
+    decision_resolved_from = decision_resolution$resolved_from %||%
+      NA_character_,
+    decision_resolution_reason = decision_resolution$reason %||%
+      NA_character_,
+    base_engine = base_engine,
+    # A joint shrinkage prior is always emitted on brms, so the engine that
+    # will fit the reference is not always the engine that fitted the base.
+    reference_engine = reference_engine,
+    prior_route = if (length(routes) == 0L) "none" else unique(routes),
+    blocks = lapply(blocks %||% list(), function(b) {
+      list(
+        id = b$id,
+        family = b$family,
+        target = b$target,
+        coef_names = b$coef_names,
+        hyperparameters = b$hyperparameters,
+        hyperparameter_mode = b$hyperparameter_mode,
+        route = b$route
+      )
+    }),
+    stanvars = !is.null(compiled$stanvars),
+    approximations = as.character(approximations),
+    structure_gate = structure_gate,
+    structure_verdict = gate_verdict,
+    candidates = if (is.null(candidates)) {
+      character(0)
+    } else {
+      attr(stats::terms(candidates, data = base$data), "term.labels")
+    },
+    prediction = prediction,
+    resampling = list(
+      unit = resamples$unit,
+      v = resamples$v,
+      repeats = resamples$repeats,
+      n_folds = n_folds
+    ),
+    cost = list(
+      per_fit_seconds = per_fit,
+      n_fits = n_fits,
+      seconds = if (is.na(n_fits)) NA_real_ else per_fit * n_fits,
+      source = "base_model_run_time",
+      note = paste0(
+        "the per-fit figure is the base model's own recorded wall time; the ",
+        "reference model carries a wider fixed part and a shrinkage prior, ",
+        "so this is a floor"
+      )
+    )
+  )
+
+  structure(list(selection = selection), class = c("fb_select_plan", "list"))
+}
+
+
+# The structure gate, printed as the table it is: one row per structural
+# feature of the reference model, its verdict and the run behind it. It
+# leads because it is what decides whether the default decision can run at
+# all, and most of what this package fits is red at it.
+.fb_print_structure_gate <- function(gate, indent = "  ") {
+  if (!is.data.frame(gate) || nrow(gate) == 0L) {
+    return(invisible(NULL))
+  }
+  width <- max(nchar(gate$feature))
+  cat(indent, "Projection structure gate:\n", sep = "")
+  for (i in seq_len(nrow(gate))) {
+    cat(
+      indent, "  ", format(gate$feature[[i]], width = width), "  ",
+      format(gate$verdict[[i]], width = 9L), "  ",
+      .fb_squish(gate$reason[[i]]), "\n",
+      sep = ""
+    )
+  }
+  invisible(NULL)
+}
+
+
+#' @export
+print.fb_select_plan <- function(x, ...) {
+  s <- x$selection
+  cat("== flexyBayes selection plan ", strrep("=", 28), "\n", sep = "")
+  .fb_print_structure_gate(s$structure_gate)
+  cat("  Workflow:     ", s$workflow, "\n", sep = "")
+  cat("  Provider:     ", s$provider, "\n", sep = "")
+  cat("  Prior:        ", s$prior, "  (route ",
+      paste(s$prior_route, collapse = ", "), ")\n", sep = "")
+  cat("  Decision:     ", s$decision,
+      if (identical(s$decision_resolved_from, "auto")) {
+        " (resolved from \"auto\")"
+      } else {
+        ""
+      },
+      "\n", sep = "")
+  if (identical(s$decision_resolved_from, "auto")) {
+    cat("                ", .fb_squish(s$decision_resolution_reason), "\n",
+        sep = "")
+  }
+  if (identical(s$decision, "projection")) {
+    cat("                 the search runs on ", .FB_SEL_PROJECTION_NCLUSTERS,
+        " clustered draws and the predictive evaluation on ",
+        .FB_SEL_PROJECTION_NCLUSTERS_PRED, "\n", sep = "")
+  }
+  if (!is.na(s$reference_engine %||% NA_character_) &&
+        !identical(s$reference_engine, s$base_engine)) {
+    cat("  Reference fit: ", s$reference_engine, " (the base was fitted by ",
+        s$base_engine, "; the parsed model is engine-independent and a ",
+        "scale-mixture prior is emitted on brms)\n", sep = "")
+  }
+  cat("  Candidates:   ",
+      if (length(s$candidates) == 0L) "none" else
+        paste(s$candidates, collapse = ", "),
+      "\n", sep = "")
+  if (length(s$blocks) > 0L) {
+    cat("  Prior blocks:\n", sep = "")
+    for (b in s$blocks) {
+      cat("    ", b$id, ". ", b$target, " ~ ", b$family,
+          " over ", length(b$coef_names), " coefficient(s), ",
+          b$hyperparameter_mode, " hyperparameters\n", sep = "")
+    }
+    cat("  stanvars:     ", if (isTRUE(s$stanvars)) "yes" else "no", "\n",
+        sep = "")
+  }
+  cat("  Structure gate: ",
+      if (is.na(s$structure_verdict)) "not readable for this base"
+      else s$structure_verdict,
+      "\n", sep = "")
+  cat("  Folds:        ", s$resampling$n_folds,
+      ", prediction ", s$prediction %||% "not set", "\n", sep = "")
+  cat("  Cost estimate: ", format(round(s$cost$seconds, 1), nsmall = 1L),
+      "s over ", s$cost$n_fits, " fit(s) at ",
+      format(round(s$cost$per_fit_seconds, 2), nsmall = 2L),
+      "s each\n", sep = "")
+  cat("                 ", s$cost$note, "\n", sep = "")
+  if (length(s$approximations) > 0L) {
+    cat("  Approximations this route commits to:\n", sep = "")
+    for (a in s$approximations) {
+      cat("    - ", .fb_squish(a), "\n", sep = "")
+    }
+  }
+  cat("  Nothing was fitted.\n", sep = "")
+  invisible(x)
 }

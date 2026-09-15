@@ -20,11 +20,6 @@ are at the experimental \code{lifecycle} stage. The same fitted object
 supports \code{summary()}, \code{predict()}, \code{emmeans::emmeans()},
 \code{marginaleffects::predictions()}, and the \verb{bayesplot::*} family.
 }
-\details{
-The package's signature feature is \code{triangulate()}, a cross-engine
-posterior comparison that quantifies disagreement between two fits of
-the same model on the same data.
-}
 \section{Entry points}{
 
 The entry points share a single internal model representation
@@ -40,21 +35,26 @@ refused by name for any other family -- see \code{?flexybayes}'s
 formula, and any \code{backend} (\code{"inla"}, \code{"brms"}, or \code{"auto"}).
 \item \code{\link[=fb_inla]{fb_inla()}} / \code{\link[=fb_brms]{fb_brms()}} -- the two active single-engine pins.
 \item \code{\link[=fb_prior]{fb_prior()}} -- penalised-complexity-canonical prior DSL.
-\item \code{\link[=triangulate]{triangulate()}} -- cross-engine posterior comparison.
+\item \code{\link[=vpredict]{vpredict()}} -- ASReml's own verb for a posterior functional of the
+variance components: heritabilities, ratios and genetic correlations,
+computed on the draws rather than by the delta method.
 }
 }
 
 \section{Vignettes}{
 
-Twelve vignettes ship with the package, covering: arriving from an
-ASReml call, getting started, the formula surface (the asreml term
-catalogue together with structured covariance), foundational
-regression, hierarchical models, priors and regularisation,
-multi-environment trials and genomics, downstream analysis,
-spatio-temporal models, cross-engine triangulation, dispatch and
-refusals with the backend registry, and big-data streaming (exact
-aggregation). The dispatch-and-refusals page is the technical /
-internals reference; the rest target a general audience.
+Five vignettes ship with the package: \emph{Mixed models in brief},
+\emph{Bayesian estimation in brief}, \emph{The ASReml syntax flexyBayes covers},
+\emph{ASReml and flexyBayes on the same trials}, and \emph{Selecting over a
+candidate block}. The first two set up the model class and what changes
+under a posterior; the third is the formula surface together with
+dispatch and the inventory of structures that are refused; the fourth
+fits the same trials through both and shows where the answers agree and
+where they do not; the fifth shrinks a block of candidate fixed effects
+under a declared joint prior, reads a projection predictive decision off
+it, and says what a benchmark against an external optimiser does and does
+not establish. The count here is checked against \verb{vignettes/} by a parity
+test, because a number written into prose is the first thing to drift.
 }
 
 \section{Capability}{
@@ -98,9 +98,14 @@ Useful links:
 
 Authors:
 \itemize{
-  \item Emi Tanaka (\href{https://orcid.org/0000-0002-1455-259X}{ORCID})
-  \item Francis K.C. Hui (\href{https://orcid.org/0000-0003-0765-3533}{ORCID})
-  \item Anabel Forte Deltell (\href{https://orcid.org/0000-0001-9534-1817}{ORCID})
+  \item Max Moldovan \email{max.moldovan@adelaide.edu.au} (\href{https://orcid.org/0000-0001-9680-8474}{ORCID})
+}
+
+Other contributors:
+\itemize{
+  \item Emi Tanaka (\href{https://orcid.org/0000-0002-1455-259X}{ORCID}) [contributor]
+  \item Francis K.C. Hui (\href{https://orcid.org/0000-0003-0765-3533}{ORCID}) [contributor]
+  \item Anabel Forte Deltell (\href{https://orcid.org/0000-0001-9534-1817}{ORCID}) [contributor]
 }
 
 }

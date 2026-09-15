@@ -63,6 +63,15 @@
 #'       prior on a family whose dispersion is a function of the mean.}
 #'     \item{`declaration_only`}{Reserved; always `FALSE` for every
 #'       current backend.}
+#'     \item{`inputs`}{Data frame: every prior specification the fit was
+#'       given, stated or chosen by the package, with its source and the
+#'       number of engine slots that used it.}
+#'     \item{`slots`}{Data frame: every engine slot, with the prior the
+#'       package sent, the input it came from, the prior the engine reports
+#'       after fitting and whether the two agree. A slot carrying the
+#'       engine's own prior is listed with that source.}
+#'     \item{`not_consumed`}{Named character: each input no engine slot
+#'       used, with the reason code.}
 #'   }
 #'
 #' @examples
@@ -145,14 +154,16 @@ prior_summary.default <- function(object, ...) {
 }
 
 # .prior_summary_residual_lowering() --- name the residual parameter the
-# model actually has.
+# brms model actually has.
 #
-# A sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
+# On brms a sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
 # residual a distributional predictor: the model has no scalar `sigma`,
 # and the declared uniform on the SD scale is retargeted onto the
 # log-sigma coefficients. Printing `sigma ~ uniform(0, U)` for such a fit
 # names a parameter the model does not contain and a distribution Stan
-# did not use, so the summary carries the retarget explicitly.
+# did not use, so the summary carries the retarget explicitly. INLA fits one
+# likelihood per section and applies the declared prior to each section's
+# standard deviation as written, so the note is not given there.
 .prior_summary_residual_lowering <- function(object) {
   fb_terms <- object$extras$fb_terms
   if (is.null(fb_terms)) {
@@ -181,9 +192,9 @@ prior_summary.default <- function(object, ...) {
       "student_t on the intercept, centred on the response"
     ),
     "inla" = paste0(
-      "INLA's own control.fixed defaults -- prec = 0.001 on the slopes ",
-      "(a standard deviation near 32), and prec.intercept = 0, which is ",
-      "flat"
+      "INLA's own control.fixed defaults -- prec = 0.001 (a standard ",
+      "deviation near 32, in standard deviations of the response on a ",
+      "Gaussian identity-link fit), and prec.intercept = 0, which is flat"
     ),
     "the engine's own fixed-effect default"
   )
@@ -199,6 +210,9 @@ prior_summary.default <- function(object, ...) {
 # drops the row -- it has to, or brms refuses the fit -- and the drop is
 # reported here rather than left for a reader to infer from its absence.
 .prior_summary_not_applied <- function(priors, fb_terms, backend_label) {
+  if (identical(backend_label, "inla")) {
+    return(.fb_inla_wishart_sd_not_applied(fb_terms))
+  }
   if (!identical(backend_label, "brms") || is.null(fb_terms)) {
     return(character(0))
   }
@@ -227,6 +241,56 @@ prior_summary.default <- function(object, ...) {
       "is not applied, and that dispersion parameter keeps brms's own default"
     )
   )
+}
+
+# .fb_inla_wishart_sd_not_applied() --- the variance components whose
+# standard-deviation prior INLA has nowhere to put.
+#
+# `us(f):g` and `(x | g)` reach INLA as iidKd fields, and the whole
+# covariance carries ONE joint Wishart: theta1 holds it and every later
+# theta reports prior = "none" (read from INLA::inla.models()). There is no
+# standard-deviation slot. An explicit prior on these groups refuses at
+# emit; the package's own default cannot refuse, or every fit of these
+# structures would, so it is left unspliced and INLA's Wishart governs.
+#
+# Reporting that unspliced default as though it had reached the fit would
+# be the same silent prior loss this package refuses everywhere else, so
+# the affected components are named here and both prior_summary() and the
+# `prior` column of summary()$varcomp read them back as engine defaults.
+.fb_inla_wishart_sd_not_applied <- function(fb_terms) {
+  if (is.null(fb_terms)) {
+    return(character(0))
+  }
+  out <- character(0)
+  for (t in fb_terms$random_terms %||% list()) {
+    ttype <- t$type %||% ""
+    if (identical(ttype, "us_gxe")) {
+      why <- paste0(
+        "`us(", t$outer, "):", t$inner, "` is one iid", t$n_outer,
+        "d field on INLA, and its hyperparameters are a joint Wishart ",
+        "over the whole covariance -- there is no standard-deviation slot ",
+        "to carry the declared prior, so INLA's Wishart governs this term"
+      )
+      for (lev in t$outer_levels %||% character(0)) {
+        out[[paste0("sd_", t$inner, "__", t$outer, lev)]] <- why
+      }
+      next
+    }
+    if (identical(ttype, "simple_slope_cor")) {
+      why <- paste0(
+        "`(", t$slope_var, " | ", t$var, ")` is one iid2d field on INLA, ",
+        "and its hyperparameters are a joint Wishart over the 2-by-2 ",
+        "covariance of the intercept and the slope -- there is no ",
+        "standard-deviation slot to carry the declared prior, so INLA's ",
+        "Wishart governs this term. `(", t$slope_var, " || ", t$var,
+        ")` has two independent precisions, which do take one"
+      )
+      out[[paste0("sd_", t$var)]] <- why
+      out[[paste0("sd_", t$slope_var, "_", t$var)]] <- why
+      next
+    }
+  }
+  out
 }
 
 .prior_summary_impl <- function(object, backend_label, declaration_only) {
@@ -258,7 +322,15 @@ prior_summary.default <- function(object, ...) {
   } else if (inherits(priors, "fb_prior")) {
     default_basis <- attr(priors, "fb_prior_default_basis")
     default_scale <- attr(priors, "fb_prior_default_scale")
-    origin <- if (!is.null(default_basis)) "auto" else "user"
+    # Where the prior came from is read from the manifest's input sources
+    # (R/model_manifest.R); a fit built before the manifest carries none.
+    origin <- if (!is.null(.fb_manifest(object))) {
+      .fb_manifest_origin(.fb_manifest(object))
+    } else if (!is.null(default_basis)) {
+      "auto"
+    } else {
+      "user"
+    }
     list(
       kind = "fb_prior",
       backend = backend_label,
@@ -286,6 +358,15 @@ prior_summary.default <- function(object, ...) {
   }
 
   out$declaration_only <- isTRUE(declaration_only)
+
+  # The offsets the model carries. An offset has a fixed coefficient of one
+  # and no prior, and on an identity link the package's default bounds and
+  # scales are read from the response minus the offset.
+  out$offsets <- fb_terms$offsets %||% character(0)
+  out$offset_scale_note <- length(out$offsets) > 0L && identical(
+    .fb_default_link_class(fb_terms$family, fb_terms$link),
+    "identity"
+  )
 
   # Which scalar prior arguments the caller wrote, and therefore which of
   # them this fit actually carries. Before 0.9.2 the printed summary
@@ -351,7 +432,25 @@ prior_summary.default <- function(object, ...) {
   # the printed summary sees the whole prior, not the half this package
   # chose.
   out$engine_default <- .prior_summary_engine_default(object)
-  out$residual_lowered_to <- .prior_summary_residual_lowering(object)
+  out$residual_lowered_to <- if (identical(backend_label, "brms")) {
+    .prior_summary_residual_lowering(object)
+  } else {
+    NULL
+  }
+
+  # What an INLA fit carries that nobody stated (R/inla_default_priors.R): a
+  # standard deviation filled with the package default, a default slope
+  # bound divided by its covariate's standard deviation, and the
+  # covariate-scaled default on each numeric fixed effect. The declaration
+  # printed above is what was stated; these are what was added to it.
+  completion <- object$extras$prior_completion
+  out$filled_priors <- .prior_summary_spec_strings(completion$filled)
+  out$covariate_scaled_priors <- .prior_summary_spec_strings(
+    completion$covariate_scaled
+  )
+  out$covariate_sd <- completion$covariate_sd %||% numeric(0)
+  out$fixed_default_sd <- completion$fixed_default_sd %||% numeric(0)
+  out$fixed_default_multiplier <- completion$fixed_default_multiplier
 
   # brms is the authority on what reached Stan, so on a brms fit the
   # engine's own table is carried rather than reconstructed. This is what
@@ -363,6 +462,21 @@ prior_summary.default <- function(object, ...) {
     tryCatch(brms::prior_summary(object$brms), error = function(e) NULL)
   } else {
     NULL
+  }
+
+  # Each prior as the engine slot that received it reports it, and every
+  # input no slot used, with its reason (R/model_manifest.R).
+  manifest <- .fb_manifest(object)
+  if (!is.null(manifest)) {
+    out$inputs <- manifest[["inputs"]]
+    out$slots <- manifest[["slots"]]
+    # A Gaussian INLA fit runs on a standardised response, and its slots
+    # hold the priors on those coordinates.
+    out$response_scale <- object[["extras"]][["response_standardisation"]][["scale"]]
+    unused <- out$inputs[out$inputs$n_slots == 0L, , drop = FALSE]
+    out$not_consumed <- stats::setNames(unused$reason_code, unused$input_id)
+  } else {
+    out$not_consumed <- character(0)
   }
 
   structure(out, class = c("prior_summary_flexybayes", "list"))
@@ -390,16 +504,34 @@ prior_summary.default <- function(object, ...) {
     )
   } else {
     named <- x$fixed_b_named %||% character(0)
+    scaled <- x$fixed_default_sd %||% numeric(0)
+    other <- if (length(scaled)) "other " else ""
     cat(
       "    prior_fixed_sd:  not supplied -- ",
+      if (length(scaled)) {
+        paste0(
+          "each numeric column carries the covariate-scaled default\n",
+          "      normal(0, K u / sd(column)), K = ",
+          format(signif(x$fixed_default_multiplier %||% NA_real_, 6)),
+          ", u = sd(y) on an identity link and 1 otherwise:\n",
+          paste0(
+            "        ", names(scaled), " ~ normal(0, ",
+            format(signif(scaled, 6)), ")",
+            collapse = "\n"
+          ),
+          "\n      "
+        )
+      } else {
+        ""
+      },
       if (length(named)) {
         paste0(
-          "every fixed effect except ",
+          "every ", other, "fixed effect except ",
           paste(paste0("`", named, "`"), collapse = ", "),
           "\n      (given a prior by the fb_prior() row below) carries "
         )
       } else {
-        "the fixed effects carry "
+        paste0("the ", other, "fixed effects carry ")
       },
       x$fixed_sd_engine_default,
       "\n",
@@ -407,6 +539,92 @@ prior_summary.default <- function(object, ...) {
     )
   }
   invisible(NULL)
+}
+
+# Spec strings keyed by canonical parameter name, for the priors an INLA fit
+# added to its declaration.
+.prior_summary_spec_strings <- function(specs) {
+  out <- character(0)
+  for (s in specs %||% list()) {
+    key <- .fb_prior_spec_parameter(s)
+    if (!is.na(key)) {
+      out[[key]] <- .fb_prior_spec_string(s)
+    }
+  }
+  out
+}
+
+# One section of added priors, each with the covariate SD its bound was
+# divided by where there was one, and the engine slots it reached.
+.prior_summary_cat_added <- function(heading, priors, covariate_sd, x = NULL) {
+  if (length(priors) == 0L) {
+    return(invisible(NULL))
+  }
+  cat("\n  ", heading, "\n", sep = "")
+  for (nm in names(priors)) {
+    group <- sub("^sd_", "", nm)
+    divisor <- if (group %in% names(covariate_sd)) {
+      paste0("  (bound divided by the covariate SD, ",
+             format(signif(covariate_sd[[group]], 6)), ")")
+    } else {
+      ""
+    }
+    trace <- if (is.null(x$slots)) {
+      ""
+    } else {
+      paste0("  ", .prior_summary_input_trace(x, paste0("sd:", group)))
+    }
+    cat("    ", nm, " ~ ", priors[[nm]], divisor, trace, "\n", sep = "")
+  }
+  invisible(NULL)
+}
+
+# The engine slots an input reached, or the reason it reached none.
+.prior_summary_input_trace <- function(x, input_id) {
+  slots <- x$slots
+  hit <- slots$slot_id[slots$source == "package" & slots$input_id %in% input_id]
+  if (length(hit)) {
+    return(paste0("-> ", paste(hit, collapse = ", ")))
+  }
+  reason <- unname(x$not_consumed[input_id])
+  if (is.na(reason)) {
+    reason <- "no reason recorded"
+  }
+  paste0("-> used by no slot (", reason, ")")
+}
+
+# The declaration, one specification a line, each with the slots it reached.
+.prior_summary_cat_declared <- function(x) {
+  specs <- x$fb_prior$specs
+  cat(
+    "<fb_prior> ",
+    length(specs),
+    " specification",
+    if (length(specs) != 1L) "s" else "",
+    "\n",
+    sep = ""
+  )
+  for (s in specs) {
+    cat(
+      "  ",
+      .format_prior_target(s$target),
+      " ~ ",
+      .format_prior_distribution(s$spec),
+      "  ",
+      .prior_summary_input_trace(x, .fb_manifest_spec_input_id(s)),
+      "\n",
+      sep = ""
+    )
+  }
+  invisible(NULL)
+}
+
+# A prior as sent to the engine, with an INLA expression prior shown by name.
+.prior_summary_show_prior <- function(text) {
+  if (!is.na(text) && startsWith(text, "expression:")) {
+    return(.fb_hyper_prior_tag(text))
+  }
+  text
 }
 
 #' @export
@@ -458,7 +676,11 @@ print.prior_summary_flexybayes <- function(x, ...) {
       }
       .prior_summary_cat_fixed_line(x)
       cat("\n")
-      print(x$fb_prior)
+      if (is.null(x$slots)) {
+        print(x$fb_prior)
+      } else {
+        .prior_summary_cat_declared(x)
+      }
     },
     unknown_shape = {
       cat(
@@ -471,6 +693,36 @@ print.prior_summary_flexybayes <- function(x, ...) {
   )
 
   # ---- What the declaration above does not say ------------------------
+
+  if (length(x$offsets)) {
+    cat(
+      "\n  Offset: ", paste(x$offsets, collapse = " + "), "\n",
+      "    a fixed coefficient of one, with no prior",
+      if (isTRUE(x$offset_scale_note)) {
+        paste0(
+          "; the default bounds and scales\n",
+          "    are read from the response minus the offset"
+        )
+      } else {
+        ""
+      },
+      "\n",
+      sep = ""
+    )
+  }
+
+  .prior_summary_cat_added(
+    "Filled with the package default (no prior was stated for these):",
+    x$filled_priors %||% character(0),
+    x$covariate_sd %||% numeric(0),
+    x
+  )
+  .prior_summary_cat_added(
+    "The package default as this engine ran it:",
+    x$covariate_scaled_priors %||% character(0),
+    x$covariate_sd %||% numeric(0),
+    x
+  )
 
   if (length(x$not_applied) > 0L) {
     cat("\n  Declared but not applied on this engine:\n", sep = "")
@@ -499,6 +751,61 @@ print.prior_summary_flexybayes <- function(x, ...) {
     )
     for (nm in names(x$engine_default)) {
       cat("    ", nm, " -- ", x$engine_default[[nm]], "\n", sep = "")
+    }
+  }
+
+  if (!is.null(x$slots)) {
+    sent <- x$slots[x$slots$source == "package", , drop = FALSE]
+    if (nrow(sent)) {
+      cat("\n  As each engine slot received it (read back from the fit):\n")
+      if (!is.null(x$response_scale)) {
+        cat(
+          "    the fit runs on the standardised response, so a bound or scale\n",
+          "    on a standard deviation is the stated one divided by the\n",
+          "    response scale ", format(signif(x$response_scale, 6)), "\n",
+          sep = ""
+        )
+      }
+      for (i in seq_len(nrow(sent))) {
+        cat(
+          "    ", sent$slot_id[[i]], "  ",
+          .prior_summary_show_prior(sent$emitted[[i]]),
+          "  [", sent$input_id[[i]], "]  ",
+          if (isTRUE(sent$readback_agrees[[i]])) {
+            "read back as sent"
+          } else {
+            "read back differently"
+          },
+          "\n",
+          sep = ""
+        )
+      }
+    }
+    n_engine <- sum(x$slots$source %in% c("engine_default", "engine_expansion"))
+    if (n_engine > 0L) {
+      cat(
+        "    ", n_engine,
+        if (n_engine == 1L) " further slot carries" else " further slots carry",
+        " the engine's own prior (listed in `$slots`)\n",
+        sep = ""
+      )
+    }
+    n_unexpected <- sum(x$slots$source == "unexpected")
+    if (n_unexpected > 0L) {
+      cat(
+        "    ", n_unexpected,
+        if (n_unexpected == 1L) " slot carries" else " slots carry",
+        " a prior that is neither what was sent nor the engine's default",
+        " (listed in `$slots`)\n",
+        sep = ""
+      )
+    }
+  }
+
+  if (length(x$not_consumed) > 0L) {
+    cat("\n  Stated or defaulted, and used by no engine slot:\n")
+    for (nm in names(x$not_consumed)) {
+      cat("    ", nm, " -- ", x$not_consumed[[nm]], "\n", sep = "")
     }
   }
 

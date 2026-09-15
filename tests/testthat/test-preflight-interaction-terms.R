@@ -16,15 +16,16 @@ test_that("a three-way interaction random term preflights without crashing", {
   p <- flexybayes(y ~ 1, random = ~ a:b:cc, data = d, plan = TRUE)
 
   expect_s3_class(p, "fb_plan")
-  # INLA cannot represent the crossed interaction random effect, so the
-  # structural refusal is the correct gate outcome -- what matters here
-  # is that it is a refusal, not a base-R crash.
-  expect_identical(p$gate_outcome, "refuse_structural")
-  # The refusal is INLA's, not the model's: under `auto` the router
-  # resolves to brms, which emits `(1 | a:b:cc)`, so the plan reports a
-  # fit rather than the gate's verdict.
-  skip_if_not_installed("brms")
-  expect_identical(p$backend_chosen, "brms")
+  # This test was written when a crossed interaction random effect refused
+  # on INLA, and it asserted the refusal. The claim behind that refusal --
+  # that INLA cannot represent the term class -- was false, so from
+  # 0.10.0.9000 the gate accepts it and `auto` resolves to INLA. What the
+  # test exists for is unchanged: a three-way interaction must preflight to
+  # a typed plan rather than a base-R crash.
+  expect_identical(p$gate_outcome, "accept")
+  # `auto` resolves to INLA only where INLA is installed.
+  skip_if_not_installed("INLA")
+  expect_identical(p$backend_chosen, "inla")
   expect_true(p$will_fit)
 })
 

@@ -551,15 +551,32 @@
 # site) already had an ad hoc untyped stop() for the identical fact.
 # One typed refusal at the dispatch choke point every route passes
 # through replaces all three.
+.refuse_offset_route <- function(fb, route) {
+  offsets <- fb$offsets %||% character(0)
+  if (!length(offsets)) {
+    return(invisible(NULL))
+  }
+  label <- paste0("`", offsets, "`", collapse = ", ")
+  stop(.fb_refusal_condition(
+    reason_code = "fixed_offset_unsupported",
+    message = paste0(
+      "The fixed formula carries ", label, ", and ", route,
+      " does not carry an offset."
+    ),
+    offsets = offsets,
+    route = route
+  ))
+}
+
 .refuse_non_binary_binomial_response <- function(fb, data) {
   if (!identical(fb$family %||% "", "binomial")) {
     return(invisible(NULL))
   }
   col <- fb$response
-  if (is.null(col) || !nzchar(col) || is.null(data[[col]])) {
+  yv <- .fb_response_values(fb, data)
+  if (is.null(yv)) {
     return(invisible(NULL)) # nothing to check against
   }
-  yv <- data[[col]]
   if (is.numeric(yv) && all(yv %in% c(0, 1) | is.na(yv))) {
     return(invisible(NULL))
   }
@@ -630,28 +647,29 @@
   all_terms <- c(fb$random_terms %||% list(), fb$residual_terms %||% list())
   for (term in all_terms) {
     ty <- term$type %||% ""
-    if (ty %in% c("fa", "fa_gxe")) {
-      spelling <- if (identical(ty, "fa_gxe")) {
-        paste0("fa(", term$outer, ", ", term$k, "):", term$inner)
-      } else {
-        paste0("fa(", term$var, ", k)")
-      }
+    # fa_gxe is emitted on INLA from 0.10.0.9000: each common factor is one
+    # latent field entered per level as a SCALED COPY, and the copy's
+    # scaling parameter is the loading. The claim this refusal used to make
+    # -- that INLA has no factor-analytic latent model -- is true of INLA's
+    # named model list and false of what INLA can express, which is the
+    # distinction that matters to a user. The bare `fa(v, k)` spelling (no
+    # inner grouping factor) has no emit on either engine and still refuses.
+    if (identical(ty, "fa")) {
       stop(.fb_refusal_condition(
         reason_code = "fa_not_representable",
         message = paste0(
-          spelling, " requests a factor-analytic covariance -- a rank-k ",
-          "loading matrix plus a diagonal. Neither active engine emits ",
-          "one: INLA's f() has no factor-analytic latent model, and brms ",
-          "group-level effects are either uncorrelated or fully ",
-          "unstructured. Use us(", term$outer %||% term$var, "):",
-          term$inner %||% "g", " for the full unstructured covariance, ",
-          "diag(", term$outer %||% term$var, "):", term$inner %||% "g",
-          " for heterogeneous variances with no correlation, or ASReml ",
-          "for the factor-analytic model itself. The term still parses, ",
-          "so fb_terms() will describe it."
+          "fa(", term$var, ", k) names a factor-analytic covariance with no ",
+          "grouping factor to apply it to. Write it as fa(", term$var,
+          ", k):<group>, which INLA emits as scaled copies of a common ",
+          "factor, or use us(", term$var, "):<group> for the full ",
+          "unstructured covariance."
         )
       ))
     }
+    # fa_gxe is not refused here any more. INLA emits it; brms's own emit
+    # refuses it by name (brms_cannot_represent_term), which is the right
+    # altitude -- a per-engine limit belongs to that engine's emit, not to a
+    # dispatch-wide rule that speaks for both.
     if (identical(ty, "ar2")) {
       stop(.fb_refusal_condition(
         reason_code = "ar2_not_representable",
@@ -777,16 +795,33 @@
 # guard so the three- against four-parameter statement lives in one place.
 .ar1_residual_refusal_message <- function(term) {
   spelling <- .ar1_term_spelling(term)
+  # The parameter count depends on the shape of the field: two
+  # correlations on a separable grid, one along a series or within each
+  # level of a group. The sentence counts the model the user asked for and
+  # the one the engine has, whichever shape was written.
+  separable <- identical(term$type, "ar1_spatial") && isTRUE(term$col_ar1)
+  asreml_params <- if (separable) {
+    "three parameters on a field grid (row correlation, column correlation, one variance)"
+  } else if (identical(term$type, "ar1_spatial")) {
+    paste0(
+      "two parameters (the correlation along ", term$row_var,
+      " and one variance, shared by every level of ", term$col_var, ")"
+    )
+  } else {
+    paste0("two parameters (the correlation along ", term$var, " and one variance)")
+  }
+  field_params <- if (separable) "four parameters" else "three parameters"
+  named_as <- if (separable) "three-parameter" else "two-parameter"
   paste0(
-    "residual = ~ ", spelling, " asks for ASReml's separable ",
+    "residual = ~ ", spelling, " asks for ASReml's ",
+    if (separable) "separable " else "",
     "autoregressive residual: a single correlated residual with no ",
-    "independent plot error, three parameters on a field grid ",
-    "(row correlation, column correlation, one variance). INLA ",
-    "represents a separable AR1 process as a latent random field plus the ",
-    "observation-level Gaussian noise -- four parameters -- which nests ",
+    "independent plot error, ", asreml_params, ". INLA ",
+    "represents an AR1 process as a latent random field plus the ",
+    "observation-level Gaussian noise -- ", field_params, " -- which nests ",
     "ASReml's model as the nugget goes to zero but returns different ",
     "correlations on data with real plot-to-plot noise. flexyBayes will ",
-    "not fit the four-parameter model under the three-parameter name. ",
+    "not fit the ", field_params, " model under the ", named_as, " name. ",
     "Two routes: write the field on the random side, random = ~ ",
     spelling, ", which fits the field-plus-nugget model under its own ",
     "name on INLA (one observation per grid node); or use ASReml itself ",
@@ -1103,17 +1138,25 @@
         # caught on its own.
         msg <- paste(utils::capture.output(print(gated)), collapse = "\n")
         primary_rule <- gated$primary_rule %||% NA_character_
+        # A rule that names a registered refusal of its own raises that
+        # code, and keeps inla_gate_refused as a class beneath it so every
+        # handler written against the generic code still catches it.
+        primary_code <- gated$failures[[1L]]$reason_code
         stop(.fb_refusal_condition(
-          reason_code = "inla_gate_refused",
-          message = paste0(
-            "backend = \"inla\" refused by lgm_gate():\n",
-            msg
-          ),
-          family_class = if (!is.na(primary_rule)) {
-            paste0("flexybayes_lgm_", primary_rule)
-          } else {
-            character(0)
-          },
+          reason_code = primary_code %||% "inla_gate_refused",
+          # The printed refusal already opens with what happened, so a
+          # second header above it said the same thing twice -- which is
+          # how a refusal grows to sixteen lines one reasonable addition
+          # at a time.
+          message = msg,
+          family_class = c(
+            if (!is.null(primary_code)) {
+              "flexybayes_refusal_inla_gate_refused"
+            },
+            if (!is.na(primary_rule)) {
+              paste0("flexybayes_lgm_", primary_rule)
+            }
+          ) %||% character(0),
           lgm_refusal = gated,
           rule_id = primary_rule
         ))
@@ -1151,9 +1194,9 @@
           message(
             "backend = \"auto\": lgm_gate() refused (",
             primary$rule_id,
-            "); this is a multi-stratum designed experiment, so routing ",
-            "to brms -- the faithful full-HMC backend (INLA collapses ",
-            "these variance components). Pass backend = \"brms\" to silence."
+            "), so routing to brms -- the full-HMC backend, which ",
+            "represents this model where INLA does not. Pass ",
+            "backend = \"brms\" to silence."
           )
         } else if (is_multistratum) {
           message(
@@ -1589,11 +1632,8 @@
   # aggregated path mean complete-case deletion while the per-row path means
   # augmentation, so the same call would answer two different questions
   # depending on a compression ratio the user never set.
-  resp <- fb$response
-  if (
-    !is.null(resp) && nzchar(resp) && resp %in% names(data) &&
-      anyNA(data[[resp]])
-  ) {
+  resp_vals <- .fb_response_values(fb, data)
+  if (!is.null(resp_vals) && anyNA(resp_vals)) {
     if (isTRUE(aggregate)) {
       # Carries `flexybayes_aggregate_refusal` beneath the per-code class
       # for the same reason the two refusals further down do: a caller
@@ -1753,89 +1793,79 @@
     return(NULL)
   }
 
-  # Family branch. Gaussian uses the dedicated sufficient-statistics
-  # aggregator + gaussian emit; the binomial / poisson families use the
-  # family-generic streaming aggregator over the in-memory data (one
-  # chunk) + the count emit. Both produce the same <fb_aggregated> shape
-  # downstream methods consume.
+  # A Gaussian model is not fitted on the aggregated representation. The
+  # aggregated Gaussian route composes the within-cell sum of squares with
+  # a fixed gamma prior on the residual precision, so a stated or default
+  # residual prior would not be the prior fitted while prior_summary()
+  # reported it. Until that composition carries the residual prior,
+  # "auto" takes the per-row route and aggregate = TRUE refuses. Every
+  # refusal above still fires first, because each names a more specific
+  # reason. The count families carry no residual prior and aggregate below.
   if (identical(fb$family, "gaussian")) {
-    fb_aggregated <- .fb_aggregate_gaussian(fb, fb_dataset_meta)
-    fit <- emit_gaussian_aggregated(
-      fb = fb,
-      fb_aggregated = fb_aggregated,
-      data = data,
-      backend = eff_backend,
-      known_matrices = known_matrices,
-      weights = weights,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      seed = seed,
-      control = control,
-      prior_fixed_sd = prior_fixed_sd,
-      prior_vc_sd = prior_vc_sd,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose,
-      return_code = FALSE,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      residual = residual,
-      family = family,
-      link = link,
-      data_name = data_name,
-      na_action = na_action,
-      requested_backend = backend,
-      requested_aggregate = aggregate
-    )
-  } else {
-    # Exact aggregation for the count families requires unit-trial
-    # binomial (a 0/1 numeric response); a non-Bernoulli binomial needs
-    # per-row trial counts the cell sums cannot recover. This used to be
-    # checked here with an untyped stop() -- now dead code, because
-    # .refuse_non_binary_binomial_response() (D14 / WP-D) already refused
-    # unconditionally at the top of .dispatch_backend(), the only caller
-    # of .maybe_aggregate_gaussian(), before this branch is ever reached.
-    src <- .fb_stream_source(data, chunk_rows = max(nrow(data), 1L))
-    fb_aggregated <- .fb_stream_aggregate(
-      fb,
-      src,
-      trials = NULL,
-      exposure = NULL,
-      verbose = FALSE
-    )
-    fit <- emit_count_aggregated(
-      fb = fb,
-      fb_aggregated = fb_aggregated,
-      data = data,
-      backend = eff_backend,
-      known_matrices = known_matrices,
-      weights = weights,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      seed = seed,
-      control = control,
-      prior_fixed_sd = prior_fixed_sd,
-      prior_vc_sd = prior_vc_sd,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      residual = residual,
-      family = family,
-      link = link,
-      data_name = data_name,
-      na_action = na_action,
-      requested_backend = backend,
-      requested_aggregate = aggregate
-    )
+    if (isTRUE(aggregate)) {
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_residual_prior_not_composed",
+        message = paste0(
+          "`aggregate = TRUE` refused on a Gaussian model: the aggregated ",
+          "Gaussian route cannot yet carry the residual prior, so the fit ",
+          "would not run under the prior prior_summary() reports. Pass ",
+          "aggregate = FALSE, or leave it at \"auto\", which fits a Gaussian ",
+          "model per row. Binomial and Poisson models still aggregate."
+        ),
+        family_class = "flexybayes_aggregate_refusal"
+      ))
+    }
+    return(NULL)
   }
+
+  # The binomial and Poisson families use the family-generic streaming
+  # aggregator over the in-memory data (one chunk) and the count emit.
+  # Exact aggregation for the count families requires unit-trial
+  # binomial (a 0/1 numeric response); a non-Bernoulli binomial needs
+  # per-row trial counts the cell sums cannot recover. This used to be
+  # checked here with an untyped stop() -- now dead code, because
+  # .refuse_non_binary_binomial_response() (D14 / WP-D) already refused
+  # unconditionally at the top of .dispatch_backend(), the only caller
+  # of .maybe_aggregate_gaussian(), before this branch is ever reached.
+  src <- .fb_stream_source(data, chunk_rows = max(nrow(data), 1L))
+  fb_aggregated <- .fb_stream_aggregate(
+    fb,
+    src,
+    trials = NULL,
+    exposure = NULL,
+    verbose = FALSE
+  )
+  fit <- emit_count_aggregated(
+    fb = fb,
+    fb_aggregated = fb_aggregated,
+    data = data,
+    backend = eff_backend,
+    known_matrices = known_matrices,
+    weights = weights,
+    n_samples = n_samples,
+    warmup = warmup,
+    chains = chains,
+    seed = seed,
+    control = control,
+    prior_fixed_sd = prior_fixed_sd,
+    prior_vc_sd = prior_vc_sd,
+    verbose = verbose,
+    mcmc_verbose = mcmc_verbose,
+    the_call = the_call,
+    fixed = fixed,
+    random = random,
+    residual = residual,
+    family = family,
+    link = link,
+    data_name = data_name,
+    na_action = na_action,
+    requested_backend = backend,
+    requested_aggregate = aggregate
+  )
 
   fit$exactness <- "aggregated_exact"
   if (!is.null(fit$extras)) {
-    # The aggregated-gaussian path's chosen backend was already
+    # The aggregated path's chosen backend was already
     # resolved by .agg_resolve_backend() above; rejected_routes is
     # empty (the aggregation gate itself bypasses the routing policy
     # table -- this is its own dispatch path). preflight is NULL here
@@ -1845,11 +1875,7 @@
     # it as legitimately absent.
     fit$extras$backend_decision <- .build_routing_decision(
       backend = eff_backend,
-      path = if (identical(fb$family, "gaussian")) {
-        "aggregated_gaussian"
-      } else {
-        "aggregated_count"
-      },
+      path = "aggregated_count",
       gate_checks = NULL,
       # `K` is said twice on one fit and used to mean two things. This is
       # the PLANNER's cell count -- the product of the declared factor

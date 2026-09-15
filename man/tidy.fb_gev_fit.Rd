@@ -21,9 +21,10 @@ per parameter (\code{location}, \code{scale}, \code{shape}), with the canonical 
 }
 \examples{
 set.seed(1)
-fit <- fb_gev(rgev(200L, 10, 2, 0.1))
+fit <- flexyBayes:::fb_gev(flexyBayes:::rgev(200L, 10, 2, 0.1))
 tidy(fit)
 }
 \seealso{
 \code{\link[=fb_gev]{fb_gev()}}
 }
+\keyword{internal}

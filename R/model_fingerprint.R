@@ -24,14 +24,19 @@
 # Build the fingerprint for one fit. `prior_vc_sd` is the legacy scalar
 # the caller would have used had no fb_prior() been supplied; it is
 # recorded so a legacy-bridge fit says which scalar it ran under.
-.fb_model_fingerprint <- function(fb, data, prior_vc_sd = NA_real_) {
+# `completion` is the record an INLA emit keeps of the priors it added to
+# what was stated (R/inla_default_priors.R); NULL on every other route.
+.fb_model_fingerprint <- function(fb, data, prior_vc_sd = NA_real_,
+                                  completion = NULL) {
   forms <- .fb_canonical_model_strings(fb)
   priors <- .fb_prior_record(fb, prior_vc_sd = prior_vc_sd)
+  priors <- .fb_prior_record_completion(priors, completion)
 
   list(
     version = 1L,
     response = fb$response %||% NA_character_,
     fixed = forms$fixed,
+    offset = .fb_fingerprint_offsets(fb),
     random = forms$random,
     residual = forms$residual,
     family = as.character(fb$family %||% NA_character_)[1L],
@@ -50,6 +55,7 @@
 .FB_FINGERPRINT_ELEMENTS <- c(
   "response",
   "fixed",
+  "offset",
   "random",
   "residual",
   "family",
@@ -63,6 +69,7 @@
 .FB_FINGERPRINT_LABELS <- c(
   response = "the response variable",
   fixed = "the fixed-effect structure",
+  offset = "the offset",
   random = "the random-effect structure",
   residual = "the residual structure",
   family = "the response family",
@@ -78,8 +85,11 @@
 # the earliest difference is usually the cause of the later ones.
 .fb_fingerprint_first_difference <- function(fp_a, fp_b) {
   for (el in .FB_FINGERPRINT_ELEMENTS) {
-    va <- fp_a[[el]] %||% NA_character_
-    vb <- fp_b[[el]] %||% NA_character_
+    # A fingerprint built before offsets were recorded carries no `offset`
+    # element, and it described a model with none.
+    absent <- if (identical(el, "offset")) "<none>" else NA_character_
+    va <- fp_a[[el]] %||% absent
+    vb <- fp_b[[el]] %||% absent
     if (!identical(va, vb)) {
       return(list(
         element = el,
@@ -201,6 +211,17 @@
     random = one_side(fb$random_terms),
     residual = residual
   )
+}
+
+# The offsets, sorted because they add, or "<none>". Two fits whose models
+# differ only by an offset share every term string, so without this element
+# triangulate() would compare them as one model.
+.fb_fingerprint_offsets <- function(fb) {
+  offsets <- fb$offsets %||% character(0)
+  if (!length(offsets)) {
+    return("<none>")
+  }
+  paste(sort(offsets), collapse = " + ")
 }
 
 # ---------------------------------------------------------------- #
@@ -363,8 +384,7 @@
     ))
   }
 
-  is_default <- !is.null(attr(prior, "fb_prior_default_basis"))
-  src <- if (is_default) "shared_default" else "explicit"
+  src <- .fb_manifest_prior_source(prior)
 
   recorded <- character(0)
   sources <- character(0)
@@ -388,6 +408,37 @@
     sources = sources,
     engine_default = engine_default
   )
+}
+
+# The priors an INLA fit added to what was stated (R/inla_default_priors.R):
+# a random-effect standard deviation the caller left unstated, filled with
+# the package's bounded default, and a package default whose bound was
+# divided by the standard deviation of its covariate. Each is recorded under
+# its own source, so the record tells a prior the caller wrote from one the
+# package chose on this engine. A filled parameter is no longer an engine
+# default, so it leaves that list.
+.fb_prior_record_completion <- function(priors, completion) {
+  if (is.null(completion)) {
+    return(priors)
+  }
+  added <- list(
+    filled_default = completion$filled %||% list(),
+    covariate_scaled_default = completion$covariate_scaled %||% list()
+  )
+  for (source in names(added)) {
+    for (s in added[[source]]) {
+      key <- .fb_prior_spec_parameter(s)
+      if (is.na(key)) {
+        next
+      }
+      priors$recorded[[key]] <- .fb_prior_spec_string(s)
+      priors$sources[[key]] <- source
+    }
+  }
+  priors$engine_default <- priors$engine_default[
+    !(names(priors$engine_default) %in% names(priors$recorded))
+  ]
+  priors
 }
 
 # fb_prior target -> canonical parameter name. Fixed-effect and smooth

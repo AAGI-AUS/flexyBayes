@@ -1,0 +1,369 @@
+---
+title: "6. Spatial and temporal structure"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{6. Spatial and temporal structure}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Plots near each other in a field yield alike for reasons the design
+did not plan. Ignoring that inflates the apparent precision of every
+variety comparison.</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ 1, random = ~ gen, residual = ~ ar1(row):ar1(col))</code></dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(yield ~ 1, random = ~ gen + ar1(row):ar1(col))</code>
+-- the field moves to the random side, for the reason in Section 2.</dd>
+<dt>What the posterior adds</dt>
+<dd>The two correlations and the field standard deviation arrive with
+intervals, so a field that has not identified is visible rather than
+inferred from a converged flag.</dd>
+<dt>What it costs</dt>
+<dd>INLA only, a complete grid, and a four-parameter model where ASReml
+fits three.</dd>
+</dl>
+</div>
+
+# 1. Design first, correlation second
+
+A randomised block design already removes planned variation. Spatial
+correlation is what remains: a fertility gradient, a drainage line, a
+sprayer pass. Modelling it is not a substitute for a good design, and a
+badly designed trial cannot be rescued here.
+
+The practical consequence of ignoring it is not bias in the variety
+means so much as over-confidence in them. Neighbouring plots that share
+an unmodelled gradient carry less independent information than the
+degrees-of-freedom count suggests.
+
+# 2. Three parameters or four
+
+ASReml writes the field as a *residual*: `residual = ~ ar1(row):ar1(col)`
+is a single correlated residual with no independent plot error -- three
+parameters.
+
+INLA represents a separable autoregressive process as a latent field
+*plus* observation noise -- four parameters. The two coincide only as
+the nugget goes to zero. flexyBayes will not fit the four-parameter
+model under the three-parameter name, so the residual spelling is
+refused and the field is written on the random side instead.
+
+
+``` r
+library(flexyBayes)
+sn <- agridat::stroup.nin
+sn$row <- factor(sn$row)
+sn$col <- factor(sn$col)
+sn$yield_z <- as.numeric(scale(sn$yield))
+
+refused <- tryCatch(
+  flexybayes(yield_z ~ 1, random = ~ gen,
+             residual = ~ ar1(row):ar1(col), data = sn,
+             backend = "inla", verbose = FALSE),
+  error = function(e) e
+)
+cat(strwrap(conditionMessage(refused), 72)[1:4], sep = "\n")
+#> residual = ~ ar1(row):ar1(col) asks for ASReml's separable
+#> autoregressive residual: a single correlated residual with no
+#> independent plot error, three parameters on a field grid (row
+#> correlation, column correlation, one variance). INLA represents an AR1
+```
+
+# 3. The field on a real trial
+
+`agridat::stroup.nin` is a Nebraska wheat trial: 56 varieties on an
+11 by 22 plot array, with 18 plots unharvested. The array has 242 nodes
+and the data carry 224 rows.
+
+A separable field needs every node of the array, which is the same
+requirement ASReml states for `residual = ~ ar1:ar1`. The unharvested
+plots are kept as design cells with the response missing, which is the
+default `na_action = "augment"` and ASReml's `na.method(y = "include")`.
+
+
+``` r
+fit <- flexybayes(yield_z ~ 1, random = ~ ar1(row):ar1(col),
+                  data = sn, backend = "inla", verbose = FALSE)
+vc_field <- tidy(fit, effects = "random")
+vc_field
+#>         term  estimate  std.error  conf.low conf.high
+#> 1      sigma 0.5282563 0.03436630 0.4649724 0.5996954
+#> 2 sd_spatial 0.8058169 0.13904172 0.5759921 1.1197711
+#> 3    rho_row 0.8321473 0.06403920 0.6810631 0.9294361
+#> 4    rho_col 0.8884134 0.04463354 0.7821979 0.9550204
+```
+
+Four numbers describe the field. `rho_row` and `rho_col` are the
+correlations between adjacent rows and adjacent columns.
+`sd_spatial` is the field's standard deviation and `sigma` the
+independent plot noise. Here the field carries more variation than the
+noise does, and both correlations are high: this trial has strong
+spatial structure, which is why it is the textbook example.
+
+Printing all four is how a *failed* field shows up. When a field does
+not identify, `sd_spatial` collapses toward zero and the correlations
+revert to their prior, spanning almost the whole interval. The package
+raises a warning when that happens rather than leaving it to be noticed.
+
+# 4. Adding a smooth trend: does it earn its place?
+
+Field trials often show *both* short-range correlation and a large-scale
+gradient. The textbook decomposition puts a smooth trend on the mean and
+an autoregressive field on the residual (Gilmour, Cullis, & Verbyla,
+1997). Both go on the random side here, with `spl()` for the trend.
+
+`spl()` is a penalised spline, fitted on INLA as a second-order random
+walk. brms refuses it, so this section is INLA only.
+
+
+``` r
+sn$rown <- as.numeric(as.character(sn$row))
+sn$coln <- as.numeric(as.character(sn$col))
+
+fit_trend <- flexybayes(
+  yield_z ~ 1,
+  random = ~ spl(rown) + spl(coln) + ar1(row):ar1(col),
+  data   = sn, backend = "inla", verbose = FALSE
+)
+vc_trend <- tidy(fit_trend, effects = "random")
+vc_trend
+#>         term    estimate   std.error    conf.low  conf.high
+#> 1      sigma 0.525857777 0.036681861 0.458418529 0.60221998
+#> 2    sd_rown 0.009979904 0.006195386 0.003397623 0.02772431
+#> 3    sd_coln 0.009640938 0.005764403 0.003345480 0.02600951
+#> 4 sd_spatial 0.642026406 0.118315059 0.446257833 0.90908955
+#> 5    rho_row 0.760934929 0.094185265 0.539002859 0.90395579
+#> 6    rho_col 0.838507026 0.070852230 0.668004278 0.94163827
+```
+
+The two splines collapse, and the field absorbs what they were offered:
+
+
+``` r
+pick <- function(v, nm) v$estimate[v$term == nm]
+data.frame(
+  component = c("sd_spatial", "sd_rown", "sd_coln"),
+  field_only  = c(pick(vc_field, "sd_spatial"), NA, NA),
+  with_trend  = c(pick(vc_trend, "sd_spatial"),
+                  pick(vc_trend, "sd_rown"), pick(vc_trend, "sd_coln"))
+)
+#>    component field_only  with_trend
+#> 1 sd_spatial  0.8058169 0.642026406
+#> 2    sd_rown         NA 0.009979904
+#> 3    sd_coln         NA 0.009640938
+```
+
+Both spline standard deviations sit near zero against a residual an
+order of magnitude larger, and the field's standard deviation falls once
+the splines are present. The reading is that the autoregressive field
+was already carrying the large-scale gradient, so once the splines are
+offered the same variation there is nothing left for them to explain.
+
+That is a result about `stroup.nin`, not about splines. On a trial with
+a strong monotone gradient and weak short-range correlation the split
+goes the other way. The point is that the fit says which, rather than
+leaving the composite as an untested recommendation -- and a collapsed
+component here raises the boundary warning, so it cannot be read as
+"the trend is zero" when it means "the trend is not separable from the
+field".
+
+# 5. Correlation in time
+
+The same machinery covers a regular time series: `ar1(t)` on a factor
+whose levels are in time order.
+
+
+``` r
+set.seed(7)
+n <- 120
+d <- data.frame(t = factor(seq_len(n)), x = rnorm(n))
+d$y <- 2 + 0.5 * d$x + as.numeric(arima.sim(list(ar = 0.7), n = n)) * 0.8
+
+fit_t <- flexybayes(y ~ x, random = ~ ar1(t), data = d,
+                    backend = "inla", verbose = FALSE)
+vc_time <- tidy(fit_t, effects = "random")
+vc_time
+#>         term  estimate  std.error   conf.low conf.high
+#> 1      sigma 0.2322624 0.12361928 0.05703175 0.7909009
+#> 2 sd_spatial 1.1558504 0.14548151 0.91384343 1.4821448
+#> 3    rho_row 0.7373645 0.06816642 0.58386865 0.8503566
+```
+
+The series was generated with an autoregressive coefficient of 0.7 and
+the posterior recovers it. The component names come from the shared
+spatial machinery, so the temporal correlation is reported as
+`rho_row`.
+
+## Several units followed through time
+
+A long-term trial measures the same plots season after season. The
+covariance Verbyla and Cullis (1992) wrote for that design is separable:
+an AR1 correlation along the occasions, and independence (or a block
+structure) across the plots. On the random side it is `ar1(t):g`, or
+`g:ar1(t)` in ASReml's usual order -- one AR1 series per level of `g`,
+with the correlation and the field SD shared by every level, plus the
+observation nugget. An occasion a plot missed is left in the data as a
+row with the response `NA`, which the default `na_action = "augment"`
+carries through the fit.
+
+
+``` r
+set.seed(11)
+n_t <- 20
+n_g <- 8
+ar1_mat <- function(n, rho) rho^abs(outer(seq_len(n), seq_len(n), "-"))
+grid <- expand.grid(t = seq_len(n_t), plot = seq_len(n_g))
+Lt <- t(chol(ar1_mat(n_t, 0.6)))
+u <- as.numeric(vapply(seq_len(n_g),
+                       function(i) as.numeric(Lt %*% rnorm(n_t)),
+                       numeric(n_t)))
+dg <- data.frame(y = 4 + u + rnorm(n_t * n_g, 0, 0.5),
+                 t = factor(grid$t), plot = factor(grid$plot))
+dg$y[c(5, 33, 71)] <- NA
+
+fit_g <- flexybayes(y ~ 1, random = ~ plot:ar1(t), data = dg,
+                    backend = "inla", verbose = FALSE)
+fit_g
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : y ~ 1 
+#>   Random   : ~plot:ar1(t) 
+#>   Model    : G: ar1(t):plot field, AR1 along t and independent across plot, + nugget (3 parameters); R: units 
+#>              this is not ASReml residual = ~ plot:ar1(t) (2 parameters)
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 160 design rows, 157 observed responses
+#>   na_action: augment; 3 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2 sec
+#>   INLA formula: y ~ 1 + f(t_id, model = "ar1", group = plot_id, control.group = list(model = "iid"))
+#>   Params   : 1 fixed, 1 random, 3 hyperparameter(s)
+#>   numerical confirm: PASS
+#> 
+#> Grouped AR1 field (AR1 along t, independent across plot) (posterior median, 95% interval):
+#>                    parameter median   2.5%  97.5%
+#>  correlation along t (rho_t) 0.6704 0.3904 0.8302
+#>       field SD (sigma_field) 0.8455 0.6402 1.1370
+#>          nugget SD (sigma_e) 0.6412 0.4537 0.8842
+#>   The field and the nugget are separate parameters: this is a latent
+#>   autoregressive field plus independent observation noise, not ASReml's
+#>   nugget-free separable residual. Variances are the squares of the SDs.
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
+#>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
+#>   $fb   -- the fb_terms IR used for dispatch
+```
+
+The header describes the field as AR1 along `t` and independent across
+`plot`, with three hyperparameters, and names the two-parameter ASReml
+residual it is not.
+
+# 6. What is not covered
+
+| Wanted | Status |
+|---|---|
+| ASReml's nugget-free separable residual | refused by name (Section 2) |
+| Irregular geography (SPDE / Matern) | not implemented |
+| Areal data (BYM2) | not implemented |
+| Continuous-time correlation (Ornstein-Uhlenbeck) | not implemented |
+| Separable space-time interaction | not implemented |
+
+For these, `R-INLA` directly or `mgcv::gam()` with a spatial basis is
+the route. A fit from either can still be compared against a flexyBayes
+fit through the `fb_as_draws_simple()` interface.
+
+# 7. Pitfalls
+
+**Row and column must be factors, in field order.** Correlation is read
+along the stored level order. Labels that sort lexically rather than
+numerically give the wrong neighbour structure. Set the levels
+explicitly when in doubt.
+
+**A complete grid is required.** A missing plot, a duplicated
+combination, or a non-rectangular array raises
+`ar1_spatial_requires_complete_grid`. Supply the field-book rows for
+every sown plot with the response set to `NA`, or pad with
+`fb_complete_grid()`.
+
+**Too few rows or columns.** A 4 by 3 array cannot identify two
+correlations, a field variance and a plot variance at once. The
+symptom is a collapsed field with correlations at their prior width.
+
+**`backend = "auto"` refuses rather than substituting.** brms has no
+lowering for a Kronecker autoregressive precision, so a field model
+under `auto` raises `auto_no_active_route` instead of quietly fitting
+something else.
+
+# 8. Session information
+
+
+```
+#> R version 4.5.2 (2025-10-31)
+#> Platform: aarch64-apple-darwin20
+#> Running under: macOS Tahoe 26.5.2
+#> 
+#> Matrix products: default
+#> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+#> 
+#> time zone: Australia/Adelaide
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] flexyBayes_0.10.0
+#> 
+#> loaded via a namespace (and not attached):
+#>   [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+#>   [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
+#>   [7] TH.data_1.1-5          tensorA_0.36.2.1       estimability_1.5.1    
+#>  [10] lifecycle_1.0.5        sf_1.1-0               StanHeaders_2.32.10   
+#>  [13] survival_3.8-3         agridat_1.26           processx_3.9.0        
+#>  [16] magrittr_2.0.5         posterior_1.7.1        compiler_4.5.2        
+#>  [19] rlang_1.3.0            tools_4.5.2            data.table_1.18.2.1   
+#>  [22] sn_2.1.3               knitr_1.51             bridgesampling_1.2-1  
+#>  [25] mnormt_2.1.2           curl_7.0.0             pkgbuild_1.4.8        
+#>  [28] classInt_0.4-11        plyr_1.8.9             RColorBrewer_1.1-3    
+#>  [31] cmdstanr_0.9.0         multcomp_1.4-29        abind_1.4-8           
+#>  [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
+#>  [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
+#>  [40] xtable_1.8-8           e1071_1.7-17           inline_0.3.21         
+#>  [43] ggplot2_4.0.3          emmeans_2.0.2          scales_1.4.0          
+#>  [46] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#>  [49] mvtnorm_1.3-6          reformulas_0.4.4       generics_0.1.4        
+#>  [52] otel_0.2.0             RcppParallel_5.1.11-2  reshape2_1.4.5        
+#>  [55] minqa_1.2.8            DBI_1.3.0              proxy_0.4-29          
+#>  [58] rstan_2.32.7           stringr_1.6.0          splines_4.5.2         
+#>  [61] bayesplot_1.15.0       parallel_4.5.2         matrixStats_1.5.0     
+#>  [64] marginaleffects_0.32.0 brms_2.23.0            vctrs_0.7.3           
+#>  [67] boot_1.3-32            V8_8.0.1               Matrix_1.7-4          
+#>  [70] sandwich_3.1-1         jsonlite_2.0.0         units_1.0-1           
+#>  [73] glue_1.8.1             nloptr_2.2.1           codetools_0.2-20      
+#>  [76] ps_1.9.3               distributional_0.8.1   stringi_1.8.7         
+#>  [79] gtable_0.3.6           QuickJSR_1.9.0         lme4_2.0-1            
+#>  [82] tibble_3.3.1           pillar_1.11.1          Brobdingnag_1.2-9     
+#>  [85] R6_2.6.1               fmesher_0.7.0          Rdpack_2.6.6          
+#>  [88] evaluate_1.0.5         lattice_0.22-7         rbibutils_2.4.1       
+#>  [91] backports_1.5.1        rstantools_2.6.0       class_7.3-23          
+#>  [94] MatrixModels_0.5-4     Rcpp_1.1.2             gridExtra_2.3         
+#>  [97] coda_0.19-4.1          nlme_3.1-168           checkmate_2.3.4       
+#> [100] xfun_0.57              zoo_1.8-15             pkgconfig_2.0.3
+```

@@ -1,0 +1,508 @@
+---
+title: "1. Getting started: what changes when you go Bayesian"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{1. Getting started: what changes when you go Bayesian}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Yield of 18 wheat genotypes across 9 environments. Which genotypes
+are good, and how sure are we?</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ env, random = ~ gen, data = dat)</code></dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(yield ~ env, random = ~ gen, data = dat)</code></dd>
+<dt>What the posterior adds</dt>
+<dd>Every quantity arrives as a distribution rather than an estimate and
+a standard error, so an interval for a variance component needs no
+appeal to large-sample theory, and "how sure are we" is answered by
+counting draws.</dd>
+<dt>What it costs</dt>
+<dd>Seconds instead of milliseconds, a prior you can inspect, and a
+smaller set of model structures than ASReml offers.</dd>
+</dl>
+</div>
+
+# 1. What changes when you go Bayesian
+
+A REML fit answers with a number and an uncertainty attached to it: the
+genotype variance is 0.11, with a standard error. A Bayesian fit answers
+with a distribution over that variance, and the number you quote is a
+summary of it.
+
+That difference matters in three practical places.
+
+**Variance components near zero.** REML puts the estimate at the
+boundary and the standard error becomes hard to interpret, because the
+sampling theory behind it assumes the estimate is not sitting on the
+edge of the parameter space. A posterior has no boundary problem: it is
+simply concentrated near zero, and its upper credible bound is a real
+statement about how large the component could plausibly be.
+
+**Small numbers of levels.** With nine environments, asymptotic
+intervals for the between-environment variance are optimistic. The
+posterior is whatever the data and the prior support, at any sample
+size.
+
+**Functions of parameters.** Heritability, a ratio of variance
+components, needs the delta method under REML. Under a posterior it is
+one line: compute the ratio on every draw and summarise.
+
+Against that, three things are genuinely harder. Fitting takes seconds
+to minutes rather than milliseconds. A prior exists whether or not you
+choose it, so it has to be reported. And the structures on offer are
+narrower than ASReml's, which is the subject of Section 2 and of the
+*formula surface* vignette.
+
+# 2. Two engines, one grammar
+
+flexyBayes does not implement an inference algorithm. It parses a model
+written in ASReml-style or brms-style syntax and hands it to one of two
+established engines.
+
+**INLA** approximates the posterior deterministically, by nested Laplace
+approximation. It is fast, it has no chains to converge, and it is built
+around latent Gaussian models -- which is why the structured terms
+(autoregressive fields, splines, known covariance matrices) live here.
+
+**brms** writes a Stan program and samples it with Hamiltonian Monte
+Carlo. It is slower and its answer carries Monte Carlo error, but it is
+not restricted to the latent Gaussian class, which is why the flexible
+likelihoods and the interaction structures live there.
+
+They are complementary rather than interchangeable. The table below is
+generated from the package's own capability record, so it cannot drift
+from what the code does.
+
+<table>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Model class </th>
+   <th style="text-align:left;"> Spelling </th>
+   <th style="text-align:left;"> INLA </th>
+   <th style="text-align:left;"> brms </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;"> Gaussian LMM, simple random intercept </td>
+   <td style="text-align:left;"> <code>random = ~ g</code> / <code>(1 | g)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect </td>
+   <td style="text-align:left;"> <code>(1 | g)</code> with <code>family =</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Hurdle gamma (zero mass plus a positive gamma part) </td>
+   <td style="text-align:left;"> <code>family = "hurdle_gamma"</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Uncorrelated random slope </td>
+   <td style="text-align:left;"> <code>(x || g)</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Factor-by-numeric fixed interaction </td>
+   <td style="text-align:left;"> <code>y ~ f * x</code> with numeric <code>x</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Correlated random slope </td>
+   <td style="text-align:left;"> <code>(x | g)</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Nested / interaction random effects, multi-stratum </td>
+   <td style="text-align:left;"> <code>~ gen:env</code>, <code>~ env:rep:block</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Heterogeneous variance by factor level </td>
+   <td style="text-align:left;"> <code>~ diag(f):g</code>, <code>~ idh(f):g</code>, <code>~ at(f):g</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Unstructured genotype-by-environment covariance </td>
+   <td style="text-align:left;"> <code>~ us(f):g</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Heterogeneous variances with one shared correlation </td>
+   <td style="text-align:left;"> <code>~ corh(f):g</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Heterogeneous residual by factor level </td>
+   <td style="text-align:left;"> <code>residual = ~ dsum(~ units | f)</code> / <code>~ at(f):units</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Combined interaction random effects and heterogeneous residual (full MET) </td>
+   <td style="text-align:left;"> <code>random = ~ gen + gen:env</code> with the <code>dsum</code> residual </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Factor-analytic genotype-by-environment covariance </td>
+   <td style="text-align:left;"> <code>~ fa(env, k):gen</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Multi-trait covariance </td>
+   <td style="text-align:left;"> <code>~ us(trait):vm(gen)</code> </td>
+   <td style="text-align:left;"> refuses </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Known-covariance genomic / pedigree random effect </td>
+   <td style="text-align:left;"> <code>~ vm(g, K)</code>, <code>~ ped(a, A)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Separable AR1 spatial field </td>
+   <td style="text-align:left;"> <code>random = ~ ar1(row):ar1(col)</code>, <code>random = ~ ar1(t)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Per-trial separable AR1 field </td>
+   <td style="text-align:left;"> <code>random = ~ at(trial):ar1(row):ar1(col)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Grouped temporal AR1 field </td>
+   <td style="text-align:left;"> <code>random = ~ ar1(t):g</code>, <code>~ g:ar1(t)</code>, <code>~ ar1(t):id(g)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Univariate P-spline </td>
+   <td style="text-align:left;"> <code>~ spl(x)</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> refuses </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Observation weights (Gaussian, identity link) </td>
+   <td style="text-align:left;"> <code>weights = w</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> fits </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Exact sufficient-statistic aggregation </td>
+   <td style="text-align:left;"> <code>aggregate = TRUE</code>, <code>flexybayes_stream()</code> </td>
+   <td style="text-align:left;"> fits </td>
+   <td style="text-align:left;"> n/a </td>
+  </tr>
+</tbody>
+</table>
+
+
+
+Three readings of that table are worth having before you fit anything.
+
+*`fits`* means an active engine emits the structure and a test exercises
+it. *`refuses`* means the request raises an error naming the structure
+and pointing at the nearest thing that does work -- it does not mean the
+model is quietly approximated by something else. Four classes are
+refused by both engines: correlated random slopes, `corh()`,
+factor-analytic covariance, and multi-trait covariance. Those are
+genuine gaps, not omissions from this page.
+
+The default `backend = "auto"` runs a feasibility gate and picks the
+engine that can represent the model, so most of the time the choice is
+made for you.
+
+# 3. Installation
+
+brms is on CRAN and needs a working C++ toolchain for Stan. INLA is
+distributed from its own repository.
+
+```r
+install.packages("brms")
+install.packages(
+  "INLA",
+  repos = c(INLA = "https://inla.r-inla-download.org/R/stable")
+)
+```
+
+Neither is required to load flexyBayes. A model that needs an absent
+engine refuses with an installation message rather than an error from
+somewhere inside the call stack.
+
+# 4. Your first model
+
+`agridat::yan.winterwheat` is a multi-environment trial: 18 winter wheat
+genotypes, 9 Ontario environments, one yield per combination.
+
+
+``` r
+library(flexyBayes)
+#> flexyBayes 0.10.0 -- multi-backend Bayesian mixed models (INLA / brms) with cross-engine triangulation
+#>   Development release: all exports experimental; not on CRAN. See system.file("KNOWN_ISSUES.md", package = "flexyBayes").
+dat <- agridat::yan.winterwheat
+str(dat)
+#> 'data.frame':	162 obs. of  3 variables:
+#>  $ gen  : Factor w/ 18 levels "Ann","Ari","Aug",..: 1 2 3 4 5 6 7 8 9 10 ...
+#>  $ env  : Factor w/ 9 levels "BH93","EA93",..: 1 1 1 1 1 1 1 1 1 1 ...
+#>  $ yield: num  4.46 4.42 4.67 4.73 4.39 ...
+```
+
+Environments are the conditions of the trial, so they enter as fixed
+effects. Genotypes are a sample from a breeding population and the
+question is about the population, so they enter as random. That is the
+same reasoning an ASReml user applies, and the formula is the same
+formula.
+
+
+``` r
+fit <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                  backend = "inla", verbose = FALSE)
+fit
+#> Bayesian mixed model  [flexyBayes / inla]
+#> -------------------------------------------------------------- 
+#>   Fixed    : yield ~ env 
+#>   Random   : ~gen 
+#>   Model    : G: gen iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 162 design rows, 162 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 2.2 sec
+#>   INLA formula: yield ~ 1 + env + f(gen, model = "iid", <prior: uniform-SD(0, 4.94)>)
+#>   Params   : 9 fixed, 1 random, 2 hyperparameter(s)
+#>   numerical confirm: PASS
+#> -------------------------------------------------------------- 
+#>   Object of class <flexybayes_inla>
+#>   $inla -- raw INLA fit (use INLA's summary, plot, etc.)
+#>   $fb   -- the fb_terms IR used for dispatch
+```
+
+# 5. Reading the fit as a REML user
+
+`summary()` gives the two blocks an ASReml user reads first: the
+variance components and the fixed effects.
+
+
+``` r
+tidy(fit, effects = "random")
+#>     term  estimate  std.error  conf.low conf.high
+#> 1  sigma 0.3861116 0.02352674 0.3426335 0.4348662
+#> 2 sd_gen 0.3910202 0.07877794 0.2625200 0.5705711
+```
+
+`estimate` is the posterior median on the standard-deviation scale.
+`conf.low` and `conf.high` are the 2.5% and 97.5% quantiles of the
+posterior -- not a normal approximation around the estimate, so they
+need not be symmetric, and for a component near zero they will not be.
+
+
+``` r
+head(tidy(fit), 4)
+#>          term    estimate std.error   conf.low  conf.high
+#> 1 (Intercept)  4.36293122 0.1305794  4.1059741  4.6198881
+#> 2     envEA93  0.07529038 0.1288961 -0.1777928  0.3283740
+#> 3     envHW93 -1.22597659 0.1288961 -1.4790596 -0.9728927
+#> 4     envID93 -0.86786845 0.1288961 -1.1209515 -0.6147847
+```
+
+The genotype effects themselves are predictions of random effects, the
+BLUPs of REML, and they arrive with intervals:
+
+
+``` r
+head(ranef(fit)$gen, 4)
+#>   group level   estimate std.error    conf.low conf.high
+#> 1   gen   Ann -0.1665626 0.1509256 -0.46469605 0.1289702
+#> 2   gen   Ari  0.1053993 0.1508289 -0.19042725 0.4028786
+#> 3   gen   Aug  0.0472776 0.1507773 -0.24890769 0.3442060
+#> 4   gen   Cas  0.3189416 0.1513547  0.02374853 0.6190192
+```
+
+Because the fit carries draws rather than point estimates, a function of
+the parameters is computed directly. Heritability on an entry-mean basis
+is a ratio of variance components, and under a posterior it is a ratio
+taken draw by draw:
+
+
+``` r
+vc <- tidy(fit, effects = "random")
+sd_gen   <- vc$estimate[vc$term == "sd_gen"]
+sd_resid <- vc$estimate[vc$term == "sigma"]
+n_env    <- nlevels(dat$env)
+sd_gen^2 / (sd_gen^2 + sd_resid^2 / n_env)
+#> [1] 0.902251
+```
+
+# 6. The same model on the other engine
+
+The point of two engines is that they disagree informatively. Fitting the
+same model on brms and comparing takes one call. The sampler is given
+four chains here because `triangulate()` refuses to compare a fit whose
+own diagnostics have not converged.
+
+
+``` r
+fit_b <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                    backend = "brms", chains = 4L, n_samples = 2000L,
+                    warmup = 1000L, seed = 1L, verbose = FALSE,
+                    mcmc_verbose = FALSE)
+#> Loading required namespace: rstan
+```
+
+
+``` r
+tri <- triangulate(fit, fit_b)
+tri$status
+#> [1] "discordant"
+table(tri$metrics$verdict)
+#> 
+#> concordant discordant 
+#>          9          2
+```
+
+The nine fixed effects agree. The two variance components do not, and
+the way they disagree is the useful part:
+
+
+``` r
+vc_rows <- tri$metrics$param %in% c("sigma", "sd_gen")
+tri$metrics[vc_rows, c("param", "mean_a", "mean_b", "sd_ratio", "verdict")]
+#>     param    mean_a    mean_b  sd_ratio    verdict
+#> 10  sigma 0.3866574 0.3867247 0.9091133 discordant
+#> 11 sd_gen 0.3895100 0.3967485 0.9178796 discordant
+```
+
+`mean_a` and `mean_b` are the posterior means from INLA and from brms.
+They match to three decimal places. `sd_ratio` is the ratio of the two
+posterior standard deviations, and it is below one: INLA's posterior for
+each variance component is *narrower* than the sampler's.
+
+That is the Laplace approximation showing its edge. It places the
+variance components in the same location as full Hamiltonian Monte
+Carlo and reports slightly more confidence about them than the sampler
+does. For deciding which genotypes are good, the two engines give the
+same answer. For quoting an interval on the genotype variance, the
+sampler's is the more conservative one.
+
+Neither engine is wrong here, and nothing in either fit alone would have
+revealed this. A single fit on either engine reports a converged model
+with clean diagnostics. The comparison is what surfaces the difference,
+which is the argument for having two engines behind one grammar.
+
+# 7. The rest of the deck
+
+| Vignette | When you need it |
+|---|---|
+| 2. The formula surface | Writing the model, and what is refused |
+| 3. Regression and hierarchical models | Fixed effects, random effects, GLMMs |
+| 4. Priors | What the defaults are and when to change them |
+| 5. MET and genomics | Genotype-by-environment, relationship matrices |
+| 6. Spatial and temporal structure | Field trials, autoregressive correlation |
+| 7. After the fit | Summaries, comparison, triangulation |
+| 8. Big data | Fitting without holding the data in memory |
+
+# 8. Pitfalls
+
+**A prior is always present.** The default is a bounded uniform on each
+standard deviation, scaled to the response. It is reported at fit time
+and by `prior_summary()`. Reporting a Bayesian analysis without stating
+its prior is incomplete.
+
+**`backend = "auto"` can change engine.** If the feasibility gate
+refuses INLA, the model routes to brms, and a message says so. The
+fit's class records which engine produced it.
+
+**Variance components can pin at zero.** A component whose upper
+credible bound is a negligible fraction of the residual scale raises a
+warning: the term carries no signal the data can separate from noise.
+That is a statement about identification, not a result.
+
+# 9. Session information
+
+
+```
+#> R version 4.5.2 (2025-10-31)
+#> Platform: aarch64-apple-darwin20
+#> Running under: macOS Tahoe 26.5.2
+#> 
+#> Matrix products: default
+#> BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+#> LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+#> 
+#> locale:
+#> [1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
+#> 
+#> time zone: Australia/Adelaide
+#> tzcode source: internal
+#> 
+#> attached base packages:
+#> [1] stats     graphics  grDevices utils     datasets  methods   base     
+#> 
+#> other attached packages:
+#> [1] flexyBayes_0.10.0
+#> 
+#> loaded via a namespace (and not attached):
+#>  [1] tidyselect_1.2.1       dplyr_1.2.1            farver_2.1.2          
+#>  [4] loo_2.9.0              S7_0.2.2               INLA_25.10.19         
+#>  [7] TH.data_1.1-5          tensorA_0.36.2.1       estimability_1.5.1    
+#> [10] lifecycle_1.0.5        sf_1.1-0               StanHeaders_2.32.10   
+#> [13] survival_3.8-3         agridat_1.26           processx_3.9.0        
+#> [16] magrittr_2.0.5         posterior_1.7.1        compiler_4.5.2        
+#> [19] rlang_1.3.0            tools_4.5.2            data.table_1.18.2.1   
+#> [22] sn_2.1.3               knitr_1.51             bridgesampling_1.2-1  
+#> [25] mnormt_2.1.2           curl_7.0.0             pkgbuild_1.4.8        
+#> [28] classInt_0.4-11        plyr_1.8.9             RColorBrewer_1.1-3    
+#> [31] cmdstanr_0.9.0         multcomp_1.4-29        abind_1.4-8           
+#> [34] KernSmooth_2.23-26     numDeriv_2016.8-1.1    withr_3.0.3           
+#> [37] grid_4.5.2             stats4_4.5.2           colorspace_2.1-2      
+#> [40] xtable_1.8-8           e1071_1.7-17           inline_0.3.21         
+#> [43] ggplot2_4.0.3          emmeans_2.0.2          scales_1.4.0          
+#> [46] MASS_7.3-65            dichromat_2.0-0.1      cli_3.6.6             
+#> [49] mvtnorm_1.3-6          generics_0.1.4         otel_0.2.0            
+#> [52] RcppParallel_5.1.11-2  reshape2_1.4.5         DBI_1.3.0             
+#> [55] proxy_0.4-29           rstan_2.32.7           stringr_1.6.0         
+#> [58] splines_4.5.2          bayesplot_1.15.0       parallel_4.5.2        
+#> [61] matrixStats_1.5.0      marginaleffects_0.32.0 brms_2.23.0           
+#> [64] vctrs_0.7.3            V8_8.0.1               Matrix_1.7-4          
+#> [67] sandwich_3.1-1         jsonlite_2.0.0         units_1.0-1           
+#> [70] glue_1.8.1             codetools_0.2-20       ps_1.9.3              
+#> [73] distributional_0.8.1   stringi_1.8.7          gtable_0.3.6          
+#> [76] QuickJSR_1.9.0         tibble_3.3.1           pillar_1.11.1         
+#> [79] Brobdingnag_1.2-9      R6_2.6.1               fmesher_0.7.0         
+#> [82] evaluate_1.0.5         lattice_0.22-7         backports_1.5.1       
+#> [85] rstantools_2.6.0       class_7.3-23           MatrixModels_0.5-4    
+#> [88] Rcpp_1.1.2             gridExtra_2.3          coda_0.19-4.1         
+#> [91] nlme_3.1-168           checkmate_2.3.4        xfun_0.57             
+#> [94] zoo_1.8-15             pkgconfig_2.0.3
+```

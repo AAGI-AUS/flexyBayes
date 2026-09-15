@@ -27,7 +27,7 @@ mk_brms_data <- function() {
 # Minimal cases                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_brms() handles minimal gaussian fixed-only model", {
+test_that("fb_from_brms() reads minimal gaussian fixed-only model as a `continuous` term", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y ~ x, data = d)
   expect_s3_class(fb, "fb_terms")
@@ -44,14 +44,14 @@ test_that("fb_from_brms() handles minimal gaussian fixed-only model", {
   expect_length(fb$addition_terms, 0L)
 })
 
-test_that("fb_from_brms() handles intercept-only model", {
+test_that("fb_from_brms() reads an intercept-only model as one fixed term", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y ~ 1, data = d)
   expect_true(fb$intercept)
   expect_length(fb$fixed_terms, 0L)
 })
 
-test_that("fb_from_brms() handles factor fixed effect", {
+test_that("fb_from_brms() reads factor fixed effect as a `factor` term", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y ~ g, data = d)
   expect_length(fb$fixed_terms, 1L)
@@ -63,7 +63,7 @@ test_that("fb_from_brms() handles factor fixed effect", {
 # Random intercepts                                                #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_brms() handles `(1 | g)` random intercept", {
+test_that("fb_from_brms() reads `(1 | g)` random intercept as a `simple` term", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y ~ x + (1 | g), data = d)
   expect_length(fb$random_terms, 1L)
@@ -72,7 +72,7 @@ test_that("fb_from_brms() handles `(1 | g)` random intercept", {
   expect_identical(fb$random_terms[[1]]$var_n, 5L)
 })
 
-test_that("fb_from_brms() handles `(1 || g)` (uncorrelated) random intercept", {
+test_that("fb_from_brms() reads `(1 as a `simple` term", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y ~ x + (1 || g), data = d)
   expect_length(fb$random_terms, 1L)
@@ -80,7 +80,7 @@ test_that("fb_from_brms() handles `(1 || g)` (uncorrelated) random intercept", {
   expect_identical(fb$random_terms[[1]]$var, "g")
 })
 
-test_that("fb_from_brms() handles two random intercepts", {
+test_that("fb_from_brms() reads two bar terms as two random effects", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y ~ x + (1 | g) + (1 | site), data = d)
   expect_length(fb$random_terms, 2L)
@@ -92,7 +92,7 @@ test_that("fb_from_brms() handles two random intercepts", {
 # Family + link                                                    #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_brms() handles binomial family with default logit", {
+test_that("fb_from_brms() gives binomial the logit link by default", {
   d <- mk_brms_data()
   fb <- flexyBayes:::fb_from_brms(y01 ~ x, data = d, family = "binomial")
   expect_identical(fb$family, "binomial")
@@ -143,20 +143,14 @@ test_that("fb_from_brms() rejects mismatched weights length", {
 # Fail-fast refusals for unsupported v0.1 features                 #
 # ---------------------------------------------------------------- #
 
-test_that("fb_from_brms() refuses correlated random slopes (x | g) per ADR 0020", {
+test_that("fb_from_brms() carries correlated random slopes (x | g)", {
   d <- mk_brms_data()
-  # Uncorrelated random slopes (x || g) are now supported per ADR
-  # 0020 (covered by test-random-slopes-uncor.R); the correlated
-  # form (x | g) continues to refuse but with the new typed
-  # condition class flexybayes_correlated_slope_unsupported.
-  err <- tryCatch(
-    flexyBayes:::fb_from_brms(y ~ x + (x | g), data = d),
-    error = function(e) e
-  )
-  expect_s3_class(err, "flexybayes_correlated_slope_unsupported")
-  expect_identical(err$deferral_target, "a future release")
-  expect_identical(err$workaround, "(x || g)")
-  expect_true(grepl("Correlated random slopes", conditionMessage(err)))
+  # Both bar forms are ordinary terms now: (x || g) is two independent
+  # variances and (x | g) is the same two with the correlation freed.
+  fb <- flexyBayes:::fb_from_brms(y ~ x + (x | g), data = d)
+  expect_identical(fb$random_terms[[1]]$type, "simple_slope_cor")
+  expect_identical(fb$random_terms[[1]]$slope_var, "x")
+  expect_identical(fb$random_terms[[1]]$var, "g")
 })
 
 test_that("fb_from_brms() refuses smoothers s(), naming spl()", {

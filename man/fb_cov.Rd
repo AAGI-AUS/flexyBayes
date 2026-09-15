@@ -60,6 +60,7 @@ count); the full level-aware validation runs at fit time against the
 grouping factor.
 }
 \examples{
+set.seed(1L)
 G <- crossprod(matrix(rnorm(9L), 3L, 3L))
 fb_cov(G, type = "dense")
 L <- t(chol(G))

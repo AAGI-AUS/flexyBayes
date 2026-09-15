@@ -254,6 +254,9 @@ d_agg <- expand.grid(
   env = factor(seq_len(3L))
 )
 d_agg$y <- rnorm(nrow(d_agg), 10, 2)
+# Count response for the binomial-and-Poisson aggregation row. Drawn after
+# `y`, and the next fixture sets its own seed, so no other draw moves.
+d_agg$cnt <- rpois(nrow(d_agg), 3)
 
 # S6 fixtures. d_weak: many clusters of two, so the cluster variance is
 # barely identified. d_funnel: three clusters and a near-zero between-
@@ -314,6 +317,30 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
   dd$trial <- factor(paste0("T", i))
   dd
 }))
+
+# Grouped temporal AR1 field fixture: ten units followed over twelve
+# occasions, AR1 along occasion within each unit and independent across
+# units, plus a nugget; two occasions left as design rows with the
+# response NA, which na_action = "augment" carries through the fit.
+.tg_field <- function(seed) {
+  set.seed(seed)
+  n_t <- 12L
+  n_g <- 10L
+  grid <- expand.grid(t = seq_len(n_t), g = seq_len(n_g))
+  Lt <- t(chol(.ar1_mat_fn(n_t, 0.6)))
+  u <- as.numeric(vapply(
+    seq_len(n_g),
+    function(i) as.numeric(Lt %*% stats::rnorm(n_t)),
+    numeric(n_t)
+  ))
+  d <- data.frame(
+    y = 5 + u + stats::rnorm(n_t * n_g, 0, 0.5),
+    t = factor(grid$t), g = factor(grid$g)
+  )
+  d$y[c(7L, 50L)] <- NA
+  d
+}
+d_ar1_tg <- .tg_field(2001L)
 '
 
 .preamble <- paste0(
@@ -459,6 +486,22 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
                   'data = d_cap, known_matrices = list(K = k_cap))')
   ),
   list(
+    # `ped()` and `vm()` are two spellings of one known-covariance term
+    # -- every branch in the package tests `%in% c("vm", "ped")` -- so the
+    # capability is one row and the spelling is a surface on it. The grid
+    # executed `vm()` only, and `ped()` was advertised without ever being
+    # fitted (audit item 9, 2026-08-27). This cell fits the same row
+    # through the other spelling, on the carrier each engine documents:
+    # INLA the sparse precision, brms the dense covariance.
+    model_class = "Known-covariance genomic / pedigree random effect",
+    spelling_variant = "ped",
+    inla = paste0('flexybayes(y ~ env, ',
+                  'random = ~ ped(gen, cov = fb_cov(Q, type = "precision")), ',
+                  'data = d_cap, known_matrices = list(Q = q_cap))'),
+    brms = paste0('flexybayes(y ~ env, random = ~ ped(gen, K), ',
+                  'data = d_cap, known_matrices = list(K = k_cap))')
+  ),
+  list(
     model_class = "Separable AR1 spatial field",
     inla = 'flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d_capgrid)',
     brms = 'flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d_capgrid)'
@@ -474,7 +517,14 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
     brms = 'flexybayes(y ~ env, random = ~ gen, data = d_cap, weights = w_cap)'
   ),
   list(
-    model_class = "Exact sufficient-statistic aggregation",
+    model_class = "Exact sufficient-statistic aggregation (binomial, Poisson)",
+    inla = paste0('flexybayes(cnt ~ env, random = ~ gen, data = d_agg, ',
+                  'aggregate = TRUE, family = "poisson")'),
+    brms = paste0('flexybayes(cnt ~ env, random = ~ gen, data = d_agg, ',
+                  'aggregate = TRUE, family = "poisson")')
+  ),
+  list(
+    model_class = "Exact sufficient-statistic aggregation (Gaussian)",
     inla = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
                   'aggregate = TRUE)'),
     brms = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
@@ -486,11 +536,45 @@ d_ar1_at_trial <- do.call(rbind, lapply(seq_len(3L), function(i) {
                   'data = d_ar1_at_trial)'),
     brms = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
                   'data = d_ar1_at_trial)')
+  ),
+  list(
+    model_class = "Grouped temporal AR1 field",
+    inla = 'flexybayes(y ~ 1, random = ~ ar1(t):g, data = d_ar1_tg)',
+    brms = 'flexybayes(y ~ 1, random = ~ ar1(t):g, data = d_ar1_tg)'
   )
 )
 
+# Matrix rows no M cell can execute, each with where it is executed instead.
+# A cell here is a flexybayes() call with the backend and budget appended,
+# and a joint shrinkage prior reaches no flexybayes() call: fb_select() is
+# its only public route, and its reference fit and folds are several brms
+# fits, past the per-cell timeout. Listed by name so the gap prints on every
+# run (added 2026-09-15; the rows arrived with 0.11.0 without cells).
+.M_EXECUTED_ELSEWHERE <- c(
+  "Ridge shrinkage prior on candidate fixed effects" = paste(
+    "fitted live by fb_select() on brms in",
+    "review/release_0.12.0/smoke/smoke_installed_package.R;",
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R"
+  ),
+  "Laplace shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
+  "Elastic-net shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
+  "Regularised horseshoe shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
+  "R2D2 shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled"
+)
+for (i1 in seq_along(.M_EXECUTED_ELSEWHERE)) {
+  cat("matrix row outside the M section:", names(.M_EXECUTED_ELSEWHERE)[[i1]],
+      "--", .M_EXECUTED_ELSEWHERE[[i1]], "\n")
+}
+
 .m_named <- vapply(.M_CALLS, function(z) z$model_class, character(1L))
-.m_missing <- setdiff(.matrix$model_class, .m_named)
+.m_missing <- setdiff(
+  .matrix$model_class,
+  c(.m_named, names(.M_EXECUTED_ELSEWHERE))
+)
 .m_extra <- setdiff(.m_named, .matrix$model_class)
 if (length(.m_missing) > 0L || length(.m_extra) > 0L) {
   stop(
@@ -541,6 +625,16 @@ if (length(.m_missing) > 0L || length(.m_extra) > 0L) {
 
 for (spec in .M_CALLS) {
   row <- .matrix[.matrix$model_class == spec$model_class, , drop = FALSE]
+  # A capability may be reachable through more than one spelling. Those
+  # are separate cells against ONE matrix row: inventing a second row
+  # would claim a second capability the engines do not have. The suffix
+  # keeps the cell ids unique; `matrix_cell` stays keyed on the row, so
+  # matrix coverage still counts each capability once.
+  sfx <- if (is.null(spec$spelling_variant)) {
+    ""
+  } else {
+    paste0("-", spec$spelling_variant)
+  }
   for (be in c("inla", "brms")) {
     verdict <- row[[be]]
     key <- paste0("cap-", .m_slug(spec$model_class), "-", be)
@@ -554,7 +648,7 @@ for (spec in .M_CALLS) {
     )
     code <- sub(")$", tail_args, spec[[be]])
     .add_cell(
-      id = paste0("M-", .m_slug(spec$model_class), "-", be),
+      id = paste0("M-", .m_slug(spec$model_class), sfx, "-", be),
       section = "M",
       code = code,
       expected = .m_expectation(verdict),
@@ -569,10 +663,11 @@ for (spec in .M_CALLS) {
       } else {
         "gaussian"
       },
-      variant = .m_slug(spec$model_class),
+      variant = paste0(.m_slug(spec$model_class), sfx),
       matrix_cell = key
     )
-    .matrix_cells <- rbind(.matrix_cells, data.frame(
+    if (!key %in% .matrix_cells$cell) .matrix_cells <- rbind(.matrix_cells,
+      data.frame(
       cell = key,
       model_class = spec$model_class,
       spelling = row$spelling,
@@ -995,19 +1090,19 @@ for (fm in .s3c_families) {
        src = "capability matrix: two simple random intercepts, both fit"),
   list(key = "us", call = "random = ~ us(f):g", inla = "refuse_typed",
        brms = "fit", src = "capability matrix: ~ us(f):g refuses | fits"),
-  list(key = "diag", call = "random = ~ diag(f):g", inla = "refuse_typed",
-       brms = "fit", src = "capability matrix: ~ diag(f):g refuses | fits"),
-  list(key = "at", call = "random = ~ at(f):g", inla = "refuse_typed",
+  list(key = "diag", call = "random = ~ diag(f):g", inla = "fit",
+       brms = "fit", src = "capability matrix: ~ diag(f):g fits | fits"),
+  list(key = "at", call = "random = ~ at(f):g", inla = "fit",
        brms = "fit",
-       src = "capability matrix: at() is a diag() spelling, refuses | fits"),
+       src = "capability matrix: at() is a diag() spelling, fits | fits"),
   list(key = "dsum_residual",
        call = "random = ~ g, residual = ~ dsum(~ units | f)",
-       inla = "refuse_typed", brms = "fit",
+       inla = "fit", brms = "fit",
        # The matrix row's own note: "Refused for families with no
        # residual scale." Poisson has none, so the count arm refuses on
        # both engines and the refusal is the claim, not a miss.
        poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
-       src = paste0("capability matrix: heterogeneous residual refuses | ",
+       src = paste0("capability matrix: heterogeneous residual fits | ",
                     "fits, and the row's note refuses it for a family ",
                     "with no residual scale")),
   list(key = "ar1", call = "random = ~ ar1(row):ar1(col)", inla = "fit",
@@ -1026,21 +1121,21 @@ for (fm in .s3c_families) {
                     "typed on both engines and names spl(x)")),
   list(key = "met_combined",
        call = "random = ~ g + g:f, residual = ~ dsum(~ units | f)",
-       inla = "refuse_typed", brms = "fit",
+       inla = "fit", brms = "fit",
        # Carries the dsum residual, so the count arm refuses for the same
        # reason the dsum_residual row above does.
        poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
-       src = paste0("capability matrix: full MET refuses | fits, with the ",
+       src = paste0("capability matrix: full MET fits | fits, with the ",
                     "heterogeneous-residual row's no-residual-scale note")),
   list(key = "corh", call = "random = ~ corh(f):g", inla = "refuse_typed",
        brms = "refuse_typed",
        src = "capability matrix: ~ corh(f):g refuses | refuses"),
-  list(key = "fa", call = "random = ~ fa(f, 1):g", inla = "refuse_typed",
+  list(key = "fa", call = "random = ~ fa(f, 1):g", inla = "fit",
        brms = "refuse_typed",
-       src = "capability matrix: ~ fa(env, k):gen refuses | refuses"),
-  list(key = "nested", call = "random = ~ g:h", inla = "refuse_typed",
+       src = "capability matrix: ~ fa(env, k):gen fits | refuses"),
+  list(key = "nested", call = "random = ~ g:h", inla = "fit",
        brms = "fit",
-       src = "capability matrix: nested / interaction refuses | fits"),
+       src = "capability matrix: nested / interaction fits | fits"),
   list(key = "weights", call = "random = ~ g, weights = runif(60, 0.5, 2)",
        inla = "fit", brms = "fit",
        # C6: weights are lowered for family = "gaussian" with the
@@ -1092,15 +1187,15 @@ for (st in .s4_structures) {
 .s5_forms <- list(
   list("bar_intercept", "y ~ x + (1 | g)", NA, "fit", "fit",
        "capability matrix: (1 | g) fits | fits"),
-  list("bar_slope_cor", "y ~ x + (x | g)", NA, "refuse_typed",
-       "refuse_typed", "capability matrix: (x | g) refuses | refuses"),
-  list("bar_slope_uncor", "y ~ x + (x || g)", NA, "refuse_typed", "fit",
-       "capability matrix: (x || g) refuses | fits"),
+  list("bar_slope_cor", "y ~ x + (x | g)", NA, "refuse_typed", "fit",
+       "capability matrix: (x | g) refuses | fits"),
+  list("bar_slope_uncor", "y ~ x + (x || g)", NA, "fit", "fit",
+       "capability matrix: (x || g) fits | fits"),
   list("bar_factor_slope", "y ~ trt + (trt | g)", NA, "refuse_typed",
        "refuse_typed",
        "FS-6 / U1: typed refusal naming us(trt):g as the ASReml surface"),
-  list("bar_nested", "y ~ x + (1 | g:h)", NA, "refuse_typed", "fit",
-       "capability matrix: nested / interaction refuses | fits"),
+  list("bar_nested", "y ~ x + (1 | g:h)", NA, "fit", "fit",
+       "capability matrix: nested / interaction fits | fits"),
   list("bar_zero_factor_slope", "y ~ trt + (0 + trt | g)", NA,
        "refuse_typed", "refuse_typed",
        "FS-6 / U1: typed refusal naming us(trt):g"),
@@ -1112,14 +1207,14 @@ for (st in .s4_structures) {
        "capability matrix: random = ~ g fits | fits"),
   list("asreml_us_trt", "y ~ trt", "~ us(trt):g", "refuse_typed", "fit",
        "capability matrix: ~ us(f):g refuses | fits"),
-  list("asreml_diag_trt", "y ~ trt", "~ diag(trt):g", "refuse_typed", "fit",
-       "capability matrix: ~ diag(f):g refuses | fits"),
-  list("asreml_nested", "y ~ x", "~ g:h", "refuse_typed", "fit",
-       "capability matrix: nested / interaction refuses | fits"),
-  list("fixed_factor_numeric", "y ~ f * x", NA, "refuse_typed", "fit",
-       "capability matrix: factor-by-numeric fixed interaction refuses | fits"),
-  list("fixed_factor_numeric_colon", "y ~ f:x", NA, "refuse_typed", "fit",
-       "capability matrix: factor-by-numeric interaction refuses | fits"),
+  list("asreml_diag_trt", "y ~ trt", "~ diag(trt):g", "fit", "fit",
+       "capability matrix: ~ diag(f):g fits | fits"),
+  list("asreml_nested", "y ~ x", "~ g:h", "fit", "fit",
+       "capability matrix: nested / interaction fits | fits"),
+  list("fixed_factor_numeric", "y ~ f * x", NA, "fit", "fit",
+       "capability matrix: factor-by-numeric fixed interaction fits | fits"),
+  list("fixed_factor_numeric_colon", "y ~ f:x", NA, "fit", "fit",
+       "capability matrix: factor-by-numeric interaction fits | fits"),
   list("random_factor_numeric", "y ~ x", "~ f:x", "refuse_typed",
        "refuse_typed",
        "field finding U2: a numeric in a random interaction is not a

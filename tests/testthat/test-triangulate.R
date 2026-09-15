@@ -51,7 +51,7 @@ test_that(".wasserstein1_1d() recovers a deterministic shift", {
   )
 })
 
-test_that(".wasserstein1_1d() handles edge case with empty samples", {
+test_that(".wasserstein1_1d() returns NA rather than a number for empty samples", {
   expect_true(is.na(flexyBayes:::.wasserstein1_1d(numeric(0), 1:5)))
 })
 
@@ -219,7 +219,7 @@ test_that("print.triangulate_result emits the structured header + table", {
   expect_true(any(grepl("Metrics", out)))
 })
 
-test_that("print.triangulate_result handles zero common parameters", {
+test_that("print.triangulate_result says so when no parameter is common to both fits", {
   set.seed(12L)
   d_a <- list(p = rnorm(100))
   d_b <- list(q = rnorm(100))
@@ -318,15 +318,14 @@ test_that("triangulate() runs end-to-end on brms vs INLA", {
 test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row (< 0.1 SD)", {
   # The aggregated dispatch path was previously exercised only by code
   # inspection -- no live test ran triangulate() on an aggregated fit.
-  # The aggregated INLA posterior is, by construction, the per-row
-  # posterior under the default prior: the precision-prior closed-form
-  # correction absorbs the within-cell sum-of-squares so the cell-mean
-  # likelihood recovers the per-row likelihood up to scale-independent
-  # constants. Triangulating the per-row and aggregated INLA fits is the
+  # For a Poisson model the cell likelihood equals the row likelihood up to
+  # a constant that depends only on the data, so the aggregated INLA
+  # posterior is the per-row posterior. Triangulating the two fits is the
   # live confirmation of that equivalence and of the aggregated fit's
   # draw-extraction path (the class-vector design that routes the
   # aggregated INLA fit to fb_as_draws_simple.flexybayes_inla). Kept
-  # same-engine so the comparison is deterministic and MCMC-free.
+  # same-engine so the comparison is deterministic and MCMC-free. A
+  # Gaussian model is no longer fitted on the aggregated representation.
   skip_on_cran()
   skip_if_no_inla()
   withr::local_options(
@@ -343,15 +342,16 @@ test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row 
     f2 = factor(sample(letters[1:3], N, replace = TRUE)),
     g = factor(sample.int(J, N, replace = TRUE))
   )
-  d$y <- 1 +
-    0.5 * as.integer(d$f1) -
-    0.3 * as.integer(d$f2) +
-    rnorm(J, 0, 0.3)[as.integer(d$g)] +
-    rnorm(N, 0, 0.7)
+  eta <- 0.3 +
+    0.2 * as.integer(d$f1) -
+    0.1 * as.integer(d$f2) +
+    rnorm(J, 0, 0.3)[as.integer(d$g)]
+  d$count <- stats::rpois(N, exp(eta))
 
   fit_row <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = d,
+    family = "poisson",
     backend = "inla",
     aggregate = FALSE,
     prior_vc_sd = 1,
@@ -359,8 +359,9 @@ test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row 
     mcmc_verbose = FALSE
   ))
   fit_agg <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = d,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -368,7 +369,7 @@ test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row 
     mcmc_verbose = FALSE
   ))
   expect_s3_class(fit_agg, "flexybayes_aggregated")
-  expect_identical(backend_decision(fit_agg)$path, "aggregated_gaussian")
+  expect_identical(backend_decision(fit_agg)$path, "aggregated_count")
 
   # 4000 posterior samples keeps the per-fit Monte-Carlo error on each
   # mean well below the 0.1-SD band (the underlying posterior means

@@ -100,49 +100,46 @@ files are projections of the same `comparison.rds`.
 
 ## `benchmark_scaling.csv` and `benchmark_scaling.md`
 
-**What.** The evidence behind the scaling claim in `DESCRIPTION` and
-`README.md`. `benchmark_scaling.md` says what was measured and where the
-claim stops; the CSV is the slim table, eighteen rows across three studies:
-the boundary between the per-row and the streamed-aggregated fit path
-(where the per-row path stops, and what the streamed one costs at the same
-size), the extreme end (partitioned `.fst` shards to five billion rows),
-and a re-measurement of the fast boundary cells against this release. Times
-and peak memory are the operating system's numbers for a fresh subprocess
-per cell (`/usr/bin/time -l`), not estimates taken inside a long-lived
-session.
+**What.** The time and memory record of the streamed, aggregated fit of a
+count model, behind the "Exact sufficient-statistic aggregation (binomial,
+Poisson)" row of the capability table in `README.md`. `benchmark_scaling.md`
+says what was measured and where the evidence stops. The CSV holds fifteen
+rows: nine from the boundary between the per-row and the streamed fit, four
+from the extreme end (partitioned `.fst` shards to five billion rows), both
+on a Poisson model, and two from the 2026-08-22 multi-environment ceilings
+study on a Gaussian model. The `family` column says which. Times and peak
+memory are the operating system's numbers for a fresh subprocess per cell
+(`/usr/bin/time -l`), not estimates taken inside a long-lived session.
 
-**Generating scripts.** `tools/benchmark_bigdata_boundary.R` and
-`tools/stress_bigdata_extreme.R`, in this repository and excluded from the
-build. The `boundary-confirm` rows were produced by the same boundary
-design run against an installed tarball rather than a loaded source tree.
+**Generating code.** The data-generating model and the calls for both
+Poisson studies are written out in the "Reproducing it" section of
+`benchmark_scaling.md`. `tools/benchmark_bigdata_boundary.R` and
+`tools/stress_bigdata_extreme.R`, excluded from the build, generate the
+earlier Gaussian design, whose streamed route 0.12.0 refuses.
 
 **Data.** Simulated. Six environments crossed with 60 genotypes (360 cells)
-for the boundary rows, six by 200 (1,200 cells) for the extreme rows;
-gaussian random intercept, INLA backend, seed `42`.
+for the boundary rows, six by 200 (1,200 cells) for the extreme rows; a
+Poisson model with a log link and a genotype random intercept, INLA engine.
 
-**Run.** `boundary` and `extreme` on 2026-05-31 against the development
-tree released the same day as 0.6.0; `boundary-confirm` on 2026-08-19
-against an installed tarball of 0.9.2. Apple silicon macOS, 32 GB RAM, 10
-cores, R 4.5.2, INLA 25.10.19, fst 0.9.8.
+**Run.** 2026-09-15 against the development tree of 0.12.0. Apple M5, 32 GB
+RAM, 10 cores, macOS 26.6.2, R 4.6.1, INLA 26.8.7, fst 0.9.8.
 
-**Reading it.** The claim rests on the `peak_mb` column, not on the wall
-clock: the per-row path's memory grows with the row count and stops between
-one and five million rows, while the streamed path holds one chunk plus the
-cell accumulator, so 708 MB at ten million rows becomes 846 MB at five
-billion. The `intercept` column is the honesty check on the other half --
-the aggregated path recovers the per-row estimate to five decimal places at
-every size where both were run, so the scaling is not bought with an
-approximation. One run per cell on one machine: this is an
-order-of-magnitude envelope, not a distribution, and it compares the
-package's two paths against each other rather than against another package.
+**Reading it.** The record rests on the `peak_mb` column: the per-row fit's
+memory grows with the row count, to 19.5 GB at five million rows, while the
+streamed fit from disk holds one chunk and the cell accumulator, 712 MB at
+ten million rows and 734 MB at five billion. The `intercept` column is the
+cross-check: the per-row and streamed fits recover the same intercept to five
+decimal places at every size where both were run. One run per cell on one
+machine: this is an order-of-magnitude envelope, not a distribution, and it
+compares the package's two routes with each other, not with another package.
 
 ## `scenarios.yaml`
 
 **What.** The numerical-validation registry: one row per validation
 scenario, in the schema the validation ladder reads
-(`Config/rpkg/validationTier` in `DESCRIPTION`, `V3` for this package).
-Forty-five rows across five studies, plus three stability cells and one
-calibration study. Every row is an existing study. Nothing was simulated
+(`Config/rpkg/validationTier` in `DESCRIPTION`, `V2` for this package).
+Forty-one study rows across five studies, plus three stability cells and
+one calibration study: forty-five registered scenarios in all. Every row is an existing study. Nothing was simulated
 to reach a floor, and where a floor is not reached the shortfall is
 written down below rather than filled with a row that would not survive
 being read.
@@ -156,17 +153,29 @@ code with the package), M-D (ASReml, `lme4`, `glmmTMB`, `nlme`,
 numbers come from. Rows whose study ships a copy here point at that copy
 (`report_sweep.txt`, `oracle_het.log`, `head_to_head_summary.csv`,
 `execution_grid/ledger.csv`); rows whose evidence is a workspace
-artefact point at it by its workspace-relative path. The consequence is
-worth stating plainly: the R-side gate `check_scenarios.R` reads each
-`result_cache` with `readRDS()` and fails on anything that is not a
-serialised R object, so **that gate does not pass on this registry
-today** -- the shipped artefacts are text and CSV projections of fitted
-objects that are deliberately kept outside the package, and the fitted
-objects themselves are not shipped. The structural gates (F20, F21, F22
-in `rpkg_audit.py`) read the registry itself and do pass. Making the R
-gate pass would mean either shipping the fitted objects or teaching the
-gate to read a text artefact, and that is a decision about the gate
-rather than about the evidence.
+artefact point at it by its workspace-relative path.
+
+The R-side gate `check_scenarios.R` reads every one of them. It used to
+call `readRDS()` on each `result_cache` and fail on anything that was not
+a serialised R object, which failed this registry for doing what the
+rubric asks -- shipping text and CSV projections and keeping the fitted
+objects out of the tarball. The gate now dispatches on the artefact's
+extension, resolves a workspace-relative path against the directory above
+the package when it does not resolve within it, and reports three things
+it cannot do rather than passing them in silence: how many artefacts live
+outside the tarball, how many carry no machine-readable oracle (so their
+numbers are checked by the study that produced them, not by the gate),
+and any shortfall the registry declares and justifies in a `waiver:`
+field. A missing, empty, unparseable or unknown-format artefact is still a
+failure, and a `waiver:` never rescues one.
+
+Current state, re-derived by running the gate rather than recorded from a
+previous run: **OK at tier V2, 45 scenarios, 4 oracle classes, stability
+present**; 10 artefacts resolve outside the package, 45 carry no
+machine-checkable oracle, and 1 waiver stands -- the interval-coverage
+study's 10 replicates per cell against the tier floor, described in full
+below. The structural gates (F20, F21, F22 in `rpkg_audit.py`) read the
+registry itself and pass as before.
 
 ## `execution_grid/`
 
@@ -196,13 +205,19 @@ cell.
 of `error_untyped` and the count of `DIVERGENT`, and both are meant to
 be zero.
 
-## Validation tier V3: what is declared, and what is waived
+## Validation tier V2: what is declared, and what V3 would add
 
-`DESCRIPTION` declares `Config/rpkg/validationTier: V3`. The tier is
-assigned because the outputs feed agronomic decisions, which is the
-ladder's V3 rule, not because the evidence is complete. Four things the
-tier asks for are not met by the studies registered above, and they are
-waived here rather than left to be discovered.
+`DESCRIPTION` declares `Config/rpkg/validationTier: V2`. V2 is what the
+studies registered above actually support.
+
+An earlier line of this package declared V3 -- the tier the ladder
+assigns when outputs feed agronomic decisions -- and waived four of its
+floors. That waiver was written for 0.9.2 and expired at the next
+release. It is not re-issued: a second consecutive waiver on the same
+four floors is the pattern a waiver exists to prevent, and declaring the
+tier the evidence supports is better than declaring one above it and
+carrying an exception. The four floors below are the next validation
+arc, and they are recorded here rather than left to be discovered.
 
 - Reason (F21, stochastic calibration): the registry carries one
   calibration scenario, `calibration-interval-coverage-recovery`. It is
@@ -251,11 +266,9 @@ waived here rather than left to be discovered.
   which is the self-oracle failure the register exists to prevent. A
   document that fails its own gate is worse than a recorded absence.
 
-- Version: this waiver applies to **0.9.2** and expires at the next
-  release.
 - Owner: Max Moldovan
 
-The waived floors are the next validation arc, not a permanent state:
+These four floors are the next validation arc, not a permanent state:
 a simulation-based calibration and an interval-coverage study of at
 least 1,000 replicates, run through `flexybayes()` on the two active
 engines and including a null-recovery cell at two sample sizes, is what

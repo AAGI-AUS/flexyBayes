@@ -22,7 +22,8 @@ flexybayes_stream(
 \arguments{
 \item{fixed}{A two-sided formula \code{response ~ fixed_terms}. The fixed
 terms must be factors or factor interactions; a continuous term
-forces one cell per row and is refused.}
+forces one cell per row and is refused. \code{offset()} terms are allowed
+on the Gaussian and Poisson families; see Details.}
 
 \item{random}{A one-sided formula of random-intercept grouping factors,
 ASReml style (for example \code{~ geno}), or \code{NULL} for no random terms.}
@@ -40,8 +41,9 @@ or \code{"poisson"}.}
 \item{trials}{For \code{family = "binomial"}, the name of the trials-count
 column, or \code{NULL} for Bernoulli (one trial per row).}
 
-\item{exposure}{For \code{family = "poisson"}, the name of the exposure /
-offset column, or \code{NULL} for unit exposure.}
+\item{exposure}{For \code{family = "poisson"}, the name of the exposure
+column, or \code{NULL} for unit exposure. An \code{offset(log(E))} in \code{fixed}
+is the same model as \code{exposure = "E"}.}
 
 \item{backend}{The estimation backend. \code{"inla"} is the default and the
 only active choice: INLA is the one engine with an aggregated emit.
@@ -93,11 +95,25 @@ effects, random slopes, structured covariance, and smooth terms break
 the cell-constant linear-predictor property and are likewise refused
 -- pass the data to \code{\link[=flexybayes]{flexybayes()}} per row for those models.
 
-Supported families are \code{"gaussian"} (identity link), \code{"binomial"},
-and \code{"poisson"}. For binomial data supply \code{trials} to name the column
-of trial counts (a 0/1 response is treated as Bernoulli with one trial
-per row). For poisson data supply \code{exposure} to name an exposure /
-offset column.
+Supported families for a fit are \code{"binomial"} and \code{"poisson"}. A
+\code{"gaussian"} fit refuses by name
+(\code{aggregation_residual_prior_not_composed}): the aggregated Gaussian
+route cannot yet carry the residual prior, so fit such data per row
+with \code{\link[=flexybayes]{flexybayes()}}. \code{fit = FALSE} still returns the Gaussian
+sufficient statistics. For binomial data supply \code{trials} to name the
+column of trial counts (a 0/1 response is treated as Bernoulli with one
+trial per row). For poisson data supply \code{exposure} to name an exposure
+column. A fit on the aggregated representation reports no marginal
+likelihood (\code{aggregated_evidence_unavailable}).
+
+An \code{offset()} in \code{fixed} is carried exactly on two of the three
+families. On \code{"gaussian"} it is subtracted from the response before the
+cell statistics are taken, which reproduces the per-row likelihood
+however the offset varies inside a cell. On \code{"poisson"}, \code{offset(o)}
+multiplies each row's exposure by \code{exp(o)}, so \code{offset(log(E))} and
+\code{exposure = "E"} fit the same model; given both, they multiply. On
+\code{"binomial"} a cell total of rows whose offsets differ is not binomial,
+and the call refuses with \code{fixed_offset_unsupported}.
 }
 \examples{
 \dontshow{if (interactive() && requireNamespace("fst", quietly = TRUE)) withAutoprint(\{ # examplesIf}
@@ -110,12 +126,12 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   df <- data.frame(
     env = factor(sample(letters[1:6], n, replace = TRUE)),
     geno = factor(sample(1:50, n, replace = TRUE)),
-    y = rnorm(n)
+    count = rpois(n, 3)
   )
   path <- tempfile(fileext = ".fst")
   fst::write_fst(df, path)
-  fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
-                           backend = "inla")
+  fit <- flexybayes_stream(count ~ env, random = ~ geno, source = path,
+                           family = "poisson", backend = "inla")
   summary(fit)
 }
 \dontshow{\}) # examplesIf}

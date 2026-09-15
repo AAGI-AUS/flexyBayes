@@ -107,8 +107,9 @@
 #' the INLA route discarded such a row silently while
 #' [prior_summary()] printed it as applied, so a prior-sensitivity
 #' analysis could vary a scale and compare the engine's default with
-#' itself. Whatever `prior_summary()` shows on a fit now reached the
-#' engine.
+#' itself. `prior_summary()` lists each prior with the engine slot it
+#' reached, as the engine reports it after fitting, and names each stated
+#' or default prior that reached no slot, with the reason.
 #'
 #' A prior naming a coefficient or a variance component the model does
 #' not have is likewise refused at the fit, against the engine's own
@@ -229,8 +230,32 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           )
         ))
       }
-      name <- as.character(args_list[[1]])
-      return(list(type = "b", name = name))
+      # One coefficient, named by a string or a bare symbol. Anything else
+      # used to reach as.character() on the unevaluated argument, which
+      # deparses a call head-first: b(c("x", "z")) became the three names
+      # c("c", "x", "z") and b(starts_with("x")) became c("starts_with", "x").
+      # Neither was refused; the phantom head survived fb_plan() and the
+      # length-3 target then failed inside the emitter with the base error
+      # "the condition has length > 1" -- an R internals message about a
+      # formula the user wrote. Vector and tidy-select targets are a real
+      # feature and need a typed term resolver, not a coercion; until that
+      # exists the refusal names what was written and what b() takes.
+      raw <- args_list[[1]]
+      ok <- is.symbol(raw) ||
+        (is.character(raw) && length(raw) == 1L && !is.na(raw))
+      if (!ok) {
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_not_a_single_name",
+          message = paste0(
+            "`b(", paste(deparse(raw), collapse = ""), ")` does not name one ",
+            "coefficient. b() takes a single coefficient name, written as a ",
+            "string -- b(\"treatment\") -- or as a bare symbol -- b(treatment).",
+            "\nA vector or a tidy-select helper is not yet supported: give ",
+            "each coefficient its own row in fb_prior()."
+          )
+        ))
+      }
+      return(list(type = "b", name = as.character(raw)))
     }
 
     if (fn == "cor") {
@@ -719,8 +744,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(list(scale = 2.5, basis = "logit_default"))
   }
 
-  y <- if (!is.null(data) && response %in% names(data)) {
-    data[[response]]
+  y <- if (is.data.frame(data)) {
+    .fb_response_values(list(response = response), data)
   } else {
     NULL
   }
@@ -816,7 +841,63 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Gelman (2006, Bayesian Analysis 1(3):515-534) recommends a half-t /
 # half-Cauchy instead -- available via fb_prior(); see the priors
 # vignette.
-.default_uniform_scale <- function(data, response, family, link = NULL) {
+#
+# `resp_sd`, when given, is the response standard deviation read from
+# somewhere other than `data` -- the streamed route holds only a head sample
+# of the rows and reads it off the full sufficient statistics instead.
+.default_uniform_scale <- function(data, response, family, link = NULL,
+                                   resp_sd = NULL) {
+  link_class <- .fb_default_link_class(family, link)
+
+  if (identical(link_class, "logit")) {
+    return(list(scale = 5, basis = "logit_uniform"))
+  }
+
+  if (identical(link_class, "log")) {
+    return(list(scale = 3, basis = "log_link_uniform"))
+  }
+
+  if (!is.null(resp_sd)) {
+    sdv <- resp_sd
+    if (!is.finite(sdv) || sdv <= 0) {
+      sdv <- 1.0
+    }
+    return(list(
+      scale = .FB_UNIFORM_SD_MULTIPLIER * sdv,
+      basis = "identity_sd_uniform"
+    ))
+  }
+
+  # A transformed response, log(y) or I(10 * y), is not a column: it is read
+  # through the same resolver the rest of the fit uses, so the bound is five
+  # standard deviations of the quantity the residual is written on.
+  y <- if (is.data.frame(data)) {
+    .fb_response_values(list(response = response), data)
+  } else {
+    NULL
+  }
+
+  if (!is.numeric(y)) {
+    return(list(scale = 1.0, basis = "identity_default_uniform"))
+  }
+  yv <- as.numeric(y)
+  yv <- yv[is.finite(yv)]
+  if (length(yv) < 2L) {
+    return(list(scale = 1.0, basis = "identity_too_small_uniform"))
+  }
+  sdv <- stats::sd(yv)
+  if (!is.finite(sdv) || sdv <= 0) {
+    sdv <- 1.0
+  }
+  list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
+}
+
+# Which scale a default prior is written on: "logit" and "log" for the links
+# whose linear predictor is unit-free, "identity" for everything whose
+# linear predictor carries the response's units. Shared by the
+# variance-component default above and the fixed-effect default on INLA
+# (R/inla_default_priors.R), so the two cannot classify a family differently.
+.fb_default_link_class <- function(family, link = NULL) {
   fam <- if (inherits(family, "family")) {
     family$family
   } else {
@@ -844,32 +925,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     fam %in% c("binomial", "binary", "beta")
 
   if (is_logit_link) {
-    return(list(scale = 5, basis = "logit_uniform"))
+    return("logit")
   }
-
   if (is_log_link) {
-    return(list(scale = 3, basis = "log_link_uniform"))
+    return("log")
   }
-
-  y <- if (!is.null(data) && response %in% names(data)) {
-    data[[response]]
-  } else {
-    NULL
-  }
-
-  if (!is.numeric(y)) {
-    return(list(scale = 1.0, basis = "identity_default_uniform"))
-  }
-  yv <- as.numeric(y)
-  yv <- yv[is.finite(yv)]
-  if (length(yv) < 2L) {
-    return(list(scale = 1.0, basis = "identity_too_small_uniform"))
-  }
-  sdv <- stats::sd(yv)
-  if (!is.finite(sdv) || sdv <= 0) {
-    sdv <- 1.0
-  }
-  list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
+  "identity"
 }
 
 # Construct the v0.1 default uniform prior fb_prior() for a model.
@@ -900,9 +961,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   family,
   link = NULL,
   random_groups = character(0),
-  vm_ped_groups = character(0)
+  vm_ped_groups = character(0),
+  resp_sd = NULL
 ) {
-  scl <- .default_uniform_scale(data, response, family, link)
+  scl <- .default_uniform_scale(data, response, family, link, resp_sd = resp_sd)
   specs <- list(list(
     target = list(type = "sigma"),
     spec = list(family = "uniform", args = list(lower = 0, upper = scl$scale))
@@ -994,6 +1056,27 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
+    # (x | g) -- the same two standard deviations, plus the correlation
+    # between them. brms takes an SD prior on both; the correlation keeps
+    # brms's LKJ, which the prior DSL does not carry.
+    if (identical(ttype, "simple_slope_cor")) {
+      if (!is.null(t$var) && nzchar(t$var)) {
+        shared <- c(shared, t$var)
+      }
+      if (!is.null(t$slope_var) && nzchar(t$slope_var)) {
+        shared <- c(shared, paste0(t$slope_var, "_", t$var))
+        add_engine(
+          paste0("cor_", t$var),
+          paste0(
+            "(", t$slope_var, " | ", t$var, ") intercept-slope correlation ",
+            "keeps brms's default LKJ prior; flexyBayes sets no correlation ",
+            "prior"
+          )
+        )
+      }
+      next
+    }
+
     if (ttype %in% c("vm", "ped")) {
       if (!is.null(t$var) && nzchar(t$var)) {
         vm_ped <- c(vm_ped, t$var)
@@ -1023,6 +1106,28 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     # us(f):g -- the same per-level SDs, plus a correlation block. The SDs
     # take the shared default; the correlations keep brms's own LKJ, which
     # has no counterpart in the prior DSL and no INLA analogue.
+    # fa(f, k):g -- the common factors and the per-level specific variances
+    # are ordinary iid fields keyed by the inner group, so the shared SD
+    # default reaches them. It has to: left on INLA's default log-gamma
+    # precision, the specific variance at the level with the largest loading
+    # collapses to zero (measured: a true 0.25 came back at 0.007). The
+    # LOADINGS are copy-scaling parameters with no SD prior to set, so they
+    # keep the engine's own and are recorded as such.
+    if (identical(ttype, "fa_gxe")) {
+      if (!is.null(t$inner) && nzchar(t$inner)) {
+        shared <- c(shared, t$inner)
+        add_engine(
+          paste0("loadings_", t$inner),
+          paste0(
+            "fa(", t$outer, ", ", t$k, "):", t$inner,
+            " loadings are INLA copy-scaling parameters; flexyBayes sets ",
+            "no prior on them"
+          )
+        )
+      }
+      next
+    }
+
     if (identical(ttype, "us_gxe")) {
       if (!is.null(t$inner) && nzchar(t$inner)) {
         shared <- c(shared, t$inner)
@@ -1107,10 +1212,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: variance-component prior default is uniform(0, ",
+    "flexyBayes: variance-component prior default is uniform(0, U), U = ",
     format(scale, digits = 3),
-    ") on every SD (residual sigma + ",
-    "every named random-effect group): a weakly-informative choice ",
+    ", on the residual sigma and every named random-effect group; on INLA ",
+    "the SD of an uncorrelated random slope on a numeric covariate x takes ",
+    "uniform(0, U / sd(x)) instead. This is a weakly-informative choice ",
     "for moderate group counts. For very small groups, Gelman (2006) ",
     "recommends a half-Cauchy instead -- see ?fb_prior. Scale basis = \"",
     basis,
@@ -1203,14 +1309,29 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # Before 0.9.2 the INLA route consumed no legacy scalar at all: a fit
 # passed `prior_vc_sd = 3` ran under INLA's own log-gamma precision
 # default while `prior_summary()` printed the lognormal in its header.
-.inla_lognormal_sd_expr <- function(scale) {
+#
+# A location mu on log sigma, which the standardised INLA fit needs
+# (R/inla_standardise.R), generalises the last term to
+# -(theta / 2 + mu)^2 / (2 s^2); at mu = 0 the expression is unchanged.
+.inla_lognormal_sd_expr <- function(scale, location = 0) {
+  if (identical(location, 0)) {
+    return(sprintf(
+      paste0(
+        "expression: s=%.16g;",
+        " return( -log(2.0) - log(s) - 0.5*log(2*3.141592653589793)",
+        " - (theta*theta)/(8.0*s*s) );"
+      ),
+      scale
+    ))
+  }
   sprintf(
     paste0(
-      "expression: s=%.16g;",
+      "expression: s=%.16g; mu=%.16g; u=theta/2.0+mu;",
       " return( -log(2.0) - log(s) - 0.5*log(2*3.141592653589793)",
-      " - (theta*theta)/(8.0*s*s) );"
+      " - (u*u)/(2.0*s*s) );"
     ),
-    scale
+    scale,
+    location
   )
 }
 

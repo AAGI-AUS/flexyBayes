@@ -20,7 +20,10 @@
 \item{object}{A \code{flexybayes_brms} object.}
 
 \item{newdata}{Optional data.frame at which to predict. When
-omitted, returns the in-sample posterior summary.}
+omitted, returns the in-sample posterior summary. On a model with an
+\code{offset()} brms evaluates the offset on \code{newdata}, so \code{newdata} needs
+every column the offset reads; an absent one refuses with
+\code{newdata_offset_missing} rather than being taken as zero.}
 
 \item{type}{\code{"response"} (default; posterior_epred) or \code{"link"}
 (posterior_linpred).}
@@ -46,6 +49,14 @@ proportion. Default \code{0.95}.}
 
 \item{...}{Forwarded to \code{brms::posterior_epred()} /
 \code{brms::posterior_linpred()}.}
+}
+\value{
+One of four shapes, by argument. With \code{classify} set, the
+marginal-means table for those factors. Otherwise with
+\code{summary = FALSE}, the \verb{draws x rows} posterior matrix; with
+\code{se.fit = TRUE}, a list of \code{fit} (posterior mean per row) and
+\code{se.fit} (posterior SD per row); and by default a numeric vector of
+posterior means, one per row of \code{newdata} or of the fitted data.
 }
 \description{
 Delegates to brms's \code{posterior_epred()} (response-scale posterior

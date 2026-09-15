@@ -115,8 +115,16 @@ test_that("summary() returns the eleven-slot object on an INLA fit", {
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
   s <- res$value
 
-  expect_false(res$visible)
-  expect_true(length(captured) > 0L)
+  # The corrected S3 contract: summary() computes and returns VISIBLY, so a
+  # bare call at the console auto-prints through print.summary.flexybayes()
+  # and an assignment is silent. These two lines used to assert the
+  # opposite -- an invisible return plus a side-effect print -- which is how
+  # the defect survived: it was written down as the expected behaviour.
+  expect_true(res$visible)
+  # And nothing was printed on the way: the whole expression is an
+  # assignment, so under the corrected contract there is no side effect to
+  # capture. This line previously asserted that there WAS one.
+  expect_identical(length(captured), 0L)
   expect_identical(class(s), c("summary.flexybayes", "list"))
   expect_identical(names(s), .SAS_SLOTS)
   expect_identical(s$engine, "inla")
@@ -131,8 +139,16 @@ test_that("summary() returns the eleven-slot object on a brms fit", {
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
   s <- res$value
 
-  expect_false(res$visible)
-  expect_true(length(captured) > 0L)
+  # The corrected S3 contract: summary() computes and returns VISIBLY, so a
+  # bare call at the console auto-prints through print.summary.flexybayes()
+  # and an assignment is silent. These two lines used to assert the
+  # opposite -- an invisible return plus a side-effect print -- which is how
+  # the defect survived: it was written down as the expected behaviour.
+  expect_true(res$visible)
+  # And nothing was printed on the way: the whole expression is an
+  # assignment, so under the corrected contract there is no side effect to
+  # capture. This line previously asserted that there WAS one.
+  expect_identical(length(captured), 0L)
   expect_identical(class(s), c("summary.flexybayes", "list"))
   expect_identical(names(s), .SAS_SLOTS)
   expect_identical(s$engine, "brms")
@@ -153,7 +169,7 @@ test_that("$varcomp carries the frozen columns and rows on both engines", {
 
   for (nm in names(fits)) {
     s <- suppressMessages(
-      utils::capture.output(out <- summary(fits[[nm]]))
+      utils::capture.output(print(out <- summary(fits[[nm]])))
     )
     expect_true(is.data.frame(out$varcomp), label = nm)
     expect_true(
@@ -174,7 +190,7 @@ test_that("$missing is an empty typed frame and never NULL", {
   skip_on_ci()
   .sas_silence()
   s <- suppressMessages(
-    utils::capture.output(out <- summary(.sas_inla_fit()))
+    utils::capture.output(print(out <- summary(.sas_inla_fit())))
   )
   expect_true(is.data.frame(out$missing))
   expect_identical(
@@ -189,7 +205,7 @@ test_that("the counts and the model line come off the fit, not a formula", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_inla_fit()
-  s <- suppressMessages(utils::capture.output(out <- summary(fit)))
+  s <- suppressMessages(utils::capture.output(print(out <- summary(fit))))
 
   expect_identical(out$n_design, 60L)
   expect_identical(out$n_observed, 60L)
@@ -220,7 +236,7 @@ test_that("no Wald vocabulary reaches the object or the print", {
   skip_if(length(fits) == 0L, "neither engine installed")
 
   for (nm in names(fits)) {
-    printed <- utils::capture.output(out <- summary(fits[[nm]]))
+    printed <- utils::capture.output(print(out <- summary(fits[[nm]])))
     joined <- paste(printed, collapse = "\n")
     for (tok in .SAS_FORBIDDEN) {
       expect_false(
@@ -250,7 +266,7 @@ test_that("INLA SD components equal the marginal transform, not 1/sqrt(mean)", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_inla_fit()
-  s <- suppressMessages(utils::capture.output(out <- summary(fit)))
+  s <- suppressMessages(utils::capture.output(print(out <- summary(fit))))
 
   hp <- fit$inla$summary.hyperpar
   marg <- fit$inla$marginals.hyperpar
@@ -342,7 +358,7 @@ test_that("a correlation hyperparameter is not put through the SD transform", {
     y ~ 1, random = ~ ar1(row):ar1(col), data = g,
     backend = "inla", verbose = FALSE
   ))
-  s <- suppressMessages(utils::capture.output(out <- summary(fit)))
+  s <- suppressMessages(utils::capture.output(print(out <- summary(fit))))
 
   expect_true(all(c("rho_row", "rho_col") %in% out$varcomp$component))
   rho <- out$varcomp[out$varcomp$component == "rho_row", ]
@@ -374,7 +390,7 @@ test_that("the prior cell is the resolved prior, not a second rendering", {
 
   for (nm in names(fits)) {
     fit <- fits[[nm]]
-    printed <- utils::capture.output(out <- summary(fit))
+    printed <- utils::capture.output(print(out <- summary(fit)))
     ps <- prior_summary(fit)
     expect_identical(ps$kind, "fb_prior", label = nm)
 
@@ -405,7 +421,7 @@ test_that("an INLA fit reports its own diagnostics and no R-hat", {
   skip_on_cran()
   skip_on_ci()
   .sas_silence()
-  printed <- utils::capture.output(out <- summary(.sas_inla_fit()))
+  printed <- utils::capture.output(print(out <- summary(.sas_inla_fit())))
   cv <- out$converge
 
   expect_true(is.list(cv))
@@ -426,7 +442,7 @@ test_that("a brms fit reports R-hat, both ESS flavours and divergences", {
   skip_on_cran()
   skip_on_ci()
   .sas_silence()
-  printed <- utils::capture.output(out <- summary(.sas_brms_fit()))
+  printed <- utils::capture.output(print(out <- summary(.sas_brms_fit())))
   cv <- out$converge
 
   expect_true(all(
@@ -612,7 +628,7 @@ test_that("summary() carries $spatial_field on a fit with an AR1 field", {
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  invisible(utils::capture.output(s <- summary(fit)))
+  invisible(utils::capture.output(print(s <- summary(fit))))
 
   expect_identical(names(s), c(.SAS_SLOTS, "spatial_field"))
   fld <- s$spatial_field
@@ -631,7 +647,7 @@ test_that("a fit without a field has no $spatial_field slot at all", {
   skip_on_cran()
   skip_on_ci()
   .sas_silence()
-  invisible(utils::capture.output(s <- summary(.sas_inla_fit())))
+  invisible(utils::capture.output(print(s <- summary(.sas_inla_fit()))))
   expect_identical(names(s), .SAS_SLOTS)
   expect_false("spatial_field" %in% names(s))
 })
@@ -695,6 +711,70 @@ test_that("an unbuildable variance-component table warns and keeps the fit", {
   expect_true(is.data.frame(fit$inla$summary.hyperpar))
 })
 
+# The unbuildable table is not only a reporting failure. On a Poisson model
+# with two random intercepts under the default uniform-SD(0, 3) bound, about
+# half of identical INLA runs put a precision mode at 4.7e-07 (an SD near
+# 1,450, where the prior's log-density is -1e10) and the table then fails;
+# brms on the same model puts that SD at 0.53. The warning used to say the
+# posterior was unaffected, which is false for those fits.
+test_that("the unbuildable-table warning does not vouch for the posterior", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("testthat", "3.2.0")
+  skip_on_cran()
+  skip_on_ci()
+  .sas_silence()
+
+  testthat::local_mocked_bindings(
+    .inla_variance_comps = function(...) {
+      stop("zero non-NA points", call. = FALSE)
+    },
+    .package = "flexyBayes"
+  )
+
+  msgs <- testthat::capture_warnings(suppressMessages(flexybayes(
+    y ~ x,
+    random = ~g,
+    data = .sas_data(),
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  )))
+  table_msg <- msgs[grepl("variance-component table could not be built", msgs)]
+
+  expect_length(table_msg, 1L)
+  expect_false(grepl("unaffected", table_msg))
+  expect_match(table_msg, "summary.hyperpar", fixed = TRUE)
+  expect_match(table_msg, "bound", fixed = TRUE)
+})
+
+test_that("the dropped-row warning does not vouch for the fit either", {
+  # A precision whose marginal is missing, or whose summaries are not finite,
+  # loses its row with a warning of its own. That path is reached by the same
+  # degenerate marginals, so it may not call the fit unaffected.
+  skip_if_not_installed("INLA")
+  object <- list(
+    inla = list(
+      summary.hyperpar = data.frame(
+        mean = 1, sd = 1, `0.025quant` = 0.5, `0.975quant` = 1.5,
+        row.names = "Precision for g",
+        check.names = FALSE
+      ),
+      marginals.hyperpar = list()
+    ),
+    fb = NULL
+  )
+
+  msgs <- testthat::capture_warnings(vc <- .inla_variance_comps(object))
+  row_msg <- msgs[grepl("no usable posterior marginal", msgs)]
+
+  expect_equal(nrow(vc), 0L)
+  expect_length(row_msg, 1L)
+  expect_false(grepl("unaffected", row_msg))
+  expect_match(row_msg, "summary.hyperpar", fixed = TRUE)
+  expect_match(row_msg, "bound", fixed = TRUE)
+})
+
 
 # ---------------------------------------------------------------- #
 # 8. The aggregated representation returns the same object          #
@@ -729,12 +809,18 @@ test_that("an unbuildable variance-component table warns and keeps the fit", {
   d
 }
 
+# A Gaussian model is not fitted on the aggregated representation (its route
+# cannot carry the residual prior), so the aggregated fixture is a Poisson
+# fit of the same design.
 .sas_agg_fit <- function() {
   if (is.null(.sas_cache$agg)) {
+    d <- .sas_agg_data()
+    d$y <- stats::rpois(nrow(d), lambda = 3)
     .sas_cache$agg <- suppressMessages(flexybayes(
       y ~ f,
       random = ~g,
-      data = .sas_agg_data(),
+      data = d,
+      family = "poisson",
       backend = "inla",
       aggregate = TRUE,
       verbose = FALSE,
@@ -757,8 +843,16 @@ test_that("an aggregated fit returns the same eleven-slot object", {
   captured <- utils::capture.output(res <- withVisible(summary(fit)))
   s <- res$value
 
-  expect_false(res$visible)
-  expect_true(length(captured) > 0L)
+  # The corrected S3 contract: summary() computes and returns VISIBLY, so a
+  # bare call at the console auto-prints through print.summary.flexybayes()
+  # and an assignment is silent. These two lines used to assert the
+  # opposite -- an invisible return plus a side-effect print -- which is how
+  # the defect survived: it was written down as the expected behaviour.
+  expect_true(res$visible)
+  # And nothing was printed on the way: the whole expression is an
+  # assignment, so under the corrected contract there is no side effect to
+  # capture. This line previously asserted that there WAS one.
+  expect_identical(length(captured), 0L)
   expect_identical(class(s), c("summary.flexybayes", "list"))
   expect_true(all(.SAS_SLOTS %in% names(s)))
   expect_identical(s$engine, "inla")
@@ -770,12 +864,13 @@ test_that("$varcomp on an aggregated fit is the frozen table, not NULL", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_agg_fit()
-  invisible(utils::capture.output(s <- summary(fit)))
+  invisible(utils::capture.output(print(s <- summary(fit))))
 
   expect_false(is.null(s$varcomp))
   expect_true(is.data.frame(s$varcomp))
   expect_identical(names(s$varcomp), .SAS_VARCOMP_COLS)
-  expect_true("sigma" %in% s$varcomp$component)
+  # A Poisson likelihood has no residual scale, so only the random-effect
+  # standard deviation has a row.
   expect_true("sd_g" %in% s$varcomp$component)
   # Every cell of the interval columns is a number, because the INLA
   # route has the marginals to compute one from.
@@ -792,7 +887,7 @@ test_that("aggregated SD components use the marginal transform", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_agg_fit()
-  invisible(utils::capture.output(s <- summary(fit)))
+  invisible(utils::capture.output(print(s <- summary(fit))))
 
   hp <- fit$inla$summary.hyperpar
   row <- grep("^Precision for g$", rownames(hp))
@@ -816,7 +911,7 @@ test_that("the aggregated object keeps every other frozen promise", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_agg_fit()
-  printed <- utils::capture.output(s <- summary(fit))
+  printed <- utils::capture.output(print(s <- summary(fit)))
   joined <- paste(printed, collapse = "\n")
 
   # No Wald vocabulary, on the object or the print.
@@ -848,12 +943,12 @@ test_that("the aggregated summary names its representation and compression", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_agg_fit()
-  printed <- utils::capture.output(s <- summary(fit))
+  printed <- utils::capture.output(print(s <- summary(fit)))
 
   # The banner names the representation where a per-row fit names the
   # engine, and the compression line is on the header.
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-gaussian]", printed, fixed = TRUE
+    "[flexyBayes / aggregated-poisson]", printed, fixed = TRUE
   )))
   expect_true(any(grepl("aggregation:.*->.*cells", printed)))
   expect_true(any(grepl("ratio.*:1", printed)))
@@ -869,7 +964,7 @@ test_that("no numerical confirm is reported where none ran", {
   skip_on_ci()
   .sas_silence()
   fit <- .sas_agg_fit()
-  printed <- utils::capture.output(s <- summary(fit))
+  printed <- utils::capture.output(print(s <- summary(fit)))
 
   # The aggregated route records no `num_check`. isTRUE(NULL) is FALSE,
   # so the slot used to report a failed check on a fit that never had
@@ -935,7 +1030,7 @@ test_that("an aggregated count fit carries the table too", {
   ))
   expect_s3_class(fit, "flexybayes_aggregated")
 
-  printed <- utils::capture.output(s <- summary(fit))
+  printed <- utils::capture.output(print(s <- summary(fit)))
   expect_identical(class(s), c("summary.flexybayes", "list"))
   expect_true(all(.SAS_SLOTS %in% names(s)))
   expect_identical(names(s$varcomp), .SAS_VARCOMP_COLS)

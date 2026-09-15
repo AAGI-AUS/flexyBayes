@@ -93,7 +93,7 @@
 #' methods are retained so a consumer can dispatch on the abstention rather
 #' than discovering the gap by a missing method.
 #'
-#' @export
+#' @keywords internal
 fb_log_posterior <- function(fit, ...) {
   UseMethod("fb_log_posterior")
 }
@@ -150,15 +150,14 @@ fb_log_posterior.flexybayes_inla <- function(fit, ...) {
 
 # Raise the classed abstention condition. Never returns.
 .fb_c4_abstain <- function(backend, detail) {
-  cond <- structure(
-    class = c("fb_c4_unavailable", "error", "condition"),
-    list(
-      message = paste0(
-        "No C4 log-density producer is available for ", backend, ".\n",
-        detail
-      ),
-      call = sys.call(-1L)
-    )
-  )
-  stop(cond)
+  caller <- sys.call(-1L)
+  stop(.fb_refusal_condition(
+    reason_code = "log_density_producer_unavailable",
+    message = paste0(
+      "No C4 log-density producer is available for ", backend, ".\n",
+      detail
+    ),
+    family_class = "fb_c4_unavailable",
+    call = caller
+  ))
 }

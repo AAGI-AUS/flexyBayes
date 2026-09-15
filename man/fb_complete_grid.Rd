@@ -54,6 +54,7 @@ than a default. A varying \emph{numeric} column is refused whatever
 \code{unused_level} says: a measured covariate has no level to name.
 }
 \examples{
+set.seed(1L)
 trial <- expand.grid(row = factor(1:4), col = factor(1:3))
 trial$yield <- rnorm(nrow(trial))
 holed <- trial[-c(2L, 7L), ]

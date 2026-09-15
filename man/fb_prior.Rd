@@ -86,8 +86,9 @@ distribution that engine does carry, or switch backend. Before 0.9.2
 the INLA route discarded such a row silently while
 \code{\link[=prior_summary]{prior_summary()}} printed it as applied, so a prior-sensitivity
 analysis could vary a scale and compare the engine's default with
-itself. Whatever \code{prior_summary()} shows on a fit now reached the
-engine.
+itself. \code{prior_summary()} lists each prior with the engine slot it
+reached, as the engine reports it after fitting, and names each stated
+or default prior that reached no slot, with the reason.
 
 A prior naming a coefficient or a variance component the model does
 not have is likewise refused at the fit, against the engine's own

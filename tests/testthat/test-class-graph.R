@@ -66,7 +66,7 @@ test_that("INLA-specific methods still win dispatch over the parent", {
 # The five parent methods with no INLA sibling                     #
 # ---------------------------------------------------------------- #
 
-test_that("nobs() answers correctly on an INLA fit through the parent", {
+test_that("nobs() on an INLA fit returns the fitted row count via the parent method", {
   skip_if_no_inla()
   fit <- fit_class_graph_inla()
 

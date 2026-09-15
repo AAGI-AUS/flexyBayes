@@ -70,7 +70,22 @@ universal entry's model slot: it accepts the ASReml \code{fixed} form
 bar-grouped formula such as \code{response ~ x + (1 | g)} (in which case
 the grouping lives in the formula and \code{random} / \code{residual} must be
 left \code{NULL}). The grammar is detected from the call shape; use
-\code{syntax} to force it.}
+\code{syntax} to force it.
+
+\strong{Offsets.} \code{offset()} terms in the fixed formula enter the linear
+predictor with a fixed coefficient of one on both engines, and several
+add. Each is evaluated against \code{data} and has to be a finite number on
+every row (\code{fixed_offset_invalid} otherwise). brms receives the terms
+in its formula; INLA receives the evaluated offset through \code{inla()}'s
+\code{offset} argument, and a Gaussian identity-link fit reads its centre,
+scale and default priors from the response minus the offset. The
+aggregated route carries an offset exactly on the Gaussian family
+(subtracted before the cell statistics are taken) and the Poisson
+family (as exposure), and refuses one on the binomial family
+(\code{fixed_offset_unsupported}), where \code{aggregate = "auto"} takes the
+per-row route. \code{predict()} on new data evaluates the offset there and
+refuses when a column it reads is absent (\code{newdata_offset_missing}).
+An \code{offset()} in \code{random} or \code{residual} is refused.}
 
 \item{random}{One-sided formula: \code{~ random_terms} using ASReml syntax.
 "Parsed" and "fitted" are not the same claim, so the term catalogue is
@@ -139,7 +154,19 @@ column correlation and field SD are \strong{shared across every level of
 per-trial (unshared) hyperparameters, and both are refused
 (\code{at_field_per_level_hyper_not_representable}): there is no lowering
 for a level-conditioned field or for hyperparameters that vary by
-level. brms has no lowering for this field at all and refuses.}
+level. brms has no lowering for this field at all and refuses.
+
+\strong{Units followed through time.} \code{ar1(t):g}, or the same term written
+\code{g:ar1(t)}, fits one AR1 series along \code{t} within each level of \code{g},
+independent across levels, with one correlation and one field SD
+shared by every level and the Gaussian nugget on top -- three
+hyperparameters. This is the units-by-occasions repeated-measures
+covariance of Verbyla and Cullis (1992) written on the random side:
+\code{g} indexes the plots, animals or series and \code{t} the occasions, whose
+levels must be in time order. An occasion a unit missed stays as a
+design row with the response \code{NA} under the default
+\code{na_action = "augment"}, and the \code{t} by \code{g} grid must be complete in
+that sense, one row per node. brms refuses, as for the other fields.}
 
 \item{residual}{One-sided formula: \code{~ residual_structure}. Default \code{~ units}
 (iid residuals). \code{~ dsum(~ units | env)}, and the equivalent
@@ -221,6 +248,10 @@ the model that was written down. \code{"omit"} drops the rows
 grid then refuses downstream. \code{"fail"} refuses if any response is
 missing, and leaves the design grid alone.
 
+A response value that is \code{NaN} or infinite, as \code{log(0)} gives, is not a
+missing observation. It refuses by name under every setting
+(\code{response_not_finite}); set it to \code{NA} to treat it as missing.
+
 The argument also accepts the object an ASReml user already writes,
 \code{asreml::na.method(y = , x = )}, and the bare list of the same shape
 for readers without an asreml licence:
@@ -240,10 +271,13 @@ its first element, which is the policy ASReml itself would use.
 
 Under ignorability the posterior for the model parameters is the
 same whether a missing response is augmented or omitted --
-augmentation preserves the representation, not information. Where
-missingness depends on the unobserved response itself, both are
-biased and neither this argument nor any diagnostic here will tell
-you so.}
+augmentation preserves the representation, not information. That
+identity is a statement about the posterior and not a promise about
+what an optimiser returns: the two settings hand the engine an
+intact design and a ragged one, and on a weakly identified mode they
+can land in different places. Where missingness depends on the
+unobserved response itself, both are biased and neither this
+argument nor any diagnostic here will tell you so.}
 
 \item{n_samples}{Integer: number of posterior samples per chain.}
 
@@ -271,7 +305,12 @@ default) uses brms's own settings. A no-op on the INLA path, as
 \item{prior}{An optional \code{fb_prior()} object specifying priors via the
 PC-canonical hybrid DSL (preferred). When supplied it overrides
 \code{prior_vc_sd} for the variance components it covers. See
-\code{\link[=fb_prior]{fb_prior()}}.}
+\code{\link[=fb_prior]{fb_prior()}}. On INLA, a random-effect standard deviation the prior
+does not name takes the package's bounded default, \code{uniform(0, U)}
+with the family-aware \code{U} described under \code{prior_vc_sd} (divided by
+the covariate's standard deviation for an uncorrelated slope), rather
+than INLA's own hyperprior; \code{\link[=prior_summary]{prior_summary()}} lists what was filled.
+A standard deviation the prior does name is left exactly as written.}
 
 \item{prior_fixed_sd}{Numeric: SD for fixed-effect normal priors,
 applied uniformly to the intercept, factor contrasts, continuous
@@ -289,13 +328,20 @@ literature for regression coefficients (e.g. Gelman et al. 2008,
 supply it}, on every backend: brms receives one \code{normal(0, sd)}
 row per fixed-effect class, and INLA receives \code{control.fixed} with
 \code{prec = 1 / sd^2} on the slopes and the intercept alike. Left
-unsupplied, each engine keeps its own
-fixed-effect default -- brms's flat coefficients and
-response-centred \code{student_t} intercept, INLA's \code{prec = 0.001} and
-flat intercept -- because replacing a response-centred intercept
-prior with \code{normal(0, 100)} is a different model for any response
-far from zero. \code{\link[=prior_summary]{prior_summary()}} names which of the two a fit ran
-under.}
+unsupplied, brms keeps its own fixed-effect default -- flat
+coefficients and a response-centred \code{student_t} intercept -- because
+replacing a response-centred intercept prior with \code{normal(0, 100)} is
+a different model for any response far from zero. INLA gives each
+column built from a numeric variable the covariate-scaled default
+\code{normal(0, 1e5 * sd(y) / sd(x))} on an identity link and
+\code{normal(0, sqrt(1000) / sd(x))} on a log or logit link, so a
+covariate's units do not change the fit, and keeps its own
+\code{prec = 0.001} on factor contrasts and its flat intercept.
+\code{\link[=prior_summary]{prior_summary()}} names what a fit ran under. A supplied value is
+never rescaled by a covariate: it is a standard deviation in response
+units per covariate unit, so on a covariate recorded in small units
+(a large coefficient) it can bind -- measure the covariate in natural
+units, or leave the argument unsupplied on INLA.}
 
 \item{prior_vc_sd}{Numeric: hyperparameter for the legacy
 \code{lognormal(0, prior_vc_sd)} variance-component prior. \strong{Note:}
@@ -304,7 +350,9 @@ v0.1 activates a bounded-uniform default on the SD scale
 (\code{uniform(0, U)} with family-aware \code{U}: \code{5 * sd(y)} for Gaussian;
 \code{5} on the logit scale for binomial / beta; \code{3} on the log scale
 for Poisson / negative-binomial / gamma) for \code{sigma} and every
-named random-effect group -- a weakly-informative choice for
+named random-effect group, with the bound on the standard deviation
+of an uncorrelated random slope divided by the standard deviation of
+its numeric covariate on INLA -- a weakly-informative choice for
 moderate group counts; for very small \code{J}, Gelman (2006), \emph{Bayesian
 Analysis} 1(3):515-534, recommends a half-t / half-Cauchy instead
 (see the priors vignette). The legacy \code{lognormal(0, 1)} default
@@ -339,7 +387,7 @@ before a long MCMC run. Default \code{FALSE} preserves the existing
 run-immediately semantics. A session-level override is available
 via \code{options(flexyBayes.review_code_default = TRUE)}; the
 argument value at call time always wins. Closest published
-precedent: \code{\link[brms:stancode]{brms::make_stancode()}} plus the \code{chains = 0} idiom
+precedent: \code{\link[brms:make_stancode]{brms::make_stancode()}} plus the \code{chains = 0} idiom
 for "do everything except sampling". \code{review_code = TRUE} and
 \code{return_code = TRUE} are mutually exclusive. brms is the only engine
 with a code slot, so \code{review_code = TRUE} is available under
@@ -360,7 +408,11 @@ when the model is latent-Gaussian feasible and INLA is installed.
 Otherwise it routes to brms when brms is installed \emph{and} its
 capability predicate accepts the model. When neither can represent
 the model, the call refuses with \code{auto_no_active_route} rather than
-fitting something else. There is no silent fallback.
+fitting something else. Nothing is translated silently. \code{auto} does
+change engine in one case after starting -- an INLA program failure
+is caught and re-routed to brms -- and that is reported by a message,
+never silently; the fit's class and \code{backend} field always record
+which engine produced it.
 \code{\link[=backend_decision]{backend_decision()}} surfaces the full dispatch trace (including
 \code{rejected_routes}) post-fit, and \code{\link[=fb_backend_status]{fb_backend_status()}} reports which
 engines are usable. The one-time notes on the auto path are
@@ -368,18 +420,9 @@ silenceable via \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} (ga
 \code{options(flexyBayes.silence_auto_inla_missing_note = TRUE)} (INLA not
 installed).
 
-\strong{What each engine represents.} INLA takes simple iid random
-effects, P-splines, the sparse-precision and pedigree carriers of
-\code{vm()} / \code{ped()}, and separable AR1 fields; it refuses
-heterogeneous variances (\code{diag} / \code{idh} / \code{at}), unstructured \code{us()},
-interaction random effects, and heterogeneous residuals. brms takes
-interaction random effects \code{(1 | a:b)}, uncorrelated random slopes
-\code{(x || g)}, heterogeneous genotype variances (\code{diag} / \code{idh} / \code{at}),
-unstructured \code{us(f):g}, per-level residual variances
-(\code{dsum(~ units | f)}), and the dense / Cholesky / precision carriers
-of \code{vm()} / \code{ped()}; it refuses correlated random slopes \code{(x | g)},
-AR1 residual structures, \code{corh()}, factor-analytic GxE, and splines.
-The generated per-class table is in \code{README.md} and
+\strong{What each engine represents.}
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Factor-analytic genotype-by-environment covariance; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+The per-class table with its notes is in \code{README.md} and
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 
 \strong{Caution (small-group random effects).} Both engines apply the same
@@ -416,16 +459,19 @@ INLA-side code slot lands.}
 \item{aggregate}{One of \code{"auto"} (default), \code{TRUE}, or \code{FALSE}.
 Exact sufficient-statistics aggregation gate. INLA is the only
 engine with an aggregated emit. \code{"auto"} consults the aggregation
-plan and routes through the per-cell path when the IR is in scope
-(gaussian-identity, binomial-logit, or poisson-log; fixed plus
-random intercept; productive compression) and the model reaches
-INLA. \code{TRUE} forces aggregation and raises a structured refusal when
-the plan declares ineligibility, or when no active engine offers an
-aggregated route. \code{FALSE} skips the gate entirely. Aggregated fits
-carry \verb{$exactness == "aggregated_exact"} and the dispatch trace's
-\code{path} slot reads \code{"aggregated_gaussian"} (gaussian) or
-\code{"aggregated_count"} (binomial / poisson). For out-of-core datasets
-that do not fit in memory, see \code{\link[=flexybayes_stream]{flexybayes_stream()}}.}
+plan and routes a binomial-logit or poisson-log model through the
+per-cell path when the IR is in scope (fixed plus random intercept;
+productive compression) and the model reaches INLA. A Gaussian model
+is fitted per row: the aggregated Gaussian route cannot yet carry the
+residual prior, so \code{TRUE} on a Gaussian model refuses by name
+(\code{aggregation_residual_prior_not_composed}). \code{TRUE} also raises a
+structured refusal when the plan declares ineligibility, or when no
+active engine offers an aggregated route. \code{FALSE} skips the gate
+entirely. Aggregated fits carry \verb{$exactness == "aggregated_exact"},
+the dispatch trace's \code{path} slot reads \code{"aggregated_count"}, and
+their summary reports no marginal likelihood
+(\code{aggregated_evidence_unavailable}). For out-of-core datasets that
+do not fit in memory, see \code{\link[=flexybayes_stream]{flexybayes_stream()}}.}
 
 \item{plan}{Logical: if \code{TRUE}, short-circuit after intermediate
 representation (IR) build and return a \verb{<fb_plan>} object
@@ -453,8 +499,8 @@ components.
 
 \describe{
 \item{\verb{$glm}}{A GLM-compatible object (class \code{c("flexybayes_glm", "glm", "lm")}) with posterior mean coefficients, vcov, residuals, fitted values,
-etc. Works with \code{summary()}, \code{emmeans()}, \code{marginaleffects()},
-\code{effectsize()}.}
+etc. Works with \code{summary()}, \code{emmeans()} and
+\code{marginaleffects()}.}
 \item{\verb{$brms} or \verb{$inla}}{The native backend object --- a live \code{brmsfit}
 on the brms path, or INLA's own fitted object on the INLA path. Use
 with \code{bayesplot}, \code{posterior::as_draws()}, and each engine's own

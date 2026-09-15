@@ -78,6 +78,10 @@ lgm_gate <- function(
 
   checks <- list(
     .lgm_check_family(fb), # check 1
+    # check 1b -- estimated correlation matrices go to brms. Ahead of the
+    # structural checks so that the refusal a user reads first is the one
+    # that names where the model is fitted.
+    .lgm_check_correlated_covariance(fb),
     .lgm_check_predictor(fb), # check 2
     .lgm_check_distributional(fb), # check 3
     .lgm_check_re_prior(fb), # check 4
@@ -86,11 +90,10 @@ lgm_gate <- function(
     .lgm_check_fixed_term_inla_support(fb), # check 7
     .lgm_check_random_term_inla_support(fb), # check 8
     .lgm_check_residual_term_inla_support(fb), # check 9
-    # check 10 -- conditional INLA-mapping
-    # verification for the factor_numeric_interaction term class.
-    # Refuses the INLA emit path when verification has not been run
-    # or did not pass on this host.
-    .lgm_check_factor_numeric_interaction_inla_verified(fb),
+    # check 9b -- us() order. INLA's iid2d..iid5d carry an unstructured
+    # covariance for k = 2..5; a wider one is both a different INLA model
+    # and k(k+1)/2 parameters, which is the problem fa() exists to solve.
+    .lgm_check_us_gxe_order(fb),
     # check 11 -- INLA-
     # specific memory-feasibility rule. Trivially passes when the
     # caller did not supply a preflight result (v0.3.5 backward-
@@ -99,7 +102,15 @@ lgm_gate <- function(
     # and refuses if the INLA projection exceeds the active
     # ceiling. See .lgm_check_memory_feasibility_inla() below for
     # the multiplier rationale.
-    .lgm_check_memory_feasibility_inla(fb, preflight)
+    .lgm_check_memory_feasibility_inla(fb, preflight),
+    # check 12 -- joint shrinkage priors. INLA's latent field is Gaussian
+    # given the hyperparameters, and a scale-mixture prior over the fixed
+    # effects is not: a regularised horseshoe is a global scale times
+    # per-coefficient local scales, and there is no hyperparameter
+    # configuration under which the nested Laplace approximation integrates
+    # it. The check exists because the alternative is a fit that runs, looks
+    # normal, and reports a posterior under a prior nobody asked for.
+    .lgm_check_prior_family_inla_support(fb)
     # post-fit numerical-confirm gate -- see emit_inla.
   )
 
@@ -171,60 +182,40 @@ is_lgm_refusal <- function(x) inherits(x, "lgm_refusal")
 
 #' Print method for lgm_refusal -- LGM feasibility refusal
 #'
-#' Internal S3 method, registered for dispatch only. Emits the
-#' structured refusal template: rule id + one-line gloss +
-#' diagnostic + re-route hint + override hint + docs pointer.
+#' Internal S3 method, registered for dispatch only. Prints why INLA
+#' cannot fit the model and what to do about it, and nothing else.
+#'
+#' The refusal used to print sixteen lines: a per-rule diagnostic string,
+#' four lines explaining what `backend = "auto"` already does, an
+#' unconditional sentence about a roadmap item for mixtures -- printed
+#' whether or not the model contained one -- and a two-argument override
+#' incantation. The R Journal review of 0.10.0 read one of these and said
+#' so. A refusal is read by someone who wanted a fit, so it now carries the
+#' reasons and one route onward; `rule_id` and `diagnostic` stay on the
+#' object for anything that wants to branch on them, and `?lgm_gate`
+#' documents the override.
 #'
 #' @param x   An `lgm_refusal` object, as returned by the feasibility
 #'   gate when a model falls outside the latent Gaussian class.
 #' @param ... Ignored. Present for compatibility with the generic.
-#' @returns Invisibly, `x` unchanged. Called for the refusal template it
-#'   prints.
+#' @returns Invisibly, `x` unchanged. Called for the refusal it prints.
+#' @seealso `vignette("flexyBayes-03-syntax")` lists every spelling the
+#'   package covers and what each refusal means.
 #' @keywords internal
 #' @export
 print.lgm_refusal <- function(x, ...) {
-  cat("flexyBayes: INLA backend refused for this model.\n")
-  cat(
-    "Reasons (",
-    x$n_failures,
-    " structural failure",
-    if (x$n_failures != 1L) "s" else "",
-    "):\n",
-    sep = ""
-  )
+  cat("flexyBayes: INLA cannot fit this model.\n")
   for (f in x$failures) {
     cat("  - [", f$rule_id, "] ", f$reason, "\n", sep = "")
-    if (!is.null(f$diagnostic)) {
-      cat("    Diagnostic: ", f$diagnostic, "\n", sep = "")
-    }
   }
-  if (length(x$warnings)) {
-    cat("Warnings:\n")
-    for (w in x$warnings) {
-      cat("  - [", w$rule_id, "] ", w$warning, "\n", sep = "")
-    }
+  for (w in x$warnings) {
+    cat("  ! [", w$rule_id, "] ", w$warning, "\n", sep = "")
   }
   cat(
-    "Re-route: brms is the other active engine -- pass backend = ",
-    "\"brms\"\n  (or call fb_brms()) when it can represent the model. ",
-    "Under the\n  default backend = \"auto\" that re-route is already ",
-    "attempted, and\n  auto refuses when brms cannot represent the model ",
-    "either.\n",
+    "Fit it with backend = \"brms\", or see ?lgm_gate for the rule ids ",
+    "and the override.\n",
     sep = ""
   )
-  cat(
-    "For mixtures with <= 2 components, the planned ",
-    "INLA-within-MCMC escape\n  (Gomez-Rubio & Rue 2018) is on ",
-    "the roadmap.\n",
-    sep = ""
-  )
-  cat("Override (not recommended): lgm_gate(fb, force = \"inla\",\n")
-  cat(
-    "  acknowledge_silent_bias_risk = TRUE, reason = \"<your ",
-    "reason>\")\n",
-    sep = ""
-  )
-  cat("Docs: vignette(\"flexyBayes-10-dispatch-and-refusals\").\n")
   invisible(x)
 }
 
@@ -233,11 +224,16 @@ print.lgm_refusal <- function(x, ...) {
 # ---------------------------------------------------------------- #
 #
 # Each check returns a list:
-#   list(rule_id    = character(1),
-#        pass       = logical(1),
-#        reason     = character(1) or NULL,
-#        diagnostic = character(1) or NULL,
-#        warning    = character(1) or NULL)
+#   list(rule_id     = character(1),
+#        pass        = logical(1),
+#        reason      = character(1) or NULL,
+#        diagnostic  = character(1) or NULL,
+#        warning     = character(1) or NULL,
+#        reason_code = character(1) or NULL)
+#
+# `reason_code` names a registered refusal. When the primary failure
+# carries one, an explicit backend = "inla" request raises that code rather
+# than the generic inla_gate_refused.
 
 .lgm_pass <- function(rule_id, warning = NULL) {
   list(
@@ -249,13 +245,14 @@ print.lgm_refusal <- function(x, ...) {
   )
 }
 
-.lgm_fail <- function(rule_id, reason, diagnostic = NULL) {
+.lgm_fail <- function(rule_id, reason, diagnostic = NULL, reason_code = NULL) {
   list(
     rule_id = rule_id,
     pass = FALSE,
     reason = reason,
     diagnostic = diagnostic,
-    warning = NULL
+    warning = NULL,
+    reason_code = reason_code
   )
 }
 
@@ -683,8 +680,7 @@ print.lgm_refusal <- function(x, ...) {
 # factor x continuous interactions -- to the allowlist. INLA's
 # native `f:x` notation handles this term shape directly for the
 # gaussian-identity case; non-gaussian cases have no active-engine
-# route per the INLA verification policy (see
-# .lgm_check_factor_numeric_interaction_inla_verified() below).
+# route to the engine that represents the term.
 .inla_fixed_term_type_allowlist <- function() {
   c(
     "factor",
@@ -701,15 +697,65 @@ print.lgm_refusal <- function(x, ...) {
 # variants) has no INLA representation; the refusal
 # text names the structured-covariance class.
 .inla_random_term_type_allowlist <- function() {
-  # "simple_slope_uncor" enters the allowlist
-  # conditionally -- the gate accepts so dispatch routes to emit_inla,
-  # but emit_inla itself consults the verification artefact at
-  # inst/extdata/inla-verification/simple_slope_uncor.rds and refuses
-  # with a deferral message if the three-arbitrator test
-  # has not passed. This keeps the gate truth = emit truth invariant:
-  # accept here means "INLA dispatch is attempted"; emit
-  # refusal is structurally distinguishable from gate refusal.
+  # "simple_slope_uncor" is an ordinary member: emit_inla() writes it as
+  # f(<g>, model = "iid") + f(<g>_for_slope, <x>, model = "iid"). It used
+  # to be conditional on a runtime verification artefact, retired at
+  # 0.10.0.9000 -- the agreement it asserted is checked in the suite
+  # against lme4, which is where every other capability claim here lives.
+  # "simple_slope_cor" is not a member: the INLA emit still builds its
+  # iid2d field, and .lgm_check_correlated_covariance() refuses it.
   c("simple", "ide", "id", "spline", "simple_slope_uncor")
+}
+
+# Check 1b -- estimated correlation matrices are fitted on brms.
+#
+# INLA carries an estimated correlation matrix as an iid2d or iidKd field
+# whose hyperparameters take one joint Wishart prior. That prior couples
+# the variances and the correlations whatever its scale, and fitted on INLA
+# neither structure reproduced REML's covariance nor stayed invariant to
+# rescaling the response: us(env):gen on agridat::besag.met returned a
+# genetic correlation of 0.142 against ASReml's 0.930, and (Days | Subject)
+# on lme4::sleepstudy a slope variance a third above REML's. brms fits both
+# under separate standard-deviation and correlation priors, so the gate
+# refuses them here and backend = "auto" routes them there. The INLA emit
+# branches remain; readmitting either structure is its own decision.
+.FB_INLA_CORRELATED_COV_TYPES <- c("simple_slope_cor", "us_gxe")
+
+.lgm_check_correlated_covariance <- function(fb) {
+  rule_id <- "correlated_covariance_requires_brms"
+  hits <- Filter(
+    function(t) (t$type %||% "") %in% .FB_INLA_CORRELATED_COV_TYPES,
+    fb$random_terms %||% list()
+  )
+  if (length(hits) == 0L) {
+    return(.lgm_pass(rule_id))
+  }
+  spellings <- vapply(hits, .fb_correlated_cov_spelling, character(1L))
+  .lgm_fail(
+    rule_id,
+    paste0(
+      paste(spellings, collapse = " and "),
+      " estimates a correlation matrix, and flexyBayes fits estimated ",
+      "correlation matrices on brms only. On INLA the term is one iid2d or ",
+      "iidKd field under a joint Wishart prior that couples the variances ",
+      "and the correlations, and on that route the fitted covariance did ",
+      "not match REML's and changed when the response was rescaled. Pass ",
+      "backend = \"brms\", or leave backend = \"auto\", which routes there."
+    ),
+    diagnostic = paste0(
+      "fb$random_terms type(s): ",
+      paste(vapply(hits, function(t) t$type, character(1L)), collapse = ", ")
+    ),
+    reason_code = rule_id
+  )
+}
+
+# The user's spelling of a correlated term, for the refusal message.
+.fb_correlated_cov_spelling <- function(term) {
+  if (identical(term$type, "us_gxe")) {
+    return(paste0("`us(", term$outer, "):", term$inner, "`"))
+  }
+  paste0("`(", term$slope_var, " | ", term$var, ")`")
 }
 
 # Allowlist: residual-term types that emit_inla()'s residual-term guard
@@ -722,7 +768,65 @@ print.lgm_refusal <- function(x, ...) {
   # residual -- so the residual spelling is refused by name at dispatch
   # (.refuse_unrepresentable_structures(), R/dispatch.R) and only the
   # homogeneous residual reaches the INLA emit.
-  c("units")
+  c("units", "at_units")
+}
+
+# A sectioned residual reaches INLA through the multiple-likelihood
+# interface, which carries one observation precision per section -- exactly
+# `dsum(~ units | f)`. The `level` argument conditions the residual on
+# selected levels instead, which is a different model, and stays refused.
+.fb_inla_sectioned_residual <- function(fb) {
+  for (term in fb$residual_terms %||% list()) {
+    if (identical(term$type %||% "", "at_units") && is.null(term$level)) {
+      return(term)
+    }
+  }
+  NULL
+}
+
+# Check 9b -- the order of an unstructured GxE covariance on INLA.
+#
+# INLA carries an unstructured k-dimensional covariance as iid2d..iid5d.
+# Beyond k = 5 the model is iidkd, whose parameterisation and hyperparameter
+# naming differ, and a k-level unstructured covariance costs k(k+1)/2
+# parameters -- 210 at k = 20 -- which is exactly the problem the
+# factor-analytic structure exists to solve. Refusing by name and pointing at
+# fa() is the correct answer rather than emitting a model nobody can fit.
+.FB_INLA_US_MAX_ORDER <- 5L
+
+.lgm_check_us_gxe_order <- function(fb) {
+  rule_id <- "us_gxe_order_inla"
+  for (term in fb$random_terms %||% list()) {
+    if (!identical(term$type %||% "", "us_gxe")) {
+      next
+    }
+    k <- term$n_outer %||% length(term$outer_levels %||% character(0))
+    if (is.numeric(k) && k > .FB_INLA_US_MAX_ORDER) {
+      return(.lgm_fail(
+        rule_id,
+        paste0(
+          "us(",
+          term$outer,
+          "):",
+          term$inner,
+          " asks for an unstructured covariance across ",
+          k,
+          " levels, which is ",
+          k * (k + 1L) / 2L,
+          " parameters. INLA carries an unstructured covariance up to ",
+          .FB_INLA_US_MAX_ORDER,
+          " levels (iid2d..iid5d). Use fa(",
+          term$outer,
+          ", k):",
+          term$inner,
+          " for a reduced-rank covariance at this width, or ",
+          "backend = \"brms\", which emits the full structure."
+        ),
+        diagnostic = paste0("n_outer = ", k)
+      ))
+    }
+  }
+  .lgm_pass(rule_id)
 }
 
 # What the OTHER active engine does with this model, asked rather than
@@ -824,8 +928,7 @@ print.lgm_refusal <- function(x, ...) {
 #
 # emit_inla()'s random-effect switch() recognises simple / ide /
 # id (mapped to INLA "iid"), spline (mapped to INLA "rw2"), and
-# simple_slope_uncor (mapped via the verification
-# gate). vm / ped enter the allowlist *conditionally*: the
+# simple_slope_uncor (two independent iid fields). vm / ped enter the allowlist *conditionally*: the
 # precision and pedigree_sparse_precision formats route through
 # INLA's f(model = "generic0", Cmatrix = Q) interface; the blocks
 # format (v0.3.10) routes through K independent
@@ -838,6 +941,11 @@ print.lgm_refusal <- function(x, ...) {
 .lgm_check_random_term_inla_support <- function(fb) {
   bad_terms <- list()
   for (term in fb$random_terms) {
+    # Refused by check 1b with its own reason; listing it here as well
+    # would add a second message calling it an emit gap, which it is not.
+    if ((term$type %||% "") %in% .FB_INLA_CORRELATED_COV_TYPES) {
+      next
+    }
     if (!.is_supported_random_term_for_inla(term)) {
       bad_terms[[length(bad_terms) + 1L]] <- term
     }
@@ -867,9 +975,10 @@ print.lgm_refusal <- function(x, ...) {
       )
     } else {
       paste0(
-        "INLA's f() machinery does not currently represent this term ",
-        "class without an SPDE / kronecker expansion that the current ",
-        "INLA emit does not produce. ",
+        "the INLA emit has no branch for this term class yet. This is a ",
+        "flexyBayes gap, not an INLA one: INLA represents a nested or ",
+        "interaction random effect as an ordinary iid field over the ",
+        "interaction index. Until the branch lands, ",
         .lgm_other_engine_note(fb)
       )
     }
@@ -913,7 +1022,32 @@ print.lgm_refusal <- function(x, ...) {
   if (!is.character(term$type)) {
     return(FALSE)
   }
-  if (term$type %in% c("simple", "ide", "id", "spline", "simple_slope_uncor")) {
+  if (
+    term$type %in%
+      c("simple", "ide", "id", "spline", "simple_slope_uncor")
+  ) {
+    return(TRUE)
+  }
+  # Nested / interaction random effects. INLA fits these as an iid field
+  # over the interaction index; .build_inla_formula() has the branch and
+  # emit_inla() builds the index. Verified against agridat::john.alpha,
+  # the alpha-design that reported this as a bug.
+  if (term$type %in% c("nested", "combo")) {
+    return(TRUE)
+  }
+  # diag(f):g / idh(f):g / at(f):g -- k independent iid fields, one per level
+  # of the outer factor. The `level` argument conditions on selected levels,
+  # which is a different model, and stays refused.
+  if (identical(term$type, "at_simple") && is.null(term$level)) {
+    return(TRUE)
+  }
+  # us(f):g is not accepted here: the INLA emit still builds its iidKd
+  # field, and .lgm_check_correlated_covariance() refuses it.
+  # fa(f, k):g -- a factor-analytic covariance. INLA writes each common
+  # factor once as an iid field and again per level as a SCALED COPY, and
+  # the copy's scaling parameter IS the loading. Identifiability (k <
+  # n_outer) is enforced at parse time.
+  if (identical(term$type, "fa_gxe")) {
     return(TRUE)
   }
   # WP16: AR1 (1D) and separable AR1xAR1 spatial latent fields on INLA.
@@ -937,9 +1071,11 @@ print.lgm_refusal <- function(x, ...) {
 
 # Check 9 -- Residual-term type allowlist for the INLA emit path.
 #
-# INLA folds residual variance into the likelihood and does not expose a
-# separate residual-structure surface. Only `units` (the homogeneous
-# residual) passes. A heterogeneous residual -- dsum(~ units | f), at(f):units
+# The INLA emit currently produces only `units`, the homogeneous residual.
+# That is a flexyBayes gap rather than an INLA one: INLA carries a residual
+# variance per section through its multiple-likelihood interface (a matrix
+# response with family = rep("gaussian", k)), verified 2026-09-09 against
+# a known truth. Until the emit branch lands, only `units` passes. A heterogeneous residual -- dsum(~ units | f), at(f):units
 # -- is emitted by brms as distributional regression on sigma; a separable
 # autoregressive residual is refused by name before the gate sees it, since
 # the field that would fit it belongs on the random side.
@@ -948,7 +1084,14 @@ print.lgm_refusal <- function(x, ...) {
   bad <- character(0)
   labels <- character(0)
   for (term in fb$residual_terms) {
-    if (!is.character(term$type) || !(term$type %in% allowed)) {
+    ok <- is.character(term$type) && term$type %in% allowed
+    # at(f, level):units conditions the residual on selected levels, which
+    # is a different model from one variance per level, and has no
+    # multiple-likelihood lowering.
+    if (ok && identical(term$type, "at_units") && !is.null(term$level)) {
+      ok <- FALSE
+    }
+    if (!ok) {
       bad <- c(bad, as.character(term$type))
       labels <- c(labels, .inla_residual_term_class_label(term$type))
     }
@@ -964,8 +1107,10 @@ print.lgm_refusal <- function(x, ...) {
         "\" (",
         first_label,
         ") is outside the INLA emit ",
-        "allowlist. INLA folds residual variance into the likelihood and ",
-        "has no separate residual-structure surface. ",
+        "allowlist. The INLA emit has no branch for a sectioned residual ",
+        "yet. This is a flexyBayes gap, not an INLA one: INLA carries a ",
+        "residual variance per section through its multiple-likelihood ",
+        "interface. Until the branch lands, ",
         .lgm_other_engine_note(fb)
       ),
       diagnostic = paste0(
@@ -979,120 +1124,6 @@ print.lgm_refusal <- function(x, ...) {
   .lgm_pass("residual_term_type_inla")
 }
 
-# Check 10 -- verification gate
-# for the `factor_numeric_interaction` term class.
-#
-# The fixed-term allowlist (check 7) accepts the new term class
-# structurally, but the INLA mapper for this class is not admitted on
-# the shipped surface: the three-arbitrator verification (INLA vs an
-# engine since withdrawn vs lme4 on a gaussian-identity fixture) named
-# a now-withdrawn engine as one of its arbitrators, so the criterion
-# cannot be re-run as designed. The check therefore refuses on every
-# host, and `auto` routes the term class to brms.
-#
-# The artefact at
-# `inst/extdata/inla-verification/factor_numeric_interaction.rds`
-# survives as a developer verification hook and nothing more. It is
-# excluded from the build (`.Rbuildignore`), it is untracked, and it is
-# read only when the developer option below is switched on by hand --
-# so a host that happens to carry one gets exactly the behaviour a host
-# without one gets. Until 0.9.0 the artefact's presence flipped the gate
-# from refuse to accept, which meant a locally built tarball and a clean
-# clone of the same commit did not fit the same models.
-#
-# If the IR contains no `factor_numeric_interaction` term, this
-# check is a trivial pass -- the gate is term-class-specific.
-.lgm_check_factor_numeric_interaction_inla_verified <- function(fb) {
-  rule_id <- "factor_numeric_interaction_inla_verified"
-  has_fni <- any(vapply(
-    fb$fixed_terms,
-    function(t) {
-      identical(t$type, "factor_numeric_interaction")
-    },
-    logical(1)
-  ))
-  if (!has_fni) {
-    return(.lgm_pass(rule_id))
-  }
-
-  # Shipped behaviour never reads the artefact; only a developer who has
-  # set the option by hand does, and then only to rehearse the mapping.
-  verified <- .fb_dev_verification_artefacts_enabled() &&
-    .factor_numeric_interaction_inla_verified()
-  if (isTRUE(verified)) {
-    return(.lgm_pass(rule_id))
-  }
-
-  .lgm_fail(
-    rule_id,
-    paste0(
-      "factor:continuous indexed interaction INLA mapping is not ",
-      "admitted: its three-arbitrator verification named a since-",
-      "withdrawn engine as one arbitrator (see NEWS.md), so the ",
-      "criterion cannot be re-run as designed. Pass ",
-      "backend = \"brms\", or leave backend = \"auto\", which routes ",
-      "there when INLA refuses."
-    ),
-    diagnostic = paste0(
-      "the refusal is host-independent: the developer verification ",
-      "artefact at ",
-      .factor_numeric_interaction_verification_path(),
-      " is excluded from the build and is read only when ",
-      "options(flexyBayes.dev_inla_verification_artefacts = TRUE) is ",
-      "set by hand."
-    )
-  )
-}
-
-# Developer switch for the host-local INLA verification artefacts.
-#
-# FALSE (the default, and the only value any shipped surface sees) means
-# the artefacts under inst/extdata/inla-verification/ are inert: the
-# gate and the emit refuse the two deferred term classes regardless of
-# what is on disk. A developer rehearsing a mapping sets the option to
-# TRUE for the duration of the rehearsal.
-#
-# The option exists so the verification machinery stays runnable without
-# letting an untracked, unshipped file decide what the package fits.
-.fb_dev_verification_artefacts_enabled <- function() {
-  isTRUE(getOption("flexyBayes.dev_inla_verification_artefacts", FALSE))
-}
-
-# Look up the on-disk INLA-verification artefact for the
-# factor_numeric_interaction term class. Returns TRUE iff the
-# artefact exists, is readable, and reports a passing verification
-# run; FALSE in every other case (missing, unreadable, malformed,
-# pass = FALSE). Callers gate this on
-# .fb_dev_verification_artefacts_enabled() -- it is not consulted on the
-# shipped path.
-.factor_numeric_interaction_inla_verified <- function() {
-  path <- .factor_numeric_interaction_verification_path()
-  if (!file.exists(path)) {
-    return(FALSE)
-  }
-  rec <- tryCatch(readRDS(path), error = function(e) NULL)
-  if (is.null(rec)) {
-    return(FALSE)
-  }
-  isTRUE(rec$pass)
-}
-
-# Path to the developer verification artefact. The directory is excluded
-# from the build, so `system.file()` resolves it only in a source tree
-# under `pkgload::load_all()`; from an installed package the path falls
-# back to a session-temporary location that no shipped code writes.
-.factor_numeric_interaction_verification_path <- function() {
-  base <- system.file(
-    "extdata",
-    "inla-verification",
-    package = "flexyBayes",
-    mustWork = FALSE
-  )
-  if (!nzchar(base)) {
-    base <- file.path(tempdir(), "flexyBayes-inla-verification")
-  }
-  file.path(base, "factor_numeric_interaction.rds")
-}
 
 
 # ---------------------------------------------------------------- #
@@ -1249,6 +1280,60 @@ print.lgm_refusal <- function(x, ...) {
       indexed_gb,
       multiplier,
       ceiling_gb
+    )
+  )
+}
+
+
+# Check 12 -- joint shrinkage prior families
+#
+# `fb$penalty_blocks` would hold the resolved `fb_prior_blocks` list, one
+# entry per declared shrinkage block over the candidate fixed effects. No
+# public call reaches this check: nothing in R/ writes that field, and
+# fb_select(), the only verb that takes a shrinkage prior, re-emits its
+# reference model on brms whatever engine fitted the base (R/fb_select.R).
+# The check is kept as an internal guard, so that a joint block handed to
+# the INLA route by future code refuses at the gate instead of reaching the
+# emitter. A model that carries none passes trivially.
+#
+# A block whose family is `none` is an explicit opt-OUT of shrinkage for the
+# coordinates it names and does not refuse. A Laplace, regularised horseshoe
+# or R2D2 prior is Gaussian given one local scale per coefficient, so the
+# model can be written as a latent Gaussian model, but it then carries a
+# hyperparameter for every coefficient and INLA's integration is built for a
+# few. Ridge and elastic-net blocks have no INLA implementation.
+.lgm_check_prior_family_inla_support <- function(fb) {
+  blocks <- fb$penalty_blocks %||% list()
+  if (length(blocks) == 0L) {
+    return(.lgm_pass("prior_family_unsupported_inla"))
+  }
+  families <- vapply(
+    blocks,
+    function(b) as.character(b$family %||% "none")[[1L]],
+    character(1L)
+  )
+  shrinkage <- setdiff(unique(families), "none")
+  if (length(shrinkage) == 0L) {
+    return(.lgm_pass("prior_family_unsupported_inla"))
+  }
+  .lgm_fail(
+    "prior_family_unsupported_inla",
+    reason = paste0(
+      "the joint shrinkage prior(s) ",
+      paste(shrinkage, collapse = ", "),
+      " are not fitted on INLA. A Laplace, regularised horseshoe or R2D2 ",
+      "prior is Gaussian given one local scale per coefficient, so the ",
+      "model can be written as a latent Gaussian model, but it then carries ",
+      "a hyperparameter for every coefficient in the block, and INLA's ",
+      "numerical integration is built for models with a few ",
+      "hyperparameters. Ridge and elastic-net blocks have no INLA ",
+      "implementation. Fit the reference model on brms, as fb_select() ",
+      "does, or select with penalty = NULL, which keeps every candidate ",
+      "protected."
+    ),
+    diagnostic = paste0(
+      "penalty block families: ",
+      paste(families, collapse = ", ")
     )
   )
 }

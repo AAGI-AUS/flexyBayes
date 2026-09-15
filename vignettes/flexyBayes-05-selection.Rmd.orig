@@ -1,0 +1,488 @@
+---
+title: "Selecting over a candidate block"
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Selecting over a candidate block}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(flexyBayes)
+options(
+  flexyBayes.silence_default_prior_note = TRUE,
+  flexyBayes.silence_high_missingness_warning = TRUE,
+  brms.backend = "cmdstanr"
+)
+rnd <- function(d, k = 3) {
+  num <- vapply(d, is.numeric, logical(1))
+  d[num] <- lapply(d[num], round, k)
+  d
+}
+```
+
+You have a model you trust and a list of covariates somebody wants added to
+it. The question is what the covariates buy, and which of them buy it.
+
+`fb_select()` answers that question without changing the model you trust. The
+fixed effects already in the base are *protected*: they are never penalised
+and never dropped. The candidates are *shrunk*, jointly, by a prior you
+declare, and the submodel is chosen by projecting the reference posterior onto
+each candidate subset and scoring the projection out of fold.
+
+Three things are true of every answer on this page, and the software will not
+let you write a sentence that contradicts them.
+
+1. **A shrinkage posterior contains no exact zeros.** "Selected" is a decision
+   somebody made under a stated rule. It is never a property of the draws.
+2. **Every comparison against another tool declares what it claims.** There
+   are three levels, and the strongest of them needs a numerical oracle
+   behind it.
+3. **Nothing runs under a label that is not what ran.** Each result records
+   four independent things -- what was fitted, what fitted it, under what
+   prior, and how the answer was read off.
+
+# 1. The data
+
+A clustered Gaussian design: 20 sites, ten plots each, eight candidate
+covariates of which two carry signal. The signals vary within a site, so a
+fold cut at the site does not remove them.
+
+```{r simulate}
+set.seed(20260912)
+
+n_site <- 20L
+per_site <- 10L
+site <- factor(rep(sprintf("S%02d", seq_len(n_site)), each = per_site))
+n <- length(site)
+
+d <- data.frame(site = site)
+for (v in paste0("x", 1:8)) {
+  d[[v]] <- stats::rnorm(n)
+}
+u <- stats::setNames(stats::rnorm(n_site, sd = 0.8), levels(site))
+
+# x1 and x2 carry signal. x3 to x8 do not.
+d$y <- 2 + 1.2 * d$x1 - 0.9 * d$x2 +
+  as.numeric(u[as.character(d$site)]) + stats::rnorm(n, sd = 0.6)
+
+str(d[, c("site", "y", "x1", "x2", "x3")])
+```
+
+The base model is the site structure and nothing else on the fixed side, and
+that is a limitation of the horseshoe rather than a modelling choice. The
+regularised horseshoe is a *class-wide* prior in brms: it applies to every
+population-level coefficient except the intercept, and brms refuses a
+coefficient-specific row beside it. So the candidate block is the whole class
+-- and the request is exact -- only when the fixed part is the intercept
+alone. That is not the model a multi-environment trial or a variety trial
+starts from, and section 4 below fits the model that does, under a family
+that can aim at a block.
+
+A base carrying protected fixed effects beyond the intercept refuses under a
+horseshoe, and the refusal names the two ways forward: an exactly-targetable
+family (`ridge()`, `laplace()`, `elastic_net()`), or
+`scope = "all_fixed"`, an explicit opt-in that puts the protected
+coefficients under the global-local prior too and records the approximation
+on the certificate.
+
+```{r base-fit}
+base <- fb_brms(
+  y ~ 1 + (1 | site),
+  data = d,
+  chains = 2L,
+  n_samples = 2000L,
+  warmup = 1000L,
+  seed = 20260912L,
+  verbose = FALSE,
+  mcmc_verbose = FALSE
+)
+```
+
+# 2. Declaring the prior
+
+`fb_penalty()` takes `target ~ family(...)` formulas. Targets are resolved
+against the model matrix's own assignment map, so a factor's contrast columns
+travel together and a term is never matched by string.
+
+```{r penalty}
+pen <- fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 2))
+pen
+```
+
+`p0` is the prior guess at how many candidates carry signal. It is not a
+constraint: the posterior is free to disagree, and the diagnostics below
+report what it actually did.
+
+The global scale that `p0` implies is calibrated against the number of
+*resampling units*, not the number of rows. Two hundred plots in twenty sites
+are not two hundred independent pieces of evidence about a site-level
+coefficient, and calibrating at the row count makes the global scale too
+small and the prior over-shrink. The certificate prints the number it used
+and the row count beside it.
+
+# 3. Planning before paying
+
+`plan = TRUE` resolves the four axes, compiles the prior and runs the
+projection structure gate without fitting anything. The gate leads the
+report, because it is what decides whether the default decision can run at
+all: `decision = "auto"` resolves to the projection where every structural
+feature of the reference model has an executed gate behind it, and to `full`
+where one does not.
+
+```{r plan}
+fb_select(
+  base,
+  candidates = ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8,
+  penalty    = pen,
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  plan       = TRUE,
+  seed       = 20260912L
+)
+```
+
+The cost figure is the base model's own wall time. It is a floor, not an
+estimate: the reference model carries eight more coefficients and a
+global-local prior.
+
+Most of what this package fits is red at that gate. A known-covariance
+genomic or pedigree term -- `vm(g, K)`, `ped(a, A)` -- lowers to
+`(1 | gr(g, cov = K))`, and projpred refuses a function call on the
+right-hand side of a group term. Unstructured and factor-analytic
+covariances, autoregressive fields and smooths have no executed gate at all,
+and an unrun cell refuses exactly as a cell that was run and came back red.
+For those models the answer is shrinkage without a selection: the prior
+fits, the projection does not, and `"auto"` picks `full` for you rather than
+sampling a reference model and then refusing.
+
+# 4. The selection
+
+```{r select}
+sel <- fb_select(
+  base,
+  candidates = ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8,
+  penalty    = pen,
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  decision   = fb_decision(method = "projection", rule = "one_se"),
+  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
+                         warmup = 1500L, adapt_delta = 0.99),
+  seed       = 20260912L
+)
+
+sel
+```
+
+The sampler settings are not decoration. A global-local prior has a funnel
+in it, and at the contract's floor step-size target this reference model
+produced a single divergent transition -- which the convergence gate refuses,
+because a selection read off that posterior is a statement about the sampler.
+`adapt_delta = 0.99` is the lever, and it is not free: it roughly quadruples
+the fit's wall time.
+
+Before any decision ran, the reference model had to pass two gates. The
+sampler diagnostics are the tri-state convergence contract -- divergences,
+treedepth, E-BFMI, bulk and tail effective sample size -- and a failure
+refuses rather than warning. A posterior predictive check on the observed mean
+and standard deviation must place both away from the tails, because a
+projection inherits the reference model's misfit.
+
+```{r adequacy}
+sel$diagnostics$adequacy[c("verdict", "ppc")]
+```
+
+## The elpd curve, and the size the rule chose
+
+The search is cross-validated on the same folds as everything else, and the
+standard error is aggregated at the site rather than at the row: ten plots in
+a site are not ten independent pieces of evidence about it.
+
+The search runs on clustered draws rather than on the whole posterior. That
+is a deliberate trade: projecting a multilevel submodel is a fit per draw, so
+projecting every draw at every step inside every fold does not finish on a
+problem this size. The settings are on the object.
+
+```{r projection-settings}
+sel$projection$settings[c("search", "validate_search", "cv_method", "K",
+                          "nclusters", "nclusters_pred")]
+```
+
+```{r elpd-table}
+rnd(sel$projection$elpd_by_size[, c("size", "elpd", "se", "delta_to_ref")])
+```
+
+```{r elpd-plot, fig.width = 6, fig.height = 4}
+plot(sel, type = "elpd_by_size")
+```
+
+```{r chosen}
+sel$selection$chosen_size
+sel$selection$chosen_terms
+```
+
+## Which candidates were shrunk
+
+For the regularised horseshoe the package reports a shrinkage factor per
+candidate. The label it carries is not decoration: the scalar formula is the
+shrinkage factor of a standardised *orthogonal* design, and a correlated
+candidate block does not have one shrinkage factor per coefficient at all.
+
+```{r shrinkage}
+kappa <- sel$diagnostics$kappa
+kappa$label
+round(sort(kappa$kappa), 3)
+kappa$effective_nonzero_at_half
+```
+
+`tidy()` puts the reference posterior on the scientific scale beside each
+term's role and block.
+
+```{r tidy}
+rnd(tidy(sel))
+```
+
+The estimates are the reference posterior, not the projected one. The
+projected draws are a different object and carry a label saying so, because a
+projection onto a submodel is not a marginal of the reference posterior and
+must not be read as one.
+
+```{r projected-label}
+sel$projection$projected_draws$label
+```
+
+## The model a trial actually starts from
+
+Everything above ran on an intercept-only base, because that is the only
+shape a class-wide horseshoe can target exactly. A real trial protects
+something -- a treatment contrast, a covariate the agronomy requires -- and
+for that base the family has to be one that puts a prior row on each
+coefficient. `laplace()` does; so do `ridge()` and `elastic_net()`.
+
+```{r protected-laplace}
+d$p1 <- stats::rnorm(nrow(d))
+d$y_p <- d$y + 0.7 * d$p1
+
+protected_base <- fb_brms(
+  y_p ~ p1 + (1 | site),
+  data = d,
+  chains = 2L,
+  n_samples = 2000L,
+  warmup = 1000L,
+  seed = 20260912L,
+  verbose = FALSE,
+  mcmc_verbose = FALSE
+)
+
+protected_sel <- fb_select(
+  protected_base,
+  candidates = ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8,
+  penalty    = fb_penalty(term(everything()) ~ laplace(scale = 0.3)),
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  decision   = fb_decision(method = "full"),
+  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
+                         warmup = 1500L),
+  seed       = 20260912L
+)
+
+protected_sel
+```
+
+`p1` is protected: it carries no shrinkage prior and appears in every answer.
+The eight candidates carry one `double_exponential` row each, so the block is
+targeted exactly and the protected coefficient is untouched.
+
+```{r protected-tidy}
+rnd(tidy(protected_sel)[, c("term", "source_term", "role", "family",
+                            "estimate")])
+```
+
+The same request under `regularized_horseshoe()` refuses, because brms will
+not put a coefficient-specific row beside a class-wide special prior.
+
+```{r protected-horseshoe, error = TRUE}
+fb_select(
+  protected_base,
+  candidates = ~ x1 + x2,
+  penalty    = fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 1)),
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  plan       = TRUE,
+  seed       = 20260912L
+)
+```
+
+# 5. What a benchmark does and does not establish
+
+`benchmark = TRUE` runs two more arms on the same folds, the same prediction
+target and the same candidate design: the closed-form generalised-least-squares
+fit on a plugged-in fold covariance, and `glmnet`.
+
+Neither is Bayesian and neither is labelled Bayesian. Each carries an
+*equivalence level* saying what the comparison is entitled to claim.
+
+```{r benchmark}
+bench <- fb_select(
+  base,
+  candidates = ~ x1 + x2 + x3 + x4 + x5 + x6 + x7 + x8,
+  penalty    = fb_penalty(term(everything()) ~ ridge(scale = 0.4)),
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  decision   = fb_decision(method = "full"),
+  benchmark  = TRUE,
+  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
+                         warmup = 1500L, adapt_delta = 0.99),
+  seed       = 20260912L
+)
+
+data.frame(
+  arm = names(bench$benchmark),
+  workflow = vapply(bench$benchmark, function(a) a$workflow, character(1)),
+  provider = vapply(bench$benchmark, function(a) a$provider, character(1)),
+  equivalence = vapply(
+    bench$benchmark, function(a) a$equivalence_level$level, character(1)
+  ),
+  row.names = NULL
+)
+```
+
+The three levels, and why each one is where it is here.
+
+| Level | What it licenses |
+|---|---|
+| `map_exact_fixed_covariance` | The posterior mode under a *fixed* covariance and a *fixed* residual scale is the minimiser of a named penalised objective, and a numerical oracle gates the claim. |
+| `posterior_predictive_comparable` | The provider expresses the family, but the covariance is integrated or the residual scale is free, so the estimands differ. Predictive risk on common folds compares; coefficients and supports do not. |
+| `no_identity_expected` | The provider has no representation of the family at all. The arms are reported side by side and nothing is claimed. |
+
+A Bayesian arm always integrates the covariance and leaves the residual scale
+free, so no mode identity can hold against it whatever the provider can
+express. `glmnet` can express a ridge penalty, which is why its comparison
+reaches `posterior_predictive_comparable`; the generalised-least-squares arm
+carries no penalty at all, which is why its comparison claims nothing.
+
+```{r equivalence-reason}
+cat(strwrap(bench$benchmark$glmnet$equivalence_level$reason, 72), sep = "\n")
+```
+
+The provider's own lambda convention is measured on the installed version
+rather than recalled from its documentation, and it is stored on the
+certificate. A change in the convention turns a test red rather than moving
+the answer.
+
+```{r convention}
+bench$benchmark$glmnet$provider_lambda_convention[c("l1", "l2")]
+bench$benchmark$glmnet$provider_version
+```
+
+# 6. What the candidates buy without any shrinkage
+
+`penalty = NULL` protects every candidate. Under the Bayesian workflow it
+refits the base's own engine inside every assessment fold and scores held-out
+sites from posterior predictive draws, which is the correct baseline against
+which a shrinkage prior is judged.
+
+Here it runs on INLA, on a base with one protected covariate, to show the
+route on the other engine.
+
+```{r inla-base}
+d$p1 <- stats::rnorm(nrow(d))
+d$y2 <- d$y + 0.4 * d$p1
+
+inla_base <- flexybayes(
+  y2 ~ p1,
+  random  = ~ site,
+  data    = d,
+  backend = "inla",
+  verbose = FALSE
+)
+
+increment <- fb_select(
+  inla_base,
+  candidates = ~ x1 + x2,
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  seed       = 20260912L
+)
+
+increment
+```
+
+```{r increment-numbers}
+rnd(glance(increment)[, c(
+  "workflow", "provider", "prior", "metric",
+  "protected_only", "full", "improvement", "n_units"
+)])
+```
+
+The covariance estimand reads `integrated` because the engine integrated it,
+and the certificate reads that off the fold objects rather than off an
+argument. That is not a stylistic point: the field used to be declared, and a
+declared field can describe a computation that did not happen.
+
+```{r estimand}
+increment$certificate$covariance$estimand
+```
+
+A joint shrinkage prior on an INLA-fitted base is not refused. INLA does not
+fit one -- a Laplace, horseshoe or R2D2 prior is Gaussian only given a local
+scale for every coefficient, and written that way the model carries far more
+hyperparameters than INLA's integration is built for -- but the reference
+model was never going to INLA. The parsed model
+is engine-independent, so the reference is re-emitted on brms with the base's
+structure and its own priors carried through, and the certificate records
+which engine fitted which.
+
+```{r inla-shrinkage}
+inla_shrunk <- fb_select(
+  inla_base,
+  candidates = ~ x1 + x2,
+  penalty    = fb_penalty(term(everything()) ~ laplace(scale = 0.5)),
+  resamples  = fb_resamples(unit = ~ site, v = 3L),
+  decision   = fb_decision(method = "full"),
+  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
+                         warmup = 1500L),
+  seed       = 20260912L
+)
+
+inla_shrunk$certificate$reference_engine
+```
+
+Asking INLA itself for the prior is what refuses, at the structural gate,
+under the code that names the family.
+
+# 7. The certificate
+
+Everything the run did, in one machine-readable object, and every field that
+names an estimand, a provider, a convention or a route is copied from the
+object that did the work.
+
+```{r certificate}
+sel$certificate
+```
+
+`approximations` is the field that earns the object. It says where the answer
+is weaker than it looks -- here, that the standardising constants for the
+prior scale were learned on the whole sample rather than inside each training
+fold, because the reference model is one fit.
+
+# What each family can be asked for
+
+| Family | Block targeting | Projection | Ship it as |
+|---|---|---|---|
+| `ridge`, `laplace` | exact, one prior row per coefficient | yes | shrinkage on any base, with or without protected fixed effects |
+| `elastic_net` | exact, a `target +=` over the candidate indices | yes | the same, with fixed hyperparameters |
+| `regularized_horseshoe`, `r2d2` | exact **only** when the fixed part is intercept-only; otherwise `laplace`/`ridge`/`elastic_net`, or `scope = "all_fixed"` with the named approximation | yes, where the gate is green | sparse candidate blocks on an intercept-only base |
+| a base carrying `vm()` or `ped()` | shrinkage yes | **no** -- the term lowers to `(1 | gr(g, cov = K))` and projpred refuses it | `decision = "full"`, which `"auto"` picks for you |
+
+# What to take away
+
+The selection is a decision, and the decision is separable from the fit. You
+declare the prior, the folds and the rule; the software fits the reference
+model once, gates it on its own diagnostics, projects it where the structure
+permits, and records what it did in a form you can audit.
+
+What it will not do is tell you that a shrinkage posterior selected anything,
+or that its answer is the same as an optimiser's. Those are two different
+estimators, and the equivalence level on every comparison says exactly how
+different.

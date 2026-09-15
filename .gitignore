@@ -50,3 +50,14 @@ tests/testthat/_problems/
 # Review documents stay in the private workspace archive (ledger cairn
 # 2026-08-17-release-nine-review-record is the public anchor)
 review/
+.positai
+
+# ASReml oracle run artefacts: rebuilt shim, scratch library, per-run results.
+# Durable evidence is banked under inst/validation/asreml-4.2/ instead.
+oracle_work/*
+
+# The selection module's feasibility probes are the exception: the contract
+# they decided cites them by path, and a specification that points at
+# untracked files is a specification nobody can check. They are small text
+# scripts and their logs, never a rebuilt shim or a scratch library.
+!oracle_work/selection_bayes/

@@ -388,7 +388,7 @@ test_that("the prior cell rounds for display and not in the object", {
   .pb_silence()
   fit <- .pb_field_fit()
 
-  out <- utils::capture.output(s <- summary(fit))
+  out <- utils::capture.output(print(s <- summary(fit)))
   txt <- paste(out, collapse = "\n")
 
   cells <- s$varcomp$prior

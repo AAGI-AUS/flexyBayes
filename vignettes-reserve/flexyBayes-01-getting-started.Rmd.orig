@@ -1,0 +1,289 @@
+---
+title: "1. Getting started: what changes when you go Bayesian"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{1. Getting started: what changes when you go Bayesian}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6,
+                      fig.height = 4, dpi = 150)
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+brms_ok <- requireNamespace("brms", quietly = TRUE)
+agri_ok <- requireNamespace("agridat", quietly = TRUE)
+options(flexyBayes.silence_default_prior_note = TRUE)
+
+# knitr::kable(format = "markdown") escapes a pipe to &#124; so it cannot
+# break the table, and pandoc then prints that entity literally inside a
+# code span, so `(x | g)` renders as `(x &#124; g)`. Emitting HTML
+# directly, with backticks turned into <code> here, keeps the pipe.
+.md_code <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;",  x, fixed = TRUE)
+  x <- gsub(">", "&gt;",  x, fixed = TRUE)
+  gsub("`([^`]+)`", "<code>\\1</code>", x)
+}
+.cap_table <- function(df) {
+  df[] <- lapply(df, .md_code)
+  knitr::kable(df, format = "html", escape = FALSE)
+}
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Yield of 18 wheat genotypes across 9 environments. Which genotypes
+are good, and how sure are we?</dd>
+<dt>In ASReml</dt>
+<dd><code>asreml(yield ~ env, random = ~ gen, data = dat)</code></dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(yield ~ env, random = ~ gen, data = dat)</code></dd>
+<dt>What the posterior adds</dt>
+<dd>Every quantity arrives as a distribution rather than an estimate and
+a standard error, so an interval for a variance component needs no
+appeal to large-sample theory, and "how sure are we" is answered by
+counting draws.</dd>
+<dt>What it costs</dt>
+<dd>Seconds instead of milliseconds, a prior you can inspect, and a
+smaller set of model structures than ASReml offers.</dd>
+</dl>
+</div>
+
+# 1. What changes when you go Bayesian
+
+A REML fit answers with a number and an uncertainty attached to it: the
+genotype variance is 0.11, with a standard error. A Bayesian fit answers
+with a distribution over that variance, and the number you quote is a
+summary of it.
+
+That difference matters in three practical places.
+
+**Variance components near zero.** REML puts the estimate at the
+boundary and the standard error becomes hard to interpret, because the
+sampling theory behind it assumes the estimate is not sitting on the
+edge of the parameter space. A posterior has no boundary problem: it is
+simply concentrated near zero, and its upper credible bound is a real
+statement about how large the component could plausibly be.
+
+**Small numbers of levels.** With nine environments, asymptotic
+intervals for the between-environment variance are optimistic. The
+posterior is whatever the data and the prior support, at any sample
+size.
+
+**Functions of parameters.** Heritability, a ratio of variance
+components, needs the delta method under REML. Under a posterior it is
+one line: compute the ratio on every draw and summarise.
+
+Against that, three things are genuinely harder. Fitting takes seconds
+to minutes rather than milliseconds. A prior exists whether or not you
+choose it, so it has to be reported. And the structures on offer are
+narrower than ASReml's, which is the subject of Section 2 and of the
+*formula surface* vignette.
+
+# 2. Two engines, one grammar
+
+flexyBayes does not implement an inference algorithm. It parses a model
+written in ASReml-style or brms-style syntax and hands it to one of two
+established engines.
+
+**INLA** approximates the posterior deterministically, by nested Laplace
+approximation. It is fast, it has no chains to converge, and it is built
+around latent Gaussian models -- which is why the structured terms
+(autoregressive fields, splines, known covariance matrices) live here.
+
+**brms** writes a Stan program and samples it with Hamiltonian Monte
+Carlo. It is slower and its answer carries Monte Carlo error, but it is
+not restricted to the latent Gaussian class, which is why the flexible
+likelihoods and the interaction structures live there.
+
+They are complementary rather than interchangeable. The table below is
+generated from the package's own capability record, so it cannot drift
+from what the code does.
+
+```{r capability, echo = FALSE, results = "asis"}
+m <- flexyBayes:::.fb_capability_matrix()
+.cap_table(data.frame(
+  `Model class` = m$model_class, Spelling = m$spelling,
+  INLA = m$inla, brms = m$brms, check.names = FALSE
+))
+```
+
+Three readings of that table are worth having before you fit anything.
+
+*`fits`* means an active engine emits the structure and a test exercises
+it. *`refuses`* means the request raises an error naming the structure
+and pointing at the nearest thing that does work -- it does not mean the
+model is quietly approximated by something else. Four classes are
+refused by both engines: correlated random slopes, `corh()`,
+factor-analytic covariance, and multi-trait covariance. Those are
+genuine gaps, not omissions from this page.
+
+The default `backend = "auto"` runs a feasibility gate and picks the
+engine that can represent the model, so most of the time the choice is
+made for you.
+
+# 3. Installation
+
+brms is on CRAN and needs a working C++ toolchain for Stan. INLA is
+distributed from its own repository.
+
+```r
+install.packages("brms")
+install.packages(
+  "INLA",
+  repos = c(INLA = "https://inla.r-inla-download.org/R/stable")
+)
+```
+
+Neither is required to load flexyBayes. A model that needs an absent
+engine refuses with an installation message rather than an error from
+somewhere inside the call stack.
+
+# 4. Your first model
+
+`agridat::yan.winterwheat` is a multi-environment trial: 18 winter wheat
+genotypes, 9 Ontario environments, one yield per combination.
+
+```{r data, eval = agri_ok}
+library(flexyBayes)
+dat <- agridat::yan.winterwheat
+str(dat)
+```
+
+Environments are the conditions of the trial, so they enter as fixed
+effects. Genotypes are a sample from a breeding population and the
+question is about the population, so they enter as random. That is the
+same reasoning an ASReml user applies, and the formula is the same
+formula.
+
+```{r fit, eval = agri_ok && inla_ok}
+fit <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                  backend = "inla", verbose = FALSE)
+fit
+```
+
+# 5. Reading the fit as a REML user
+
+`summary()` gives the two blocks an ASReml user reads first: the
+variance components and the fixed effects.
+
+```{r summ, eval = agri_ok && inla_ok}
+tidy(fit, effects = "random")
+```
+
+`estimate` is the posterior median on the standard-deviation scale.
+`conf.low` and `conf.high` are the 2.5% and 97.5% quantiles of the
+posterior -- not a normal approximation around the estimate, so they
+need not be symmetric, and for a component near zero they will not be.
+
+```{r fixed, eval = agri_ok && inla_ok}
+head(tidy(fit), 4)
+```
+
+The genotype effects themselves are predictions of random effects, the
+BLUPs of REML, and they arrive with intervals:
+
+```{r ranef, eval = agri_ok && inla_ok}
+head(ranef(fit)$gen, 4)
+```
+
+Because the fit carries draws rather than point estimates, a function of
+the parameters is computed directly. Heritability on an entry-mean basis
+is a ratio of variance components, and under a posterior it is a ratio
+taken draw by draw:
+
+```{r h2, eval = agri_ok && inla_ok}
+vc <- tidy(fit, effects = "random")
+sd_gen   <- vc$estimate[vc$term == "sd_gen"]
+sd_resid <- vc$estimate[vc$term == "sigma"]
+n_env    <- nlevels(dat$env)
+sd_gen^2 / (sd_gen^2 + sd_resid^2 / n_env)
+```
+
+# 6. The same model on the other engine
+
+The point of two engines is that they disagree informatively. Fitting the
+same model on brms and comparing takes one call. The sampler is given
+four chains here because `triangulate()` refuses to compare a fit whose
+own diagnostics have not converged.
+
+```{r brms, eval = agri_ok && brms_ok}
+fit_b <- flexybayes(yield ~ env, random = ~ gen, data = dat,
+                    backend = "brms", chains = 4L, n_samples = 2000L,
+                    warmup = 1000L, seed = 1L, verbose = FALSE,
+                    mcmc_verbose = FALSE)
+```
+
+```{r tri, eval = agri_ok && inla_ok && brms_ok}
+tri <- triangulate(fit, fit_b)
+tri$status
+table(tri$metrics$verdict)
+```
+
+The nine fixed effects agree. The two variance components do not, and
+the way they disagree is the useful part:
+
+```{r tri-vc, eval = agri_ok && inla_ok && brms_ok}
+vc_rows <- tri$metrics$param %in% c("sigma", "sd_gen")
+tri$metrics[vc_rows, c("param", "mean_a", "mean_b", "sd_ratio", "verdict")]
+```
+
+`mean_a` and `mean_b` are the posterior means from INLA and from brms.
+They match to three decimal places. `sd_ratio` is the ratio of the two
+posterior standard deviations, and it is below one: INLA's posterior for
+each variance component is *narrower* than the sampler's.
+
+That is the Laplace approximation showing its edge. It places the
+variance components in the same location as full Hamiltonian Monte
+Carlo and reports slightly more confidence about them than the sampler
+does. For deciding which genotypes are good, the two engines give the
+same answer. For quoting an interval on the genotype variance, the
+sampler's is the more conservative one.
+
+Neither engine is wrong here, and nothing in either fit alone would have
+revealed this. A single fit on either engine reports a converged model
+with clean diagnostics. The comparison is what surfaces the difference,
+which is the argument for having two engines behind one grammar.
+
+# 7. The rest of the deck
+
+| Vignette | When you need it |
+|---|---|
+| 2. The formula surface | Writing the model, and what is refused |
+| 3. Regression and hierarchical models | Fixed effects, random effects, GLMMs |
+| 4. Priors | What the defaults are and when to change them |
+| 5. MET and genomics | Genotype-by-environment, relationship matrices |
+| 6. Spatial and temporal structure | Field trials, autoregressive correlation |
+| 7. After the fit | Summaries, comparison, triangulation |
+| 8. Big data | Fitting without holding the data in memory |
+
+# 8. Pitfalls
+
+**A prior is always present.** The default is a bounded uniform on each
+standard deviation, scaled to the response. It is reported at fit time
+and by `prior_summary()`. Reporting a Bayesian analysis without stating
+its prior is incomplete.
+
+**`backend = "auto"` can change engine.** If the feasibility gate
+refuses INLA, the model routes to brms, and a message says so. The
+fit's class records which engine produced it.
+
+**Variance components can pin at zero.** A component whose upper
+credible bound is a negligible fraction of the residual scale raises a
+warning: the term carries no signal the data can separate from noise.
+That is a statement about identification, not a result.
+
+# 9. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

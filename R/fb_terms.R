@@ -49,10 +49,14 @@
 # @param source    "asreml" or "brms" -- provenance, used by
 #                  `triangulate()` for clear ingest-path labelling
 #                  in cross-engine reports.
+# @param offsets   character vector of the offset() calls in the fixed
+#                  formula, as written and in formula order; empty when
+#                  the model carries none. Several offsets add.
 # @return an fb_terms object (S3, inherits from list).
 new_fb_terms <- function(
   response,
   family,
+  response_is_expression = FALSE,
   link = NULL,
   intercept = TRUE,
   fixed_terms = list(),
@@ -62,15 +66,18 @@ new_fb_terms <- function(
   priors = NULL,
   data_summary = list(),
   capabilities = character(),
-  source = c("asreml", "brms")
+  source = c("asreml", "brms"),
+  offsets = character()
 ) {
   source <- match.arg(source)
 
   obj <- list(
     response = response,
+    response_is_expression = isTRUE(response_is_expression),
     family = family,
     link = link,
     intercept = intercept,
+    offsets = offsets,
     fixed_terms = fixed_terms,
     random_terms = random_terms,
     residual_terms = residual_terms,
@@ -144,6 +151,16 @@ validate_fb_terms <- function(x) {
       is.na(x$intercept)
   ) {
     stop("`intercept` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (
+    !is.null(x$offsets) &&
+      (!is.character(x$offsets) || anyNA(x$offsets))
+  ) {
+    stop(
+      "`offsets` must be a character vector of offset() calls.",
+      call. = FALSE
+    )
   }
 
   for (slot in c(
@@ -255,6 +272,9 @@ print.fb_terms <- function(x, ...) {
   }
   cat("  family:    ", fam_str, " (", link_str, " link)\n", sep = "")
   cat("  intercept: ", x$intercept, "\n", sep = "")
+  if (length(x$offsets)) {
+    cat("  offset:    ", paste(x$offsets, collapse = " + "), "\n", sep = "")
+  }
 
   cat("  terms:\n")
   cat("    fixed:    ", length(x$fixed_terms), "\n", sep = "")

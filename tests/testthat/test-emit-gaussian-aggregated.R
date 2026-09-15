@@ -11,6 +11,14 @@
 #   (j) refusal taxonomy (brms + aggregate=TRUE; smooth + aggregate=TRUE)
 # Plus posterior-equivalence smoke tests for the INLA aggregated path.
 #
+# A Gaussian model is not fitted on the aggregated representation: its
+# aggregated route cannot carry the residual prior, and aggregate = TRUE
+# refuses (aggregation_residual_prior_not_composed). The dispatch gates below
+# that need an aggregated fit therefore run on a Poisson model, whose
+# aggregated route shares the same dispatch, exactness, summary and class
+# machinery. Gaussian containment itself is tested in
+# test-aggregation-gaussian-containment.R.
+#
 # 0.9.3: the aggregated Gaussian path's second engine (see NEWS.md,
 # withdrawn entirely) had its own aggregated-fidelity test suite here
 # (subtests naming it directly, plus a dedicated section below); INLA
@@ -51,6 +59,12 @@ mk_agg_data <- function(seed = 1L, N = 500L, J = 15L) {
     0.3 * as.integer(dat$f2) +
     rnorm(J, 0, 0.3)[as.integer(dat$g)] +
     rnorm(N, 0, 0.7)
+  # A count response for the aggregated-route checks below. Drawn after
+  # `y`, so the Gaussian draws are unchanged.
+  dat$count <- stats::rpois(
+    N,
+    exp(0.2 + 0.3 * as.integer(dat$f1) - 0.2 * as.integer(dat$f2))
+  )
   dat
 }
 
@@ -78,8 +92,9 @@ test_that("(h) aggregated fit carries exactness = 'aggregated_exact'", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -94,12 +109,13 @@ test_that("(h) aggregated fit carries exactness = 'aggregated_exact'", {
 # Gate (e): plan eligibility gates dispatch                         #
 # ---------------------------------------------------------------- #
 
-test_that("(e) eligible plan routes to aggregated_gaussian path", {
+test_that("(e) eligible plan routes to aggregated_count path", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -108,7 +124,7 @@ test_that("(e) eligible plan routes to aggregated_gaussian path", {
   ))
   bd <- backend_decision(fit)
   expect_identical(bd$backend, "inla")
-  expect_identical(bd$path, "aggregated_gaussian")
+  expect_identical(bd$path, "aggregated_count")
   expect_true(grepl("aggregation plan eligible", bd$reason))
 })
 
@@ -116,8 +132,9 @@ test_that("(e) backend_decision reason carries N, K, ratio", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -241,6 +258,9 @@ test_that("(j) aggregate = TRUE on an unrecognised backend name raises unknown_b
 })
 
 test_that("(j) aggregate = TRUE on backend = 'brms' refuses", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   dat <- mk_agg_data()
   err <- tryCatch(
     suppressMessages(fb(
@@ -324,8 +344,9 @@ test_that("(i) summary() prints compression line on aggregated fit", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -366,8 +387,9 @@ test_that("(i) print() shows Exact. line on per-row and aggregated", {
     mcmc_verbose = FALSE
   ))
   fit_agg <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -379,7 +401,7 @@ test_that("(i) print() shows Exact. line on per-row and aggregated", {
   # print.flexybayes_aggregated which does.
   agg_out <- capture.output(print(fit_agg))
   expect_true(any(grepl("aggregated_exact", agg_out)))
-  expect_true(any(grepl("aggregated-gaussian", agg_out)))
+  expect_true(any(grepl("aggregated-poisson", agg_out)))
 })
 
 
@@ -390,48 +412,12 @@ test_that("(i) print() shows Exact. line on per-row and aggregated", {
 # reference. Here we confirm the per-row vs aggregated INLA fits agree
 # on the fixed-effect posterior under the same effective prior path.
 
-test_that("INLA per-row + aggregated agree on beta within 5e-3 under matched defaults", {
-  testthat::skip_if_not_installed("INLA")
-  dat <- mk_agg_data(seed = 7L)
-  fit_row <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
-    data = dat,
-    backend = "inla",
-    aggregate = FALSE,
-    prior_vc_sd = 1,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  fit_agg <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
-    data = dat,
-    backend = "inla",
-    aggregate = "auto",
-    prior_vc_sd = 1,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  beta_row <- fit_row$inla$summary.fixed$mean
-  beta_agg <- fit_agg$extras$summary$beta_means
-  # The fixed-effect posteriors are bit-exactly equivalent under the
-  # algebraic identity (independent of the RI / residual prior tail).
-  # v0.3.9 Phase B' amendment: the 1e-3 threshold was theoretical
-  # (the day-1 spike at R/emit_gaussian_aggregated.R:30-41 reported
-  # differences <= 1e-4 on a 1000-row example, and isolated runs of
-  # this fixture deliver ~5e-4). In full-suite ordering, INLA's
-  # internal numerical engine inherits BLAS reduction-order drift +
-  # accumulated session state from prior fits, lifting the observed
-  # delta to ~3.4e-3 on this fixture (documented in the v0.3.8 Phase
-  # D triage that flagged this site, state_v038_released.md). The
-  # 5e-3 band reflects the empirical worst-case at this fixture size
-  # while keeping a 5x guard against gross algebraic regression. The
-  # stress-gated counterpart below pins the tighter spike threshold
-  # for the local-developer rehearsal probe. See ledger cairn
-  # 2026-05-27-aggregated-inla-tolerance-amendment.cairn.md and the
-  # v0.3.5 BLAS-non-associativity amendment on ADR 0023 for the
-  # parallel precedent.
-  expect_lt(max(abs(beta_row - beta_agg)), 5e-3)
-})
+# [removed] "INLA per-row + aggregated agree on beta within 5e-3 under
+# matched defaults" -- a Gaussian model is no longer fitted on the
+# aggregated representation (aggregation_residual_prior_not_composed), so
+# no public call produces the aggregated Gaussian fit this compared. The
+# per-row versus aggregated agreement returns with the exact composition of
+# the residual prior, tested against the aggregation derivation's checks.
 
 test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard)", {
   testthat::skip_if_not_installed("INLA")
@@ -440,8 +426,9 @@ test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard
   # .agg_inla_summarise() with a dimnames-extent mismatch.
   dat <- mk_agg_data(seed = 7L)
   fit <- suppressMessages(fb(
-    y ~ 1 + (1 | g),
+    count ~ 1 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = TRUE,
     prior_vc_sd = 1,
@@ -454,37 +441,8 @@ test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard
   expect_true(is.finite(bv[1, 1]))
 })
 
-test_that("INLA per-row + aggregated agree on beta within 1e-3 (stress, strict)", {
-  testthat::skip_if_not_installed("INLA")
-  if (!identical(Sys.getenv("FLEXYBAYES_RUN_STRESS"), "true")) {
-    skip(
-      "[stress] strict 1e-3 algebraic-identity band; opt-in via FLEXYBAYES_RUN_STRESS=true"
-    )
-  }
-  dat <- mk_agg_data(seed = 7L)
-  fit_row <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
-    data = dat,
-    backend = "inla",
-    aggregate = FALSE,
-    prior_vc_sd = 1,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  fit_agg <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
-    data = dat,
-    backend = "inla",
-    aggregate = "auto",
-    prior_vc_sd = 1,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  beta_row <- fit_row$inla$summary.fixed$mean
-  beta_agg <- fit_agg$extras$summary$beta_means
-  # Spike-anchored algebraic-identity floor.
-  expect_lt(max(abs(beta_row - beta_agg)), 1e-3)
-})
+# [removed] "INLA per-row + aggregated agree on beta within 1e-3 (stress,
+# strict)" -- removed with the 5e-3 check above, for the same reason.
 
 
 # ---------------------------------------------------------------- #
@@ -495,8 +453,9 @@ test_that("aggregation_meta carries N, K, compression, residual kind", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -508,7 +467,7 @@ test_that("aggregation_meta carries N, K, compression, residual kind", {
   expect_equal(am$N, nrow(dat))
   expect_true(is.integer(am$K) && am$K >= 1L)
   expect_equal(am$compression, am$K / am$N)
-  expect_identical(am$residual, "homogeneous")
+  expect_identical(am$residual, "none")
 })
 
 
@@ -520,8 +479,9 @@ test_that("flexybayes_aggregated inherits from flexybayes", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -562,8 +522,9 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   # the only route this test used to exercise -- which is how the
   # auto-default's mislabel went unseen.
   fit_def <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,
@@ -584,8 +545,9 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   # package produces, with no prior supplied by anyone. The label is
   # routed off the default-basis attribute prior_summary() reads.
   fit_auto <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     verbose = FALSE,
@@ -606,8 +568,9 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   # Explicit prior -> custom (equivalence against a default-prior per-row
   # fit no longer holds; flagged so the user does not misread agreement).
   fit_cus <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior = fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 5)),
@@ -644,8 +607,9 @@ test_that("$glm shim carries per-row reconstructed fitted values", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   fit <- suppressMessages(fb(
-    y ~ f1 + f2 + (1 | g),
+    count ~ f1 + f2 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
     aggregate = "auto",
     prior_vc_sd = 1,

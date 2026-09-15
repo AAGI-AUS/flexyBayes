@@ -82,12 +82,13 @@ test_that(".inla_largest_verified() reports the largest COMPLETED per-row fit on
   # The 2026-08-22 ceilings study has no completed flexyBayes fit (its
   # 911,808-row rung was preflight refused; the record was corrected on
   # 2026-08-26), so the largest verified size is the boundary study's
-  # 1,000,000-row per-row INLA fit, whose latent-field size was not recorded.
+  # 5,000,000-row per-row INLA fit of the 2026-09-15 Poisson re-run, whose
+  # latent-field size was not recorded.
   res <- flexyBayes:::.inla_largest_verified()
   expect_false(is.null(res))
-  expect_identical(res$n, 1e6)
+  expect_identical(res$n, 5e6)
   expect_true(is.na(res$random_effects))
-  expect_identical(res$run_date, "2026-08-19")
+  expect_identical(res$run_date, "2026-09-15")
 })
 
 
@@ -134,7 +135,7 @@ test_that("mocked engine death becomes inla_program_failed with every field", {
   expect_identical(err$binding_n_levels, 5)
 
   # Largest verified size, read from the C2 CSV row.
-  expect_identical(err$largest_verified_n, 1e6)
+  expect_identical(err$largest_verified_n, 5e6)
   expect_true(is.na(err$largest_verified_random_effects))
 
   # The engine's own message is carried, and the rendered message
@@ -142,7 +143,7 @@ test_that("mocked engine death becomes inla_program_failed with every field", {
   expect_match(err$engine_message, "inla-program exited", fixed = TRUE)
   expect_match(err$message, "inla-program exited", fixed = TRUE)
   expect_match(err$message, "Remedies", fixed = TRUE)
-  expect_match(err$message, "1,000,000", fixed = TRUE)
+  expect_match(err$message, "5,000,000", fixed = TRUE)
   expect_match(err$message, "g (5 levels)", fixed = TRUE)
 })
 

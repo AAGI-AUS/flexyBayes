@@ -33,7 +33,13 @@
 
 .ft_source_dir <- function() {
   candidate <- testthat::test_path("..", "..", "R")
-  if (dir.exists(candidate)) {
+  # dir.exists() alone is not enough: under an installed-package test run
+  # the path resolves to a directory that exists and holds no package
+  # sources, so the scan below found nothing and the test failed rather
+  # than skipping. Require the file this test expects to find, which is
+  # the only evidence that this really is the source tree.
+  if (dir.exists(candidate) &&
+        file.exists(file.path(candidate, "family_traits.R"))) {
     return(normalizePath(candidate))
   }
   NA_character_

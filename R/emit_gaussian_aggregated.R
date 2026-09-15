@@ -343,6 +343,20 @@ emit_gaussian_aggregated <- function(
   N <- fb_aggregated$N
   agg$ybar_k <- agg$S1_k / agg$n_k
 
+  # The aggregated Gaussian fit runs on the standardised response as the
+  # per-row one does (R/inla_standardise.R). The centre and scale come from
+  # the cell statistics; a cell mean and the within-cell sum of squares
+  # transform with the response.
+  standardisation <- .fb_inla_standardisation_from_stats(
+    fb,
+    n = sum(agg$n_k),
+    s1 = sum(agg$S1_k),
+    s2 = sum(agg$S2_k),
+    n_cells = K
+  )
+  agg$ybar_k <- (agg$ybar_k - standardisation$centre) / standardisation$scale
+  WSS_total <- WSS_total / standardisation$scale^2
+
   # Pull per-RI hyperpriors from the same priors_to_inla() translation
   # the per-row emit_inla() uses, so the aggregated + per-row INLA fits
   # share the random-intercept prior shape. The residual prior is NOT
@@ -363,6 +377,19 @@ emit_gaussian_aggregated <- function(
     list()
   }
 
+  # A random-intercept SD the caller left unstated takes the package default,
+  # as on the per-row route (R/inla_default_priors.R). The bound is read off
+  # the cell statistics, which hold the whole response on the streamed route
+  # where `data` is a head sample.
+  completion <- .fb_inla_complete_priors(
+    fb,
+    hyper_ctrl,
+    data,
+    resp_sd = standardisation$scale
+  )
+  hyper_ctrl <- completion$hyper_ctrl
+
+  hyper_ctrl <- .fb_inla_standardise_hyper(hyper_ctrl, standardisation)
   fixed_form <- .agg_emit_inla_formula(fb, fb_aggregated, ri_plan, hyper_ctrl)
 
   # Custom-prior expression on the gaussian-precision hyperparameter:
@@ -425,15 +452,24 @@ emit_gaussian_aggregated <- function(
     .fb_prior_scalar_value(fb, "fixed_sd"),
     coef_names = setdiff(fb_aggregated$fixed_cols, "(Intercept)")
   )
+  control_fixed <- .fb_inla_standardise_control_fixed(
+    control_fixed,
+    standardisation
+  )
   if (length(control_fixed)) {
     inla_call$control.fixed <- control_fixed
   }
 
-  inla_fit <- do.call(INLA::inla, inla_call)
+  inla_fit <- .fb_inla_back_transform(
+    do.call(INLA::inla, inla_call),
+    standardisation
+  )
 
   list(
     backend = "inla",
     inla = inla_fit,
+    response_standardisation = standardisation,
+    prior_completion = completion$record,
     fixed_form = fixed_form,
     custom_prior = custom_prior_expr,
     K = K,
@@ -565,7 +601,13 @@ emit_gaussian_aggregated <- function(
     posterior_summary,
     ri_plan
   )
-  y_row <- data[[fb$response]]
+  # The cell statistics were taken on y - o, so the offset is added back to
+  # each row's fitted value here.
+  off_row <- .fb_offset_values(fb, data)
+  if (!is.null(off_row)) {
+    fitted_row <- fitted_row + off_row
+  }
+  y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
 
   glm_obj <- structure(
@@ -589,11 +631,20 @@ emit_gaussian_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
+      # The centre and scale the INLA fit ran on; the draw accessors read it.
+      response_standardisation = engine_out$response_standardisation,
+      # The standard deviations the INLA fit filled with the package default.
+      prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose. Aggregation is a
       # computational route to the same likelihood, not a different model,
       # so an aggregated fit and a per-row fit of the same model must read
       # as comparable to triangulate(). See R/model_fingerprint.R.
-      fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
+      fingerprint = .fb_model_fingerprint(
+        fb,
+        data,
+        prior_vc_sd = prior_vc_sd,
+        completion = engine_out$prior_completion
+      ),
       parse_info = list(
         # Mirror emit_inla()'s fixed-info shape so confint /
         # summary / methods.R downstream consumers see the same

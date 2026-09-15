@@ -1,0 +1,7 @@
+Warning: 8 of 2000 (0.0%) transitions ended with a divergence.
+See https://mc-stan.org/misc/warnings for details.
+
+Loading required namespace: rstan
+
+=== F1 barley shape: n=48 p=176 groups=48 | wall 20 s | div 8 | max treedepth 8 | max rhat 1.013 | min bulk ESS 226 | min tail ESS 86
+recovered top- 10  |b| are true nonzero: 0.6 

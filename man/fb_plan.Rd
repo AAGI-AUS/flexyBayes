@@ -95,8 +95,10 @@ them ASReml-style, planning a fixed-effects-only model and reporting
 a backend the full model would not reach live (FS-22). Both
 spellings now route through the same grammar detection
 \code{flexybayes()} uses (\code{syntax = "auto"} by default), so
-\code{fb_plan(fixed = ..., random = ..., residual = ..., data = ...)} and
-\code{flexybayes(fixed = ..., random = ..., residual = ..., data = ..., plan = TRUE)} plan the identical model.
+\code{fb_plan(y ~ x, random = ..., residual = ..., data = ...)} and
+\code{flexybayes(fixed = y ~ x, random = ..., residual = ..., data = ..., plan = TRUE)} plan the identical model. Note the two spellings of the
+fixed part: \code{fb_plan()} takes it positionally as \code{formula}, the entry
+point takes it as \code{fixed}.
 }
 \examples{
 # Planning never fires the backend, so this runs without INLA or

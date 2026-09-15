@@ -82,7 +82,7 @@
   )
 
   # Build a lookup of (slope_var, grouping_factor) pairs for
-  # every simple_slope_uncor random term in the IR. The flexyBayes
+  # every random-slope term in the IR, correlated or not. The flexyBayes
   # default-prior expansion synthesises a group name `<slope_var>_<g>`
   # for the slope-variance hyperparameter so the per-group uniform-on-
   # SD machinery reaches it; on the brms passthrough path we must
@@ -94,7 +94,7 @@
   slope_lookup <- list()
   for (t in fb$random_terms %||% list()) {
     if (
-      identical(t$type, "simple_slope_uncor") &&
+      t$type %in% c("simple_slope_uncor", "simple_slope_cor") &&
         !is.null(t$slope_var) &&
         nzchar(t$slope_var) &&
         !is.null(t$var) &&
@@ -107,6 +107,9 @@
 
   specs <- list()
   for (s in prior$specs) {
+    # The input identifier, taken before the slope unwrap below rewrites
+    # the target, so each row names the specification it came from.
+    input_id <- .fb_manifest_spec_input_id(s)
     # Silently drop sigma specs on families that have no residual
     # sigma parameter (Bernoulli, Poisson, etc.). brms's parser
     # would otherwise reject the prior with `The following priors do
@@ -135,6 +138,7 @@
     if (is.null(row)) {
       next
     }
+    row$input <- input_id
     specs[[length(specs) + 1L]] <- row
   }
 
@@ -188,6 +192,9 @@
       lb = NA_real_,
       ub = NA_real_
     )
+  }
+  for (i in seq_along(out)) {
+    out[[i]]$input <- "scalar:prior_fixed_sd"
   }
   out
 }
@@ -606,7 +613,7 @@
   }
 
   # sd(group) -- one row per named random group.
-  # simple_slope_uncor adds a 10th row class to the
+  # The random-slope terms add a 10th row class to the
   # legacy table -- the slope-variance prior, keyed on
   # (class = "sd", coef = "<slope_var>", group = "<grouping_factor>").
   # brms's set_prior() discriminates intercept- and slope-variance
@@ -614,7 +621,9 @@
   # rows leave `coef` unset (NA / empty), slope rows set it to the
   # slope variable name. The double-pipe form (x || g) and the
   # double-pipe + intercept form (1 + x || g) both ship the slope
-  # row; only (1 + x || g) also ships the intercept row.
+  # row; only (1 + x || g) also ships the intercept row. The
+  # single-pipe form (x | g) always ships both -- the intercept is what
+  # the correlation is with.
   for (term in fb$random_terms %||% list()) {
     if (is.null(term$type)) {
       next
@@ -636,7 +645,7 @@
       next
     }
 
-    if (identical(term$type, "simple_slope_uncor")) {
+    if (term$type %in% c("simple_slope_uncor", "simple_slope_cor")) {
       sv <- term$slope_var
       if (isTRUE(term$with_intercept)) {
         specs[[length(specs) + 1L]] <- list(
@@ -662,6 +671,14 @@
     }
   }
 
+  # The scalar each legacy row carries, for the model manifest.
+  for (i in seq_along(specs)) {
+    specs[[i]]$input <- if (specs[[i]]$class %in% c("Intercept", "b")) {
+      "scalar:prior_fixed_sd"
+    } else {
+      "scalar:prior_vc_sd"
+    }
+  }
   specs
 }
 
@@ -749,8 +766,10 @@
   # Recover the residual scale from whichever sigma spec was built, so this
   # tracks the default-prior machinery instead of re-deriving it.
   upper <- NA_real_
+  sigma_input <- "structure:log_sigma"
   for (s in specs) {
     if (identical(s$class %||% "", "sigma")) {
+      sigma_input <- s[["input"]] %||% sigma_input
       m <- regmatches(s$string, regexpr("[0-9.eE+-]+\\)$", s$string))
       if (length(m) == 1L) {
         upper <- suppressWarnings(as.numeric(sub("\\)$", "", m)))
@@ -778,7 +797,8 @@
       class = target_class,
       coef = NA_character_,
       group = NA_character_,
-      dpar = "sigma"
+      dpar = "sigma",
+      input = sigma_input
     ))
   )
 }
@@ -828,5 +848,12 @@
     do.call(brms::prior_string, args)
   })
 
-  do.call(rbind, rows)
+  out <- do.call(rbind, rows)
+  # The input each row came from, read by the model manifest.
+  attr(out, "fb_input_ids") <- vapply(
+    specs,
+    function(s) s[["input"]] %||% NA_character_,
+    character(1L)
+  )
+  out
 }

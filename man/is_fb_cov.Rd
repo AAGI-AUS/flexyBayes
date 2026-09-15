@@ -16,3 +16,9 @@ one.}
 \description{
 Test whether an object is an \code{fb_cov} carrier
 }
+\examples{
+K <- diag(3)
+dimnames(K) <- list(letters[1:3], letters[1:3])
+is_fb_cov(fb_cov(K, type = "dense"))
+is_fb_cov(K)
+}

@@ -90,6 +90,57 @@ test_that("the committed capability blocks equal a fresh render", {
   }
 })
 
+test_that("the engine prose in ?flexybayes equals a fresh render", {
+  # The backend argument's "What each engine represents" paragraph is
+  # generated from the table when the documentation is built. Before it was,
+  # the hand-written paragraph said INLA refused diag() and us() and brms
+  # refused (x | g), each false for several releases while the table was
+  # right.
+  path <- .cap_pkg_file("man/flexybayes.Rd")
+  skip_if(is.na(path), "man/flexybayes.Rd is not in the installed tree")
+  squish <- function(x) gsub("[[:space:]]+", " ", paste(x, collapse = " "))
+  expect_true(
+    grepl(
+      squish(flexyBayes:::.fb_capability_engine_prose()),
+      squish(readLines(path, warn = FALSE)),
+      fixed = TRUE
+    ),
+    label = "man/flexybayes.Rd is stale -- re-run devtools::document()"
+  )
+})
+
+test_that("the translation registry and the capability table agree on refusals", {
+  # Two tables describe the same structures from two sides -- whether an
+  # engine fits a structure, and what the fit promises -- and a refusal
+  # recorded in one and not the other is the drift both exist to prevent.
+  # Rows are matched on spelling; every engine a translation row names must
+  # carry `refuses` exactly when the row's class is `refused`.
+  cap <- flexyBayes:::.fb_capability_matrix()
+  reg <- flexyBayes:::.fb_translation_registry()
+  norm <- function(s) gsub("[`~[:space:]]", "", s)
+  checked <- 0L
+  for (i in seq_len(nrow(reg))) {
+    hit <- cap[norm(cap$spelling) == norm(reg$spelling[[i]]), , drop = FALSE]
+    if (nrow(hit) != 1L) {
+      next
+    }
+    for (engine in strsplit(reg$engine[[i]], ",[[:space:]]*")[[1L]]) {
+      expect_identical(
+        identical(hit[[engine]], "refuses"),
+        identical(reg$class[[i]], "refused"),
+        label = paste0(
+          reg$structure[[i]], " on ", engine, ": capability verdict ",
+          hit[[engine]], ", translation class ", reg$class[[i]]
+        )
+      )
+      checked <- checked + 1L
+    }
+  }
+  # The four rows the 2026-09-13 containment changed, plus the corh() and
+  # uncorrelated-slope rows, match on spelling today.
+  expect_gte(checked, 8L)
+})
+
 # --- (b) behaviour anchors -------------------------------------------- #
 
 .cap_data <- function(seed = 11L) {
@@ -295,16 +346,10 @@ test_that("a factor-by-numeric fixed interaction fits on brms only", {
   skip_if_not_installed("brms")
   r <- .cap_row("Factor-by-numeric fixed interaction")
   d <- .cap_data()
-  # The deferral is host-independent: the developer artefact switch is at
-  # its default here, which is what every shipped surface sees.
-  withr::local_options(
-    list(flexyBayes.dev_inla_verification_artefacts = NULL)
-  )
   .cap_expect(
     .cap_emit("inla", y ~ env * x, data = d),
     r$inla,
-    "INLA",
-    condition_class = "flexybayes_lgm_factor_numeric_interaction_inla_verified"
+    "INLA"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env * x, data = d),
@@ -313,18 +358,22 @@ test_that("a factor-by-numeric fixed interaction fits on brms only", {
   )
 })
 
-test_that("a correlated random slope refuses on both, typed", {
+test_that("a correlated random slope refuses on INLA and emits on brms", {
+  skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row("Correlated random slope")
   d <- .cap_data()
-  for (engine in c("inla", "brms")) {
-    .cap_expect(
-      .cap_emit(engine, y ~ x + (x | gen), data = d),
-      if (identical(engine, "inla")) r$inla else r$brms,
-      engine,
-      condition_class = "flexybayes_correlated_slope_unsupported"
-    )
-  }
+  .cap_expect(
+    .cap_emit("inla", y ~ x + (x | gen), data = d),
+    r$inla,
+    "INLA",
+    condition_class = "flexybayes_refusal_correlated_covariance_requires_brms"
+  )
+  .cap_expect(
+    .cap_emit("brms", y ~ x + (x | gen), data = d),
+    r$brms,
+    "brms"
+  )
 })
 
 test_that("interaction random effects fit on brms and refuse on INLA", {
@@ -375,7 +424,8 @@ test_that("us(f):g fits on brms only", {
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ us(env):gen, data = d),
     r$inla,
-    "INLA"
+    "INLA",
+    condition_class = "flexybayes_refusal_correlated_covariance_requires_brms"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ us(env):gen, data = d),
@@ -486,7 +536,7 @@ test_that("the combined MET model emits both blocks on brms", {
   expect_match(sigma, "sigma ~ 0 + env", fixed = TRUE)
 })
 
-test_that("factor-analytic GxE refuses on both", {
+test_that("factor-analytic GxE emits on INLA and refuses on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row("Factor-analytic genotype-by-environment covariance")
@@ -494,14 +544,17 @@ test_that("factor-analytic GxE refuses on both", {
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ fa(env, 1):gen, data = d),
     r$inla,
-    "INLA",
-    condition_class = "flexybayes_refusal_fa_not_representable"
+    "INLA"
   )
+  # The refusal belongs to the engine that cannot do it, and says so under
+  # that engine's own reason code. `fa_not_representable` now covers only
+  # the bare `fa(v, k)` spelling, which has no grouping factor to apply the
+  # covariance to and no emit anywhere.
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ fa(env, 1):gen, data = d),
     r$brms,
     "brms",
-    condition_class = "flexybayes_refusal_fa_not_representable"
+    condition_class = "flexybayes_refusal_brms_cannot_represent_term"
   )
 })
 
@@ -639,6 +692,32 @@ test_that("the per-trial separable AR1 field fits on INLA and refuses on brms", 
   ))
 })
 
+test_that("the grouped temporal AR1 field fits on INLA and refuses on brms", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  r <- .cap_row("Grouped temporal AR1 field")
+  g <- .cap_grid(n_row = 8L, n_col = 5L)
+  names(g)[names(g) == "row"] <- "t"
+  names(g)[names(g) == "col"] <- "g"
+  .cap_expect(
+    .cap_emit("inla", y ~ 1, random = ~ ar1(t):g, data = g),
+    r$inla,
+    "INLA"
+  )
+  .cap_expect(
+    .cap_emit("brms", y ~ 1, random = ~ ar1(t):g, data = g),
+    r$brms,
+    "brms",
+    condition_class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
+  )
+  # The row's spelling column lists the commuted order as the same field.
+  .cap_expect(
+    .cap_emit("inla", y ~ 1, random = ~ g:ar1(t), data = g),
+    r$inla,
+    "INLA, commuted spelling"
+  )
+})
+
 test_that("a univariate P-spline fits on INLA and refuses on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
@@ -687,8 +766,8 @@ test_that("observation weights fit on both for Gaussian, typed refusal otherwise
   }
 })
 
-test_that("exact aggregation is eligible on the INLA path", {
-  r <- .cap_row("Exact sufficient-statistic aggregation")
+test_that("exact count aggregation is eligible on the INLA path", {
+  r <- .cap_row("Exact sufficient-statistic aggregation (binomial, Poisson)")
   expect_identical(r$inla, "fits")
   expect_identical(r$brms, "n/a")
   set.seed(13)
@@ -697,12 +776,197 @@ test_that("exact aggregation is eligible on the INLA path", {
     gen = factor(seq_len(6L)),
     env = factor(seq_len(3L))
   )
-  d$y <- stats::rnorm(nrow(d), 10, 2)
+  d$y <- stats::rpois(nrow(d), 4)
   plan <- suppressMessages(
-    flexybayes(y ~ env, random = ~gen, data = d, plan = TRUE, verbose = FALSE)
+    flexybayes(
+      y ~ env,
+      random = ~gen,
+      data = d,
+      family = "poisson",
+      plan = TRUE,
+      verbose = FALSE
+    )
   )
   expect_true(isTRUE(plan$aggregation$eligible))
 })
+
+test_that("exact Gaussian aggregation refuses by name on the INLA path", {
+  skip_if_not_installed("INLA")
+  r <- .cap_row("Exact sufficient-statistic aggregation (Gaussian)")
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "n/a")
+  set.seed(13)
+  d <- expand.grid(
+    rep = factor(seq_len(20L)),
+    gen = factor(seq_len(6L)),
+    env = factor(seq_len(3L))
+  )
+  d$y <- stats::rnorm(nrow(d), 10, 2)
+  expect_error(
+    suppressMessages(flexybayes(
+      y ~ env,
+      random = ~gen,
+      data = d,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
+    )),
+    class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
+  )
+})
+
+
+# --- (b) behaviour anchors: the joint shrinkage priors ----------------- #
+#
+# Each row is probed twice. The brms verdict is probed by compiling the
+# prior the family declares and asserting that brms accepts it -- the same
+# route test-penalty-stancode.R takes, here reduced to the one question the
+# matrix cell answers. The INLA cell is `n/a`: no public call hands a
+# shrinkage prior to INLA, because fb_select() fits its reference model on
+# brms. The internal guard behind that, lgm_gate()'s twelfth check, is still
+# probed, read off the gate rather than off a message string.
+
+.cap_penalty_data <- function(n = 60L, seed = 4021L) {
+  set.seed(seed)
+  data.frame(
+    y = stats::rnorm(n),
+    p1 = stats::rnorm(n),
+    x1 = stats::rnorm(n),
+    x2 = stats::rnorm(n),
+    g = factor(rep(seq_len(6L), length.out = n)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# Compile one family's prior over the two candidates, and hand it to brms.
+# `class_wide` families cannot sit beside a protected coefficient row, so
+# their probe protects nothing beyond the intercept.
+.cap_penalty_compiles <- function(spec, protected = "p1") {
+  d <- .cap_penalty_data()
+  rhs <- if (identical(protected, character(0))) {
+    "x1 + x2"
+  } else {
+    paste0(protected, " + x1 + x2")
+  }
+  map <- flexyBayes:::.fb_sel_term_map(
+    stats::as.formula(paste0("~ ", rhs)), d
+  )
+  blocks <- flexyBayes:::.fb_pen_resolve(spec, map, protected = protected)
+  coef_all <- flexyBayes:::.fb_pen_brms_coef_names(
+    colnames(map$X)[map$assign != 0L]
+  )
+  out <- flexyBayes:::.fb_pen_compile_brms(
+    blocks, coef_all, n_train = nrow(d)
+  )
+  code <- brms::make_stancode(
+    stats::as.formula(paste0("y ~ ", rhs)),
+    d,
+    prior = out$prior,
+    stanvars = out$stanvars
+  )
+  list(blocks = blocks, code = code)
+}
+
+# The internal guard, read off the gate rather than off a message. Nothing
+# in R/ writes `fb$penalty_blocks`, so the test sets it to reach the check.
+.cap_penalty_inla_refuses <- function(blocks) {
+  d <- .cap_penalty_data()
+  fb <- flexyBayes:::.build_ir_polymorphic(
+    fixed = y ~ p1 + x1 + x2,
+    random = ~g,
+    residual = NULL,
+    data = d,
+    family = "gaussian",
+    link = "identity",
+    weights = NULL,
+    known_matrices = list(),
+    prior = NULL,
+    prior_fixed_sd = 100,
+    prior_vc_sd = 1,
+    syntax = "auto"
+  )
+  fb$penalty_blocks <- blocks
+  gated <- flexyBayes:::lgm_gate(fb)
+  expect_true(flexyBayes:::is_lgm_refusal(gated))
+  expect_true("prior_family_unsupported_inla" %in%
+    vapply(gated$failures, function(f) f$rule_id, character(1L)))
+  # And the same model without the blocks passes the same check, so the
+  # refusal is the prior's and not the model's.
+  fb$penalty_blocks <- NULL
+  expect_false(flexyBayes:::is_lgm_refusal(flexyBayes:::lgm_gate(fb)))
+}
+
+test_that("a ridge shrinkage prior fits on brms and INLA is never asked", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("Ridge shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "n/a")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ ridge(scale = 0.4))
+  )
+  expect_true(any(grepl("normal_lpdf(b[", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("a laplace shrinkage prior fits on brms and INLA is never asked", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("Laplace shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "n/a")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ laplace(scale = 0.25))
+  )
+  expect_true(any(grepl("double_exponential_lpdf(b[", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("an elastic-net shrinkage prior fits on brms and INLA is never asked", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("Elastic-net shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "n/a")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ elastic_net(lambda = 0.1, alpha = 0.5))
+  )
+  expect_true(any(grepl("cand_idx", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("a regularised horseshoe fits on brms and INLA is never asked", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row(
+    "Regularised horseshoe shrinkage prior on candidate fixed effects"
+  )
+  expect_identical(r$inla, "n/a")
+  expect_identical(r$brms, "fits")
+  # Class-wide: nothing protected beyond the intercept, which is the
+  # targeting rule the note states.
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 1)),
+    protected = character(0)
+  )
+  expect_true(any(grepl("hs_global", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
+test_that("an R2D2 prior fits on brms and INLA is never asked", {
+  skip_on_cran()
+  skip_if_not_installed("brms")
+  r <- .cap_row("R2D2 shrinkage prior on candidate fixed effects")
+  expect_identical(r$inla, "n/a")
+  expect_identical(r$brms, "fits")
+  got <- .cap_penalty_compiles(
+    fb_penalty(term(everything()) ~ r2d2(mean_R2 = 0.4)),
+    protected = character(0)
+  )
+  expect_true(any(grepl("R2D2_phi", got$code, fixed = TRUE)))
+  .cap_penalty_inla_refuses(got$blocks)
+})
+
 
 # --- coverage --------------------------------------------------------- #
 
@@ -736,9 +1000,16 @@ test_that("every capability row carries a behaviour anchor here", {
     "Known-covariance genomic / pedigree random effect",
     "Separable AR1 spatial field",
     "Per-trial separable AR1 field",
+    "Grouped temporal AR1 field",
     "Univariate P-spline",
     "Observation weights (Gaussian, identity link)",
-    "Exact sufficient-statistic aggregation"
+    "Exact sufficient-statistic aggregation (binomial, Poisson)",
+    "Exact sufficient-statistic aggregation (Gaussian)",
+    "Ridge shrinkage prior on candidate fixed effects",
+    "Laplace shrinkage prior on candidate fixed effects",
+    "Elastic-net shrinkage prior on candidate fixed effects",
+    "Regularised horseshoe shrinkage prior on candidate fixed effects",
+    "R2D2 shrinkage prior on candidate fixed effects"
   )
   expect_setequal(tab$model_class, probed)
 })

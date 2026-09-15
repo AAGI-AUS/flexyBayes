@@ -51,15 +51,30 @@
 #' the cell-constant linear-predictor property and are likewise refused
 #' -- pass the data to [flexybayes()] per row for those models.
 #'
-#' Supported families are `"gaussian"` (identity link), `"binomial"`,
-#' and `"poisson"`. For binomial data supply `trials` to name the column
-#' of trial counts (a 0/1 response is treated as Bernoulli with one trial
-#' per row). For poisson data supply `exposure` to name an exposure /
-#' offset column.
+#' Supported families for a fit are `"binomial"` and `"poisson"`. A
+#' `"gaussian"` fit refuses by name
+#' (`aggregation_residual_prior_not_composed`): the aggregated Gaussian
+#' route cannot yet carry the residual prior, so fit such data per row
+#' with [flexybayes()]. `fit = FALSE` still returns the Gaussian
+#' sufficient statistics. For binomial data supply `trials` to name the
+#' column of trial counts (a 0/1 response is treated as Bernoulli with one
+#' trial per row). For poisson data supply `exposure` to name an exposure
+#' column. A fit on the aggregated representation reports no marginal
+#' likelihood (`aggregated_evidence_unavailable`).
+#'
+#' An `offset()` in `fixed` is carried exactly on two of the three
+#' families. On `"gaussian"` it is subtracted from the response before the
+#' cell statistics are taken, which reproduces the per-row likelihood
+#' however the offset varies inside a cell. On `"poisson"`, `offset(o)`
+#' multiplies each row's exposure by `exp(o)`, so `offset(log(E))` and
+#' `exposure = "E"` fit the same model; given both, they multiply. On
+#' `"binomial"` a cell total of rows whose offsets differ is not binomial,
+#' and the call refuses with `fixed_offset_unsupported`.
 #'
 #' @param fixed A two-sided formula `response ~ fixed_terms`. The fixed
 #'   terms must be factors or factor interactions; a continuous term
-#'   forces one cell per row and is refused.
+#'   forces one cell per row and is refused. `offset()` terms are allowed
+#'   on the Gaussian and Poisson families; see Details.
 #' @param random A one-sided formula of random-intercept grouping factors,
 #'   ASReml style (for example `~ geno`), or `NULL` for no random terms.
 #' @param source The data source. One of: a length-1 character path to an
@@ -72,8 +87,9 @@
 #'   or `"poisson"`.
 #' @param trials For `family = "binomial"`, the name of the trials-count
 #'   column, or `NULL` for Bernoulli (one trial per row).
-#' @param exposure For `family = "poisson"`, the name of the exposure /
-#'   offset column, or `NULL` for unit exposure.
+#' @param exposure For `family = "poisson"`, the name of the exposure
+#'   column, or `NULL` for unit exposure. An `offset(log(E))` in `fixed`
+#'   is the same model as `exposure = "E"`.
 #' @param backend The estimation backend. `"inla"` is the default and the
 #'   only active choice: INLA is the one engine with an aggregated emit.
 #'   Any other value -- including a formerly-registered engine name this
@@ -108,12 +124,12 @@
 #'   df <- data.frame(
 #'     env = factor(sample(letters[1:6], n, replace = TRUE)),
 #'     geno = factor(sample(1:50, n, replace = TRUE)),
-#'     y = rnorm(n)
+#'     count = rpois(n, 3)
 #'   )
 #'   path <- tempfile(fileext = ".fst")
 #'   fst::write_fst(df, path)
-#'   fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
-#'                            backend = "inla")
+#'   fit <- flexybayes_stream(count ~ env, random = ~ geno, source = path,
+#'                            family = "poisson", backend = "inla")
 #'   summary(fit)
 #' }
 #'
@@ -143,6 +159,25 @@ flexybayes_stream <- function(
   .check_stream_family(family)
   .check_stream_chunk_rows(chunk_rows)
 
+  # A Gaussian model is not fitted on the aggregated representation: that
+  # route cannot yet carry the residual prior, so the fit would not run
+  # under the prior prior_summary() reports. Refused before any chunk is
+  # read. The sufficient statistics alone (fit = FALSE) involve no prior.
+  if (isTRUE(fit) && identical(family, "gaussian")) {
+    stop(.fb_refusal_condition(
+      reason_code = "aggregation_residual_prior_not_composed",
+      message = paste0(
+        "flexybayes_stream() refused for family = \"gaussian\": the ",
+        "aggregated Gaussian route cannot yet carry the residual prior, so ",
+        "the fit would not run under the prior prior_summary() reports. Fit ",
+        "the data per row with flexybayes(), or call flexybayes_stream(..., ",
+        "fit = FALSE) for the sufficient statistics. The binomial and ",
+        "Poisson families still stream."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
+  }
+
   # IR is built from a head sample so term classification and factor
   # contrasts match the in-memory path exactly. An `.fst` source carries
   # the full factor-level dictionary in its metadata, so any row range
@@ -170,6 +205,22 @@ flexybayes_stream <- function(
     return(agg)
   }
 
+  # No prior stated: the package's bounded default, as flexybayes() builds it
+  # for an in-memory fit. Left to INLA's own hyperprior, 20 identical streamed
+  # fits of a four-block design gave a block SD above 1e6 on 10 and an engine
+  # failure on 4.
+  if (is.null(prior)) {
+    targets <- .fb_default_prior_targets(fb)
+    fb$priors <- .default_uniform_prior(
+      data = NULL,
+      response = fb$response,
+      family = family,
+      random_groups = targets$shared,
+      vm_ped_groups = targets$vm_ped,
+      resp_sd = NULL
+    )
+  }
+
   .fb_stream_emit(
     fb = fb,
     agg = agg,
@@ -180,6 +231,8 @@ flexybayes_stream <- function(
     family = family,
     the_call = the_call,
     verbose = verbose,
+    trials = trials,
+    exposure = exposure,
     ...
   )
 }
@@ -614,9 +667,30 @@ flexybayes_stream <- function(
     )
   }
 
+  # The streaming route reads named columns off disk chunk by chunk, so a
+  # transformed response has nothing to read. The per-row route evaluates it
+  # (see .fb_response_values()); this one cannot, and says so rather than
+  # asking the reader for a column that does not exist.
+  if (isTRUE(fb$response_is_expression)) {
+    stop(.fb_refusal_condition(
+      reason_code = "stream_response_must_be_a_column",
+      message = paste0(
+        "Streaming aggregation needs the response to be a column on disk, ",
+        "and \"",
+        fb$response,
+        "\" is an expression. Materialise it as a column in the source ",
+        "before streaming, or fit the per-row route, which evaluates the ",
+        "expression."
+      )
+    ))
+  }
+
   response <- fb$response
   family <- fb$family
-  read_cols <- unique(c(response, key_cols, trials, exposure))
+  offsets <- fb$offsets %||% character(0)
+  read_cols <- unique(c(
+    response, key_cols, trials, exposure, .fb_offset_vars(offsets)
+  ))
 
   acc <- NULL
   n_total <- 0
@@ -631,13 +705,16 @@ flexybayes_stream <- function(
       next
     }
 
+    .fb_stream_refuse_response(chunk[[response]], response, n_total)
+
     partial <- .fb_stream_chunk_partial(
       chunk,
       key_cols,
       response,
       family,
       trials,
-      exposure
+      exposure,
+      offsets
     )
     acc <- .fb_stream_fold(acc, partial, key_cols)
     n_total <- n_total + nrow(chunk)
@@ -655,6 +732,59 @@ flexybayes_stream <- function(
   }
 
   .fb_stream_finalise(fb, acc, key_cols, n_total, family)
+}
+
+#' Refuse a chunk whose response carries a value no cell statistic can hold
+#'
+#' The streamed route reads its chunks directly, so the missing-response
+#' layer every flexybayes() call passes through never sees them. A missing
+#' count made its cell's sum missing, and the cell dropped out of the fit
+#' without a message; a NaN did the same; an infinite count reached INLA and
+#' ended its process. A missing value refuses as `aggregate = TRUE` refuses
+#' it, and a NaN or infinite one as every flexybayes() route does.
+#'
+#' @param y The response values of one chunk.
+#' @param response The response column name.
+#' @param rows_before The number of rows read before this chunk.
+#' @returns `NULL`, invisibly, when every value is finite.
+#' @noRd
+#' @keywords internal
+.fb_stream_refuse_response <- function(y, response, rows_before) {
+  y <- suppressWarnings(as.numeric(y))
+  bad <- which(is.nan(y) | is.infinite(y))
+  if (length(bad)) {
+    shown <- utils::head(bad, 5L)
+    stop(.fb_refusal_condition(
+      reason_code = "response_not_finite",
+      message = paste0(
+        "The response `", response, "` has ", length(bad),
+        " value(s) that are not finite in the rows read so far (",
+        paste0("row ", rows_before + shown, ": ", as.character(y[shown]),
+          collapse = ", "),
+        if (length(bad) > length(shown)) ", ..." else "",
+        "). NaN and infinite values are not missing observations. Correct ",
+        "them in the source, or set them to NA and fit the per-row route, ",
+        "which carries a missing response as a latent quantity."
+      ),
+      family_class = "flexybayes_response_refusal"
+    ))
+  }
+  miss <- which(is.na(y))
+  if (length(miss)) {
+    stop(.fb_refusal_condition(
+      reason_code = "aggregation_response_incomplete",
+      message = paste0(
+        "flexybayes_stream() refused: the response `", response, "` has ",
+        "missing values (first at row ", rows_before + miss[[1L]], "), and ",
+        "the streamed route compresses rows into per-cell sufficient ",
+        "statistics that are not defined for a missing response. Fit the ",
+        "per-row route, which carries a missing response as a latent ",
+        "quantity."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
+  }
+  invisible(NULL)
 }
 
 #' @noRd
@@ -686,7 +816,8 @@ flexybayes_stream <- function(
   response,
   family,
   trials,
-  exposure
+  exposure,
+  offsets = character(0)
 ) {
   # The value columns are named `.y` / `.m` / `.e` -- symbols that are
   # NOT local variables -- so the substitute() idiom below inlines the
@@ -695,8 +826,15 @@ flexybayes_stream <- function(
   # columns. Counts and sums are doubles for overflow safety past 2^31.
   kdt <- data.table::as.data.table(chunk[key_cols])
   data.table::set(kdt, j = ".y", value = as.numeric(chunk[[response]]))
+  # The offsets of this chunk's rows. Gaussian: subtracted from the response
+  # before the statistics are taken. Poisson: exp(offset) multiplies the
+  # exposure. The binomial route refuses an offset in its scope check.
+  off <- .fb_offset_total(offsets, as.data.frame(chunk))
 
   if (identical(family, "gaussian")) {
+    if (!is.null(off)) {
+      data.table::set(kdt, j = ".y", value = kdt[[".y"]] - off)
+    }
     expr <- substitute(
       kdt[,
         list(n_k = as.double(.N), S1_k = sum(.y), S2_k = sum(.y * .y)),
@@ -723,6 +861,22 @@ flexybayes_stream <- function(
       rep(1, nrow(kdt))
     } else {
       as.numeric(chunk[[exposure]])
+    }
+    if (!is.null(off)) {
+      ev <- ev * exp(off)
+      if (!all(is.finite(ev))) {
+        stop(.fb_refusal_condition(
+          reason_code = "fixed_offset_invalid",
+          message = paste0(
+            "The fixed formula carries ",
+            paste0("`", offsets, "`", collapse = ", "),
+            ", and on the aggregated Poisson route the exposure is ",
+            "multiplied by exp(offset), which overflows on this data. Fit ",
+            "the per-row route, which carries the offset on the log scale."
+          ),
+          offset = offsets
+        ))
+      }
     }
     data.table::set(kdt, j = ".e", value = ev)
     expr <- substitute(
@@ -887,6 +1041,11 @@ flexybayes_stream <- function(
     )
   }
 
+  # A cell total of Bernoulli rows whose offsets differ is not binomial.
+  if (identical(fb$family, "binomial")) {
+    .refuse_offset_route(fb, "the aggregated binomial route")
+  }
+
   for (t in fb$fixed_terms) {
     ttype <- t$type %||% "expression"
     if (ttype %in% c("smooth", "s", "t2", "smooth_mgcv", "spline")) {
@@ -930,7 +1089,9 @@ flexybayes_stream <- function(
     }
     reason <- if (rtype %in% c("smooth", "s", "t2", "smooth_mgcv", "spline")) {
       "smooth_term_not_aggregatable"
-    } else if (rtype %in% c("simple_slope_uncor", "slope", "random_slope")) {
+    } else if (rtype %in% c(
+      "simple_slope_uncor", "simple_slope_cor", "slope", "random_slope"
+    )) {
       "random_slope_not_aggregatable"
     } else {
       "structured_random_not_aggregatable"
@@ -964,6 +1125,8 @@ flexybayes_stream <- function(
   family,
   the_call,
   verbose,
+  trials = NULL,
+  exposure = NULL,
   ...
 ) {
   data_name <- "streamed"
@@ -978,38 +1141,44 @@ flexybayes_stream <- function(
     )
   }
 
-  fit <- if (identical(family, "gaussian")) {
-    emit_gaussian_aggregated(
-      fb = fb,
-      fb_aggregated = agg,
-      data = head,
-      backend = backend,
-      verbose = verbose,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      family = family,
-      data_name = data_name,
-      ...
-    )
+  # Count families only: flexybayes_stream() refuses a Gaussian fit before
+  # any chunk is read.
+  # A row's expected count scales with its own trials or exposure, which the
+  # cell totals absorbed; the row-level fitted values multiply it back in.
+  row_scale <- if (!is.null(trials)) {
+    as.numeric(head[[trials]])
+  } else if (!is.null(exposure)) {
+    as.numeric(head[[exposure]])
   } else {
-    emit_count_aggregated(
-      fb = fb,
-      fb_aggregated = agg,
-      data = head,
-      backend = backend,
-      verbose = verbose,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      family = family,
-      data_name = data_name,
-      ...
-    )
+    NULL
   }
+  fit <- emit_count_aggregated(
+    fb = fb,
+    fb_aggregated = agg,
+    data = head,
+    row_scale = row_scale,
+    backend = backend,
+    verbose = verbose,
+    the_call = the_call,
+    fixed = fixed,
+    random = random,
+    family = family,
+    data_name = data_name,
+    ...
+  )
 
   if (!is.null(fit$extras) && !is.null(fit$extras$aggregation_meta)) {
     fit$extras$aggregation_meta$streamed <- TRUE
+  }
+  # The IR, and with it the prior the fit ran under, as the in-memory routes
+  # attach it in .dispatch_backend(); prior_summary() reads it from here.
+  if (!is.null(fit$extras)) {
+    fit$extras$fb_terms <- fb
+  }
+  # The manifest names the streamed route; the count emit records the
+  # aggregated one.
+  if (!is.null(fit[["extras"]][["manifest"]])) {
+    fit[["extras"]][["manifest"]][["route"]][["route"]] <- "streamed_count"
   }
 
   # D10 / WP-D: emit_gaussian_aggregated() / emit_count_aggregated() set
@@ -1027,11 +1196,7 @@ flexybayes_stream <- function(
     fit$exactness <- "aggregated_exact"
     fit$extras$backend_decision <- .build_routing_decision(
       backend = backend,
-      path = if (identical(family, "gaussian")) {
-        "aggregated_gaussian"
-      } else {
-        "aggregated_count"
-      },
+      path = "aggregated_count",
       gate_checks = NULL,
       reason = sprintf(
         "streamed aggregation (N = %s, K = %s, ratio = %.2f:1)",

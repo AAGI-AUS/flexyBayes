@@ -14,10 +14,6 @@
 #' supports `summary()`, `predict()`, `emmeans::emmeans()`,
 #' `marginaleffects::predictions()`, and the `bayesplot::*` family.
 #'
-#' The package's signature feature is `triangulate()`, a cross-engine
-#' posterior comparison that quantifies disagreement between two fits of
-#' the same model on the same data.
-#'
 #' @section Entry points:
 #' The entry points share a single internal model representation
 #' (`fb_terms`):
@@ -32,18 +28,23 @@
 #'   formula, and any `backend` (`"inla"`, `"brms"`, or `"auto"`).
 #' * [fb_inla()] / [fb_brms()] -- the two active single-engine pins.
 #' * [fb_prior()] -- penalised-complexity-canonical prior DSL.
-#' * [triangulate()] -- cross-engine posterior comparison.
+#' * [vpredict()] -- ASReml's own verb for a posterior functional of the
+#'   variance components: heritabilities, ratios and genetic correlations,
+#'   computed on the draws rather than by the delta method.
 #'
 #' @section Vignettes:
-#' Twelve vignettes ship with the package, covering: arriving from an
-#' ASReml call, getting started, the formula surface (the asreml term
-#' catalogue together with structured covariance), foundational
-#' regression, hierarchical models, priors and regularisation,
-#' multi-environment trials and genomics, downstream analysis,
-#' spatio-temporal models, cross-engine triangulation, dispatch and
-#' refusals with the backend registry, and big-data streaming (exact
-#' aggregation). The dispatch-and-refusals page is the technical /
-#' internals reference; the rest target a general audience.
+#' Five vignettes ship with the package: *Mixed models in brief*,
+#' *Bayesian estimation in brief*, *The ASReml syntax flexyBayes covers*,
+#' *ASReml and flexyBayes on the same trials*, and *Selecting over a
+#' candidate block*. The first two set up the model class and what changes
+#' under a posterior; the third is the formula surface together with
+#' dispatch and the inventory of structures that are refused; the fourth
+#' fits the same trials through both and shows where the answers agree and
+#' where they do not; the fifth shrinks a block of candidate fixed effects
+#' under a declared joint prior, reads a projection predictive decision off
+#' it, and says what a benchmark against an external optimiser does and does
+#' not establish. The count here is checked against `vignettes/` by a parity
+#' test, because a number written into prose is the first thing to drift.
 #'
 #' @section Capability:
 #' What each active engine fits, emits, or refuses by model class is

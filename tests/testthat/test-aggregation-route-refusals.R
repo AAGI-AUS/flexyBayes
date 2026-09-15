@@ -27,7 +27,14 @@
     blk = factor(seq_len(4L))
   )
   d$y <- 10 + as.numeric(d$trt) * 0.5 + stats::rnorm(nrow(d), 0, 0.3)
-  d$g2 <- factor(rep(seq_len(2L), length.out = nrow(d)))
+  # These route tests need a model the GATE refuses on INLA so that no
+  # aggregated route resolves. Any us() is that model: estimated correlation
+  # matrices are fitted on brms only, and the gate refuses them
+  # (.lgm_check_correlated_covariance()). Six levels, which also exceed
+  # INLA's iidKd range, date from when us() fitted on INLA up to five. The
+  # mechanism under test is unchanged: gate refusal above, plan-eligibility
+  # gate below.
+  d$g2 <- factor(rep(seq_len(6L), length.out = nrow(d)))
   d
 }
 

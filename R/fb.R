@@ -54,6 +54,7 @@
 #' @seealso [flexybayes()] and [fb()] for the universal fitting entry;
 #'   [fb_from_brms()] for the other ingest dialect.
 #' @examples
+#' set.seed(1L)
 #' df <- data.frame(
 #'   yield = rnorm(20),
 #'   geno  = factor(rep(letters[1:4], 5)),
@@ -130,11 +131,16 @@ fb_from_asreml <- function(
 
   data_summary <- list(
     n = nrow(data),
-    known_matrices = names(known_matrices)
+    known_matrices = names(known_matrices),
+    response_sd = .fb_response_sd(
+      list(response = fixed_info$response, offsets = fixed_info$offsets),
+      data
+    )
   )
 
   new_fb_terms(
     response = fixed_info$response,
+    response_is_expression = isTRUE(fixed_info$response_is_expression),
     family = fam_link$family,
     link = fam_link$link,
     intercept = fixed_info$intercept,
@@ -145,7 +151,8 @@ fb_from_asreml <- function(
     priors = priors,
     data_summary = data_summary,
     capabilities = character(),
-    source = "asreml"
+    source = "asreml",
+    offsets = fixed_info$offsets
   )
 }
 

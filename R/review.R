@@ -165,6 +165,16 @@ print.flexybayes_review <- function(x, ...) {
 #'   accepts `file`, a connection defaulting to `stdout()`.
 #' @returns Invisibly, the code as a character vector. Called for the
 #'   code it writes to `file`.
+#' @examples
+#' # review_code = TRUE defers the fit, but generating the code still
+#' # goes through brms::make_stancode(), so brms must be present.
+#' if (requireNamespace("brms", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+#'                    review_code = TRUE)
+#'   cat_code(rv)
+#' }
 #' @export
 cat_code <- function(x, ...) {
   UseMethod("cat_code")
@@ -197,6 +207,23 @@ cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
 #'   deferred triangulation.
 #' @returns The fit object the originating call would have returned, of
 #'   class `flexybayes`. A second call returns the cached fit.
+#' @examples
+#' # The review object holds the model back until proceed() is called.
+#' # Building it generates Stan source through brms, so both halves are
+#' # guarded on brms, and the deferred fit is given a small budget: the
+#' # Stan compile alone is the expensive part of running this.
+#' if (requireNamespace("brms", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+#'                    review_code = TRUE, chains = 1L, n_samples = 200L,
+#'                    warmup = 100L)
+#'   rv
+#'   \donttest{
+#'     fit <- proceed(rv)
+#'     class(fit)
+#'   }
+#' }
 #' @export
 proceed <- function(x, ...) {
   UseMethod("proceed")

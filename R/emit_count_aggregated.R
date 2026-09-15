@@ -49,7 +49,8 @@ emit_count_aggregated <- function(
   control = NULL,
   na_action = NULL,
   requested_backend = NULL,
-  requested_aggregate = NULL
+  requested_aggregate = NULL,
+  row_scale = NULL
 ) {
   backend <- match.arg(backend)
   fam <- fb$family
@@ -102,7 +103,8 @@ emit_count_aggregated <- function(
     na_action = na_action,
     verbose = verbose,
     requested_backend = requested_backend,
-    requested_aggregate = requested_aggregate
+    requested_aggregate = requested_aggregate,
+    row_scale = row_scale
   )
 }
 
@@ -142,13 +144,28 @@ emit_count_aggregated <- function(
   } else {
     list()
   }
-  inla_form <- .agg_count_inla_formula(
+  # A stated key must name a random intercept this route fits, checked
+  # against the keys its f() terms read, as on the per-row route
+  # (R/model_manifest.R).
+  .fb_check_prior_keys_reachable(
+    setdiff(names(hyper_ctrl), "sigma"),
+    vapply(ri_plan, function(r) r[["col"]], character(1L)),
+    engine = "inla"
+  )
+  # A random-intercept SD the caller left unstated takes the package default,
+  # as on the per-row route (R/inla_default_priors.R). On the log and logit
+  # links its bound is a constant, so no data are needed.
+  completion <- .fb_inla_complete_priors(fb, hyper_ctrl, data = NULL)
+  hyper_ctrl <- completion$hyper_ctrl
+  built <- .agg_count_inla_formula(
     fb,
     fb_aggregated,
     ri_plan,
     hyper_ctrl,
-    lhs = ".resp"
+    lhs = ".resp",
+    with_slots = TRUE
   )
+  inla_form <- built[["formula"]]
 
   inla_args <- list(
     formula = inla_form,
@@ -187,9 +204,24 @@ emit_count_aggregated <- function(
 
   inla_fit <- do.call(INLA::inla, inla_args)
 
+  # What each prior became, as INLA reports it (R/model_manifest.R).
+  manifest <- .fb_manifest_inla(
+    fb = fb,
+    inla_fit = inla_fit,
+    formula_slots = built[["slots"]],
+    family_slots = .fb_manifest_inla_family_slots(hyper_ctrl, fam),
+    reads = built[["reads"]],
+    control_fixed = control_fixed,
+    scalars = .fb_manifest_inla_scalars(fb),
+    completion = completion$record,
+    route = "aggregated_count"
+  )
+
   list(
     backend = "inla",
     inla = inla_fit,
+    manifest = manifest,
+    prior_completion = completion$record,
     fixed_form = inla_form,
     K = fb_aggregated$K,
     N = fb_aggregated$N
@@ -204,7 +236,8 @@ emit_count_aggregated <- function(
   fb_aggregated,
   ri_plan,
   hyper_ctrl = list(),
-  lhs
+  lhs,
+  with_slots = FALSE
 ) {
   fixed_cols <- setdiff(fb_aggregated$fixed_cols, "(Intercept)")
   rhs_fixed <- if (length(fixed_cols)) {
@@ -222,19 +255,35 @@ emit_count_aggregated <- function(
   # loggamma(1, 5e-5) so the aggregated fit matches the per-row path,
   # which inherits the same INLA default when hyper_ctrl is empty.
   default_iid_hyper <- list(prior = "loggamma", param = c(1, 5e-05))
-  ri_pieces <- vapply(
-    ri_plan,
-    function(r) {
-      entry <- hyper_ctrl[[r$col]] %||% default_iid_hyper
-      hyper_arg <- .inla_hyper_arg(entry)
-      sprintf(
-        "f(`%s`, model = \"iid\"%s)",
-        r$col,
-        if (nzchar(hyper_arg)) paste0(", ", hyper_arg) else ""
-      )
-    },
-    character(1L)
-  )
+  ri_pieces <- character(length(ri_plan))
+  # The engine slot each f() term writes, for the model manifest; the
+  # pinned INLA default is recorded as the engine's own prior.
+  slots <- list()
+  reads <- list()
+  for (i in seq_along(ri_plan)) {
+    col <- ri_plan[[i]][["col"]]
+    stated <- hyper_ctrl[[col]]
+    entry <- stated %||% default_iid_hyper
+    hyper_arg <- .inla_hyper_arg(entry)
+    ri_pieces[[i]] <- sprintf(
+      "f(`%s`, model = \"iid\"%s)",
+      col,
+      if (nzchar(hyper_arg)) paste0(", ", hyper_arg) else ""
+    )
+    slots[[i]] <- .fb_manifest_inla_slot(
+      tag = col,
+      model = "iid",
+      key = col,
+      structure = "simple",
+      entry = entry,
+      pinned = is.null(stated)
+    )
+    reads[[i]] <- data.frame(
+      key = col,
+      structure = "simple",
+      stringsAsFactors = FALSE
+    )
+  }
   rhs_ri <- if (length(ri_pieces)) {
     paste(ri_pieces, collapse = " + ")
   } else {
@@ -250,7 +299,15 @@ emit_count_aggregated <- function(
     rhs <- paste(rhs, "- 1")
   }
 
-  stats::as.formula(paste(lhs, "~", rhs))
+  form <- stats::as.formula(paste(lhs, "~", rhs))
+  if (!isTRUE(with_slots)) {
+    return(form)
+  }
+  list(
+    formula = form,
+    slots = .fb_manifest_bind_slots(slots),
+    reads = .fb_manifest_bind_reads(reads)
+  )
 }
 
 
@@ -323,7 +380,8 @@ emit_count_aggregated <- function(
   na_action = NULL,
   verbose = TRUE,
   requested_backend = NULL,
-  requested_aggregate = NULL
+  requested_aggregate = NULL,
+  row_scale = NULL
 ) {
   posterior_summary <- .agg_count_inla_summarise(
     engine_out, fb_aggregated, ri_plan
@@ -336,8 +394,19 @@ emit_count_aggregated <- function(
     posterior_summary,
     ri_plan
   )
-  fitted_row <- .agg_count_inverse_link(eta_row, fb$family)
-  y_row <- data[[fb$response]]
+  # A Poisson offset reached the fit as exposure; each row's linear predictor
+  # carries it.
+  off_row <- .fb_offset_values(fb, data)
+  if (!is.null(off_row)) {
+    eta_row <- eta_row + off_row
+  }
+  # Each row's fitted value is its cell's as INLA reports it: the posterior
+  # mean of the inverse-linked cell predictor, random effects included.
+  # `eta_row` is the fixed part alone, so its inverse link is not one.
+  fitted_row <- .agg_count_row_fitted(
+    fb, fb_aggregated, data, engine_out$inla, off_row, row_scale
+  )
+  y_row <- .fb_response_values(fb, data)
   resid_row <- as.numeric(y_row) - fitted_row
 
   glm_obj <- structure(
@@ -364,12 +433,22 @@ emit_count_aggregated <- function(
       convergence = posterior_summary$convergence,
       variance_comps = posterior_summary$variance_comps,
       run_time = elapsed,
+      # The standard deviations the INLA fit filled with the package default.
+      prior_completion = engine_out$prior_completion,
+      # Which prior became which engine slot, the route and the evidence
+      # (R/model_manifest.R).
+      manifest = engine_out[["manifest"]],
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a
       # per-row fit of the same model read as comparable to
       # triangulate(). See R/model_fingerprint.R.
-      fingerprint = .fb_model_fingerprint(fb, data, prior_vc_sd = prior_vc_sd),
+      fingerprint = .fb_model_fingerprint(
+        fb,
+        data,
+        prior_vc_sd = prior_vc_sd,
+        completion = engine_out$prior_completion
+      ),
       parse_info = list(
         fixed = list(
           response = fb$response,
@@ -416,7 +495,7 @@ emit_count_aggregated <- function(
         verbose = verbose
       ),
       model_info = list(
-        n_obs = fb_aggregated$N,
+        n_obs = .fb_row_count_value(fb_aggregated$N),
         n_cells = fb_aggregated$K,
         n_fixed = length(fb$fixed_terms) + isTRUE(fb$intercept),
         n_random = length(fb$random_terms),
@@ -431,7 +510,10 @@ emit_count_aggregated <- function(
         # Three cases, not two -- see .agg_prior_parametrization(). The
         # auto-default is an fb_prior object, so a class test alone
         # labelled an ordinary call "custom (explicit prior supplied)".
-        prior_parametrization = .agg_prior_parametrization(fb$priors),
+        prior_parametrization = .agg_prior_parametrization(
+          fb$priors,
+          engine_out[["manifest"]][["inputs"]]
+        ),
         streamed = isTRUE(fb_aggregated$streamed)
       ),
       the_call = the_call,
@@ -463,6 +545,68 @@ emit_count_aggregated <- function(
 
 #' @noRd
 #' @keywords internal
-.agg_count_inverse_link <- function(eta, family) {
-  switch(family, binomial = stats::plogis(eta), poisson = exp(eta), eta)
+.agg_count_row_fitted <- function(
+  fb,
+  fb_aggregated,
+  data,
+  inla_fit,
+  off_row = NULL,
+  row_scale = NULL
+) {
+  cell <- .agg_count_cell_of_row(fb, fb_aggregated, data)
+  out <- inla_fit$summary.fitted.values$mean[cell]
+  # INLA leaves the exposure E out of a Poisson fitted value (measured: without
+  # it a within-cell offset missed the per-row fit by 57 counts), so a row's
+  # exp(offset), which the cell exposure absorbed, multiplies it back in.
+  if (identical(fb$family, "poisson") && !is.null(off_row)) {
+    out <- out * exp(off_row)
+  }
+  if (!is.null(row_scale)) {
+    out <- out * row_scale
+  }
+  out
+}
+
+# The cell of each row of `data`, as a row index into the sufficient
+# statistics, which is also the row order of the data INLA fitted. A cell is
+# keyed by its fixed-effect design row and its random-intercept groups, the
+# `cell_key_cols` .fb_stream_finalise() records.
+#' @noRd
+#' @keywords internal
+.agg_count_cell_of_row <- function(fb, fb_aggregated, data) {
+  fixed_cols <- fb_aggregated$fixed_cols
+  random_cols <- fb_aggregated$random_cols
+  fixed_form <- .fb_aggregate_fixed_formula(fb)
+  x_row <- if (is.null(fixed_form)) {
+    matrix(
+      1,
+      nrow = nrow(data),
+      ncol = 1L,
+      dimnames = list(NULL, "(Intercept)")
+    )
+  } else {
+    stats::model.matrix(fixed_form, data = data)
+  }
+  ss <- fb_aggregated$sufficient_stats
+  key_of <- function(cols) {
+    do.call(paste, c(unname(cols), sep = "\r"))
+  }
+  row_key <- key_of(c(
+    lapply(fixed_cols, function(cn) as.character(x_row[, cn])),
+    lapply(random_cols, function(g) as.character(data[[g]]))
+  ))
+  cell_key <- key_of(c(
+    lapply(fixed_cols, function(cn) as.character(ss[[cn]])),
+    lapply(random_cols, function(g) as.character(ss[[g]]))
+  ))
+  cell <- match(row_key, cell_key)
+  if (anyNA(cell)) {
+    stop(
+      "flexyBayes internal error: ", sum(is.na(cell)), " row(s) of the data ",
+      "match no cell of the aggregated fit, so their fitted values cannot ",
+      "be read.",
+      call. = FALSE
+    )
+  }
+  cell
 }

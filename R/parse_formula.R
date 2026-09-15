@@ -15,19 +15,53 @@
       message = "The model formula must be two-sided: response ~ predictors."
     ))
   }
-  response <- deparse(fixed[[2]])
+  response <- paste(deparse(fixed[[2]]), collapse = "")
+  response_is_expression <- FALSE
   if (!response %in% names(data)) {
-    stop(.fb_refusal_condition(
-      reason_code = "response_not_in_data",
-      message = paste0(
-        "Response variable \"",
-        response,
-        "\" not found in data."
-      )
-    ))
+    # A transformed response -- log(yield), sqrt(count). Every peer (lm,
+    # lme4, brms, asreml) evaluates the left-hand side rather than demanding
+    # a column of that name, and both engines evaluate it too once the
+    # formula reaches them. Demanding a column name here refused a model
+    # both engines can fit (issue #14, fit1).
+    #
+    # baseenv() is the enclosure, and the choice is load-bearing. Base
+    # transforms (log, sqrt, exp, arithmetic, I) resolve, and the lookup then
+    # terminates at the empty environment, so a same-named object in the
+    # user's workspace cannot be picked up: a mistyped column refuses rather
+    # than silently binding to a global of the right length. asNamespace()
+    # does NOT achieve this -- every namespace's parent chain reaches
+    # globalenv, so the first version of this guard accepted a workspace
+    # vector as the response. Found by the falsification test, not by review.
+    val <- tryCatch(
+      eval(fixed[[2]], envir = data, enclos = baseenv()),
+      error = function(e) NULL
+    )
+    usable <- !is.null(val) &&
+      is.atomic(val) &&
+      (is.numeric(val) || is.logical(val)) &&
+      length(val) == nrow(data)
+    if (!usable) {
+      stop(.fb_refusal_condition(
+        reason_code = "response_not_in_data",
+        message = paste0(
+          "Response variable \"",
+          response,
+          "\" not found in data."
+        )
+      ))
+    }
+    response_is_expression <- TRUE
   }
 
   tt <- tryCatch(terms(fixed, data = data), error = function(e) terms(fixed))
+  # terms() files `offset(z)` under its own attribute, not among the term
+  # labels read below. Before 0.11.0.9000 only the labels were read, so an
+  # offset was dropped and the model fitted without it on both engines, with
+  # no message. The offsets are recorded here, where every route ingests the
+  # fixed formula, and evaluated once against the data so an offset that
+  # cannot be one refuses before any route is chosen.
+  offsets <- .fb_offset_labels(tt)
+  .fb_offset_total(offsets, data)
   intercept <- attr(tt, "intercept") == 1
   term_labels <- attr(tt, "term.labels")
 
@@ -35,7 +69,189 @@
     .classify_fixed_term(lbl, data)
   })
 
-  list(response = response, intercept = intercept, terms = term_info)
+  list(
+    response = response,
+    response_is_expression = response_is_expression,
+    intercept = intercept,
+    terms = term_info,
+    offsets = offsets
+  )
+}
+
+# ---------------------------------------------------------------- #
+# Offsets in the fixed formula                                      #
+# ---------------------------------------------------------------- #
+
+# .fb_offset_labels() --- the offset() calls a terms object carries, as
+# written and in formula order: `offset(log(E))`, not `log(E)`. The full call
+# is what the brms formula carries verbatim and what the fingerprint and the
+# printed surfaces name.
+.fb_offset_labels <- function(tt) {
+  idx <- attr(tt, "offset")
+  if (is.null(idx)) {
+    return(character(0))
+  }
+  vapply(
+    as.list(attr(tt, "variables"))[-1L][idx],
+    function(e) paste(deparse(e, width.cutoff = 500L), collapse = " "),
+    character(1L)
+  )
+}
+
+# .fb_offset_vars() --- every data column the offsets read.
+.fb_offset_vars <- function(offsets) {
+  unique(unlist(lapply(offsets, function(lbl) all.vars(str2lang(lbl)))))
+}
+
+# .fb_offset_total() --- the offsets evaluated against `data` and summed, or
+# NULL when the model carries none.
+#
+# Each offset is evaluated as the response expression is, with baseenv() as
+# the enclosure (see .parse_fixed()): base transforms resolve, and a name
+# that is not a column refuses rather than binding to a workspace object of
+# the right length. Several offsets add, as they do in lm() and lme4. An
+# offset is a known part of the linear predictor on every row the engine is
+# handed, so anything but a finite numeric vector of one value per row
+# refuses by name: an NA would be read as a zero by one engine and drop the
+# row on the other.
+#
+# `newdata = TRUE` is prediction, where an absent column is the caller's
+# omission rather than a malformed model and refuses under its own code.
+.fb_offset_total <- function(offsets, data, newdata = FALSE) {
+  if (!length(offsets)) {
+    return(NULL)
+  }
+  n <- nrow(data)
+  total <- numeric(n)
+  for (lbl in offsets) {
+    expr <- str2lang(lbl)
+    inner <- if (length(expr) == 2L) expr[[2L]] else NULL
+    absent <- setdiff(all.vars(expr), names(data))
+    if (isTRUE(newdata) && length(absent) > 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "newdata_offset_missing",
+        message = paste0(
+          "The model carries `", lbl, "`, and `newdata` has no column ",
+          paste0("`", absent, "`", collapse = ", "), ". A prediction from ",
+          "an offset model needs the offset on every new row; it is not ",
+          "taken to be zero. Add the column to `newdata`."
+        ),
+        offset = lbl,
+        missing = absent
+      ))
+    }
+    val <- if (is.null(inner)) {
+      NULL
+    } else {
+      tryCatch(
+        eval(inner, envir = data, enclos = baseenv()),
+        error = function(e) e
+      )
+    }
+    problem <- if (is.null(inner)) {
+      "offset() takes exactly one argument"
+    } else if (inherits(val, "error")) {
+      paste0(
+        "it does not evaluate against the data (",
+        conditionMessage(val),
+        ")"
+      )
+    } else if (!is.numeric(val) || is.factor(val) || !is.atomic(val)) {
+      paste0("it evaluates to a ", class(val)[[1L]], " rather than a number")
+    } else if (length(val) != n) {
+      paste0("it has ", length(val), " values for ", n, " rows")
+    } else if (!all(is.finite(val))) {
+      bad <- which(!is.finite(val))
+      paste0(
+        "it is not finite at row(s) ",
+        paste(utils::head(bad, 10L), collapse = ", "),
+        if (length(bad) > 10L) ", ..." else ""
+      )
+    } else {
+      NULL
+    }
+    if (!is.null(problem)) {
+      stop(.fb_refusal_condition(
+        reason_code = "fixed_offset_invalid",
+        message = paste0(
+          "The fixed formula carries `", lbl, "`, and ", problem, ". An ",
+          "offset enters the linear predictor on every row with a fixed ",
+          "coefficient of one, so it has to be a finite number on each row ",
+          "of the data."
+        ),
+        offset = lbl
+      ))
+    }
+    total <- total + as.numeric(val)
+  }
+  total
+}
+
+# .fb_offset_values() --- the summed offset of a model on `data`, or NULL.
+.fb_offset_values <- function(fb, data, newdata = FALSE) {
+  .fb_offset_total(fb$offsets %||% character(0), data, newdata = newdata)
+}
+
+# .fb_response_values() --- the response, whether it names a column or is an
+# expression over columns.
+#
+# `fb$response` is the deparsed left-hand side. For a plain column name it
+# indexes `data` directly; for `log(yield)` there is no such column, and every
+# consumer that reached for `data[[fb$response]]` got NULL. The guards around
+# those reads then returned "no missing responses" and "nothing to check" --
+# a silent wrong answer rather than a crash, which is why the transformed
+# response has to be resolved in one place instead of guarded in several.
+.fb_response_values <- function(fb, data) {
+  resp <- fb$response
+  if (is.null(resp) || !is.character(resp) || length(resp) != 1L ||
+        !nzchar(resp)) {
+    return(NULL)
+  }
+  if (resp %in% names(data)) {
+    return(data[[resp]])
+  }
+  expr <- tryCatch(str2lang(resp), error = function(e) NULL)
+  if (is.null(expr)) {
+    return(NULL)
+  }
+  val <- tryCatch(
+    eval(expr, envir = data, enclos = baseenv()),
+    error = function(e) NULL
+  )
+  if (is.null(val) || !is.atomic(val) || length(val) != nrow(data)) {
+    return(NULL)
+  }
+  val
+}
+
+# .fb_working_response() --- the response minus the model's offsets: the
+# quantity whose scale the rest of the linear predictor and the residual
+# carry. The response itself when the model has no offset.
+.fb_working_response <- function(fb, data) {
+  y <- .fb_response_values(fb, data)
+  off <- .fb_offset_values(fb, data)
+  if (is.null(off) || !is.numeric(y)) {
+    return(y)
+  }
+  y - off
+}
+
+# .fb_response_sd() --- the standard deviation of the working response over
+# its finite values, or NA when there is no numeric response to measure.
+#
+# Recorded on the IR's data summary at ingest, and read by the default
+# priors: on an offset model it is the spread of y - o, the scale the
+# standardised fit and the bounded default priors use.
+.fb_response_sd <- function(fb, data) {
+  y <- .fb_working_response(fb, data)
+  if (!is.numeric(y)) {
+    return(NA_real_)
+  }
+  y <- y[is.finite(y)]
+  if (length(y) < 2L) {
+    return(NA_real_)
+  }
+  stats::sd(y)
 }
 
 # The smoother spellings other packages use on the fixed side. mgcv and
@@ -207,7 +423,7 @@
   lapply(terms, .enrich, data = data)
 }
 
-# Recursive AST walker — converts formula expression tree to term descriptors
+# Recursive AST walker -- converts formula expression tree to term descriptors
 .walk <- function(expr) {
   if (is.name(expr)) {
     nm <- as.character(expr)
@@ -240,6 +456,13 @@
     r <- if (length(right)) right[[1]] else list(type = "unknown")
     return(.classify_interaction(l, r))
   }
+
+  # The argument contract is checked once, here, before any branch indexes
+  # anything. Until 0.10.0.9000 each branch read the arguments it expected
+  # without asking whether that is what it was given, so a malformed call
+  # escaped as an untyped base error, as a term carrying no variable, or as
+  # a silently truncated one. See R/grammar_contract.R.
+  .fb_check_grammar_arity(fn, expr)
 
   # ASReml-specific functions
   switch(
@@ -324,7 +547,14 @@
     "fa" = list(list(
       type = "fa",
       var = .dep(expr, 2),
-      k = as.integer(expr[[3]])
+      k = .fb_literal_count(
+        expr,
+        3L,
+        fn = "fa",
+        what = "rank",
+        symbol = "k",
+        reason_code = "fa_rank_invalid"
+      )
     )),
     "us" = list(list(type = "us", var = .dep(expr, 2))),
     "at" = list(list(
@@ -430,7 +660,31 @@
         error = function(e) NULL
       )
       if (is.null(parsed) || is.null(parsed$grp)) {
-        list(list(type = "units"))
+        # Fidelity guard (0.10.0.9000): a dsum() body that carries no
+        # grouping used to fall through to a homogeneous `units` residual.
+        # dsum(~ units | env) requests one variance per section; a typo that
+        # drops the bar -- dsum(~units) -- then fitted a single-variance
+        # residual, a plausible neighbour that survives convergence checks
+        # and prints credible output. That is the one failure this package
+        # exists to prevent, so it refuses by name instead.
+        written <- paste(deparse(expr), collapse = "")
+        stop(.fb_refusal_condition(
+          reason_code = "dsum_malformed",
+          message = sprintf(
+            paste0(
+              "`%s` does not name the sections to give their own variance. ",
+              "dsum() takes a formula with a grouping bar -- ",
+              "dsum(~ units | env) fits one residual variance per level of ",
+              "env. Written without the bar there is nothing to section on, ",
+              "and a homogeneous residual is a different model from the one ",
+              "requested, so it is refused rather than fitted. For a single ",
+              "residual variance, write residual = ~ units."
+            ),
+            written
+          ),
+          form = "dsum",
+          written = written
+        ))
       } else {
         # Fidelity guard: dsum() is represented ONLY as a per-region
         # heteroscedastic variance (the inner term is `units`). A
@@ -465,7 +719,18 @@
     "pol" = list(list(
       type = "polynomial",
       var = .dep(expr, 2),
-      degree = if (length(expr) > 2) as.integer(expr[[3]]) else 2L
+      degree = if (length(expr) > 2) {
+        .fb_literal_count(
+          expr,
+          3L,
+          fn = "pol",
+          what = "degree",
+          symbol = "degree",
+          reason_code = "pol_degree_invalid"
+        )
+      } else {
+        2L
+      }
     )),
     # Default: the vocabulary above is closed, so anything reaching here is
     # a call flexyBayes does not recognise. It used to be read as a plain
@@ -640,6 +905,20 @@
       col_ar1 = (rt == "ar1")
     )))
   }
+  # The grouped field with the factors in the other order: g:ar1(t),
+  # ASReml's usual spelling for a set of units followed through time.
+  # The covariance is one object whichever factor is written first (the
+  # Kronecker product commutes up to the ordering of its index), so both
+  # orders parse to the same node -- AR1 along the ar1() factor and
+  # independent across the plain one.
+  if (lt %in% c("simple", "id", "ide") && rt == "ar1") {
+    return(list(list(
+      type = "ar1_spatial",
+      row_var = r$var,
+      col_var = l$var,
+      col_ar1 = FALSE
+    )))
+  }
   # at(trial):ar1(row) -- first half of a per-trial separable AR1 field
   # (C5, FS-27). Intermediate node only; a:b:c parses as (a:b):c, so the
   # second ar1() completes the term in the next fold below.
@@ -748,11 +1027,44 @@
     "id" = .add_var_info(term),
     "vm" = .add_var_info(term),
     "ped" = .add_var_info(term),
-    "fa" = .add_var_info(term),
+    "fa" = {
+      term <- .add_var_info(term)
+      # Same identifiability bound the fa(f, k):g form has carried since
+      # 0.4.0, and the same reason code. It was reachable only through the
+      # interaction branch below, so a bare fa(site, 99) over three sites
+      # parsed and fitted; k < number of levels is a property of the
+      # covariance, not of how the term was written.
+      if (
+        !is.null(term$k) &&
+          !is.null(term$var_n) &&
+          term$k >= term$var_n
+      ) {
+        stop(.fb_refusal_condition(
+          reason_code = "fa_rank_exceeds_dim",
+          message = paste0(
+            "fa() requires k < the number of levels of \"",
+            term$var,
+            "\"; got k = ",
+            term$k,
+            " with ",
+            term$var_n,
+            " level(s). Use k <= ",
+            term$var_n - 1L,
+            ", or us(",
+            term$var,
+            ") for a full unstructured covariance."
+          )
+        ))
+      }
+      term
+    },
     "fa_gxe" = {
       if (term$outer %in% names(data)) {
         f <- factor(data[[term$outer]])
         term$n_outer <- nlevels(f)
+        # The INLA emit writes one f() per factor per level and builds the
+        # formula without seeing `data`, so the level names travel here.
+        term$outer_levels <- levels(f)
         # Data-aware identifiability preflight: a factor-analytic
         # covariance is identifiable only for k < n_outer. The data-free
         # k < 1 floor is enforced earlier in .classify_interaction(); the
@@ -779,12 +1091,17 @@
       if (term$inner %in% names(data)) {
         f <- factor(data[[term$inner]])
         term$n_inner <- nlevels(f)
+        term$inner_levels <- levels(f)
       }
       term
     },
     "us_gxe" = {
       if (term$outer %in% names(data)) {
-        term$n_outer <- nlevels(factor(data[[term$outer]]))
+        of <- factor(data[[term$outer]])
+        term$n_outer <- nlevels(of)
+        # The INLA emit sizes the iidKd field and names its components from
+        # these, and builds the formula without seeing `data`.
+        term$outer_levels <- levels(of)
       }
       if (term$inner %in% names(data)) {
         term$n_inner <- nlevels(factor(data[[term$inner]]))
@@ -793,16 +1110,27 @@
     },
     "at_simple" = {
       if (term$outer %in% names(data)) {
-        term$n_outer <- nlevels(factor(data[[term$outer]]))
+        of <- factor(data[[term$outer]])
+        term$n_outer <- nlevels(of)
+        # The INLA emit writes one f() per level of the outer factor and
+        # builds the formula without seeing `data`, so the level names have
+        # to travel on the term.
+        term$outer_levels <- levels(of)
       }
       if (term$inner %in% names(data)) {
-        term$n_inner <- nlevels(factor(data[[term$inner]]))
+        inf <- factor(data[[term$inner]])
+        term$n_inner <- nlevels(inf)
+        term$inner_levels <- levels(inf)
       }
       term
     },
     "at_units" = {
       if (term$var %in% names(data)) {
-        term$n_var <- nlevels(factor(data[[term$var]]))
+        vf <- factor(data[[term$var]])
+        term$n_var <- nlevels(vf)
+        # The INLA emit builds one likelihood per section and names the
+        # resulting sigma rows after the levels, without seeing `data`.
+        term$var_levels <- levels(vf)
       }
       term
     },

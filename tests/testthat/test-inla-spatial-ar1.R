@@ -120,11 +120,18 @@ test_that("gate: a random-side ar1_spatial is accepted on INLA", {
   expect_true(flexyBayes:::.lgm_check_residual_term_inla_support(fb)$pass)
 })
 
-test_that("gate: the INLA residual allowlist is the homogeneous form only", {
-  # The allowlist is the gate's copy of what the emit builds. With the field
-  # on the random side, a structured residual has no INLA emit at all, and
-  # the allowlist must say so or the gate will accept what emit refuses.
-  expect_identical(flexyBayes:::.inla_residual_term_type_allowlist(), "units")
+test_that("gate: the INLA residual allowlist is the homogeneous and sectioned forms", {
+  # The allowlist is the gate's copy of what the emit builds, and gate truth
+  # must equal emit truth or the gate accepts what the emit refuses. The
+  # homogeneous residual has always been on it; the sectioned residual
+  # dsum(~units | f) joined at 0.10.0.9000, when INLA's multiple-likelihood
+  # interface gave it one observation precision per section. The separable
+  # AR1 residual is still absent: with the field on the random side, that
+  # spelling has no INLA emit at all.
+  expect_identical(
+    flexyBayes:::.inla_residual_term_type_allowlist(),
+    c("units", "at_units")
+  )
 })
 
 test_that("gate: the hyperparameter budget counts the field's own parameters", {

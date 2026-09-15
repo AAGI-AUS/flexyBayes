@@ -71,7 +71,7 @@ M <- matrix(rbinom(n * m, 2L, 0.3), n, m)
 colnames(M) <- paste0("snp", seq_len(m))
 y <- 2 * scale(M[, 50L]) + rnorm(n)
 dat <- data.frame(y = y)
-scan <- fb_gwas(y ~ 1, data = dat, markers = M)
+scan <- flexyBayes:::fb_gwas(y ~ 1, data = dat, markers = M)
 head(scan$results[order(scan$results$p_value), ])
 scan$lambda_gc
 }
@@ -85,3 +85,4 @@ association studies. \emph{Statistical Science}, 24(4), 451-471.
 VanRaden, P. M. (2008). Efficient methods to compute genomic
 predictions. \emph{Journal of Dairy Science}, 91(11), 4414-4423.
 }
+\keyword{internal}

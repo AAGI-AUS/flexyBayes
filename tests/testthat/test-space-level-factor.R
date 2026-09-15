@@ -302,6 +302,9 @@ test_that("backend = 'auto' now routes to INLA on a space-level design (was sile
 # group levels (TRIAL, N_TRIAL) ranef() reads, verified below.
 
 test_that("brms fits the identical space-level model without legalisation, and its random-effect levels are the user's own unmangled values", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   skip_if_no_brms()
   d <- .space_level_data()
   # A label round-trip control (no numeric assertion below), so the

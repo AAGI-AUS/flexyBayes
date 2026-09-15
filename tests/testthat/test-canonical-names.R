@@ -110,6 +110,9 @@ test_that("canonical_names() on an INLA fit translates Precision-for and attache
 # skip_if_not_installed("INLA") guard in (d).
 
 test_that("triangulate() auto-resolves common parameters via the registry", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   testthat::skip_if_not_installed("brms")
   d <- mk_canon_data()
   fit_a <- suppressMessages(flexybayes(
@@ -156,6 +159,9 @@ test_that("triangulate() auto-resolves common parameters via the registry", {
 # ---------------------------------------------------------------- #
 
 test_that("triangulate() resolves brms vs INLA on a Gaussian random-intercept model", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   testthat::skip_if_not_installed("brms")
   testthat::skip_if_not_installed("INLA")
   d <- mk_canon_data()
@@ -262,6 +268,9 @@ test_that("register_canonical_mapper() round-trips a custom mapper", {
 # ---------------------------------------------------------------- #
 
 test_that("triangulate() name_map overrides the registry for keyed parameters", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   testthat::skip_if_not_installed("brms")
   d <- mk_canon_data()
   fit_a <- suppressMessages(flexybayes(

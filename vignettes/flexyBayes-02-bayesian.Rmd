@@ -1,0 +1,188 @@
+---
+title: "Bayesian estimation in brief"
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Bayesian estimation in brief}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+The model in `vignette("flexyBayes-01-mixed-models")` is the same model
+ASReml fits. What changes here is how its parameters are described.
+
+# One sentence
+
+REML returns a point estimate for each variance component and a standard
+error. A Bayesian fit returns a **distribution** for each one, and every
+statement -- an interval, a heritability, a probability that one genotype
+beats another -- is read off that distribution rather than derived from an
+asymptotic argument about it.
+
+# The prior
+
+Before seeing data you state what values a parameter could plausibly take.
+That is the prior. It is combined with the likelihood to give the posterior.
+
+flexyBayes sets a weakly-informative default scaled to your response, and
+tells you what it chose:
+
+
+``` r
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla"
+)
+#> 
+#> -- flexyBayes: INLA fit ----------------------------------------
+#>   formula: yield ~ 1 + rep + f(rep_block_id, model = "iid", <prior: uniform-SD(0, 3.049)>) + f(gen, model = "iid", <prior: uniform-SD(0, 3.049)>)
+#>   family:  gaussian
+#> ------------------------------------------------------------
+
+prior_summary(fit)
+#> <prior_summary>  backend = inla
+#>   Source: auto-default bounded uniform on SD (weakly-informative; half-Cauchy advised for small J)
+#>     Upper bound U = 3.049069
+#>     Scale basis    = identity_sd_uniform
+#>     prior_fixed_sd:  not supplied -- the fixed effects carry INLA's own control.fixed defaults -- prec = 0.001 on the slopes (a standard deviation near 32), and prec.intercept = 0, which is flat
+#> 
+#> <fb_prior> 3 specifications
+#>   sigma ~ uniform(lower = 0, upper = 3.049069)
+#>   sd(group = "rep:block") ~ uniform(lower = 0, upper = 3.049069)
+#>   sd(group = "gen") ~ uniform(lower = 0, upper = 3.049069)
+```
+
+Two things about that default are worth stating plainly.
+
+It is a **choice**, and a different choice gives a different answer. With
+plenty of data the difference is negligible, because the likelihood dominates.
+With a variance estimated from a handful of levels it is not negligible at
+all, and that is the case where it earns its place.
+
+Where an engine's own default would be used instead, the `prior` column of
+`summary()` says `engine default` rather than naming a prior the fit never
+saw. A structure whose hyperparameters have no standard-deviation slot -- the
+unstructured and factor-analytic covariances on INLA -- is reported that way.
+
+# The posterior
+
+
+``` r
+summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
+#> Bayesian mixed model summary  [flexyBayes / inla]
+#> ============================================================== 
+#>   Fixed    : yield ~ rep 
+#>   Random   : ~rep:block + gen 
+#>   Model    : G: block within rep; gen iid; R: units 
+#>   Family   : gaussian / identity 
+#>   Representation: exact (model, not inference)
+#>   Engine:         INLA Laplace
+#>   N        : 72 design rows, 72 observed responses
+#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
+#>   Runtime  : 1.5 sec
+#> 
+#> -- Fixed effects (posterior mean, 95% credible interval) --------
+#>         term estimate std.error conf.low conf.high
+#>  (Intercept)   4.5182    0.1598   4.2016    4.8349
+#>        repR2   0.2978    0.1936  -0.0887    0.6844
+#>        repR3  -0.4140    0.1936  -0.8006   -0.0275
+#> 
+#> -- Variance components (95% credible interval) ------------------
+#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
+#>     component estimate std.error conf.low conf.high
+#>         sigma   0.2926    0.0364   0.2290    0.3716
+#>  sd_rep:block   0.2880    0.0779   0.1632    0.4677
+#>        sd_gen   0.3974    0.0734   0.2736    0.5610
+#>                          prior note
+#>  uniform(lower=0, upper=3.049)     
+#>  uniform(lower=0, upper=3.049)     
+#>  uniform(lower=0, upper=3.049)     
+#> 
+#> -- Hyperparameters (INLA, precision scale) ---------------------
+#>                                            mean     sd 0.025quant 0.5quant
+#> Precision for the Gaussian observations 12.2230 3.0395     7.2296  11.8925
+#> Precision for rep_block_id              14.9651 8.7757     4.5831  12.8732
+#> Precision for gen                        7.0003 2.6399     3.1726   6.5569
+#>                                         0.975quant    mode
+#> Precision for the Gaussian observations    19.1161 11.2912
+#> Precision for rep_block_id                 37.7820  9.6123
+#> Precision for gen                          13.4059  5.7509
+#> 
+#> -- Convergence -----------------------------------------------
+#>   Engine    : INLA nested Laplace approximation
+#>   Mode status: 0 (0 = converged)
+#>   Marginal log-likelihood: -65.806
+#>   Largest symmetric KLD between the Gaussian approximation and the
+#>   corrected marginal: 3.81e-07
+#>   Numerical confirm: PASS
+#>      component  estimate  conf.low conf.high
+#> 1        sigma 0.2926117 0.2289789 0.3715709
+#> 2 sd_rep:block 0.2880204 0.1631987 0.4677452
+#> 3       sd_gen 0.3973737 0.2736067 0.5610298
+```
+
+`estimate` is the posterior mean. The interval is a **credible interval**: on
+this model and this prior, the parameter lies inside it with probability 0.95.
+That is the statement most people believe a confidence interval makes, and
+here it is the statement being made.
+
+# Why it matters in practice
+
+## Any function of the parameters is exact
+
+Heritability is a ratio of variances. In REML you get it by substituting the
+estimates and propagating the standard errors with the delta method, which
+linearises the ratio and assumes normality on a scale where neither holds
+near a boundary. That is how an ASReml heritability acquires a standard error
+implying an interval below zero.
+
+Here the ratio is computed on every draw, so its posterior is exact and
+cannot leave the range the function maps into:
+
+
+``` r
+h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
+range(h2[, "h2"])
+#> [1] 0.2960232 0.8983319
+quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
+#>      2.5%       50%     97.5% 
+#> 0.4197655 0.6432970 0.8053794
+```
+
+Every draw lies in `[0, 1]`, so the interval does. No asymptotics were used.
+
+On the INLA path these draws come from the fitted joint hyperparameter
+posterior rather than from the integration grid the fit was assembled on. The
+distinction matters only in the tails, and only for a functional -- but that
+is precisely where an interval is read.
+
+## A variance near zero keeps its uncertainty
+
+REML can put a variance component exactly at zero and report a small standard
+error beside it, which reads as certainty that the effect is absent. It is
+usually a boundary, not a finding. flexyBayes reports a component that has run
+to the boundary as unidentified, with a warning naming the term, rather than
+as a confident zero.
+
+## Small trials are where the difference bites
+
+With many levels per variance component the posterior mean sits close to the
+REML estimate and the interval close to the Wald interval. With few levels
+they diverge, the asymptotic argument behind REML's standard error is weakest,
+and the prior is doing real work. `vignette("flexyBayes-04-illustration")`
+degrades a complete trial on purpose to show how far apart they get.
+
+# What it costs
+
+Approximation, or time, and you choose which. The INLA path approximates the
+posterior and returns in seconds. The brms path samples it and returns in
+minutes. For the models in this package the two agree on the certified
+overlap class, and the package reports which engine answered.

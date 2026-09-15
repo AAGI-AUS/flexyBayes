@@ -180,7 +180,7 @@ test_that("positional and named prior arguments parse to identical specs", {
 # 5. predict() / emmeans / marginaleffects on an INLA mixed model   #
 # ---------------------------------------------------------------- #
 
-test_that("predict() works on an INLA mixed model (brms-grammar bar term stripped)", {
+test_that("predict() returns one value per row on an INLA fit written in bar grammar", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   silence_notes()

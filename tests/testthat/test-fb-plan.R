@@ -184,7 +184,7 @@ test_that("as.data.frame.fb_plan() preserves .FB_PLAN_DF_COLS ordering", {
 # (i) cov_validation_policy                                          #
 # ---------------------------------------------------------------- #
 
-test_that("cov_validation_policy reads flexyBayes.trust_pd option correctly", {
+test_that("cov_validation_policy follows the flexyBayes.trust_pd option", {
   d <- .test_plan_data_simple()
   # No known matrices -> "n/a"
   p <- fb_plan(y ~ x + (1 | g), data = d, backend = "auto")
@@ -299,10 +299,13 @@ test_that("the plan says a combined MET model fits, because it does", {
   )
 
   expect_true(p$will_fit)
-  expect_identical(p$backend_chosen, "brms")
-  expect_identical(p$gate_outcome, "refuse_structural")
-  # The gate refusal is reported, and is no longer mistaken for the
-  # fit's verdict.
+  # It fits on INLA now. Both halves of the full MET model -- the
+  # interaction random effect and the sectioned residual -- were refused
+  # there before 0.10.0.9000, so the combination was unreachable and the
+  # plan named brms after a structural gate refusal. The gate passes, so
+  # the plan names the engine the model actually lands on.
+  expect_identical(p$backend_chosen, "inla")
+  expect_identical(p$gate_outcome, "accept")
   out <- utils::capture.output(print(p))
   expect_true(any(grepl("Will fit:                yes", out, fixed = TRUE)))
   expect_false(any(grepl("preflight refused", out, fixed = TRUE)))

@@ -199,13 +199,13 @@ test_that(".lgm_check_hyperparam_budget() refuses above the hard limit", {
   expect_match(r$reason, "exceeds hard limit")
 })
 
-test_that(".lgm_count_hyperparams() handles fa_gxe via 2k contribution", {
+test_that(".lgm_count_hyperparams() charges fa_gxe 2k hyperparameters", {
   fb <- mk_fb(random_terms = list(list(type = "fa_gxe", k = 3L)))
   # gaussian (1) + 2*3 = 7
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb), 7L)
 })
 
-test_that(".lgm_count_hyperparams() handles us_gxe via n*(n+1)/2", {
+test_that(".lgm_count_hyperparams() charges us_gxe n(n+1)/2 hyperparameters", {
   fb <- mk_fb(random_terms = list(list(type = "us_gxe", n_outer = 4L)))
   # gaussian (1) + 4*5/2 = 11
   expect_identical(flexyBayes:::.lgm_count_hyperparams(fb), 11L)
@@ -365,15 +365,25 @@ test_that(".lgm_check_random_term_inla_support() accepts ar1_spatial (WP16)", {
   expect_true(r$pass)
 })
 
-# Residual negative case: at_units triggers residual_term_type_inla.
+# Residual cases. at_units -- the sectioned residual, dsum(~units | f) --
+# reaches INLA through the multiple-likelihood interface from 0.10.0.9000,
+# so it is now an ACCEPTED type and the negative case moved to a residual
+# shape INLA genuinely does not carry.
 
-test_that(".lgm_check_residual_term_inla_support() refuses at_units (heterogeneous residual)", {
+test_that(".lgm_check_residual_term_inla_support() accepts at_units", {
   fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+  r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
+  expect_true(r$pass)
+})
+
+test_that(".lgm_check_residual_term_inla_support() refuses a structured residual", {
+  fb <- mk_fb(residual_terms = list(list(
+    type = "ar1_spatial", row_var = "row", col_var = "col"
+  )))
   r <- flexyBayes:::.lgm_check_residual_term_inla_support(fb)
   expect_false(r$pass)
   expect_identical(r$rule_id, "residual_term_type_inla")
-  expect_match(r$reason, "\"at_units\"")
-  expect_match(r$reason, "heterogeneous residual")
+  expect_match(r$reason, "\"ar1_spatial\"")
 })
 
 # Integration: lgm_gate() routes a structured-cov refusal through
@@ -389,11 +399,18 @@ test_that("lgm_gate() refuses a vm random term via random_term_type_inla", {
   expect_true(any(grepl("variance-matrix", text)))
 })
 
-test_that("lgm_gate() refuses an at_units residual term via residual_term_type_inla", {
-  fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+test_that("lgm_gate() refuses a structured residual via residual_term_type_inla", {
+  fb <- mk_fb(residual_terms = list(list(
+    type = "ar1_spatial", row_var = "row", col_var = "col"
+  )))
   out <- flexyBayes:::lgm_gate(fb)
   expect_s3_class(out, "lgm_refusal")
   expect_identical(out$primary_rule, "residual_term_type_inla")
+})
+
+test_that("lgm_gate() accepts the sectioned residual it used to refuse", {
+  fb <- mk_fb(residual_terms = list(list(type = "at_units", var = "env")))
+  expect_false(inherits(flexyBayes:::lgm_gate(fb), "lgm_refusal"))
 })
 
 # ---------------------------------------------------------------- #
@@ -490,6 +507,90 @@ test_that("lgm_gate() ignores acknowledgement without force", {
   expect_s3_class(out, "lgm_refusal")
 })
 
+# ---------------------------------------------------------------- #
+# Check 12 — joint shrinkage prior families                        #
+# ---------------------------------------------------------------- #
+#
+# SPEC_bayesian_selection_v5_2026-09-12.md section 4.5. The check reads
+# `fb$penalty_blocks`, which nothing in R/ writes: fb_select() fits its
+# reference model on brms, so no public call reaches it. These tests set the
+# field to exercise the check as an internal guard.
+
+mk_penalty_block <- function(family, id = 1L) {
+  list(
+    id = id,
+    family = family,
+    target = "term(everything())",
+    columns = 1:2,
+    coef_names = c("x1", "x2"),
+    protected = FALSE,
+    hyperparameters = list(),
+    hyperparameter_mode = "fixed",
+    scaling = "none",
+    route = if (family %in% c("regularized_horseshoe", "r2d2")) {
+      "class_wide"
+    } else {
+      "coef_rows"
+    }
+  )
+}
+
+test_that(".lgm_check_prior_family_inla_support() passes with no blocks", {
+  # Every model outside the selection module, and a selection whose penalty
+  # is NULL. The default of NULL is what makes the check free for them.
+  fb <- mk_fb()
+  r <- flexyBayes:::.lgm_check_prior_family_inla_support(fb)
+  expect_true(r$pass)
+  expect_identical(r$rule_id, "prior_family_unsupported_inla")
+  expect_null(r$reason)
+})
+
+test_that("a none() block is an opt-out of shrinkage and does not refuse", {
+  fb <- mk_fb()
+  fb$penalty_blocks <- list(mk_penalty_block("none"))
+  expect_true(flexyBayes:::.lgm_check_prior_family_inla_support(fb)$pass)
+})
+
+test_that("every shrinkage family refuses at INLA, and the reason names it", {
+  for (family in c("ridge", "laplace", "elastic_net",
+                   "regularized_horseshoe", "r2d2")) {
+    fb <- mk_fb()
+    fb$penalty_blocks <- list(mk_penalty_block(family))
+    r <- flexyBayes:::.lgm_check_prior_family_inla_support(fb)
+    expect_false(r$pass, info = family)
+    expect_match(r$reason, family, fixed = TRUE)
+    expect_match(r$reason, "not fitted on INLA", fixed = TRUE)
+    expect_match(r$diagnostic, family, fixed = TRUE)
+  }
+})
+
+test_that("the check is wired into lgm_gate(), red on the block and green without", {
+  # The injected defect is the block itself: the same model passes the gate
+  # with the block removed, so the refusal is the prior's and not the
+  # model's. Without this half, a check that refused every model would pass.
+  fb <- mk_fb(random_terms = list(list(type = "simple", var = "g")))
+  expect_false(flexyBayes:::is_lgm_refusal(flexyBayes:::lgm_gate(fb)))
+
+  fb$penalty_blocks <- list(mk_penalty_block("regularized_horseshoe"))
+  refused <- flexyBayes:::lgm_gate(fb)
+  expect_true(flexyBayes:::is_lgm_refusal(refused))
+  expect_true("prior_family_unsupported_inla" %in%
+    vapply(refused$failures, function(f) f$rule_id, character(1L)))
+})
+
+test_that("the twelfth check is the twelfth: the gate runs it alongside the others", {
+  # A check that is written but never called is a comment. The mixed case
+  # asserts both: a model that fails on structure AND carries a block
+  # reports both rule ids.
+  fb <- mk_fb(family = "gaussian")
+  fb$penalty_blocks <- list(mk_penalty_block("laplace"))
+  refused <- flexyBayes:::lgm_gate(fb)
+  expect_true(flexyBayes:::is_lgm_refusal(refused))
+  ids <- vapply(refused$failures, function(f) f$rule_id, character(1L))
+  expect_true("prior_family_unsupported_inla" %in% ids)
+})
+
+
 test_that("lgm_gate() rejects non-fb_terms input", {
   expect_error(
     flexyBayes:::lgm_gate(list(response = "y")),
@@ -508,11 +609,21 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
   )
   out <- flexyBayes:::lgm_gate(fb)
   text <- capture.output(print(out))
-  expect_true(any(grepl("flexyBayes: INLA backend refused", text)))
+  expect_true(any(grepl("INLA cannot fit this model", text, fixed = TRUE)))
   expect_true(any(grepl("\\[family_allowlist\\]", text)))
   expect_true(any(grepl("\\[latent_class\\]", text)))
-  expect_true(any(grepl("Re-route", text)))
-  expect_true(any(grepl("Override", text)))
+  # The refusal names one route onward and one place to read the rest.
+  # It used to print four lines on what backend = "auto" already does, an
+  # unconditional roadmap sentence about mixtures, and a two-argument
+  # override incantation -- sixteen lines for a two-rule refusal, which is
+  # what the R Journal review read.
+  expect_true(any(grepl("backend = \"brms\"", text, fixed = TRUE)))
+  expect_true(any(grepl("?lgm_gate", text, fixed = TRUE)))
+  # The citation still belongs to the latent-class rule's own reason, which
+  # this fixture triggers. What is gone is the unconditional advert that
+  # printed it on every refusal, mixture or not.
+  expect_false(any(grepl("on the roadmap", text, fixed = TRUE)))
+  expect_lte(length(text), 8L)
 })
 
 # ---------------------------------------------------------------- #
@@ -527,11 +638,15 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
 # throw site now wraps it in the shared condition hierarchy.
 
 test_that("an explicit inla request refused by the gate raises a typed condition", {
+  # The vehicle is a model the gate refuses, and it has to keep being one.
+  # us(env):gen is refused on INLA at any order: estimated correlation
+  # matrices are fitted on brms. Its rule names a refusal code of its own,
+  # which the condition carries above the generic one.
   d <- data.frame(
-    y = stats::rnorm(40L),
-    x = stats::rnorm(40L),
-    env = factor(rep(letters[1:4], each = 10L)),
-    gen = factor(rep(seq_len(10L), times = 4L))
+    y = stats::rnorm(60L),
+    x = stats::rnorm(60L),
+    env = factor(rep(letters[1:6], each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 6L))
   )
 
   err <- tryCatch(
@@ -545,15 +660,18 @@ test_that("an explicit inla request refused by the gate raises a typed condition
     condition = function(e) e
   )
 
+  expect_s3_class(err, "flexybayes_refusal_correlated_covariance_requires_brms")
+  expect_identical(err$reason_code, "correlated_covariance_requires_brms")
+  # The generic code stays beneath it, so a handler written against it
+  # still catches this refusal.
   expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
   expect_s3_class(err, "flexybayes_refusal")
   expect_s3_class(err, "error")
 
   # Every existing gate message survives verbatim inside the condition.
-  expect_match(conditionMessage(err), "backend = \"inla\" refused by lgm_gate")
-  expect_match(conditionMessage(err), "flexyBayes: INLA backend refused")
-  expect_match(conditionMessage(err), "Re-route")
-  expect_match(conditionMessage(err), "Override")
+  expect_match(conditionMessage(err), "INLA cannot fit this model", fixed = TRUE)
+  expect_match(conditionMessage(err), "backend = \"brms\"", fixed = TRUE)
+  expect_match(conditionMessage(err), "?lgm_gate", fixed = TRUE)
 
   # The check-list object itself rides on the condition, so a caller can
   # read the rules rather than parse the printed text.
@@ -562,22 +680,34 @@ test_that("an explicit inla request refused by the gate raises a typed condition
   expect_identical(err$rule_id, err$lgm_refusal$primary_rule)
 })
 
-test_that("a second gate-refusal route is typed and names its own rule", {
-  # A heterogeneous residual fails a different rule from an unstructured
-  # random term, and reaches the same site through the fb_inla() engine
-  # pin rather than through backend = "inla".
+test_that("a gate refusal through the fb_inla() pin is typed and names its rule", {
+  # Same throw site, reached through the engine pin rather than through
+  # backend = "inla", and carrying a DIFFERENT rule from the test above so
+  # the per-rule class is shown to track the rule rather than the site.
+  #
+  # The original vehicle here was the sectioned residual dsum(~units | f),
+  # refused by residual_term_type_inla. That residual now fits. So does
+  # every other residual spelling that reaches the gate: the structured
+  # ones are refused earlier, at dispatch, and `units` and `at_units` both
+  # pass. residual_term_type_inla is therefore no longer reachable from the
+  # formula surface -- it remains as a defence, and the unit test above
+  # exercises it directly on a hand-built IR.
+  #
+  # The second vehicle was a six-level us(), refused by the budget; us() is
+  # now refused first by the correlated-covariance rule. One variance per
+  # level over twenty levels is 21 hyperparameters, refused by the budget
+  # alone.
   d <- data.frame(
-    y = stats::rnorm(40L),
-    x = stats::rnorm(40L),
-    site = factor(rep(letters[1:4], each = 10L)),
-    gen = factor(rep(seq_len(10L), times = 4L))
+    y = stats::rnorm(200L),
+    x = stats::rnorm(200L),
+    env = factor(rep(sprintf("e%02d", seq_len(20L)), each = 10L)),
+    gen = factor(rep(seq_len(10L), times = 20L))
   )
 
   err <- tryCatch(
     suppressMessages(fb_inla(
       fixed = y ~ x,
-      random = ~gen,
-      residual = ~ dsum(~ units | site),
+      random = ~ diag(env):gen,
       data = d,
       verbose = FALSE
     )),
@@ -585,9 +715,9 @@ test_that("a second gate-refusal route is typed and names its own rule", {
   )
 
   expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
-  expect_identical(err$rule_id, "residual_term_type_inla")
+  expect_identical(err$rule_id, "hyperparam_budget")
   # The per-rule class lets one rule be caught without catching the rest.
-  expect_s3_class(err, "flexybayes_lgm_residual_term_type_inla")
+  expect_s3_class(err, "flexybayes_lgm_hyperparam_budget")
 })
 
 # ---------------------------------------------------------------- #

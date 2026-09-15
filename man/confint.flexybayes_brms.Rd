@@ -15,6 +15,11 @@
 
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
+\value{
+A numeric matrix with one row per fixed-effect term and two
+columns holding the lower and upper credible bounds at \code{level}. Row
+names are the term names with the brms \code{b_} prefix removed.
+}
 \description{
 Uses the brms posterior draws directly (the parent
 \code{confint.flexybayes} refuses unconditionally with

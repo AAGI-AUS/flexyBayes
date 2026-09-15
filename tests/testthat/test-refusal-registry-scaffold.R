@@ -310,7 +310,281 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # outside {"auto", "inla", "brms"} -- including the withdrawn engine's
   # name -- refuses by this code rather than via match.arg()) (121 - 11 +
   # 2 = 112).
-  expect_equal(length(entries), 114L)
+  # 0.10.0.9000 adds one: stream_response_must_be_a_column. The per-row
+  # route now evaluates a transformed response (log(yield)); the streaming
+  # route reads named columns off disk and cannot, so it refuses by name
+  # rather than asking the reader for a column that does not exist
+  # (114 + 1 = 115).
+  # Nested random effects on INLA add two more: the interaction index needs
+  # every named variable present, and it must not overwrite a user column of
+  # the same name (115 + 2 = 117).
+  # us(f):g and (x | g) reach INLA as iidKd fields, whose hyperparameters
+  # are a joint Wishart with no standard-deviation slot. An explicit SD
+  # prior refuses on each rather than being spliced in and dropped
+  # (us_gxe_prior_not_translatable_inla,
+  # cor_slope_prior_not_translatable_inla) (117 + 2 = 119).
+  # vpredict() adds three: no functional or a malformed one
+  # (vpredict_no_functional), a functional naming a component the fit does
+  # not carry, which must refuse rather than resolve against the caller's
+  # workspace (vpredict_component_not_in_posterior), and one that does not
+  # return a number per draw (vpredict_functional_not_one_value_per_draw)
+  # (= 122). A brms fit that fails on a machine whose toolchain cannot
+  # compile is named as such, and only when a probe confirms it
+  # (brms_stan_toolchain_compile_failure) (= 123).
+  # The 0.10.0.9000 grammar contract adds eight. A special form written with
+  # too few or too many positional arguments, an unrecognised named argument,
+  # or an empty argument slot (grammar_arity_too_few, grammar_arity_too_many,
+  # grammar_named_argument_unknown, grammar_argument_empty) (= 127); a dsum()
+  # body carrying no grouping bar, which used to lower to a homogeneous
+  # `units` residual (dsum_malformed) (= 128); fa() written without its rank
+  # and pol() given a degree that is not a literal count (fa_rank_missing,
+  # pol_degree_invalid) (= 130); and s() over more than one variable, which
+  # used to raise an untyped names-attribute error from mgcv
+  # (multivariate_smooth_unsupported) (= 131).
+  # The 2026-09-11 review adds two, both the same class one level out. A
+  # named argument written twice was validated for membership and never for
+  # multiplicity, so `vm(g, V = G, V = G)` was accepted and lowered to one
+  # term while `s(x, k = 5, k = 9)` escaped as mgcv's own matcher error
+  # (grammar_argument_duplicated) (= 132); and a b() prior target that is not
+  # one coefficient name was read with as.character() on the unevaluated
+  # argument, so b(c("x", "z")) became the three names c("c", "x", "z") and
+  # failed inside the emitter with "the condition has length > 1"
+  # (prior_target_not_a_single_name) (= 133).
+  # The selection module's covariance substrate adds three, all in the one
+  # place a wrong answer would be invisible. No admitted builder applies to
+  # the base fit, or the fit does not report what a builder needs
+  # (selection_covariance_not_buildable) (= 134); a covariance block has no
+  # Cholesky factor, refused rather than given jitter, because a silent
+  # repair there is misspecification wearing a passing test
+  # (selection_covariance_not_positive_definite) (= 135); and the dense
+  # covariance reference was asked for above its size cap, since it is an
+  # oracle for small cases and the deposit's V would be about 43 GB
+  # (selection_dense_reference_too_large) (= 136).
+  # The random-term reduction adds five. The term asked for is not in the
+  # fit or its levels cannot be recovered (selection_reduction_term_not_in_fit)
+  # (= 137); a term reports a level absent from the data, so effects and
+  # covariates cannot be matched by name and a positional match would attach
+  # every covariate value to the wrong level
+  # (selection_reduction_level_mismatch) (= 138); a candidate is not constant
+  # within the term's levels or does not vary across them, which is the rule
+  # that makes the site / year asymmetry structural rather than something to
+  # audit afterwards (selection_candidates_not_constant_within_term) (= 139);
+  # the base fit does not carry the parsed model and data the builders read,
+  # as on the aggregated route (selection_base_shape_unreadable) (= 140); and
+  # absorbing the reduction term as fixed would leave further random terms,
+  # which needs a mixed refit this release does not do
+  # (selection_reduction_absorption_unsupported) (= 141).
+  # The design side adds two: X0 is rank deficient after whitening and the
+  # estimable span is named (selection_rank_deficient_protected) (= 142); and
+  # a coordinate-wise L1 component was aimed at a basis-dependent target,
+  # where within-factor selection is not contrast-invariant and this release
+  # does not pretend otherwise
+  # (selection_penalty_coordinate_basis_dependent) (= 143).
+  # Weights, offsets and missing responses add seven, all guarding the same
+  # clause -- that a quantity is absorbed exactly once. Non-positive weights
+  # (selection_weights_not_positive) (= 144); a weight in the covariance and
+  # in the provider loss, or twice in either (selection_weights_absorbed_twice)
+  # (= 145); the loss route used where V carries a random part, where the two
+  # weightings are not the same estimator (
+  # selection_weights_loss_route_requires_residual_only) (= 146); an offset
+  # added back twice (selection_offset_absorbed_twice) (= 147); a missing
+  # response admitted to a covariance block with no named estimand
+  # (selection_missing_response_estimand_unnamed) (= 148); a missing response
+  # reaching the objective (selection_missing_response_in_objective) (= 149);
+  # and a transformation learned from rows outside the training fold
+  # (selection_preprocessing_leak) (= 150).
+  # Resampling, prediction and scoring add ten. A stochastic deal with no
+  # seed, never defaulted (selection_seed_required) (= 151); an assessment
+  # fold carrying a level absent from training, refused rather than dropped
+  # (selection_fold_level_absent) (= 152); a resampling unit given with no
+  # scheme and no fold_id, which is not a specification
+  # (selection_resamples_underspecified) (= 153); a fold_id that cuts through
+  # a unit (selection_fold_id_invalid) (= 154); a fold variable absent from
+  # the data (selection_fold_variable_not_in_data) (= 155); a stratifier that
+  # varies inside a unit (selection_strata_not_constant_within_unit) (= 156);
+  # a fold too small or degenerate to score (selection_fold_not_usable)
+  # (= 157); a training covariance block with no Cholesky factor, named
+  # rather than surfacing as a raw LAPACK error
+  # (selection_fold_covariance_not_factorisable) (= 158); a quantity that
+  # moved when the assessment rows were corrupted, which is leakage caught by
+  # the gate rather than argued about (selection_leakage_detected) (= 159);
+  # and an aggregation asked for with no independent unit declared, without
+  # which a one-standard-error rule is not reproducible
+  # (selection_scoring_unit_undeclared) (= 160).
+  # The public verb adds two, thrown by its gate before anything runs.
+  # (`selection_penalty_not_implemented`, which stood here at 0.10.0.9000
+  # while `penalty = NULL` was the only implemented corner, is withdrawn at
+  # 0.11.0: the penalty is implemented and nothing throws it.) The base is
+  # not a fitted
+  # flexyBayes model, or its structure is not on the allowlist -- us() and
+  # fa() on INLA stay out regardless of how a particular fit behaved
+  # (selection_base_not_allowlisted) (= 162); and the response is not
+  # Gaussian with an identity link, where the whitening identity is not
+  # exact and no single V survives integrating the random effects
+  # (selection_family_not_supported) (= 162).
+  #
+  # The 0.11.0 selection module adds twenty-two, in five tranches, each
+  # registered beside the site that throws it and each with a triggering
+  # test. The joint-prior grammar and its compiler add nine
+  # (selection_penalty_spec_malformed, selection_penalty_target_unsupported,
+  # selection_penalty_target_not_in_model,
+  # selection_penalty_target_ambiguous, selection_penalty_family_unknown,
+  # penalty_hyperparameter_invalid, penalty_block_overlap,
+  # penalty_block_targeting_unsupported, penalty_factor_contrast_ambiguous)
+  # plus two the scaling and contrast rules need
+  # (penalty_scaling_column_constant, selection_penalty_family_withdrawn)
+  # (= 174). The reference model and the projection add four
+  # (penalty_sampler_diagnostics_failed, penalty_reference_model_inadequate,
+  # projection_structure_unsupported, projection_family_unsupported)
+  # (= 178). The per-fold Bayesian route adds two
+  # (selection_provider_absent, penalty_runtime_budget_exceeded) (= 180).
+  # The penalised-optimiser provider adds two
+  # (selection_prox_mode_not_converged,
+  # selection_penalty_blocks_not_expressible) (= 182). The public verb adds
+  # three: a Bayesian provider absent with the default `fallback = "none"`,
+  # where nothing is substituted (selection_fallback_not_authorised)
+  # (= 183); a joint shrinkage prior routed at INLA, refused by lgm_gate()'s
+  # twelfth check because a scale mixture leaves the latent field
+  # non-Gaussian (prior_family_unsupported_inla) (= 184); and a decision
+  # rule missing the number it needs, or carrying one it does not read
+  # (selection_decision_invalid) (= 184).
+  #
+  # The 2026-09-12 audit close adds three. A scoring unit key whose length
+  # does not match the provider's pointwise densities, refused rather than
+  # silently replaced by row numbers (selection_scoring_unit_mismatch)
+  # (= 185); a projection search with no executed gate, which is `L1`
+  # (projection_search_unsupported) (= 186); and a class-wide global-local
+  # family aimed at a candidate block containing a design column the
+  # re-emitted reference cannot standardise
+  # (penalty_candidate_columns_unscaled) (= 187).
+  #
+  # The 2026-09-13 INLA containment adds two. An estimated correlation
+  # matrix sent to INLA (correlated_covariance_requires_brms) (= 188); and a
+  # Gaussian INLA fit whose response standard deviation exceeds the bound
+  # its fits were measured correct up to (inla_response_scale_unvalidated)
+  # (= 189). An offset() term in the fixed formula, which the parser dropped
+  # without a message on both engines (fixed_offset_unsupported) (= 190).
+  #
+  # The fresh-review closure adds one: a projection decision asked to choose
+  # on a metric other than elpd, refused before any fit
+  # (projection_metric_unsupported) (= 191).
+  #
+  # Removing the response-scale refusal takes one away. Every Gaussian INLA
+  # fit now runs on a standardised response under scale-aware default
+  # priors, so a large response standard deviation no longer refuses
+  # (inla_response_scale_unvalidated) (= 190).
+  #
+  # Offsets in the fixed formula are recorded rather than refused at ingest,
+  # and add two: an offset that is not a finite number on every row
+  # (fixed_offset_invalid) (= 191), and a prediction whose new data lack a
+  # column an offset reads (newdata_offset_missing) (= 192).
+  # fixed_offset_unsupported stays for the routes that cannot carry one.
+  #
+  # Gaussian aggregation containment adds two: a Gaussian model sent to the
+  # aggregated representation, whose Gaussian route cannot carry the residual
+  # prior (aggregation_residual_prior_not_composed) (= 193), and the
+  # marginal likelihood of any aggregated fit, which is not the marginal
+  # likelihood of the rows (aggregated_evidence_unavailable) (= 194).
+  #
+  # The compiled model manifest adds three reasons an input or an evidence
+  # value is recorded as not used: a residual prior on a family with no
+  # residual scale (prior_family_has_no_residual_scale) (= 195), a
+  # prior_vc_sd beside an fb_prior() (prior_vc_sd_superseded_by_prior)
+  # (= 196), and a marginal likelihood the engine did not compute
+  # (evidence_not_computed) (= 197).
+  #
+  # The working response adds one: a NaN or infinite response value
+  # (response_not_finite) (= 198).
+  #
+  # Accessors on aggregated and streamed count fits add six: a row accessor on
+  # a streamed fit that keeps only its head sample
+  # (streamed_rows_not_retained) (= 199), update() on a streamed fit
+  # (update_streamed_fit_not_supported) (= 200), and four refusals an INLA fit
+  # already gave, now typed: augment() (augment_not_available_inla) (= 201),
+  # fb_log_posterior() (log_density_producer_unavailable) (= 202), and
+  # predict() and a marginaleffects prediction on a non-identity link
+  # (predict_link_not_supported, marginaleffects_link_not_supported) (= 204).
+  expect_false("selection_penalty_not_implemented" %in% entries)
+  expect_false("inla_response_scale_unvalidated" %in% entries)
+  expect_equal(length(entries), 204L)
+  expect_true("response_not_finite" %in% entries)
+  expect_true("streamed_rows_not_retained" %in% entries)
+  expect_true("update_streamed_fit_not_supported" %in% entries)
+  expect_true("log_density_producer_unavailable" %in% entries)
+  expect_true("prior_family_has_no_residual_scale" %in% entries)
+  expect_true("prior_vc_sd_superseded_by_prior" %in% entries)
+  expect_true("evidence_not_computed" %in% entries)
+  expect_true("aggregation_residual_prior_not_composed" %in% entries)
+  expect_true("aggregated_evidence_unavailable" %in% entries)
+  expect_true("fixed_offset_unsupported" %in% entries)
+  expect_true("fixed_offset_invalid" %in% entries)
+  expect_true("newdata_offset_missing" %in% entries)
+  expect_true("projection_metric_unsupported" %in% entries)
+  expect_true("correlated_covariance_requires_brms" %in% entries)
+  expect_true("selection_scoring_unit_mismatch" %in% entries)
+  expect_true("projection_search_unsupported" %in% entries)
+  expect_true("penalty_candidate_columns_unscaled" %in% entries)
+  expect_true("grammar_argument_duplicated" %in% entries)
+  expect_true("prior_target_not_a_single_name" %in% entries)
+  expect_true("grammar_arity_too_few" %in% entries)
+  expect_true("grammar_arity_too_many" %in% entries)
+  expect_true("grammar_named_argument_unknown" %in% entries)
+  expect_true("grammar_argument_empty" %in% entries)
+  expect_true("dsum_malformed" %in% entries)
+  expect_true("fa_rank_missing" %in% entries)
+  expect_true("pol_degree_invalid" %in% entries)
+  expect_true("selection_covariance_not_buildable" %in% entries)
+  expect_true("selection_covariance_not_positive_definite" %in% entries)
+  expect_true("selection_dense_reference_too_large" %in% entries)
+  expect_true("selection_reduction_term_not_in_fit" %in% entries)
+  expect_true("selection_reduction_level_mismatch" %in% entries)
+  expect_true("selection_candidates_not_constant_within_term" %in% entries)
+  expect_true("selection_base_shape_unreadable" %in% entries)
+  expect_true("selection_reduction_absorption_unsupported" %in% entries)
+  expect_true("selection_rank_deficient_protected" %in% entries)
+  expect_true("selection_penalty_coordinate_basis_dependent" %in% entries)
+  expect_true("selection_weights_not_positive" %in% entries)
+  expect_true("selection_weights_absorbed_twice" %in% entries)
+  expect_true("selection_weights_loss_route_requires_residual_only" %in% entries)
+  expect_true("selection_offset_absorbed_twice" %in% entries)
+  expect_true("selection_missing_response_estimand_unnamed" %in% entries)
+  expect_true("selection_missing_response_in_objective" %in% entries)
+  expect_true("selection_preprocessing_leak" %in% entries)
+  expect_true("selection_seed_required" %in% entries)
+  expect_true("selection_fold_level_absent" %in% entries)
+  expect_true("selection_resamples_underspecified" %in% entries)
+  expect_true("selection_fold_id_invalid" %in% entries)
+  expect_true("selection_fold_variable_not_in_data" %in% entries)
+  expect_true("selection_strata_not_constant_within_unit" %in% entries)
+  expect_true("selection_fold_not_usable" %in% entries)
+  expect_true("selection_fold_covariance_not_factorisable" %in% entries)
+  expect_true("selection_leakage_detected" %in% entries)
+  expect_true("selection_scoring_unit_undeclared" %in% entries)
+  expect_true("selection_base_not_allowlisted" %in% entries)
+  expect_true("selection_family_not_supported" %in% entries)
+  expect_true("selection_provider_absent" %in% entries)
+  expect_true("selection_fallback_not_authorised" %in% entries)
+  expect_true("prior_family_unsupported_inla" %in% entries)
+  expect_true("selection_decision_invalid" %in% entries)
+  expect_true("penalty_runtime_budget_exceeded" %in% entries)
+  expect_true("penalty_sampler_diagnostics_failed" %in% entries)
+  expect_true("penalty_reference_model_inadequate" %in% entries)
+  expect_true("projection_structure_unsupported" %in% entries)
+  expect_true("projection_family_unsupported" %in% entries)
+  expect_true("penalty_block_targeting_unsupported" %in% entries)
+  expect_true("penalty_block_overlap" %in% entries)
+  expect_true("penalty_hyperparameter_invalid" %in% entries)
+  expect_true("selection_penalty_family_withdrawn" %in% entries)
+  expect_true("multivariate_smooth_unsupported" %in% entries)
+  expect_true("stream_response_must_be_a_column" %in% entries)
+  expect_true("nested_variable_not_in_data" %in% entries)
+  expect_true("nested_index_name_collision" %in% entries)
+  expect_true("us_gxe_prior_not_translatable_inla" %in% entries)
+  expect_true("cor_slope_prior_not_translatable_inla" %in% entries)
+  expect_true("vpredict_no_functional" %in% entries)
+  expect_true("vpredict_component_not_in_posterior" %in% entries)
+  expect_true("vpredict_functional_not_one_value_per_draw" %in% entries)
+  expect_true("brms_stan_toolchain_compile_failure" %in% entries)
   expect_true("aggregation_response_incomplete" %in% entries)
   expect_true("aggregation_route_unavailable" %in% entries)
   expect_true("prior_not_translatable_for_backend" %in% entries)

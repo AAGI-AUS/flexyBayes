@@ -21,6 +21,19 @@
 # omitted from the likelihood -- what augmentation preserves is the
 # REPRESENTATION, not information.
 #
+# That identity is a statement about the posterior, not a promise about
+# what an optimiser returns. The two settings hand the engine different
+# index sets -- an intact design against a ragged one -- and on a fit
+# whose mode is weakly identified they can land in different places.
+# Measured 2026-08-28 on besag.met C1: `augment` and `omit` returned
+# genotype-variance summaries that differed by orders of magnitude on
+# data whose missingness was ignorable by construction, on a model that
+# also returned different answers across repeated runs of the identical
+# call. Prefer `augment`: it is the default, it is the only setting a
+# structured covariance can be fitted under at all, and it gives the
+# engine the better-conditioned problem. Do not read agreement between
+# the two as a check, or disagreement as evidence about the data.
+#
 # That is why this layer adds no inference machinery. INLA already
 # treats an NA response as a latent prediction target, and marginalises
 # it; brms reaches the same object through `mi()`. The work here is
@@ -190,11 +203,42 @@
 
 # .fb_response_missing() --- index of rows whose response is NA.
 .fb_response_missing <- function(fb, data) {
-  resp <- fb$response
-  if (is.null(resp) || !nzchar(resp) || !resp %in% names(data)) {
+  vals <- .fb_response_values(fb, data)
+  if (is.null(vals)) {
     return(integer(0))
   }
-  which(is.na(data[[resp]]))
+  which(is.na(vals))
+}
+
+# .fb_refuse_nonfinite_response() --- refuse a response that is NaN or
+# infinite. Neither is a missing observation: they come from arithmetic on
+# the response, log(0) or 0 / 0, or from a data-entry error. Handed one, INLA
+# fitted the model without a word and brms failed with a message that named
+# neither the row nor the value. NA stays the business of the policy below.
+.fb_refuse_nonfinite_response <- function(fb, data) {
+  vals <- .fb_response_values(fb, data)
+  if (!is.numeric(vals)) {
+    return(invisible(NULL))
+  }
+  bad <- which(is.nan(vals) | is.infinite(vals))
+  if (length(bad) == 0L) {
+    return(invisible(NULL))
+  }
+  shown <- utils::head(bad, 5L)
+  stop(.fb_refusal_condition(
+    reason_code = "response_not_finite",
+    message = paste0(
+      "The response `", fb$response, "` has ", length(bad),
+      " value(s) that are not finite (",
+      paste0("row ", shown, ": ", as.character(vals[shown]), collapse = ", "),
+      if (length(bad) > length(shown)) ", ..." else "",
+      "). NaN and infinite values are not missing observations, so ",
+      "na_action does not apply to them. Set them to NA to treat them as ",
+      "missing, or correct the transformation that produced them (log(0) ",
+      "is -Inf)."
+    ),
+    family_class = "flexybayes_response_refusal"
+  ))
 }
 
 # .fb_design_index_vars() --- the variables a structured covariance is
@@ -238,6 +282,9 @@
   collect(fb$fixed_terms)
   collect(fb$random_terms)
   collect(fb$residual_terms)
+  # An offset's columns are model variables too: a completed design cell
+  # needs its offset, and carrying one in from row 1 would invent it.
+  out <- c(out, .fb_offset_vars(fb$offsets))
   unique(out[!is.na(out) & nzchar(out)])
 }
 
@@ -305,6 +352,9 @@
   # before the design is counted or completed.
   cov_step <- .fb_apply_covariate_policy(fb, data, policy$x)
   data <- cov_step$data
+
+  # Before the missing-response policy, which NaN and Inf are not part of.
+  .fb_refuse_nonfinite_response(fb, data)
 
   miss <- .fb_response_missing(fb, data)
 

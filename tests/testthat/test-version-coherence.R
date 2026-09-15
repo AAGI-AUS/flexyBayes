@@ -35,6 +35,23 @@
   as.character(read.dcf(file.path(root, "DESCRIPTION"), fields = "Version"))
 }
 
+# The version the metadata surfaces name. On a release that is the
+# DESCRIPTION version. On a development version -- the fourth component
+# 9000 that R's own conventions use for "after X.Y.Z, before the next
+# release" -- it is the release line being developed from: cran-comments,
+# .zenodo.json and the policy documents describe the released artefact,
+# and rewriting them to 0.10.0.9000 would name a version nobody can install.
+.vc_release_line <- function(version = .vc_version()) {
+  if (is.na(version)) {
+    return(NA_character_)
+  }
+  sub("^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$", "\\1", version)
+}
+
+.vc_is_development <- function(version = .vc_version()) {
+  !is.na(version) && grepl("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$", version)
+}
+
 # Surfaces that must name the current version. Kept as one vector so a new
 # metadata file is added in exactly one place.
 .VC_SURFACES <- c(
@@ -42,7 +59,10 @@
   "SECURITY.md",
   "API_STABILITY.md",
   "SUPPORT.md",
-  ".zenodo.json"
+  ".zenodo.json",
+  # ships in the tarball, and carried `tier: V3` / `0.9.3` into a release
+  # that declares V2 / 0.10.0
+  "inst/validation/scenarios.yaml"
 )
 
 # A superseded version described as live. The marker set is deliberately
@@ -53,10 +73,13 @@
   sep = "|"
 )
 
-test_that("the DESCRIPTION version is a plain three-part string", {
+test_that("the DESCRIPTION version is a release or a development version", {
+  # Three components on a release; four, ending 9000, while the line is
+  # open. Anything else -- a stray suffix, a two-part string -- is what
+  # this catches.
   version <- .vc_version()
   skip_if(is.na(version), "not running from the source tree")
-  expect_match(version, "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+  expect_match(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(\\.9000)?$")
 })
 
 test_that("every metadata surface names the DESCRIPTION version", {
@@ -64,32 +87,56 @@ test_that("every metadata surface names the DESCRIPTION version", {
   skip_if(is.na(root), "not running from the source tree")
   version <- .vc_version()
 
+  named <- .vc_release_line(version)
+
   for (surface in .VC_SURFACES) {
     path <- file.path(root, surface)
     skip_if_not(file.exists(path), paste(surface, "is not in this tree"))
     lines <- readLines(path, warn = FALSE)
     expect_true(
-      any(grepl(version, lines, fixed = TRUE)),
-      label = paste0(surface, " names version ", version)
+      any(grepl(named, lines, fixed = TRUE)),
+      label = paste0(surface, " names version ", named)
     )
   }
 })
+
+# Version strings on a line, compared numerically against the current one.
+# A hand-written regex for "any line older than this one" was wrong here:
+# it read "0\\.[0-8]\\." and so could not see the 0.9.x line at all once
+# DESCRIPTION reached 0.10.0 -- the blind spot covered exactly the
+# transition being made. Parsing each version and comparing has no such
+# gap, and needs no edit at the next bump.
+.vc_stale_on <- function(line, current) {
+  found <- regmatches(line, gregexpr("[0-9]+\\.[0-9]+\\.[0-9x]+", line))[[1]]
+  if (!length(found)) {
+    return(FALSE)
+  }
+  any(vapply(
+    found,
+    function(v) {
+      isTRUE(tryCatch(
+        package_version(sub("x$", "0", v)) < current,
+        error = function(e) FALSE
+      ))
+    },
+    logical(1)
+  ))
+}
 
 test_that("no superseded version is described as the current one", {
   root <- .vc_root()
   skip_if(is.na(root), "not running from the source tree")
   version <- .vc_version()
-  # Everything on a lower minor line than the current one.
-  stale <- "0\\.[0-8]\\.[0-9x]+"
+  # On an open development line the release line is not superseded -- it is
+  # the version the surfaces are meant to describe.
+  current <- package_version(.vc_release_line(version))
 
   for (surface in .VC_SURFACES) {
     path <- file.path(root, surface)
     skip_if_not(file.exists(path), paste(surface, "is not in this tree"))
     lines <- readLines(path, warn = FALSE)
-    offenders <- lines[
-      grepl(stale, lines) &
-        grepl(.VC_CURRENCY_MARKERS, lines, ignore.case = TRUE)
-    ]
+    marked <- lines[grepl(.VC_CURRENCY_MARKERS, lines, ignore.case = TRUE)]
+    offenders <- marked[vapply(marked, .vc_stale_on, logical(1), current = current)]
     expect_identical(
       offenders,
       character(0),
@@ -101,23 +148,27 @@ test_that("no superseded version is described as the current one", {
   }
 })
 
-test_that(".zenodo.json's version field equals the DESCRIPTION version", {
+test_that(".zenodo.json's version field equals the released version", {
+  # Zenodo mints a DOI for a deposited artefact, so its version field names
+  # the release, not the open development line above it.
   root <- .vc_root()
   skip_if(is.na(root), "not running from the source tree")
   path <- file.path(root, ".zenodo.json")
   skip_if_not(file.exists(path), ".zenodo.json is not in this tree")
 
-  version <- .vc_version()
+  named <- .vc_release_line()
   lines <- readLines(path, warn = FALSE)
   field <- grep("^[[:space:]]*\"version\"[[:space:]]*:", lines, value = TRUE)
   expect_length(field, 1L)
-  expect_match(field, paste0("\"", version, "\""), fixed = TRUE)
+  expect_match(field, paste0("\"", named, "\""), fixed = TRUE)
 })
 
 test_that("the citation surfaces still agree with DESCRIPTION", {
   root <- .vc_root()
   skip_if(is.na(root), "not running from the source tree")
-  version <- .vc_version()
+  # A citation names something a reader can obtain, so it too tracks the
+  # release line rather than the development version.
+  version <- .vc_release_line()
 
   for (surface in c("CITATION.cff", "codemeta.json", "inst/CITATION")) {
     path <- file.path(root, surface)

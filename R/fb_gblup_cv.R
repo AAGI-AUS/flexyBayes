@@ -91,6 +91,14 @@ fb_gblup_cv <- function(
     stop("`folds` must be between 2 and ", n, ".", call. = FALSE)
   }
   if (!is.null(seed)) {
+    # The seed fixes the folds; the caller's own random-number stream is put
+    # back on exit, including its absence if it had not been started.
+    if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      caller_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+      on.exit(assign(".Random.seed", caller_seed, envir = globalenv()), add = TRUE)
+    } else {
+      on.exit(rm(".Random.seed", envir = globalenv()), add = TRUE)
+    }
     set.seed(as.integer(seed))
   }
 

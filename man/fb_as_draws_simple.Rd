@@ -32,4 +32,17 @@ numeric posterior-draw vectors from each fit. The methods that reach
 an active engine are \code{flexybayes_brms} and \code{flexybayes_inla}.
 User-defined methods can extend the generic.
 }
+\examples{
+# A named list of draw vectors, with no posterior dependency.
+\donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                    verbose = FALSE)
+  dr <- fb_as_draws_simple(fit)
+  names(dr)
+}
+}
+}
 \keyword{internal}

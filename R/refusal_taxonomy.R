@@ -1,12 +1,16 @@
-# Refusal registry --- scaffold only at v0.3.8
+# Refusal registry --- the canonical refusal-reason vocabulary
 #
-# Container + registration helper for the canonical refusal-reason
-# vocabulary. Empty at v0.3.8: this release ships the registry
-# infrastructure without converting the ~30 existing refusal sites
-# scattered through dispatch.R, lgm_gate.R, structured_cov.R, and
-# emit_inla.R. Full population (one .register_refusal() call per
-# existing site) + the user-facing fb_refusals() accessor land at
-# v0.4.0.
+# Container, registration helper, and the user-facing fb_refusals()
+# accessor. Populated: 136 codes registered across versioned
+# .populate_refusal_registry_*() calls in .onLoad(), against 139 distinct
+# reason_code slugs thrown in R/.
+#
+# The header here described this file as "scaffold only at v0.3.8, empty,
+# full population lands at v0.4.0" until 2026-09-12, six minor versions
+# after that had happened, in a file 2,300 lines long. A registry that
+# understates itself is the same claim-surface drift the registry exists
+# to prevent elsewhere, so the count above is stated and the test at
+# test-refusal-registry-scaffold.R asserts it.
 #
 # Rationale: the deliberate choice here is to ship the container
 # without the migration risk of touching ~30 existing refusal sites
@@ -856,8 +860,12 @@
   .register_refusal(
     reason_code = "fa_rank_invalid",
     description = paste0(
-      "A factor-analytic term fa(x, k) was given a rank k below 1; ",
-      "the factor-analytic rank must be a positive integer."
+      "A factor-analytic term fa(x, k) was given a rank that is not a ",
+      "positive whole number written in the formula. Registered at 0.4.0 ",
+      "as the k < 1 floor and widened by the 0.10.0.9000 grammar contract ",
+      "to every non-count rank -- a symbol, a string, a logical, a ",
+      "fraction -- each of which as.integer() used to coerce into a rank ",
+      "the user did not write."
     ),
     message_template = paste0(
       "fa() requires k >= 1; got k = %s."
@@ -1872,6 +1880,20 @@
     since_version = "0.9.2"
   )
   .register_refusal(
+    reason_code = "prior_target_not_a_single_name",
+    description = paste0(
+      "A b() prior target was given something other than one coefficient ",
+      "name. as.character() on the unevaluated argument deparses a call ",
+      "head-first, so b(c(\"x\", \"z\")) became the three names c(\"c\", ",
+      "\"x\", \"z\") and survived fb_plan() before failing inside the ",
+      "emitter with an untyped base error."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 prior-target contract (review A24)",
+    plan_field = NA_character_,
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
     reason_code = "prior_target_argument_missing",
     description = paste0(
       "A prior target call is missing the argument that identifies which ",
@@ -2400,4 +2422,543 @@ print.fb_refusals_table <- function(x, ...) {
     cat("\n")
   }
   invisible(x)
+}
+
+
+# 0.10.0.9000 -- the transformed response. A left-hand side that is an
+# expression over columns rather than a column name is now accepted on the
+# per-row route (issue #14, fit1), and the streaming route, which reads named
+# columns off disk, refuses it by name instead of asking a reader for a column
+# that does not exist.
+.populate_refusal_registry_v01000_9000 <- function() {
+  .register_refusal(
+    reason_code = "stream_response_must_be_a_column",
+    description = paste0(
+      "Streaming aggregation reads named columns from the source chunk by ",
+      "chunk, so a transformed response -- log(yield) -- has no column to ",
+      "read. The per-row route evaluates the expression against the data; ",
+      "the streaming route cannot, and says so rather than failing inside ",
+      "the reader."
+    ),
+    message_template = paste0(
+      "Streaming aggregation needs the response to be a column on disk, ",
+      "and \"%s\" is an expression. Materialise it as a column in the ",
+      "source before streaming, or fit the per-row route, which evaluates ",
+      "the expression."
+    ),
+    registered_in_adr = "0.10.0.9000 transformed response",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "nested_variable_not_in_data",
+    description = paste0(
+      "An interaction random effect names a variable that is not a column ",
+      "of the data, so the interaction index cannot be built."
+    ),
+    message_template = paste0(
+      "Interaction random effect `%s` names a variable not in data: %s."
+    ),
+    registered_in_adr = "0.10.0.9000 nested on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "us_gxe_prior_not_translatable_inla",
+    description = paste0(
+      "us(f):g on INLA is an iidKd field carrying a joint Wishart prior over ",
+      "the whole covariance. It has no standard-deviation slot, so a ",
+      "supplied SD prior cannot be translated. Refused rather than dropped."
+    ),
+    message_template = paste0(
+      "A prior was supplied for `%s`, and us() on INLA carries a joint ",
+      "Wishart prior over the whole covariance. Fit with backend = \"brms\", ",
+      "or drop the prior to accept INLA's default."
+    ),
+    registered_in_adr = "0.10.0.9000 us() on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "nested_index_name_collision",
+    description = paste0(
+      "Fitting an interaction random effect on INLA generates an index ",
+      "column, and the data already carries a column of that name. ",
+      "Overwriting it would index the field by whatever that column holds ",
+      "with nothing downstream saying so, which is why this refuses rather ",
+      "than renaming silently."
+    ),
+    message_template = paste0(
+      "Fitting the interaction random effect `%s` on INLA needs an index ",
+      "column named `%s`, and `data` already has one. Rename that column."
+    ),
+    registered_in_adr = "0.10.0.9000 nested on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "cor_slope_prior_not_translatable_inla",
+    description = paste0(
+      "(x | g) on INLA is an iid2d field whose hyperparameters are a single ",
+      "joint Wishart over the 2-by-2 covariance of the intercept and the ",
+      "slope. It has no standard-deviation slot, so a supplied SD prior ",
+      "cannot be translated. Refused rather than dropped."
+    ),
+    message_template = paste0(
+      "A prior was supplied for `%s`, and (x | g) on INLA carries a joint ",
+      "Wishart prior over the whole 2-by-2 covariance. Fit with ",
+      "backend = \"brms\", or write the model as `(x || g)`, whose two ",
+      "independent precisions do take an SD prior."
+    ),
+    registered_in_adr = "0.10.0.9000 correlated slope on INLA",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "vpredict_no_functional",
+    description = paste0(
+      "vpredict() was called with no functional, or with an argument that ",
+      "is not a two-sided `name ~ expression` formula."
+    ),
+    message_template = paste0(
+      "vpredict() needs at least one functional, written as a two-sided ",
+      "formula: vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))."
+    ),
+    registered_in_adr = "0.10.0.9000 posterior functionals",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "vpredict_component_not_in_posterior",
+    description = paste0(
+      "A functional names a variance component the fit does not carry. ",
+      "Resolving the name against the caller's workspace instead would ",
+      "return a number computed from something other than this posterior, ",
+      "so it refuses and lists the components that are available."
+    ),
+    message_template = paste0(
+      "`%s` names a component this fit does not carry. It carries: %s."
+    ),
+    registered_in_adr = "0.10.0.9000 posterior functionals",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "vpredict_functional_not_one_value_per_draw",
+    description = paste0(
+      "A functional returned something other than one number per posterior ",
+      "draw, so it is not a transform of the posterior and has no ",
+      "posterior of its own to summarise."
+    ),
+    message_template = paste0(
+      "`%s` must evaluate to one number per posterior draw."
+    ),
+    registered_in_adr = "0.10.0.9000 posterior functionals",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "brms_stan_toolchain_compile_failure",
+    description = paste0(
+      "The brms path compiles a Stan program, and a broken C++ toolchain ",
+      "reaches R as a downstream symptom -- `invalid connection` -- rather ",
+      "than as the compiler's own message. On a failed fit the toolchain ",
+      "is probed directly, and this code is raised only when the probe ",
+      "confirms it cannot compile."
+    ),
+    message_template = paste0(
+      "brms::brm() failed, and this machine cannot compile a three-line ",
+      "C++ file either -- so the fault is in the C++ toolchain, not in the ",
+      "model. backend = \"inla\" compiles nothing and needs no toolchain."
+    ),
+    registered_in_adr = "0.10.0.9000 Stan toolchain diagnostic",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  invisible(NULL)
+}
+
+
+# 0.10.0.9000 grammar contract -- the special-form argument shape.
+#
+# A grammar fuzz corpus over all 22 ASReml special forms found four ways a
+# malformed call escaped this taxonomy: an untyped base error from a branch's
+# own indexing, a silent lowering to a plausible neighbour, a term carrying no
+# variable, and a silently discarded surplus argument. The contract in
+# R/grammar_contract.R closes all four at one locus; these are the codes it
+# raises. See also .fb_check_grammar_arity() and .fb_literal_count().
+# 2026-09-13 -- INLA containment. Estimated correlation matrices are fitted
+# on brms only. An offset() in the fixed formula,
+# which was dropped without a message on both engines, refuses at ingest.
+.populate_refusal_registry_inla_containment <- function() {
+  .register_refusal(
+    reason_code = "correlated_covariance_requires_brms",
+    description = paste0(
+      "An estimated correlation matrix -- a correlated random slope (x | g) ",
+      "or an unstructured us(f):g -- was sent to INLA. INLA carries it as an ",
+      "iid2d or iidKd field under a joint Wishart prior that couples the ",
+      "variances and the correlations, and on that route the fitted ",
+      "covariance did not match REML's and was not invariant to rescaling ",
+      "the response. flexyBayes fits these structures on brms."
+    ),
+    message_template = paste0(
+      "%s estimates a correlation matrix, and flexyBayes fits estimated ",
+      "correlation matrices on brms only. Pass backend = \"brms\", or leave ",
+      "backend = \"auto\", which routes there."
+    ),
+    registered_in_adr = paste0(
+      "cairn 2026-09-13-estimated-correlation-matrices-brms-only"
+    ),
+    plan_field = "rejected_routes",
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "fixed_offset_unsupported",
+    description = paste0(
+      "An offset() term in the fixed formula on a route that cannot carry ",
+      "it. The parser records every offset on the model description, and a ",
+      "route with no exact lowering for it refuses by name rather than ",
+      "fitting the model without the offset, which is what happened before ",
+      "offsets were recorded."
+    ),
+    message_template = paste0(
+      "The fixed formula carries %s, and %s does not carry an offset."
+    ),
+    registered_in_adr = "cairn 2026-09-13-fixed-formula-offset-refused",
+    plan_field = "rejected_routes",
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "fixed_offset_invalid",
+    description = paste0(
+      "An offset() term that does not evaluate against the data to a ",
+      "finite number on every row: a name that is not a column, a factor or ",
+      "character value, a length that is not the row count, or a missing or ",
+      "infinite value. An offset enters the linear predictor with a fixed ",
+      "coefficient of one, so an NA would be read as zero by one engine and ",
+      "drop the row on the other."
+    ),
+    message_template = paste0(
+      "The fixed formula carries %s, and %s. An offset has to be a finite ",
+      "number on each row of the data."
+    ),
+    registered_in_adr = "0.11.0.9000 fixed-formula offsets",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "newdata_offset_missing",
+    description = paste0(
+      "predict() on new data from a model with an offset, where the new data ",
+      "lack a column the offset reads. The offset is part of every ",
+      "prediction and is never taken to be zero."
+    ),
+    message_template = paste0(
+      "The model carries %s, and `newdata` has no column %s. Add the column ",
+      "to `newdata`."
+    ),
+    registered_in_adr = "0.11.0.9000 fixed-formula offsets",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}
+
+# 2026-09-15 -- Gaussian aggregation containment. The aggregated Gaussian
+# route cannot carry a residual prior, so Gaussian models are fitted per row,
+# and no fit on the aggregated representation reports a marginal likelihood.
+.populate_refusal_registry_model_manifest <- function() {
+  .register_refusal(
+    reason_code = "prior_family_has_no_residual_scale",
+    description = paste0(
+      "A residual prior, stated or the package default, on a family whose ",
+      "likelihood has no residual scale parameter: Poisson and binomial, ",
+      "and on brms every family whose dispersion is a function of the ",
+      "mean. No engine slot reads it, and the model manifest records the ",
+      "input as not consumed under this reason."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Compiled model manifest (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "prior_vc_sd_superseded_by_prior",
+    description = paste0(
+      "`prior_vc_sd` supplied beside an fb_prior(). No route reads the ",
+      "scalar once an fb_prior() is present: INLA gives a standard ",
+      "deviation the prior leaves unstated the package's bounded default, ",
+      "and brms keeps its own. The model manifest records the scalar as ",
+      "not consumed under this reason."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Compiled model manifest (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "evidence_not_computed",
+    description = paste0(
+      "The marginal likelihood of a fit whose engine computed none: a brms ",
+      "fit, where Stan sampling runs no bridge sampling. summary() and the ",
+      "model manifest report the evidence as not available under this ",
+      "reason."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Compiled model manifest (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+}
+
+.populate_refusal_registry_aggregation_containment <- function() {
+  .register_refusal(
+    reason_code = "aggregation_residual_prior_not_composed",
+    description = paste0(
+      "A Gaussian model sent to the aggregated representation, by ",
+      "aggregate = TRUE or by flexybayes_stream(). The aggregated Gaussian ",
+      "route composes the within-cell sum of squares with a fixed gamma ",
+      "prior on the residual precision, so a stated or default residual ",
+      "prior would not be the prior fitted while prior_summary() reported ",
+      "it. Gaussian models are fitted per row; binomial and Poisson models ",
+      "still aggregate."
+    ),
+    message_template = "%s",
+    registered_in_adr = "DEC-AGG-01 (2026-09-14), strict Gaussian containment",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "aggregated_evidence_unavailable",
+    description = paste0(
+      "The marginal likelihood of a fit on the aggregated representation. ",
+      "The engine's value omits constants that depend on the data and, ",
+      "under response standardisation, scales by the number of cells ",
+      "instead of the number of rows, so it is not the marginal likelihood ",
+      "of the rows. summary() reports it as not available, naming this ",
+      "reason, rather than printing a number that cannot be compared."
+    ),
+    message_template = "%s",
+    registered_in_adr = "DEC-AGG-01 (2026-09-14), strict Gaussian containment",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}
+
+.populate_refusal_registry_working_response <- function() {
+  .register_refusal(
+    reason_code = "response_not_finite",
+    description = paste0(
+      "A response with NaN or infinite values, usually from a transformation ",
+      "such as log(0) or from a data-entry error. They are not missing ",
+      "observations, so na_action does not apply to them, and an engine ",
+      "handed them either fitted the model without saying so or failed ",
+      "without naming the row. The fit refuses before any engine is called."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Working-response resolution (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}
+
+.populate_refusal_registry_grammar_contract <- function() {
+  .register_refusal(
+    reason_code = "grammar_arity_too_few",
+    description = paste0(
+      "An ASReml special form was written with fewer positional arguments ",
+      "than it takes. Before the contract these parsed into a term whose ",
+      "variable was NA, which reaches the engine as a model nobody wrote."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "grammar_arity_too_many",
+    description = paste0(
+      "An ASReml special form was written with more positional arguments ",
+      "than it reads. The surplus used to be dropped in silence, so a ",
+      "structure written into the call never reached the fitted model."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "grammar_named_argument_unknown",
+    description = paste0(
+      "A special form was given a named argument it does not answer to. An ",
+      "unrecognised name used to be ignored, which reads as accepted."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "grammar_argument_duplicated",
+    description = paste0(
+      "A special form was given the same named argument twice. The contract ",
+      "validated the set of names and not their multiplicity, so a doubled ",
+      "name was either silently resolved to whichever copy the branch ",
+      "happened to index, or escaped as an untyped matcher error."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract (review A22)",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "dsum_malformed",
+    description = paste0(
+      "A dsum() body carrying no grouping bar. dsum(~ units | env) requests ",
+      "one residual variance per section; written without the bar there is ",
+      "nothing to section on, and the parser used to fall through to a ",
+      "homogeneous `units` residual -- a plausible neighbour that survives ",
+      "convergence checks and prints credible output."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract (audit F01)",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "fa_rank_missing",
+    description = paste0(
+      "fa() written without its rank. The rank is a number the user chooses, ",
+      "so it is named separately from the general arity refusal."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract (audit F08)",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  # fa()'s invalid-rank code has existed since 0.4.0 as the k < 1 floor. The
+  # grammar contract widens what reaches it -- a symbol, a string, a logical,
+  # a fraction -- rather than minting a second code for the same condition.
+  # The rank-versus-levels bound has a code already -- fa_rank_exceeds_dim,
+  # registered at 0.4.0 and raised from .enrich() where the level count is
+  # known. It was reachable only from the fa(f, k):g interaction form; the
+  # bare fa(f, k) branch now raises the same code rather than a synonym.
+  .register_refusal(
+    reason_code = "grammar_argument_empty",
+    description = paste0(
+      "A special form written with a trailing or doubled comma, leaving ",
+      "R's empty symbol where a value belongs. Touching it raised ",
+      "\"argument is missing, with no default\" from wherever it was first ",
+      "read -- a base error about flexyBayes internals rather than a ",
+      "statement about the formula."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "pol_degree_invalid",
+    description = paste0(
+      "pol()'s degree is not a positive whole number written in the formula. ",
+      "Same coercion defect as fa()'s rank."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  .register_refusal(
+    reason_code = "multivariate_smooth_unsupported",
+    description = paste0(
+      "s() written over more than one variable. flexyBayes fits univariate ",
+      "penalised splines only; this used to raise an untyped names-attribute ",
+      "error from mgcv's call handling."
+    ),
+    message_template = "%s",
+    registered_in_adr = "0.10.0.9000 grammar contract",
+    plan_field = "rejected_routes",
+    since_version = "0.10.0.9000"
+  )
+  invisible(NULL)
+}
+
+.populate_refusal_registry_aggregated_accessors <- function() {
+  .register_refusal(
+    reason_code = "streamed_rows_not_retained",
+    description = paste0(
+      "A row-level accessor (fitted(), residuals(), model.matrix(), ",
+      "insight::get_data(), emmeans::recover_data()) on a flexybayes_stream() ",
+      "fit that keeps fewer rows than it was fitted to. The stream keeps only ",
+      "the first rows it read, so values computed from them are not the ",
+      "values of the data."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "update_streamed_fit_not_supported",
+    description = paste0(
+      "update() on a flexybayes_stream() fit. The fit keeps neither the ",
+      "source it read nor every row, so a re-fit through flexybayes() would ",
+      "run on different data."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "augment_not_available_inla",
+    description = paste0(
+      "augment() on an INLA fit, which keeps no per-row model frame for the ",
+      "fitted-value and residual columns. tidy() and predict() are the ",
+      "alternatives."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "log_density_producer_unavailable",
+    description = paste0(
+      "fb_log_posterior() on a fit whose engine has no faithful log-density ",
+      "to evaluate: INLA's posterior is a Laplace approximation, and brms's ",
+      "log-density is defined on the Stan unconstrained scale. The condition ",
+      "also carries the class fb_c4_unavailable."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "predict_link_not_supported",
+    description = paste0(
+      "predict() without classify on an INLA fit whose link is not the ",
+      "identity. Posterior draws from fb_as_draws_simple() are the ",
+      "alternative."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "marginaleffects_link_not_supported",
+    description = paste0(
+      "A marginaleffects prediction on a fit whose link is not the identity. ",
+      "Posterior draws from fb_as_draws_simple() are the alternative."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
 }

@@ -67,6 +67,7 @@ correlated random slopes (\code{(x | g)}), smoothers, Gaussian processes
 and autocorrelation terms refuse at ingest with a structured message.
 }
 \examples{
+set.seed(1L)
 df <- data.frame(
   y = rnorm(30),
   x = rnorm(30),
@@ -79,7 +80,7 @@ class(ir)
 \code{\link[=fb]{fb()}} and \code{\link[=flexybayes]{flexybayes()}} for the universal fitting entry;
 \code{\link[=fb_from_asreml]{fb_from_asreml()}} for the other active dialect.
 
-Other flexyBayes ingest adapters: 
-\code{\link{fb_from_asreml}()}
+Other flexyBayes ingest adapters:
+\code{\link[=fb_from_asreml]{fb_from_asreml()}}
 }
 \concept{flexyBayes ingest adapters}

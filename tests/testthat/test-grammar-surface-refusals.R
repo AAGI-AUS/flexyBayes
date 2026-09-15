@@ -79,6 +79,9 @@ test_that("an uncorrelated factor slope names `diag(f):g` verbatim", {
 })
 
 test_that("the named ASReml surfaces do fit -- the refusal is not a dead end", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   # Naming an alternative that does not work is worse than naming none, so
   # both surfaces the messages above name are exercised here.
   skip_if_not_installed("brms")
@@ -112,6 +115,9 @@ test_that("a numeric multi-slope refuses typed and claims no ASReml sibling", {
 })
 
 test_that("the supported bar forms are untouched by the factor-slope branch", {
+  # Fits on brms: a Stan compile, so it is out of the
+  # devtools::check() path and runs under devtools::test().
+  skip_on_cran()
   skip_if_not_installed("brms")
   options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
@@ -131,10 +137,14 @@ test_that("the supported bar forms are untouched by the factor-slope branch", {
   }
 })
 
-test_that("a correlated NUMERIC slope keeps its own refusal", {
+test_that("a correlated NUMERIC slope is no longer a refusal", {
+  # The neighbouring refusals in this file are all real. This one was not:
+  # `(x | g)` is the uncorrelated slope with the correlation freed, and
+  # both engines carry it. It stays here as the boundary of the sweep --
+  # a FACTOR slope still refuses (above), a numeric one does not.
   d <- .gs_data()
-  err <- .gs_refuse(y ~ x + (x | g), data = d, family = "gaussian")
-  expect_s3_class(err, "flexybayes_correlated_slope_unsupported")
+  fb <- fb_from_brms(y ~ x + (x | g), data = d, family = "gaussian")
+  expect_identical(fb$random_terms[[1]]$type, "simple_slope_cor")
 })
 
 

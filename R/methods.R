@@ -188,14 +188,19 @@ print.flexybayes <- function(x, ...) {
 #'       deviations are read off precision marginals and only a monotone
 #'       summary survives the reciprocal square root exactly. The same
 #'       table the printed field panel renders, unrounded.}
+#'     \item{`offset`}{**Present only on a fit whose fixed formula carries
+#'       `offset()` terms**, and absent otherwise: the offset calls as
+#'       written, in formula order. Each has a fixed coefficient of one.}
 #'   }
 #' @seealso [prior_summary()] for the full resolved prior, and
 #'   [nobs()] for the design and observed counts on their own.
 #' @export
 summary.flexybayes <- function(object, ...) {
-  out <- .fb_summary_object(object)
-  print(out)
-  invisible(out)
+  # Compute and return, visibly. print.summary.flexybayes() does the
+  # printing, so a bare summary(fit) at the console still prints via
+  # auto-print, `s <- summary(fit)` is silent, and print(summary(fit))
+  # prints once rather than twice.
+  .fb_summary_object(object)
 }
 
 # .agg_prior_parametrization() --- which prior an aggregated fit ran
@@ -221,7 +226,18 @@ summary.flexybayes <- function(object, ...) {
 #
 # @noRd
 # @keywords internal
-.agg_prior_parametrization <- function(priors) {
+.agg_prior_parametrization <- function(priors, inputs = NULL) {
+  # A fit with a model manifest is labelled from its input sources
+  # (R/model_manifest.R), the one record of where each prior came from.
+  if (!is.null(inputs)) {
+    if (any(inputs$source == "explicit")) {
+      return("custom")
+    }
+    if (any(inputs$source %in% .FB_MANIFEST_DEFAULT_SOURCES)) {
+      return("package_default")
+    }
+    return("per_row_equivalent")
+  }
   if (!inherits(priors, "fb_prior")) {
     return("per_row_equivalent")
   }
@@ -331,7 +347,7 @@ print.flexybayes_aggregated <- function(x, ...) {
 #'
 #' Returns the same eleven-slot `summary.flexybayes` object every other
 #' engine returns, so `summary(fit)$varcomp` answers on an aggregated fit
-#' as it does on a per-row one. Aggregation is the default route for an
+#' as it does on a per-row one. Aggregation was the default route for an
 #' ordinary Gaussian call with a random term, so until 0.9.1 that slot
 #' was `NULL` on the commonest fit the package produces: this method
 #' returned its own list of the aggregated posterior's raw pieces and
@@ -369,9 +385,11 @@ print.flexybayes_aggregated <- function(x, ...) {
 #'   [print.flexybayes_aggregated()] for the one-screen fit description.
 #' @export
 summary.flexybayes_aggregated <- function(object, ...) {
-  out <- .fb_summary_object(object)
-  print(out)
-  invisible(out)
+  # Compute and return, visibly. print.summary.flexybayes() does the
+  # printing, so a bare summary(fit) at the console still prints via
+  # auto-print, `s <- summary(fit)` is silent, and print(summary(fit))
+  # prints once rather than twice.
+  .fb_summary_object(object)
 }
 
 
@@ -443,6 +461,17 @@ ranef <- function(object, ...) {
 }
 
 #' @rdname ranef
+#' @examples
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   re <- ranef(fit)
+#'   str(re, max.level = 1)
+#' }
+#' }
 #' @export
 #' @exportS3Method nlme::ranef
 ranef.flexybayes <- function(object, ...) {
@@ -519,6 +548,77 @@ fitted.flexybayes <- function(object, ...) {
 #' @export
 residuals.flexybayes <- function(object, ...) {
   object$glm$residuals
+}
+
+#' Fitted values of an aggregated count fit
+#'
+#' An aggregated binomial or Poisson fit is one INLA model over cell totals.
+#' Each row's fitted value is the posterior mean of its cell's inverse-linked
+#' linear predictor, random effects included, times the row's own exposure:
+#' `exp(offset)` on a Poisson model, and the `exposure` or `trials` column of
+#' a streamed fit. The values equal those of a per-row fit of the same model.
+#'
+#' A streamed fit keeps only the first rows it read. When those are fewer than
+#' the rows it was fitted to, the method refuses by name
+#' (`streamed_rows_not_retained`) rather than return them as the data.
+#'
+#' @param object A `flexybayes_aggregated` fit.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A numeric vector of fitted values on the response scale, one per
+#'   row of the data, in row order.
+#' @export
+fitted.flexybayes_aggregated <- function(object, ...) {
+  .fb_aggregated_rows_held(object, "fitted()")
+  object$glm$fitted.values
+}
+
+#' Residuals of an aggregated count fit
+#'
+#' The observed response minus [fitted.flexybayes_aggregated()], one value per
+#' row. A streamed fit that keeps fewer rows than it was fitted to refuses by
+#' name (`streamed_rows_not_retained`).
+#'
+#' @param object A `flexybayes_aggregated` fit.
+#' @param ... Ignored, present for compatibility with the generic.
+#' @returns A numeric vector of response residuals, one per row of the data,
+#'   in row order.
+#' @export
+residuals.flexybayes_aggregated <- function(object, ...) {
+  .fb_aggregated_rows_held(object, "residuals()")
+  object$glm$residuals
+}
+
+# .fb_aggregated_rows_held() --- refuse a row-level accessor on a streamed
+# fit that holds only its head sample.
+#
+# flexybayes_stream() reads its source in chunks and keeps the first rows it
+# read to build the model description. The fit uses every row, but anything
+# computed per row from the object covers those first rows only, so a row
+# accessor refuses rather than return them as the data. A fit that is not
+# aggregated, or holds every row, passes.
+#
+# @noRd
+# @keywords internal
+.fb_aggregated_rows_held <- function(object, what) {
+  if (!inherits(object, "flexybayes_aggregated")) {
+    return(invisible(TRUE))
+  }
+  n_obs <- object$extras$model_info$n_obs
+  n_held <- length(object$glm$y)
+  if (is.null(n_obs) || is.na(n_obs) || n_held >= n_obs) {
+    return(invisible(TRUE))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "streamed_rows_not_retained",
+    message = paste0(
+      what, " is not available for this streamed fit: it was fitted to ",
+      format(n_obs, big.mark = ",", scientific = FALSE), " rows and keeps ",
+      "only the first ", format(n_held, big.mark = ",", scientific = FALSE),
+      " it read. The fit itself uses every row. Fit the data in memory with ",
+      "flexybayes(..., aggregate = TRUE) for row-level values."
+    ),
+    family_class = "flexybayes_aggregate_refusal"
+  ))
 }
 
 #' Plug-in conditional log-likelihood of a flexyBayes fit
@@ -687,6 +787,10 @@ formula.flexybayes <- function(x, ...) {
 #' name, since `model.matrix()` on a `NULL` formula silently returns the
 #' intercept-only matrix of the calling frame's data.
 #'
+#' An aggregated fit keeps its call rather than a formula under `$glm` and
+#' recovers the formula the same way. A streamed fit that keeps fewer rows
+#' than it was fitted to refuses by name (`streamed_rows_not_retained`).
+#'
 #' @param object A `flexybayes` fit carrying a fixed-effect formula and the
 #'   data it was fitted to.
 #' @param ... Ignored, present for compatibility with the generic.
@@ -694,8 +798,10 @@ formula.flexybayes <- function(x, ...) {
 #'   per fixed-effect basis column, carrying the usual `assign` attribute.
 #' @export
 model.matrix.flexybayes <- function(object, ...) {
+  .fb_aggregated_rows_held(object, "model.matrix()")
   form <- object$glm$formula
-  if (is.null(form)) {
+  # The aggregated emits keep the call, not a formula, under `$glm`.
+  if (is.null(form) || (is.call(form) && !inherits(form, "formula"))) {
     form <- tryCatch(stats::formula(object), error = function(e) NULL)
   }
   dat <- object$glm$data %||% object$data
@@ -839,6 +945,21 @@ update.flexybayes <- function(object, ...) {
   )
   missing_fields <- setdiff(required, names(cl))
   dat <- object$glm$data %||% object$data
+
+  # A streamed fit read its source in chunks and keeps only its first rows,
+  # so re-issuing the call through flexybayes() would fit different data.
+  if (identical(object[["extras"]][["manifest"]][["route"]][["route"]], "streamed_count")) {
+    stop(.fb_refusal_condition(
+      reason_code = "update_streamed_fit_not_supported",
+      message = paste0(
+        "update() cannot re-fit a streamed fit: flexybayes_stream() read its ",
+        "data from a source in chunks, and the fit keeps neither that source ",
+        "nor every row, so a re-fit through flexybayes() would run on ",
+        "different data. Call flexybayes_stream() again with the arguments ",
+        "you want changed."
+      )
+    ))
+  }
 
   if (length(missing_fields) > 0L || is.null(dat)) {
     stop(.fb_refusal_condition(
@@ -996,9 +1117,12 @@ update.flexybayes <- function(object, ...) {
   recorded_prior <- object$extras$fb_terms$priors
   caller_priced <- any(c("prior", "prior_vc_sd") %in% names(dots))
   if (inherits(recorded_prior, "fb_prior") && !caller_priced) {
-    from_auto_default <- !is.null(
-      attr(recorded_prior, "fb_prior_default_basis")
-    )
+    manifest <- .fb_manifest(object)
+    from_auto_default <- if (!is.null(manifest)) {
+      identical(.fb_manifest_origin(manifest), "auto")
+    } else {
+      !is.null(attr(recorded_prior, "fb_prior_default_basis"))
+    }
     if (from_auto_default) {
       args$prior_fixed_sd <- NULL
       args$prior_vc_sd <- NULL
@@ -1098,4 +1222,3 @@ anova.flexybayes <- function(object, ...) {
 
   invisible(result)
 }
-

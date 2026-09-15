@@ -58,35 +58,45 @@ test_that("a three-way bar interaction lands on the same combo descriptor", {
   expect_identical(bar_ir$random_terms[[1L]]$type, "combo")
 })
 
-test_that("both grammars refuse the nested term on INLA, with the same class", {
+test_that("both grammars fit the nested term on INLA, and agree", {
+  # Until 0.10.0.9000 this asserted that both grammars REFUSED, and the
+  # parity it checked was parity of a refusal. INLA fits a nested random
+  # effect as an iid field over the interaction index, so the refusal was
+  # ours and it is gone. The parity the test exists for is unchanged and is
+  # now checked on the fit itself, which is a stronger statement: the
+  # brms-style and ASReml-style spellings of one model must produce the same
+  # components with the same values.
   skip_if_not_installed("INLA")
+  skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gsp_data()
-  bar <- tryCatch(
-    suppressMessages(flexybayes(
-      y ~ x + (1 | g:h),
-      data = d,
-      family = "gaussian",
-      backend = "inla",
-      verbose = FALSE
-    )),
-    condition = function(c) c
-  )
-  asreml <- tryCatch(
-    suppressMessages(flexybayes(
-      y ~ x,
-      random = ~ g:h,
-      data = d,
-      family = "gaussian",
-      backend = "inla",
-      verbose = FALSE
-    )),
-    condition = function(c) c
-  )
-  expect_s3_class(bar, "flexybayes_refusal_inla_gate_refused")
-  expect_s3_class(bar, "flexybayes_lgm_random_term_type_inla")
+  bar <- suppressMessages(flexybayes(
+    y ~ x + (1 | g:h),
+    data = d,
+    family = "gaussian",
+    backend = "inla",
+    verbose = FALSE
+  ))
+  asreml <- suppressMessages(flexybayes(
+    y ~ x,
+    random = ~ g:h,
+    data = d,
+    family = "gaussian",
+    backend = "inla",
+    verbose = FALSE
+  ))
   expect_identical(class(bar), class(asreml))
-  expect_identical(conditionMessage(bar), conditionMessage(asreml))
+
+  v_bar <- summary(bar)$varcomp
+  v_asr <- summary(asreml)$varcomp
+  expect_identical(v_bar$component, v_asr$component)
+  expect_true("sd_g:h" %in% v_bar$component)
+  # The two spellings build the same IR and the same INLA formula, and the
+  # estimates agree to about 1e-6 relative rather than to the bit: INLA's
+  # optimiser does not land on identical numbers from the two term orderings
+  # the grammars produce. 1e-4 is far tighter than any modelling difference
+  # and still fails if the grammars ever diverge in substance.
+  expect_equal(v_bar$estimate, v_asr$estimate, tolerance = 1e-4)
 })
 
 test_that("both grammars still emit the nested term on brms", {

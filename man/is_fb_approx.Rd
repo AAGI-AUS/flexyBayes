@@ -16,3 +16,8 @@ one.}
 \description{
 Test whether an object is an \code{fb_approx} specification
 }
+\examples{
+a <- fb_approx("low_rank_smooth")
+is_fb_approx(a)
+is_fb_approx("low_rank_smooth")
+}

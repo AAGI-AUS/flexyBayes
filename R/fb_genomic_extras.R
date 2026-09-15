@@ -222,8 +222,8 @@ print.fb_genomic_summary <- function(x, ...) {
 #'   `gebv` (data frame of breeding values with reliability), and
 #'   metadata.
 #'
-#' @seealso [fb_structured_cov()] for factor-analytic MET covariance,
-#'   [triangulate()] for cross-engine agreement.
+#' @seealso [vpredict()] for posterior functionals of the variance
+#'   components, and [ranef()] for the group-level effects themselves.
 #' @examples
 #' \dontrun{
 #' fit <- flexybayes(

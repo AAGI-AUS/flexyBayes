@@ -14,6 +14,21 @@
 #'   the grouping lives in the formula and `random` / `residual` must be
 #'   left `NULL`). The grammar is detected from the call shape; use
 #'   `syntax` to force it.
+#'
+#'   **Offsets.** `offset()` terms in the fixed formula enter the linear
+#'   predictor with a fixed coefficient of one on both engines, and several
+#'   add. Each is evaluated against `data` and has to be a finite number on
+#'   every row (`fixed_offset_invalid` otherwise). brms receives the terms
+#'   in its formula; INLA receives the evaluated offset through `inla()`'s
+#'   `offset` argument, and a Gaussian identity-link fit reads its centre,
+#'   scale and default priors from the response minus the offset. The
+#'   aggregated route carries an offset exactly on the Gaussian family
+#'   (subtracted before the cell statistics are taken) and the Poisson
+#'   family (as exposure), and refuses one on the binomial family
+#'   (`fixed_offset_unsupported`), where `aggregate = "auto"` takes the
+#'   per-row route. `predict()` on new data evaluates the offset there and
+#'   refuses when a column it reads is absent (`newdata_offset_missing`).
+#'   An `offset()` in `random` or `residual` is refused.
 #' @param random One-sided formula: `~ random_terms` using ASReml syntax.
 #'   "Parsed" and "fitted" are not the same claim, so the term catalogue is
 #'   two lists.
@@ -82,6 +97,18 @@
 #'   (`at_field_per_level_hyper_not_representable`): there is no lowering
 #'   for a level-conditioned field or for hyperparameters that vary by
 #'   level. brms has no lowering for this field at all and refuses.
+#'
+#'   **Units followed through time.** `ar1(t):g`, or the same term written
+#'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,
+#'   independent across levels, with one correlation and one field SD
+#'   shared by every level and the Gaussian nugget on top -- three
+#'   hyperparameters. This is the units-by-occasions repeated-measures
+#'   covariance of Verbyla and Cullis (1992) written on the random side:
+#'   `g` indexes the plots, animals or series and `t` the occasions, whose
+#'   levels must be in time order. An occasion a unit missed stays as a
+#'   design row with the response `NA` under the default
+#'   `na_action = "augment"`, and the `t` by `g` grid must be complete in
+#'   that sense, one row per node. brms refuses, as for the other fields.
 #' @param residual One-sided formula: `~ residual_structure`. Default `~ units`
 #'   (iid residuals). `~ dsum(~ units | env)`, and the equivalent
 #'   `~ at(env):units`, give a separate residual variance per level of `env`.
@@ -160,6 +187,10 @@
 #'   grid then refuses downstream. `"fail"` refuses if any response is
 #'   missing, and leaves the design grid alone.
 #'
+#'   A response value that is `NaN` or infinite, as `log(0)` gives, is not a
+#'   missing observation. It refuses by name under every setting
+#'   (`response_not_finite`); set it to `NA` to treat it as missing.
+#'
 #'   The argument also accepts the object an ASReml user already writes,
 #'   `asreml::na.method(y = , x = )`, and the bare list of the same shape
 #'   for readers without an asreml licence:
@@ -180,10 +211,13 @@
 #'
 #'   Under ignorability the posterior for the model parameters is the
 #'   same whether a missing response is augmented or omitted --
-#'   augmentation preserves the representation, not information. Where
-#'   missingness depends on the unobserved response itself, both are
-#'   biased and neither this argument nor any diagnostic here will tell
-#'   you so.
+#'   augmentation preserves the representation, not information. That
+#'   identity is a statement about the posterior and not a promise about
+#'   what an optimiser returns: the two settings hand the engine an
+#'   intact design and a ragged one, and on a weakly identified mode they
+#'   can land in different places. Where missingness depends on the
+#'   unobserved response itself, both are biased and neither this
+#'   argument nor any diagnostic here will tell you so.
 #' @param n_samples Integer: number of posterior samples per chain.
 #' @param warmup Integer: number of warmup (burn-in) iterations per chain.
 #' @param chains Integer: number of MCMC chains.
@@ -205,7 +239,12 @@
 #' @param prior An optional `fb_prior()` object specifying priors via the
 #'   PC-canonical hybrid DSL (preferred). When supplied it overrides
 #'   `prior_vc_sd` for the variance components it covers. See
-#'   [fb_prior()].
+#'   [fb_prior()]. On INLA, a random-effect standard deviation the prior
+#'   does not name takes the package's bounded default, `uniform(0, U)`
+#'   with the family-aware `U` described under `prior_vc_sd` (divided by
+#'   the covariate's standard deviation for an uncorrelated slope), rather
+#'   than INLA's own hyperprior; [prior_summary()] lists what was filled.
+#'   A standard deviation the prior does name is left exactly as written.
 #' @param prior_fixed_sd Numeric: SD for fixed-effect normal priors,
 #'   applied uniformly to the intercept, factor contrasts, continuous
 #'   slopes, factor x continuous interactions, and `I()`-expression
@@ -222,13 +261,20 @@
 #'   supply it**, on every backend: brms receives one `normal(0, sd)`
 #'   row per fixed-effect class, and INLA receives `control.fixed` with
 #'   `prec = 1 / sd^2` on the slopes and the intercept alike. Left
-#'   unsupplied, each engine keeps its own
-#'   fixed-effect default -- brms's flat coefficients and
-#'   response-centred `student_t` intercept, INLA's `prec = 0.001` and
-#'   flat intercept -- because replacing a response-centred intercept
-#'   prior with `normal(0, 100)` is a different model for any response
-#'   far from zero. [prior_summary()] names which of the two a fit ran
-#'   under.
+#'   unsupplied, brms keeps its own fixed-effect default -- flat
+#'   coefficients and a response-centred `student_t` intercept -- because
+#'   replacing a response-centred intercept prior with `normal(0, 100)` is
+#'   a different model for any response far from zero. INLA gives each
+#'   column built from a numeric variable the covariate-scaled default
+#'   `normal(0, 1e5 * sd(y) / sd(x))` on an identity link and
+#'   `normal(0, sqrt(1000) / sd(x))` on a log or logit link, so a
+#'   covariate's units do not change the fit, and keeps its own
+#'   `prec = 0.001` on factor contrasts and its flat intercept.
+#'   [prior_summary()] names what a fit ran under. A supplied value is
+#'   never rescaled by a covariate: it is a standard deviation in response
+#'   units per covariate unit, so on a covariate recorded in small units
+#'   (a large coefficient) it can bind -- measure the covariate in natural
+#'   units, or leave the argument unsupplied on INLA.
 #' @param prior_vc_sd Numeric: hyperparameter for the legacy
 #'   `lognormal(0, prior_vc_sd)` variance-component prior. **Note:**
 #'   when both `prior` and `prior_vc_sd` are left at their defaults,
@@ -236,7 +282,9 @@
 #'   (`uniform(0, U)` with family-aware `U`: `5 * sd(y)` for Gaussian;
 #'   `5` on the logit scale for binomial / beta; `3` on the log scale
 #'   for Poisson / negative-binomial / gamma) for `sigma` and every
-#'   named random-effect group -- a weakly-informative choice for
+#'   named random-effect group, with the bound on the standard deviation
+#'   of an uncorrelated random slope divided by the standard deviation of
+#'   its numeric covariate on INLA -- a weakly-informative choice for
 #'   moderate group counts; for very small `J`, Gelman (2006), *Bayesian
 #'   Analysis* 1(3):515-534, recommends a half-t / half-Cauchy instead
 #'   (see the priors vignette). The legacy `lognormal(0, 1)` default
@@ -297,7 +345,11 @@
 #'   Otherwise it routes to brms when brms is installed *and* its
 #'   capability predicate accepts the model. When neither can represent
 #'   the model, the call refuses with `auto_no_active_route` rather than
-#'   fitting something else. There is no silent fallback.
+#'   fitting something else. Nothing is translated silently. `auto` does
+#'   change engine in one case after starting -- an INLA program failure
+#'   is caught and re-routed to brms -- and that is reported by a message,
+#'   never silently; the fit's class and `backend` field always record
+#'   which engine produced it.
 #'   [backend_decision()] surfaces the full dispatch trace (including
 #'   `rejected_routes`) post-fit, and [fb_backend_status()] reports which
 #'   engines are usable. The one-time notes on the auto path are
@@ -306,18 +358,9 @@
 #'   `options(flexyBayes.silence_auto_inla_missing_note = TRUE)` (INLA not
 #'   installed).
 #'
-#'   **What each engine represents.** INLA takes simple iid random
-#'   effects, P-splines, the sparse-precision and pedigree carriers of
-#'   `vm()` / `ped()`, and separable AR1 fields; it refuses
-#'   heterogeneous variances (`diag` / `idh` / `at`), unstructured `us()`,
-#'   interaction random effects, and heterogeneous residuals. brms takes
-#'   interaction random effects `(1 | a:b)`, uncorrelated random slopes
-#'   `(x || g)`, heterogeneous genotype variances (`diag` / `idh` / `at`),
-#'   unstructured `us(f):g`, per-level residual variances
-#'   (`dsum(~ units | f)`), and the dense / Cholesky / precision carriers
-#'   of `vm()` / `ped()`; it refuses correlated random slopes `(x | g)`,
-#'   AR1 residual structures, `corh()`, factor-analytic GxE, and splines.
-#'   The generated per-class table is in `README.md` and
+#'   **What each engine represents.**
+#'   `r flexyBayes:::.fb_capability_engine_prose()`
+#'   The per-class table with its notes is in `README.md` and
 #'   `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
 #'
 #'   **Caution (small-group random effects).** Both engines apply the same
@@ -354,16 +397,19 @@
 #' @param aggregate One of `"auto"` (default), `TRUE`, or `FALSE`.
 #'   Exact sufficient-statistics aggregation gate. INLA is the only
 #'   engine with an aggregated emit. `"auto"` consults the aggregation
-#'   plan and routes through the per-cell path when the IR is in scope
-#'   (gaussian-identity, binomial-logit, or poisson-log; fixed plus
-#'   random intercept; productive compression) and the model reaches
-#'   INLA. `TRUE` forces aggregation and raises a structured refusal when
-#'   the plan declares ineligibility, or when no active engine offers an
-#'   aggregated route. `FALSE` skips the gate entirely. Aggregated fits
-#'   carry `$exactness == "aggregated_exact"` and the dispatch trace's
-#'   `path` slot reads `"aggregated_gaussian"` (gaussian) or
-#'   `"aggregated_count"` (binomial / poisson). For out-of-core datasets
-#'   that do not fit in memory, see [flexybayes_stream()].
+#'   plan and routes a binomial-logit or poisson-log model through the
+#'   per-cell path when the IR is in scope (fixed plus random intercept;
+#'   productive compression) and the model reaches INLA. A Gaussian model
+#'   is fitted per row: the aggregated Gaussian route cannot yet carry the
+#'   residual prior, so `TRUE` on a Gaussian model refuses by name
+#'   (`aggregation_residual_prior_not_composed`). `TRUE` also raises a
+#'   structured refusal when the plan declares ineligibility, or when no
+#'   active engine offers an aggregated route. `FALSE` skips the gate
+#'   entirely. Aggregated fits carry `$exactness == "aggregated_exact"`,
+#'   the dispatch trace's `path` slot reads `"aggregated_count"`, and
+#'   their summary reports no marginal likelihood
+#'   (`aggregated_evidence_unavailable`). For out-of-core datasets that
+#'   do not fit in memory, see [flexybayes_stream()].
 #' @param syntax One of `"auto"` (default), `"asreml"`, or `"brms"`.
 #'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
 #'   from the call shape (a bar-grouped formula is read as brms,
@@ -375,8 +421,8 @@
 #' \describe{
 #'   \item{`$glm`}{A GLM-compatible object (class `c("flexybayes_glm", "glm",
 #'     "lm")`) with posterior mean coefficients, vcov, residuals, fitted values,
-#'     etc. Works with `summary()`, `emmeans()`, `marginaleffects()`,
-#'     `effectsize()`.}
+#'     etc. Works with `summary()`, `emmeans()` and
+#'     `marginaleffects()`.}
 #'   \item{`$brms` or `$inla`}{The native backend object --- a live `brmsfit`
 #'     on the brms path, or INLA's own fitted object on the INLA path. Use
 #'     with `bayesplot`, `posterior::as_draws()`, and each engine's own
@@ -414,8 +460,6 @@
 #'   printCoefmat qqline qqnorm runif
 #' @importFrom graphics abline axis hist legend lines par segments
 #' @importFrom methods is
-#' @importFrom coda effectiveSize gelman.diag
-#' @importFrom splines bs
 #' @export
 flexybayes <- function(
   fixed,
@@ -671,7 +715,10 @@ flexybayes <- function(
       family = family,
       link = link,
       random_groups = prior_targets$shared,
-      vm_ped_groups = prior_targets$vm_ped
+      vm_ped_groups = prior_targets$vm_ped,
+      # On an offset model the bound U = 5 sd reads y - o, on both engines,
+      # as the INLA standardisation does (R/inla_standardise.R).
+      resp_sd = if (length(fb$offsets)) .fb_response_sd(fb, data) else NULL
     )
     fb$priors <- unif_default
     prior <- unif_default

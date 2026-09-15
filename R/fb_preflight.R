@@ -554,6 +554,36 @@
     ))
   }
 
+  # (x | g) -- correlated slope. Two integer index columns rather than one,
+  # since INLA blocks the intercepts and the slopes end to end, plus the
+  # slope variable column and 2k latent values. The intercept is always
+  # present: the correlation is what the model is for.
+  if (identical(rtype, "simple_slope_cor")) {
+    if (is.na(k)) {
+      return(.preflight_entry(
+        label = label,
+        design_memory_bytes = NA_real_,
+        representation_class = "unknown",
+        aggregated_likelihood_candidate = FALSE,
+        term_kind = "random_slope",
+        unknown_representation = TRUE
+      ))
+    }
+    bytes <- 4 * n_rows * 2 + # intercept-block and slope-block indices
+      8 * n_rows + # slope variable column
+      8 * k * 2L + # latent intercepts and slopes
+      .FB_PREFLIGHT_TERM_OVERHEAD
+    return(.preflight_entry(
+      label = label,
+      design_memory_bytes = bytes,
+      representation_class = .representation_class(
+        "dense_baseline"
+      ),
+      aggregated_likelihood_candidate = FALSE,
+      term_kind = "random_slope"
+    ))
+  }
+
   # Smooth s(x) on the random side -- the asreml ingest path places
   # parser-emitted "smooth_mgcv" terms in random_terms (e.g.
   # random = ~ s(x, k = 6)). Same N x k dense basis cost as the
@@ -808,33 +838,35 @@
 
   if (identical(kind, "fixed")) {
     if (
-      ttype %in% c("smooth", "s", "t2", "smooth_mgcv") && !is.null(term$var)
+      ttype %in% c("smooth", "s", "t2", "smooth_mgcv") &&
+        !is.null(term[["var"]])
     ) {
-      return(paste0("s(", term$var, ")"))
+      return(paste0("s(", term[["var"]], ")"))
     }
-    if (identical(ttype, "spline") && !is.null(term$var)) {
-      return(paste0("spl(", term$var, ")"))
+    if (identical(ttype, "spline") && !is.null(term[["var"]])) {
+      return(paste0("spl(", term[["var"]], ")"))
     }
-    if (identical(ttype, "factor_interaction") && !is.null(term$vars)) {
-      return(paste(term$vars, collapse = ":"))
+    # A multi-way interaction carries its columns in `vars` and has no `var`.
+    if (!is.null(term[["vars"]])) {
+      return(paste(term[["vars"]], collapse = ":"))
     }
-    if (!is.null(term$var)) {
-      return(as.character(term$var))
+    if (!is.null(term[["var"]])) {
+      return(as.character(term[["var"]]))
     }
     return("<fixed:unnamed>")
   }
   # random
-  # `term$var` is a length > 1 character vector for interaction random
-  # terms (combo A:B:C -> c("A", "B", "C")); collapse it to a single
-  # "A:B:C" string so the label stays scalar. A vector label otherwise
-  # propagated into `per_term[[entry$label]] <- entry`, raising the
-  # base-R "no such index at level 1" error on any interaction term.
-  group <- if (!is.null(term$var)) {
-    paste(as.character(term$var), collapse = ":")
+  # A multi-way interaction random term (combo A:B:C) carries its columns in
+  # `vars` and has no `var`; they collapse to a single "A:B:C" string so the
+  # label stays scalar. A vector label otherwise propagated into
+  # `per_term[[entry$label]] <- entry`, raising the base-R "no such index at
+  # level 1" error on any interaction term.
+  group <- if (!is.null(term[["var"]])) {
+    paste(as.character(term[["var"]]), collapse = ":")
+  } else if (!is.null(term[["vars"]])) {
+    paste(as.character(term[["vars"]]), collapse = ":")
   } else if (identical(ttype, "nested")) {
     paste(c(term$outer, term$inner), collapse = ":")
-  } else if (identical(ttype, "combo") && !is.null(term$vars)) {
-    paste(as.character(term$vars), collapse = ":")
   } else {
     "?"
   }
@@ -853,6 +885,14 @@
       slope
     }
     return(paste0("(", lhs, " || ", group, ")"))
+  }
+  if (identical(ttype, "simple_slope_cor")) {
+    slope <- if (!is.null(term$slope_var)) {
+      as.character(term$slope_var)
+    } else {
+      "x"
+    }
+    return(paste0("(", slope, " | ", group, ")"))
   }
   if (ttype %in% c("smooth_mgcv", "smooth", "s", "t2")) {
     return(paste0("s(", group, ")"))
@@ -916,8 +956,11 @@
     v <- term[[slot]]
     if (!is.null(v) && !is.na(v)) return(as.integer(v))
   }
-  if (!is.null(term$var)) {
-    k <- .fb_dataset_levels(fb_dataset, as.character(term$var))
+  # A multi-way interaction term carries its columns in `vars` and has no
+  # `var`; its level count is the number of observed combinations.
+  cols <- term[["var"]] %||% term[["vars"]]
+  if (!is.null(cols)) {
+    k <- .fb_dataset_levels(fb_dataset, as.character(cols))
     if (!is.na(k)) return(as.integer(k))
   }
   NA_integer_
@@ -987,16 +1030,48 @@
   as.numeric(fraction) * ram_bytes
 }
 
+# The probe's answer for this session. Total system RAM does not change while
+# an R process runs, so the shell-out is worth exactly one call: `fb_plan()`
+# resolves a ceiling on every invocation and each resolution was a separate
+# ~9 ms child process, measured on this host. `NULL` means "not yet probed";
+# a probed NA is cached like any other answer, so an unavailable probe costs
+# one failed shell-out per session rather than one per plan.
+.fb_ram_cache <- new.env(parent = emptyenv())
+
+# @noRd
+.fb_reset_ram_cache <- function() {
+  if (exists("bytes", envir = .fb_ram_cache, inherits = FALSE)) {
+    rm("bytes", envir = .fb_ram_cache)
+  }
+  invisible(NULL)
+}
+
 .fb_probe_system_ram <- function() {
+  if (exists("bytes", envir = .fb_ram_cache, inherits = FALSE)) {
+    return(get("bytes", envir = .fb_ram_cache, inherits = FALSE))
+  }
+  bytes <- .fb_probe_system_ram_uncached()
+  assign("bytes", bytes, envir = .fb_ram_cache)
+  bytes
+}
+
+.fb_probe_system_ram_uncached <- function() {
   # Quiet, platform-native probes for the common platforms, with child stderr
-  # suppressed (`stderr = FALSE`). benchmarkme / memuse shell out to system
-  # tools (sysctl, kstat) without stderr control, which prints harmless but
-  # alarming noise ("sysctl: hw.memsize: Operation not permitted",
-  # "/bin/kstat: No such file or directory") on restricted or sandboxed hosts
-  # and makes a successful preflight look broken. The native probes avoid that;
-  # the optional helpers are a last resort for other platforms only.
+  # suppressed (`stderr = FALSE`) and the executable's presence established
+  # with Sys.which() before anything is spawned. benchmarkme / memuse shell
+  # out to system tools (sysctl, kstat) without stderr control, which prints
+  # harmless but alarming noise ("sysctl: hw.memsize: Operation not
+  # permitted", "/bin/kstat: No such file or directory") on restricted or
+  # sandboxed hosts and makes a successful preflight look broken. A child's
+  # stderr cannot be redirected from inside R once it is running, so the only
+  # defence is not to spawn it: the helpers below are reached at most once per
+  # session, and only where neither native probe applies.
+  have <- function(cmd) nzchar(Sys.which(cmd)[[1]])
   sysname <- Sys.info()[["sysname"]]
   if (identical(sysname, "Darwin")) {
+    if (!have("sysctl")) {
+      return(NA_real_)
+    }
     res <- tryCatch(
       as.numeric(suppressWarnings(
         system2("sysctl", c("-n", "hw.memsize"),
@@ -1015,6 +1090,13 @@
       error = function(e) NA_real_
     )
     return(if (!is.na(res) && res > 0) res else NA_real_)
+  }
+  # SunOS / Solaris is where the reported "/bin/kstat: No such file or
+  # directory" comes from: benchmarkme's Solaris branch shells out to kstat
+  # unconditionally and cannot be told to quieten its child. Establish the
+  # tool exists before handing the platform to a helper that will call it.
+  if (identical(sysname, "SunOS") && !have("kstat")) {
+    return(NA_real_)
   }
   if (requireNamespace("benchmarkme", quietly = TRUE)) {
     res <- tryCatch(as.numeric(benchmarkme::get_ram()), error = function(e) {

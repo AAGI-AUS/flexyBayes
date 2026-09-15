@@ -90,6 +90,8 @@ emit_brms <- function(
   verbose = TRUE,
   mcmc_verbose = TRUE,
   return_code = FALSE,
+  extra_prior = NULL,
+  stanvars = NULL,
   the_call = NULL,
   fixed = NULL,
   random = NULL,
@@ -165,6 +167,19 @@ emit_brms <- function(
     data2 = brms_data2,
     family = brms_family
   )
+  # Joint-block prior rows compiled outside the fb_prior() path (the
+  # selection module's shrinkage blocks) are merged after that check, not
+  # before it. Two reasons. They are already resolved against this model's
+  # own coefficient names by the compiler that built them, so the oracle
+  # would be re-answering a question already answered; and one of their
+  # routes is a verbatim `target +=` row carried by
+  # brms::set_prior(check = FALSE), which has no class, no coef and no
+  # group -- there is no triple for default_prior() to list, and the check
+  # would read the blank class as a class the model does not carry. brms
+  # validates these rows itself at brm() time.
+  # The rows as compiled, each carrying its input identifier, for the manifest.
+  tagged_prior <- brms_prior
+  brms_prior <- .fb_brms_merge_extra_prior(brms_prior, extra_prior)
 
   # -- return_code: skip the fit; emit the Stan code only -----------
   if (isTRUE(return_code)) {
@@ -175,6 +190,7 @@ emit_brms <- function(
         data2 = brms_data2,
         family = brms_family,
         prior = brms_prior,
+        stanvars = stanvars,
         silent = 2L
       ),
       error = function(e) {
@@ -227,6 +243,7 @@ emit_brms <- function(
         data2 = brms_data2,
         family = brms_family,
         prior = brms_prior,
+        stanvars = stanvars,
         chains = as.integer(chains),
         iter = iter,
         warmup = as.integer(warmup),
@@ -256,7 +273,10 @@ emit_brms <- function(
       }
     ),
     error = function(e) {
-      stop("brms::brm() failed: ", conditionMessage(e), call. = FALSE)
+      # A Stan compile failure reaches R as a downstream symptom, so the
+      # toolchain is asked directly before the message is written. See
+      # .fb_brms_failure_message().
+      .fb_stop_brms_failure(conditionMessage(e))
     }
   )
   elapsed <- unname((proc.time() - t0)["elapsed"])
@@ -400,19 +420,39 @@ emit_brms <- function(
       ),
       the_call = the_call,
       formula = brms_form,
-      brms_prior = brms_prior
+      brms_prior = brms_prior,
+      # Which prior became which brms prior row, as brms reports it back
+      # (R/model_manifest.R).
+      manifest = .fb_manifest_brms(fb, brms_prior, brmsfit, tagged_prior)
     ),
     class = "flexybayes_extras"
   )
 
-  structure(
+  out <- structure(
     list(
       glm = glm_obj,
       brms = brmsfit,
+      # The parsed model and the analysis data, on the same two slots the
+      # INLA emit writes them to (R/emit_inla.R). Before 0.11.0 only the
+      # INLA fit carried them, so every consumer that reads `$fb` / `$data`
+      # -- the selection substrate chief among them -- worked on one engine
+      # and refused on the other, and the refusal named the aggregated route
+      # rather than the missing slots. `$brms$data` is the model frame, which
+      # holds the model's own variables and nothing else; a candidate block
+      # names columns the model did not, so the analysis data has to be the
+      # thing that travels.
+      fb = fb,
+      data = data,
       extras = extras
     ),
     class = c("flexybayes_brms", "flexybayes", "list")
   )
+
+  # Read off the same canonical table the INLA path warns from, so a
+  # component at the boundary is reported identically on both engines.
+  .fb_warn_boundary_collapse(out)
+
+  out
 }
 
 
@@ -506,6 +546,52 @@ emit_brms <- function(
 }
 
 
+# .fb_brms_merge_extra_prior() --- one prior data frame from two sources.
+#
+# `prior` is what .priors_to_brms() built from the IR; `extra` is a
+# compiled joint block (the selection module's shrinkage prior). Where
+# both name the same parameter -- the same (class, coef, group, resp,
+# dpar, nlpar) tuple -- the extra row wins, which is the resolution rule
+# the rest of the package already uses for overlapping specifications:
+# the later one, for the coordinates it names. A class-wide shrinkage
+# prior on `b` therefore REPLACES the default fixed-effect row rather
+# than joining it, because brms reads two rows for one parameter as a
+# specification error, not as a product of densities.
+.fb_brms_merge_extra_prior <- function(prior, extra) {
+  if (is.null(extra) || NROW(extra) == 0L) {
+    return(prior)
+  }
+  if (is.null(prior) || NROW(prior) == 0L) {
+    return(extra)
+  }
+  keys <- intersect(
+    c("class", "coef", "group", "resp", "dpar", "nlpar"),
+    intersect(names(prior), names(extra))
+  )
+  if (length(keys) == 0L) {
+    stop(
+      "emit_brms(): `extra_prior` does not carry the brms prior columns.",
+      call. = FALSE
+    )
+  }
+  tuple <- function(d) {
+    do.call(
+      paste,
+      c(lapply(keys, function(k) as.character(d[[k]])), list(sep = "\r"))
+    )
+  }
+  keep <- !(tuple(prior) %in% tuple(extra))
+  out <- rbind(
+    as.data.frame(prior)[keep, , drop = FALSE],
+    as.data.frame(extra)
+  )
+  rownames(out) <- NULL
+  # rbind() on data frames drops the brmsprior class, and brm() dispatches
+  # on it, so it is put back rather than left to chance.
+  structure(out, class = class(prior))
+}
+
+
 # ---------------------------------------------------------------- #
 # IR -> brms formula reconstruction                                 #
 # ---------------------------------------------------------------- #
@@ -542,6 +628,10 @@ emit_brms <- function(
     character(1)
   )
   fixed_labels <- fixed_labels[!is.na(fixed_labels)]
+  # The offsets travel verbatim: brms evaluates `offset(log(E))` against the
+  # data itself, into the Stan data as `offsets`, and again against `newdata`
+  # at prediction.
+  fixed_labels <- c(fixed_labels, fb$offsets %||% character(0))
 
   fixed_rhs <- if (length(fixed_labels) > 0L) {
     paste(fixed_labels, collapse = " + ")
@@ -697,7 +787,10 @@ emit_brms <- function(
       next
     }
 
-    if (!ttype %in% c("simple", "ide", "id", "simple_slope_uncor")) {
+    if (
+      !ttype %in%
+        c("simple", "ide", "id", "simple_slope_uncor", "simple_slope_cor")
+    ) {
       stop(.fb_refusal_condition(
         reason_code = "brms_cannot_represent_term",
         message = .brms_term_refusal_message(term),
@@ -729,6 +822,16 @@ emit_brms <- function(
           ")"
         )
       )
+      next
+    }
+    # Correlated random slope. brms writes this one natively: the single
+    # pipe IS the correlated form, with the intercept implicit.
+    if (identical(term$type, "simple_slope_cor")) {
+      sv <- term$slope_var
+      if (is.null(sv) || !nzchar(sv)) {
+        stop("Correlated random-slope term missing slope_var.", call. = FALSE)
+      }
+      re_terms <- c(re_terms, paste0("(", sv, " | ", grp, ")"))
       next
     }
     re_terms <- c(re_terms, paste0("(1 | ", grp, ")"))
@@ -940,10 +1043,22 @@ emit_brms <- function(
       term$inner %||% var_name,
       ", K) on its own, or use ASReml for the crossed form."
     ),
+    "fa_gxe" = paste0(
+      "brms group-level effects are either uncorrelated or fully ",
+      "unstructured, with no factor-analytic form between the two. INLA ",
+      "emits this one, entering each common factor as scaled copies of a ",
+      "latent field, so fit it with backend = \"inla\"."
+    ),
+    # The fallback claims nothing about the other engine. Which structures
+    # INLA emits changes as the emit grows, and a sentence here saying "no
+    # active engine" is a claim about a file this one does not read -- the
+    # class of statement the 0.10.0 review found to be false in twelve
+    # places. The capability table is generated from one source and is the
+    # thing to point at.
     paste0(
-      "No active engine emits this structure. fb_terms() will describe ",
-      "what was parsed, and the capability table in the README lists what ",
-      "each engine fits."
+      "This structure has no brms lowering. fb_terms() will describe what ",
+      "was parsed, and the capability table in the README lists what each ",
+      "engine fits."
     )
   )
   paste0(
@@ -976,9 +1091,10 @@ emit_brms <- function(
 #
 # Refusing is not a limitation being papered over. Under ignorability the
 # parameter posterior is the same whether the cell is imputed or omitted, so
-# a user who wants the non-Gaussian fit can pass na_action = "omit" and get
-# a correct answer -- what they cannot have is deletion wearing the name of
-# augmentation.
+# a user who wants the non-Gaussian fit can pass na_action = "omit" -- what
+# they cannot have is deletion wearing the name of augmentation. The
+# identity is a statement about the posterior, not about what an optimiser
+# returns from a ragged design; see the note in R/na_action.R.
 .fb_brms_missing_response_mode <- function(fb, data) {
   resp <- fb$response
   has_missing <- !is.null(resp) &&
@@ -1481,9 +1597,14 @@ emit_brms <- function(
 
 # Build the variance_comps table -- same shape as the INLA path
 # (component, estimate, sd, q2.5, q97.5).
+#
+# The correlations of a correlated slope `(x | g)` and of `us(f):g` are read
+# as well. They used to be dropped here, so a brms fit of either structure
+# reported its standard deviations and not the correlation the structure
+# exists to estimate -- on the one engine that fits those structures.
 .brms_variance_comps <- function(brmsfit, draws_mat) {
   cn <- colnames(draws_mat)
-  vc_cols <- cn[grepl("^sd_", cn) | cn == "sigma"]
+  vc_cols <- cn[grepl("^sd_", cn) | grepl("^cor_", cn) | cn == "sigma"]
   if (length(vc_cols) == 0L) {
     return(data.frame(
       component = character(0),
@@ -1523,10 +1644,11 @@ emit_brms <- function(
   out
 }
 
-# brms VC names: sd_<group>__Intercept -> sd_<group>; sigma stays.
+# brms VC names: sd_<group>__Intercept -> sd_<group>; sigma and brms's own
+# cor_<group>__<a>__<b> stay as they are.
 .brms_vc_canonical_name <- function(nm) {
-  if (identical(nm, "sigma")) {
-    return("sigma")
+  if (identical(nm, "sigma") || startsWith(nm, "cor_")) {
+    return(nm)
   }
   bare <- sub("^sd_", "", nm)
   bare <- sub("__Intercept$", "", bare)
@@ -1806,6 +1928,9 @@ print.flexybayes_brms <- function(x, ...) {
 #' @param parm Subset of fixed-effect names to return (NULL = all).
 #' @param level Credible level (default 0.95).
 #' @param ... Ignored. Present for compatibility with the generic.
+#' @returns A numeric matrix with one row per fixed-effect term and two
+#'   columns holding the lower and upper credible bounds at `level`. Row
+#'   names are the term names with the brms `b_` prefix removed.
 #' @export
 confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
   .check_installed(
@@ -1867,7 +1992,10 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #'
 #' @param object A `flexybayes_brms` object.
 #' @param newdata Optional data.frame at which to predict. When
-#'   omitted, returns the in-sample posterior summary.
+#'   omitted, returns the in-sample posterior summary. On a model with an
+#'   `offset()` brms evaluates the offset on `newdata`, so `newdata` needs
+#'   every column the offset reads; an absent one refuses with
+#'   `newdata_offset_missing` rather than being taken as zero.
 #' @param type `"response"` (default; posterior_epred) or `"link"`
 #'   (posterior_linpred).
 #' @param re_formula Forwarded to brms; `NULL` (default) includes
@@ -1886,6 +2014,12 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #'   proportion. Default `0.95`.
 #' @param ... Forwarded to `brms::posterior_epred()` /
 #'   `brms::posterior_linpred()`.
+#' @returns One of four shapes, by argument. With `classify` set, the
+#'   marginal-means table for those factors. Otherwise with
+#'   `summary = FALSE`, the `draws x rows` posterior matrix; with
+#'   `se.fit = TRUE`, a list of `fit` (posterior mean per row) and
+#'   `se.fit` (posterior SD per row); and by default a numeric vector of
+#'   posterior means, one per row of `newdata` or of the fitted data.
 #' @export
 predict.flexybayes_brms <- function(
   object,
@@ -1926,6 +2060,12 @@ predict.flexybayes_brms <- function(
   } else {
     get("posterior_epred", envir = asNamespace("brms"))
   }
+  # brms evaluates the offset against `newdata` itself; an absent offset
+  # column is refused here by name, before brms reports it as a missing
+  # object.
+  if (!is.null(newdata)) {
+    .fb_offset_values(.fb_fit_ir(object), newdata, newdata = TRUE)
+  }
 
   post_mat <- if (is.null(newdata)) {
     brms_fn(object$brms, re_formula = re_formula, ...)
@@ -1954,6 +2094,9 @@ predict.flexybayes_brms <- function(
 #'
 #' @param object A `flexybayes_brms` object.
 #' @param ... Ignored. Present for compatibility with the generic.
+#' @returns An object of class `logLik`: the pointwise log-likelihood
+#'   summed over observations and averaged across draws, carrying `df`
+#'   (parameter count) and `nobs` (observation count) attributes.
 #' @export
 logLik.flexybayes_brms <- function(object, ...) {
   # Dispatch to brms's `log_lik` exported generic. brms ships

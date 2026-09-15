@@ -88,8 +88,9 @@
       struct_note,
       " Note: this model has a factor-analytic term whose raw loadings ",
       "are non-identified (rotation/sign), so their Rhat is expected to ",
-      "be high; consult fb_structured_cov() for the Rhat of the ",
-      "identified covariance."
+      "be high. Read the identified covariance instead -- the reconstructed ",
+      "Sigma and the correlations derived from it -- rather than the raw ",
+      "loadings."
     )
   }
   if (has_type("us_gxe")) {

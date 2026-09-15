@@ -89,6 +89,70 @@
   # boundary refusal.
   .populate_refusal_registry_v093()
 
+  # 0.10.0.9000: the streaming route's transformed-response refusal.
+  .populate_refusal_registry_v01000_9000()
+
+  # 0.10.0.9000: the special-form argument contract -- arity, named
+  # arguments, literal counts, and the malformed-dsum fall-through.
+  .populate_refusal_registry_grammar_contract()
+
+  # 0.10.0.9000: the selection module's covariance-builder refusals.
+  .populate_refusal_registry_selection()
+
+  # 0.10.0.9000: the selection module's design-side refusals -- the
+  # protected reduction's rank deficiency and the coordinate-semantics gate.
+  .populate_refusal_registry_selection_design()
+
+  # 0.10.0.9000: the selection module's weight, offset and missing-response
+  # absorption refusals.
+  .populate_refusal_registry_selection_weights()
+
+  # 0.10.0.9000: the selection module's resampling, prediction and scoring
+  # refusals, including the leakage gate.
+  .populate_refusal_registry_selection_resamples()
+
+  # 0.11.0: the joint-prior layer's grammar, resolution, targeting and
+  # scaling refusals.
+  .populate_refusal_registry_penalty()
+
+  # 0.11.0: the reference model's adequacy gates and the projection
+  # provider's structure and family gates.
+  .populate_refusal_registry_selection_projection()
+
+  # 0.11.0: the Bayesian selection route's absent-provider and runtime-budget
+  # refusals.
+  .populate_refusal_registry_selection_bayes_cv()
+
+  # 0.11.0: the penalised-optimiser provider -- an absent provider, a
+  # withdrawn penalty family, an uncertified proximal mode, and penalty
+  # blocks no single glmnet problem expresses.
+  .populate_refusal_registry_selection_glmnet()
+
+  # 0.11.0: the public verb's own refusals -- an unauthorised fallback, a
+  # joint shrinkage prior routed at INLA, and an incomplete decision rule.
+  .populate_refusal_registry_selection_verb()
+
+  # 2026-09-13: INLA containment -- estimated correlation matrices go to
+  # brms.
+  .populate_refusal_registry_inla_containment()
+
+  # 2026-09-15: Gaussian aggregation containment -- Gaussian models are
+  # fitted per row, and aggregated fits report no marginal likelihood.
+  .populate_refusal_registry_aggregation_containment()
+
+  # 2026-09-15: the compiled model manifest -- a residual prior on a family
+  # without a residual scale, a superseded prior_vc_sd, and evidence an
+  # engine did not compute.
+  .populate_refusal_registry_model_manifest()
+
+  # 2026-09-15: the working response -- NaN and infinite response values.
+  .populate_refusal_registry_working_response()
+
+  # 2026-09-15: accessors on aggregated and streamed count fits -- a streamed
+  # fit's head sample and re-fit, and the refusals an INLA fit gives for
+  # augment(), a log-density and a prediction on a non-identity link.
+  .populate_refusal_registry_aggregated_accessors()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
@@ -163,8 +227,7 @@
   packageStartupMessage(
     "flexyBayes ",
     utils::packageVersion(pkgname),
-    " -- multi-backend Bayesian mixed models (INLA / brms)",
-    " with cross-engine triangulation\n",
+    " -- multi-backend Bayesian mixed models (INLA / brms)\n",
     "  Development release: all exports experimental; not on CRAN. ",
     "See system.file(\"KNOWN_ISSUES.md\", package = \"flexyBayes\")."
   )

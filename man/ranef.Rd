@@ -33,6 +33,18 @@ registration on nlme's is what keeps a bare \code{ranef(fit)} dispatching
 there. In a session where the masking is ambiguous, call
 \code{flexyBayes::ranef(fit)}.
 }
+\examples{
+\donttest{
+if (requireNamespace("INLA", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+  fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+                    verbose = FALSE)
+  re <- ranef(fit)
+  str(re, max.level = 1)
+}
+}
+}
 \seealso{
 \code{\link[=coef.flexybayes]{coef.flexybayes()}}, which this delegates to.
 }

@@ -63,7 +63,7 @@ test_that(".fb_spectral_rotate() applies U' and round-trips at full rank", {
   expect_equal(as.vector(back), y, tolerance = 1e-9)
 })
 
-test_that(".fb_spectral_rotate() handles a design matrix and rejects wrong nrow", {
+test_that(".fb_spectral_rotate() rotates a design matrix and refuses a mismatched row count", {
   K <- .fb_spectral_kinship(n = 10L)
   spec <- flexyBayes:::.fb_spectral(K)
   X <- cbind(1, stats::rnorm(spec$n))

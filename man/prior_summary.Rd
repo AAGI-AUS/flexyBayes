@@ -55,6 +55,15 @@ declared that the engine has no parameter for -- a residual
 prior on a family whose dispersion is a function of the mean.}
 \item{\code{declaration_only}}{Reserved; always \code{FALSE} for every
 current backend.}
+\item{\code{inputs}}{Data frame: every prior specification the fit was
+given, stated or chosen by the package, with its source and the
+number of engine slots that used it.}
+\item{\code{slots}}{Data frame: every engine slot, with the prior the
+package sent, the input it came from, the prior the engine reports
+after fitting and whether the two agree. A slot carrying the
+engine's own prior is listed with that source.}
+\item{\code{not_consumed}}{Named character: each input no engine slot
+used, with the reason code.}
 }
 }
 \description{

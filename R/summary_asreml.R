@@ -133,12 +133,22 @@
     units = "units",
     at_units = paste0("units sectioned by ", term$var),
     ar1 = paste0("ar1(", term$var, ") field + nugget"),
+    # Spelled back from the IR so the grouped field (AR1 along the first
+    # factor, independent across the second) is not described as a second
+    # ar1() on the group with a fourth parameter it does not have.
     ar1_spatial = paste0(
-      "ar1(",
-      term$row_var,
-      "):ar1(",
-      term$col_var,
-      ") field + nugget (4 parameters)"
+      .ar1_term_spelling(term),
+      if (isTRUE(term$col_ar1)) {
+        " field + nugget (4 parameters)"
+      } else {
+        paste0(
+          " field, AR1 along ",
+          term$row_var,
+          " and independent across ",
+          term$col_var,
+          ", + nugget (3 parameters)"
+        )
+      }
     ),
     spline = paste0("spline in ", term$var),
     smooth_mgcv = paste0("smooth in ", term$var),
@@ -234,6 +244,39 @@
   ))
 }
 
+# .fb_asreml_residual_note() --- the ASReml residual the field is not.
+#
+# The field-plus-nugget model has one parameter more than the nugget-free
+# residual ASReml fits under the same spelling. The note names that
+# residual with the factors the user wrote and counts its parameters, so
+# the sentence is true for the separable grid (three: two correlations
+# and a variance), the grouped temporal field (two: one correlation and
+# a variance) and the one-dimensional series (two) alike.
+#
+# @noRd
+# @keywords internal
+.fb_asreml_residual_note <- function(ir) {
+  terms_all <- c(ir$random_terms %||% list(), ir$residual_terms %||% list())
+  fields <- Filter(
+    function(t) (t$type %||% "") %in% c("ar1", "ar1_spatial"),
+    terms_all
+  )
+  term <- fields[[1L]]
+  if (identical(term$type, "ar1")) {
+    return(paste0("ASReml residual = ~ ar1(", term$var, ") (2 parameters)"))
+  }
+  if (isTRUE(term$col_ar1)) {
+    return("ASReml residual = ~ ar1:ar1 (3 parameters)")
+  }
+  paste0(
+    "ASReml residual = ~ ",
+    term$col_var,
+    ":ar1(",
+    term$row_var,
+    ") (2 parameters)"
+  )
+}
+
 # .fb_is_spatial_varcomp() --- does this table describe a latent field?
 #
 # Read off the canonical component names rather than the IR, so the
@@ -282,6 +325,13 @@
       }
     }
   }
+  # A standard deviation an INLA fit filled or rescaled on its own ran under
+  # that prior, whatever the declaration says (R/inla_default_priors.R).
+  for (added in list(ps$filled_priors, ps$covariate_scaled_priors)) {
+    for (key in names(added %||% character(0))) {
+      recorded[[key]] <- unname(added[[key]])
+    }
+  }
   engine_default <- names(ps$engine_default %||% character(0))
   legacy <- identical(ps$kind, "legacy_scalar")
   bridged <- if (legacy) {
@@ -300,11 +350,41 @@
   }
   sectioned <- .fb_sectioned_residual_prior(ps)
 
+  # Ahead of the declaration on purpose. A component whose structure gives
+  # the engine no slot for the declared prior did not get it, whatever the
+  # declaration says, and the cell has to report the fit rather than the
+  # intention -- see .fb_inla_wishart_sd_not_applied().
+  not_applied <- names(ps$not_applied %||% character(0))
+
   vapply(
     components,
     function(cmp) {
+      if (cmp %in% not_applied) {
+        return("engine default")
+      }
       if (cmp %in% names(recorded)) {
         return(unname(recorded[[cmp]]))
+      }
+      # A per-level row of a heterogeneous route. diag() / idh() / at()
+      # emit one iid field per level of the outer factor, and every one of
+      # them carries the hyper block keyed by the INNER group -- see the
+      # `at_simple` branch of .build_inla_formula(). The canonical names
+      # are `sd_<group>__<outer><level>`, which never equals the spec key
+      # `sd_<group>`, so the exact match above missed every one of them and
+      # the cell fell through to the closing "engine default" while the
+      # emitted formula carried the user's prior verbatim.
+      #
+      # Found 2026-09-11 by the ASReml oracle suite, and it cost something
+      # before it was found: the first reading of that column concluded the
+      # prior layer did not reach diag() at all. A column that reports the
+      # fit wrongly is not a cosmetic defect, because it is what the next
+      # reader reasons from. `not_applied` is tested ahead of this, so a
+      # structure that genuinely has no slot for the prior still says so.
+      if (grepl("__", cmp, fixed = TRUE)) {
+        base_key <- sub("__.*$", "", cmp)
+        if (base_key %in% names(recorded)) {
+          return(unname(recorded[[base_key]]))
+        }
       }
       # A per-level residual row. The declared uniform on the SD scale
       # was retargeted onto the log-sigma coefficients at emit time, so
@@ -490,18 +570,56 @@
   if (!is.numeric(ref) || length(ref) != 1L || is.na(ref) || ref <= 0) {
     return(blank)
   }
-  is_correlation <- startsWith(components, "rho_") |
-    startsWith(components, "cor_")
   fraction <- ifelse(
     components == "sd_spatial",
     .FB_SPATIAL_COLLAPSE_FRACTION,
     .FB_COLLAPSE_FRACTION
   )
-  flagged <- !is_correlation &
-    is.finite(upper) &
+  # Only a non-negative scale can collapse against zero. `sigma` is that
+  # scale's reference rather than a candidate against itself.
+  flagged <- .fb_component_domain(components) == "positive" &
     components != "sigma" &
+    is.finite(upper) &
     upper < fraction * ref
   ifelse(flagged, "collapsed", "")
+}
+
+
+# .fb_component_domain() --- what kind of quantity a canonical component is.
+#
+# `positive` is a standard deviation, `unit_interval` a correlation, `signed`
+# a loading or other quantity that may legitimately be negative, `unknown`
+# anything an engine passes through that the canonical namer did not produce.
+#
+# This replaces a denylist. .fb_varcomp_notes() used to flag every row that
+# was not a correlation and not `sigma`, on the reasoning that what remained
+# was a variance component. Factor-analytic loadings are not: fa(f, k):g emits
+# `fa<j>_<env><level>` rows, which are signed, and a negative loading -- a
+# crossover interaction, a real and interpretable result -- has a negative
+# upper credible bound, which satisfies `upper < 0.01 * sigma` for arithmetic
+# reasons and was printed as `collapsed`. The 2026-09-11 audit found it on the
+# shipped FA(1) and FA(2) summaries (rows fa1_env4 and fa2_env5).
+#
+# The fit-time detector in R/boundary_collapse.R has always used the
+# allowlist (`startsWith(cmp, "sd_")`), so the two diagnostic surfaces
+# disagreed. They now read the same rule, which is the point of having both.
+#
+# An allowlist also fails safe as the namer grows: a component type added
+# later is `unknown` and goes unflagged, where the denylist would have
+# admitted it to a test written for standard deviations.
+#
+# @noRd
+# @keywords internal
+.fb_component_domain <- function(components) {
+  out <- rep("unknown", length(components))
+  out[startsWith(components, "sd_") |
+    components == "sigma" |
+    startsWith(components, "sigma_")] <- "positive"
+  out[startsWith(components, "cor_") |
+    startsWith(components, "rho_")] <- "unit_interval"
+  # fa<j>_<factor><level> -- a loading, which carries its own sign.
+  out[grepl("^fa[0-9]+_", components)] <- "signed"
+  out
 }
 
 # .fb_agg_varcomp_from_means() --- the last-resort aggregated table.
@@ -869,26 +987,84 @@
   if (!is.list(sr) || length(sr) == 0L) {
     return(list())
   }
+  # INLA names each summary.random entry after the index column emit_inla()
+  # built for the term, so a structured term arrives as `rep_block_id` rather
+  # than `rep:block`. Map it back to what the user wrote.
+  # emit_inla() stores the IR as `fb`; flexybayes() also attaches it as
+  # `extras$fb_terms`. Reading only the second left a fit made by a direct
+  # emit_inla() call -- the one route by which a gate-refused us(f):g or
+  # (x | g) reaches this function -- with every generated name and index.
+  fb <- object$extras$fb_terms %||% object$fb
+  # A blocks-format vm() / ped() is sized by its carrier, which the IR does
+  # not hold and the call record does.
+  known_matrices <- object$extras$call_info$known_matrices
+  labels <- if (is.null(fb)) {
+    character(0)
+  } else {
+    .fb_inla_group_labels(fb, known_matrices)
+  }
+  # Single-bracket lookup: `labels[[nm]]` raises on a name the map does not
+  # carry, which is the common case (a plain `~ g` needs no relabelling).
+  relabel <- function(nm) if (nm %in% names(labels)) labels[[nm]] else nm
+  # The levels inside the table, for the terms INLA indexes by an integer
+  # column rather than by the factor itself. Without it those come back as
+  # 1..n and no BLUP can be matched by name (findings S01 / N5).
+  level_specs <- if (is.null(fb)) {
+    list()
+  } else {
+    .fb_inla_group_levels(
+      fb,
+      object$data,
+      object$level_labels,
+      known_matrices
+    )
+  }
   out <- lapply(names(sr), function(nm) {
     tab <- sr[[nm]]
     if (!is.data.frame(tab) || nrow(tab) == 0L) {
       return(NULL)
     }
-    # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
-    # for a group INLA's f() indexes by a relabelled factor; restore the
-    # user's own label the same way coef.flexybayes_inla() does for the
-    # fixed table, so ranef() -- which reaches this function via
-    # coef(what = "random") -- prints what the user wrote.
-    level_vals <- tab$ID %||% seq_len(nrow(tab))
-    if (is.character(level_vals)) {
-      level_vals <- .inla_restore_level_labels(
-        object$level_labels,
-        nm,
-        level_vals
+    group_label <- relabel(nm)
+    spec <- level_specs[[nm]]
+    # A term with two index names reads one block of a longer field, so the
+    # spec carries the rows as well as the labels. The shape is checked
+    # rather than assumed: a table of another length is not the field this
+    # term indexed, so it is neither relabelled nor cut to fit, and the
+    # disagreement is reported rather than left to pass as a result.
+    if (!is.null(spec) && nrow(tab) != spec$n_field) {
+      warning(
+        "flexyBayes: the INLA random-effect table for `",
+        group_label,
+        "` has ",
+        nrow(tab),
+        " rows where the term indexes ",
+        spec$n_field,
+        ", so its levels are reported as INLA's integer index rather than ",
+        "matched to the data.",
+        call. = FALSE
       )
+      spec <- NULL
+    }
+    if (!is.null(spec)) {
+      tab <- tab[spec$rows, , drop = FALSE]
+      level_vals <- spec$levels
+    } else {
+      # C4/FS-26: `tab$ID` carries the legalised level ("X1", "low.N", ...)
+      # for a group INLA's f() indexes by a relabelled factor; restore the
+      # user's own label the same way coef.flexybayes_inla() does for the
+      # fixed table, so ranef() -- which reaches this function via
+      # coef(what = "random") -- prints what the user wrote.
+      level_vals <- tab$ID %||% seq_len(nrow(tab))
+      if (is.character(level_vals)) {
+        level_vals <- .inla_restore_level_labels(
+          object$level_labels,
+          nm,
+          level_vals
+        )
+      }
     }
     .fb_random_rows(
-      group = nm,
+      group = group_label,
       level = level_vals,
       estimate = .fb_random_column(tab, "mean"),
       std_error = .fb_random_column(tab, "sd"),
@@ -896,7 +1072,7 @@
       conf_high = .fb_random_column(tab, "0.975quant")
     )
   })
-  names(out) <- names(sr)
+  names(out) <- vapply(names(sr), relabel, character(1L), USE.NAMES = FALSE)
   out[!vapply(out, is.null, logical(1L))]
 }
 
@@ -1296,28 +1472,67 @@
       ))
     )
     kld <- kld[is.finite(kld)]
-    mlik <- if (is.null(object$inla$mlik)) {
-      NA_real_
+    # On the aggregated representation the engine's value is not the
+    # marginal likelihood of the rows: it omits data-only constants and,
+    # under standardisation, scales by the number of cells. It is not
+    # reported, and the reason travels with the missing value.
+    evidence <- .fb_manifest(object)[["evidence"]]
+    if (!is.null(evidence)) {
+      # The fit's own evidence record (R/model_manifest.R).
+      available <- identical(evidence[["status"]], "available")
+      evidence_unavailable <- if (available) {
+        NA_character_
+      } else {
+        evidence[["reason_code"]]
+      }
+      mlik <- if (available) evidence[["value"]] else NA_real_
     } else {
-      object$inla$mlik[1L, 1L]
+      evidence_unavailable <- if (inherits(object, "flexybayes_aggregated")) {
+        "aggregated_evidence_unavailable"
+      } else {
+        NA_character_
+      }
+      mlik <- if (!is.na(evidence_unavailable) || is.null(object$inla$mlik)) {
+        NA_real_
+      } else {
+        object$inla$mlik[1L, 1L]
+      }
     }
     # NA, not FALSE, where no numerical confirm ran. The aggregated emit
     # records no `num_check` at all, and isTRUE(NULL) is FALSE, so the
     # slot reported a failed check on a fit that never had one and the
     # printed line said "Numerical confirm: FAIL". Absent and failed are
     # different answers, and only one of them is true here.
+    # Tri-state throughout: absent, failed and unverified are three
+    # different answers and isTRUE() collapses the last two into the
+    # middle one.
     confirm <- if (is.null(object$num_check)) {
       NA
+    } else if (is.null(object$num_check$pass)) {
+      NA
     } else {
-      isTRUE(object$num_check$pass)
+      object$num_check$pass
     }
     return(list(
       engine = "INLA nested Laplace approximation",
+      # `ok` is TRUE / FALSE / NA and is the ONE field a consumer should
+      # read. It exists because two consumers previously read it when it
+      # did not, and supplied opposite defaults for the absence (A25).
+      # NA means the evidence needed to decide is not there; it never
+      # means "fine".
+      ok = .fb_convergence_verdict(object)$ok,
       mode_status = object$inla$mode$mode.status %||% NA_real_,
       mlik = mlik,
+      evidence_unavailable = evidence_unavailable,
       kld_max = if (length(kld) == 0L) NA_real_ else max(kld),
       numerical_confirm = confirm,
-      numerical_confirm_reasons = object$num_check$reasons %||% character(0)
+      numerical_confirm_reasons = object$num_check$reasons %||% character(0),
+      # Adoption changes which answer the user is holding, so the
+      # convergence block states it. A number that moved with nothing
+      # saying why is how a reader concludes the wrong thing.
+      restart_adopted = isTRUE(object$num_check$restart_adopted),
+      restart_adopted_note = object$num_check$restart_adopted_note %||%
+        character(0)
     ))
   }
 
@@ -1356,9 +1571,28 @@
   n_design <- rec$n_design %||% object$extras$model_info$n_obs %||% NA_integer_
   n_observed <- rec$n_observed %||% n_design
   list(
-    n_design = as.integer(n_design),
-    n_observed = as.integer(n_observed)
+    n_design = .fb_row_count_value(n_design),
+    n_observed = .fb_row_count_value(n_observed)
   )
+}
+
+# .fb_row_count_value() --- a row count as R can hold it.
+#
+# An integer up to R's integer limit, and past it the double the sharded
+# streaming reader keeps, which as.integer() would turn into NA. The count
+# route records its row count through this, so nobs(), glance() and summary()
+# report one value of one type.
+#
+# @noRd
+# @keywords internal
+.fb_row_count_value <- function(n) {
+  if (is.null(n) || length(n) != 1L || is.na(n)) {
+    return(NA_integer_)
+  }
+  if (n <= .Machine$integer.max) {
+    return(as.integer(n))
+  }
+  as.double(n)
 }
 
 
@@ -1423,6 +1657,12 @@
   if (!is.null(field)) {
     out$spatial_field <- field
   }
+  # Present only on a model with an offset, for the same reason: a model
+  # without one has nothing to record.
+  offsets <- .fb_fit_ir(object)$offsets
+  if (length(offsets)) {
+    out$offset <- offsets
+  }
 
   attr(out, "fit") <- object
   out
@@ -1465,6 +1705,9 @@
     cat("  Residual :", deparse(ci$residual), "\n")
   }
   ir <- .fb_fit_ir(object)
+  if (length(ir$offsets)) {
+    cat("  Offset   :", paste(ir$offsets, collapse = " + "), "\n")
+  }
   model <- .fb_model_line(ir)
   if (!is.na(model)) {
     cat("  Model    :", model, "\n")
@@ -1473,8 +1716,9 @@
     # than leaving it to be discovered in the variance components.
     if (.fb_ir_has_field(ir)) {
       cat(
-        "             this is not ASReml residual = ~ ar1:ar1 ",
-        "(3 parameters)\n",
+        "             this is not ",
+        .fb_asreml_residual_note(ir),
+        "\n",
         sep = ""
       )
     }
@@ -1594,12 +1838,22 @@
       " (0 = converged)\n",
       sep = ""
     )
-    cat(
-      "  Marginal log-likelihood: ",
-      format(round(cv$mlik, 3)),
-      "\n",
-      sep = ""
-    )
+    if (is.na(cv$evidence_unavailable %||% NA_character_)) {
+      cat(
+        "  Marginal log-likelihood: ",
+        format(round(cv$mlik, 3)),
+        "\n",
+        sep = ""
+      )
+    } else {
+      cat(
+        "  Marginal log-likelihood: not reported (",
+        cv$evidence_unavailable,
+        "). On the aggregated\n  representation the engine's value is not ",
+        "the marginal likelihood of the rows.\n",
+        sep = ""
+      )
+    }
     if (!is.na(cv$kld_max)) {
       cat(
         "  Largest symmetric KLD between the Gaussian approximation and ",
@@ -1611,6 +1865,14 @@
     }
     # No line at all where no check ran: a printed PASS/FAIL is a claim
     # about a confirmation step, and the aggregated route runs none.
+    if (isTRUE(cv$restart_adopted) && length(cv$restart_adopted_note)) {
+      cat(
+        "  Restart adopted: ",
+        cv$restart_adopted_note,
+        "\n",
+        sep = ""
+      )
+    }
     if (!is.na(cv$numerical_confirm)) {
       cat(
         "  Numerical confirm: ",

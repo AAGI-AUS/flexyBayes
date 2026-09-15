@@ -1,7 +1,7 @@
 # API stability -- flexyBayes
 
-`flexyBayes` is in the **0.9.3** development line. Every public export carries
-a `lifecycle::badge("experimental")`, so the guarantees below are deliberately
+`flexyBayes` is in the **0.12.0** development line. Every public export is at
+the experimental `lifecycle` stage, so the guarantees below are deliberately
 weaker than they will be at v1.0: bug fixes and additions never break callers,
 but renamings, default changes, and shape changes are permitted within 0.x
 through a one-minor-release `lifecycle::deprecate_warn()` cycle.
@@ -31,7 +31,7 @@ engine:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. There is no silent fallback. `prior` accepts an `fb_prior()` object. |
+| `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. Nothing is translated silently. `auto` does change engine in one case after starting -- an INLA program failure is caught and re-routed to brms -- and that is reported by a message, never silently; the fit's class and `backend` field record which engine produced it. `prior` accepts an `fb_prior()` object. |
 | `fb()` | experimental | Literal alias for `flexybayes()`; documented but not promoted. |
 
 **Engine pins** fix one engine and therefore take **no** `backend` argument --
@@ -51,19 +51,21 @@ own defaults (`seed = NA`, `control = NULL`) rather than being passed through,
 and `update()` repeats whatever the fit recorded. Both are no-ops on the
 deterministic INLA path, which says so once per session.
 
-**Native-model adapters** lift a model fitted elsewhere into the flexyBayes
-object so the shared diagnostics, prediction, and interop methods apply:
+**Grammar adapters** ingest a model *specification* written in another
+package's syntax and return the flexyBayes internal representation
+(`fb_terms`), which the entry points then fit. They do not take a fitted
+object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_from_brms()` | experimental | Wrap a fitted `brmsfit`. |
-| `fb_from_asreml()` | experimental | Wrap a fitted `asreml` object. |
+| `fb_from_brms()` | experimental | Parse brms-style syntax: `fb_from_brms(formula, data, family, ...)`. |
+| `fb_from_asreml()` | experimental | Parse ASReml-style syntax into the same representation. |
 
 ## Cross-engine comparison
 
 | Export | Stage | Notes |
 |---|---|---|
-| `triangulate()` | experimental | Pairwise comparison of two posteriors from different engines on shared parameters, behind three gates. A model fingerprint (formula triple, family and link, data digest, recorded priors) refuses mismatched fits with `triangulate_incomparable_fits`. A per-fit diagnostics gate returns status `inconclusive` instead of a parameter verdict. A matched-prior gate marks a parameter `not_compared` when the two fits do not record the same prior for it. Metric set for 0.9.x: mean difference, SD ratio, quantile (tail) drift, Wasserstein-1 distance, and the SD-scaled forms of the last two. Overall `status` is `concordant`, `discordant`, or `inconclusive`, and the thresholds are documented heuristics on a gated overlap rather than calibrated tests. *(The earlier cross-engine R-hat-on-means metric was removed -- R-hat across independent engines is not a valid convergence statistic, and per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
+| `triangulate()` | internal, not exported since 0.11.0 | No longer part of the public surface: it is an internal check the package runs, and it carries no stability promise. The description below records what it does for readers of earlier releases, who can still reach it as `flexyBayes:::triangulate()`. Pairwise comparison of two posteriors from different engines on shared parameters, behind three gates. A model fingerprint (formula triple, family and link, data digest, recorded priors) refuses mismatched fits with `triangulate_incomparable_fits`. A per-fit diagnostics gate returns status `inconclusive` instead of a parameter verdict. A matched-prior gate marks a parameter `not_compared` when the two fits do not record the same prior for it. Metric set for 0.9.x: mean difference, SD ratio, quantile (tail) drift, Wasserstein-1 distance, and the SD-scaled forms of the last two. Overall `status` is `concordant`, `discordant`, or `inconclusive`, and the thresholds are documented heuristics on a gated overlap rather than calibrated tests. *(The earlier cross-engine R-hat-on-means metric was removed -- R-hat across independent engines is not a valid convergence statistic, and per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
 
 ## Priors
 
@@ -85,7 +87,11 @@ object so the shared diagnostics, prediction, and interop methods apply:
 | Export | Stage | Notes |
 |---|---|---|
 | `fb_plan()` | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
-| `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, for `family = "gaussian"`, `"binomial"` or `"poisson"` (the count families take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
+| `fb_select()` | experimental | Bayesian selection over a fitted model. Fits a reference model in which a declared block of candidate fixed effects carries a joint shrinkage prior and the covariance is integrated over rather than plugged in, then reads a decision off it -- projection predictive where the structure gate passes, `full`, or a labelled posterior threshold. Every result records four independent axes (`workflow`, `provider`, `prior`, `decision`), and `benchmark = TRUE` adds a `glmnet` arm and an unpenalised generalised-least-squares arm on the same folds, each carrying one of three declared equivalence levels. `fallback = "none"` is the default: an absent Bayesian provider refuses by name rather than substituting an optimiser. |
+| `fb_penalty()` | experimental | Declare the joint shrinkage prior over the candidate block: `target ~ family(...)` formulas resolved in written order against the model matrix. Families: `ridge`, `laplace`, `elastic_net`, `regularized_horseshoe`, `r2d2`, and `none()` to exempt coordinates. Targets: `term(everything())`, `term(x1, x2)`, `term(c("x1", "x2"))`, `term(matches("^SLGA_"))`. |
+| `fb_resamples()` | experimental | Declare the resampling scheme a selection is scored on: folds on original units before any transformation, frozen factor levels, and an unseen level in an assessment fold refused rather than dropped. |
+| `fb_decision()` | experimental | Declare how the selection decision is made: the method (`projection`, `full`, `posterior_threshold`), the metric, the rule (`one_se`, `min`, `tolerance`) and the search. Validated at construction, so a rule missing the number it needs refuses before anything is fitted. |
+| `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, fitted for `family = "binomial"` or `"poisson"` (which take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting, for a Gaussian family too. **Changed in 0.12.0:** a Gaussian fit refuses with `aggregation_residual_prior_not_composed` before any chunk is read, because the aggregated Gaussian likelihood did not carry the residual prior; fit a Gaussian model per row. An aggregated or streamed fit reports no marginal likelihood (`aggregated_evidence_unavailable`). |
 
 ## Diagnostics and introspection
 
@@ -95,8 +101,12 @@ object so the shared diagnostics, prediction, and interop methods apply:
 | `canonical_names()` | experimental | S3 generic returning the canonical-name registry view for a fit. Methods for every fit subclass. |
 | `fb_refusals()` | experimental | The refusal vocabulary as a table (code, message template, since-version). The registry is the count -- no document quotes a number of refusal codes. |
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
-| `fb_structured_cov()` | experimental | The identified covariance of a factor-analytic structured-covariance term. |
+| `fb_structured_cov()` | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
 | `proceed()`, `cat_code()` | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. |
+| `fb_complete_grid()` | experimental | Completes a design grid (`index = ~ row * col`) before fitting, so a structured covariance is built over the intended index set rather than over the observed rows only. |
+| `genomic_summary()` | experimental | Turns the posterior draws of a relationship-matrix term into genomic quantities for a fitted model. |
+| `ranef()` | experimental | S3 generic returning random-effect predictions -- posterior summaries of the group-level effects -- from a fit. |
+| `vpredict()` | experimental | S3 generic returning a posterior functional of the variance components -- a heritability, a variance ratio, a genetic correlation -- named as an expression in the canonical component names. ASReml's own verb for the same job. Computed on the draws, so the interval is a quantile of the functional rather than a delta-method approximation and cannot leave the parameter space. Refuses by name when the functional is missing or malformed (`vpredict_no_functional`), names a component the fit does not carry (`vpredict_component_not_in_posterior`), or does not return one value per draw (`vpredict_functional_not_one_value_per_draw`). |
 
 ## Interoperability contract
 
@@ -113,9 +123,11 @@ as stable as that contract:
   `posterior`-compatible path.
 - **broom**: `tidy()`, `glance()`, `augment()` -- column names follow broom
   convention, and new columns are non-breaking. `tidy()` has a method for
-  every fit subclass. `glance()` and `augment()` describe a sampled fit, so
-  on an INLA fit they refuse by name and point at `tidy()`, `summary()` and
-  `predict()` instead.
+  every fit subclass. `glance()` returns its one-row summary on an INLA fit
+  with the sampler-specific columns (`chains`, `samples`, `max_rhat`,
+  `min_ess`) `NA`, since a deterministic Laplace fit has no sampler to
+  report. `augment()` has no INLA-side answer and refuses by name, pointing
+  at `tidy()` and `predict()` instead.
 - **emmeans**: `recover_data()`, `emm_basis()`.
 - **marginaleffects**: `get_coef()`, `get_predict()`, `get_vcov()`, `set_coef()`.
 - **insight**: `get_data()`.
@@ -123,9 +135,16 @@ as stable as that contract:
   `residuals()`, `family()`, `formula()`, `logLik()`, `nobs()`, `summary()`,
   `anova()`, `update()`, `plot()`.
 
-`predict.flexybayes()` accepts a `newdata` interface mirroring
-`stats::predict()`, with `output_file` / `format = c("auto", "csv", "rds", "fst")`
-for chunked output and `allow_new_levels = c("population", "sample", "refuse")`.
+`predict.flexybayes_inla()` and `predict.flexybayes_brms()` accept a `newdata`
+interface mirroring `stats::predict()`. Both take `type`, `se.fit`, `classify`
+and `level`; the brms method additionally takes `re_formula` and `summary`.
+There is no parent `predict.flexybayes()` method: it was removed at 0.9.3 so
+that each engine states its own prediction contract. Chunked output is
+not an argument of these methods: `output_file` belongs to `fb_plan()`. The
+brms method passes further arguments on to brms's own prediction functions,
+so `allow_new_levels = TRUE` reaches brms's new-level policy there; the INLA
+method takes no new-level argument. An earlier revision of this page
+advertised three arguments that `...` silently swallowed.
 Interval semantics are *posterior expected-response* (no residual observation
 noise), not posterior-predictive.
 
@@ -201,6 +220,12 @@ the same density on the standard-deviation scale, so the two carry one prior and
 
 When an experimental export is renamed, restructured, or removed:
 
+**0.10.0 did not follow this cycle.** Eleven exports were withdrawn in one step
+with no `deprecate_warn()` release ahead of them, on the ground that the package
+has never been published and so has no installed base to warn. The policy below
+governs from the first public release onward, and a withdrawal without a cycle
+after that is a break of it, not a precedent set by this one.
+
 1. The old call path emits `lifecycle::deprecate_warn()` for at least one minor
    release.
 2. The next minor release moves it to `lifecycle::deprecate_stop()` -- the
@@ -213,22 +238,25 @@ argument for the rest of the 0.x series.
 
 ## Pinning
 
-Production users who need stability should pin to a specific 0.9.x patch via
+Production users who need stability should pin to a specific 0.10.x patch via
 `renv::snapshot()` until v1.0 lands.
 
 ## Added on the 0.8.x line (all experimental)
 
-The 0.8.x line added the exports below. All are **experimental** under the
-ladder above; none changes the stability posture of the lean-core
-fitting / triangulation surface.
+The 0.8.x line added the entries below. All were **experimental** under the
+ladder above; none changed the stability posture of the lean-core
+fitting / triangulation surface. **Rows marked withdrawn are no longer
+exported as of 0.10.0** (see `NEWS.md`); the functions remain in the package as
+internals, so a caller reaching one now gets "could not find function" rather
+than the behaviour described.
 
 | Export | Added | Notes |
 |---|---|---|
-| `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. |
-| `fb_met_summary()` | 0.8.0 | Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
+| `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. `triangulate_gwas()` **withdrawn at 0.10.0**. |
+| `fb_met_summary()` | 0.8.0 | **Withdrawn at 0.10.0.** Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
 | `fb_gblup_cv()` | 0.8.0 | Genomic-prediction accuracy by cross-validation. |
-| `fb_gwas()` | 0.8.0 | EMMAX / P3D whole-genome scan. |
-| `tidy()` / `glance()` / `augment()` | 0.8.1 | broom-style accessors (re-exported from `generics`). `tidy()` has a method for every fit subclass. `glance()` / `augment()` describe a sampled fit and refuse by name on an INLA fit. |
-| `fb_gev()` / `fb_dirichlet()` | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). |
-| `fb_log_posterior()` | 0.8.2 | Constellation C4 producer. The engine withdrawn in 0.9.3 was the only one that evaluated the log density, so the method now abstains unconditionally with a typed message (`fb_c4_unavailable`) rather than returning a number. |
-| `glance.flexybayes_inla()` / `augment.flexybayes_inla()` | 0.8.3 | Explicit, classed refusals for INLA fits, pointing users to `tidy()`, `summary()`, and `fb_structured_cov()` (an INLA fit previously raised a bare "no applicable method" error). |
+| `fb_gwas()` | 0.8.0 | EMMAX / P3D whole-genome scan. **Withdrawn at 0.10.0.** |
+| `tidy()` / `glance()` / `augment()` | 0.8.1 | broom-style accessors (re-exported from `generics`). `tidy()` has a method for every fit subclass. `glance()` returns a row for an INLA fit with the sampler-specific columns `NA`; `augment()` refuses by name on one. |
+| `fb_gev()` / `fb_dirichlet()` | 0.8.1 | Generalised-extreme-value and Dirichlet fitters (with `fb_family_*` descriptors). **All six withdrawn at 0.10.0.** |
+| `fb_log_posterior()` | 0.8.2 | **Withdrawn at 0.10.0.** Constellation C4 producer. The engine withdrawn in 0.9.3 was the only one that evaluated the log density, so the method now abstains unconditionally with a typed message (`fb_c4_unavailable`) rather than returning a number. |
+| `glance.flexybayes_inla()` / `augment.flexybayes_inla()` | 0.8.3 | Added so an INLA fit stops raising a bare "no applicable method" error. `glance()` has since returned a one-row summary with the sampler columns `NA` rather than refusing (0.9.3, D15); `augment()` still refuses by name and points at `tidy()` and `predict()`. |

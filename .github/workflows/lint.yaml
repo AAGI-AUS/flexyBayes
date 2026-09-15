@@ -34,9 +34,17 @@ jobs:
         run: lintr::lint_package()
         shell: Rscript {0}
         env:
-          # Hard gate: the style backlog was cleared on 2026-06-01 via a
-          # full `air format` pass + manual residue fixes, and the .lintr
-          # config (object_length / commented_code disabled with rationale,
-          # line_length relaxed for tests/) brings lint_package() to zero.
-          # Lints now fail the check.
+          # Hard gate. The .lintr config disables object_length and
+          # commented_code with rationale and relaxes line_length for
+          # tests/; whatever lint_package() then reports fails the check.
+          # This comment asserts the configuration, not a lint count --
+          # a count stated here goes stale silently the next time a line
+          # grows, which is the drift class the next step guards.
           LINTR_ERROR_ON_LINT: true
+
+      # The claim-surface guards. These read SOURCE (roxygen prose,
+      # DESCRIPTION, NAMESPACE, workflow files), so they cannot run from
+      # a built tarball at R CMD check time and do not belong in
+      # testthat. This is the only place they fire automatically.
+      - name: Definition of done (claim-surface guards)
+        run: Rscript tools/definition_of_done.R

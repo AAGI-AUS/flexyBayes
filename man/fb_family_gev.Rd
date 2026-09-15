@@ -30,9 +30,10 @@ governs the tail: \eqn{\xi > 0} gives the heavy-tailed Frechet type,
 limit.
 }
 \examples{
-fam <- fb_family_gev()
+fam <- flexyBayes:::fb_family_gev()
 fam$parameters
 }
 \seealso{
 \code{\link[=fb_gev]{fb_gev()}}
 }
+\keyword{internal}

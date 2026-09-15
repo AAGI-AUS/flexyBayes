@@ -33,18 +33,29 @@
 #'   analytic structured terms (`us`, `ar1`) are reported as
 #'   not-yet-reconstructed.
 #'
-#' @export
+#' @examples
+#' # Reports on factor-analytic structured covariance. A fit carrying no
+#' # such term is told so rather than returned an empty object.
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   flexyBayes:::fb_structured_cov(fit)
+#' }
+#' }
+#' @keywords internal
 fb_structured_cov <- function(fit) {
   .check_flexybayes_fit(fit, "`fit` must be a flexybayes object.")
   rt <- fit$extras$parse_info$random %||% list()
-  fa_terms <- Filter(function(t) identical(t$type %||% "", "fa_gxe"), rt)
   other_struct <- Filter(
     function(t) (t$type %||% "") %in% c("us_gxe", "ar1_spatial"),
     rt
   )
 
-  # No active backend fits an fa() term (see file header), so fa_terms is
-  # always empty on a surviving fit; this message-and-return path is the
+  # No active backend fits an fa() term (see file header), so a
+  # surviving fit carries none and this message-and-return path is the
   # only reachable outcome.
   if (length(other_struct)) {
     message(

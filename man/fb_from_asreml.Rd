@@ -70,6 +70,7 @@ the same arguments. Argument names and defaults mirror \code{\link[=flexybayes]{
 one-for-one, so this is a drop-in for that function's parsing step.
 }
 \examples{
+set.seed(1L)
 df <- data.frame(
   yield = rnorm(20),
   geno  = factor(rep(letters[1:4], 5)),
@@ -82,7 +83,7 @@ class(ir)
 \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal fitting entry;
 \code{\link[=fb_from_brms]{fb_from_brms()}} for the other ingest dialect.
 
-Other flexyBayes ingest adapters: 
-\code{\link{fb_from_brms}()}
+Other flexyBayes ingest adapters:
+\code{\link[=fb_from_brms]{fb_from_brms()}}
 }
 \concept{flexyBayes ingest adapters}

@@ -1,0 +1,165 @@
+---
+title: "8. Big data: fitting without holding the data"
+output:
+  rmarkdown::html_vignette:
+    fig_caption: true
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{8. Big data: fitting without holding the data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+inla_ok <- requireNamespace("INLA", quietly = TRUE)
+options(flexyBayes.silence_default_prior_note = TRUE)
+```
+
+<div class="fb-box">
+<span class="fb-box-title">This page in one panel</span>
+<dl>
+<dt>The problem</dt>
+<dd>Millions of rows over a design with a modest number of distinct
+cells. The model is small; the data are not.</dd>
+<dt>In ASReml</dt>
+<dd>No direct equivalent. The usual answer is to pre-aggregate by hand
+and accept the approximation.</dd>
+<dt>In flexyBayes</dt>
+<dd><code>flexybayes(..., aggregate = TRUE)</code>, or
+<code>flexybayes_stream()</code> for data that never fit in memory.</dd>
+<dt>What the posterior adds</dt>
+<dd>Nothing different here. The point is that the aggregated fit is
+<em>exact</em>, not an approximation, for the models it accepts.</dd>
+<dt>What it costs</dt>
+<dd>Gaussian identity-link models over factor designs only, and no
+per-row quantities afterwards.</dd>
+</dl>
+</div>
+
+# 1. When the design is small and the data are large
+
+A model over factor predictors partitions the rows into cells. Once the
+response is Gaussian with an identity link, everything the likelihood
+needs from a cell is three numbers: how many rows, their sum, and their
+sum of squares. Those are sufficient statistics.
+
+Two million rows over four hundred cells carry exactly the same
+information for that model as four hundred rows of sufficient
+statistics. Compressing them is not an approximation and does not
+change the posterior -- it changes what has to be held in memory.
+
+This is why the restriction is narrow. Sufficiency of that kind holds
+for the Gaussian identity-link case, and the package refuses rather
+than compressing where it does not.
+
+# 2. Aggregating in memory
+
+```{r agg, eval = inla_ok}
+library(flexyBayes)
+set.seed(3)
+m  <- 4000
+da <- data.frame(f1 = factor(sample(letters[1:6], m, TRUE)),
+                 f2 = factor(sample(LETTERS[1:5], m, TRUE)))
+da$y <- rnorm(m, 2 + as.integer(da$f1) * 0.3)
+
+fit_a <- flexybayes(y ~ f1 + f2, data = da, backend = "inla",
+                    aggregate = TRUE, verbose = FALSE)
+class(fit_a)[1]
+```
+
+The fit reports how far the compression went:
+
+```{r agg-n, eval = inla_ok}
+fit_a$extras$model_info$n_obs
+nrow(da)
+```
+
+Against the same model fitted on every row:
+
+```{r cmp, eval = inla_ok}
+fit_full <- flexybayes(y ~ f1 + f2, data = da, backend = "inla",
+                       verbose = FALSE)
+round(cbind(aggregated = tidy(fit_a)$estimate,
+            full_rows  = tidy(fit_full)$estimate), 6)
+```
+
+The coefficients agree to the printed precision, because the aggregated
+likelihood is the same likelihood.
+
+# 3. When it refuses
+
+`aggregate = TRUE` is a request, and it is declined rather than silently
+downgraded when the compression would not be exact or would not be
+worth doing.
+
+```{r refuse, eval = inla_ok}
+refused <- tryCatch(
+  flexybayes(y ~ f1 + f2, data = da[1:40, ], backend = "inla",
+             aggregate = TRUE, verbose = FALSE),
+  error = function(e) e
+)
+cat(strwrap(conditionMessage(refused), 72)[1:3], sep = "\n")
+```
+
+The common refusals are a non-Gaussian family, a non-identity link, a
+continuous predictor (which gives one cell per row, so nothing
+compresses), missing responses (sufficient statistics are not defined
+for them), and a design where compression buys too little to be worth
+the change of code path.
+
+# 4. Data that never fit in memory
+
+`flexybayes_stream()` takes a file rather than a data frame, reads it in
+chunks, accumulates the same per-cell sufficient statistics, and fits
+from the accumulator. Peak memory is set by the number of cells, not by
+the number of rows.
+
+```{r stream, eval = FALSE}
+flexybayes_stream(
+  y ~ f1 + f2,
+  file       = "trial_data.csv",
+  chunk_size = 1e6,
+  backend    = "inla"
+)
+```
+
+The arithmetic is the same as Section 2. The difference is that the rows
+are never all present at once, so a file larger than RAM is fitted
+without a database or a sampling step.
+
+# 5. What you give up
+
+An aggregated fit has no rows, so anything defined per row is gone.
+There are no residuals against individual observations, no per-row
+fitted values, and `augment()` has nothing to append to. Population-level
+prediction at the level of the design cells still works.
+
+The fixed-effect and variance-component inference is exactly what the
+per-row fit gives. Diagnostics that need per-row quantities are what the
+compression costs.
+
+# 6. Pitfalls
+
+**Continuous predictors defeat it.** One distinct value per row means
+one cell per row. Bin the covariate first, or fit per-row.
+
+**Missing responses are refused.** Sufficient statistics are not defined
+for a missing value, so the aggregated path declines rather than
+dropping rows silently.
+
+**Check the compression ratio.** If cells are nearly as numerous as
+rows, aggregation adds a code path for no gain, and the package says so
+rather than proceeding.
+
+**It is not a sampling method.** No rows are discarded and no subsample
+is taken. The whole dataset informs the fit.
+
+# 7. Session information
+
+```{r session, echo = FALSE}
+sessionInfo()
+```

@@ -3,6 +3,9 @@
 
 # Create a mock flexybayes object for testing methods
 make_mock_flexybayes <- function() {
+  # coda is Suggests: it builds the mock draws below and is not used by
+  # R/ at all, so every test resting on this mock skips without it
+  testthat::skip_if_not_installed("coda")
   n <- 50
   dat <- data.frame(
     y = rnorm(n, 50, 5),
@@ -153,8 +156,8 @@ test_that("print.flexybayes lists only the slots the fit carries", {
 
 test_that("summary.flexybayes produces output", {
   fit <- make_mock_flexybayes()
-  expect_output(summary(fit), "Fixed effects")
-  expect_output(summary(fit), "Variance components")
+  expect_output(print(summary(fit)), "Fixed effects")
+  expect_output(print(summary(fit)), "Variance components")
 })
 
 test_that("coef.flexybayes returns named numeric", {

@@ -97,6 +97,14 @@
   }
 
   y <- as.numeric(data[[response]])
+  # An offset is subtracted before the statistics are taken. While the rest
+  # of the linear predictor is constant in a cell, the statistics of y - o
+  # reproduce the per-row likelihood of y = o + mu exactly, however the
+  # offset varies inside the cell.
+  off <- .fb_offset_values(fb_ir, data)
+  if (!is.null(off)) {
+    y <- y - off
+  }
   N <- length(y)
 
   # ----------------------- Fixed-effects design --------------------- #
@@ -246,7 +254,9 @@
 
     reason <- if (rtype %in% c("smooth", "s", "t2", "smooth_mgcv", "spline")) {
       "smooth_term_not_aggregatable"
-    } else if (rtype %in% c("simple_slope_uncor", "slope", "random_slope")) {
+    } else if (rtype %in% c(
+      "simple_slope_uncor", "simple_slope_cor", "slope", "random_slope"
+    )) {
       "random_slope_not_aggregatable"
     } else {
       "structured_random_not_aggregatable"

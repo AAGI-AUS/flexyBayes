@@ -227,10 +227,10 @@
 #'               verbose = FALSE)
 #'   # canonical_names() aligns the names and the precision-to-SD
 #'   # transform, so no name_map is needed in the common cases.
-#'   print(triangulate(fit_b, fit_i))
+#'   print(flexyBayes:::triangulate(fit_b, fit_i))
 #' }
 #' }
-#' @export
+#' @keywords internal
 triangulate <- function(
   fit_a,
   fit_b,
@@ -647,27 +647,16 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
 }
 
 .fb_inla_diagnostics <- function(fit) {
-  nc <- fit$num_check
-  # The aggregated INLA path builds its own fit object and does not run
-  # the post-fit numerical confirm, so read it off the raw INLA object
-  # rather than reporting the diagnostics as unavailable.
-  if (is.null(nc) && !is.null(fit$inla)) {
-    nc <- tryCatch(.lgm_check_numerical(fit$inla), error = function(e) NULL)
-  }
-  if (is.null(nc)) {
-    return(list(
-      engine = "inla",
-      ok = NA,
-      reasons = "this fit records no numerical-confirm result",
-      max_rhat = NA_real_,
-      min_ess_bulk = NA_real_,
-      n_divergent = NA_integer_
-    ))
-  }
+  # Delegates to the one convergence contract. This function used to compute
+  # ok = isTRUE(nc$pass), and nc$pass is deliberately NA when no confirm
+  # ran, so isTRUE() reported an ABSENT confirmation as a FAILED fit. A
+  # second implementation of a tri-state rule is how A25 happened, so there
+  # is no longer a second implementation.
+  v <- .fb_convergence_verdict(fit)
   list(
     engine = "inla",
-    ok = isTRUE(nc$pass),
-    reasons = if (isTRUE(nc$pass)) character(0) else nc$reasons,
+    ok = v$ok,
+    reasons = v$reasons,
     max_rhat = NA_real_,
     min_ess_bulk = NA_real_,
     n_divergent = NA_integer_
@@ -981,6 +970,18 @@ is_triangulate_result <- function(x) inherits(x, "triangulate_result")
 #'   INLA method.
 #' @returns A named list of numeric vectors, one element per parameter,
 #'   each element holding that parameter's posterior draws.
+#' @examples
+#' # A named list of draw vectors, with no posterior dependency.
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
+#'   fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   dr <- fb_as_draws_simple(fit)
+#'   names(dr)
+#' }
+#' }
 #' @export
 fb_as_draws_simple <- function(fit, ...) UseMethod("fb_as_draws_simple")
 
@@ -1004,7 +1005,7 @@ fb_as_draws_simple.flexybayes_inla <- function(fit, n_samples = 1000L, ...) {
   # enforces (the worker count is reported as "N simultaneous processes
   # spawned").
   samples <- tryCatch(
-    INLA::inla.posterior.sample(n_samples, fit$inla, num.threads = "1:1"),
+    .fb_inla_posterior_sample(fit, n_samples, num.threads = "1:1"),
     error = function(e) {
       stop(
         "INLA::inla.posterior.sample() failed: ",

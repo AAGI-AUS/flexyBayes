@@ -20,7 +20,7 @@ Invisibly, an object of class
 \description{
 Returns the same eleven-slot \code{summary.flexybayes} object every other
 engine returns, so \code{summary(fit)$varcomp} answers on an aggregated fit
-as it does on a per-row one. Aggregation is the default route for an
+as it does on a per-row one. Aggregation was the default route for an
 ordinary Gaussian call with a random term, so until 0.9.1 that slot
 was \code{NULL} on the commonest fit the package produces: this method
 returned its own list of the aggregated posterior's raw pieces and

@@ -177,11 +177,11 @@
 #' colnames(M) <- paste0("snp", seq_len(m))
 #' y <- 2 * scale(M[, 50L]) + rnorm(n)
 #' dat <- data.frame(y = y)
-#' scan <- fb_gwas(y ~ 1, data = dat, markers = M)
+#' scan <- flexyBayes:::fb_gwas(y ~ 1, data = dat, markers = M)
 #' head(scan$results[order(scan$results$p_value), ])
 #' scan$lambda_gc
 #' }
-#' @export
+#' @keywords internal
 fb_gwas <- function(
   formula,
   data,

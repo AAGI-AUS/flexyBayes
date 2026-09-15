@@ -235,8 +235,8 @@
     "predict(): `newdata` is ignored on the classify path. The means ",
     "table averages the fitted model over the levels it was fitted to. ",
     "To predict rows you supply -- untested lines, a new site -- call ",
-    "predict(fit, newdata = ..., allow_new_levels = \"sample\") without ",
-    "`classify`.",
+    "predict(fit, newdata = ...) without `classify`; on a brms fit, rows at ",
+    "levels the fit did not see also need allow_new_levels = TRUE.",
     call. = FALSE
   )
   invisible(NULL)

@@ -67,12 +67,12 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     family = "gaussian",
     link = "identity",
     fixed_terms = list(list(type = "continuous", var = "x")),
-    random_terms = list(list(
-      type = "fa_gxe",
-      outer = "env",
-      inner = "geno",
-      k = 2L
-    )),
+    # corh(): heterogeneous variances with one shared correlation. No
+    # active engine represents the equicorrelation constraint, so it is a
+    # term type the gate must keep refusing -- which is what makes it a
+    # valid probe for the emit's broken-contract assertion. fa_gxe was the
+    # original probe and now has an emit.
+    random_terms = list(list(type = "corh", var = "env")),
     residual_terms = list(list(type = "units")),
     source = "asreml"
   )
@@ -120,7 +120,9 @@ test_that(".build_inla_formula() fires the gate-broken-contract assertion on an 
     link = "identity",
     fixed_terms = list(list(type = "continuous", var = "x")),
     random_terms = list(),
-    residual_terms = list(list(type = "at_units", var = "env")),
+    residual_terms = list(list(
+      type = "ar1_spatial", row_var = "row", col_var = "col"
+    )),
     source = "asreml"
   )
   forced <- flexyBayes:::lgm_gate(
@@ -222,10 +224,13 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
   )
   expect_named(
     res,
-    c("formula", "family", "hyper", "control_family", "control_fixed")
+    c("formula", "family", "hyper", "control_family", "control_fixed",
+      "response_standardisation")
   )
   expect_s3_class(res$formula, "formula")
   expect_identical(res$family, "gaussian")
+  # A Gaussian fit runs on the standardised response, and says so.
+  expect_equal(res$response_standardisation$scale, stats::sd(d$y))
   # control_family is empty when the user supplies no sigma prior;
   # populated when fb_prior(sigma ~ pc(...)) is passed.
   expect_identical(res$control_family, list())

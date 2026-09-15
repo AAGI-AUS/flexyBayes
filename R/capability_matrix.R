@@ -43,8 +43,8 @@
       spelling = "`random = ~ g` / `(1 | g)`",
       inla = "fits",
       brms = "fits",
-      note = "The certified overlap class, which both engines emit and
-        `triangulate()` compares.",
+      note = "The class both engines emit, and the one their agreement is
+        checked on in the test suite.",
       anchor = "test-backend-conformance-open-oracle.R"
     ),
     list(
@@ -73,58 +73,84 @@
     list(
       model_class = "Uncorrelated random slope",
       spelling = "`(x || g)`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The three-arbitrator verification named a since-withdrawn
-        engine as one arbitrator, so the INLA mapping stays deferred until
-        the criterion is rebuilt around the active engines. The deferral
-        is host-independent -- no local artefact lifts it. `auto` routes
-        to brms.",
-      anchor = "test-random-slopes-uncor.R"
+      note = "Two independent iid fields on INLA, one for the intercept and
+        one for the slope, checked against lme4's REML fit of the same
+        model. Reported as `sd_<g>` and `sd_<x>_<g>` on INLA and as `sd_<g>`
+        and `sd_<g>__<x>` on brms; triangulate() maps both to the INLA
+        spelling.",
+      anchor = "test-inla-slope-and-interaction-verified.R"
     ),
     list(
       model_class = "Factor-by-numeric fixed interaction",
       spelling = "`y ~ f * x` with numeric `x`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The indexed-slope INLA mapping shares the deferred
-        three-arbitrator verification with the uncorrelated random slope,
-        and refuses on every host. `auto` routes to brms.",
-      anchor = "test-inla-verification-artefact-policy.R"
+      note = "An ordinary treatment-coded design matrix on both engines.
+        The INLA posterior means sit on the least-squares estimates of the
+        same model under a weak prior.",
+      anchor = "test-inla-slope-and-interaction-verified.R"
     ),
     list(
       model_class = "Correlated random slope",
       spelling = "`(x | g)`",
       inla = "refuses",
-      brms = "refuses",
-      note = "Refused at ingest, before any engine is chosen. Fit
-        `(x || g)` when the correlation is not of inferential interest.",
-      anchor = "test-random-slopes-uncor.R"
+      brms = "fits",
+      note = "The uncorrelated slope with the correlation freed: one
+        intercept SD, one slope SD and the correlation between them. brms
+        writes `(x | g)` verbatim and reports `sd_<g>`, `sd_<g>__<x>` and
+        `cor_<g>__Intercept__<x>`. Estimated correlation matrices are
+        fitted on brms only: INLA refuses by name
+        (`correlated_covariance_requires_brms`) and `backend = \"auto\"`
+        routes to brms. The INLA route was one iid2d field under a joint
+        Wishart prior, and paired against ASReml 4.2.0.392 and lme4 on
+        `lme4::sleepstudy` it returned a slope variance of 46.4 at the
+        posterior mode against 35.08 and 35.07, while rescaling the
+        response by ten moved the intercept-slope correlation from 0.02 to
+        0.969 where REML holds at 0.066 (oracle row 19, defect D1 of
+        finding S01).",
+      anchor = "test-inla-containment.R"
     ),
     list(
       model_class = "Nested / interaction random effects, multi-stratum",
       spelling = "`~ gen:env`, `~ env:rep:block`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "INLA collapses the finest strata, so it refuses rather than
-        reporting a zero. brms emits `(1 | a:b)`.",
-      anchor = "test-preflight-interaction-terms.R"
+      note = "An iid field over the interaction index on INLA, `(1 | a:b)`
+        on brms -- the same model, and the two agree with lme4's REML fit
+        of it on `agridat::john.alpha`. Only observed cells get a level,
+        as in lme4 and brms.",
+      anchor = "test-nested-random-inla.R"
     ),
     list(
       model_class = "Heterogeneous variance by factor level",
       spelling = "`~ diag(f):g`, `~ idh(f):g`, `~ at(f):g`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
       note = "One variance per level of `f`, no covariance between levels.
-        All three spellings emit identical code.",
-      anchor = "test-heterogeneous-variance.R"
+        All three spellings emit identical code. INLA writes k independent
+        iid fields, one per level; brms writes `(0 + f || g)`. Both report
+        the component as `sd_<g>__<f><level>` and agree with lme4's REML
+        fit of the same model. `at(f, level)` conditions on selected levels
+        -- a different model -- and still refuses.",
+      anchor = "test-heterogeneous-variance-inla.R"
     ),
     list(
       model_class = "Unstructured genotype-by-environment covariance",
       spelling = "`~ us(f):g`",
       inla = "refuses",
       brms = "fits",
-      note = "The correlated sibling of the diagonal structure --
+      note = "`(0 + f | g)` on brms. Estimated correlation matrices are
+        fitted on brms only: INLA refuses by name
+        (`correlated_covariance_requires_brms`) and `backend = \"auto\"`
+        routes to brms. The INLA route was one iidKd field under a joint
+        Wishart prior, and paired against ASReml 4.2.0.392 on
+        `agridat::besag.met` it returned a genetic correlation of 0.142
+        where ASReml returns 0.930, while eight identical calls on the
+        response rescaled by ten none converged and returned correlations
+        from -0.894 to +0.686 (finding O04). The correlated sibling of
+        the diagonal structure --
         `k(k+1)/2` parameters against `diag()`'s `k`. At one observation
         per cell the residual variance is confounded with the diagonal
         of the covariance: the covariance block converges and `sigma`
@@ -144,11 +170,16 @@
     list(
       model_class = "Heterogeneous residual by factor level",
       spelling = "`residual = ~ dsum(~ units | f)` / `~ at(f):units`",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "Lowered to distributional regression on log sigma,
-        `sigma ~ 0 + f`. Refused for families with no residual scale.",
-      anchor = "test-heterogeneous-variance.R"
+      note = "One residual variance per section. INLA carries it through the
+        multiple-likelihood interface, a matrix response with one Gaussian
+        family per level; brms lowers it to distributional regression on
+        log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the
+        standard-deviation scale. Refused for families with no residual
+        scale; `at(f, level):units` conditions on selected levels, which is
+        a different model, and refuses.",
+      anchor = "test-sectioned-residual-inla.R"
     ),
     list(
       model_class = paste(
@@ -156,20 +187,27 @@
         "(full MET)"
       ),
       spelling = "`random = ~ gen + gen:env` with the `dsum` residual",
-      inla = "refuses",
+      inla = "fits",
       brms = "fits",
-      note = "The emit carries both the group-level term and the `sigma`
-        predictor, and a live fit samples cleanly on simulated
-        multi-environment data. `auto` reaches brms for this class.",
-      anchor = "test-met-combined.R"
+      note = "The full multi-environment-trial model. Both halves refused on
+        INLA before 0.10.0.9000, so the combination was unreachable there.
+        It now recovers the genotype, genotype-by-environment and all three
+        per-section residual standard deviations on simulated data.",
+      anchor = "test-sectioned-residual-inla.R"
     ),
     list(
       model_class = "Factor-analytic genotype-by-environment covariance",
       spelling = "`~ fa(env, k):gen`",
-      inla = "refuses",
+      inla = "fits",
       brms = "refuses",
-      note = "Parsed for the formula catalogue and refused at dispatch --
-        no active engine emits a factor-analytic covariance.",
+      note = "Each common factor is one latent field entered per level of `f`
+        as a SCALED COPY, and INLA's copy scaling IS the loading, so the
+        loadings carry a posterior rather than a point estimate. Factor j is
+        anchored at level j, the zero upper triangle ASReml uses against
+        rotation, so an anchored loading is absent from the summary rather
+        than reported as 1. Verified at k = 1 and k = 2. brms group-level
+        effects are either uncorrelated or fully unstructured, with no
+        factor-analytic form between.",
       anchor = "test-capability-matrix.R"
     ),
     list(
@@ -187,7 +225,15 @@
       inla = "fits",
       brms = "fits",
       note = "INLA takes the sparse-precision, pedigree-precision and
-        block carriers, and brms additionally takes dense and Cholesky.",
+        block carriers, and brms additionally takes dense and Cholesky.
+        Under `fb_select()`: shrinkage yes, projection no. A joint
+        shrinkage prior over candidate fixed effects fits on a base
+        carrying one of these terms, but the term lowers to
+        `(1 | gr(g, cov = K))` and projpred refuses a function call on the
+        right-hand side of a group-term `|` (probe C5), so the projection
+        decision is red. `decision = \"auto\"`, the default, resolves to
+        `full` there; naming `\"projection\"` refuses before the reference
+        model is sampled.",
       anchor = "test-known-covariance-inputs.R"
     ),
     list(
@@ -217,12 +263,30 @@
       anchor = "test-nested-ar1-field.R"
     ),
     list(
+      model_class = "Grouped temporal AR1 field",
+      spelling = "`random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)`",
+      inla = "fits",
+      brms = "refuses",
+      note = "AR1 along `t` within each level of `g` and independent across
+        levels: one correlation, one field SD and the Gaussian nugget,
+        three hyperparameters shared by every level. The units-by-occasions
+        repeated-measures covariance of Verbyla and Cullis (1992), written
+        on the random side; an occasion a unit missed stays as a design row
+        with the response NA under `na_action = \"augment\"`. Either factor
+        order is accepted. brms has no lowering for the grouped
+        autoregressive precision and refuses.",
+      anchor = "test-grouped-temporal-ar1.R"
+    ),
+    list(
       model_class = "Univariate P-spline",
       spelling = "`~ spl(x)`",
       inla = "fits",
       brms = "refuses",
       note = "Mapped to INLA's second-order random walk. brms has no
-        lowering for the smooth basis.",
+        lowering for the smooth basis. An analogue of ASReml's spline
+        rather than a translation of it -- basis, scaling and prediction
+        rule differ, and no equivalence has been established (see
+        TRANSLATION.md).",
       anchor = "test-smooth.R"
     ),
     list(
@@ -242,14 +306,116 @@
       anchor = "test-weights-lowering.R"
     ),
     list(
-      model_class = "Exact sufficient-statistic aggregation",
+      model_class = "Exact sufficient-statistic aggregation (binomial, Poisson)",
       spelling = "`aggregate = TRUE`, `flexybayes_stream()`",
       inla = "fits",
       brms = "n/a",
-      note = "Exact cell-likelihood aggregation for iid exponential-family
-        models with small cell count. The brms path has no aggregated
+      note = "Exact cell-likelihood aggregation for binomial (logit) and
+        Poisson (log) models with a small cell count; the posterior is the
+        per-row posterior. The marginal likelihood is not reported
+        (`aggregated_evidence_unavailable`): the engine's value omits a
+        constant that depends on the data. The brms path has no aggregated
         emit.",
       anchor = "test-aggregation-equivalence-backend.R"
+    ),
+    list(
+      model_class = "Exact sufficient-statistic aggregation (Gaussian)",
+      spelling = "`aggregate = TRUE`, `flexybayes_stream(family = \"gaussian\")`",
+      inla = "refuses",
+      brms = "n/a",
+      note = "Refused by name (`aggregation_residual_prior_not_composed`).
+        The aggregated Gaussian route composes the within-cell sum of
+        squares with a fixed prior on the residual precision, so a stated
+        or default residual prior would not be the prior fitted. Gaussian
+        models are fitted per row, which is what `aggregate = \"auto\"`
+        does; `flexybayes_stream(fit = FALSE)` still returns the
+        sufficient statistics.",
+      anchor = "test-aggregation-gaussian-containment.R"
+    ),
+    list(
+      model_class = "Ridge shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ ridge(scale))`",
+      inla = "n/a",
+      brms = "fits",
+      note = "A joint shrinkage prior over a declared block of candidate
+        fixed effects, compiled to one coefficient-specific `normal` row per
+        candidate so the block is targeted exactly and no protected
+        coefficient is touched. Only `fb_select()` takes a shrinkage prior,
+        and it fits its reference model on brms whatever engine fitted the
+        base, carrying the base's structure and priors through and recording
+        the re-emission on the certificate. No call asks INLA to fit one,
+        and INLA has no implementation of the block.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = "Laplace shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ laplace(scale))`",
+      inla = "n/a",
+      brms = "fits",
+      note = "One coefficient-specific `double_exponential` row per
+        candidate. The posterior mean is not a lasso estimate and the draws
+        carry no exact zeros; the alias `lasso()` says so once per session.
+        Fitted on brms, as for ridge. A Laplace prior is Gaussian given one
+        local scale per coefficient, so the model can be written as a latent
+        Gaussian model, but it then carries a hyperparameter for every
+        coefficient, and INLA's numerical integration is built for models
+        with a few hyperparameters.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = "Elastic-net shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ elastic_net(lambda, alpha))`",
+      inla = "n/a",
+      brms = "fits",
+      note = "The canonical elastic-net density written as a `target +=`
+        contribution over the candidate indices through `stanvars` and
+        `check = FALSE`, so the block is targeted exactly while a protected
+        coefficient keeps its own prior row. Fixed hyperparameters only in
+        this release, because the normalising constant is then irrelevant.
+        Fitted on brms, as for ridge.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = paste(
+        "Regularised horseshoe shrinkage prior on candidate fixed effects"
+      ),
+      spelling = "`fb_penalty(term(...) ~ regularized_horseshoe(p0))`",
+      inla = "n/a",
+      brms = "fits",
+      note = "brms's native `horseshoe()`, with `par_ratio` set from `p0`
+        and calibrated against the number of resampling units rather than
+        the number of rows. Exact block targeting ONLY when the base's
+        fixed part is intercept-only: it is a class-wide prior, brms
+        refuses a coefficient-specific row beside a class-wide special
+        prior, so a base carrying protected fixed effects beyond the
+        intercept refuses with `penalty_block_targeting_unsupported`. The
+        two ways forward are `laplace()`, `ridge()` or `elastic_net()`,
+        which target the block exactly, or `scope = \"all_fixed\"`, an
+        opt-in under which the protected coefficients also sit under the
+        global-local prior, the projection search forces them into every
+        submodel, and the certificate records the named approximation
+        `protected_under_global_shrinkage`. A candidate block containing a
+        design column the re-emitted reference cannot standardise -- a
+        factor contrast, an interaction product -- refuses with
+        `penalty_candidate_columns_unscaled`. Fitted on brms, as for ridge;
+        like the Laplace prior, it is Gaussian only given a local scale per
+        coefficient.",
+      anchor = "test-penalty-stancode.R"
+    ),
+    list(
+      model_class = "R2D2 shrinkage prior on candidate fixed effects",
+      spelling = "`fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))`",
+      inla = "n/a",
+      brms = "fits",
+      note = "brms's native `R2D2()`, whose scales are stated on the
+        explained-variance grammar rather than on a coefficient scale, so
+        `p0` is refused for it. Class-wide, with the same targeting rule as
+        the regularised horseshoe: exact only when the base's fixed part is
+        intercept-only, otherwise `laplace()`, `ridge()` or
+        `elastic_net()`, or `scope = \"all_fixed\"` with the named
+        approximation. Unstandardised candidate columns refuse as for the
+        horseshoe. Fitted on brms, as for ridge.",
+      anchor = "test-penalty-stancode.R"
     )
   )
 
@@ -372,6 +538,30 @@
 
 .FB_CAPABILITY_MARKER_BEGIN <- "<!-- capability-matrix:begin -->"
 .FB_CAPABILITY_MARKER_END <- "<!-- capability-matrix:end -->"
+
+#' Render the capability table as the engine prose in `?flexybayes`
+#'
+#' The `backend` argument's "What each engine represents" paragraph is
+#' generated from `.fb_capability_matrix()` when the documentation is built,
+#' so it cannot state a capability the table does not. A test compares the
+#' committed `man/flexybayes.Rd` against a fresh render.
+#'
+#' @returns A single string of plain prose.
+#'
+#' @noRd
+#' @keywords internal
+.fb_capability_engine_prose <- function() {
+  tab <- .fb_capability_matrix()
+  classes <- function(engine, verdicts) {
+    paste(tab$model_class[tab[[engine]] %in% verdicts], collapse = "; ")
+  }
+  paste0(
+    "INLA fits: ", classes("inla", c("fits", "emits")), ". ",
+    "INLA refuses: ", classes("inla", "refuses"), ". ",
+    "brms fits: ", classes("brms", c("fits", "emits")), ". ",
+    "brms refuses: ", classes("brms", "refuses"), "."
+  )
+}
 
 # --- splice -------------------------------------------------------- #
 

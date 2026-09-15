@@ -342,7 +342,7 @@ test_that(".default_uniform_prior() extends to vm() + ped() per §1.4", {
   expect_identical(attr(p$specs[[3]], "_default_uniform_form"), "vm_or_ped")
 })
 
-test_that(".default_uniform_prior() handles vm/ped alone (no simple RI)", {
+test_that(".default_uniform_prior() reaches a vm/ped term with no simple random intercept beside it", {
   set.seed(20260524L)
   d <- data.frame(y = stats::rnorm(40L, sd = 3))
   p <- flexyBayes:::.default_uniform_prior(

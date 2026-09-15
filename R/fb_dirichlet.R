@@ -39,9 +39,9 @@
 #'
 #' @seealso [fb_dirichlet()]
 #' @examples
-#' fam <- fb_family_dirichlet()
+#' fam <- flexyBayes:::fb_family_dirichlet()
 #' fam$family
-#' @export
+#' @keywords internal
 fb_family_dirichlet <- function() {
   structure(
     list(
@@ -81,9 +81,9 @@ fb_family_dirichlet <- function() {
 #' @seealso [fb_dirichlet()]
 #' @examples
 #' set.seed(1)
-#' X <- rdirichlet(5L, alpha = c(2, 5, 3))
+#' X <- flexyBayes:::rdirichlet(5L, alpha = c(2, 5, 3))
 #' rowSums(X)
-#' @export
+#' @keywords internal
 rdirichlet <- function(n, alpha) {
   if (!is.numeric(alpha) || length(alpha) < 2L || any(alpha <= 0)) {
     stop(
@@ -135,10 +135,10 @@ rdirichlet <- function(n, alpha) {
 #' @seealso [fb_family_dirichlet()], [rdirichlet()], [tidy.fb_dirichlet_fit()]
 #' @examples
 #' set.seed(1)
-#' X <- rdirichlet(300L, alpha = c(2, 5, 3))
-#' fit <- fb_dirichlet(X)
+#' X <- flexyBayes:::rdirichlet(300L, alpha = c(2, 5, 3))
+#' fit <- flexyBayes:::fb_dirichlet(X)
 #' fit$estimates
-#' @export
+#' @keywords internal
 fb_dirichlet <- function(
   x,
   method = "ml",
@@ -223,8 +223,9 @@ fb_dirichlet <- function(
 #' @seealso [fb_dirichlet()]
 #' @examples
 #' set.seed(1)
-#' fit <- fb_dirichlet(rdirichlet(300L, c(2, 5, 3)))
+#' fit <- flexyBayes:::fb_dirichlet(flexyBayes:::rdirichlet(300L, c(2, 5, 3)))
 #' tidy(fit)
+#' @keywords internal
 #' @export
 tidy.fb_dirichlet_fit <- function(x, ...) {
   x$estimates
@@ -235,6 +236,7 @@ tidy.fb_dirichlet_fit <- function(x, ...) {
 #' @param x An `fb_dirichlet_fit` object.
 #' @param ... Currently unused; present for generic compatibility.
 #' @returns `x`, invisibly.
+#' @keywords internal
 #' @export
 print.fb_dirichlet_fit <- function(x, ...) {
   cat("Dirichlet (compositional) fit  [flexyBayes]\n")
