@@ -26,20 +26,25 @@ captured at review-object construction, runs the deferred fit
 via the backend driver, caches the result in-place, and
 returns the fit. A second call returns the cached fit.
 }
+\section{Deprecated}{
+
+\code{proceed()} is deprecated in flexyBayes 0.13.0 and will be removed in a
+later release. Call \code{flexybayes()} with the same arguments and
+\code{review_code = FALSE}, and set \code{seed} for a reproducible brms fit. A call
+warns with a condition of class \code{flexybayes_deprecated}.
+}
+
 \examples{
-# The review object holds the model back until proceed() is called.
-# Building it generates Stan source through brms, so both halves are
-# guarded on brms, and the deferred fit is given a small budget: the
-# Stan compile alone is the expensive part of running this.
+# The direct call fits the model proceed() would have fitted. The Stan
+# compile is the expensive part of running this, so the fit is given a
+# small budget.
 if (requireNamespace("brms", quietly = TRUE)) {
   set.seed(1)
   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
-  rv <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
-                   review_code = TRUE, chains = 1L, n_samples = 200L,
-                   warmup = 100L)
-  rv
   \donttest{
-    fit <- proceed(rv)
+    fit <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+                      chains = 1L, n_samples = 200L, warmup = 100L,
+                      seed = 1L)
     class(fit)
   }
 }

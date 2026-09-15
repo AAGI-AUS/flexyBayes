@@ -1999,7 +1999,8 @@
 #'     x2 = rnorm(80)
 #'   )
 #'   d$y <- 1 + 0.5 * d$x1 + rnorm(8)[d$site] + rnorm(80)
-#'   base <- fb(y ~ 1 + (1 | site), data = d, backend = "inla", verbose = FALSE)
+#'   base <- flexybayes(y ~ 1 + (1 | site), data = d, backend = "inla",
+#'                      verbose = FALSE)
 #'   # The plan resolves the axes, the prior blocks and the structure gate,
 #'   # and estimates the cost, without fitting the reference model.
 #'   fb_select(
@@ -2850,24 +2851,21 @@ fb_select <- function(base,
 .fb_select_absorb_deprecated <- function(dots) {
   for (nm in c("metric", "covariance")) {
     if (nm %in% names(dots)) {
-      lifecycle::deprecate_warn(
-        when = "0.11.0",
-        what = paste0("fb_select(", nm, ")"),
-        with = if (identical(nm, "metric")) {
-          "fb_decision(metric)"
+      .fb_warn_deprecated(c(
+        paste0(
+          "The `", nm, "` argument of `fb_select()` is deprecated as of ",
+          "flexyBayes 0.11.0."
+        ),
+        if (identical(nm, "metric")) {
+          "Use the `metric` argument of `fb_decision()`."
         } else {
-          NULL
-        },
-        details = if (identical(nm, "covariance")) {
           paste0(
             "The covariance summary is a property of the benchmark ",
             "workflow and is read from the fold object that used it, so a ",
             "declared value could disagree with what ran."
           )
-        } else {
-          NULL
         }
-      )
+      ))
     }
   }
   unknown <- setdiff(names(dots), c("metric", "covariance"))

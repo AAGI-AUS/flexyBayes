@@ -45,7 +45,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .pc_inla_fit <- function() {
   if (is.null(.pc_cache$inla)) {
-    .pc_cache$inla <- suppressMessages(fb(
+    .pc_cache$inla <- suppressMessages(flexybayes(
       yield ~ variety + env,
       random = ~blk,
       data = .pc_data(),
@@ -60,7 +60,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .pc_brms_fit <- function() {
   if (is.null(.pc_cache$brms)) {
-    .pc_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .pc_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       yield ~ variety + env,
       random = ~blk,
       data = .pc_data(),

@@ -171,7 +171,7 @@ test_that("fb() fits a bar-grouped formula and (auto) reaches INLA", {
   skip_if_not_installed("INLA")
   df <- mk_df(40)
   fit <- suppressMessages(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = df,
       backend = "auto",

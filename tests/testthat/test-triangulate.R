@@ -348,7 +348,7 @@ test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row 
     rnorm(J, 0, 0.3)[as.integer(d$g)]
   d$count <- stats::rpois(N, exp(eta))
 
-  fit_row <- suppressMessages(fb(
+  fit_row <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = d,
     family = "poisson",
@@ -358,7 +358,7 @@ test_that("triangulate() runs on an aggregated INLA fit and agrees with per-row 
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  fit_agg <- suppressMessages(fb(
+  fit_agg <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = d,
     family = "poisson",

@@ -220,11 +220,11 @@
 #'   set.seed(1)
 #'   d <- data.frame(y = rnorm(40), x = rnorm(40),
 #'                   g = factor(rep(1:5, 8)))
-#'   fit_b <- fb(y ~ x + (1 | g), data = d, backend = "brms",
-#'               n_samples = 500, warmup = 500, chains = 2,
-#'               verbose = FALSE, mcmc_verbose = FALSE)
-#'   fit_i <- fb(y ~ x + (1 | g), data = d, backend = "inla",
-#'               verbose = FALSE)
+#'   fit_b <- flexybayes(y ~ x + (1 | g), data = d, backend = "brms",
+#'                       n_samples = 500, warmup = 500, chains = 2,
+#'                       verbose = FALSE, mcmc_verbose = FALSE)
+#'   fit_i <- flexybayes(y ~ x + (1 | g), data = d, backend = "inla",
+#'                       verbose = FALSE)
 #'   # canonical_names() aligns the names and the precision-to-SD
 #'   # transform, so no name_map is needed in the common cases.
 #'   print(flexyBayes:::triangulate(fit_b, fit_i))

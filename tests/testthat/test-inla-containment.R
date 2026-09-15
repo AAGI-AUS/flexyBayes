@@ -92,8 +92,10 @@ test_that("an explicit INLA request for either structure raises the typed code",
     function() flexybayes(y ~ x, random = ~ us(env):g, data = d,
                           backend = "inla", return_code = TRUE,
                           verbose = FALSE),
-    function() fb_inla(y ~ x + (x | g), data = d, return_code = TRUE,
-                       verbose = FALSE)
+    function() suppressWarnings(
+      fb_inla(y ~ x + (x | g), data = d, return_code = TRUE, verbose = FALSE),
+      classes = "flexybayes_deprecated"
+    )
   )
   for (call in calls) {
     err <- tryCatch(suppressMessages(call()), error = function(e) e)

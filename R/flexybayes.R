@@ -507,23 +507,25 @@ flexybayes <- function(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
-  rcov = lifecycle::deprecated()
+  rcov
 ) {
   # `rcov` was the ASReml 3 name for the residual-structure argument;
   # ASReml 4 renamed it to `residual`, and flexyBayes followed suit in
   # 0.9.0. The formal is kept only as a tripwire so a stray `rcov =` --
   # including one forwarded through an engine pin -- raises a guiding
   # error instead of an opaque "unused argument".
-  if (lifecycle::is_present(rcov)) {
-    lifecycle::deprecate_stop(
-      when = "0.9.0",
-      what = "flexybayes(rcov)",
-      with = "flexybayes(residual)",
-      details = paste0(
+  if (!missing(rcov)) {
+    .fb_stop_defunct(c(
+      paste0(
+        "The `rcov` argument of `flexybayes()` was deprecated in ",
+        "flexyBayes 0.9.0 and is now defunct."
+      ),
+      "Use the `residual` argument.",
+      paste0(
         "ASReml-R renamed this argument from `rcov` (ASReml 3) to ",
         "`residual` (ASReml 4)."
       )
-    )
+    ))
   }
 
   # Refuse approximate-scheme requests
@@ -943,16 +945,29 @@ flexybayes <- function(
 
 
 # ----------------------------------------------------------------- #
-# fb -- alias for flexybayes()                                      #
+# fb -- deprecated alias for flexybayes()                           #
 # ----------------------------------------------------------------- #
 #
-# `fb` is a literal alias for `flexybayes()`. One canonical
-# asreml-format implementation; two exported names for typing
-# economy. The brms-format ingest path (former fb() body) is
-# deferred to v0.2 as `fb_brms()`; the internal helper
-# `fb_from_brms()` in R/fb_from_brms.R remains unexported as v0.2
-# work-continuity code.
+# `fb` was a literal alias for `flexybayes()`. It is deprecated in
+# 0.13.0: it warns, then forwards the user's call verbatim to
+# flexybayes() through the same match.call() rewrite the engine pins
+# use, so missing()-based defaults and the data-name capture behave as
+# on a direct call. Its formals are flexybayes()'s, so its usage and
+# argument matching are unchanged.
 
 #' @rdname flexybayes
+#' @section Deprecated:
+#' `fb()` is deprecated in flexyBayes 0.13.0 and will be removed in a later
+#' release. Call `flexybayes()`, which takes the same arguments. A call to
+#' `fb()` warns with a condition of class `flexybayes_deprecated`.
 #' @export
-fb <- flexybayes
+fb <- function() {
+  .fb_warn_deprecated_export(
+    "fb",
+    "Call `flexybayes()`, which takes the same arguments."
+  )
+  call <- match.call()
+  call[[1L]] <- quote(flexyBayes::flexybayes)
+  eval(call, parent.frame())
+}
+formals(fb) <- formals(flexybayes)

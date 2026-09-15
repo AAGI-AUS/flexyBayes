@@ -62,7 +62,7 @@ suppressPackageStartupMessages(library(testthat))
 # Stan entirely.
 .uec_brms_fit <- function() {
   if (is.null(.uec_cache$brms)) {
-    .uec_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .uec_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .uec_data(),
@@ -82,7 +82,7 @@ suppressPackageStartupMessages(library(testthat))
 # aggregation gate compress it.
 .uec_inla_fit <- function() {
   if (is.null(.uec_cache$inla)) {
-    .uec_cache$inla <- suppressMessages(fb(
+    .uec_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .uec_data(),
@@ -101,7 +101,7 @@ suppressPackageStartupMessages(library(testthat))
 # shape under the same name.
 .uec_inla_forced_fit <- function() {
   if (is.null(.uec_cache$inla_forced)) {
-    .uec_cache$inla_forced <- suppressMessages(fb(
+    .uec_cache$inla_forced <- suppressMessages(flexybayes(
       y ~ f,
       random = ~g,
       data = .uec_data(),
@@ -118,7 +118,7 @@ suppressPackageStartupMessages(library(testthat))
 # to the aggregated Gaussian emit.
 .uec_agg_fit <- function() {
   if (is.null(.uec_cache$agg)) {
-    .uec_cache$agg <- suppressMessages(fb(
+    .uec_cache$agg <- suppressMessages(flexybayes(
       count ~ f,
       random = ~g,
       data = .uec_data(),
@@ -333,7 +333,7 @@ test_that("an auto fallback to brms omits absent sampler settings", {
   # NULL sampler settings are what an INLA record holds, and what
   # update() therefore re-issues.
   suppressMessages(try(
-    fb(
+    flexybayes(
       y ~ f + x,
       random = ~g,
       data = .uec_data(),
@@ -379,7 +379,7 @@ test_that("an auto fallback hands the emit its arguments unevaluated", {
   d <- .uec_data()
   d$y <- pmax(d$y, 0)
 
-  fit <- suppressMessages(suppressWarnings(fb(
+  fit <- suppressMessages(suppressWarnings(flexybayes(
     y ~ f + x,
     random = ~g,
     data = d,

@@ -164,7 +164,7 @@ test_that("brms posterior matches lme4 on slope + intercept SD within loosened t
   # still trip Stan's low-ESS sampler warning; the test's own 0.20 *
   # tau_true tolerance already absorbs the same MC noise the warning
   # is about, so muffle rather than raise the budget further.
-  fit <- .muffle_ess_warnings(suppressMessages(fb(
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (1 + Days || Subject),
     data = d,
     backend = "brms",
@@ -250,7 +250,7 @@ test_that("canonical_names() on a brms (x || g) fit resolves sd_<x>_<g> AND sd_<
   # subtest (h) below.
   # Structural test (does canonical_names() surface both hyperparameter
   # names?), not numeric agreement -- muffle at this tiny budget.
-  fit <- .muffle_ess_warnings(suppressMessages(fb(
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
     data = d,
     backend = "brms",
@@ -268,7 +268,7 @@ test_that("canonical_names() on a brms (x || g) fit resolves sd_<x>_<g> AND sd_<
   expect_identical(cn$map[["sd_Subject__Intercept"]], "sd_Subject")
 
   # The (0 + Days || Subject) form drops the intercept-variance.
-  fit2 <- .muffle_ess_warnings(suppressMessages(fb(
+  fit2 <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (0 + Days || Subject),
     data = d,
     backend = "brms",
@@ -363,7 +363,7 @@ test_that("prior_summary() lists the slope-variance prior row for (x || g)", {
   # Structural test (does the printed prior_summary() mention the
   # slope-variance parameter?), not numeric agreement -- muffle at
   # this tiny budget.
-  fit <- .muffle_ess_warnings(suppressMessages(fb(
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
     data = d,
     backend = "brms",
@@ -402,7 +402,7 @@ test_that("fit object exposes the slope-variance hyperparameter via draws + vari
   )
   # Structural test (does the parameter name appear in the draws
   # matrix?), not numeric agreement -- muffle at this tiny budget.
-  fit <- .muffle_ess_warnings(suppressMessages(fb(
+  fit <- .muffle_ess_warnings(suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
     data = d,
     backend = "brms",
@@ -525,7 +525,7 @@ test_that("INLA path fits (x || g) rather than deferring", {
   testthat::skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- mk_slope_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     Reaction ~ Days + (Days || Subject),
     data = d,
     backend = "inla",

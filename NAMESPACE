@@ -184,7 +184,6 @@ importFrom(graphics,
   par,
   segments
 )
-importFrom(lifecycle,deprecated)
 importFrom(methods,is)
 importFrom(stats,
   .getXlevels,

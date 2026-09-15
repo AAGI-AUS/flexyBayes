@@ -218,7 +218,7 @@ test_that("fb(backend='brms', review_code=TRUE) returns Stan code", {
 
   d <- mk_brms_stan_gaussian_data()
   rev <- suppressMessages(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "brms",
@@ -250,7 +250,7 @@ test_that("fb(backend='brms'): Gaussian RI fits cleanly", {
 
   d <- mk_brms_stan_gaussian_data()
   fit <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "brms",
@@ -287,7 +287,7 @@ test_that("fb(backend='brms'): Bernoulli RI fits cleanly", {
 
   d <- mk_brms_stan_bernoulli_data()
   fit <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       family = "binomial",
@@ -318,7 +318,7 @@ test_that("triangulate(): brms + INLA align via the identity registry", {
 
   d <- mk_brms_stan_gaussian_data()
   fit_b <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "brms",
@@ -330,7 +330,7 @@ test_that("triangulate(): brms + INLA align via the identity registry", {
     )
   ))
   fit_i <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "inla",
@@ -361,7 +361,7 @@ test_that("fb(backend='auto') does NOT route to Stan", {
 
   d <- mk_brms_stan_gaussian_data()
   fit_a <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "auto",
@@ -388,7 +388,7 @@ test_that("fb(backend='stan') raises the typed unknown-backend refusal", {
   # bare match.arg() message.
   d <- mk_brms_stan_gaussian_data()
   err <- tryCatch(
-    fb(y ~ x + (1 | g), data = d, backend = "stan"),
+    flexybayes(y ~ x + (1 | g), data = d, backend = "stan"),
     error = function(e) e
   )
   expect_s3_class(err, "flexybayes_unknown_backend_refusal")
@@ -408,7 +408,7 @@ test_that("predict.flexybayes_brms: in-sample posterior_epred matches summary", 
 
   d <- mk_brms_stan_gaussian_data()
   fit <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "brms",
@@ -444,7 +444,7 @@ test_that("predict.flexybayes_brms: newdata + type = 'link' return correct shape
 
   d <- mk_brms_stan_gaussian_data()
   fit <- suppressMessages(suppressWarnings(
-    fb(
+    flexybayes(
       y ~ x + (1 | g),
       data = d,
       backend = "brms",

@@ -16,7 +16,14 @@ one.}
 \description{
 Test whether an object is an \code{fb_engine} specification
 }
+\section{Deprecated}{
+
+\code{is_fb_engine()} is deprecated in flexyBayes 0.13.0 and will be removed in
+a later release. Use \code{inherits(x, "fb_engine")}. A call warns with a
+condition of class \code{flexybayes_deprecated}.
+}
+
 \examples{
-is_fb_engine(fb_engine("inla"))
-is_fb_engine("inla")
+inherits(fb_engine("inla"), "fb_engine")
+inherits("inla", "fb_engine")
 }

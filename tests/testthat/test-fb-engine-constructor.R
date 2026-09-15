@@ -11,7 +11,7 @@ suppressPackageStartupMessages(library(testthat))
 test_that("fb_engine() returns the documented classed-object shape", {
   e <- fb_engine("brms", chains = 4L)
   expect_s3_class(e, "fb_engine")
-  expect_true(is_fb_engine(e))
+  expect_true(suppressWarnings(is_fb_engine(e), classes = "flexybayes_deprecated"))
   expect_identical(class(e), c("fb_engine", "list"))
   expect_setequal(names(e), c("name", "paradigm", "toolchain_status", "opts"))
   expect_identical(e$name, "brms")

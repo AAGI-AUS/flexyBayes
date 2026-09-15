@@ -77,21 +77,23 @@ fb_from_asreml <- function(
   prior = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
-  rcov = lifecycle::deprecated()
+  rcov
 ) {
   # `rcov` is the ASReml 3 spelling of the residual-structure argument,
   # renamed to `residual` in ASReml 4 and in flexyBayes 0.9.0. Kept only
   # as a tripwire that raises a guiding error if supplied.
-  if (lifecycle::is_present(rcov)) {
-    lifecycle::deprecate_stop(
-      when = "0.9.0",
-      what = "fb_from_asreml(rcov)",
-      with = "fb_from_asreml(residual)",
-      details = paste0(
+  if (!missing(rcov)) {
+    .fb_stop_defunct(c(
+      paste0(
+        "The `rcov` argument of `fb_from_asreml()` was deprecated in ",
+        "flexyBayes 0.9.0 and is now defunct."
+      ),
+      "Use the `residual` argument.",
+      paste0(
         "ASReml-R renamed this argument from `rcov` (ASReml 3) to ",
         "`residual` (ASReml 4)."
       )
-    )
+    ))
   }
 
   # Delegate parsing to existing helpers verbatim -- no behaviour

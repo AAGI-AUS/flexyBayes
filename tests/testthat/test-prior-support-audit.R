@@ -294,8 +294,14 @@ test_that("every INLA fit an entry point returns has been through the audit", {
   per_row <- flexybayes(
     y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE
   )
-  alias <- fb(y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE)
-  pinned <- fb_inla(y ~ x, random = ~g, data = d, verbose = FALSE)
+  alias <- suppressWarnings(
+    fb(y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE),
+    classes = "flexybayes_deprecated"
+  )
+  pinned <- suppressWarnings(
+    fb_inla(y ~ x, random = ~g, data = d, verbose = FALSE),
+    classes = "flexybayes_deprecated"
+  )
   aggregated <- flexybayes(
     cnt ~ h, random = ~g, data = d, family = "poisson", backend = "inla",
     aggregate = TRUE, verbose = FALSE

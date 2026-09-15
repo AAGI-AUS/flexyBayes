@@ -63,7 +63,7 @@ test_that("triangulate() puts INLA variance components on the SD scale, not prec
   # 400-draw budget left a residual low-ESS warning; raised (with a
   # pinned seed + higher adapt_delta) until the fit converges cleanly,
   # per policy, rather than muffled.
-  fb_fit <- suppressMessages(fb(
+  fb_fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     backend = "brms",
@@ -75,7 +75,7 @@ test_that("triangulate() puts INLA variance components on the SD scale, not prec
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  fi <- suppressMessages(fb(
+  fi <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     backend = "inla",
@@ -118,7 +118,7 @@ test_that("plot() dispatches on an INLA fit: effects + residuals render, MCMC-on
     x = stats::rnorm(60L),
     g = factor(rep(seq_len(6L), length.out = 60L))
   )
-  fi <- suppressMessages(fb(
+  fi <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     backend = "inla",
@@ -195,7 +195,7 @@ test_that("predict() returns one value per row on an INLA fit written in bar gra
   # brms-grammar mixed model: the random-effect bar `(1 | g)` is stored
   # whole in call_info$fixed; formula() must strip it so the fixed-effect
   # design-matrix reconstruction matches the coefficient basis.
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     backend = "inla",

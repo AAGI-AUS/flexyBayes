@@ -297,31 +297,29 @@
 # The four v0.3.7 legacy vm() keyword carrier forms deprecate at
 # v0.4.0 (warn) and are removed at v0.5.0 (error). The warning names
 # the fb_cov() migration with a
-# worked example. lifecycle::deprecate_warn() dedupes to once per
-# session per form by default; the dedicated deprecation tests force
-# it via lifecycle_verbosity = "warning".
+# worked example, and is raised on every parse that meets the keyword.
 .warn_legacy_vm_kwargs <- function(expr, fn, var) {
   legacy <- list(
     chol = list(
-      what = I("The legacy `vm(chol = )` covariance keyword"),
+      what = "The legacy `vm(chol = )` covariance keyword",
       ex = "vm(geno, chol = L) -> vm(geno, cov = fb_cov(L, type = \"chol\"))"
     ),
     precision = list(
-      what = I("The legacy `vm(precision = )` covariance keyword"),
+      what = "The legacy `vm(precision = )` covariance keyword",
       ex = paste0(
         "vm(geno, precision = Q) -> ",
         "vm(geno, cov = fb_cov(Q, type = \"precision\"))"
       )
     ),
     blocks = list(
-      what = I("The legacy `vm(blocks = )` covariance keyword"),
+      what = "The legacy `vm(blocks = )` covariance keyword",
       ex = paste0(
         "vm(geno, blocks = Bs) -> ",
         "vm(geno, cov = fb_cov(Bs, type = \"blocks\"))"
       )
     ),
     low_rank_factor = list(
-      what = I("The legacy `vm(low_rank_factor = )` covariance keyword"),
+      what = "The legacy `vm(low_rank_factor = )` covariance keyword",
       ex = paste0(
         "vm(geno, low_rank_factor = U, low_rank_scheme = \"pca\")",
         " -> vm(geno, cov = fb_cov(U, type = \"low_rank\", ",
@@ -332,23 +330,11 @@
   for (kw in names(legacy)) {
     if (!is.na(.dep_named(expr, kw))) {
       info <- legacy[[kw]]
-      # The keyword is written by the user inside a model formula, so
-      # this is a *direct* deprecation from the user's perspective even
-      # though deprecate_warn() fires deep in the parser. Pinning
-      # user_env to the global environment classifies it as direct and
-      # suppresses lifecycle's indirect "please report the issue"
-      # footer, which would misrepresent an intentional deprecation as
-      # a bug to report.
-      lifecycle::deprecate_warn(
-        when = "0.4.0",
-        what = info$what,
-        details = c(
-          i = paste0("Use the fb_cov() constructor instead: ", info$ex, "."),
-          i = "The legacy keyword carriers are removed at v0.5.0."
-        ),
-        id = paste0("flexybayes_vm_", kw, "_kwarg"),
-        user_env = globalenv()
-      )
+      .fb_warn_deprecated(c(
+        paste0(info$what, " was deprecated in flexyBayes 0.4.0."),
+        paste0("Use the fb_cov() constructor instead: ", info$ex, "."),
+        "The legacy keyword carriers are removed at v0.5.0."
+      ))
     }
   }
   invisible(NULL)

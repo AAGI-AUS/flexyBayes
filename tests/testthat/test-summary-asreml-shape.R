@@ -57,7 +57,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .sas_inla_fit <- function() {
   if (is.null(.sas_cache$inla)) {
-    .sas_cache$inla <- suppressMessages(fb(
+    .sas_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .sas_data(),
@@ -72,7 +72,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .sas_brms_fit <- function() {
   if (is.null(.sas_cache$brms)) {
-    .sas_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .sas_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x + (1 | g),
       data = .sas_data(),
       backend = "brms",
@@ -320,7 +320,7 @@ test_that("a wide-support precision marginal still yields a table", {
     x = stats::rnorm(60L),
     g = factor(rep(seq_len(6L), length.out = 60L))
   )
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d, backend = "inla", aggregate = FALSE,
     verbose = FALSE, mcmc_verbose = FALSE

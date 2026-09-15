@@ -16,7 +16,7 @@ fb_from_asreml(
   prior = NULL,
   prior_fixed_sd = 100,
   prior_vc_sd = 1,
-  rcov = lifecycle::deprecated()
+  rcov
 )
 }
 \arguments{
