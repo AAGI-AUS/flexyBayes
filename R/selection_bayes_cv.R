@@ -409,21 +409,25 @@
       next
     }
     detail <- if (length(wrong) > 0L) {
+      one <- length(wrong) == 1L
       paste0(
-        "row(s) ",
+        if (one) "row " else "rows ",
         paste(utils::head(wrong, 5L), collapse = ", "),
-        " carry ",
+        if (one) " carries " else " carry ",
         paste0("'", utils::head(relabelled[wrong], 5L), "'", collapse = ", "),
         " where the map gives ",
         paste0("'", utils::head(intended[wrong], 5L), "'", collapse = ", ")
       )
     } else {
+      one <- length(shared) == 1L
       paste0(
-        "the held-out label(s) ",
+        if (one) "the held-out label " else "the held-out labels ",
         paste0("'", utils::head(shared, 5L), "'", collapse = ", "),
-        " are already levels of training rows, so the held-out rows would ",
-        "be scored as a known cluster. Rename those levels, or use ",
-        "prediction = \"known_cluster\""
+        if (one) " is already a level" else " are already levels",
+        " of training rows, so the held-out rows would be scored as a known ",
+        "cluster. Rename the training ",
+        if (one) "level" else "levels",
+        ", or use prediction = \"known_cluster\""
       )
     }
     stop(.fb_refusal_condition(
