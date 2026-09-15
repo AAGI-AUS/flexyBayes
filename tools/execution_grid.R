@@ -1139,15 +1139,17 @@ for (i in seq_along(.cells)) {
 .add_cell(
   id = "S6-inla-weak-poisson", section = "S6",
   # The response is drawn under its own seed, so a fixture added above
-  # cannot move the draw: 3 non-zero counts in 56 rows, on which INLA's
-  # program crashes under INLA 26.08.07 and 25.10.19 (known issue 16).
+  # cannot move the draw: 3 non-zero counts in 56 rows. Under a uniform
+  # bound on the group SD INLA's program crashes on it (known issue 16);
+  # under the half-normal default of 0.13.0 it fits.
   code = paste0('flexybayes(y ~ x, random = ~ g, ',
                 "data = {set.seed(20260916L); ",
                 "transform(d_weak, y = rpois(nrow(d_weak), 0.05))}, ",
                 'family = "poisson", backend = "inla")'),
-  expected = "refuse_typed",
-  expect_src = paste0("known issue 16: INLA's program crashes on this ",
-                      "3-count draw, refused as inla_program_failed"),
+  expected = "fit",
+  expect_src = paste0("known issue 16: the 0.13.0 half-normal default fits ",
+                      "this 3-count draw; a stated uniform bound refuses as ",
+                      "inla_program_failed"),
   backend = "inla", family = "poisson", variant = "weak_identification"
 )
 

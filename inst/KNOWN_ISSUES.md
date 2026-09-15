@@ -300,19 +300,24 @@ Each is reproducible on this release. Priority is for the MET use case.
     with one shared standard deviation, and an accuracy bound for INLA's
     variance components.
 16. **A Poisson response that is almost all zeros, with a weakly identified
-    group, can crash INLA's program, and `backend = "inla"` refuses it.** On
-    a Poisson model with a random intercept over 28 clusters of two and 3
-    non-zero counts in 56 rows, INLA's program stops with a segmentation
-    fault after the mode is found, while it integrates over the group
-    precision. It happens on every release from 0.10.0 to 0.12.0 and under
-    INLA 26.08.07 and 25.10.19, and the package refuses with
-    `inla_program_failed`. The same design with 7 non-zero counts fits. It
+    group under a uniform bound, can crash INLA's program, and
+    `backend = "inla"` refuses it.** On a Poisson model with a random
+    intercept over 28 clusters of two and 3 non-zero counts in 56 rows,
+    INLA's program stops with a segmentation fault after the mode is found,
+    while it integrates over the group precision. It happens on every
+    release from 0.10.0 to 0.12.0 and under INLA 26.08.07 and 25.10.19, and
+    on 0.12.1 under INLA 26.08.07 (execution grid), all under the uniform
+    default, and the package refuses with `inla_program_failed`. The same design with 7 non-zero counts fits. It
     is not a regression: the execution-grid cell that recorded 0.10.0 as
     fitting drew the 7-count response, and a fixture added to the grid
     later moved the random-number state so the cell drew the 3-count one.
-    The cause inside INLA is not established. *Workaround*: state
-    `sd(group = ...) ~ half_normal(scale = 1.53)`, which fitted the 3-count
-    design in 3 of 3 runs, or fit on brms.
+    The cause inside INLA is not established. Since 0.13.0 the default
+    half-normal prior fits the 3-count design (3 of 3 runs; the group
+    standard deviation's 95% interval 0.10 to 3.89, against 0.04 to 3.27 on
+    brms under the same prior, where the sampler reported 138 divergent
+    transitions in 4,000 draws), and a stated `uniform(0, 3)` on the group
+    standard deviation still crashes in 3 of 3 runs. *Workaround*: keep a
+    half-normal prior on the group standard deviation, or fit on brms.
 17. **On INLA, a hyperparameter marginal can lie far outside a stated
     uniform bound, and the fit is refused.** On a Poisson model with two
     random intercepts, one of which splits the rows exactly as a fixed
