@@ -199,7 +199,17 @@ engines', the refusal says so and \code{inst/KNOWN_ISSUES.md} records it.}
 
 \item{link}{Character or NULL: override the default link function
 (e.g., \code{"probit"} for binomial). Leave it unset when \code{family} is a
-family object, which carries its own link.}
+family object, which carries its own link. The links fitted, default
+first: gaussian \code{identity}, \code{log}, \code{inverse}, \code{logit}, \code{probit},
+\code{cloglog}, \code{cauchit}; binomial \code{logit}, \code{probit}, \code{probit_approx},
+\code{cloglog}, \code{cauchit}, \code{softit}, \code{identity}, \code{log}; poisson \code{log},
+\code{identity}, \code{sqrt}; negative_binomial \code{log}, \code{identity}, \code{sqrt},
+\code{softplus}, \code{squareplus}; gamma \code{log}, \code{identity}, \code{inverse};
+hurdle_gamma \code{log}, \code{identity}, \code{inverse}, \code{softplus}, \code{squareplus};
+beta \code{logit}; lognormal \code{identity}. \code{backend = "inla"} takes the default
+link only, refusing any other by name (\code{inla_gate_refused}), and
+\code{backend = "auto"} fits another link on brms. A link outside the list
+is refused by name (\code{unsupported_family}) on every backend.}
 
 \item{known_matrices}{Named list of matrices referred to in the random
 formula (e.g., \code{list(Gmat = G_mat, Amat = A_mat)}). The carrier is

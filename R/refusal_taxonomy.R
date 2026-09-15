@@ -804,13 +804,15 @@
   # admits only the families flexyBayes can emit; any other family --
   # including those INLA's likelihood roster recognises but flexyBayes
   # has no emit path for (e.g. survival / time-to-event) -- is refused
-  # up front, never silently fitted.
+  # up front, never silently fitted. The same holds for a link: each
+  # family is admitted with the links an engine receives as written
+  # (.fb_family_links(), R/utils.R), and any other link is refused here.
   .register_refusal(
     reason_code = "unsupported_family",
     description = paste0(
-      "The requested family is outside the set flexyBayes can emit. ",
-      "Refused at the family gate (.resolve_family) before any ",
-      "backend code runs."
+      "The requested family, or the link requested with it, is outside ",
+      "the set flexyBayes can emit. Refused at the family gate ",
+      "(.resolve_family) before any backend code runs."
     ),
     message_template = paste0(
       "Unsupported family \"%s\". flexyBayes supports: gaussian, ",

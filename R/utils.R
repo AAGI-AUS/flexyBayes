@@ -143,6 +143,52 @@
   list(family = family, link = link)
 }
 
+# The families the family gate admits and, for each, the links flexyBayes
+# fits, default first.
+#
+# A link is listed only where the engine receives it as written. On brms
+# each pair is checked against brms's own Stan code for the same family and
+# link (tests/testthat/test-family-link-gate.R). Before this list the gate
+# checked the family and never the link, and the brms emitter builds Beta()
+# and lognormal() without one, so `brms::Beta(link = "probit")` was fitted
+# as logit. The INLA emit passes no link, so INLA fits the likelihood's own
+# default: the first link here for every family INLA takes, and lgm_gate()
+# refuses any other link on INLA by name. A link that would need new emitter
+# code to reach an engine is not listed.
+.fb_family_links <- function() {
+  list(
+    gaussian = c(
+      "identity", "log", "inverse", "logit", "probit", "cloglog", "cauchit"
+    ),
+    binomial = c(
+      "logit", "probit", "probit_approx", "cloglog", "cauchit", "softit",
+      "identity", "log"
+    ),
+    binary = c(
+      "logit", "probit", "probit_approx", "cloglog", "cauchit", "softit",
+      "identity", "log"
+    ),
+    poisson = c("log", "identity", "sqrt"),
+    negative_binomial = c("log", "identity", "sqrt", "softplus", "squareplus"),
+    negbinom = c("log", "identity", "sqrt", "softplus", "squareplus"),
+    gamma = c("log", "identity", "inverse"),
+    beta = "logit",
+    # brms-native, brms-only: `brms::brmsfamily("hurdle_gamma")` declares
+    # dpars mu, shape, hu on brms 2.23.0, and the entry allowlist used to
+    # refuse a family the engine behind it carries (field-sweep FS-4 /
+    # field finding C2). INLA's likelihood roster has no counterpart, so
+    # lgm_gate() refuses `backend = "inla"` for it on the family row.
+    hurdle_gamma = c("log", "identity", "inverse", "softplus", "squareplus"),
+    # brms-only as well. The brms fit is checked against the complete-case
+    # posterior (tests/testthat/test-brms-missing-response.R). INLA's
+    # likelihood roster does carry a lognormal, but no INLA fit of it is
+    # validated, so lgm_gate() refuses `backend = "inla"` for it by name on
+    # the family row. Before this gate read family objects, the family was
+    # reachable only as brms::lognormal() in the brms grammar.
+    lognormal = "identity"
+  )
+}
+
 # Resolve family and link function
 #
 # @param family Character family name, or a `stats` family object such
@@ -154,29 +200,7 @@
   family <- normalised$family
   link <- normalised$link
 
-  defaults <- list(
-    gaussian = "identity",
-    binomial = "logit",
-    binary = "logit",
-    poisson = "log",
-    negative_binomial = "log",
-    negbinom = "log",
-    gamma = "log",
-    beta = "logit",
-    # brms-native, brms-only: `brms::brmsfamily("hurdle_gamma")` declares
-    # dpars mu, shape, hu on brms 2.23.0, and the entry allowlist used to
-    # refuse a family the engine behind it carries (field-sweep FS-4 /
-    # field finding C2). INLA's likelihood roster has no counterpart, so
-    # lgm_gate() refuses `backend = "inla"` for it on the family row.
-    hurdle_gamma = "log",
-    # brms-only as well. The brms fit is checked against the complete-case
-    # posterior (tests/testthat/test-brms-missing-response.R). INLA's
-    # likelihood roster does carry a lognormal, but no INLA fit of it is
-    # validated, so lgm_gate() refuses `backend = "inla"` for it by name on
-    # the family row. Before this gate read family objects, the family was
-    # reachable only as brms::lognormal() in the brms grammar.
-    lognormal = "identity"
-  )
+  links <- .fb_family_links()
   fam <- tolower(family)
   # The generalised extreme value and Dirichlet families are not GLM-link
   # mixed models -- block maxima have no mean-link, and a Dirichlet response
@@ -212,14 +236,14 @@
       family_class = "flexybayes_unsupported_family"
     ))
   }
-  if (!fam %in% names(defaults)) {
+  if (!fam %in% names(links)) {
     stop(.fb_refusal_condition(
       reason_code = "unsupported_family",
       message = paste0(
         "Unsupported family \"",
         family,
         "\". flexyBayes supports: ",
-        paste(names(defaults), collapse = ", "),
+        paste(names(links), collapse = ", "),
         ". Other families (including survival / time-to-event and ",
         "multivariate responses) are planned future work; see ",
         "fb_refusals(). Block-maxima (generalised extreme value) and ",
@@ -230,7 +254,28 @@
       family_class = "flexybayes_unsupported_family"
     ))
   }
-  lnk <- if (!is.null(link)) tolower(link) else defaults[[fam]]
+  lnk <- if (!is.null(link)) tolower(link) else links[[fam]][[1L]]
+  if (!lnk %in% links[[fam]]) {
+    stop(.fb_refusal_condition(
+      reason_code = "unsupported_family",
+      message = paste0(
+        "Link \"",
+        lnk,
+        "\" is not available for family \"",
+        fam,
+        "\". flexyBayes fits \"",
+        fam,
+        "\" with ",
+        if (length(links[[fam]]) == 1L) "the link " else "the links ",
+        paste0("\"", links[[fam]], "\"", collapse = ", "),
+        ", and \"",
+        links[[fam]][[1L]],
+        "\" is the default. A link is listed only when the engine receives ",
+        "it as written, so any other link is refused before an engine runs."
+      ),
+      family_class = "flexybayes_unsupported_family"
+    ))
+  }
   list(family = fam, link = lnk)
 }
 

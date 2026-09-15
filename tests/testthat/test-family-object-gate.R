@@ -128,6 +128,13 @@ test_that("every family object gets the outcome its name gets, on every entry", 
     "hurdle_gamma", "lognormal"
   )
   admit_inla <- c("gaussian", "binomial", "poisson", "gamma", "Gamma", "beta")
+  # INLA takes each family's default link only (test-family-link-gate.R), so
+  # stats::Gamma(), whose link is inverse, and binomial(link = "probit") are
+  # refused there.
+  inla_links <- c(
+    gaussian = "identity", binomial = "logit", poisson = "log", gamma = "log",
+    beta = "logit"
+  )
   # flexybayes_stream() has no `link` argument: it aggregates these three
   # families on the links their names default to.
   stream_links <- c(gaussian = "identity", binomial = "logit", poisson = "log")
@@ -161,7 +168,8 @@ test_that("every family object gets the outcome its name gets, on every entry", 
     )
     expect_identical(
       identical(by_object$inla, "admitted"),
-      obj$family %in% admit_inla,
+      obj$family %in% admit_inla &&
+        identical(unname(inla_links[tolower(obj$family)]), obj$link),
       label = paste(key, "admitted on INLA")
     )
     expect_identical(

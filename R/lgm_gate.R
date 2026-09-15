@@ -314,6 +314,45 @@ print.lgm_refusal <- function(x, ...) {
 
   allowed <- .inla_likelihood_allowlist()
   if (tolower(resolved) %in% tolower(allowed)) {
+    # INLA takes each family's default link only. The INLA emit passes no
+    # link to INLA::inla(), so INLA fits the likelihood's own default, the
+    # first link on the family gate's list (.fb_family_links(), R/utils.R).
+    # Any other link would be fitted as that default while the fit recorded
+    # the link the call asked for. It is refused here, and `auto` routes the
+    # model to brms, which receives the link as written.
+    link_name <- if (inherits(fb$family, "family")) {
+      fb$family$link
+    } else {
+      fb$link
+    }
+    default_link <- .fb_family_links()[[tolower(fam_name)]][1L]
+    if (
+      !is.null(link_name) &&
+        !is.null(default_link) &&
+        !identical(tolower(link_name), default_link)
+    ) {
+      return(.lgm_fail(
+        "family_allowlist",
+        paste0(
+          "family \"",
+          fam_name,
+          "\" with link \"",
+          link_name,
+          "\" is fitted on brms only: INLA takes the family's default link, \"",
+          default_link,
+          "\", and the INLA emit carries no other."
+        ),
+        diagnostic = paste0(
+          "fb$family = \"",
+          fam_name,
+          "\"; fb$link = \"",
+          link_name,
+          "\"; INLA default link = \"",
+          default_link,
+          "\""
+        )
+      ))
+    }
     return(.lgm_pass("family_allowlist"))
   }
 
