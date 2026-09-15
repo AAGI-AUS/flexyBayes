@@ -923,7 +923,8 @@
                                    decision_predictive = NULL,
                                    structure_gate = NULL,
                                    decision_resolution = NULL,
-                                   fold_preprocessing = NULL) {
+                                   fold_preprocessing = NULL,
+                                   candidate_space = NULL) {
   conv <- .fb_convergence_verdict(base)
   calibration <- .fb_select_calibration_normalise(calibration, base)
   not_assembled <- paste0(
@@ -1005,7 +1006,11 @@
         } else {
           attr(stats::terms(candidates, data = base$data), "term.labels")
         },
-        column_map = column_map
+        column_map = column_map,
+        # The declared candidate columns, the rank rule and its tolerance,
+        # every column a fold dropped with its reason, and per column the
+        # folds in which it was estimable. NULL where no fold was compiled.
+        candidate_space = .fb_sel_candidate_space_record(candidate_space)
       ),
       resampling = list(
         unit = resamples$unit,
@@ -1075,7 +1080,10 @@
             # on each fold. NULL on an arm with no tuning.
             tuning_scale = arm$selection$tuning_scale,
             selected_s = arm$selection$selected_s,
-            selected_lambda_canonical = arm$selection$selected_lambda_canonical
+            selected_lambda_canonical = arm$selection$selected_lambda_canonical,
+            # Per penalised column: the folds, the folds that estimated it,
+            # and the folds whose support held it at the chosen point.
+            candidate_availability = arm$selection$candidate_availability
           )
         })
       },
@@ -1474,6 +1482,9 @@
 #' @param scoring_unit The unit the arm aggregated at; `NULL` reads the
 #'   folds' resampling unit, or `"row"` where none was declared.
 #' @param offsets The model's offset expressions.
+#' @param candidate_space The arm's `.fb_sel_candidate_space()`, whose
+#'   per-fold dropped columns are a field, or `NULL` where no fold dropped a
+#'   column.
 #' @return An `fb_select_score_contract`.
 #' @noRd
 #' @keywords internal
@@ -1486,7 +1497,8 @@
                                       learned_on,
                                       stage,
                                       scoring_unit = NULL,
-                                      offsets = character(0)) {
+                                      offsets = character(0),
+                                      candidate_space = NULL) {
   # The fold of every scored row, per repeat -----
   n <- attr(folds, "n_rows") %||% nrow(data)
   unit_key <- attr(folds, "unit_key") %||% as.character(seq_len(n))
@@ -1505,9 +1517,11 @@
   units <- sort(unique(unit_key[scored]), method = "radix")
   first_row <- match(units, unit_key)
   canonical_rows <- row_fold
+  seen_by_repeat <- list()
   unit_to_fold <- do.call(rbind, lapply(seq_along(repeats), function(r) {
     raw <- row_fold[first_row, r]
     seen <- unique(raw[!is.na(raw)])
+    seen_by_repeat[[r]] <<- seen
     canonical_rows[, r] <<- match(row_fold[, r], seen)
     data.frame(
       repeat_id = rep(repeats[[r]], length(units)),
@@ -1565,6 +1579,36 @@
     }
   })
 
+  # The columns each fold dropped, by canonical fold -----
+  dropped <- candidate_space$dropped
+  space_rows <- data.frame(
+    repeat_id = integer(0), fold = integer(0), column = character(0),
+    stringsAsFactors = FALSE
+  )
+  if (!is.null(dropped) && nrow(dropped) > 0L) {
+    labels <- vapply(folds, function(s) s$label, character(1L))
+    index <- match(dropped$fold, labels)
+    r <- match(
+      vapply(index, function(i) as.integer(folds[[i]]$repeat_id), integer(1L)),
+      repeats
+    )
+    space_rows <- data.frame(
+      repeat_id = repeats[r],
+      fold = vapply(
+        seq_along(index),
+        function(k) match(index[[k]], seen_by_repeat[[r[[k]]]]),
+        integer(1L)
+      ),
+      column = as.character(dropped$column),
+      stringsAsFactors = FALSE
+    )
+    space_rows <- space_rows[order(
+      space_rows$repeat_id, space_rows$fold, space_rows$column,
+      method = "radix"
+    ), , drop = FALSE]
+    rownames(space_rows) <- NULL
+  }
+
   # The remaining fields, and the hash over all of them -----
   if (is.null(scoring_unit)) {
     scoring_unit <- attr(folds, "unit")
@@ -1589,7 +1633,8 @@
     ),
     design_values = design_values,
     learned_on = as.character(learned_on),
-    stage = as.character(stage)
+    stage = as.character(stage),
+    candidate_space = space_rows
   )
   structure(
     c(fields, list(units = units, hash = .fb_select_contract_hash(fields))),
@@ -1635,6 +1680,19 @@
     )) {
       .fb_select_write_field(con, field, as.character(contract[[field]]))
     }
+    # Each fold's dropped candidate columns, by canonical fold. Written by
+    # column and by type, as the unit map above is: a contract that dropped
+    # a column is not the contract that kept it.
+    space <- contract$candidate_space
+    .fb_select_write_field(
+      con, "candidate_space_repeat_id", as.integer(space$repeat_id)
+    )
+    .fb_select_write_field(
+      con, "candidate_space_fold", as.integer(space$fold)
+    )
+    .fb_select_write_field(
+      con, "candidate_space_column", as.character(space$column)
+    )
   })
 }
 
@@ -1698,7 +1756,8 @@
 .fb_select_contract_differences <- function(a, b) {
   fields <- c(
     "unit_to_fold", "row_fold", "scoring_unit", "prediction", "response",
-    "metric", "design_columns", "design_values", "learned_on", "stage"
+    "metric", "design_columns", "design_values", "learned_on", "stage",
+    "candidate_space"
   )
   fields[!vapply(
     fields, function(f) identical(a[[f]], b[[f]]), logical(1L)
@@ -1896,7 +1955,8 @@
       learned_on = source$preprocessing$learned_on %||% NA_character_,
       stage = stage,
       scoring_unit = scoring_unit,
-      offsets = base$fb$offsets %||% character(0)
+      offsets = base$fb$offsets %||% character(0),
+      candidate_space = source$candidate_space
     )
   }
   bayes <- identical(axes$workflow, "bayes")
@@ -2218,6 +2278,26 @@
 #' substitution on its first line, and the certificate records
 #' `fallback_fired = TRUE`. There is no configuration that produces a
 #' penalised-likelihood answer under a Bayesian label.
+#'
+#' Each fold's candidate space is fixed from the covariates on its training
+#' rows before any fold is fitted. The protected columns, then the candidate
+#' columns in the order `candidates` writes them, are factorised by
+#' `qr()` with tolerance `1e-7`, every column but the intercept centred on
+#' the training rows. A protected column aliased there refuses with
+#' `selection_fold_protected_unidentified`, and a factor level present only in
+#' a fold's assessment rows refuses with `selection_fold_level_absent`, both
+#' before any engine runs. A candidate column aliased there is dropped for that
+#' fold, as when a fold's training trials leave fewer degrees of freedom than
+#' its trial-level candidates need: the fold's fits and scores use the columns
+#' it keeps, every coefficient it reports keeps the declared columns in order
+#' with `NA` for a dropped one, and the certificate's
+#' `design$candidate_space` names each drop with its reason and counts, for
+#' each candidate column, the folds in which it was estimable. The `glmnet`
+#' arm's `selection$candidate_availability` places that count beside the
+#' number of folds whose support holds the column at the chosen point. The
+#' Bayesian route drops whole terms and refuses a term aliased only in part, and
+#' the penalised reference's out-of-fold score refuses any drop, both with
+#' `selection_fold_candidate_drop_not_representable`.
 #'
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
 #'   block and are never penalised.
@@ -2764,6 +2844,23 @@ fb_select <- function(base,
       .fb_sel_folds(resamples, base$data, seed = seed)
     )
   }
+  # The out-of-fold score `benchmark = TRUE` asks for compiles the reference
+  # prior over the declared candidate block on every fold, so a fold whose
+  # training rows leave a candidate unidentified refuses here, before the
+  # reference model is sampled (R/selection_candidate_space.R).
+  if (isTRUE(benchmark)) {
+    .fb_sel_require_no_candidate_drop(.fb_sel_candidate_space(
+      protected,
+      candidates,
+      base$data,
+      .fb_sel_folds(resamples, base$data, seed = seed),
+      groupings = unique(c(
+        .fb_sel_grouping_columns(base$fb)$columns,
+        resamples$unit
+      )),
+      route = "bayes"
+    ))
+  }
 
   cost <- .fb_sel_cost_estimate(
     base,
@@ -2924,6 +3021,7 @@ fb_select <- function(base,
       clusters = reference_cv$clusters,
       rows = reference_cv$rows,
       preprocessing = reference_cv$preprocessing,
+      candidate_space = reference_cv$candidate_space,
       metric = metric,
       prediction = prediction,
       seed = seed,
@@ -3048,6 +3146,9 @@ fb_select <- function(base,
         "the support of the penalised optimiser at its chosen lambda; a ",
         "mode, not a posterior"
       ),
+      # Per penalised column: the folds that estimated it, beside the folds
+      # whose support held it at the chosen point.
+      candidate_availability = bench$arms$glmnet$selection$candidate_availability,
       settings = list(method = "optimizer_support")
     ),
     benchmark = bench,
@@ -3138,7 +3239,10 @@ fb_select <- function(base,
     decision_predictive = stages$decision,
     structure_gate = structure_gate,
     decision_resolution = decision_resolution,
-    fold_preprocessing = .fb_select_fold_preprocessing(cv)
+    fold_preprocessing = .fb_select_fold_preprocessing(cv),
+    # The primary arm's folds where it compiled any, and the benchmark's
+    # otherwise: the same rule gives both arms the same space.
+    candidate_space = cv$candidate_space %||% benchmark$cv$candidate_space
   )
 
   structure(
@@ -3874,6 +3978,21 @@ print.fb_select_certificate <- function(x, ...) {
     cat("  fold prep  : constants and prior learned on the ",
         gsub("_", " ", x$fold_preprocessing$learned_on), " of each of ",
         nrow(x$fold_preprocessing$folds), " folds\n", sep = "")
+  }
+  cs <- x$design$candidate_space
+  if (!is.null(cs)) {
+    cat("  candidates : ", length(cs$declared), " declared columns; ",
+        if (nrow(cs$dropped) == 0L) {
+          paste0("each estimable on all ", cs$n_folds, " folds")
+        } else {
+          paste0(
+            nrow(cs$dropped), " fold drops on ",
+            length(unique(cs$dropped$fold)), " of ", cs$n_folds,
+            " folds, coefficient NA: ",
+            paste(unique(cs$dropped$column), collapse = ", ")
+          )
+        },
+        "\n", sep = "")
   }
   cat("  approximations: ",
       if (length(x$approximations) == 0L) "none declared"

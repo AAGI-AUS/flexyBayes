@@ -47,7 +47,8 @@ fbsc_contract <- function(folds,
                           learned_on = "analysis_rows",
                           scoring_unit = NULL,
                           response = "y",
-                          offsets = character(0)) {
+                          offsets = character(0),
+                          candidate_space = NULL) {
   .fb_select_score_contract(
     folds = folds,
     data = data,
@@ -58,7 +59,8 @@ fbsc_contract <- function(folds,
     learned_on = learned_on,
     stage = stage,
     scoring_unit = scoring_unit,
-    offsets = offsets
+    offsets = offsets,
+    candidate_space = candidate_space
   )
 }
 
@@ -191,7 +193,13 @@ test_that("every contract field moves the hash", {
     design_values = fbsc_contract(folds, data = d, design = rescaled),
     learned_on = fbsc_contract(folds, data = d, learned_on = "all_rows"),
     stage = fbsc_contract(folds, data = d, stage = "decision"),
-    scoring_unit = fbsc_contract(folds, data = d, scoring_unit = "fold")
+    scoring_unit = fbsc_contract(folds, data = d, scoring_unit = "fold"),
+    candidate_space = fbsc_contract(
+      folds, data = d,
+      candidate_space = list(dropped = data.frame(
+        fold = folds[[1L]]$label, column = "x1", stringsAsFactors = FALSE
+      ))
+    )
   )
   # Dropping a column changes the names and so the values; every other
   # variant changes one field.
@@ -525,7 +533,9 @@ test_that("one fixture's contract is the same bytes under R 4.5.2 and R 4.6.1", 
   # or a byte that depends on the R version, moves these strings.
   expect_identical(contract$response$values, "53517c7013eaf7027dce3fce3ec066ba")
   expect_identical(contract$design_values, "3ce2587bbc9a7c5d99dd8e672fecccf6")
-  expect_identical(contract$hash, "25f49f50bdd7fc2e5bd26ecba37d89bd")
+  # The top-level hash moved when each fold's dropped candidate columns
+  # entered the encoding; the two digests above it did not.
+  expect_identical(contract$hash, "2b426e2e51316f33fab1754ba93d871e")
 })
 
 

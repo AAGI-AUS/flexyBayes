@@ -167,6 +167,26 @@ fires, \code{workflow} becomes \code{penalized_optimizer}, the object prints the
 substitution on its first line, and the certificate records
 \code{fallback_fired = TRUE}. There is no configuration that produces a
 penalised-likelihood answer under a Bayesian label.
+
+Each fold's candidate space is fixed from the covariates on its training
+rows before any fold is fitted. The protected columns, then the candidate
+columns in the order \code{candidates} writes them, are factorised by
+\code{qr()} with tolerance \code{1e-7}, every column but the intercept centred on
+the training rows. A protected column aliased there refuses with
+\code{selection_fold_protected_unidentified}, and a factor level present only in
+a fold's assessment rows refuses with \code{selection_fold_level_absent}, both
+before any engine runs. A candidate column aliased there is dropped for that
+fold, as when a fold's training trials leave fewer degrees of freedom than
+its trial-level candidates need: the fold's fits and scores use the columns
+it keeps, every coefficient it reports keeps the declared columns in order
+with \code{NA} for a dropped one, and the certificate's
+\code{design$candidate_space} names each drop with its reason and counts, for
+each candidate column, the folds in which it was estimable. The \code{glmnet}
+arm's \code{selection$candidate_availability} places that count beside the
+number of folds whose support holds the column at the chosen point. The
+Bayesian route drops whole terms and refuses a term aliased only in part, and
+the penalised reference's out-of-fold score refuses any drop, both with
+\code{selection_fold_candidate_drop_not_representable}.
 }
 \seealso{
 \code{\link[=fb_penalty]{fb_penalty()}} for the prior, \code{\link[=fb_resamples]{fb_resamples()}} for the folds,

@@ -1259,6 +1259,22 @@
     data,
     folds
   )
+  # Before the cost probe, which fits: the terms each fold can estimate, read
+  # off the covariates on its training rows. A protected design they do not
+  # identify, a level only in assessment rows and a term aliased in part
+  # refuse here (R/selection_candidate_space.R). The penalised reference
+  # compiles one prior over the declared block, so it refuses any drop.
+  space <- .fb_sel_candidate_space(
+    spec$protected,
+    candidates,
+    data,
+    folds,
+    groupings = unique(c(spec$random_vars, resamples$unit)),
+    route = "bayes"
+  )
+  if (!is.null(fold_transform)) {
+    .fb_sel_require_no_candidate_drop(space)
+  }
 
   cluster_vars <- if (is.null(cluster)) resamples$unit else cluster
   .fb_sel_require_columns(data, cluster_vars, "cluster")
@@ -1341,6 +1357,9 @@
       inputs$assess_data <- fold_state$apply(inputs$assess_data)
       inputs$preprocessing <- fold_state$record
     }
+    # The fold's candidate space: every model on it leaves out the terms its
+    # training rows do not identify, and the record says which.
+    inputs$candidate_space <- space$folds[[split$label]]
     substrates[[split$label]] <- inputs
     fold_fits <- list()
 
@@ -1349,7 +1368,10 @@
       fixed <- .fb_sel_bayes_fixed(
         spec$response,
         spec$protected_labels,
-        candidate_labels[sets[[name]]],
+        setdiff(
+          candidate_labels[sets[[name]]],
+          inputs$candidate_space$dropped_terms
+        ),
         spec$offsets
       )
       # Deterministic per fold and per model, so one run reproduces another
@@ -1482,6 +1504,9 @@
       by_fold = lapply(substrates, function(z) z$preprocessing)
     ),
     n_draws = n_draws,
+    # The declared candidate space, and per fold the terms its training rows
+    # left unidentified and every model on that fold left out.
+    candidate_space = space,
     # Per fold, the terms each decision product was built from where it
     # chose them on that fold.
     derived_terms = derived_terms,

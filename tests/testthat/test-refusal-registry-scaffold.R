@@ -524,10 +524,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   #
   # The score contract adds one: an arm's contract whose hash cannot be
   # verified (selection_score_contract_unverifiable) (= 210).
+  #
+  # The candidate-space unit adds two: a protected design a fold's training
+  # rows do not identify (selection_fold_protected_unidentified), and a
+  # candidate drop the route cannot represent
+  # (selection_fold_candidate_drop_not_representable) (= 212).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 210L)
+  expect_equal(length(entries), 212L)
   expect_true("selection_score_contract_unverifiable" %in% entries)
+  expect_true("selection_fold_protected_unidentified" %in% entries)
+  expect_true("selection_fold_candidate_drop_not_representable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)
   expect_true("stream_source_no_rows" %in% entries)
   expect_true("selection_formula_transform_not_fold_local" %in% entries)

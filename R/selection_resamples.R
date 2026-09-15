@@ -1036,7 +1036,8 @@
   random = character(0),
   prediction = c("new_cluster", "known_cluster"),
   cov_spec = NULL,
-  offsets = character(0)
+  offsets = character(0),
+  fold_space = NULL
 ) {
   prediction <- match.arg(prediction)
   # The response through the resolver the fit itself uses, so a transformed
@@ -1079,9 +1080,17 @@
     data,
     split
   )
-  .fb_sel_check_fold_levels(protected_design, split)
-  if (!is.null(candidates)) {
-    .fb_sel_check_fold_levels(candidate_design, split)
+  # The columns this fold can estimate, read off the covariates on its
+  # training rows (R/selection_candidate_space.R). A level absent from the
+  # training rows and a protected design they do not identify refuse there.
+  if (is.null(fold_space)) {
+    fold_space <- .fb_sel_fold_candidate_space(
+      protected_design,
+      if (is.null(candidates)) NULL else candidate_design,
+      data,
+      split,
+      groupings = unique(unlist(strsplit(random, ":", fixed = TRUE)))
+    )
   }
 
   # Drop the candidate block's intercept: the protected block owns it, and
@@ -1089,6 +1098,7 @@
   x_candidate <- candidate_design$X
   keep <- colnames(x_candidate) != "(Intercept)"
   x_candidate <- x_candidate[, keep, drop = FALSE]
+  kept_candidate <- which(colnames(x_candidate) %in% fold_space$kept_columns)
 
   # Learned on the training rows, and only there.
   preprocessing <- .fb_sel_preprocessing(x_candidate, split$train_rows)
@@ -1120,11 +1130,19 @@
   )
 
   x_full <- cbind(protected_design$X, x_candidate)
+  # The pilot fit uses the columns the fold keeps. Its coefficient vector is
+  # indexed by every declared column, NA where the fold dropped one.
+  fitted_columns <- c(
+    seq_len(ncol(protected_design$X)),
+    ncol(protected_design$X) + kept_candidate
+  )
   pilot <- .fb_sel_gls_fit(
     blocks$factor_tt,
-    x_full[split$train_rows, , drop = FALSE],
+    x_full[split$train_rows, fitted_columns, drop = FALSE],
     y[split$train_rows]
   )
+  pilot_beta <- stats::setNames(rep(NA_real_, ncol(x_full)), colnames(x_full))
+  pilot_beta[fitted_columns] <- pilot$beta
 
   structure(
     list(
@@ -1137,7 +1155,10 @@
       covariance_estimand = cov_spec$estimand,
       response = y,
       x_protected = protected_design$X,
+      # Every declared candidate column; the fold fits `candidate_kept`.
       x_candidate = x_candidate,
+      candidate_kept = fold_space$kept_columns,
+      candidate_space = fold_space,
       blocks = blocks,
       # Every entry here is claimed to be a function of the training rows
       # alone. The leakage gate holds the claim to account.
@@ -1146,7 +1167,7 @@
         components_terms = cov_spec$terms,
         preprocessing_centre = preprocessing$centre,
         preprocessing_scale = preprocessing$scale,
-        pilot_beta = pilot$beta,
+        pilot_beta = pilot_beta,
         logdet_v_tt = blocks$logdet_v_tt
       ),
       assessment = list(
@@ -1500,6 +1521,21 @@
   clusters <- list()
   substrates <- list()
 
+  # Every fold's candidate space, before any fold learns anything. A
+  # protected design a fold's training rows do not identify, and a level
+  # only in its assessment rows, refuse here (R/selection_candidate_space.R).
+  space <- .fb_sel_candidate_space(
+    protected,
+    candidates,
+    data,
+    folds,
+    groupings = unique(c(
+      unlist(strsplit(random, ":", fixed = TRUE)),
+      resamples$unit
+    )),
+    route = "benchmark"
+  )
+
   for (split in folds) {
     substrate <- .fb_sel_fold_substrate(
       data,
@@ -1509,12 +1545,17 @@
       candidates = candidates,
       random = random,
       prediction = prediction,
-      offsets = offsets
+      offsets = offsets,
+      fold_space = space$folds[[split$label]]
     )
     substrates[[split$label]] <- substrate
 
     for (name in names(sets)) {
-      columns <- sets[[name]]
+      # The set's columns this fold keeps; the set itself is declared once.
+      columns <- intersect(
+        sets[[name]],
+        which(colnames(substrate$x_candidate) %in% substrate$candidate_kept)
+      )
       x <- cbind(
         substrate$x_protected,
         substrate$x_candidate[, columns, drop = FALSE]
@@ -1564,6 +1605,9 @@
     # The design every fold was cut from, recorded once: the values the
     # score contract identifies.
     design = .fb_sel_scored_design(protected, candidates, data),
+    # The declared candidate columns and, per fold, the ones its training
+    # rows left unidentified and every model on that fold left out.
+    candidate_space = space,
     rows = data.table::rbindlist(rows),
     clusters = data.table::rbindlist(by_model),
     by_model = by_model,
