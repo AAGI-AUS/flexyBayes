@@ -1136,30 +1136,7 @@
         # check-list object rides on the condition as `lgm_refusal`, and
         # the failing rule supplies a second class so a single rule can be
         # caught on its own.
-        msg <- paste(utils::capture.output(print(gated)), collapse = "\n")
-        primary_rule <- gated$primary_rule %||% NA_character_
-        # A rule that names a registered refusal of its own raises that
-        # code, and keeps inla_gate_refused as a class beneath it so every
-        # handler written against the generic code still catches it.
-        primary_code <- gated$failures[[1L]]$reason_code
-        stop(.fb_refusal_condition(
-          reason_code = primary_code %||% "inla_gate_refused",
-          # The printed refusal already opens with what happened, so a
-          # second header above it said the same thing twice -- which is
-          # how a refusal grows to sixteen lines one reasonable addition
-          # at a time.
-          message = msg,
-          family_class = c(
-            if (!is.null(primary_code)) {
-              "flexybayes_refusal_inla_gate_refused"
-            },
-            if (!is.na(primary_rule)) {
-              paste0("flexybayes_lgm_", primary_rule)
-            }
-          ) %||% character(0),
-          lgm_refusal = gated,
-          rule_id = primary_rule
-        ))
+        .stop_inla_gate_refused(gated)
       }
       primary <- gated$failures[[1L]]
       # Distinguish memory vs structural refusal for routing trace.
@@ -1588,6 +1565,36 @@
 }
 
 
+# Raise the typed refusal for an explicit backend = "inla" request that
+# lgm_gate() refused. Shared by the per-row dispatch below and by
+# .maybe_aggregate_gaussian(): a non-canonical link on the aggregated
+# route (reason_codes "non_canonical_link" / "non_identity_link" from
+# .fb_aggregation_plan()) is the identical fact lgm_gate()'s
+# family_allowlist rule already refuses for gaussian, binomial and
+# poisson -- the aggregation canon link (identity / logit / log) IS each
+# family's INLA default link -- so the two sites read the same gate the
+# same way rather than growing a second, unregistered message for one
+# fact.
+.stop_inla_gate_refused <- function(gated) {
+  msg <- paste(utils::capture.output(print(gated)), collapse = "\n")
+  primary_rule <- gated$primary_rule %||% NA_character_
+  primary_code <- gated$failures[[1L]]$reason_code
+  stop(.fb_refusal_condition(
+    reason_code = primary_code %||% "inla_gate_refused",
+    message = msg,
+    family_class = c(
+      if (!is.null(primary_code)) {
+        "flexybayes_refusal_inla_gate_refused"
+      },
+      if (!is.na(primary_rule)) {
+        paste0("flexybayes_lgm_", primary_rule)
+      }
+    ) %||% character(0),
+    lgm_refusal = gated,
+    rule_id = primary_rule
+  ))
+}
+
 # Aggregated-gaussian gate. Returns either a
 # fitted <flexybayes_aggregated> object (gate accepted; aggregated
 # emit ran) or NULL (gate declined; caller falls through to per-row).
@@ -1772,6 +1779,48 @@
       # on the plan; raise that one, not the generic ineligibility.
       if (!is.null(plan$overflow_refusal)) {
         stop(plan$overflow_refusal)
+      }
+      # The family / link scope check runs first inside
+      # .fb_aggregation_plan() (before the term-shape loops), so a family
+      # or link reason is always reason_codes[1] when either fired. Both
+      # facts are already named refusals elsewhere in the package, and
+      # this branch used to raise them as an unregistered condition
+      # instead of reusing that name:
+      #   - non_canonical_link / non_identity_link is exactly the fact
+      #     lgm_gate()'s family_allowlist rule refuses for an explicit
+      #     backend = "inla" request, for the three aggregatable
+      #     families (the aggregation canon link -- identity, logit,
+      #     log -- IS each one's INLA default), so it is raised the same
+      #     way: inla_gate_refused (.stop_inla_gate_refused()).
+      #   - non_aggregatable_family is exactly what aggregation_route_
+      #     unavailable already names at the other aggregated-route and
+      #     streamed-route refusal sites in this file and in
+      #     .check_stream_family() (R/stream_aggregate.R): no aggregated
+      #     backend resolves for this family.
+      primary_reason <- plan$reason_codes[[1L]]
+      if (primary_reason %in% c("non_canonical_link", "non_identity_link")) {
+        gated <- lgm_gate(fb)
+        if (is_lgm_refusal(gated)) {
+          .stop_inla_gate_refused(gated)
+        }
+        # lgm_gate() agreeing the pair is admitted on INLA cannot happen
+        # here: the two reason codes above and the family_allowlist rule
+        # read the same family/link pair against the same default-link
+        # fact. Fall through to the generic refusal below rather than
+        # silently letting an unreachable disagreement through unrefused.
+      } else if (identical(primary_reason, "non_aggregatable_family")) {
+        stop(.fb_refusal_condition(
+          reason_code = "aggregation_route_unavailable",
+          message = paste0(
+            "`aggregate = TRUE` refused: the aggregated route is exact ",
+            "only for gaussian, binomial and poisson, and family = \"",
+            fb$family,
+            "\" has no aggregated emit.",
+            .agg_refusal_note(plan$reason_codes),
+            " Pass aggregate = FALSE for the per-row path."
+          ),
+          family_class = "flexybayes_aggregate_refusal"
+        ))
       }
       cond <- structure(
         class = c("flexybayes_aggregate_refusal", "error", "condition"),
