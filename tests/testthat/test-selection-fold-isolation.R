@@ -849,7 +849,14 @@ test_that("an interaction cell only in the assessment rows completes on the benc
   expect_false(any(d$a[split$train_rows] == "a2" & d$b[split$train_rows] == "b3"))
 
   substrate <- .fb_sel_fold_substrate(d, split, "y", ~x, ~ a:b, random = "site")
-  expect_true(all(is.finite(substrate$learned$pilot_beta)))
+  # The lone cell's column is zero on the training rows, and the remaining
+  # cells sum to the intercept there: both are dropped for the fold, with an
+  # NA coefficient, and every kept coefficient is estimated.
+  beta <- substrate$learned$pilot_beta
+  dropped <- substrate$candidate_space$dropped$column
+  expect_true(length(dropped) > 0L)
+  expect_true(all(is.na(beta[dropped])))
+  expect_true(all(is.finite(beta[setdiff(names(beta), dropped)])))
   extreme <- d
   extreme$y[split$assess_rows[[1L]]] <- 1e4
   moved <- .fb_sel_fold_substrate(extreme, split, "y", ~x, ~ a:b, random = "site")

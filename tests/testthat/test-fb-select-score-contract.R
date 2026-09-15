@@ -32,7 +32,8 @@ fbsc_contract <- function(folds,
                           metric = "nlpd",
                           design_columns = c("(Intercept)", "p1", "x1"),
                           learned_on = "analysis_rows",
-                          scoring_unit = NULL) {
+                          scoring_unit = NULL,
+                          candidate_space = NULL) {
   .fb_select_score_contract(
     folds = folds,
     data = data,
@@ -42,7 +43,8 @@ fbsc_contract <- function(folds,
     design_columns = design_columns,
     learned_on = learned_on,
     stage = stage,
-    scoring_unit = scoring_unit
+    scoring_unit = scoring_unit,
+    candidate_space = candidate_space
   )
 }
 
@@ -142,7 +144,13 @@ test_that("every contract field moves the hash", {
     ),
     learned_on = fbsc_contract(folds, data = d, learned_on = "all_rows"),
     stage = fbsc_contract(folds, data = d, stage = "decision"),
-    scoring_unit = fbsc_contract(folds, data = d, scoring_unit = "fold")
+    scoring_unit = fbsc_contract(folds, data = d, scoring_unit = "fold"),
+    candidate_space = fbsc_contract(
+      folds, data = d,
+      candidate_space = list(dropped = data.frame(
+        fold = folds[[1L]]$label, column = "x1", stringsAsFactors = FALSE
+      ))
+    )
   )
   for (field in names(variants)) {
     expect_false(identical(variants[[field]]$hash, base$hash), info = field)

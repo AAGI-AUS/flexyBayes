@@ -154,6 +154,39 @@
     since_version = "0.13.0"
   )
 
+  # Thrown by R/selection_candidate_space.R for every fold before any fold is
+  # fitted; triggered in tests/testthat/test-selection-candidate-space.R.
+  .register_refusal(
+    reason_code = "selection_fold_protected_unidentified",
+    description = paste0(
+      "fb_select(): the protected design is not identified on a fold's ",
+      "training rows. A protected column that is a linear combination of ",
+      "the protected columns before it there has no estimate on that fold, ",
+      "and the protected part is the base model, which no fold reduces. The ",
+      "refusal names the fold and the columns before any fold is fitted."
+    ),
+    message_template = "fb_select(): on fold %s the protected design is not identified on the training rows: %s.",
+    registered_in_adr = "PLAN green 0.13.0 section 6, P2",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_fold_candidate_drop_not_representable",
+    description = paste0(
+      "fb_select(): a fold's training rows leave candidate columns ",
+      "unidentified on a route that cannot drop them. The Bayesian route ",
+      "writes each fold's model as formula text and cannot leave out one ",
+      "column of a term, and the penalised reference's out-of-fold score ",
+      "compiles its prior over the declared candidate block. The refusal ",
+      "names the fold and the columns before any fold is fitted."
+    ),
+    message_template = "fb_select(): on fold %s these candidate columns are unidentified and this route cannot drop them: %s.",
+    registered_in_adr = "PLAN green 0.13.0 section 6, P2",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
+  )
+
   .register_refusal(
     reason_code = "selection_scoring_unit_undeclared",
     description = paste0(

@@ -361,6 +361,22 @@ Each is reproducible on this release. Priority is for the MET use case.
     write the transform as a rule of one row at a time, such as `I(x^2)`.
     *What is open*: carrying the training rows' transform parameters into
     the INLA and brms fold refits.
+19. **A fold drop the route cannot write is refused.** `fb_select()` fixes
+    each fold's candidate space from the covariates on its training rows
+    and drops a candidate column those rows leave unidentified, with `NA`
+    for its coefficient and the drop on the certificate. Two routes cannot
+    drop a single column, and refuse with
+    `selection_fold_candidate_drop_not_representable` before anything is
+    fitted. The Bayesian fold refits write the model as formula text, so a
+    factor or interaction term with only some of its columns unidentified
+    on a fold is refused. The penalised reference's out-of-fold score
+    (`benchmark = TRUE` with a penalty) compiles its prior over the whole
+    candidate block, so any drop there is refused. *Workaround*: score the
+    candidates with `workflow = "unpenalized_benchmark"` or the `glmnet`
+    arm, which drop single columns; cut the folds on a unit whose training
+    rows identify every candidate; or remove the unidentified columns from
+    `candidates`. *What is open*: single-column drops in the formula
+    refits, and a reference prior compiled over each fold's kept columns.
 
 ## Closed since the previous revision
 

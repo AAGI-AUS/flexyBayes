@@ -623,15 +623,21 @@
   factor_lower <- t(substrate$blocks$factor_tt)
 
   candidate_names <- colnames(substrate$x_candidate)
-  free_columns <- setdiff(
+  # The fold's candidate space (R/selection_candidate_space.R). A column its
+  # training rows leave unidentified enters neither block, and the path
+  # reports its coefficient as NA.
+  kept <- which(candidate_names %in% substrate$candidate_kept)
+  free_declared <- setdiff(
     seq_len(ncol(substrate$x_candidate)),
     penalised_columns
   )
+  free_columns <- intersect(free_declared, kept)
+  penalised_kept <- intersect(penalised_columns, kept)
   x_protected <- cbind(
     substrate$x_protected,
     substrate$x_candidate[, free_columns, drop = FALSE]
   )
-  x_penalised <- substrate$x_candidate[, penalised_columns, drop = FALSE]
+  x_penalised <- substrate$x_candidate[, penalised_kept, drop = FALSE]
 
   whiten <- function(m) forwardsolve(factor_lower, m)
   reduction <- .fb_sel_protected_reduction(
@@ -654,10 +660,17 @@
   list(
     reduction = reduction,
     payload = .fb_sel_provider_payload(reduction),
-    x_full = cbind(substrate$x_protected, substrate$x_candidate),
+    x_full = cbind(
+      substrate$x_protected,
+      substrate$x_candidate[, kept, drop = FALSE]
+    ),
     protected_names = colnames(x_protected),
-    penalised_names = candidate_names[penalised_columns],
-    free_names = candidate_names[free_columns]
+    penalised_names = candidate_names[penalised_kept],
+    free_names = candidate_names[free_columns],
+    # The declared columns of each role, the ones a fold dropped included,
+    # which index every coefficient the path reports.
+    declared_penalised = candidate_names[penalised_columns],
+    declared_free = candidate_names[free_declared]
   )
 }
 
@@ -920,6 +933,23 @@
           if (length(estimates) > 0L) {
             estimates <- estimates / scale[parts$penalised_names]
           }
+          # The canonical map: one row per declared column on every fold, in
+          # declared order, NA for a column the fold dropped.
+          candidate_estimate <- stats::setNames(
+            rep(NA_real_, length(parts$declared_penalised)),
+            parts$declared_penalised
+          )
+          candidate_estimate[parts$penalised_names] <- estimates
+          protected_terms <- c(
+            colnames(s$x_protected),
+            parts$declared_free
+          )
+          protected_estimate <- stats::setNames(
+            rep(NA_real_, length(protected_terms)),
+            protected_terms
+          )
+          protected_estimate[names(solution$beta_protected)] <-
+            solution$beta_protected
           coefficients[[length(coefficients) + 1L]] <-
             data.table::data.table(
               arm = arm,
@@ -927,16 +957,13 @@
               lambda_canonical = lambda_canonical,
               fold = label,
               role = c(
-                rep("candidate", length(estimates)),
-                rep("protected", length(solution$beta_protected))
+                rep("candidate", length(candidate_estimate)),
+                rep("protected", length(protected_estimate))
               ),
-              term = c(
-                parts$penalised_names,
-                names(solution$beta_protected)
-              ),
+              term = c(names(candidate_estimate), protected_terms),
               estimate = c(
-                as.numeric(estimates),
-                as.numeric(solution$beta_protected)
+                as.numeric(candidate_estimate),
+                as.numeric(protected_estimate)
               )
             )
           fitted[[length(fitted) + 1L]] <- data.table::data.table(
@@ -1043,7 +1070,11 @@
       supports_by_model = lapply(supports_by_model, data.table::rbindlist),
       grid = grid,
       arms = arms,
-      conventions = conventions
+      conventions = conventions,
+      # Per fold, the penalised columns its training rows identify, beside
+      # the declared ones.
+      penalised_by_fold = lapply(parts_by_fold, function(p) p$penalised_names),
+      declared_penalised = parts_by_fold[[1L]]$declared_penalised
     )
   }
 
@@ -1055,6 +1086,48 @@
     semantics,
     labels
   )
+  # Availability beside the fold selection count at the chosen point: in how
+  # many folds each penalised column was estimable, and in how many its
+  # coefficient was non-zero there. Ridge selects nothing, so its count is
+  # NA, as it is where the benchmark arm did not run.
+  chosen_supports <- if (isTRUE(selection$ran)) {
+    computed$supports_by_model[[
+      paste0("benchmark_", selection$selected_lambda_index)
+    ]]
+  } else {
+    NULL
+  }
+  selection$candidate_availability <- data.frame(
+    column = computed$declared_penalised,
+    n_folds = length(labels),
+    n_available = vapply(
+      computed$declared_penalised,
+      function(column) {
+        sum(vapply(
+          computed$penalised_by_fold,
+          function(kept) column %in% kept,
+          logical(1L)
+        ))
+      },
+      integer(1L)
+    ),
+    n_selected = vapply(
+      computed$declared_penalised,
+      function(column) {
+        if (is.null(chosen_supports) || !isTRUE(semantics$selects)) {
+          return(NA_integer_)
+        }
+        sum(vapply(
+          strsplit(chosen_supports$terms, ", ", fixed = TRUE),
+          function(support) column %in% support,
+          logical(1L)
+        ))
+      },
+      integer(1L)
+    ),
+    stringsAsFactors = FALSE
+  )
+  rownames(selection$candidate_availability) <- NULL
 
   equivalence <- .fb_sel_equivalence_level(
     prior_family = resolved$family,
