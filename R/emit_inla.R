@@ -1547,7 +1547,10 @@ emit_inla <- function(
         manifest = manifest,
         # Every bounded prior checked against the fit
         # (R/inla_support_audit.R).
-        support_audit = support_audit
+        support_audit = support_audit,
+        # The versions, threads and seed the fit ran with
+        # (R/reproducibility_record.R).
+        reproducibility = .fb_repro_record_inla(fit, seed)
       )
     ),
     # The INLA fit wears the shared `flexybayes` parent, as the brms fit

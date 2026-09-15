@@ -21,5 +21,6 @@ Brief one-screen summary of a fit produced by
 \code{flexybayes(..., aggregate = "auto"/TRUE)} or \code{fb_brms(..., aggregate = ...)}. The header names the fit's own family
 (\code{aggregated-gaussian}, \code{aggregated-binomial}, \code{aggregated-poisson}).
 Includes the \code{exactness} field and the cell compression ratio (when
-N/K >= 2).
+N/K >= 2), and the versions, threads and seed the fit ran with, as
+\code{\link[=print.flexybayes]{print.flexybayes()}} prints them.
 }

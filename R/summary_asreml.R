@@ -1781,6 +1781,12 @@
   if (!is.null(object$extras$run_time)) {
     cat("  Runtime  :", round(object$extras$run_time, 1), "sec\n")
   }
+  # The versions, threads and seed the fit ran with
+  # (R/reproducibility_record.R).
+  repro <- .fb_repro_lines(object)
+  for (nm in names(repro)) {
+    cat(sprintf("  %-9s: %s\n", nm, repro[[nm]]))
+  }
   invisible(NULL)
 }
 
