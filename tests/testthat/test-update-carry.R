@@ -201,18 +201,23 @@ test_that("a record with no recorded policy refuses by name", {
   d <- data.frame(
     f = factor(rep(c("a", "b", "c"), length.out = n)),
     g = factor(rep(letters[1:6], length.out = n)),
-    # See .uc_data(): a term the re-fit can add without aliasing `f`.
-    h = factor(rep(LETTERS[1:3], length.out = n))
+    # Crossed with `f`, so the re-fit can add it without aliasing `f`. With
+    # `f`'s own period, `h` relabelled `f`: its variance was unidentified,
+    # its mode sat on the default bound, and INLA put the group precision
+    # outside that bound in 8 of 24 re-fits.
+    h = factor(rep(LETTERS[1:3], each = 3L, length.out = n))
   )
   b_g <- stats::rnorm(6L, sd = 0.3)[as.integer(d$g)]
-  # `h` carries an effect (SD 0.5 on the log scale). With none, INLA put the
-  # re-fit's group precision outside the default bound in 8 of 24 runs and the
-  # support audit refused it; with this effect it fitted inside in 24 of 24.
-  b_h <- stats::rnorm(3L, sd = 0.5)[as.integer(d$h)]
-  eta <- 1.2 + 0.4 * (d$f == "b") - 0.3 * (d$f == "c") + b_g + b_h
+  eta <- 1.2 + 0.4 * (d$f == "b") - 0.3 * (d$f == "c") + b_g
   d$y <- stats::rpois(n, exp(eta))
   d
 }
+
+test_that("the count fixture crosses f and h", {
+  d <- .uc_count_data()
+
+  expect_true(all(table(d$f, d$h) > 0L))
+})
 
 test_that("a default Poisson call auto-routes to the aggregated emit", {
   # The premise of the next two tests, asserted rather than assumed.
