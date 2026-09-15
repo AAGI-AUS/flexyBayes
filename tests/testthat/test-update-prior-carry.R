@@ -121,10 +121,17 @@ test_that("an identity update() on an aggregated fit keeps its prior", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   .upc_silence()
+  # A Gaussian model is fitted per row, so the aggregated representation is
+  # exercised on a Poisson model; carrying the prior does not depend on the
+  # family.
   d <- .upc_data()
   d$x <- NULL
+  set.seed(12L)
+  b_block <- stats::rnorm(6L, sd = 0.4)[as.integer(d$Block)]
+  d$y <- stats::rpois(nrow(d), exp(1 + 0.3 * (d$Trt == "b") + b_block))
   fit <- suppressMessages(flexybayes(
-    y ~ Trt, random = ~Block, data = d, verbose = FALSE, mcmc_verbose = FALSE
+    y ~ Trt, random = ~Block, data = d, family = "poisson",
+    verbose = FALSE, mcmc_verbose = FALSE
   ))
   # The premise, asserted rather than assumed: this is the aggregated
   # representation, which returns the same unified summary object as
@@ -155,12 +162,8 @@ test_that("an identity update() on an aggregated fit keeps its prior", {
   expect_equal(unname(v1), unname(v0), tolerance = 0.05)
   expect_identical(.upc_prior_cells(sm1), .upc_prior_cells(sm0))
   # The raw aggregated pieces are still where they were, so nothing that
-  # read them through `$extras$summary` moved.
-  expect_equal(
-    refit$extras$summary$sigma_means,
-    fit$extras$summary$sigma_means,
-    tolerance = 0.05
-  )
+  # read them through `$extras$summary` moved. A Poisson model has no
+  # residual scale, so the random-effect SDs are the pieces to compare.
   expect_equal(
     refit$extras$summary$tau_means,
     fit$extras$summary$tau_means,

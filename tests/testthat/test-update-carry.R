@@ -6,9 +6,10 @@
 # a re-fit that is a different model under the same name. Two gaps closed
 # here:
 #
-#   * the aggregated Gaussian route recorded eleven of the sixteen fields,
-#     so an ordinary `flexybayes(y ~ f, random = ~ g, data = d)` -- which
-#     auto-routes there -- refused update() outright;
+#   * the aggregated route recorded eleven of the sixteen fields, so an
+#     ordinary call that auto-routed there refused update() outright. A
+#     Gaussian call is now fitted per row, and the aggregated record is held
+#     on the count route (section 4);
 #   * no route recorded the missing-response policy, so an `omit` fit would
 #     have re-fitted as the default `augment`, on a different set of rows
 #     from the one it was named after.
@@ -61,13 +62,16 @@ suppressPackageStartupMessages(library(testthat))
 
 
 # ---------------------------------------------------------------- #
-# 1. The aggregated route (F-1)                                     #
+# 1. A default Gaussian call (F-1)                                  #
 # ---------------------------------------------------------------- #
+#
+# The aggregated Gaussian route cannot carry the residual prior, so a
+# default Gaussian call is fitted per row. The test that compared the
+# aggregated Gaussian record with the per-row one would now compare a
+# per-row record with itself; the aggregated record is compared on the count
+# route in section 4.
 
-test_that("a default Gaussian call auto-routes to the aggregated emit", {
-  # The premise of the next test. If this stops holding, the update() test
-  # below stops exercising the aggregated record and silently passes on
-  # the per-row one.
+test_that("a default Gaussian call is fitted per row, with the full record", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   .uc_silence()
@@ -75,30 +79,11 @@ test_that("a default Gaussian call auto-routes to the aggregated emit", {
     y ~ f, random = ~g, data = .uc_data(), verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  expect_s3_class(fit, "flexybayes_aggregated")
-})
-
-test_that("the aggregated record carries the same fields as the others", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  .uc_silence()
-  fit <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_data(), verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
+  expect_false(inherits(fit, "flexybayes_aggregated"))
   expect_identical(names(fit$extras$call_info), .UC_CALL_FIELDS)
-
-  per_row <- suppressMessages(flexybayes(
-    y ~ f, random = ~g, data = .uc_data(), backend = "inla",
-    aggregate = FALSE, verbose = FALSE, mcmc_verbose = FALSE
-  ))
-  expect_identical(
-    names(fit$extras$call_info),
-    names(per_row$extras$call_info)
-  )
 })
 
-test_that("update() re-fits a default aggregated Gaussian fit", {
+test_that("update() re-fits a default Gaussian fit", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   .uc_silence()
