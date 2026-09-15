@@ -1,6 +1,6 @@
 ## Submission
 
-This is a new submission of `flexyBayes`, version 0.11.0.
+This is a new submission of `flexyBayes`, version 0.12.0.
 
 The package specifies mixed models in ASReml-style or brms-style formula
 syntax and estimates them through one of two inference engines, INLA or
@@ -12,8 +12,8 @@ else.
 
 ## Test environments
 
-- local: macOS Tahoe 26.5.2, aarch64-apple-darwin20 (Apple Silicon),
-  R 4.5.2 (2025-10-31). `R CMD check --as-cran` on the built tarball.
+- local: macOS Tahoe 26.6.2, aarch64-apple-darwin20 (Apple Silicon),
+  R 4.6.1 (2026-06-24). `R CMD check --as-cran` on the built tarball.
 
 Windows R-devel (`devtools::check_win_devel()`) and the R-hub
 multi-platform check are to be run by the maintainer immediately before
@@ -23,13 +23,13 @@ unless it happened.
 
 ## R CMD check results
 
-The check artefacts for this release are `00check_v0.11.0_inla-present.log`
-and `00check_v0.11.0_inla-absent.log` -- one run with INLA installed, one
+The check artefacts for this release are `00check_v0.12.0_inla-present.log`
+and `00check_v0.12.0_inla-absent.log` -- one run with INLA installed, one
 without, since the package behaves differently, and is tested differently,
 in each case. Both are produced at the release bake (after the work
 recorded in `WS/review/phase_reports_0100/reports/`) and kept with the
 release records alongside the tarball; that is where to read the exact
-error/warning/note count for 0.11.0, rather than a number quoted here with
+error/warning/note count for 0.12.0, rather than a number quoted here with
 no artefact behind it.
 
 The note below is the one the check produces. It is transcribed from this
