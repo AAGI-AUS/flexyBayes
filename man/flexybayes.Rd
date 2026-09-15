@@ -206,9 +206,12 @@ brms), a user-supplied lower-triangular Cholesky factor
 (\code{vm(group, cov = fb_cov(L, type = "chol"))}; brms),
 or a sparse precision matrix \code{Matrix::dgCMatrix}
 (\code{vm(group, cov = fb_cov(Q, type = "precision"))}; INLA and brms).
-INLA takes the precision, pedigree-precision and block carriers only,
-and refuses a dense or Cholesky carrier by name, pointing at
-\code{solve(V)} or at brms. The bare dense forms \code{vm(group, V = ...)} /
+INLA takes the precision and pedigree-precision carriers only, and
+refuses by name a dense or Cholesky carrier, pointing at \code{solve(V)} or
+at brms, and a block carrier, which INLA would fit with one standard
+deviation per block, pointing at the precision carrier of the
+block-diagonal inverse.
+The bare dense forms \code{vm(group, V = ...)} /
 \code{ped(group, A = ...)} remain the default; the legacy v0.3.7
 keyword carriers (\verb{chol = }, \verb{precision = }, \verb{blocks = },
 \verb{low_rank_factor = }) are deprecated and emit a migration warning.

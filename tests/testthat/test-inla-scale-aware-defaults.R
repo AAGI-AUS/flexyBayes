@@ -427,12 +427,17 @@ test_that("each block of a blocks-format vm() takes the default under a partial 
     yield = stats::rnorm(60L, 50, 5)
   )
   blocks <- list(diag(2), diag(3) + 0.1)
-  emitted <- .sad_quiet(flexybayes(
+  # The gate refuses a blocks carrier on INLA (test-blocks-inla-varcomp.R);
+  # the emitter branch it keeps for a forced override is exercised directly.
+  fb <- fb_from_asreml(
     fixed = yield ~ 1,
     random = ~ vm(geno, cov = fb_cov(blocks, type = "blocks")),
-    data = d, known_matrices = list(blocks = blocks), backend = "inla",
-    prior = fb_prior(sigma ~ uniform(lower = 0, upper = 30)),
-    return_code = TRUE
+    data = d, family = "gaussian", known_matrices = list(blocks = blocks),
+    prior = fb_prior(sigma ~ uniform(lower = 0, upper = 30))
+  )
+  emitted <- .sad_quiet(emit_inla(
+    fb, data = d, known_matrices = list(blocks = blocks),
+    return_code = TRUE, verbose = FALSE
   ))
   expect_equal(emitted$hyper$geno$meta$upper, 5)
   form <- .sad_formula_text(emitted$formula)

@@ -147,9 +147,12 @@
 #'   (`vm(group, cov = fb_cov(L, type = "chol"))`; brms),
 #'   or a sparse precision matrix `Matrix::dgCMatrix`
 #'   (`vm(group, cov = fb_cov(Q, type = "precision"))`; INLA and brms).
-#'   INLA takes the precision, pedigree-precision and block carriers only,
-#'   and refuses a dense or Cholesky carrier by name, pointing at
-#'   `solve(V)` or at brms. The bare dense forms `vm(group, V = ...)` /
+#'   INLA takes the precision and pedigree-precision carriers only, and
+#'   refuses by name a dense or Cholesky carrier, pointing at `solve(V)` or
+#'   at brms, and a block carrier, which INLA would fit with one standard
+#'   deviation per block, pointing at the precision carrier of the
+#'   block-diagonal inverse.
+#'   The bare dense forms `vm(group, V = ...)` /
 #'   `ped(group, A = ...)` remain the default; the legacy v0.3.7
 #'   keyword carriers (`chol = `, `precision = `, `blocks = `,
 #'   `low_rank_factor = `) are deprecated and emit a migration warning.

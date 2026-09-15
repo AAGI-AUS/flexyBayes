@@ -274,10 +274,24 @@ Each is reproducible on this release. Priority is for the MET use case.
     for the scale of its covariate, so the same model can warn or not
     depending on the units the covariate is recorded in. *What is open*: a
     term-aware threshold.
-15. **Blocks-format `vm()` and `ped()` fits on INLA return an empty
-    variance-component table.** The fit completes, and `summary()`'s
-    variance-component table for such a term is empty. The cause has not
-    been diagnosed.
+15. **Blocks-format `vm()` and `ped()` carriers are refused on INLA.** A
+    blocks carrier is one block-diagonal covariance with one standard
+    deviation, and INLA fits each block as its own field with its own
+    standard deviation, so with two or more blocks the fit was a different
+    model, reported as one variance-component row per block. With one block
+    the fit equals the precision carrier of the same matrix. Checked on a
+    30-level pedigree against brms and against the exact posterior, its
+    interval for the relationship standard deviation is 1 to 1.5 per cent
+    narrower at each end and the residual standard deviation sits 0.5 to
+    1.5 per cent low; that is INLA's approximation, and the precision and
+    pedigree-precision carriers show the same. `backend = "inla"` refuses a
+    blocks carrier with `inla_gate_refused` (rule `random_term_type_inla`).
+    *Workaround*: the precision carrier of the block-diagonal inverse,
+    `vm(geno, cov = fb_cov(Q, type = "precision"))` with
+    `Q = Matrix::bdiag(lapply(blocks, solve))`, or the dense carrier of the
+    block-diagonal matrix on brms. *What is open*: a blocks carrier fitted
+    with one shared standard deviation, and an accuracy bound for INLA's
+    variance components.
 16. **A Poisson response that is almost all zeros, with a weakly identified
     group, can crash INLA's program, and `backend = "inla"` refuses it.** On
     a Poisson model with a random intercept over 28 clusters of two and 3

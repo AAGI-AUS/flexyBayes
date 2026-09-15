@@ -930,10 +930,14 @@ print.lgm_refusal <- function(x, ...) {
 # id (mapped to INLA "iid"), spline (mapped to INLA "rw2"), and
 # simple_slope_uncor (two independent iid fields). vm / ped enter the allowlist *conditionally*: the
 # precision and pedigree_sparse_precision formats route through
-# INLA's f(model = "generic0", Cmatrix = Q) interface; the blocks
-# format (v0.3.10) routes through K independent
-# f(<var>_id_block_<k>, model = "generic0", Cmatrix = solve(V_k))
-# calls. The dense and chol formats stay refused on INLA (no
+# INLA's f(model = "generic0", Cmatrix = Q) interface. The blocks format
+# (v0.3.10) is refused here. The emitter writes K independent
+# f(<var>_id_block_<k>, model = "generic0", Cmatrix = solve(V_k)) calls,
+# each with its own precision, which for two or more blocks is not the one
+# block-diagonal covariance the carrier represents; the one-block fit, which
+# equals the precision carrier of the same matrix, did not meet its brms
+# oracle within the tolerance fixed for it (U-VC-1). The emitter branch
+# stays for a forced override. The dense and chol formats stay refused on INLA (no
 # native interface for a user-supplied dense covariance or
 # Cholesky factor) and the user is pointed to the actionable
 # workaround (re-express as precision via solve(V), or route via
@@ -956,16 +960,34 @@ print.lgm_refusal <- function(x, ...) {
     first_label <- .inla_random_term_class_label(first_type)
     fmt <- first$cov_representation$format
     detail <- if (
+      first_type %in% c("vm", "ped") && identical(fmt, "blocks")
+    ) {
+      paste0(
+        "A blocks carrier is refused on INLA. INLA fits each block as its ",
+        "own field with its own standard deviation, which for two or more ",
+        "blocks is not the one block-diagonal covariance the carrier ",
+        "represents, and a carrier of one block is the precision carrier ",
+        "of its matrix. The precision carrier states the covariance with ",
+        "one standard deviation: ",
+        first_type,
+        "(",
+        first$var,
+        ", cov = fb_cov(Q, type = \"precision\")) with ",
+        "Q = Matrix::bdiag(lapply(blocks, solve)) in known_matrices, ",
+        "where `blocks` is the list of block matrices. brms fits the same ",
+        "model through the dense carrier of the block-diagonal matrix."
+      )
+    } else if (
       first_type %in%
         c("vm", "ped") &&
         !is.null(fmt) &&
         fmt %in% c("dense", "chol")
     ) {
       paste0(
-        "INLA accepts vm/ped only with the sparse-precision, ",
-        "pedigree_sparse_precision, or blocks representation ",
-        "(format = \"precision\", \"pedigree_sparse_precision\", ",
-        "or \"blocks\"). The supplied format is \"",
+        "INLA accepts vm/ped only with the sparse-precision or ",
+        "pedigree_sparse_precision representation ",
+        "(format = \"precision\" or \"pedigree_sparse_precision\"). ",
+        "The supplied format is \"",
         fmt,
         "\". Re-express as vm(",
         first$var,
@@ -1063,7 +1085,7 @@ print.lgm_refusal <- function(x, ...) {
       return(FALSE)
     }
     return(
-      cov$format %in% c("precision", "pedigree_sparse_precision", "blocks")
+      cov$format %in% c("precision", "pedigree_sparse_precision")
     )
   }
   FALSE
