@@ -1167,6 +1167,23 @@ emit_inla <- function(
   sectioned <- .fb_inla_sectioned_residual(fb)
   resid_levels <- NULL
   if (!is.null(sectioned)) {
+    # A residual variance per section exists only for a likelihood that has
+    # a residual scale. Poisson and binomial have none, so splitting their
+    # response into one likelihood per section fitted the unsectioned model
+    # under the sectioned model's name. brms refuses the same request.
+    if (is.null(.fb_inla_hyper_keyword(inla_family[[1L]]))) {
+      stop(.fb_refusal_condition(
+        reason_code = "heterogeneous_residual_family_has_no_sigma",
+        message = paste0(
+          "A heterogeneous residual variance was requested for family '",
+          inla_family[[1L]],
+          "', which has no residual scale parameter to vary -- its ",
+          "dispersion is a function of the mean. Model the dispersion ",
+          "directly for that family, or fit a Gaussian on a transformed ",
+          "response."
+        )
+      ))
+    }
     sec_f <- factor(data[[sectioned$var]])
     resid_levels <- levels(sec_f)
     y_vec <- .fb_response_values(fb, data)

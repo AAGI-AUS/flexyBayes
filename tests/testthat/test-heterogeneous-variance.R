@@ -142,6 +142,28 @@ test_that("a heterogeneous residual is refused for a family with no sigma", {
     err, "flexybayes_refusal_heterogeneous_residual_family_has_no_sigma")
 })
 
+test_that("INLA refuses a heterogeneous residual for a family with no residual scale", {
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  # INLA split the response into one Poisson or binomial likelihood per
+  # section, which is the unsectioned model under the sectioned model's
+  # name. The refusal comes before the engine is called.
+  local_mocked_bindings(.inla_call = function(args) stop("the engine was reached"))
+  d <- .het_data()
+  d$cnt <- stats::rpois(nrow(d), 5)
+  d$hit <- stats::rbinom(nrow(d), 1L, 0.4)
+  for (spec in list(c("cnt", "poisson"), c("hit", "binomial"))) {
+    err <- tryCatch(
+      flexybayes(stats::as.formula(paste(spec[[1L]], "~ site")),
+                 random = ~ gen, residual = ~ dsum(~ units | site), data = d,
+                 family = spec[[2L]], backend = "inla", verbose = FALSE),
+      error = function(e) e
+    )
+    expect_s3_class(
+      err, "flexybayes_refusal_heterogeneous_residual_family_has_no_sigma")
+  }
+})
+
 test_that("the scalar sigma prior is retargeted, not left to match nothing", {
   skip_if_not_installed("brms")
   d <- .het_data()
