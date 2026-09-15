@@ -1376,6 +1376,9 @@
   list(
     folds = folds,
     substrates = substrates,
+    # The design every fold was cut from, recorded once: the values the
+    # score contract identifies.
+    design = .fb_sel_scored_design(spec$protected, candidates, data),
     rows = data.table::rbindlist(rows),
     clusters = data.table::rbindlist(by_model),
     by_model = by_model,

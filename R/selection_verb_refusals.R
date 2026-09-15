@@ -15,6 +15,13 @@
 #   selection_decision_invalid          R/fb_decision.R, at construction
 #                                       test-fb-decision.R
 #
+# One code lands with the score contract that identifies values (0.13.0):
+#
+#   selection_score_contract_unverifiable
+#                                       R/fb_select.R,
+#                                       .fb_select_verify_contract()
+#                                       test-fb-select-score-contract.R
+#
 # A registered code with no triggering test is a string, not a refusal.
 
 .populate_refusal_registry_selection_verb <- function() {
@@ -69,6 +76,23 @@
     registered_in_adr = "SPEC v5 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.11.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_score_contract_unverifiable",
+    description = paste0(
+      "fb_select(): an arm's score contract cannot be verified, so its ",
+      "out-of-fold score is not compared with another arm's. A contract is ",
+      "verified when it carries this release's version field, an MD5 hash of ",
+      "the canonical encoding of the values the arm was scored on, and a ",
+      "hash equal to the one recomputed from its fields. A contract written ",
+      "before 0.13.0 carries no version field and a polynomial checksum over ",
+      "column names, which cannot tell a rescaled covariate from the original."
+    ),
+    message_template = "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
+    registered_in_adr = "U-SCORE-1 (DEC-HASH-01)",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
   )
 
   invisible(NULL)
