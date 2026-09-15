@@ -348,3 +348,121 @@ test_that("a fit made by emit_inla() directly is relabelled from its own IR", {
   cells <- cells[order(as.integer(cells$env), as.integer(cells$gen)), ]
   expect_identical(r[[1L]]$level, paste0(cells$gen, ":", cells$env))
 })
+
+
+# --- the table is matched to its specification by identity -------------- #
+#
+# `ID` is the index value INLA placed on each row of a table. A table is the
+# field a term indexed only when those values are, element by element, the
+# ones the specification says its rows carry. A count of rows agrees with a
+# table in another order, and relabelling that table by position attaches
+# every estimate to another level (review finding P2.1).
+
+test_that("a table in another order at the same length is not relabelled by position", {
+  fx <- .ris_fixtures()$at_simple
+  n_gen <- nlevels(fx$data$gen)
+  tab <- .ris_table(n_gen)
+  tab <- tab[rev(seq_len(n_gen)), ]
+  rownames(tab) <- NULL
+  # The row count is the field's, so a check on it sees nothing.
+  expect_identical(nrow(tab), n_gen)
+  expect_warning(
+    r <- .fb_random_inla(
+      .ris_mock_fit(fx$fb, fx$data, list(gen_at_env_E1 = tab))
+    ),
+    "gen (env = E1)",
+    fixed = TRUE
+  )
+  # INLA's own index values are kept, each beside its own estimate.
+  expect_identical(r[[1L]]$level, as.character(rev(seq_len(n_gen))))
+  expect_identical(r[[1L]]$estimate, tab$mean)
+  expect_false(any(r[[1L]]$level %in% levels(fx$data$gen)))
+})
+
+test_that("every specification relabels a table carrying its index values and no permutation of them", {
+  fixtures <- .ris_fixtures()
+  checked <- 0L
+  for (nm in names(fixtures)) {
+    fx <- fixtures[[nm]]
+    specs <- .fb_inla_index_specs(
+      fx$fb,
+      data = fx$data,
+      known_matrices = fx$known_matrices
+    )
+    for (idx in names(specs)) {
+      s <- specs[[idx]]
+      if (is.null(s$levels)) {
+        next
+      }
+      info <- paste(nm, idx)
+      expect_identical(length(s$ids), as.integer(s$n_field), info = info)
+
+      tab <- .ris_table(s$n_field)
+      tab$ID <- s$ids
+      expect_no_warning(
+        r <- .fb_random_inla(.ris_mock_fit(
+          fx$fb, fx$data, stats::setNames(list(tab), idx), fx$known_matrices
+        ))
+      )
+      expect_identical(r[[s$label]]$level, s$levels, info = info)
+      expect_identical(r[[s$label]]$estimate, tab$mean[s$rows], info = info)
+
+      permuted <- tab
+      permuted$ID <- rev(s$ids)
+      expect_false(identical(permuted$ID, tab$ID), info = info)
+      expect_warning(
+        r <- .fb_random_inla(.ris_mock_fit(
+          fx$fb, fx$data, stats::setNames(list(permuted), idx),
+          fx$known_matrices
+        )),
+        s$label,
+        fixed = TRUE
+      )
+      expect_identical(
+        r[[s$label]]$level,
+        as.character(permuted$ID),
+        info = info
+      )
+      checked <- checked + 1L
+    }
+  }
+  # Every generated index of every fixture with levels, none skipped.
+  expect_identical(checked, 23L)
+})
+
+test_that("every specification's index values are the IDs a fitted INLA table carries", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  fixtures <- .ris_fixtures()
+  checked <- 0L
+  for (nm in names(fixtures)) {
+    fx <- fixtures[[nm]]
+    fit <- suppressMessages(emit_inla(
+      fx$fb,
+      data = fx$data,
+      known_matrices = fx$known_matrices,
+      verbose = FALSE
+    ))
+    specs <- .fb_inla_index_specs(
+      fx$fb,
+      data = fit$data,
+      level_labels = fit$level_labels,
+      known_matrices = fx$known_matrices
+    )
+    for (idx in intersect(names(specs), names(fit$inla$summary.random))) {
+      s <- specs[[idx]]
+      if (is.null(s$levels)) {
+        next
+      }
+      expect_identical(
+        as.numeric(fit$inla$summary.random[[idx]]$ID),
+        as.numeric(s$ids),
+        info = paste(nm, idx)
+      )
+      checked <- checked + 1L
+    }
+    expect_no_warning(.fb_random_inla(fit))
+  }
+  expect_identical(checked, 23L)
+})

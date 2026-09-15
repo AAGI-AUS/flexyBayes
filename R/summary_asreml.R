@@ -978,6 +978,21 @@
   rep(NA_real_, nrow(tab))
 }
 
+# .fb_inla_table_ids_match() --- does an engine table carry, row by row, the
+# index values a specification expects.
+#
+# Element-wise on INLA's `ID` column: equal lengths are what makes the
+# comparison element-wise, and are not the check.
+#
+# @noRd
+# @keywords internal
+.fb_inla_table_ids_match <- function(tab, ids) {
+  id <- tab$ID
+  is.numeric(id) &&
+    length(id) == length(ids) &&
+    isTRUE(all(id == ids))
+}
+
 # .fb_random_inla() --- INLA's per-term summaries, lowered.
 #
 # @noRd
@@ -1027,20 +1042,23 @@
     group_label <- relabel(nm)
     spec <- level_specs[[nm]]
     # A term with two index names reads one block of a longer field, so the
-    # spec carries the rows as well as the labels. The shape is checked
-    # rather than assumed: a table of another length is not the field this
-    # term indexed, so it is neither relabelled nor cut to fit, and the
-    # disagreement is reported rather than left to pass as a result.
-    if (!is.null(spec) && nrow(tab) != spec$n_field) {
+    # spec carries the rows as well as the labels. The table is matched to
+    # the field by identity: its `ID` on every row must be the index value
+    # the spec places there, element by element. A row count agrees with a
+    # table in another order, and relabelling that table by position
+    # attaches each estimate to another level. A table that disagrees is not
+    # the field this term indexed, so it is neither relabelled nor cut to
+    # fit, and the disagreement is reported.
+    if (!is.null(spec) && !.fb_inla_table_ids_match(tab, spec$ids)) {
       warning(
         "flexyBayes: the INLA random-effect table for `",
         group_label,
         "` has ",
         nrow(tab),
-        " rows where the term indexes ",
+        " rows whose index values are not, in order, the ",
         spec$n_field,
-        ", so its levels are reported as INLA's integer index rather than ",
-        "matched to the data.",
+        " the term indexes, so its levels are reported as INLA's integer ",
+        "index, unmatched to the data.",
         call. = FALSE
       )
       spec <- NULL

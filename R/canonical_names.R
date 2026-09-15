@@ -314,8 +314,12 @@ register_canonical_mapper <- function(backend, mapper) {
 # One specification: the group ranef() reports the table under; the levels
 # in index order, NULL where there was no data to read them from; the rows of
 # INLA's table those levels cover; the length of the field the index spans;
-# and any index the same f() term reads as `group =` or `replicate =`, which
-# INLA gives no table of its own.
+# any index the same f() term reads as `group =` or `replicate =`, which
+# INLA gives no table of its own; and the index value INLA writes in `ID` on
+# each row of the table, which is how a table is matched to the field by
+# identity. `ID` runs 1..n over a field, and restarts at 1 in every block of
+# a field read with `group =` or `replicate =` (checked on live fits of
+# every type in test-ranef-index-specs.R).
 #
 # @noRd
 # @keywords internal
@@ -324,14 +328,16 @@ register_canonical_mapper <- function(backend, mapper) {
   levels,
   rows = seq_along(levels),
   n_field = length(levels),
-  carries = character(0)
+  carries = character(0),
+  ids = seq_len(n_field)
 ) {
   list(
     label = label,
     levels = levels,
     rows = rows,
     n_field = n_field,
-    carries = carries
+    carries = carries,
+    ids = ids
   )
 }
 
@@ -570,11 +576,14 @@ register_canonical_mapper <- function(backend, mapper) {
     }
     levs <- do.call(paste, c(unname(as.list(cells)), sep = ":"))
   }
+  # `ID` is the row index, restarting at 1 in every column and trial block.
+  n_row <- length(per_var[[1L]])
   stats::setNames(
     list(.fb_inla_index_spec(
       label,
       levs,
-      carries = paste0(c(t$col_var, t$at_var), "_id")
+      carries = paste0(c(t$col_var, t$at_var), "_id"),
+      ids = rep(seq_len(n_row), times = length(levs) %/% max(n_row, 1L))
     )),
     paste0(t$row_var, "_id")
   )
@@ -605,11 +614,12 @@ register_canonical_mapper <- function(backend, mapper) {
 # `rep_R1:block_B1 ...`, and `(Days | Subject)` reported "1" to "36" with the
 # subject identifiers sitting unused on the fit.
 #
-# Each entry is `list(levels, rows, n_field)`: the labels in index order, the
-# rows of the INLA table they cover, and the length of the table the index
-# spans. `rows` is the whole field for a term with one index, and one block
-# of a longer field where two index names share it -- which is how the
-# correlated slope's iid2d is laid out.
+# Each entry is `list(levels, rows, n_field, ids)`: the labels in index
+# order, the rows of the INLA table they cover, the length of the table the
+# index spans, and the `ID` INLA writes on each row of that table. `rows` is
+# the whole field for a term with one index, and one block of a longer field
+# where two index names share it -- which is how the correlated slope's
+# iid2d is laid out.
 #
 # @noRd
 # @keywords internal
@@ -624,7 +634,7 @@ register_canonical_mapper <- function(backend, mapper) {
   }
   specs <- .fb_inla_index_specs(fb, data, level_labels, known_matrices)
   specs <- Filter(function(s) !is.null(s$levels), specs)
-  lapply(specs, function(s) s[c("levels", "rows", "n_field")])
+  lapply(specs, function(s) s[c("levels", "rows", "n_field", "ids")])
 }
 
 .parse_slope_dev_raw <- function(nm, lookup) {
