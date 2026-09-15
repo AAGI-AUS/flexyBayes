@@ -817,9 +817,11 @@
   reuse <- function(level, reason) list(level = level, reason = reason)
   if (identical(axes$workflow, "penalized_optimizer")) {
     return(reuse("tuning_on_scored_folds", paste0(
-      "the optimiser's lambda is chosen on the out-of-fold curve over these ",
-      "folds and the chosen model's score is read off the same curve, so it ",
-      "is not a nested estimate"
+      "the optimiser's tuning point, s = lambda / lambda_max with each ",
+      "fold's lambda_max read on its training rows (lambda itself for ridge, ",
+      "which has no finite lambda_max), is chosen on the out-of-fold curve ",
+      "over these folds and the chosen model's score is read off the same ",
+      "curve, so it is not a nested estimate"
     )))
   }
   if (!identical(axes$workflow, "bayes") || identical(axes$prior, "none")) {
@@ -838,6 +840,17 @@
           ", and the search was not repeated inside the folds, so that ",
           "curve is optimistic"
         )
+      },
+      if (identical(
+        projection$settings$decision_stage_search,
+        "each_fold_training_rows"
+      )) {
+        paste0(
+          "; the decision-stage score searches the terms again on each ",
+          "fold's training rows at that size"
+        )
+      } else {
+        ""
       },
       "; a decision-stage score on the same folds is not a nested estimate"
     )),
@@ -1031,7 +1044,13 @@
             equivalence_reason = arm$equivalence_level$reason,
             covariance_estimand = arm$covariance_estimand,
             provider_version = arm$provider_version,
-            provider_lambda_convention = arm$provider_lambda_convention
+            provider_lambda_convention = arm$provider_lambda_convention,
+            # The optimiser's tuning report: the coordinate the point was
+            # chosen on, the chosen point on it, and the lambda that point is
+            # on each fold. NULL on an arm with no tuning.
+            tuning_scale = arm$selection$tuning_scale,
+            selected_s = arm$selection$selected_s,
+            selected_lambda_canonical = arm$selection$selected_lambda_canonical
           )
         })
       },
@@ -1102,9 +1121,12 @@
 # whole-sample reference fit. A scale learned on every row would let an
 # assessment row's covariate values set the training fold's shrinkage.
 #
-# Where the decision is a projection, `decision_terms` names the chosen
-# submodel, and each fold's reference is projected onto it and scored on the
-# same assessment rows: the decision stage's out-of-fold score.
+# Where the decision is a projection, `decision_search` carries the size the
+# whole-sample decision chose and the search's settings. Each fold's
+# reference is searched again to that size, projected onto the terms its own
+# search chose, and scored on the same assessment rows: the decision stage's
+# out-of-fold score. Projecting every fold onto the whole-sample choice would
+# score a choice each fold's assessment rows helped make.
 .fb_select_reference_cv <- function(base,
                                     candidates,
                                     penalty,
@@ -1115,7 +1137,7 @@
                                     engine,
                                     seed,
                                     control = NULL,
-                                    decision_terms = NULL) {
+                                    decision_search = NULL) {
   refit <- function(fold_data, fixed, fit_seed, fold_state) {
     extra <- setdiff(
       attr(stats::terms(fixed, data = fold_data), "term.labels"),
@@ -1153,16 +1175,19 @@
   }
 
   derived <- NULL
-  if (length(decision_terms) > 0L) {
+  if (!is.null(decision_search) && decision_search$size > 0L) {
     derived <- list(
       projected_submodel = function(fits, inputs, fit_seed) {
-        .fb_sel_projected_predictive(
+        terms <- .fb_sel_fold_search(fits$full, decision_search, fit_seed)
+        predictive <- .fb_sel_projected_predictive(
           fits$full,
           newdata = inputs$assess_data,
-          predictor_terms = decision_terms,
+          predictor_terms = terms,
           response = base$fb$response,
           seed = fit_seed
         )
+        predictive$terms <- terms
+        predictive
       }
     )
   }
@@ -1684,7 +1709,8 @@
         arm = "bayes", model = "projected_submodel", clusters = cv$clusters,
         contract = contract_of(cv, "decision"),
         label = paste0(
-          "the chosen submodel, projected from each fold's reference and ",
+          "the submodel at the chosen size, its terms searched again on each ",
+          "fold's training rows, projected from that fold's reference and ",
           "scored on that fold's assessment rows"
         )
       )
@@ -1712,7 +1738,11 @@
       contract = contract_of(
         benchmark$cv, "decision", arms$glmnet$scoring_unit
       ),
-      label = "the optimiser's lambda, chosen on these folds"
+      label = paste0(
+        "the optimiser's tuning point on ",
+        arms$glmnet$selection$tuning_scale %||% "lambda",
+        ", chosen on these folds"
+      )
     )
   }
 
@@ -1933,6 +1963,12 @@
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
 #'   block and are never penalised.
 #' @param candidates A one-sided formula over columns of the base fit's data.
+#'   A transform whose value on a row depends on other rows, in the
+#'   candidates or in the base's fixed part, is learned inside each fold or
+#'   refused: the benchmark workflows learn `scale()`, `poly()`,
+#'   `splines::ns()` and `splines::bs()` on each fold's training rows and
+#'   refuse any other such transform, and the Bayesian route's fold refits
+#'   refuse every one, with `selection_formula_transform_not_fold_local`.
 #' @param penalty `NULL` (every candidate protected) or an [fb_penalty()]
 #'   declaring the joint shrinkage prior over the candidate block.
 #' @param workflow `"bayes"` (default), `"penalized_optimizer"` or
@@ -1955,7 +1991,11 @@
 #'   requires; without it the certificate says so by name rather than
 #'   claiming a comparison nobody made. It costs one reference refit per
 #'   fold per model, and each fold's preprocessing and prior are learned on
-#'   that fold's analysis rows.
+#'   that fold's analysis rows. A projection's submodel is scored with terms
+#'   searched again on each fold's reference fit, at the size the
+#'   whole-sample decision chose. The `glmnet` arm's tuning point is reported
+#'   as `s = lambda / lambda_max`, each fold's `lambda_max` read on its
+#'   training rows, beside the lambda that point is on each fold.
 #' @param resamples An [fb_resamples()] specification.
 #' @param prediction `"new_cluster"` (default) or `"known_cluster"`. A
 #'   held-out cluster's own effect is not estimable from the training rows,
@@ -2448,6 +2488,18 @@ fb_select <- function(base,
   if (isTRUE(benchmark)) {
     .fb_sel_require_relabelable(base$fb, prediction)
   }
+  # A formula variable whose value on a row depends on other rows would let a
+  # fold's training rows read its assessment rows. The projection's k-fold
+  # search and the out-of-fold score `benchmark = TRUE` asks for both refit
+  # the formula on each fold, so it refuses here, before the reference model
+  # is sampled.
+  if (identical(decision$method, "projection") || isTRUE(benchmark)) {
+    .fb_sel_require_fold_local_formula(
+      list(protected, candidates),
+      base$data,
+      .fb_sel_folds(resamples, base$data, seed = seed)
+    )
+  }
 
   cost <- .fb_sel_cost_estimate(
     base,
@@ -2545,7 +2597,20 @@ fb_select <- function(base,
       engine = engine,
       seed = seed,
       control = reference_args$control,
-      decision_terms = projection$chosen_terms
+      # The decision stage searches each fold's submodel terms again on that
+      # fold's reference fit, at the size the whole-sample decision chose and
+      # with the whole-sample search's own settings.
+      decision_search = if (is.null(projection)) {
+        NULL
+      } else {
+        list(
+          size = projection$chosen_size,
+          forced = projection$forced_terms,
+          method = projection$settings$search,
+          nterms_max = projection$settings$nterms_max,
+          nclusters = .FB_SEL_PROJECTION_NCLUSTERS
+        )
+      }
     )
     bench <- .fb_select_benchmark(
       base = base,
@@ -2560,6 +2625,19 @@ fb_select <- function(base,
       decision = decision,
       shared_predictive_table = !is.null(reference_cv$aggregated)
     )
+  }
+  # Where the decision stage's submodel terms were searched, read off the
+  # out-of-fold run: on each fold's training rows where one scored the
+  # submodel, and nowhere where none did.
+  if (!is.null(projection)) {
+    projection$decision_stage_terms <- reference_cv$derived_terms
+    projection$settings$decision_stage_search <- if (
+      length(reference_cv$derived_terms) > 0L
+    ) {
+      "each_fold_training_rows"
+    } else {
+      "none"
+    }
   }
 
   .fb_select_assemble(
@@ -3469,13 +3547,31 @@ print.fb_select_certificate <- function(x, ...) {
     cat("  projection : ", x$projection$search,
         ", validate_search ", x$projection$validate_search,
         if (isTRUE(x$projection$optimistic)) " (OPTIMISTIC)" else "",
+        if (!is.null(x$projection$decision_stage_search)) {
+          paste0(", decision-stage search ", x$projection$decision_stage_search)
+        } else {
+          ""
+        },
         "\n", sep = "")
   }
   if (length(x$benchmark) > 0L) {
     cat("  benchmark  :\n", sep = "")
     for (nm in names(x$benchmark)) {
-      cat("    ", nm, ": ", x$benchmark[[nm]]$equivalence_level, "\n",
-          sep = "")
+      arm <- x$benchmark[[nm]]
+      cat("    ", nm, ": ", arm$equivalence_level,
+          if (!is.null(arm$tuning_scale)) {
+            # Ridge has no `s`; its point is one lambda on every fold.
+            point <- if (is.na(arm$selected_s)) {
+              unique(arm$selected_lambda_canonical)
+            } else {
+              arm$selected_s
+            }
+            paste0(", tuned on ", arm$tuning_scale, " = ",
+                   format(point, digits = 4L))
+          } else {
+            ""
+          },
+          "\n", sep = "")
     }
   }
   mo <- x$mode_oracle

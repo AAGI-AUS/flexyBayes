@@ -839,6 +839,16 @@ test_that("a projection benchmark scores the chosen submodel at the decision sta
     ref$arms$score[ref$arms$arm == "bayes"]
   )))
   expect_true("projected_submodel" %in% sel$clusters$model)
+  # The chosen submodel's terms were searched again on each fold's training
+  # rows, and the certificate says where.
+  expect_identical(
+    cert$projection$decision_stage_search, "each_fold_training_rows"
+  )
+  expect_length(sel$projection$decision_stage_terms, 3L)
+  expect_match(
+    dec$arms$label[dec$arms$arm == "bayes"], "each fold's training rows",
+    fixed = TRUE
+  )
 
   # The out-of-fold score learned its constants per fold, and the search
   # inside the provider is named as the place it did not.

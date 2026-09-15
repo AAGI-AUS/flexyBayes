@@ -512,9 +512,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # Fold isolation adds one: a random term that cannot take a new level
   # under prediction = "new_cluster"
   # (selection_new_cluster_not_representable) (= 206).
+  #
+  # The second fold-isolation unit adds one: a formula variable whose value
+  # on a row depends on other rows
+  # (selection_formula_transform_not_fold_local) (= 207).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 206L)
+  expect_equal(length(entries), 207L)
   expect_true("prior_support_violated" %in% entries)
   expect_true("response_not_finite" %in% entries)
   expect_true("streamed_rows_not_retained" %in% entries)

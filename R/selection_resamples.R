@@ -405,9 +405,31 @@
 # inside each fold would instead let a level absent from a training fold
 # silently renumber every dummy column, so that the same coefficient means a
 # different contrast in different folds.
-.fb_sel_design <- function(formula, data) {
+#
+# `train_rows` makes a data-dependent transform in the formula fold-local.
+# `scale()`, `poly()`, `splines::ns()` and `splines::bs()` learn parameters
+# from the rows they are evaluated on, so a matrix built over all rows gives
+# the training rows parameters their assessment rows helped set. R's safe
+# prediction is the rule used: a model frame built on the training rows alone
+# writes each transform's learned parameters into its terms' `predvars`
+# (`makepredictcall()`), and evaluating those `predvars` over all rows applies
+# the training parameters to every row. Levels and contrasts stay the whole
+# data's. A transform no method covers is refused by
+# `.fb_sel_require_fold_local()`.
+.fb_sel_design <- function(formula, data, train_rows = NULL) {
   mf <- stats::model.frame(formula, data = data, na.action = stats::na.pass)
   tt <- stats::terms(mf)
+  if (!is.null(train_rows)) {
+    train_terms <- stats::terms(stats::model.frame(
+      formula,
+      data = data[train_rows, , drop = FALSE],
+      na.action = stats::na.pass
+    ))
+    if (!identical(attr(train_terms, "predvars"), attr(tt, "predvars"))) {
+      tt <- train_terms
+      mf <- stats::model.frame(tt, data = data, na.action = stats::na.pass)
+    }
+  }
   X <- stats::model.matrix(tt, mf)
   list(
     X = X,
@@ -416,6 +438,128 @@
     xlev = stats::.getXlevels(tt, mf),
     assign = attr(X, "assign")
   )
+}
+
+
+# .fb_sel_variable_rows() --- the value of a formula variable on some rows, as
+# a plain matrix: factor labels as characters, and no attribute beyond its
+# dimension, so values computed on different row sets compare by identity.
+.fb_sel_variable_rows <- function(value, rows) {
+  if (is.factor(value)) {
+    value <- as.character(value)
+  }
+  unname(as.matrix(value))[rows, , drop = FALSE]
+}
+
+
+# .fb_sel_rows_read() --- the formula variables whose value on a row depends
+# on other rows.
+#
+# `calls` is a terms object's `predvars` or `variables` attribute. A call
+# passes when, evaluated on the training rows alone and on the assessment
+# rows alone, it takes the values it takes on those rows over all rows. A
+# column name is a row's own value and is not evaluated. A call that fails to
+# evaluate on a subset of rows is reported with the error it raised.
+.fb_sel_rows_read <- function(calls, data, split, env) {
+  read <- character(0)
+  for (v in as.list(calls)[-1L]) {
+    if (!is.call(v)) {
+      next
+    }
+    whole <- eval(v, data, env)
+    for (rows in list(split$train_rows, split$assess_rows)) {
+      alone <- tryCatch(
+        eval(v, data[rows, , drop = FALSE], env),
+        error = function(e) e
+      )
+      label <- paste(deparse(v), collapse = " ")
+      if (inherits(alone, "error")) {
+        read <- c(read, paste0(
+          label, " (evaluating it on those rows alone failed: ",
+          conditionMessage(alone), ")"
+        ))
+        break
+      }
+      if (!identical(
+        .fb_sel_variable_rows(alone, seq_along(rows)),
+        .fb_sel_variable_rows(whole, rows)
+      )) {
+        read <- c(read, label)
+        break
+      }
+    }
+  }
+  read
+}
+
+
+# .fb_sel_require_fold_local() --- refuse a formula variable a fold would
+# read from rows other than the one it describes.
+#
+# On the benchmark route the terms carry the `predvars` learned on the
+# training rows (`.fb_sel_design()`), so `scale()`, `poly()`,
+# `splines::ns()` and `splines::bs()` pass and a transform with no
+# `makepredictcall()` method, such as `I(x - mean(x))`, `rank(x)` or
+# `cut(x, 3)`, refuses. On the Bayesian route the engines evaluate the
+# formula text over the rows they are handed, so the raw `variables` are
+# checked and every such transform refuses.
+.fb_sel_require_fold_local <- function(terms_list,
+                                       data,
+                                       split,
+                                       route = c("benchmark", "bayes")) {
+  route <- match.arg(route)
+  read <- character(0)
+  for (tt in terms_list) {
+    if (is.null(tt)) {
+      next
+    }
+    calls <- if (identical(route, "benchmark")) {
+      attr(tt, "predvars") %||% attr(tt, "variables")
+    } else {
+      attr(tt, "variables")
+    }
+    read <- c(read, .fb_sel_rows_read(calls, data, split, environment(tt)))
+  }
+  read <- unique(read)
+  if (length(read) == 0L) {
+    return(invisible(NULL))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "selection_formula_transform_not_fold_local",
+    message = if (identical(route, "benchmark")) {
+      paste0(
+        "fb_select(): on fold ", split$label, ", the formula variable(s) ",
+        paste(read, collapse = ", "),
+        " take different values when evaluated on the training rows alone, ",
+        "or on the assessment rows alone, than over all rows, so the ",
+        "training rows' design would read the assessment rows. This route ",
+        "learns scale(), poly(), splines::ns() and splines::bs() on each ",
+        "fold's training rows and applies them to its assessment rows; a ",
+        "transform with no such rule refuses. Write the transform as a rule ",
+        "of one row at a time, such as I(z^2) or log(z), or name the ",
+        "untransformed column."
+      )
+    } else {
+      paste0(
+        "fb_select(): the Bayesian route refits the model formula on every ",
+        "fold, and the formula variable(s) ", paste(read, collapse = ", "),
+        " take different values when evaluated on fold ", split$label,
+        "'s training rows alone, or its assessment rows alone, than over ",
+        "all rows. The engines evaluate the formula over the rows they are ",
+        "handed, and an INLA fold refit is handed the training and ",
+        "assessment rows together, so the training rows' design would read ",
+        "the assessment rows. Name the untransformed column (a penalty's ",
+        "candidate standardisation is learned inside each fold), write the ",
+        "transform as a rule of one row at a time, such as I(z^2) or ",
+        "log(z), or score the model with workflow = ",
+        "\"unpenalized_benchmark\", which learns scale(), poly(), ",
+        "splines::ns() and splines::bs() on each fold's training rows."
+      )
+    },
+    transforms = read,
+    fold_label = split$label,
+    route = route
+  ))
 }
 
 
@@ -904,12 +1048,19 @@
     y <- y - off
   }
 
-  protected_design <- .fb_sel_design(protected, data)
+  # A formula transform learns its parameters on the training rows and is
+  # applied to every row; one that cannot be refuses by name.
+  protected_design <- .fb_sel_design(protected, data, split$train_rows)
   candidate_design <- if (is.null(candidates)) {
     list(X = matrix(numeric(0), nrow = nrow(data), ncol = 0L))
   } else {
-    .fb_sel_design(candidates, data)
+    .fb_sel_design(candidates, data, split$train_rows)
   }
+  .fb_sel_require_fold_local(
+    list(protected_design$terms, candidate_design$terms),
+    data,
+    split
+  )
   .fb_sel_check_fold_levels(protected_design, split)
   if (!is.null(candidates)) {
     .fb_sel_check_fold_levels(candidate_design, split)

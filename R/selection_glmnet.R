@@ -730,25 +730,33 @@
 
 # --- the lambda grid ---------------------------------------------------- #
 
-# .fb_sel_glmnet_grid() --- the family-canonical path coordinate, fixed once
-# before the folds.
+# .fb_sel_glmnet_grid() --- the path coordinate of every fold, fixed before
+# any fold is fitted.
 #
-# A grid rebuilt inside each fold would make "the same lambda" mean a
-# different problem on each of them, and the scores would be averaged across
-# points that are not the same point. For a family with an L1 part the
-# anchor is the smallest canonical lambda at which every coefficient is zero,
-# taken as the largest such value across folds; for ridge, which has no
-# finite null anchor (v3 section 7), the grid is decades either side of the
-# prior's own canonical lambda.
+# For a family with an L1 part the tuning coordinate is s = lambda /
+# lambda_max, one data-free sequence from 1 down to `lambda_min_ratio`, and
+# each fold's lambdas are that sequence times the fold's own lambda_max: the
+# smallest canonical lambda at which every coefficient of the fold's
+# residualised training payload is zero. "The same point" on two folds is the
+# same fraction of each fold's own null anchor, and a fold's grid reads its
+# training rows and nothing else. One grid anchored at the largest lambda_max
+# across folds put each fold's grid where the other folds' training rows set
+# it, and those rows are its assessment rows.
 #
-# The anchor reads training rows only. It is computed from each fold's
-# residualised payload, which is built from that fold's training rows alone,
-# so a common grid is not a common leak.
+# Ridge has no finite null anchor (v3 section 7). Its grid is decades either
+# side of the prior's own canonical lambda, the same on every fold, and its
+# tuning coordinate is lambda itself.
 .fb_sel_glmnet_grid <- function(parts_by_fold, penalty, decision) {
   alpha <- penalty$alpha_composite
   anchor <- penalty$lambda_composite
+  labels <- names(parts_by_fold)
   if (alpha > 0) {
-    lambda_max <- max(vapply(
+    s <- exp(seq(
+      0,
+      log(decision$lambda_min_ratio),
+      length.out = decision$n_lambda
+    ))
+    lambda_max <- vapply(
       parts_by_fold,
       function(parts) {
         payload <- parts$payload
@@ -758,19 +766,30 @@
         max(abs(drop(crossprod(payload$x, payload$y)))) / alpha
       },
       numeric(1L)
-    ))
-    if (!is.finite(lambda_max) || lambda_max <= 0) {
-      lambda_max <- anchor
-    }
-    grid <- exp(seq(
-      log(lambda_max),
-      log(lambda_max * decision$lambda_min_ratio),
-      length.out = decision$n_lambda
-    ))
+    )
+    # A fold whose payload gives no finite positive anchor takes the declared
+    # lambda as its anchor, as the one shared grid did.
+    lambda_max[!is.finite(lambda_max) | lambda_max <= 0] <- anchor
+    lambda <- lapply(lambda_max, function(m) m * s)
+    tuning_scale <- "s = lambda / lambda_max"
   } else {
-    grid <- anchor * 10^seq(2, -2, length.out = decision$n_lambda)
+    common <- sort(
+      unique(c(anchor * 10^seq(2, -2, length.out = decision$n_lambda), anchor)),
+      decreasing = TRUE
+    )
+    s <- rep(NA_real_, length(common))
+    lambda_max <- rep(NA_real_, length(parts_by_fold))
+    lambda <- rep(list(common), length(parts_by_fold))
+    tuning_scale <- "lambda_canonical"
   }
-  sort(unique(c(grid, anchor)), decreasing = TRUE)
+  names(lambda_max) <- labels
+  names(lambda) <- labels
+  list(
+    tuning_scale = tuning_scale,
+    s = s,
+    lambda_max = lambda_max,
+    lambda = lambda
+  )
 }
 
 
@@ -852,9 +871,15 @@
     })
 
     grid <- .fb_sel_glmnet_grid(parts_by_fold, penalty, decision)
-    arms <- list(fixed = penalty$lambda_composite)
+    # The lambdas of each arm, one vector per fold. The fixed arm is the one
+    # canonical point the declared hyperparameters name, the same on every
+    # fold; a benchmark point is one `s`, and a different lambda on each fold.
+    arms <- list(fixed = lapply(
+      stats::setNames(labels, labels),
+      function(label) penalty$lambda_composite
+    ))
     if (isTRUE(decision$benchmark)) {
-      arms$benchmark <- grid
+      arms$benchmark <- grid$lambda
     }
 
     coefficients <- list()
@@ -872,11 +897,15 @@
     supports_by_model <- list()
 
     for (arm in names(arms)) {
-      lambdas <- arms[[arm]]
-      for (index in seq_along(lambdas)) {
-        lambda_canonical <- lambdas[[index]]
+      for (index in seq_along(arms[[arm]][[1L]])) {
         model <- paste0(arm, "_", index)
         for (label in labels) {
+          lambda_canonical <- arms[[arm]][[label]][[index]]
+          s_point <- if (identical(arm, "benchmark")) {
+            grid$s[[index]]
+          } else {
+            lambda_canonical / grid$lambda_max[[label]]
+          }
           s <- substrates[[label]]
           parts <- parts_by_fold[[label]]
           solution <- .fb_sel_glmnet_fold_solution(
@@ -953,6 +982,9 @@
               alpha_glmnet = solution$alpha_glmnet,
               path_parameter = semantics$path_parameter,
               null_anchor = semantics$null_anchor,
+              tuning_scale = grid$tuning_scale,
+              s = s_point,
+              lambda_max = grid$lambda_max[[label]],
               fold = label
             )
           nonzero <- names(
@@ -962,6 +994,7 @@
             arm = arm,
             lambda_index = index,
             lambda_canonical = lambda_canonical,
+            s = s_point,
             fold = label,
             n_nonzero = length(nonzero),
             effective_df = .fb_sel_glmnet_effective_df(
@@ -1130,7 +1163,8 @@
     data.table::data.table(
       model = model,
       lambda_index = index,
-      lambda_canonical = support_rows$lambda_canonical[[1L]],
+      # One `s` on every fold; its lambda differs between folds.
+      s = support_rows$s[[1L]],
       score = summary$score,
       se = summary$se,
       n_units = summary$n_units,
@@ -1163,7 +1197,18 @@
     unit = "cluster",
     selected_model = chosen$selected,
     selected_lambda_index = chosen_index,
-    selected_lambda_canonical = scores$lambda_canonical[[chosen$index]],
+    # The tuning report. The coordinate the point was chosen on, the chosen
+    # point on it, each fold's training-row lambda_max, and the lambda the
+    # point is on each fold: that fold's lambda_max times `s`. For ridge the
+    # coordinate is lambda itself, and the lambda is the same on every fold.
+    tuning_scale = computed$grid$tuning_scale,
+    selected_s = scores$s[[chosen$index]],
+    lambda_max = computed$grid$lambda_max,
+    selected_lambda_canonical = vapply(
+      computed$arms$benchmark,
+      function(lambda) lambda[[chosen_index]],
+      numeric(1L)
+    ),
     minimum_model = chosen$minimum,
     threshold = chosen$threshold,
     selected_terms = selected_terms,

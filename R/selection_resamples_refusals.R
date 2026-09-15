@@ -133,6 +133,27 @@
     since_version = "0.10.0.9000"
   )
 
+  # Thrown by R/selection_resamples.R on the benchmark substrate and by
+  # R/selection_bayes_cv.R and R/fb_select.R on the Bayesian route; triggered
+  # in tests/testthat/test-selection-fold-isolation.R.
+  .register_refusal(
+    reason_code = "selection_formula_transform_not_fold_local",
+    description = paste0(
+      "fb_select(): a formula variable of the base or the candidates takes ",
+      "a value on a row that depends on other rows, such as scale(x), ",
+      "poly(x, 2) or I(x - mean(x)), so a fold's training rows would read ",
+      "its assessment rows. The benchmark route learns scale(), poly(), ",
+      "splines::ns() and splines::bs() on each fold's training rows and ",
+      "refuses any other such transform; the Bayesian route, whose engines ",
+      "evaluate the formula over the rows they are handed, refuses every ",
+      "one. The refusal names the variables before the fold is fitted."
+    ),
+    message_template = "fb_select(): on fold %s these formula variables read other rows: %s.",
+    registered_in_adr = "SPEC v3 section 4.1",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
+  )
+
   .register_refusal(
     reason_code = "selection_scoring_unit_undeclared",
     description = paste0(

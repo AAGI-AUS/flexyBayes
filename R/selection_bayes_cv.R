@@ -235,6 +235,26 @@
 }
 
 
+# .fb_sel_require_fold_local_formula() --- refuse, before anything is fitted,
+# a formula variable whose value on a row depends on other rows, on a route
+# that refits the formula text on each fold.
+#
+# The engines evaluate that text over the rows they are handed: an INLA fold
+# refit over the training and assessment rows together, so `scale(z1)` there
+# is centred with the assessment rows included. Each fold of `folds` is
+# checked, protected part and candidates alike.
+.fb_sel_require_fold_local_formula <- function(formulas, data, folds) {
+  terms_list <- lapply(
+    Filter(Negate(is.null), formulas),
+    function(f) stats::terms(f, data = data)
+  )
+  for (split in folds) {
+    .fb_sel_require_fold_local(terms_list, data, split, route = "bayes")
+  }
+  invisible(NULL)
+}
+
+
 # .fb_sel_bayes_base_spec() --- the response, the protected fixed part, the
 # grouping variables and the data, read off a fitted base.
 #
@@ -1156,6 +1176,13 @@
   )
 
   folds <- .fb_sel_folds(resamples, data, seed = seed)
+  # Before the cost probe, which fits: a formula variable whose value on a row
+  # depends on other rows refuses by name.
+  .fb_sel_require_fold_local_formula(
+    list(spec$protected, candidates),
+    data,
+    folds
+  )
 
   cluster_vars <- if (is.null(cluster)) resamples$unit else cluster
   .fb_sel_require_columns(data, cluster_vars, "cluster")
@@ -1211,6 +1238,7 @@
   rows <- list()
   clusters <- list()
   substrates <- list()
+  derived_terms <- list()
   fit_seconds <- numeric(0)
   base_seed <- as.integer(seed %||% 0L)
   t_start <- proc.time()
@@ -1307,6 +1335,12 @@
       name <- names(derived_models)[[k]]
       fit_seed <- base_seed + 1000L * f + length(sets) + k
       predictive <- derived_models[[k]](fold_fits, inputs, fit_seed)
+      if (!is.null(predictive$terms)) {
+        derived_terms[[split$label]] <- c(
+          derived_terms[[split$label]],
+          stats::setNames(list(predictive$terms), name)
+        )
+      }
       scored <- .fb_sel_bayes_score_fold(
         inputs$assessment$y,
         predictive$mu,
@@ -1369,6 +1403,9 @@
       by_fold = lapply(substrates, function(z) z$preprocessing)
     ),
     n_draws = n_draws,
+    # Per fold, the terms each decision product was built from where it
+    # chose them on that fold.
+    derived_terms = derived_terms,
     fits_per_fold = length(sets),
     timing = list(
       estimate_seconds = cost$seconds,
