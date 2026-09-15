@@ -926,7 +926,8 @@ for (fm in .s3c_families) {
        # Carries the dsum residual, so the count arm refuses for the same
        # reason the dsum_residual row above does.
        poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
-       src = paste0("capability matrix: full MET fits | fits, with the ",
+       src = paste0("capability matrix: baseline heteroscedastic MET fits | ",
+                    "fits, with the ",
                     "heterogeneous-residual row's no-residual-scale note")),
   list(key = "corh", call = "random = ~ corh(f):g", inla = "refuse_typed",
        brms = "refuse_typed",

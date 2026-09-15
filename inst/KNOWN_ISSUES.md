@@ -42,7 +42,7 @@ which had drifted from the emit layer in four places.
 | Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits | `(0 + f \| g)` on brms. Estimated correlation matrices are fitted on brms only: INLA refuses by name (`correlated_covariance_requires_brms`) and `backend = "auto"` routes to brms. The INLA route was one iidKd field under a joint Wishart prior, and paired against ASReml 4.2.0.392 on `agridat::besag.met` it returned a genetic correlation of 0.142 where ASReml returns 0.930, while eight identical calls on the response rescaled by ten none converged and returned correlations from -0.894 to +0.686 (finding O04). The correlated sibling of the diagonal structure -- `k(k+1)/2` parameters against `diag()`'s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |
 | Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA carries it through the multiple-likelihood interface, a matrix response with one Gaussian family per level; brms lowers it to distributional regression on log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for families with no residual scale; `at(f, level):units` conditions on selected levels, which is a different model, and refuses. |
-| Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The full multi-environment-trial model. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
+| Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model, shown on small simulated data; unstructured and factor-analytic genotype-by-environment covariance do not combine with the sectioned residual on either engine. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | fits | refuses | Each common factor is one latent field entered per level of `f` as a SCALED COPY, and INLA's copy scaling IS the loading, so the loadings carry a posterior rather than a point estimate. Factor j is anchored at level j, the zero upper triangle ASReml uses against rotation, so an anchored loading is absent from the summary rather than reported as 1. Verified at k = 1 and k = 2. brms group-level effects are either uncorrelated or fully unstructured, with no factor-analytic form between. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. Under `fb_select()`: shrinkage yes, projection no. A joint shrinkage prior over candidate fixed effects fits on a base carrying one of these terms, but the term lowers to `(1 \| gr(g, cov = K))` and projpred refuses a function call on the right-hand side of a group-term `\|` (probe C5), so the projection decision is red. `decision = "auto"`, the default, resolves to `full` there; naming `"projection"` refuses before the reference model is sampled. |
@@ -97,25 +97,23 @@ Where each stands today:
   (`tests/testthat/test-met-combined.R`) the fit returns every R-hat below
   1.05, no divergent transitions, and per-environment residual variances in
   the order they were simulated in. The capability row reads `fits` on that
-  evidence, and `auto` reaches brms for this class. What is still worth
+  evidence. What is still worth
   saying is that `us(env):gen` is a different matter -- at one observation
   per genotype-environment cell its covariance diagonal is confounded with
   the residual, and a longer chain does not separate them.
-- **INLA** refuses both by name. Interaction random effects are addressable
-  in principle (an `iid` effect over the combined factor), and INLA
-  collapses the finest strata on this model class, which is why the gate
-  refuses rather than reporting a zero. The 107-stratum residual is **not**
-  cleanly addressable: INLA integrates over hyperparameters numerically,
-  which is tractable for roughly 15 to 20 of them, and 5 + 107 = 112 is far
-  beyond that. This is a property of INLA, not of this code.
+- **INLA** fits both, separately and together, on the small simulated
+  multi-environment data of `tests/testthat/test-sectioned-residual-inla.R`,
+  where it recovers the genotype, genotype-by-environment and per-section
+  residual standard deviations. Scale is the limit. INLA integrates over its
+  hyperparameters numerically, and `lgm_gate()` refuses a model with more
+  than 15 of them by name (`hyperparam_budget`), so a residual with one
+  variance for each of 107 environments is refused on INLA.
 
-The direction of travel: **make brms the full-MET workhorse** -- the emit and
-the live fit are both in place, so the remaining work is scale (the verified
-fit is 120 rows, not a national trial series) -- and give **INLA** the
-interaction random effects
-plus a *hierarchically shrunk* residual (a prior
-`log sigma^2_env ~ Normal(mu, tau)` replacing 107 free hyperparameters with
-two, a model ASReml cannot fit and INLA can).
+The direction of travel: take the baseline MET model to realistic scale on
+**brms**, where the emit and the live fit are both in place (the verified fit
+is 120 rows, not a national trial series), and give **INLA** a
+*hierarchically shrunk* residual, a prior `log sigma^2_env ~ Normal(mu, tau)`
+that replaces 107 free hyperparameters with two.
 
 ## Open issues (contributions welcome)
 

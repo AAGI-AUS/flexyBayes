@@ -97,8 +97,8 @@
     ),
     list(
       model_class = paste(
-        "Combined interaction random effects and heterogeneous residual",
-        "(full MET)"
+        "Baseline heteroscedastic MET: iid genotype, iid",
+        "genotype-by-environment and a sectioned residual"
       ),
       inla = paste0('flexybayes(y ~ env, random = ~ gen + gen:env, ',
                     'residual = ~ dsum(~ units | env), data = d_cap)'),

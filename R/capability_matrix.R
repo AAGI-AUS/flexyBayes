@@ -183,13 +183,16 @@
     ),
     list(
       model_class = paste(
-        "Combined interaction random effects and heterogeneous residual",
-        "(full MET)"
+        "Baseline heteroscedastic MET: iid genotype, iid",
+        "genotype-by-environment and a sectioned residual"
       ),
       spelling = "`random = ~ gen + gen:env` with the `dsum` residual",
       inla = "fits",
       brms = "fits",
-      note = "The full multi-environment-trial model. Both halves refused on
+      note = "The baseline multi-environment-trial model, shown on small
+        simulated data; unstructured and factor-analytic
+        genotype-by-environment covariance do not combine with the sectioned
+        residual on either engine. Both halves refused on
         INLA before 0.10.0.9000, so the combination was unreachable there.
         It now recovers the genotype, genotype-by-environment and all three
         per-section residual standard deviations on simulated data.",

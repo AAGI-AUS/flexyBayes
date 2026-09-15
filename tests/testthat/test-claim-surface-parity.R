@@ -170,3 +170,53 @@ test_that("every export appears in API_STABILITY.md", {
   missing <- Filter(function(x) !grepl(paste0("`", x, "("), api, fixed = TRUE), exported)
   expect_equal(missing, character(0))
 })
+
+
+test_that("the landing surfaces carry no withdrawn capability claim", {
+  # The 0.12.0 package audit found claims the code does not support: a
+  # "full MET" label on the small-sample baseline model, unstructured and
+  # factor-analytic covariance said to fit on INLA "in seconds", a
+  # disagreement under heavy missingness called a "property of the
+  # estimand", pinning advice naming 0.10.x, and a known-issues sentence
+  # saying INLA refuses the MET halves it fits.
+  root <- .cs_skip_if_no_source()
+  withdrawn <- c(
+    "full MET", "full-MET", "in seconds", "property of the estimand",
+    "0.10.x patch", "refuses both halves"
+  )
+  surfaces <- c(
+    "README.md", "inst/KNOWN_ISSUES.md", "API_STABILITY.md",
+    "R/na_action.R", "R/capability_matrix.R"
+  )
+  found <- character(0)
+  for (path in surfaces) {
+    text <- paste(.cs_read(root, path), collapse = "\n")
+    hits <- withdrawn[vapply(
+      withdrawn,
+      function(p) grepl(p, text, fixed = TRUE),
+      logical(1L)
+    )]
+    if (length(hits) > 0L) {
+      found <- c(found, paste0(path, ": ", hits))
+    }
+  }
+  expect_equal(found, character(0))
+})
+
+test_that("the 0.12.0 bound wording in NEWS carries its 0.12.1 correction", {
+  root <- .cs_skip_if_no_source()
+  news <- gsub("\\s+", " ", paste(.cs_read(root, "NEWS.md"), collapse = " "))
+
+  expect_false(grepl(
+    "standard deviation binds(?! \\(corrected in 0\\.12\\.1)",
+    news,
+    perl = TRUE
+  ))
+  # The 0.12.0 heading ends its bold span with a full stop, so the pattern
+  # allows one; without it the check could not see the heading it guards.
+  expect_false(grepl(
+    "\\*\\*A tight uniform bound binds on INLA\\.?\\*\\*(?! \\(corrected in 0\\.12\\.1)",
+    news,
+    perl = TRUE
+  ))
+})
