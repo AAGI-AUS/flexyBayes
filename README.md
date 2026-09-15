@@ -3,12 +3,14 @@
 Fit linear and generalised linear mixed models from ASReml-style or
 brms-style formulas, on two engines: INLA directly, and Stan through brms.
 
-The ASReml grammar reaches INLA natively rather than through a sampler, so
-the models designed experiments actually use -- multi-stratum random effects,
-a residual variance per environment, unstructured and factor-analytic
-genotype-by-environment covariance -- fit by approximation in seconds rather
-than by MCMC in minutes. Where a model is outside what an engine can
-represent, the package says so by name instead of fitting something else.
+On INLA the ASReml grammar covers multi-stratum and nested random effects, a
+residual variance per environment, and the baseline heteroscedastic
+multi-environment-trial model (iid genotype, iid genotype-by-environment and a
+sectioned residual), checked on small simulated trials. Unstructured
+genotype-by-environment covariance fits on brms only. Factor-analytic
+genotype-by-environment covariance on INLA is experimental: repeat fits of one
+model have disagreed. A model an engine cannot represent is refused by name,
+and so is an INLA fit whose posterior leaves the support of a stated prior.
 
 > **Development version 0.12.0.** Not on CRAN. Every export is at the
 > experimental `lifecycle` stage and the API may change within the 0.x

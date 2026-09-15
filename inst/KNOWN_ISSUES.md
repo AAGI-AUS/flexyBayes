@@ -8,13 +8,16 @@ release: the package validates on the model classes it supports, and states
 plainly the ones it does not.
 
 The thing to know before relying on flexyBayes for a multi-environment trial:
-**the MET model -- interaction random effects together with a per-environment
-residual -- fits on brms, and the evidence behind that row is small-scale.**
-The combination generates both blocks in the emitted Stan program and samples
-cleanly on simulated data (the live test) with the pieces corroborated on
-`agridat::besag.met`. INLA refuses both halves structurally, and a national
-trial series has not been run. The detail is below, so the scale question can
-be answered collectively rather than rediscovered.
+**the baseline heteroscedastic MET model -- iid genotype, iid
+genotype-by-environment and a per-environment residual -- fits on both
+engines, and the evidence behind that row is small-scale.** On brms the
+combination generates both blocks in the emitted Stan program and samples
+cleanly on simulated data (the live test), with the pieces corroborated on
+`agridat::besag.met`; on INLA it recovers the simulated components (see the
+table). Unstructured and factor-analytic genotype-by-environment covariance
+combined with a sectioned residual do not plan on either engine, and a
+national trial series has not been run. The detail is below, so the scale
+question can be answered collectively.
 
 ## Backend support by model class
 
