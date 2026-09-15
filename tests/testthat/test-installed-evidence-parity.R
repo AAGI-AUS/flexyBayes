@@ -9,9 +9,12 @@
 # while README.md, inst/KNOWN_ISSUES.md and .fb_capability_matrix() itself
 # had all moved on and nothing read the CSV to notice.
 #
-# This file is the installed-evidence oracle: it reads the CSV the way a
-# user does, through system.file(), and fails when it disagrees with the
-# live registry on cell, model_class, backend or verdict.
+# Two checks guard it. The first reads the CSV in the source tree and builds
+# the expected rows with the grid's own row builder in tools/, so it also
+# catches a missing row; it skips where tools/ is absent, as in an installed
+# package. The second reads the CSV through system.file(), as an installed
+# user does, and checks every shipped row against the live registry on cell,
+# model_class, backend and verdict, so it runs under R CMD check.
 # =============================================================================
 
 .iep_pkg_file <- function(...) {
@@ -105,4 +108,74 @@ test_that("the parity check rejects a CSV with one changed verdict", {
 
   diffs <- .iep_diff(mutated, cap, m_calls, builder)
   expect_gt(length(diffs), 0L)
+})
+
+# Each shipped row checked against the registry alone: the model class must be
+# a registry row, the cell id must be that class's slug and the backend, and
+# the verdict must be the registry's for that backend. Returns a character
+# vector of mismatch descriptions; empty means every shipped row agrees.
+.iep_installed_diff <- function(csv, cap) {
+  slug <- function(x) {
+    gsub("(^-|-$)", "", gsub("[^a-z0-9]+", "-", tolower(x)))
+  }
+  row_of <- match(csv$model_class, cap$model_class)
+  expected_cell <- paste0("cap-", slug(csv$model_class), "-", csv$backend)
+  expected_verdict <- vapply(
+    seq_len(nrow(csv)),
+    function(i) {
+      if (is.na(row_of[[i]]) || !csv$backend[[i]] %in% names(cap)) {
+        return(NA_character_)
+      }
+      as.character(cap[[csv$backend[[i]]]][[row_of[[i]]]])
+    },
+    character(1L)
+  )
+  c(
+    sprintf("%s: model class not in the registry", csv$cell[is.na(row_of)]),
+    sprintf(
+      "%s: cell id should be %s",
+      csv$cell[csv$cell != expected_cell],
+      expected_cell[csv$cell != expected_cell]
+    ),
+    sprintf(
+      "%s: registry says '%s', installed CSV says '%s'",
+      csv$cell[!is.na(expected_verdict) & csv$verdict != expected_verdict],
+      expected_verdict[!is.na(expected_verdict) &
+        csv$verdict != expected_verdict],
+      csv$verdict[!is.na(expected_verdict) & csv$verdict != expected_verdict]
+    )
+  )
+}
+
+.iep_installed_csv <- function() {
+  path <- system.file(
+    "validation", "execution_grid", "capability_matrix.csv",
+    package = "flexyBayes"
+  )
+  expect_true(nzchar(path))
+  utils::read.csv(path, stringsAsFactors = FALSE)
+}
+
+test_that("every row of the installed capability CSV is the registry's", {
+  csv <- .iep_installed_csv()
+
+  expect_gt(nrow(csv), 0L)
+  expect_identical(
+    .iep_installed_diff(csv, flexyBayes:::.fb_capability_matrix()),
+    character(0)
+  )
+})
+
+test_that("the installed-row check rejects one changed verdict", {
+  csv <- .iep_installed_csv()
+  csv$verdict[[1L]] <- if (identical(csv$verdict[[1L]], "fits")) {
+    "refuses"
+  } else {
+    "fits"
+  }
+
+  expect_gt(
+    length(.iep_installed_diff(csv, flexyBayes:::.fb_capability_matrix())),
+    0L
+  )
 })
