@@ -147,8 +147,10 @@ test_that("INLA refuses a heterogeneous residual for a family with no residual s
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   # INLA split the response into one Poisson or binomial likelihood per
   # section, which is the unsectioned model under the sectioned model's
-  # name. The refusal comes before the engine is called.
-  local_mocked_bindings(.inla_call = function(args) stop("the engine was reached"))
+  # name. The refusal comes before the engine is called. The engine call is
+  # not mocked: a mock of .inla_call here left a later brms fit in this file
+  # unable to read its CmdStan output, and without the refusal the fit runs
+  # and returns, which fails the class check.
   d <- .het_data()
   d$cnt <- stats::rpois(nrow(d), 5)
   d$hit <- stats::rbinom(nrow(d), 1L, 0.4)
