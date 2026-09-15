@@ -2711,6 +2711,25 @@ print.fb_refusals_table <- function(x, ...) {
   )
 }
 
+.populate_refusal_registry_prior_support <- function() {
+  .register_refusal(
+    reason_code = "prior_support_violated",
+    description = paste0(
+      "An INLA fit whose mode, or whose reported 2.5 or 97.5 per cent ",
+      "quantile, for a hyperparameter under a bounded prior lies outside ",
+      "that bound. The uniform prior on a standard deviation reaches INLA ",
+      "as a density of -1e10 outside its support, and INLA can still stop ",
+      "there. Every INLA fit is checked against INLA's own record of the ",
+      "priors it received, and a fit outside its prior's support is refused."
+    ),
+    message_template = "%s",
+    registered_in_adr = "U-SUPPORT-1 (2026-09-16), universal support audit",
+    plan_field = NA_character_,
+    since_version = "0.12.1"
+  )
+  invisible(NULL)
+}
+
 .populate_refusal_registry_aggregation_containment <- function() {
   .register_refusal(
     reason_code = "aggregation_residual_prior_not_composed",

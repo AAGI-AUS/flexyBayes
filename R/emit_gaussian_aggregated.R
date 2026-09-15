@@ -460,15 +460,19 @@ emit_gaussian_aggregated <- function(
     inla_call$control.fixed <- control_fixed
   }
 
-  inla_fit <- .fb_inla_back_transform(
-    do.call(INLA::inla, inla_call),
-    standardisation
-  )
+  inla_fit <- .inla_call(inla_call)
+
+  # Every bounded prior checked against the fit on the scale it ran on
+  # (R/inla_support_audit.R), then mapped back.
+  support_audit <- .fb_inla_support_audit(inla_fit, standardisation)
+  .fb_inla_enforce_support(support_audit, "aggregated_gaussian")
+  inla_fit <- .fb_inla_back_transform(inla_fit, standardisation)
 
   list(
     backend = "inla",
     inla = inla_fit,
     response_standardisation = standardisation,
+    support_audit = support_audit,
     prior_completion = completion$record,
     fixed_form = fixed_form,
     custom_prior = custom_prior_expr,
@@ -633,6 +637,9 @@ emit_gaussian_aggregated <- function(
       run_time = elapsed,
       # The centre and scale the INLA fit ran on; the draw accessors read it.
       response_standardisation = engine_out$response_standardisation,
+      # Every bounded prior checked against the fit
+      # (R/inla_support_audit.R).
+      support_audit = engine_out$support_audit,
       # The standard deviations the INLA fit filled with the package default.
       prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose. Aggregation is a

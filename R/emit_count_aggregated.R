@@ -202,7 +202,11 @@ emit_count_aggregated <- function(
     inla_args$control.fixed <- control_fixed
   }
 
-  inla_fit <- do.call(INLA::inla, inla_args)
+  inla_fit <- .inla_call(inla_args)
+
+  # Every bounded prior checked against the fit (R/inla_support_audit.R).
+  support_audit <- .fb_inla_support_audit(inla_fit)
+  .fb_inla_enforce_support(support_audit, "aggregated_count")
 
   # What each prior became, as INLA reports it (R/model_manifest.R).
   manifest <- .fb_manifest_inla(
@@ -221,6 +225,7 @@ emit_count_aggregated <- function(
     backend = "inla",
     inla = inla_fit,
     manifest = manifest,
+    support_audit = support_audit,
     prior_completion = completion$record,
     fixed_form = inla_form,
     K = fb_aggregated$K,
@@ -438,6 +443,9 @@ emit_count_aggregated <- function(
       # Which prior became which engine slot, the route and the evidence
       # (R/model_manifest.R).
       manifest = engine_out[["manifest"]],
+      # Every bounded prior checked against the fit
+      # (R/inla_support_audit.R).
+      support_audit = engine_out[["support_audit"]],
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a
