@@ -131,8 +131,8 @@
 #'   has no hurdle gamma, and no INLA lognormal fit is validated, so the
 #'   family gate refuses both there and `backend = "auto"` routes them to
 #'   brms.
-#'   A family object (`binomial()`, `gaussian()`, or a brms family such as
-#'   `brms::lognormal()`) is also accepted, goes through the same gate as
+#'   A family object (`binomial()`, `gaussian()`, `brms::lognormal()`) is
+#'   also accepted, goes through the same gate as
 #'   its name, and supplies its own link, so `Gamma()` means the inverse
 #'   link it names rather than the log link `family = "gamma"` defaults
 #'   to. Passing a family object together with a contradicting `link` is

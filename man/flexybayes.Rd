@@ -188,8 +188,8 @@ fits. The refusal points at the random-side field described under
 has no hurdle gamma, and no INLA lognormal fit is validated, so the
 family gate refuses both there and \code{backend = "auto"} routes them to
 brms.
-A family object (\code{binomial()}, \code{gaussian()}, or a brms family such as
-\code{brms::lognormal()}) is also accepted, goes through the same gate as
+A family object (\code{binomial()}, \code{gaussian()}, \code{brms::lognormal()}) is
+also accepted, goes through the same gate as
 its name, and supplies its own link, so \code{Gamma()} means the inverse
 link it names rather than the log link \code{family = "gamma"} defaults
 to. Passing a family object together with a contradicting \code{link} is
