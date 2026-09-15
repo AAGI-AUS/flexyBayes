@@ -1367,15 +1367,17 @@
   invisible(NULL)
 }
 
-# .fb_missing_brms() --- the `Ymi` draws a Gaussian mi() fit carries.
+# .fb_missing_brms() --- the `Ymi` draws a brms mi() fit carries.
 #
 # brms names each sampled missing response `Ymi[i]`, where `i` is the row
 # of the data the fit was handed (verified against brms 2.23.0 on a live
 # fit: a 48-row frame with responses missing at rows 1, 4, 23, 34, 39 and
-# 43 produced exactly those six parameter names). A non-Gaussian fit has
-# no `mi()` term and therefore no such parameter, which is why the
-# missing-response layer refuses that combination rather than deleting
-# rows: there is nothing to read here in that case, and nothing was fit.
+# 43 produced exactly those six parameter names). The draws are on the
+# response scale for both admitted families, gaussian and lognormal. A fit
+# on any other family has no `mi()` term and therefore no such parameter,
+# which is why the missing-response layer refuses that combination rather
+# than deleting rows: there is nothing to read here in that case, and
+# nothing was fit.
 #
 # @noRd
 # @keywords internal
