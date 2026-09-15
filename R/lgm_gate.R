@@ -266,16 +266,40 @@ print.lgm_refusal <- function(x, ...) {
 # routing-eligibility check, NOT flexyBayes's notion of supported
 # families. The authoritative family gate is .resolve_family()
 # (R/utils.R), which every user entry (asreml via fb.R, brms via
-# fb_from_brms.R) passes through first and which admits only the
-# families flexyBayes can emit. Families INLA recognises but
-# flexyBayes cannot emit (e.g. survival / time-to-event) never reach
+# fb_from_brms.R, flexybayes_stream() via R/stream_aggregate.R) passes
+# through first, for a family name and a family object alike, and which
+# admits only the families flexyBayes can emit. Families INLA recognises
+# but flexyBayes cannot emit (e.g. survival / time-to-event) never reach
 # this check -- .resolve_family() refuses them up front. When adding
-# a family, register its emit path AND widen .resolve_family().
+# a family, register its emit path AND widen .resolve_family(); a family
+# admitted for brms only that INLA's roster also carries is refused below.
 .lgm_check_family <- function(fb) {
   fam_name <- if (inherits(fb$family, "family")) {
     fb$family$family
   } else {
     as.character(fb$family)
+  }
+
+  # Admitted at entry for brms only, although INLA's roster carries it: the
+  # brms fit is validated (tests/testthat/test-brms-missing-response.R), and
+  # no INLA fit is. hurdle_gamma, the other brms-only family, needs no entry
+  # here, because INLA's roster has no counterpart and the roster check
+  # refuses it.
+  if (identical(tolower(fam_name), "lognormal")) {
+    return(.lgm_fail(
+      "family_allowlist",
+      paste0(
+        "family \"",
+        fam_name,
+        "\" is admitted on brms only: INLA's likelihood roster carries it, ",
+        "but no INLA fit of it is validated in flexyBayes."
+      ),
+      diagnostic = paste0(
+        "fb$family = \"",
+        fam_name,
+        "\"; a brms-only family"
+      )
+    ))
   }
 
   # Test the spelling INLA will be handed, not the one the user wrote.

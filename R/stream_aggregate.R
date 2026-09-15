@@ -156,7 +156,7 @@ flexybayes_stream <- function(
   .check_known_backend_name(backend, allowed = "inla")
   backend <- match.arg(backend, "inla")
   the_call <- match.call()
-  .check_stream_family(family)
+  family <- .check_stream_family(family)
   .check_stream_chunk_rows(chunk_rows)
 
   # A Gaussian model is not fitted on the aggregated representation: that
@@ -242,20 +242,34 @@ flexybayes_stream <- function(
 # Validation helpers                                                #
 # ---------------------------------------------------------------- #
 
+# The family goes through the package's family gate, .resolve_family(), as
+# on every other entry, so a family object and its name get the same answer.
+# The streamed route then aggregates three families, each on the link its
+# name defaults to. Returns the family name.
 #' @noRd
 #' @keywords internal
 .check_stream_family <- function(family) {
   ok <- c("gaussian", "binomial", "poisson")
-  if (!is.character(family) || length(family) != 1L || !family %in% ok) {
-    stop(
-      "`family` must be one of ",
-      paste(dQuote(ok), collapse = ", "),
-      "; got: ",
-      deparse(family),
-      call. = FALSE
-    )
+  fl <- .resolve_family(family, NULL)
+  if (
+    !fl$family %in% ok ||
+      !identical(fl$link, .resolve_family(fl$family, NULL)$link)
+  ) {
+    stop(.fb_refusal_condition(
+      reason_code = "aggregation_route_unavailable",
+      message = paste0(
+        "flexybayes_stream() aggregates the families ",
+        paste(dQuote(ok, FALSE), collapse = ", "),
+        ", each on its default link; got family = \"",
+        fl$family,
+        "\", link = \"",
+        fl$link,
+        "\". Fit this model per row with flexybayes()."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
   }
-  invisible(TRUE)
+  fl$family
 }
 
 #' @noRd

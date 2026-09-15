@@ -168,7 +168,14 @@
     # refuse a family the engine behind it carries (field-sweep FS-4 /
     # field finding C2). INLA's likelihood roster has no counterpart, so
     # lgm_gate() refuses `backend = "inla"` for it on the family row.
-    hurdle_gamma = "log"
+    hurdle_gamma = "log",
+    # brms-only as well. The brms fit is checked against the complete-case
+    # posterior (tests/testthat/test-brms-missing-response.R). INLA's
+    # likelihood roster does carry a lognormal, but no INLA fit of it is
+    # validated, so lgm_gate() refuses `backend = "inla"` for it by name on
+    # the family row. Before this gate read family objects, the family was
+    # reachable only as brms::lognormal() in the brms grammar.
+    lognormal = "identity"
   )
   fam <- tolower(family)
   # The generalised extreme value and Dirichlet families are not GLM-link
@@ -176,25 +183,34 @@
   # is a simplex, not a scalar -- so they are fitted through their own
   # dedicated entry points rather than the formula emit path. Point the user
   # there explicitly instead of refusing them as merely "unsupported".
+  # Both redirects are refusals of the formula path, typed as such, so a
+  # brms::gen_extreme_value() or brms::dirichlet() family object gets the
+  # same named refusal as the string.
   if (fam %in% c("gen_extreme_value", "gev", "extreme_value")) {
-    stop(
-      "Family \"",
-      family,
-      "\" (generalised extreme value) is fitted via ",
-      "the dedicated `fb_gev()` entry point, not the `flexybayes()` ",
-      "formula path: block maxima have no mean-link parameterisation. See ",
-      "`?fb_gev`.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "unsupported_family",
+      message = paste0(
+        "Family \"",
+        family,
+        "\" (generalised extreme value) is fitted via ",
+        "the dedicated `fb_gev()` entry point, not the `flexybayes()` ",
+        "formula path: block maxima have no mean-link parameterisation. See ",
+        "`?fb_gev`."
+      ),
+      family_class = "flexybayes_unsupported_family"
+    ))
   }
   if (fam == "dirichlet") {
-    stop(
-      "Family \"dirichlet\" is fitted via the dedicated `fb_dirichlet()` ",
-      "entry point, not the `flexybayes()` formula path: a Dirichlet ",
-      "response is a simplex (proportions summing to one), not a scalar ",
-      "with a mean-link. See `?fb_dirichlet`.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "unsupported_family",
+      message = paste0(
+        "Family \"dirichlet\" is fitted via the dedicated `fb_dirichlet()` ",
+        "entry point, not the `flexybayes()` formula path: a Dirichlet ",
+        "response is a simplex (proportions summing to one), not a scalar ",
+        "with a mean-link. See `?fb_dirichlet`."
+      ),
+      family_class = "flexybayes_unsupported_family"
+    ))
   }
   if (!fam %in% names(defaults)) {
     stop(.fb_refusal_condition(

@@ -42,13 +42,21 @@ test_that(".lgm_check_family() passes a gaussian model", {
 })
 
 test_that(".lgm_check_family() passes binomial / poisson / gamma", {
-  for (fam in c("binomial", "poisson", "gamma", "beta", "lognormal")) {
+  for (fam in c("binomial", "poisson", "gamma", "beta")) {
     fb <- mk_fb(family = fam)
     expect_true(
       flexyBayes:::.lgm_check_family(fb)$pass,
       info = paste("family =", fam)
     )
   }
+})
+
+test_that(".lgm_check_family() refuses lognormal, a brms-only family, by name", {
+  # INLA's roster carries a lognormal; the brms fit is the validated one.
+  r <- flexyBayes:::.lgm_check_family(mk_fb(family = "lognormal"))
+  expect_false(r$pass)
+  expect_identical(r$rule_id, "family_allowlist")
+  expect_match(r$reason, "admitted on brms only")
 })
 
 test_that(".lgm_check_family() refuses an unsupported family", {

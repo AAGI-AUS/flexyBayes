@@ -34,7 +34,9 @@
 #'   supplying it now raises an error. Use `residual` instead.
 #' @param data A data.frame containing every variable referenced.
 #' @param family Character family name (`gaussian`, `binomial`, `binary`,
-#'   `poisson`, `negative_binomial`, `negbinom`, `gamma`, `beta`).
+#'   `poisson`, `negative_binomial`, `negbinom`, `gamma`, `beta`, and, for
+#'   brms only, `hurdle_gamma` and `lognormal`), or a family object, which
+#'   goes through the same family gate and supplies its own link.
 #' @param link Character link override, or `NULL` for the family default.
 #' @param weights Optional numeric vector of length `nrow(data)`. When
 #'   non-`NULL`, mapped to a single addition term with `type = "weights"`.

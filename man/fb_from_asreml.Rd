@@ -32,7 +32,9 @@ defaults to iid residuals (\code{list(list(type = "units"))}), matching
 \item{data}{A data.frame containing every variable referenced.}
 
 \item{family}{Character family name (\code{gaussian}, \code{binomial}, \code{binary},
-\code{poisson}, \code{negative_binomial}, \code{negbinom}, \code{gamma}, \code{beta}).}
+\code{poisson}, \code{negative_binomial}, \code{negbinom}, \code{gamma}, \code{beta}, and, for
+brms only, \code{hurdle_gamma} and \code{lognormal}), or a family object, which
+goes through the same family gate and supplies its own link.}
 
 \item{link}{Character link override, or \code{NULL} for the family default.}
 

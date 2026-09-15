@@ -183,11 +183,14 @@ fits. The refusal points at the random-side field described under
 \item{data}{A data.frame containing all variables referenced in the formulas.}
 
 \item{family}{Character: \code{"gaussian"}, \code{"binomial"}, \code{"poisson"},
-\code{"negative_binomial"}, \code{"gamma"}, \code{"beta"}, or \code{"hurdle_gamma"}
-(brms only -- INLA's likelihood roster has no counterpart, so the
-family gate refuses it there and \code{backend = "auto"} routes to brms).
-A \code{stats} family object (\code{binomial()}, \code{gaussian()}) is also
-accepted and supplies its own link, so \code{Gamma()} means the inverse
+\code{"negative_binomial"}, \code{"gamma"}, \code{"beta"}, \code{"hurdle_gamma"} or
+\code{"lognormal"}. The last two are brms only: INLA's likelihood roster
+has no hurdle gamma, and no INLA lognormal fit is validated, so the
+family gate refuses both there and \code{backend = "auto"} routes them to
+brms.
+A family object (\code{binomial()}, \code{gaussian()}, or a brms family such as
+\code{brms::lognormal()}) is also accepted, goes through the same gate as
+its name, and supplies its own link, so \code{Gamma()} means the inverse
 link it names rather than the log link \code{family = "gamma"} defaults
 to. Passing a family object together with a contradicting \code{link} is
 refused rather than resolved. A family outside this set is refused
