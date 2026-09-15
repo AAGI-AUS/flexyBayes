@@ -1389,7 +1389,7 @@
     ),
     message_template = paste0(
       "An engine pin fits via one engine only, so it cannot take a ",
-      "conflicting `backend`. Drop `backend`, or use fb() / flexybayes() ",
+      "conflicting `backend`. Drop `backend`, or use flexybayes() ",
       "to choose a backend."
     ),
     registered_in_adr = "ADR 0031",

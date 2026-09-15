@@ -26,7 +26,10 @@ test_that("fb_inla() is exported and pins the INLA engine", {
   skip_if_not_installed("INLA")
   df <- mk_pin_df()
   fit <- suppressMessages(
-    fb_inla(yield ~ env, random = ~geno, data = df, verbose = FALSE)
+    suppressWarnings(
+      fb_inla(yield ~ env, random = ~geno, data = df, verbose = FALSE),
+      classes = "flexybayes_deprecated"
+    )
   )
   expect_s3_class(fit, "flexybayes_inla")
   expect_identical(fit$extras$backend_decision$backend, "inla")
@@ -37,7 +40,10 @@ test_that("fb_inla() passes brms-grammar polymorphism through to INLA", {
   skip_if_not_installed("INLA")
   df <- mk_pin_df()
   fit <- suppressMessages(
-    fb_inla(yield ~ env + (1 | geno), data = df, verbose = FALSE)
+    suppressWarnings(
+      fb_inla(yield ~ env + (1 | geno), data = df, verbose = FALSE),
+      classes = "flexybayes_deprecated"
+    )
   )
   expect_identical(fit$extras$backend_decision$backend, "inla")
 })
@@ -89,7 +95,10 @@ test_that("an engine pin refuses a conflicting backend argument", {
   # fb_inla() pins INLA; backend = "brms" is a contradiction. Refuse
   # structurally rather than silently overwrite (the pre-v0.5.0 bug).
   expect_error(
-    fb_inla(yield ~ env, data = df, backend = "brms"),
+    suppressWarnings(
+      fb_inla(yield ~ env, data = df, backend = "brms"),
+      classes = "flexybayes_deprecated"
+    ),
     class = "flexybayes_refusal_engine_pin_backend_conflict"
   )
   expect_error(

@@ -705,12 +705,12 @@ test_that("a gate refusal through the fb_inla() pin is typed and names its rule"
   )
 
   err <- tryCatch(
-    suppressMessages(fb_inla(
+    suppressMessages(suppressWarnings(fb_inla(
       fixed = y ~ x,
       random = ~ diag(env):gen,
       data = d,
       verbose = FALSE
-    )),
+    ), classes = "flexybayes_deprecated")),
     condition = function(e) e
   )
 

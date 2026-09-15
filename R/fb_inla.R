@@ -42,7 +42,7 @@
           " engine only, so it cannot take backend = \"",
           paste(supplied, collapse = "\", \""),
           "\". Drop `backend`, or ",
-          "use fb() / flexybayes() to choose a backend."
+          "use flexybayes() to choose a backend."
         ),
         backend = supplied
       ))
@@ -78,8 +78,14 @@
 #' @return An object of class `"flexybayes"` (specifically a
 #'   `flexybayes_inla` fit); see [flexybayes()] for the structure.
 #'
+#' @section Deprecated:
+#' `fb_inla()` is deprecated in flexyBayes 0.13.0 and will be removed in a
+#' later release. Call `flexybayes(..., backend = "inla")`, which takes the
+#' same arguments. A call warns with a condition of class
+#' `flexybayes_deprecated`.
+#'
 #' @family flexyBayes engine pins
-#' @seealso [flexybayes()] and [fb()] for the universal entry that picks a
+#' @seealso [flexybayes()] for the universal entry that picks a
 #'   backend; [fb_from_asreml()] / [fb_from_brms()] for the ingest layer.
 #' @examples
 #' set.seed(1L)
@@ -90,10 +96,18 @@
 #' )
 #' \donttest{
 #' if (requireNamespace("INLA", quietly = TRUE)) {
-#'   fit <- fb_inla(yield ~ env, random = ~ geno, data = df)
+#'   fit <- flexybayes(yield ~ env, random = ~ geno, data = df,
+#'                     backend = "inla")
 #' }
 #' }
 #' @export
 fb_inla <- function(...) {
+  .fb_warn_deprecated_export(
+    "fb_inla",
+    paste0(
+      "Call `flexybayes(..., backend = \"inla\")`, which takes the same ",
+      "arguments."
+    )
+  )
   .fb_engine_pin("inla", match.call(), parent.frame())
 }

@@ -31,7 +31,7 @@ flexybayes(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
-  rcov = lifecycle::deprecated()
+  rcov
 )
 
 fb(
@@ -60,7 +60,7 @@ fb(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
-  rcov = lifecycle::deprecated()
+  rcov
 )
 }
 \arguments{
@@ -522,6 +522,13 @@ GLM-compatible object for use with standard R packages (emmeans,
 marginaleffects, etc.), the native backend object for engine-specific
 diagnostics, and extras for secondary analyses.
 }
+\section{Deprecated}{
+
+\code{fb()} is deprecated in flexyBayes 0.13.0 and will be removed in a later
+release. Call \code{flexybayes()}, which takes the same arguments. A call to
+\code{fb()} warns with a condition of class \code{flexybayes_deprecated}.
+}
+
 \examples{
 \dontrun{
 # live fit -- needs an active backend (INLA or brms/Stan)

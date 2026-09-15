@@ -275,7 +275,7 @@ test_that("tidy(effects = 'random') returns the random-effect rows of an aggrega
   # A Gaussian model is fitted per row, so the aggregated fit is a Poisson
   # one, and the premise is asserted rather than skipped on.
   dat$y <- stats::rpois(500L, 3)
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ f1 + (1 | g),
     data = dat,
     family = "poisson",

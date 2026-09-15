@@ -54,7 +54,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .adg_inla_fit <- function() {
   if (is.null(.adg_cache$inla)) {
-    .adg_cache$inla <- suppressMessages(fb(
+    .adg_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .adg_data(),
@@ -69,7 +69,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .adg_brms_fit <- function() {
   if (is.null(.adg_cache$brms)) {
-    .adg_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .adg_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x + (1 | g),
       data = .adg_data(),
       backend = "brms",

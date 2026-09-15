@@ -16,8 +16,15 @@ one.}
 \description{
 Test whether an object is an \code{fb_approx} specification
 }
+\section{Deprecated}{
+
+\code{is_fb_approx()} is deprecated in flexyBayes 0.13.0 and will be removed in
+a later release. Use \code{inherits(x, "fb_approx")}. A call warns with a
+condition of class \code{flexybayes_deprecated}.
+}
+
 \examples{
 a <- fb_approx("low_rank_smooth")
-is_fb_approx(a)
-is_fb_approx("low_rank_smooth")
+inherits(a, "fb_approx")
+inherits("low_rank_smooth", "fb_approx")
 }

@@ -33,6 +33,14 @@ approximation. \code{seed} and \code{control} say so when supplied: the fit is
 repeatable without a seed, because nothing in the approximation is
 drawn.
 }
+\section{Deprecated}{
+
+\code{fb_inla()} is deprecated in flexyBayes 0.13.0 and will be removed in a
+later release. Call \code{flexybayes(..., backend = "inla")}, which takes the
+same arguments. A call warns with a condition of class
+\code{flexybayes_deprecated}.
+}
+
 \examples{
 set.seed(1L)
 df <- data.frame(
@@ -42,12 +50,13 @@ df <- data.frame(
 )
 \donttest{
 if (requireNamespace("INLA", quietly = TRUE)) {
-  fit <- fb_inla(yield ~ env, random = ~ geno, data = df)
+  fit <- flexybayes(yield ~ env, random = ~ geno, data = df,
+                    backend = "inla")
 }
 }
 }
 \seealso{
-\code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal entry that picks a
+\code{\link[=flexybayes]{flexybayes()}} for the universal entry that picks a
 backend; \code{\link[=fb_from_asreml]{fb_from_asreml()}} / \code{\link[=fb_from_brms]{fb_from_brms()}} for the ingest layer.
 
 Other flexyBayes engine pins:

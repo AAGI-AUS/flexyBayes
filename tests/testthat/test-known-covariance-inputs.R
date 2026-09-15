@@ -90,13 +90,15 @@ test_that("ped(animal, A_obj, use_sparse_precision = FALSE) stays on dense forma
 # ---------------------------------------------------------------- #
 
 test_that("vm(geno, V = K, chol = L) refuses with vm_redundant_specification", {
-  # Legacy keyword carriers (deprecated v0.4.0). Quiet the lifecycle
+  # Legacy keyword carriers (deprecated v0.4.0). Quiet the deprecation
   # warning here; the deprecation itself is asserted in
   # test-fb-cov-constructor.R.
-  withr::local_options(lifecycle_verbosity = "quiet")
   dat <- data.frame(geno = factor(1:5))
   err <- tryCatch(
-    flexyBayes:::.parse_formula(~ vm(geno, V = K, chol = L), dat),
+    suppressWarnings(
+      flexyBayes:::.parse_formula(~ vm(geno, V = K, chol = L), dat),
+      classes = "flexybayes_deprecated"
+    ),
     flexybayes_structured_cov_refusal = identity
   )
   expect_s3_class(err, "flexybayes_structured_cov_refusal")
@@ -105,10 +107,12 @@ test_that("vm(geno, V = K, chol = L) refuses with vm_redundant_specification", {
 })
 
 test_that("vm(geno, chol = L, precision = Q) refuses with vm_redundant_specification", {
-  withr::local_options(lifecycle_verbosity = "quiet")
   dat <- data.frame(geno = factor(1:5))
   err <- tryCatch(
-    flexyBayes:::.parse_formula(~ vm(geno, chol = L, precision = Q), dat),
+    suppressWarnings(
+      flexyBayes:::.parse_formula(~ vm(geno, chol = L, precision = Q), dat),
+      classes = "flexybayes_deprecated"
+    ),
     flexybayes_structured_cov_refusal = identity
   )
   expect_s3_class(err, "flexybayes_structured_cov_refusal")
@@ -120,10 +124,12 @@ test_that("vm(geno, chol = L, precision = Q) refuses with vm_redundant_specifica
 # ---------------------------------------------------------------- #
 
 test_that("vm(geno, low_rank_factor = F) without low_rank_scheme refuses at parse", {
-  withr::local_options(lifecycle_verbosity = "quiet")
   dat <- data.frame(geno = factor(1:5))
   err <- tryCatch(
-    flexyBayes:::.parse_formula(~ vm(geno, low_rank_factor = F_mat), dat),
+    suppressWarnings(
+      flexyBayes:::.parse_formula(~ vm(geno, low_rank_factor = F_mat), dat),
+      classes = "flexybayes_deprecated"
+    ),
     flexybayes_structured_cov_refusal = identity
   )
   expect_s3_class(err, "flexybayes_structured_cov_refusal")
@@ -144,7 +150,6 @@ test_that("vm(geno, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses with 
   # withdrawal -- without this check each engine's own capability gate
   # refuses the term too, but points at the *other* engine as the
   # alternative, which is circular here: neither can fit it).
-  withr::local_options(lifecycle_verbosity = "quiet")
   dat <- data.frame(y = rnorm(5), geno = factor(1:5))
   err <- tryCatch(
     fb_from_asreml(
@@ -168,7 +173,6 @@ test_that("vm(geno, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses with 
 test_that("ped(animal, cov = fb_cov(F, type = 'low_rank', scheme = )) refuses identically", {
   # Same check, ped() call site -- new_fb_terms() runs
   # .check_low_rank_cov_reserved() over every vm()/ped() term.
-  withr::local_options(lifecycle_verbosity = "quiet")
   dat <- data.frame(y = rnorm(5), animal = factor(1:5))
   err <- tryCatch(
     fb_from_asreml(

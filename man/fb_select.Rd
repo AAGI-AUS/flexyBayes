@@ -165,7 +165,8 @@ if (requireNamespace("INLA", quietly = TRUE) &&
     x2 = rnorm(80)
   )
   d$y <- 1 + 0.5 * d$x1 + rnorm(8)[d$site] + rnorm(80)
-  base <- fb(y ~ 1 + (1 | site), data = d, backend = "inla", verbose = FALSE)
+  base <- flexybayes(y ~ 1 + (1 | site), data = d, backend = "inla",
+                     verbose = FALSE)
   # The plan resolves the axes, the prior blocks and the structure gate,
   # and estimates the cost, without fitting the reference model.
   fb_select(

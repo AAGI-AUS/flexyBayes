@@ -65,7 +65,7 @@ test_that("fb() corpus 1: fixed-only Gaussian (brms grammar forced)", {
   d <- mk_brms_gaussian_data()
   # A bar-free formula is ASReml grammar by default; `syntax = "brms"`
   # forces the brms ingest so this still exercises the brms corpus path.
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x,
     data = d,
     backend = "brms",
@@ -94,7 +94,7 @@ test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "brms",
@@ -122,7 +122,7 @@ test_that("fb_brms() corpus 3: crossed random intercepts", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1) + (1 | g2),
     data = d,
     backend = "brms",
@@ -154,7 +154,7 @@ test_that("fb_brms() corpus 4: binomial RI as single-column Bernoulli", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_binomial_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     family = "binomial",
@@ -182,7 +182,7 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_poisson_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = d,
     family = "poisson",
@@ -231,7 +231,7 @@ test_that("fb_brms() refuses brms smoothers with structured message", {
   # engine and surface as `could not find function "s"`, on brms only
   # after a completed sampling run.
   err <- expect_error(
-    fb(y ~ s(x) + (1 | g1), data = d, verbose = FALSE),
+    flexybayes(y ~ s(x) + (1 | g1), data = d, verbose = FALSE),
     class = "flexybayes_refusal_fixed_smoother_not_supported"
   )
   expect_match(conditionMessage(err), "s\\(x\\)")
@@ -247,7 +247,7 @@ test_that("fb_brms() refuses brms smoothers with structured message", {
 test_that("fb_brms() refuses LHS-pipe addition forms cleanly", {
   d <- mk_brms_gaussian_data()
   err <- tryCatch(
-    fb(y | weights(x) ~ x + (1 | g1), data = d, verbose = FALSE),
+    flexybayes(y | weights(x) ~ x + (1 | g1), data = d, verbose = FALSE),
     error = function(e) conditionMessage(e)
   )
   expect_true(grepl("LHS addition forms", err))
@@ -264,7 +264,7 @@ test_that("fb(..., backend = 'auto') routes to INLA when LGM-feasible", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "auto",
@@ -286,7 +286,7 @@ test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fi
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  rev <- suppressMessages(fb(
+  rev <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     n_samples = 500L,
@@ -306,12 +306,16 @@ test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fi
   # budget above still leaves residual ESS-only warnings (no R-hat /
   # divergence) on this particular model, so muffle those specifically
   # rather than push the budget even higher for a shape assertion.
-  fit <- .muffle_ess_warnings(suppressMessages(proceed(rev)))
+  fit <- .muffle_ess_warnings(suppressMessages(
+    suppressWarnings(proceed(rev), classes = "flexybayes_deprecated")
+  ))
   expect_s3_class(fit, "flexybayes")
   expect_true("(Intercept)" %in% names(coef(fit)))
   # Second proceed() returns the cached fit (and prints a note to that
   # effect -- suppress it, same as the first proceed() call above).
-  fit2 <- suppressMessages(proceed(rev))
+  fit2 <- suppressMessages(
+    suppressWarnings(proceed(rev), classes = "flexybayes_deprecated")
+  )
   expect_identical(coef(fit), coef(fit2))
 })
 
@@ -325,7 +329,7 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "brms",
@@ -373,7 +377,7 @@ test_that("backend_decision() returns uniform-shape trace on fb_brms() fits", {
 test_that("fb(review_code = TRUE, backend = 'inla') raises structured refusal", {
   d <- mk_brms_gaussian_data()
   err <- tryCatch(
-    fb(
+    flexybayes(
       y ~ x + (1 | g1),
       data = d,
       backend = "inla",
@@ -399,7 +403,7 @@ test_that("triangulate() on fb_brms() brms + INLA fits resolves canonical names 
   testthat::skip_on_cran()
   testthat::skip_on_ci()
   d <- mk_brms_gaussian_data()
-  fit_b <- suppressMessages(suppressWarnings(fb(
+  fit_b <- suppressMessages(suppressWarnings(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "brms",
@@ -411,7 +415,7 @@ test_that("triangulate() on fb_brms() brms + INLA fits resolves canonical names 
     verbose = FALSE,
     mcmc_verbose = FALSE
   )))
-  fit_i <- suppressMessages(fb(
+  fit_i <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
     data = d,
     backend = "inla",
@@ -435,7 +439,7 @@ test_that("fb_brms() rejects invalid backend value", {
   # a typed flexyBayes refusal naming the active engines.
   d <- mk_brms_gaussian_data()
   err <- tryCatch(
-    fb(y ~ x + (1 | g1), data = d, backend = "stan", verbose = FALSE),
+    flexybayes(y ~ x + (1 | g1), data = d, backend = "stan", verbose = FALSE),
     error = function(e) e
   )
   expect_s3_class(err, "flexybayes_unknown_backend_refusal")

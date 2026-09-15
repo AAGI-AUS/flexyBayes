@@ -57,7 +57,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .cw_inla_fit <- function() {
   if (is.null(.cw_cache$inla)) {
-    .cw_cache$inla <- suppressMessages(fb(
+    .cw_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .cw_data(),
@@ -72,7 +72,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .cw_brms_fit <- function() {
   if (is.null(.cw_cache$brms)) {
-    .cw_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .cw_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .cw_data(),

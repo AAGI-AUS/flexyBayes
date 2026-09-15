@@ -226,13 +226,20 @@ fb_cov <- function(M, type = "dense", levels = NULL, scheme = NULL, ...) {
 #' @param x Any R object. The test is a class check, not a structural
 #'   one.
 #' @returns `TRUE` if `x` is an `fb_cov` object, `FALSE` otherwise.
+#' @section Deprecated:
+#' `is_fb_cov()` is deprecated in flexyBayes 0.13.0 and will be removed in a
+#' later release. Use `inherits(x, "fb_cov")`. A call warns with a condition
+#' of class `flexybayes_deprecated`.
 #' @examples
 #' K <- diag(3)
 #' dimnames(K) <- list(letters[1:3], letters[1:3])
-#' is_fb_cov(fb_cov(K, type = "dense"))
-#' is_fb_cov(K)
+#' inherits(fb_cov(K, type = "dense"), "fb_cov")
+#' inherits(K, "fb_cov")
 #' @export
-is_fb_cov <- function(x) inherits(x, "fb_cov")
+is_fb_cov <- function(x) {
+  .fb_warn_deprecated_export("is_fb_cov", "Use `inherits(x, \"fb_cov\")`.")
+  inherits(x, "fb_cov")
+}
 
 # Light, level-agnostic structural probe run at construction time. The
 # fit-time validators (.validate_chol_input, .validate_precision_input,

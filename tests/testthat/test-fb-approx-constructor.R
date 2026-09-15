@@ -11,7 +11,7 @@ suppressPackageStartupMessages(library(testthat))
 test_that("fb_approx() returns a classed list with scheme + kwargs", {
   a <- fb_approx("low_rank_smooth", rank = 5L)
   expect_s3_class(a, "fb_approx")
-  expect_true(is_fb_approx(a))
+  expect_true(suppressWarnings(is_fb_approx(a), classes = "flexybayes_deprecated"))
   expect_identical(class(a), c("fb_approx", "list"))
   # scheme + tuning are plain list elements so the parse path reads
   # spec$scheme / spec$rank directly.

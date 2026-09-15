@@ -154,7 +154,7 @@ test_that("tight and moderate bounds bind on a Gaussian fit, on a group and on t
   d <- .bound_gauss_data()
 
   fit_with <- function(prior) {
-    suppressMessages(fb(
+    suppressMessages(flexybayes(
       y ~ f + (1 | g),
       data = d,
       backend = "inla",

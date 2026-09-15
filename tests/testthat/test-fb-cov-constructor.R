@@ -35,7 +35,7 @@ test_that("fb_cov() returns a classed object with the documented attribute schem
   cov <- fb_cov(G, type = "dense")
 
   expect_s3_class(cov, "fb_cov")
-  expect_true(is_fb_cov(cov))
+  expect_true(suppressWarnings(is_fb_cov(cov), classes = "flexybayes_deprecated"))
   expect_true(is.list(cov))
   expect_equal(cov$type, "dense")
   expect_identical(cov$M, G)
@@ -356,28 +356,30 @@ test_that("codegen: cov = fb_cov(G, type = 'dense') matches the legacy bare-matr
 # ---------------------------------------------------------------- #
 
 test_that("the four legacy vm() keyword carriers fire a lifecycle deprecation warning", {
-  withr::local_options(lifecycle_verbosity = "warning")
   dat <- data.frame(geno = factor(1:5))
 
-  lifecycle::expect_deprecated(
-    flexyBayes:::.parse_formula(~ vm(geno, chol = L), dat)
+  expect_warning(
+    flexyBayes:::.parse_formula(~ vm(geno, chol = L), dat),
+    class = "lifecycle_warning_deprecated"
   )
-  lifecycle::expect_deprecated(
-    flexyBayes:::.parse_formula(~ vm(geno, precision = Q), dat)
+  expect_warning(
+    flexyBayes:::.parse_formula(~ vm(geno, precision = Q), dat),
+    class = "lifecycle_warning_deprecated"
   )
-  lifecycle::expect_deprecated(
-    flexyBayes:::.parse_formula(~ vm(geno, blocks = Bs), dat)
+  expect_warning(
+    flexyBayes:::.parse_formula(~ vm(geno, blocks = Bs), dat),
+    class = "lifecycle_warning_deprecated"
   )
-  lifecycle::expect_deprecated(
+  expect_warning(
     flexyBayes:::.parse_formula(
       ~ vm(geno, low_rank_factor = U, low_rank_scheme = "pca"),
       dat
-    )
+    ),
+    class = "lifecycle_warning_deprecated"
   )
 })
 
 test_that("a deprecated legacy keyword still parses to the correct IR slot", {
-  withr::local_options(lifecycle_verbosity = "warning")
   dat <- data.frame(geno = factor(1:5))
   terms <- suppressWarnings(
     flexyBayes:::.parse_formula(~ vm(geno, chol = L), dat)
@@ -387,7 +389,6 @@ test_that("a deprecated legacy keyword still parses to the correct IR slot", {
 })
 
 test_that("the deprecation message names the fb_cov() migration without a 'report the issue' footer", {
-  withr::local_options(lifecycle_verbosity = "warning")
   dat <- data.frame(geno = factor(1:5))
   w <- tryCatch(
     flexyBayes:::.parse_formula(~ vm(geno, chol = L), dat),
@@ -399,7 +400,6 @@ test_that("the deprecation message names the fb_cov() migration without a 'repor
 })
 
 test_that("the new cov = fb_cov() form does NOT fire a deprecation warning", {
-  withr::local_options(lifecycle_verbosity = "warning")
   dat <- data.frame(geno = factor(1:5))
   expect_no_warning(
     flexyBayes:::.parse_formula(

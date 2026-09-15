@@ -56,7 +56,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .ppi_inla_fit <- function() {
   if (is.null(.ppi_cache$inla)) {
-    .ppi_cache$inla <- suppressMessages(fb(
+    .ppi_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .ppi_data(),
@@ -71,7 +71,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .ppi_brms_fit <- function() {
   if (is.null(.ppi_cache$brms)) {
-    .ppi_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .ppi_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x + (1 | g),
       data = .ppi_data(),
       backend = "brms",
@@ -242,7 +242,7 @@ test_that("the printed cell rounds and the stored cell does not", {
 # is the fit that reaches the engine through the legacy scalar bridge.
 .ppi_legacy_brms_fit <- function() {
   if (is.null(.ppi_cache$legacy_brms)) {
-    .ppi_cache$legacy_brms <- suppressMessages(suppressWarnings(fb(
+    .ppi_cache$legacy_brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x + (1 | g),
       data = .ppi_data(),
       backend = "brms",
@@ -300,7 +300,7 @@ test_that("the same bridge on INLA names the same prior it does on Stan", {
   skip_on_cran()
   skip_on_ci()
   .ppi_silence()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ f + x,
     random = ~g,
     data = .ppi_data(),

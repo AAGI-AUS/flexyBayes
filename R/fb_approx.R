@@ -86,12 +86,22 @@ fb_approx <- function(scheme, ...) {
 #' @param x Any R object. The test is a class check, not a structural
 #'   one.
 #' @returns `TRUE` if `x` is an `fb_approx` object, `FALSE` otherwise.
+#' @section Deprecated:
+#' `is_fb_approx()` is deprecated in flexyBayes 0.13.0 and will be removed in
+#' a later release. Use `inherits(x, "fb_approx")`. A call warns with a
+#' condition of class `flexybayes_deprecated`.
 #' @examples
 #' a <- fb_approx("low_rank_smooth")
-#' is_fb_approx(a)
-#' is_fb_approx("low_rank_smooth")
+#' inherits(a, "fb_approx")
+#' inherits("low_rank_smooth", "fb_approx")
 #' @export
-is_fb_approx <- function(x) inherits(x, "fb_approx")
+is_fb_approx <- function(x) {
+  .fb_warn_deprecated_export(
+    "is_fb_approx",
+    "Use `inherits(x, \"fb_approx\")`."
+  )
+  inherits(x, "fb_approx")
+}
 
 # Human-readable, literature-referenced bias-bound description built
 # from a registry entry. Provenance metadata (the internal design

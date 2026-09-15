@@ -110,7 +110,9 @@ test_that("cat_code(rev) emits and returns the stored code", {
     review_code = TRUE
   )
 
-  emitted <- utils::capture.output(returned <- cat_code(rev))
+  emitted <- utils::capture.output(
+    returned <- suppressWarnings(cat_code(rev), classes = "flexybayes_deprecated")
+  )
   expect_identical(returned, rev$code)
   expect_true(any(grepl("generated with brms", emitted, fixed = TRUE)))
 })
@@ -151,7 +153,9 @@ test_that("proceed(rev) advances into a fit and caches the result", {
   expect_false(is.null(rev$seed))
   expect_type(rev$seed, "integer")
 
-  fit1 <- suppressMessages(proceed(rev))
+  fit1 <- suppressMessages(
+    suppressWarnings(proceed(rev), classes = "flexybayes_deprecated")
+  )
 
   expect_s3_class(fit1, "flexybayes")
   expect_true(isTRUE(rev$proceeded))
@@ -161,7 +165,7 @@ test_that("proceed(rev) advances into a fit and caches the result", {
   # cached-fit note via the documented option.
   prev_opt <- options(flexyBayes.silence_review_cached_note = TRUE)
   on.exit(options(prev_opt), add = TRUE)
-  fit2 <- proceed(rev)
+  fit2 <- suppressWarnings(proceed(rev), classes = "flexybayes_deprecated")
   expect_identical(fit2, fit1)
 })
 
@@ -335,7 +339,7 @@ test_that("flexybayes(): option-driven review default, backend = 'auto' resolves
 test_that("fb_brms(): explicit review_code = TRUE, backend = 'inla' refuses", {
   d <- mk_review_data()
   expect_error(
-    fb(
+    flexybayes(
       yield ~ env + (1 | geno),
       data = d,
       verbose = FALSE,
@@ -351,7 +355,7 @@ test_that("fb_brms(): explicit review_code = TRUE, backend = 'inla' refuses", {
 test_that("fb_brms(): review_code = TRUE, backend = 'auto' resolves to brms (ADR 0031 Q1)", {
   skip_if_not_installed("brms")
   d <- mk_review_data()
-  rev <- fb(
+  rev <- flexybayes(
     yield ~ env + (1 | geno),
     data = d,
     verbose = FALSE,
@@ -367,7 +371,7 @@ test_that("fb_brms(): option-driven review default, backend = 'inla' refuses", {
   prev_opt <- options(flexyBayes.review_code_default = TRUE)
   on.exit(options(prev_opt), add = TRUE)
   expect_error(
-    fb(
+    flexybayes(
       yield ~ env + (1 | geno),
       data = d,
       verbose = FALSE,
@@ -384,7 +388,7 @@ test_that("fb_brms(): option-driven review default, backend = 'auto' resolves to
   d <- mk_review_data()
   prev_opt <- options(flexyBayes.review_code_default = TRUE)
   on.exit(options(prev_opt), add = TRUE)
-  rev <- fb(
+  rev <- flexybayes(
     yield ~ env + (1 | geno),
     data = d,
     verbose = FALSE,

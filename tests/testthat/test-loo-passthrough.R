@@ -55,7 +55,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .loo_inla_fit <- function() {
   if (is.null(.loo_cache$inla)) {
-    .loo_cache$inla <- suppressMessages(fb(
+    .loo_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       random = ~g,
       data = .loo_data(),
@@ -70,7 +70,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .loo_brms_fit <- function() {
   if (is.null(.loo_cache$brms)) {
-    .loo_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .loo_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x + (1 | g),
       data = .loo_data(),
       backend = "brms",

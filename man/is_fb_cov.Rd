@@ -16,9 +16,16 @@ one.}
 \description{
 Test whether an object is an \code{fb_cov} carrier
 }
+\section{Deprecated}{
+
+\code{is_fb_cov()} is deprecated in flexyBayes 0.13.0 and will be removed in a
+later release. Use \code{inherits(x, "fb_cov")}. A call warns with a condition
+of class \code{flexybayes_deprecated}.
+}
+
 \examples{
 K <- diag(3)
 dimnames(K) <- list(letters[1:3], letters[1:3])
-is_fb_cov(fb_cov(K, type = "dense"))
-is_fb_cov(K)
+inherits(fb_cov(K, type = "dense"), "fb_cov")
+inherits(K, "fb_cov")
 }

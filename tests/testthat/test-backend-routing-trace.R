@@ -56,7 +56,7 @@ mk_routing_fit <- function(seed = 2026L, N = 60L, J = 4L, backend = "brms") {
   # run to run at identical data and settings. Pinning it makes the
   # already-verified-clean draw reproducible instead of leaving it to
   # chance.
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = dat,
     backend = backend,
@@ -235,7 +235,7 @@ test_that("ADR 0024 (g): explicit backend='brms' bypasses policy (rejected_route
     x = rnorm(20),
     g = factor(rep(letters[1:4], 5))
   )
-  rev <- suppressMessages(fb(
+  rev <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
     data = dat,
     backend = "brms",
@@ -365,7 +365,7 @@ test_that("ADR 0024 (h+): backend='variational_advi' also refuses (variational p
 test_that("fb_brms() raises the approximate-scheme refusal, like the universal entry", {
   dat <- data.frame(y = rnorm(20), x = rnorm(20))
   err <- expect_error(
-    fb(y ~ x, data = dat, backend = "inla_pardiso_approximate"),
+    flexybayes(y ~ x, data = dat, backend = "inla_pardiso_approximate"),
     "approximate_route_not_yet_registered"
   )
   expect_match(conditionMessage(err), "approximation registry")

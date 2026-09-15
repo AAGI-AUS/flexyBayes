@@ -15,7 +15,7 @@ test_that("fitted() returns posterior-mean fitted values for an INLA fit", {
   set.seed(404L)
   d <- data.frame(x = rnorm(50))
   d$y <- 1 + 0.7 * d$x + rnorm(50, 0, 0.6)
-  fit <- fb_inla(y ~ x, data = d)
+  fit <- flexybayes(y ~ x, data = d, backend = "inla")
 
   fv <- fitted(fit)
   expect_type(fv, "double")
@@ -30,7 +30,7 @@ test_that("residuals() are response residuals that reconstruct y", {
   set.seed(405L)
   d <- data.frame(x = rnorm(50))
   d$y <- 2 - 0.5 * d$x + rnorm(50, 0, 0.5)
-  fit <- fb_inla(y ~ x, data = d)
+  fit <- flexybayes(y ~ x, data = d, backend = "inla")
 
   rv <- residuals(fit)
   expect_length(rv, nrow(d))
@@ -44,7 +44,7 @@ test_that("fitted() on a non-identity (Poisson) INLA fit is on the response scal
   set.seed(406L)
   d <- data.frame(x = rnorm(60))
   d$y <- rpois(60, exp(0.5 + 0.3 * d$x))
-  fit <- fb_inla(y ~ x, data = d, family = "poisson")
+  fit <- flexybayes(y ~ x, data = d, family = "poisson", backend = "inla")
 
   fv <- fitted(fit)
   expect_length(fv, nrow(d))
@@ -56,7 +56,7 @@ test_that("logLik() on an INLA fit returns an honest NA, not a fabricated value"
   set.seed(407L)
   d <- data.frame(x = rnorm(40))
   d$y <- 0.3 + d$x + rnorm(40, 0, 0.7)
-  fit <- fb_inla(y ~ x, data = d)
+  fit <- flexybayes(y ~ x, data = d, backend = "inla")
 
   expect_message(ll <- logLik(fit), "marginal")
   expect_s3_class(ll, "logLik")

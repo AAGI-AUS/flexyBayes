@@ -313,9 +313,10 @@ test_that("the sleepstudy collapse is not reported as agreement", {
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  fit_i <- suppressMessages(fb_inla(
+  fit_i <- suppressMessages(flexybayes(
     Reaction ~ Days + (1 | Subject),
     data = sleepstudy,
+    backend = "inla",
     verbose = FALSE
   ))
 

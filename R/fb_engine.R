@@ -158,11 +158,21 @@ fb_engine <- function(name, opts = list(), ...) {
 #' @param x Any R object. The test is a class check, not a structural
 #'   one.
 #' @returns `TRUE` if `x` is an `fb_engine` object, `FALSE` otherwise.
+#' @section Deprecated:
+#' `is_fb_engine()` is deprecated in flexyBayes 0.13.0 and will be removed in
+#' a later release. Use `inherits(x, "fb_engine")`. A call warns with a
+#' condition of class `flexybayes_deprecated`.
 #' @examples
-#' is_fb_engine(fb_engine("inla"))
-#' is_fb_engine("inla")
+#' inherits(fb_engine("inla"), "fb_engine")
+#' inherits("inla", "fb_engine")
 #' @export
-is_fb_engine <- function(x) inherits(x, "fb_engine")
+is_fb_engine <- function(x) {
+  .fb_warn_deprecated_export(
+    "is_fb_engine",
+    "Use `inherits(x, \"fb_engine\")`."
+  )
+  inherits(x, "fb_engine")
+}
 
 #' Print an `fb_engine` specification
 #'

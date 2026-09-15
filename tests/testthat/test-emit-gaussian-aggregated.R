@@ -76,7 +76,7 @@ mk_agg_data <- function(seed = 1L, N = 500L, J = 15L) {
 test_that("(h) per-row fit carries exactness = 'exact'", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ f1 + f2 + (1 | g),
     data = dat,
     backend = "inla",
@@ -91,7 +91,7 @@ test_that("(h) per-row fit carries exactness = 'exact'", {
 test_that("(h) aggregated fit carries exactness = 'aggregated_exact'", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -112,7 +112,7 @@ test_that("(h) aggregated fit carries exactness = 'aggregated_exact'", {
 test_that("(e) eligible plan routes to aggregated_count path", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -131,7 +131,7 @@ test_that("(e) eligible plan routes to aggregated_count path", {
 test_that("(e) backend_decision reason carries N, K, ratio", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -174,7 +174,7 @@ test_that("(f) continuous fixed term falls through to per-row", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   dat$x_cont <- rnorm(nrow(dat))
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ x_cont + (1 | g),
     data = dat,
     backend = "inla",
@@ -192,7 +192,7 @@ test_that("(f) a Bernoulli binomial auto-aggregates exactly", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
   dat$y_bin <- as.integer(dat$y > median(dat$y))
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y_bin ~ f1 + (1 | g),
     data = dat,
     family = "binomial",
@@ -219,7 +219,7 @@ test_that("(j) aggregate = TRUE on out-of-scope IR raises refusal", {
   dat <- mk_agg_data()
   dat$x_cont <- rnorm(nrow(dat))
   err <- tryCatch(
-    suppressMessages(fb(
+    suppressMessages(flexybayes(
       y ~ x_cont + (1 | g),
       data = dat,
       backend = "inla",
@@ -244,7 +244,7 @@ test_that("(j) aggregate = TRUE on an unrecognised backend name raises unknown_b
   # aggregation-eligibility logic at all.
   dat <- mk_agg_data()
   err <- tryCatch(
-    suppressMessages(fb(
+    suppressMessages(flexybayes(
       y ~ f1 + (1 | g),
       data = dat,
       backend = "stan2",
@@ -263,7 +263,7 @@ test_that("(j) aggregate = TRUE on backend = 'brms' refuses", {
   skip_on_cran()
   dat <- mk_agg_data()
   err <- tryCatch(
-    suppressMessages(fb(
+    suppressMessages(flexybayes(
       y ~ f1 + (1 | g),
       data = dat,
       backend = "brms",
@@ -284,7 +284,7 @@ test_that("(j) aggregate = TRUE on backend = 'brms' refuses", {
 test_that("(j) aggregate = 'foo' (invalid) raises clear validation error", {
   dat <- mk_agg_data()
   err <- tryCatch(
-    suppressMessages(fb(
+    suppressMessages(flexybayes(
       y ~ f1 + (1 | g),
       data = dat,
       backend = "inla",
@@ -343,7 +343,7 @@ test_that("(g) at(f):units refuses when f is not a cell key", {
 test_that("(i) summary() prints compression line on aggregated fit", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -361,7 +361,7 @@ test_that("(i) summary() prints compression line on aggregated fit", {
 test_that("(i) per-row summary does NOT print compression line", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ f1 + f2 + (1 | g),
     data = dat,
     backend = "inla",
@@ -377,7 +377,7 @@ test_that("(i) per-row summary does NOT print compression line", {
 test_that("(i) print() shows Exact. line on per-row and aggregated", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit_row <- suppressMessages(fb(
+  fit_row <- suppressMessages(flexybayes(
     y ~ f1 + f2 + (1 | g),
     data = dat,
     backend = "inla",
@@ -386,7 +386,7 @@ test_that("(i) print() shows Exact. line on per-row and aggregated", {
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  fit_agg <- suppressMessages(fb(
+  fit_agg <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -425,7 +425,7 @@ test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard
   # was read as diag(n) and returned a 0 x 0 matrix, crashing
   # .agg_inla_summarise() with a dimnames-extent mismatch.
   dat <- mk_agg_data(seed = 7L)
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ 1 + (1 | g),
     data = dat,
     family = "poisson",
@@ -452,7 +452,7 @@ test_that("intercept-only aggregated INLA fit summarises (1-coef beta_vcov guard
 test_that("aggregation_meta carries N, K, compression, residual kind", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -478,7 +478,7 @@ test_that("aggregation_meta carries N, K, compression, residual kind", {
 test_that("flexybayes_aggregated inherits from flexybayes", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -521,7 +521,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   # guarantee). `prior_vc_sd = 1` is what selects that route, and it is
   # the only route this test used to exercise -- which is how the
   # auto-default's mislabel went unseen.
-  fit_def <- suppressMessages(fb(
+  fit_def <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -544,7 +544,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   # this "custom (explicit prior supplied)" -- on the commonest fit the
   # package produces, with no prior supplied by anyone. The label is
   # routed off the default-basis attribute prior_summary() reads.
-  fit_auto <- suppressMessages(fb(
+  fit_auto <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -567,7 +567,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   expect_false(any(grepl("explicit prior supplied", auto_out, fixed = TRUE)))
   # Explicit prior -> custom (equivalence against a default-prior per-row
   # fit no longer holds; flagged so the user does not misread agreement).
-  fit_cus <- suppressMessages(fb(
+  fit_cus <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",
@@ -606,7 +606,7 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
 test_that("$glm shim carries per-row reconstructed fitted values", {
   testthat::skip_if_not_installed("INLA")
   dat <- mk_agg_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     count ~ f1 + f2 + (1 | g),
     data = dat,
     family = "poisson",

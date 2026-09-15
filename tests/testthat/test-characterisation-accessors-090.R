@@ -65,7 +65,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .char090_inla_fit <- function() {
   if (is.null(.char090_cache$inla)) {
-    .char090_cache$inla <- suppressMessages(fb(
+    .char090_cache$inla <- suppressMessages(flexybayes(
       y ~ f + x,
       data = .char090_data(),
       backend = "inla",
@@ -78,7 +78,7 @@ suppressPackageStartupMessages(library(testthat))
 
 .char090_brms_fit <- function() {
   if (is.null(.char090_cache$brms)) {
-    .char090_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .char090_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ f + x + (1 | g),
       data = .char090_data(),
       backend = "brms",

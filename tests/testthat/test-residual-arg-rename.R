@@ -37,7 +37,10 @@ test_that("the defunct `rcov` argument errors, pointing to `residual`", {
   )
   # Engine pins forward to flexybayes(), so the tripwire covers them too.
   expect_error(
-    fb_inla(y ~ env, rcov = ~ units, data = df),
+    suppressWarnings(
+      fb_inla(y ~ env, rcov = ~ units, data = df),
+      classes = "flexybayes_deprecated"
+    ),
     "residual"
   )
 })

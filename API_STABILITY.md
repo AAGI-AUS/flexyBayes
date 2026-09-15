@@ -4,7 +4,8 @@
 the experimental `lifecycle` stage, so the guarantees below are deliberately
 weaker than they will be at v1.0: bug fixes and additions never break callers,
 but renamings, default changes, and shape changes are permitted within 0.x
-through a one-minor-release `lifecycle::deprecate_warn()` cycle.
+through a deprecation cycle of at least one minor release, in which the old
+call warns with a condition of class `flexybayes_deprecated`.
 
 This document describes the **lean core**: the mixed-model fitting and
 cross-engine triangulation surface. The orchestra-composition layer (surrogate
@@ -18,8 +19,8 @@ is documented there.
 |---|---|
 | **stable** | Behaviour and signature frozen across the 1.x series; breaking changes ride a major bump and a deprecation cycle. *No exports are stable yet.* |
 | **maturing** | Behaviour and signature unlikely to change in 0.x; signature additions are non-breaking. |
-| **experimental** | Behaviour and signature may change in any 0.x release through a `deprecate_warn()` cycle of at least one minor release. **All current exports.** |
-| **deprecated** | Still callable; emits `lifecycle::deprecate_warn()`. Removal scheduled in `NEWS.md`. |
+| **experimental** | Behaviour and signature may change in any 0.x release through a deprecation cycle of at least one minor release. **All current exports.** |
+| **deprecated** | Still callable; warns with a base R condition of class `flexybayes_deprecated` that names what to call. Removal scheduled in `NEWS.md`. |
 | **superseded** | Still callable, no warning, but a newer entry point is preferred. |
 
 ## The entry surface
@@ -32,7 +33,7 @@ engine:
 | Export | Stage | Notes |
 |---|---|---|
 | `flexybayes()` | experimental | The asreml-style entry (`fixed`, `random`, `residual`); also accepts brms-style grammar via `syntax = "auto"`. `backend = c("auto", "inla", "brms")`, default `"auto"`. Naming a withdrawn or otherwise unrecognised backend refuses by name with `unknown_backend` rather than by `match.arg()`. `"auto"` fits on INLA when `lgm_gate()` accepts and INLA is installed, otherwise on brms when brms can represent the model, and otherwise refuses with `auto_no_active_route`. Nothing is translated silently. `auto` does change engine in one case after starting -- an INLA program failure is caught and re-routed to brms -- and that is reported by a message, never silently; the fit's class and `backend` field record which engine produced it. `prior` accepts an `fb_prior()` object. |
-| `fb()` | experimental | Literal alias for `flexybayes()`; documented but not promoted. |
+| `fb()` | deprecated in 0.13.0 | Alias for `flexybayes()` with the same arguments: it warns and forwards the call. Call `flexybayes()`. |
 
 **Engine pins** fix one engine and therefore take **no** `backend` argument --
 passing a conflicting `backend` raises an `engine_pin_backend_conflict`
@@ -40,7 +41,7 @@ refusal:
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_inla()` | experimental | Pins the INLA engine (approximate inference -- see "Inference semantics"). |
+| `fb_inla()` | deprecated in 0.13.0 | Pins the INLA engine (approximate inference -- see "Inference semantics"). Call `flexybayes(..., backend = "inla")`. |
 | `fb_brms()` | experimental | Pins the Stan/brms engine via `brms::brm()`. |
 
 **Sampler arguments.** `seed` and `control` are part of the universal
@@ -78,9 +79,12 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_cov()`, `is_fb_cov()` | experimental | Construct / test a structured-covariance specification carried on a random term. |
-| `fb_engine()`, `is_fb_engine()` | experimental | Construct / test an engine specification (engine name plus sampler-control options) passable as `backend = fb_engine(...)`. |
-| `fb_approx()`, `is_fb_approx()`, `validate_approximation()` | experimental | Construct / test / validate an approximate-scheme request. Approximate schemes are gated: an unregistered scheme is refused with a structured message naming the available exact routes. |
+| `fb_cov()` | experimental | Construct a structured-covariance specification carried on a random term. |
+| `is_fb_cov()` | deprecated in 0.13.0 | Test for that class. Use `inherits(x, "fb_cov")`. |
+| `fb_engine()` | experimental | Construct an engine specification (engine name plus sampler-control options) passable as `backend = fb_engine(...)`. |
+| `is_fb_engine()` | deprecated in 0.13.0 | Test for that class. Use `inherits(x, "fb_engine")`. |
+| `is_fb_approx()` | deprecated in 0.13.0 | Test for the `fb_approx` class. Use `inherits(x, "fb_approx")`. |
+| `fb_approx()`, `validate_approximation()` | experimental | Construct / validate an approximate-scheme request. Approximate schemes are gated: an unregistered scheme is refused with a structured message naming the available exact routes. |
 
 ## Planning, streaming, and big-data
 
@@ -102,7 +106,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | `fb_refusals()` | experimental | The refusal vocabulary as a table (code, message template, since-version). The registry is the count -- no document quotes a number of refusal codes. |
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
 | `fb_structured_cov()` | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
-| `proceed()`, `cat_code()` | experimental | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. |
+| `proceed()`, `cat_code()` | deprecated in 0.13.0 | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. The generated code is the token's `code` element, and `flexybayes(..., return_code = TRUE)` returns it; the fit comes from calling `flexybayes()` with the same arguments and `review_code = FALSE`. |
 | `fb_complete_grid()` | experimental | Completes a design grid (`index = ~ row * col`) before fitting, so a structured covariance is built over the intended index set rather than over the observed rows only. |
 | `genomic_summary()` | experimental | Turns the posterior draws of a relationship-matrix term into genomic quantities for a fitted model. |
 | `ranef()` | experimental | S3 generic returning random-effect predictions -- posterior summaries of the group-level effects -- from a fit. |
@@ -221,14 +225,14 @@ the same density on the standard-deviation scale, so the two carry one prior and
 When an experimental export is renamed, restructured, or removed:
 
 **0.10.0 did not follow this cycle.** Eleven exports were withdrawn in one step
-with no `deprecate_warn()` release ahead of them, on the ground that the package
+with no deprecation-warning release ahead of them, on the ground that the package
 has never been published and so has no installed base to warn. The policy below
 governs from the first public release onward, and a withdrawal without a cycle
 after that is a break of it, not a precedent set by this one.
 
-1. The old call path emits `lifecycle::deprecate_warn()` for at least one minor
-   release.
-2. The next minor release moves it to `lifecycle::deprecate_stop()` -- the
+1. The old call path warns for at least one minor release, with a base R
+   warning of class `flexybayes_deprecated` that names what to call.
+2. The next minor release makes it an error of class `defunctError` -- the
    function still exists but signals a hard error directing callers to the
    replacement.
 3. The minor release after that removes the old export.

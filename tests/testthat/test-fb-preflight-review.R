@@ -70,7 +70,7 @@ test_that("review small-n via fb_brms: preflight slot stays NULL", {
     x = rnorm(50),
     g = factor(rep(letters[1:5], 10))
   )
-  rev <- fb(y ~ x + (1 | g), data = df, review_code = TRUE)
+  rev <- flexybayes(y ~ x + (1 | g), data = df, review_code = TRUE)
 
   expect_s3_class(rev, "flexybayes_review")
   expect_null(rev$preflight)

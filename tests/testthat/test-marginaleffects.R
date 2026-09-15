@@ -42,7 +42,7 @@ test_that("marginaleffects accessors work on an INLA fit", {
   skip_on_ci()
   .mfx_silence()
   d <- .mfx_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ f + x,
     data = d,
     backend = "inla",
@@ -70,7 +70,7 @@ test_that("predictions() / avg_slopes() on an INLA fit recover the DGP", {
   skip_on_ci()
   .mfx_silence()
   d <- .mfx_data()
-  fit <- suppressMessages(fb(
+  fit <- suppressMessages(flexybayes(
     y ~ f + x,
     data = d,
     backend = "inla",
@@ -139,7 +139,7 @@ test_that("INLA and brms avg_comparisons agree on the factor effect", {
   skip_on_ci()
   .mfx_silence()
   d <- .mfx_data()
-  fi <- suppressMessages(fb(
+  fi <- suppressMessages(flexybayes(
     y ~ f + x,
     data = d,
     backend = "inla",

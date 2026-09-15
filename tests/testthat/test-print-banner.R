@@ -66,7 +66,7 @@ suppressPackageStartupMessages(library(testthat))
     set.seed(3L)
     d <- data.frame(g = factor(rep(letters[1:5], 12L)))
     d$y <- stats::rnorm(60L) + as.integer(d$g) * 0.2
-    .pb_cache$brms <- suppressMessages(suppressWarnings(fb(
+    .pb_cache$brms <- suppressMessages(suppressWarnings(flexybayes(
       y ~ 1 + (1 | g),
       data = d,
       backend = "brms",
