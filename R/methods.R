@@ -884,9 +884,8 @@ model.matrix.flexybayes <- function(object, ...) {
 #'
 #' \itemize{
 #'   \item \strong{The auto-default} half-normal is the output of a
-#'     policy -- one half-normal per variance component the model
-#'     has, with the scale read off the data -- rather than a statement
-#'     about particular terms. A re-fit passes neither `prior` nor either
+#'     policy: one half-normal per variance component the model has,
+#'     with the scale read off the data. A re-fit passes neither `prior` nor either
 #'     scalar, so the policy runs again over the *updated* model and
 #'     data. On an identity `update()` the same data rebuild the same
 #'     scale, so nothing moves. On `update(fit, random = ~ g + h)` the
