@@ -195,6 +195,28 @@ test_that("hyperparameters that cannot be paired with priors are an error", {
   expect_error(.fb_inla_support_audit(fake), "could not be paired")
 })
 
+test_that("a bounded likelihood parameter that is not a precision is audited", {
+  # The gamma likelihood's hyperparameter is INLA's "precision parameter",
+  # and beta's is `phi`; the package's uniform expression prior sits on
+  # their internal theta as on a Gaussian precision.
+  fake <- .psa_fake_fit(theta_g = log(4.5))
+  rownames(fake$internal.summary.hyperpar)[[1L]] <-
+    "Intern precision-parameter for the Gamma observations"
+  fake$all.hyper$family[[1L]]$hyper$theta1$short.name <- "phi"
+
+  audit <- .fb_inla_support_audit(fake)
+
+  expect_equal(nrow(audit), 2L)
+  expect_true(all(audit$inside))
+})
+
+test_that("a likelihood row that does not name the observations is an error", {
+  fake <- .psa_fake_fit(theta_g = log(4.5))
+  rownames(fake$internal.summary.hyperpar)[[1L]] <- "Log precision for h"
+
+  expect_error(.fb_inla_support_audit(fake), "could not be paired")
+})
+
 test_that("a standardised fit reports standard deviations in response units", {
   fake <- .psa_fake_fit(theta_g = log(4.5))
   spec <- list(centre = 0, scale = 2, n_obs = 10L)

@@ -63,8 +63,10 @@
 #'
 #' INLA lists its hyperparameters in the order of its prior record, so the
 #' two are paired by position. The pairing is accepted only when the counts
-#' agree, every bounded prior sits on a precision, and a latent term's
-#' precision carries that term's name.
+#' agree, a latent term's hyperparameter carries that term's name, and a
+#' likelihood's hyperparameter names the observations. The expression prior
+#' is a density on INLA's internal theta, whatever the hyperparameter is
+#' called (a Gaussian precision, a gamma precision parameter, a beta `phi`).
 #'
 #' @param rows The non-fixed rows of the prior read-back.
 #' @param theta_names Row names of `internal.summary.hyperpar`.
@@ -75,17 +77,19 @@
 .fb_inla_support_pairing <- function(rows, theta_names, bounded) {
   paired <- nrow(rows) == length(theta_names)
   if (paired) {
-    random_named <- vapply(
+    named <- vapply(
       bounded,
       function(i) {
-        !identical(rows$section[[i]], "random") ||
-          endsWith(theta_names[[i]], paste0(" for ", rows$tag[[i]]))
+        switch(
+          rows$section[[i]],
+          random = endsWith(theta_names[[i]], paste0(" for ", rows$tag[[i]])),
+          family = grepl(" observations(\\[[0-9]+\\])?$", theta_names[[i]]),
+          FALSE
+        )
       },
       logical(1L)
     )
-    paired <- all(rows$short_name[bounded] %in% "prec") &&
-      all(startsWith(theta_names[bounded], "Log precision for ")) &&
-      all(random_named)
+    paired <- all(named)
   }
   if (!paired) {
     stop(
