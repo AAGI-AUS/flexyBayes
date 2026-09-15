@@ -94,11 +94,27 @@ test_that("a variance ratio is invariant to rescaling the response (nested strat
   d$rep <- factor(d$rep)
   d$block <- factor(d$block)
 
+  # Under the default uniform bound INLA's interval for `rep` (three levels)
+  # runs past the bound, 0.17 to 3.65 against 3.05, and the support audit
+  # refuses the fit at both scales (8 of 8 repeats each). A half-normal
+  # prior on each standard deviation, with scale the standard deviation of
+  # the modelled response, has no bound to cross and moves with the response
+  # exactly as the default does, so the gate still measures invariance.
+  .msi_hn_prior <- function(data) {
+    s <- stats::sd(data$yield)
+    fb_prior(
+      sigma ~ half_normal(scale = s),
+      sd(group = "rep") ~ half_normal(scale = s),
+      sd(group = "rep:block") ~ half_normal(scale = s)
+    )
+  }
   fit_1 <- flexybayes(yield ~ gen, random = ~ rep + rep:block, data = d,
+                      prior = .msi_hn_prior(d),
                       backend = "inla", verbose = FALSE)
   d10 <- d
   d10$yield <- 10 * d10$yield
   fit_10 <- flexybayes(yield ~ gen, random = ~ rep + rep:block, data = d10,
+                       prior = .msi_hn_prior(d10),
                        backend = "inla", verbose = FALSE)
 
   # Read `rep:block`, not `rep`. The choice is the oracle's own identification
