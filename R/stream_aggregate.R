@@ -1106,6 +1106,11 @@ flexybayes_stream <- function(
   if (!is.null(fit$extras)) {
     fit$extras$fb_terms <- fb
   }
+  # The manifest names the streamed route; the count emit records the
+  # aggregated one.
+  if (!is.null(fit[["extras"]][["manifest"]])) {
+    fit[["extras"]][["manifest"]][["route"]][["route"]] <- "streamed_count"
+  }
 
   # D10 / WP-D: emit_gaussian_aggregated() / emit_count_aggregated() set
   # neither $exactness nor $extras$backend_decision -- the ordinary

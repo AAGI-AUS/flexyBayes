@@ -226,7 +226,18 @@ summary.flexybayes <- function(object, ...) {
 #
 # @noRd
 # @keywords internal
-.agg_prior_parametrization <- function(priors) {
+.agg_prior_parametrization <- function(priors, inputs = NULL) {
+  # A fit with a model manifest is labelled from its input sources
+  # (R/model_manifest.R), the one record of where each prior came from.
+  if (!is.null(inputs)) {
+    if (any(inputs$source == "explicit")) {
+      return("custom")
+    }
+    if (any(inputs$source %in% .FB_MANIFEST_DEFAULT_SOURCES)) {
+      return("package_default")
+    }
+    return("per_row_equivalent")
+  }
   if (!inherits(priors, "fb_prior")) {
     return("per_row_equivalent")
   }
@@ -1014,9 +1025,12 @@ update.flexybayes <- function(object, ...) {
   recorded_prior <- object$extras$fb_terms$priors
   caller_priced <- any(c("prior", "prior_vc_sd") %in% names(dots))
   if (inherits(recorded_prior, "fb_prior") && !caller_priced) {
-    from_auto_default <- !is.null(
-      attr(recorded_prior, "fb_prior_default_basis")
-    )
+    manifest <- .fb_manifest(object)
+    from_auto_default <- if (!is.null(manifest)) {
+      identical(.fb_manifest_origin(manifest), "auto")
+    } else {
+      !is.null(attr(recorded_prior, "fb_prior_default_basis"))
+    }
     if (from_auto_default) {
       args$prior_fixed_sd <- NULL
       args$prior_vc_sd <- NULL

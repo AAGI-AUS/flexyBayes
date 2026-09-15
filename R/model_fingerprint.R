@@ -384,8 +384,7 @@
     ))
   }
 
-  is_default <- !is.null(attr(prior, "fb_prior_default_basis"))
-  src <- if (is_default) "shared_default" else "explicit"
+  src <- .fb_manifest_prior_source(prior)
 
   recorded <- character(0)
   sources <- character(0)

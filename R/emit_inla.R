@@ -567,7 +567,7 @@ emit_inla <- function(
   # this model would key a `hyper` entry no f() term reads -- the INLA
   # half of field-sweep FS-20, where the same mistake on brms surfaced as
   # brms's own parser error and here was not reported at all.
-  .check_inla_hyper_keys_reachable(fb, hyper_ctrl)
+  .check_inla_hyper_keys_reachable(fb, hyper_ctrl, known_matrices)
   # Every random-effect standard deviation the caller left unstated takes the
   # package's bounded default, and a default bound on a slope follows its
   # covariate's units (R/inla_default_priors.R). Run after the reachability
@@ -1181,13 +1181,15 @@ emit_inla <- function(
 
   # Formula build runs here (post data_inla setup) so blocks-format
   # vm/ped terms can resolve their K-count from known_matrices.
-  inla_form <- .build_inla_formula(
+  built <- .build_inla_formula(
     fb,
     hyper_ctrl = hyper_ctrl,
     known_matrices = known_matrices,
     sectioned_response = !is.null(sectioned),
-    standardisation = standardisation
+    standardisation = standardisation,
+    with_slots = TRUE
   )
+  inla_form <- built[["formula"]]
   if (verbose) {
     cat(
       "\n-- flexyBayes: INLA fit ",
@@ -1356,6 +1358,20 @@ emit_inla <- function(
     )
   }
 
+  # What each prior became, as INLA reports it (R/model_manifest.R).
+  manifest <- .fb_manifest_inla(
+    fb = fb,
+    inla_fit = fit,
+    formula_slots = built[["slots"]],
+    family_slots = .fb_manifest_inla_family_slots(hyper_ctrl, inla_family),
+    reads = built[["reads"]],
+    control_fixed = control_fixed,
+    scalars = .fb_manifest_inla_scalars(fb),
+    completion = completion$record,
+    fixed_default_sd = .fb_inla_default_fixed_sd(fb, data),
+    route = "per_row"
+  )
+
   # Wrap as a flexybayes_inla object
   out <- structure(
     list(
@@ -1475,7 +1491,10 @@ emit_inla <- function(
           data,
           prior_vc_sd = prior_vc_sd,
           completion = completion$record
-        )
+        ),
+        # Which prior became which engine slot, the route and the evidence
+        # (R/model_manifest.R). prior_summary() and summary() read it.
+        manifest = manifest
       )
     ),
     # The INLA fit wears the shared `flexybayes` parent, as the brms fit
@@ -1533,9 +1552,40 @@ emit_inla <- function(
   hyper_ctrl = list(),
   known_matrices = list(),
   sectioned_response = FALSE,
-  standardisation = NULL
+  standardisation = NULL,
+  with_slots = FALSE
 ) {
   rhs_terms <- character(0)
+
+  # The engine slot each f() term writes, and the prior keys it reads, for
+  # the model manifest (R/model_manifest.R). Returned when `with_slots`.
+  slots <- list()
+  reads <- list()
+  note <- function(
+    tag,
+    model,
+    structure,
+    key = NA_character_,
+    entry = NULL,
+    consult = key,
+    group_model = NA_character_
+  ) {
+    slots[[length(slots) + 1L]] <<- .fb_manifest_inla_slot(
+      tag = tag,
+      model = model,
+      key = key,
+      structure = structure,
+      entry = entry,
+      group_model = group_model
+    )
+    for (k in consult[!is.na(consult)]) {
+      reads[[length(reads) + 1L]] <<- data.frame(
+        key = k,
+        structure = structure,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
 
   # Intercept
   rhs_terms <- c(rhs_terms, if (fb$intercept) "1" else "0")
@@ -1598,6 +1648,7 @@ emit_inla <- function(
       slope_key <- paste0(sv, "_", gtag)
       if (isTRUE(term$with_intercept)) {
         hyper_int <- .inla_hyper_arg(hyper_ctrl[[int_key]])
+        note(gtag, "iid", term$type, int_key, hyper_ctrl[[int_key]])
         rhs_terms <- c(
           rhs_terms,
           paste0(
@@ -1610,6 +1661,7 @@ emit_inla <- function(
         )
       }
       hyper_slope <- .inla_hyper_arg(hyper_ctrl[[slope_key]])
+      note(gslope, "iid", term$type, slope_key, hyper_ctrl[[slope_key]])
       rhs_terms <- c(
         rhs_terms,
         paste0(
@@ -1700,6 +1752,17 @@ emit_inla <- function(
           )
         ))
       }
+      wishart_tag <- .fb_inla_cor_slope_index(gtag, sv)
+      note(
+        wishart_tag,
+        "iid2d",
+        term$type,
+        key = paste0("wishart:", wishart_tag),
+        entry = list(
+          param = .fb_inla_wishart_param(.fb_inla_wishart_scale_slope(fb, term))
+        ),
+        consult = c(gtag, paste0(sv, "_", gtag))
+      )
       rhs_terms <- c(
         rhs_terms,
         paste0(
@@ -1768,6 +1831,7 @@ emit_inla <- function(
         for (k in seq_len(K)) {
           idx_block_name <- paste0(term$var, "_id_block_", k)
           q_block_name <- paste0(cov$data, "_Q_", k)
+          note(idx_block_name, "generic0", term$type, key, hyper_ctrl[[key]])
           contribs[[k]] <- paste0(
             "f(",
             idx_block_name,
@@ -1782,6 +1846,7 @@ emit_inla <- function(
       }
 
       idx_name <- paste0(term$var, "_id")
+      note(idx_name, "generic0", term$type, key, hyper_ctrl[[key]])
       contrib <- paste0(
         "f(",
         idx_name,
@@ -1795,6 +1860,16 @@ emit_inla <- function(
     }
     # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
     if (term$type %in% c("ar1", "ar1_spatial")) {
+      if (identical(term$type, "ar1")) {
+        note(paste0(term[["var"]], "_id"), "ar1", term$type)
+      } else {
+        note(
+          paste0(term[["row_var"]], "_id"),
+          "ar1",
+          term$type,
+          group_model = if (isTRUE(term[["col_ar1"]])) "ar1" else "iid"
+        )
+      }
       rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
       next
     }
@@ -1814,12 +1889,18 @@ emit_inla <- function(
       hyper_sfx <- if (nzchar(hyper_str)) paste0(", ", hyper_str) else ""
       for (j in seq_len(term$k)) {
         anchor_idx <- .fb_inla_fa_index(term$outer, term$inner, j, levs[[j]])
+        note(anchor_idx, "iid", term$type, term$inner, hyper_ctrl[[term$inner]])
         rhs_terms <- c(rhs_terms, paste0(
           "f(", anchor_idx, ", model = \"iid\", values = seq_len(",
           n_inner, ")", hyper_sfx, ")"
         ))
         for (e in seq(j + 1L, length(levs))) {
           if (e > length(levs)) break
+          note(
+            .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
+            "copy",
+            term$type
+          )
           rhs_terms <- c(rhs_terms, paste0(
             "f(", .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
             ", copy = \"", anchor_idx, "\", fixed = FALSE)"
@@ -1827,6 +1908,13 @@ emit_inla <- function(
         }
       }
       for (e in seq_along(levs)) {
+        note(
+          .fb_inla_fa_specific(term$outer, term$inner, levs[[e]]),
+          "iid",
+          term$type,
+          term$inner,
+          hyper_ctrl[[term$inner]]
+        )
         rhs_terms <- c(rhs_terms, paste0(
           "f(", .fb_inla_fa_specific(term$outer, term$inner, levs[[e]]),
           ", model = \"iid\", values = seq_len(", n_inner, ")",
@@ -1873,6 +1961,17 @@ emit_inla <- function(
           )
         ))
       }
+      us_tag <- .fb_inla_us_index(term$outer, term$inner)
+      note(
+        us_tag,
+        paste0("iid", k, "d"),
+        term$type,
+        key = paste0("wishart:", us_tag),
+        entry = list(
+          param = .fb_inla_wishart_param(rep(.fb_inla_response_var(fb), k))
+        ),
+        consult = term$inner
+      )
       rhs_terms <- c(
         rhs_terms,
         paste0(
@@ -1894,6 +1993,13 @@ emit_inla <- function(
       n_inner <- term$n_inner %||%
         length(unique(stats::na.omit(term$inner_levels)))
       for (lev in term$outer_levels) {
+        note(
+          .fb_inla_at_index(term$outer, term$inner, lev),
+          "iid",
+          term$type,
+          term$inner,
+          hyper_ctrl[[term$inner]]
+        )
         rhs_terms <- c(
           rhs_terms,
           paste0(
@@ -1915,6 +2021,13 @@ emit_inla <- function(
     if (term$type %in% c("nested", "combo")) {
       vars <- .fb_nested_vars(term)
       hyper_str <- .inla_hyper_arg(hyper_ctrl[[paste(vars, collapse = ":")]])
+      note(
+        .fb_inla_interaction_index(vars),
+        "iid",
+        term$type,
+        paste(vars, collapse = ":"),
+        hyper_ctrl[[paste(vars, collapse = ":")]]
+      )
       rhs_terms <- c(
         rhs_terms,
         paste0(
@@ -1956,6 +2069,7 @@ emit_inla <- function(
       )
     )
     hyper_str <- .inla_hyper_arg(hyper_ctrl[[key]])
+    note(term[["var"]], model_name, term$type, key, hyper_ctrl[[key]])
     contrib <- paste0(
       "f(",
       term$var,
@@ -2002,7 +2116,15 @@ emit_inla <- function(
   } else {
     fb$response
   }
-  stats::as.formula(paste0(lhs, " ~ ", rhs))
+  form <- stats::as.formula(paste0(lhs, " ~ ", rhs))
+  if (!isTRUE(with_slots)) {
+    return(form)
+  }
+  list(
+    formula = form,
+    slots = .fb_manifest_bind_slots(slots),
+    reads = .fb_manifest_bind_reads(reads)
+  )
 }
 
 # Does a hyper entry carry a prior the caller stated? An entry the package
@@ -2408,44 +2530,25 @@ emit_inla <- function(
 # Refuse an `sd(group = ...)` / `smooth("var")` prior whose key names no
 # variance component of this model.
 #
-# The reachable set is the one the default-prior walker uses
-# (`.fb_default_prior_targets()`), widened by every random term's own
-# variable so a term outside the walker is not refused for being outside
-# the walker, and by the INLA targets the walker does not list
-# (`.fb_inla_sd_targets()`): a multi-way interaction `a:b:c` has no single
-# variable of its own, and its colon-joined key is the one the formula
-# builder reads and the package default fills. `sigma` is always reachable:
-# the residual scale is dropped by family, not by term, and that drop is
-# deliberate and documented in R/family_traits.R.
-.check_inla_hyper_keys_reachable <- function(fb, hyper_ctrl) {
+# The reachable keys are the ones the formula builder's f() terms read, so a
+# key is accepted exactly when some slot consumes it. `sigma` is always
+# reachable: the family decides whether a residual scale exists, and the
+# manifest records a residual prior no likelihood takes, with its reason.
+.check_inla_hyper_keys_reachable <- function(
+  fb,
+  hyper_ctrl,
+  known_matrices = list()
+) {
   keys <- setdiff(names(hyper_ctrl), "sigma")
   if (!length(keys)) {
     return(invisible(TRUE))
   }
-  targets <- .fb_default_prior_targets(fb)
-  term_vars <- unlist(lapply(
-    fb$random_terms %||% list(),
-    function(term) {
-      c(term$var, term$inner, term$outer, term$slope_var)
-    }
-  ))
-  available <- unique(c(
-    targets$shared,
-    targets$vm_ped,
-    .fb_inla_sd_targets(fb)$shared,
-    term_vars
-  ))
-  available <- available[nzchar(available %||% character(0))]
-  missing_keys <- setdiff(keys, available)
-  if (!length(missing_keys)) {
-    return(invisible(TRUE))
-  }
-  .fb_stop_prior_target_absent(
-    target_label = paste0("sd(group = \"", missing_keys[[1L]], "\")"),
-    kind = "variance component",
-    available = available,
-    engine = "inla"
-  )
+  reads <- .build_inla_formula(
+    fb,
+    known_matrices = known_matrices,
+    with_slots = TRUE
+  )[["reads"]]
+  .fb_check_prior_keys_reachable(keys, unique(reads$key), engine = "inla")
 }
 
 
@@ -3334,14 +3437,21 @@ summary.flexybayes_inla <- function(object, ...) {
 # `wishart<k>d` takes param = c(r, R11..Rkk, upper-triangle covariances).
 # r = k + 2 is INLA's own default degrees of freedom at k = 2 and the
 # lightest proper choice; the off-diagonals stay at zero, so the prior is
-# scaled but says nothing about the correlations.
-.fb_inla_wishart_arg <- function(diag_scale) {
+# scaled but says nothing about the correlations. NULL when no scale can be
+# written.
+.fb_inla_wishart_param <- function(diag_scale) {
   k <- length(diag_scale)
   if (k < 2L || any(!is.finite(diag_scale))) {
+    return(NULL)
+  }
+  c(k + 2L, diag_scale, rep(0, k * (k - 1L) / 2L))
+}
+
+.fb_inla_wishart_arg <- function(diag_scale) {
+  param <- .fb_inla_wishart_param(diag_scale)
+  if (is.null(param)) {
     return("")
   }
-  n_offdiag <- k * (k - 1L) / 2L
-  param <- c(k + 2L, diag_scale, rep(0, n_offdiag))
   paste0(
     ", hyper = list(theta1 = list(param = c(",
     paste(format(param, digits = 10, trim = TRUE), collapse = ", "),

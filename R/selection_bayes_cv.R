@@ -471,7 +471,16 @@
     args$chains <- chains
   }
 
-  do.call(flexybayes, args)
+  fit <- do.call(flexybayes, args)
+  # A fold refit's manifest names it as one, beside the route the refit took.
+  if (!is.null(fit[["extras"]][["manifest"]])) {
+    route <- fit[["extras"]][["manifest"]][["route"]][["route"]]
+    fit[["extras"]][["manifest"]][["route"]] <- list(
+      route = "selection_fold",
+      within = route
+    )
+  }
+  fit
 }
 
 

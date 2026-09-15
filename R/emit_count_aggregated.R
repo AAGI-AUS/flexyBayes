@@ -142,18 +142,28 @@ emit_count_aggregated <- function(
   } else {
     list()
   }
+  # A stated key must name a random intercept this route fits, checked
+  # against the keys its f() terms read, as on the per-row route
+  # (R/model_manifest.R).
+  .fb_check_prior_keys_reachable(
+    setdiff(names(hyper_ctrl), "sigma"),
+    vapply(ri_plan, function(r) r[["col"]], character(1L)),
+    engine = "inla"
+  )
   # A random-intercept SD the caller left unstated takes the package default,
   # as on the per-row route (R/inla_default_priors.R). On the log and logit
   # links its bound is a constant, so no data are needed.
   completion <- .fb_inla_complete_priors(fb, hyper_ctrl, data = NULL)
   hyper_ctrl <- completion$hyper_ctrl
-  inla_form <- .agg_count_inla_formula(
+  built <- .agg_count_inla_formula(
     fb,
     fb_aggregated,
     ri_plan,
     hyper_ctrl,
-    lhs = ".resp"
+    lhs = ".resp",
+    with_slots = TRUE
   )
+  inla_form <- built[["formula"]]
 
   inla_args <- list(
     formula = inla_form,
@@ -192,9 +202,23 @@ emit_count_aggregated <- function(
 
   inla_fit <- do.call(INLA::inla, inla_args)
 
+  # What each prior became, as INLA reports it (R/model_manifest.R).
+  manifest <- .fb_manifest_inla(
+    fb = fb,
+    inla_fit = inla_fit,
+    formula_slots = built[["slots"]],
+    family_slots = .fb_manifest_inla_family_slots(hyper_ctrl, fam),
+    reads = built[["reads"]],
+    control_fixed = control_fixed,
+    scalars = .fb_manifest_inla_scalars(fb),
+    completion = completion$record,
+    route = "aggregated_count"
+  )
+
   list(
     backend = "inla",
     inla = inla_fit,
+    manifest = manifest,
     prior_completion = completion$record,
     fixed_form = inla_form,
     K = fb_aggregated$K,
@@ -210,7 +234,8 @@ emit_count_aggregated <- function(
   fb_aggregated,
   ri_plan,
   hyper_ctrl = list(),
-  lhs
+  lhs,
+  with_slots = FALSE
 ) {
   fixed_cols <- setdiff(fb_aggregated$fixed_cols, "(Intercept)")
   rhs_fixed <- if (length(fixed_cols)) {
@@ -228,19 +253,35 @@ emit_count_aggregated <- function(
   # loggamma(1, 5e-5) so the aggregated fit matches the per-row path,
   # which inherits the same INLA default when hyper_ctrl is empty.
   default_iid_hyper <- list(prior = "loggamma", param = c(1, 5e-05))
-  ri_pieces <- vapply(
-    ri_plan,
-    function(r) {
-      entry <- hyper_ctrl[[r$col]] %||% default_iid_hyper
-      hyper_arg <- .inla_hyper_arg(entry)
-      sprintf(
-        "f(`%s`, model = \"iid\"%s)",
-        r$col,
-        if (nzchar(hyper_arg)) paste0(", ", hyper_arg) else ""
-      )
-    },
-    character(1L)
-  )
+  ri_pieces <- character(length(ri_plan))
+  # The engine slot each f() term writes, for the model manifest; the
+  # pinned INLA default is recorded as the engine's own prior.
+  slots <- list()
+  reads <- list()
+  for (i in seq_along(ri_plan)) {
+    col <- ri_plan[[i]][["col"]]
+    stated <- hyper_ctrl[[col]]
+    entry <- stated %||% default_iid_hyper
+    hyper_arg <- .inla_hyper_arg(entry)
+    ri_pieces[[i]] <- sprintf(
+      "f(`%s`, model = \"iid\"%s)",
+      col,
+      if (nzchar(hyper_arg)) paste0(", ", hyper_arg) else ""
+    )
+    slots[[i]] <- .fb_manifest_inla_slot(
+      tag = col,
+      model = "iid",
+      key = col,
+      structure = "simple",
+      entry = entry,
+      pinned = is.null(stated)
+    )
+    reads[[i]] <- data.frame(
+      key = col,
+      structure = "simple",
+      stringsAsFactors = FALSE
+    )
+  }
   rhs_ri <- if (length(ri_pieces)) {
     paste(ri_pieces, collapse = " + ")
   } else {
@@ -256,7 +297,15 @@ emit_count_aggregated <- function(
     rhs <- paste(rhs, "- 1")
   }
 
-  stats::as.formula(paste(lhs, "~", rhs))
+  form <- stats::as.formula(paste(lhs, "~", rhs))
+  if (!isTRUE(with_slots)) {
+    return(form)
+  }
+  list(
+    formula = form,
+    slots = .fb_manifest_bind_slots(slots),
+    reads = .fb_manifest_bind_reads(reads)
+  )
 }
 
 
@@ -378,6 +427,9 @@ emit_count_aggregated <- function(
       run_time = elapsed,
       # The standard deviations the INLA fit filled with the package default.
       prior_completion = engine_out$prior_completion,
+      # Which prior became which engine slot, the route and the evidence
+      # (R/model_manifest.R).
+      manifest = engine_out[["manifest"]],
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a
@@ -450,7 +502,10 @@ emit_count_aggregated <- function(
         # Three cases, not two -- see .agg_prior_parametrization(). The
         # auto-default is an fb_prior object, so a class test alone
         # labelled an ordinary call "custom (explicit prior supplied)".
-        prior_parametrization = .agg_prior_parametrization(fb$priors),
+        prior_parametrization = .agg_prior_parametrization(
+          fb$priors,
+          engine_out[["manifest"]][["inputs"]]
+        ),
         streamed = isTRUE(fb_aggregated$streamed)
       ),
       the_call = the_call,

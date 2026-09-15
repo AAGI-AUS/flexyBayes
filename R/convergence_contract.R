@@ -109,6 +109,21 @@
 
 # --- per-engine verdicts ---------------------------------------------- #
 
+# The marginal likelihood a verdict reports: the fit's evidence record where
+# it has one (R/model_manifest.R), under which an aggregated fit has none,
+# and the engine's value otherwise. The mode check above still reads the
+# engine's value, which is finite on every route.
+.fb_conv_reported_mlik <- function(fit, mlik) {
+  evidence <- .fb_manifest(fit)[["evidence"]]
+  if (!is.null(evidence)) {
+    if (identical(evidence[["status"]], "available")) {
+      return(evidence[["value"]])
+    }
+    return(NA_real_)
+  }
+  if (is.null(mlik)) NA_real_ else as.numeric(mlik)
+}
+
 .fb_conv_verdict_inla <- function(fit) {
   ms <- tryCatch(fit$inla$mode$mode.status, error = function(e) NULL)
   mlik <- tryCatch(
@@ -137,7 +152,7 @@
     list(engine = "inla"), v,
     list(evidence = list(
       mode_status = if (is.null(ms)) NA_real_ else as.numeric(ms),
-      mlik = if (is.null(mlik)) NA_real_ else as.numeric(mlik),
+      mlik = .fb_conv_reported_mlik(fit, mlik),
       numerical_confirm = if (is.null(nc$pass)) NA else nc$pass,
       max_rhat = NA_real_, min_ess_bulk = NA_real_, n_divergent = NA_integer_,
       # The sampler items, carried as absent so the evidence list has one

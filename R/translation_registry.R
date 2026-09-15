@@ -63,6 +63,53 @@
   "refused"
 )
 
+# How many engine slots a prior on each structure reaches. The head word
+# before a colon is one of .FB_TRANSLATION_CARDINALITIES, and the model
+# manifest records the same count for each fit (R/model_manifest.R).
+.FB_TRANSLATION_CARDINALITIES <- c(
+  "one-to-one",
+  "one-to-many",
+  "engine default",
+  "refused"
+)
+
+.FB_TRANSLATION_CARDINALITY <- c(
+  "Fixed factors, covariates, means model" =
+    "one-to-one: a b() prior reaches its own coefficient",
+  "Simple iid random intercept" = "one-to-one",
+  "Nested and interacted iid terms" =
+    "one-to-one: keyed by the colon-joined group",
+  "Diagonal heterogeneous variance over a factor" =
+    "one-to-many: one field per level of the outer factor",
+  "Sectioned residual, one variance per section" =
+    "one-to-many: one likelihood per section",
+  "Sectioned residual, ASReml 3 spelling" =
+    "one-to-many: one likelihood per section",
+  "Unstructured covariance over a factor, on brms" =
+    "one-to-one: one standard-deviation row for the group",
+  "Unstructured covariance over a factor, on INLA" = "refused",
+  "Factor-analytic covariance" =
+    "one-to-many: one field per common factor and one per level",
+  "Known covariance or precision carrier" =
+    "one-to-many: one field per block in blocks format, one field otherwise",
+  "Pedigree relationship carrier" = "one-to-one",
+  "Correlated random slope, on brms" =
+    "one-to-one: the intercept and slope standard deviations each take a row",
+  "Correlated random slope, on INLA" = "refused",
+  "Uncorrelated random slope" =
+    "one-to-one: the intercept and slope standard deviations each take a field",
+  "Temporal AR1 on the random side" =
+    "engine default: the field's precision and correlation keep INLA's priors",
+  "Separable residual AR1 x AR1" = "refused",
+  "Penalised spline" = "one-to-one: smooth() on the random walk's precision",
+  "Gaussian relative weights" = "one-to-one: the residual prior is unchanged",
+  "Missing response retained as a prediction target" =
+    "one-to-one: the priors are unchanged",
+  "Heterogeneous variance with one common correlation" = "refused",
+  "Tensor-product and multivariate smooths" = "refused",
+  "Structured inner term inside a sectioned residual" = "refused"
+)
+
 .FB_TRANSLATION_VINTAGES <- c(
   "ASReml 4",
   "ASReml 3 alias",
@@ -74,7 +121,7 @@
 #'
 #' @returns A data.frame with one row per accepted or refused structure and
 #'   the columns `structure`, `spelling`, `vintage`, `engine`, `class`,
-#'   `condition`, `oracle`, and `anchor`.
+#'   `condition`, `oracle`, `anchor`, and `cardinality`.
 #'
 #' @noRd
 #' @keywords internal
@@ -408,6 +455,7 @@
     lapply(rows, function(r) as.data.frame(r, stringsAsFactors = FALSE))
   )
   out$condition <- .fb_squish(out$condition)
+  out$cardinality <- unname(.FB_TRANSLATION_CARDINALITY[out$structure])
   out$note <- NULL
   rownames(out) <- NULL
   out
@@ -425,19 +473,20 @@
   reg <- .fb_translation_registry()
   cell <- function(x) .fb_md_escape(.fb_squish(x))
   header <- c(
-    "| Requested structure | flexyBayes spelling | Syntax vintage | Engine | Translation class | Condition | Independent oracle |",
-    "|---|---|---|---|---|---|---|"
+    "| Requested structure | flexyBayes spelling | Syntax vintage | Engine | Translation class | Prior cardinality | Condition | Independent oracle |",
+    "|---|---|---|---|---|---|---|---|"
   )
   body <- vapply(
     seq_len(nrow(reg)),
     function(i) {
       sprintf(
-        "| %s | %s | %s | %s | **%s** | %s | %s |",
+        "| %s | %s | %s | %s | **%s** | %s | %s | %s |",
         cell(reg$structure[[i]]),
         cell(reg$spelling[[i]]),
         cell(reg$vintage[[i]]),
         cell(reg$engine[[i]]),
         cell(reg$class[[i]]),
+        cell(reg$cardinality[[i]]),
         if (nzchar(reg$condition[[i]])) cell(reg$condition[[i]]) else "--",
         cell(reg$oracle[[i]])
       )

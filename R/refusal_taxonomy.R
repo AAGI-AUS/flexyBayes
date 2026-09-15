@@ -2667,6 +2667,50 @@ print.fb_refusals_table <- function(x, ...) {
 # 2026-09-15 -- Gaussian aggregation containment. The aggregated Gaussian
 # route cannot carry a residual prior, so Gaussian models are fitted per row,
 # and no fit on the aggregated representation reports a marginal likelihood.
+.populate_refusal_registry_model_manifest <- function() {
+  .register_refusal(
+    reason_code = "prior_family_has_no_residual_scale",
+    description = paste0(
+      "A residual prior, stated or the package default, on a family whose ",
+      "likelihood has no residual scale parameter: Poisson and binomial, ",
+      "and on brms every family whose dispersion is a function of the ",
+      "mean. No engine slot reads it, and the model manifest records the ",
+      "input as not consumed under this reason."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Compiled model manifest (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "prior_vc_sd_superseded_by_prior",
+    description = paste0(
+      "`prior_vc_sd` supplied beside an fb_prior(). No route reads the ",
+      "scalar once an fb_prior() is present: INLA gives a standard ",
+      "deviation the prior leaves unstated the package's bounded default, ",
+      "and brms keeps its own. The model manifest records the scalar as ",
+      "not consumed under this reason."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Compiled model manifest (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "evidence_not_computed",
+    description = paste0(
+      "The marginal likelihood of a fit whose engine computed none: a brms ",
+      "fit, where Stan sampling runs no bridge sampling. summary() and the ",
+      "model manifest report the evidence as not available under this ",
+      "reason."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Compiled model manifest (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+}
+
 .populate_refusal_registry_aggregation_containment <- function() {
   .register_refusal(
     reason_code = "aggregation_residual_prior_not_composed",

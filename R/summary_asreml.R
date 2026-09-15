@@ -1476,15 +1476,27 @@
     # marginal likelihood of the rows: it omits data-only constants and,
     # under standardisation, scales by the number of cells. It is not
     # reported, and the reason travels with the missing value.
-    evidence_unavailable <- if (inherits(object, "flexybayes_aggregated")) {
-      "aggregated_evidence_unavailable"
+    evidence <- .fb_manifest(object)[["evidence"]]
+    if (!is.null(evidence)) {
+      # The fit's own evidence record (R/model_manifest.R).
+      available <- identical(evidence[["status"]], "available")
+      evidence_unavailable <- if (available) {
+        NA_character_
+      } else {
+        evidence[["reason_code"]]
+      }
+      mlik <- if (available) evidence[["value"]] else NA_real_
     } else {
-      NA_character_
-    }
-    mlik <- if (!is.na(evidence_unavailable) || is.null(object$inla$mlik)) {
-      NA_real_
-    } else {
-      object$inla$mlik[1L, 1L]
+      evidence_unavailable <- if (inherits(object, "flexybayes_aggregated")) {
+        "aggregated_evidence_unavailable"
+      } else {
+        NA_character_
+      }
+      mlik <- if (!is.na(evidence_unavailable) || is.null(object$inla$mlik)) {
+        NA_real_
+      } else {
+        object$inla$mlik[1L, 1L]
+      }
     }
     # NA, not FALSE, where no numerical confirm ran. The aggregated emit
     # records no `num_check` at all, and isTRUE(NULL) is FALSE, so the

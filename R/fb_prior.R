@@ -107,8 +107,9 @@
 #' the INLA route discarded such a row silently while
 #' [prior_summary()] printed it as applied, so a prior-sensitivity
 #' analysis could vary a scale and compare the engine's default with
-#' itself. Whatever `prior_summary()` shows on a fit now reached the
-#' engine.
+#' itself. `prior_summary()` lists each prior with the engine slot it
+#' reached, as the engine reports it after fitting, and names each stated
+#' or default prior that reached no slot, with the reason.
 #'
 #' A prior naming a coefficient or a variance component the model does
 #' not have is likewise refused at the fit, against the engine's own

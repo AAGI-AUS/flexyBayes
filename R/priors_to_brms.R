@@ -107,6 +107,9 @@
 
   specs <- list()
   for (s in prior$specs) {
+    # The input identifier, taken before the slope unwrap below rewrites
+    # the target, so each row names the specification it came from.
+    input_id <- .fb_manifest_spec_input_id(s)
     # Silently drop sigma specs on families that have no residual
     # sigma parameter (Bernoulli, Poisson, etc.). brms's parser
     # would otherwise reject the prior with `The following priors do
@@ -135,6 +138,7 @@
     if (is.null(row)) {
       next
     }
+    row$input <- input_id
     specs[[length(specs) + 1L]] <- row
   }
 
@@ -188,6 +192,9 @@
       lb = NA_real_,
       ub = NA_real_
     )
+  }
+  for (i in seq_along(out)) {
+    out[[i]]$input <- "scalar:prior_fixed_sd"
   }
   out
 }
@@ -664,6 +671,14 @@
     }
   }
 
+  # The scalar each legacy row carries, for the model manifest.
+  for (i in seq_along(specs)) {
+    specs[[i]]$input <- if (specs[[i]]$class %in% c("Intercept", "b")) {
+      "scalar:prior_fixed_sd"
+    } else {
+      "scalar:prior_vc_sd"
+    }
+  }
   specs
 }
 
@@ -751,8 +766,10 @@
   # Recover the residual scale from whichever sigma spec was built, so this
   # tracks the default-prior machinery instead of re-deriving it.
   upper <- NA_real_
+  sigma_input <- "structure:log_sigma"
   for (s in specs) {
     if (identical(s$class %||% "", "sigma")) {
+      sigma_input <- s[["input"]] %||% sigma_input
       m <- regmatches(s$string, regexpr("[0-9.eE+-]+\\)$", s$string))
       if (length(m) == 1L) {
         upper <- suppressWarnings(as.numeric(sub("\\)$", "", m)))
@@ -780,7 +797,8 @@
       class = target_class,
       coef = NA_character_,
       group = NA_character_,
-      dpar = "sigma"
+      dpar = "sigma",
+      input = sigma_input
     ))
   )
 }
@@ -830,5 +848,12 @@
     do.call(brms::prior_string, args)
   })
 
-  do.call(rbind, rows)
+  out <- do.call(rbind, rows)
+  # The input each row came from, read by the model manifest.
+  attr(out, "fb_input_ids") <- vapply(
+    specs,
+    function(s) s[["input"]] %||% NA_character_,
+    character(1L)
+  )
+  out
 }

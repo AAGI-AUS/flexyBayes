@@ -177,6 +177,8 @@ emit_brms <- function(
   # group -- there is no triple for default_prior() to list, and the check
   # would read the blank class as a class the model does not carry. brms
   # validates these rows itself at brm() time.
+  # The rows as compiled, each carrying its input identifier, for the manifest.
+  tagged_prior <- brms_prior
   brms_prior <- .fb_brms_merge_extra_prior(brms_prior, extra_prior)
 
   # -- return_code: skip the fit; emit the Stan code only -----------
@@ -418,7 +420,10 @@ emit_brms <- function(
       ),
       the_call = the_call,
       formula = brms_form,
-      brms_prior = brms_prior
+      brms_prior = brms_prior,
+      # Which prior became which brms prior row, as brms reports it back
+      # (R/model_manifest.R).
+      manifest = .fb_manifest_brms(fb, brms_prior, brmsfit, tagged_prior)
     ),
     class = "flexybayes_extras"
   )

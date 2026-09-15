@@ -485,9 +485,19 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # prior (aggregation_residual_prior_not_composed) (= 193), and the
   # marginal likelihood of any aggregated fit, which is not the marginal
   # likelihood of the rows (aggregated_evidence_unavailable) (= 194).
+  #
+  # The compiled model manifest adds three reasons an input or an evidence
+  # value is recorded as not used: a residual prior on a family with no
+  # residual scale (prior_family_has_no_residual_scale) (= 195), a
+  # prior_vc_sd beside an fb_prior() (prior_vc_sd_superseded_by_prior)
+  # (= 196), and a marginal likelihood the engine did not compute
+  # (evidence_not_computed) (= 197).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 194L)
+  expect_equal(length(entries), 197L)
+  expect_true("prior_family_has_no_residual_scale" %in% entries)
+  expect_true("prior_vc_sd_superseded_by_prior" %in% entries)
+  expect_true("evidence_not_computed" %in% entries)
   expect_true("aggregation_residual_prior_not_composed" %in% entries)
   expect_true("aggregated_evidence_unavailable" %in% entries)
   expect_true("fixed_offset_unsupported" %in% entries)

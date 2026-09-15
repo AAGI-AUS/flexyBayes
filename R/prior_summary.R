@@ -63,6 +63,15 @@
 #'       prior on a family whose dispersion is a function of the mean.}
 #'     \item{`declaration_only`}{Reserved; always `FALSE` for every
 #'       current backend.}
+#'     \item{`inputs`}{Data frame: every prior specification the fit was
+#'       given, stated or chosen by the package, with its source and the
+#'       number of engine slots that used it.}
+#'     \item{`slots`}{Data frame: every engine slot, with the prior the
+#'       package sent, the input it came from, the prior the engine reports
+#'       after fitting and whether the two agree. A slot carrying the
+#'       engine's own prior is listed with that source.}
+#'     \item{`not_consumed`}{Named character: each input no engine slot
+#'       used, with the reason code.}
 #'   }
 #'
 #' @examples
@@ -145,14 +154,16 @@ prior_summary.default <- function(object, ...) {
 }
 
 # .prior_summary_residual_lowering() --- name the residual parameter the
-# model actually has.
+# brms model actually has.
 #
-# A sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
+# On brms a sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
 # residual a distributional predictor: the model has no scalar `sigma`,
 # and the declared uniform on the SD scale is retargeted onto the
 # log-sigma coefficients. Printing `sigma ~ uniform(0, U)` for such a fit
 # names a parameter the model does not contain and a distribution Stan
-# did not use, so the summary carries the retarget explicitly.
+# did not use, so the summary carries the retarget explicitly. INLA fits one
+# likelihood per section and applies the declared prior to each section's
+# standard deviation as written, so the note is not given there.
 .prior_summary_residual_lowering <- function(object) {
   fb_terms <- object$extras$fb_terms
   if (is.null(fb_terms)) {
@@ -311,7 +322,15 @@ prior_summary.default <- function(object, ...) {
   } else if (inherits(priors, "fb_prior")) {
     default_basis <- attr(priors, "fb_prior_default_basis")
     default_scale <- attr(priors, "fb_prior_default_scale")
-    origin <- if (!is.null(default_basis)) "auto" else "user"
+    # Where the prior came from is read from the manifest's input sources
+    # (R/model_manifest.R); a fit built before the manifest carries none.
+    origin <- if (!is.null(.fb_manifest(object))) {
+      .fb_manifest_origin(.fb_manifest(object))
+    } else if (!is.null(default_basis)) {
+      "auto"
+    } else {
+      "user"
+    }
     list(
       kind = "fb_prior",
       backend = backend_label,
@@ -413,7 +432,11 @@ prior_summary.default <- function(object, ...) {
   # the printed summary sees the whole prior, not the half this package
   # chose.
   out$engine_default <- .prior_summary_engine_default(object)
-  out$residual_lowered_to <- .prior_summary_residual_lowering(object)
+  out$residual_lowered_to <- if (identical(backend_label, "brms")) {
+    .prior_summary_residual_lowering(object)
+  } else {
+    NULL
+  }
 
   # What an INLA fit carries that nobody stated (R/inla_default_priors.R): a
   # standard deviation filled with the package default, a default slope
@@ -439,6 +462,21 @@ prior_summary.default <- function(object, ...) {
     tryCatch(brms::prior_summary(object$brms), error = function(e) NULL)
   } else {
     NULL
+  }
+
+  # Each prior as the engine slot that received it reports it, and every
+  # input no slot used, with its reason (R/model_manifest.R).
+  manifest <- .fb_manifest(object)
+  if (!is.null(manifest)) {
+    out$inputs <- manifest[["inputs"]]
+    out$slots <- manifest[["slots"]]
+    # A Gaussian INLA fit runs on a standardised response, and its slots
+    # hold the priors on those coordinates.
+    out$response_scale <- object[["extras"]][["response_standardisation"]][["scale"]]
+    unused <- out$inputs[out$inputs$n_slots == 0L, , drop = FALSE]
+    out$not_consumed <- stats::setNames(unused$reason_code, unused$input_id)
+  } else {
+    out$not_consumed <- character(0)
   }
 
   structure(out, class = c("prior_summary_flexybayes", "list"))
@@ -517,8 +555,8 @@ prior_summary.default <- function(object, ...) {
 }
 
 # One section of added priors, each with the covariate SD its bound was
-# divided by where there was one.
-.prior_summary_cat_added <- function(heading, priors, covariate_sd) {
+# divided by where there was one, and the engine slots it reached.
+.prior_summary_cat_added <- function(heading, priors, covariate_sd, x = NULL) {
   if (length(priors) == 0L) {
     return(invisible(NULL))
   }
@@ -531,9 +569,62 @@ prior_summary.default <- function(object, ...) {
     } else {
       ""
     }
-    cat("    ", nm, " ~ ", priors[[nm]], divisor, "\n", sep = "")
+    trace <- if (is.null(x$slots)) {
+      ""
+    } else {
+      paste0("  ", .prior_summary_input_trace(x, paste0("sd:", group)))
+    }
+    cat("    ", nm, " ~ ", priors[[nm]], divisor, trace, "\n", sep = "")
   }
   invisible(NULL)
+}
+
+# The engine slots an input reached, or the reason it reached none.
+.prior_summary_input_trace <- function(x, input_id) {
+  slots <- x$slots
+  hit <- slots$slot_id[slots$source == "package" & slots$input_id %in% input_id]
+  if (length(hit)) {
+    return(paste0("-> ", paste(hit, collapse = ", ")))
+  }
+  reason <- unname(x$not_consumed[input_id])
+  if (is.na(reason)) {
+    reason <- "no reason recorded"
+  }
+  paste0("-> used by no slot (", reason, ")")
+}
+
+# The declaration, one specification a line, each with the slots it reached.
+.prior_summary_cat_declared <- function(x) {
+  specs <- x$fb_prior$specs
+  cat(
+    "<fb_prior> ",
+    length(specs),
+    " specification",
+    if (length(specs) != 1L) "s" else "",
+    "\n",
+    sep = ""
+  )
+  for (s in specs) {
+    cat(
+      "  ",
+      .format_prior_target(s$target),
+      " ~ ",
+      .format_prior_distribution(s$spec),
+      "  ",
+      .prior_summary_input_trace(x, .fb_manifest_spec_input_id(s)),
+      "\n",
+      sep = ""
+    )
+  }
+  invisible(NULL)
+}
+
+# A prior as sent to the engine, with an INLA expression prior shown by name.
+.prior_summary_show_prior <- function(text) {
+  if (!is.na(text) && startsWith(text, "expression:")) {
+    return(.fb_hyper_prior_tag(text))
+  }
+  text
 }
 
 #' @export
@@ -585,7 +676,11 @@ print.prior_summary_flexybayes <- function(x, ...) {
       }
       .prior_summary_cat_fixed_line(x)
       cat("\n")
-      print(x$fb_prior)
+      if (is.null(x$slots)) {
+        print(x$fb_prior)
+      } else {
+        .prior_summary_cat_declared(x)
+      }
     },
     unknown_shape = {
       cat(
@@ -619,12 +714,14 @@ print.prior_summary_flexybayes <- function(x, ...) {
   .prior_summary_cat_added(
     "Filled with the package default (no prior was stated for these):",
     x$filled_priors %||% character(0),
-    x$covariate_sd %||% numeric(0)
+    x$covariate_sd %||% numeric(0),
+    x
   )
   .prior_summary_cat_added(
     "The package default as this engine ran it:",
     x$covariate_scaled_priors %||% character(0),
-    x$covariate_sd %||% numeric(0)
+    x$covariate_sd %||% numeric(0),
+    x
   )
 
   if (length(x$not_applied) > 0L) {
@@ -654,6 +751,61 @@ print.prior_summary_flexybayes <- function(x, ...) {
     )
     for (nm in names(x$engine_default)) {
       cat("    ", nm, " -- ", x$engine_default[[nm]], "\n", sep = "")
+    }
+  }
+
+  if (!is.null(x$slots)) {
+    sent <- x$slots[x$slots$source == "package", , drop = FALSE]
+    if (nrow(sent)) {
+      cat("\n  As each engine slot received it (read back from the fit):\n")
+      if (!is.null(x$response_scale)) {
+        cat(
+          "    the fit runs on the standardised response, so a bound or scale\n",
+          "    on a standard deviation is the stated one divided by the\n",
+          "    response scale ", format(signif(x$response_scale, 6)), "\n",
+          sep = ""
+        )
+      }
+      for (i in seq_len(nrow(sent))) {
+        cat(
+          "    ", sent$slot_id[[i]], "  ",
+          .prior_summary_show_prior(sent$emitted[[i]]),
+          "  [", sent$input_id[[i]], "]  ",
+          if (isTRUE(sent$readback_agrees[[i]])) {
+            "read back as sent"
+          } else {
+            "read back differently"
+          },
+          "\n",
+          sep = ""
+        )
+      }
+    }
+    n_engine <- sum(x$slots$source %in% c("engine_default", "engine_expansion"))
+    if (n_engine > 0L) {
+      cat(
+        "    ", n_engine,
+        if (n_engine == 1L) " further slot carries" else " further slots carry",
+        " the engine's own prior (listed in `$slots`)\n",
+        sep = ""
+      )
+    }
+    n_unexpected <- sum(x$slots$source == "unexpected")
+    if (n_unexpected > 0L) {
+      cat(
+        "    ", n_unexpected,
+        if (n_unexpected == 1L) " slot carries" else " slots carry",
+        " a prior that is neither what was sent nor the engine's default",
+        " (listed in `$slots`)\n",
+        sep = ""
+      )
+    }
+  }
+
+  if (length(x$not_consumed) > 0L) {
+    cat("\n  Stated or defaulted, and used by no engine slot:\n")
+    for (nm in names(x$not_consumed)) {
+      cat("    ", nm, " -- ", x$not_consumed[[nm]], "\n", sep = "")
     }
   }
 

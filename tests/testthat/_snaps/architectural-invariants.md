@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=194
+      .refusal_registry: locked=TRUE n_keys=197
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -139,6 +139,7 @@
         dsum_malformed
         dsum_structured_inner_unsupported
         engine_pin_backend_conflict
+        evidence_not_computed
         fa_not_representable
         fa_rank_exceeds_dim
         fa_rank_invalid
@@ -203,6 +204,7 @@
         prior_argument_unknown
         prior_distribution_not_a_call
         prior_distribution_unknown
+        prior_family_has_no_residual_scale
         prior_family_unsupported_inla
         prior_hyperparameter_not_scalar
         prior_hyperparameter_out_of_domain
@@ -214,6 +216,7 @@
         prior_target_not_a_single_name
         prior_target_not_in_model
         prior_target_unsupported
+        prior_vc_sd_superseded_by_prior
         projection_family_unsupported
         projection_metric_unsupported
         projection_search_unsupported
