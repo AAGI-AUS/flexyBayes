@@ -1080,21 +1080,32 @@ emit_brms <- function(
 # `na_action = "augment"` on brms mean complete-case deletion -- the
 # argument promises the design is preserved and delivers the opposite.
 #
-# The repair depends on the family, because brms's `mi()` addition term is
-# Gaussian-only. `bf(y | mi() ~ ...)` with family = poisson raises
-# "Argument 'mi' is not supported for family 'poisson(log)'", and the same
-# for bernoulli. So:
+# The repair is brms's `mi()` addition term, which samples the missing
+# responses as parameters. brms 2.23.0 accepts it for gaussian, lognormal,
+# student and gamma, and raises "Argument 'mi' is not supported for family
+# 'poisson(log)'" for poisson and bernoulli. A family is admitted here only
+# once a live fit shows the missing rows carried and the augmented posterior
+# matching the complete-case one. So:
 #
-#   gaussian     -> `y | mi() ~ ...`, and brms samples the missing responses.
-#   non-Gaussian -> refuse, and point at INLA, which carries a missing
-#                   response as a native prediction target for every family.
+#   gaussian, lognormal -> `y | mi() ~ ...`, and brms samples the missing
+#                          responses.
+#   any other family    -> refuse, and point at INLA or na_action = "omit".
+#
+# Student-t stays out although brms accepts it: emit_brms() has no
+# translation for the family, so admitting it here ended in an untyped
+# emitter error. lognormal reaches brms only as a brms::lognormal() family
+# object in the brms grammar; the family string is refused earlier, by
+# .resolve_family().
 #
 # Refusing is not a limitation being papered over. Under ignorability the
-# parameter posterior is the same whether the cell is imputed or omitted, so
-# a user who wants the non-Gaussian fit can pass na_action = "omit" -- what
-# they cannot have is deletion wearing the name of augmentation. The
-# identity is a statement about the posterior, not about what an optimiser
-# returns from a ragged design; see the note in R/na_action.R.
+# parameter posterior is the same whether the cell is imputed or omitted,
+# given the same prior, so a user who wants another family can pass
+# na_action = "omit" -- what they cannot have is deletion wearing the name
+# of augmentation. brms's default intercept prior is not the same in the
+# two: it is centred on the response median, and at zero once `mi()` is in
+# the formula. The identity is a statement about the posterior, not about
+# what an optimiser returns from a ragged design; see the note in
+# R/na_action.R.
 .fb_brms_missing_response_mode <- function(fb, data) {
   resp <- fb$response
   has_missing <- !is.null(resp) &&
@@ -1105,7 +1116,7 @@ emit_brms <- function(
     return("none")
   }
   fam <- tolower(as.character(fb$family %||% "gaussian"))
-  if (fam %in% c("gaussian", "lognormal", "student", "t")) {
+  if (fam %in% c("gaussian", "lognormal")) {
     return("mi")
   }
   entry <- .lookup_refusal("brms_cannot_augment_nongaussian")

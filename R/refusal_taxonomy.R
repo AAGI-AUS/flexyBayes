@@ -1054,27 +1054,27 @@
     since_version = "0.9.0"
   )
 
-  # Raised when a missing response reaches brms on a family whose response
-  # brms cannot sample. brms drops NA-response rows silently, so without
-  # this the augmentation layer would quietly become complete-case
-  # deletion; and its `mi()` addition term, which would fix that, is
-  # Gaussian-only.
+  # Raised when a missing response reaches brms on a family whose
+  # augmentation is not admitted. brms drops NA-response rows silently, so
+  # without this the augmentation layer would quietly become complete-case
+  # deletion; its `mi()` addition term, which fixes that, is admitted only
+  # for the gaussian and lognormal families, the two validated by live fits.
   .register_refusal(
     reason_code = "brms_cannot_augment_nongaussian",
     description = paste0(
-      "backend = \"brms\" cannot carry a missing response for a ",
-      "non-Gaussian family: its mi() addition term is Gaussian-only, and ",
-      "without it brms drops the rows."
+      "backend = \"brms\" cannot carry a missing response for this family: ",
+      "brms's mi() augmentation is admitted only for the gaussian and ",
+      "lognormal families, and without it brms drops the rows."
     ),
     message_template = paste0(
       "backend = \"brms\" cannot carry a missing response for this ",
       "family. brms drops rows whose response is NA, and its `mi()` ",
-      "addition term -- which would sample them instead -- is supported ",
-      "only for Gaussian-family responses. Fitting anyway would silently ",
+      "addition term, which samples them instead, is admitted only for ",
+      "the gaussian and lognormal families. Fitting anyway would silently ",
       "delete the incomplete cells under the name of augmentation. Use ",
       "backend = \"inla\", which carries a missing response as a native ",
-      "prediction target for every family, or pass na_action = \"omit\" ",
-      "to delete them deliberately."
+      "prediction target for the families it fits, or pass ",
+      "na_action = \"omit\" to delete them deliberately."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",

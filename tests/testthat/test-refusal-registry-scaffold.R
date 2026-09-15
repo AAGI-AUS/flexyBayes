@@ -176,8 +176,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (missing_covariate_not_supported), and a design cell absent from the
   # data whose model variables were never recorded
   # (augment_cell_not_determinable) (= 65). brms drops NA-response rows and
-  # its mi() addition term is Gaussian-only, so a missing response on a
-  # non-Gaussian family refuses rather than being silently deleted
+  # its mi() addition term is admitted only for the gaussian and lognormal
+  # families, so a missing response on any other family refuses rather than
+  # being silently deleted
   # (brms_cannot_augment_nongaussian) (= 66). at(f, level):g conditions the
   # random effect on selected levels, which no active emitter represents and
   # which is a different model from the heterogeneous variance diag(f):g that
