@@ -254,6 +254,9 @@ d_agg <- expand.grid(
   env = factor(seq_len(3L))
 )
 d_agg$y <- rnorm(nrow(d_agg), 10, 2)
+# Count response for the binomial-and-Poisson aggregation row. Drawn after
+# `y`, and the next fixture sets its own seed, so no other draw moves.
+d_agg$cnt <- rpois(nrow(d_agg), 3)
 
 # S6 fixtures. d_weak: many clusters of two, so the cluster variance is
 # barely identified. d_funnel: three clusters and a near-zero between-
@@ -514,7 +517,14 @@ d_ar1_tg <- .tg_field(2001L)
     brms = 'flexybayes(y ~ env, random = ~ gen, data = d_cap, weights = w_cap)'
   ),
   list(
-    model_class = "Exact sufficient-statistic aggregation",
+    model_class = "Exact sufficient-statistic aggregation (binomial, Poisson)",
+    inla = paste0('flexybayes(cnt ~ env, random = ~ gen, data = d_agg, ',
+                  'aggregate = TRUE, family = "poisson")'),
+    brms = paste0('flexybayes(cnt ~ env, random = ~ gen, data = d_agg, ',
+                  'aggregate = TRUE, family = "poisson")')
+  ),
+  list(
+    model_class = "Exact sufficient-statistic aggregation (Gaussian)",
     inla = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
                   'aggregate = TRUE)'),
     brms = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
@@ -534,8 +544,37 @@ d_ar1_tg <- .tg_field(2001L)
   )
 )
 
+# Matrix rows no M cell can execute, each with where it is executed instead.
+# A cell here is a flexybayes() call with the backend and budget appended,
+# and a joint shrinkage prior reaches no flexybayes() call: fb_select() is
+# its only public route, and its reference fit and folds are several brms
+# fits, past the per-cell timeout. Listed by name so the gap prints on every
+# run (added 2026-09-15; the rows arrived with 0.11.0 without cells).
+.M_EXECUTED_ELSEWHERE <- c(
+  "Ridge shrinkage prior on candidate fixed effects" = paste(
+    "fitted live by fb_select() on brms in",
+    "review/release_0.12.0/smoke/smoke_installed_package.R;",
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R"
+  ),
+  "Laplace shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
+  "Elastic-net shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
+  "Regularised horseshoe shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
+  "R2D2 shrinkage prior on candidate fixed effects" =
+    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled"
+)
+for (i1 in seq_along(.M_EXECUTED_ELSEWHERE)) {
+  cat("matrix row outside the M section:", names(.M_EXECUTED_ELSEWHERE)[[i1]],
+      "--", .M_EXECUTED_ELSEWHERE[[i1]], "\n")
+}
+
 .m_named <- vapply(.M_CALLS, function(z) z$model_class, character(1L))
-.m_missing <- setdiff(.matrix$model_class, .m_named)
+.m_missing <- setdiff(
+  .matrix$model_class,
+  c(.m_named, names(.M_EXECUTED_ELSEWHERE))
+)
 .m_extra <- setdiff(.m_named, .matrix$model_class)
 if (length(.m_missing) > 0L || length(.m_extra) > 0L) {
   stop(
