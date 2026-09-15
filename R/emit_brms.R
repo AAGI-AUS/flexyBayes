@@ -1116,7 +1116,7 @@ emit_brms <- function(
     return("none")
   }
   fam <- tolower(as.character(fb$family %||% "gaussian"))
-  if (fam %in% c("gaussian", "lognormal")) {
+  if (fam %in% .fb_brms_families_augmentable()) {
     return("mi")
   }
   entry <- .lookup_refusal("brms_cannot_augment_nongaussian")

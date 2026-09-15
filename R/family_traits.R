@@ -57,6 +57,25 @@
   tolower(as.character(fam)) %in% .fb_brms_families_with_sigma()
 }
 
+# ---------------------------------------------------------------- #
+# brms: which families take a missing response through mi()        #
+# ---------------------------------------------------------------- #
+
+# The flexyBayes family spellings for which `na_action = "augment"` on brms
+# samples a missing response through brms's `mi()` addition term.
+#
+# Ground truth for what brms accepts is brms's own family table: at brms
+# 2.23.0 `mi()` is accepted for gaussian, lognormal, student and gamma, and
+# refused for poisson and bernoulli. A family is admitted here only once a
+# live fit shows the missing rows carried and the augmented posterior
+# matching the complete-case one (tests/testthat/test-brms-missing-response.R).
+# Student-t is accepted by brms but not admitted, because emit_brms() has no
+# translation for it. That this vector equals the residual-sigma roster above
+# is a coincidence of the two validations, not a shared rule.
+.fb_brms_families_augmentable <- function() {
+  c("gaussian", "lognormal")
+}
+
 
 # ---------------------------------------------------------------- #
 # INLA: which likelihood declares which residual hyperparameter     #
