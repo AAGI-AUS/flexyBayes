@@ -705,6 +705,8 @@ flexybayes_stream <- function(
       next
     }
 
+    .fb_stream_refuse_response(chunk[[response]], response, n_total)
+
     partial <- .fb_stream_chunk_partial(
       chunk,
       key_cols,
@@ -730,6 +732,59 @@ flexybayes_stream <- function(
   }
 
   .fb_stream_finalise(fb, acc, key_cols, n_total, family)
+}
+
+#' Refuse a chunk whose response carries a value no cell statistic can hold
+#'
+#' The streamed route reads its chunks directly, so the missing-response
+#' layer every flexybayes() call passes through never sees them. A missing
+#' count made its cell's sum missing, and the cell dropped out of the fit
+#' without a message; a NaN did the same; an infinite count reached INLA and
+#' ended its process. A missing value refuses as `aggregate = TRUE` refuses
+#' it, and a NaN or infinite one as every flexybayes() route does.
+#'
+#' @param y The response values of one chunk.
+#' @param response The response column name.
+#' @param rows_before The number of rows read before this chunk.
+#' @returns `NULL`, invisibly, when every value is finite.
+#' @noRd
+#' @keywords internal
+.fb_stream_refuse_response <- function(y, response, rows_before) {
+  y <- suppressWarnings(as.numeric(y))
+  bad <- which(is.nan(y) | is.infinite(y))
+  if (length(bad)) {
+    shown <- utils::head(bad, 5L)
+    stop(.fb_refusal_condition(
+      reason_code = "response_not_finite",
+      message = paste0(
+        "The response `", response, "` has ", length(bad),
+        " value(s) that are not finite in the rows read so far (",
+        paste0("row ", rows_before + shown, ": ", as.character(y[shown]),
+          collapse = ", "),
+        if (length(bad) > length(shown)) ", ..." else "",
+        "). NaN and infinite values are not missing observations. Correct ",
+        "them in the source, or set them to NA and fit the per-row route, ",
+        "which carries a missing response as a latent quantity."
+      ),
+      family_class = "flexybayes_response_refusal"
+    ))
+  }
+  miss <- which(is.na(y))
+  if (length(miss)) {
+    stop(.fb_refusal_condition(
+      reason_code = "aggregation_response_incomplete",
+      message = paste0(
+        "flexybayes_stream() refused: the response `", response, "` has ",
+        "missing values (first at row ", rows_before + miss[[1L]], "), and ",
+        "the streamed route compresses rows into per-cell sufficient ",
+        "statistics that are not defined for a missing response. Fit the ",
+        "per-row route, which carries a missing response as a latent ",
+        "quantity."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
+  }
+  invisible(NULL)
 }
 
 #' @noRd
