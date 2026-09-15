@@ -517,7 +517,7 @@
       message = paste0(
         "fb_select(): the generalised-least-squares benchmark builds its ",
         "fold covariance from random intercepts and two-way interactions, ",
-        "and this base also carries random term(s) of type ",
+        "and this base also carries random terms of these types: ",
         paste(unique(refused), collapse = ", "),
         ". The Bayesian workflow refits the base's own structure on every ",
         "fold; the benchmark needs a base without those terms."
