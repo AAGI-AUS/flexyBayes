@@ -334,7 +334,8 @@ replacing a response-centred intercept prior with \code{normal(0, 100)} is
 a different model for any response far from zero. INLA gives each
 column built from a numeric variable the covariate-scaled default
 \code{normal(0, 1e5 * sd(y) / sd(x))} on an identity link and
-\code{normal(0, sqrt(1000) / sd(x))} on a log or logit link, so a
+\code{normal(0, sqrt(1000) / sd(x))} on a log or logit link, with \code{sd(x)}
+read over the rows whose response is observed, so a
 covariate's units do not change the fit, and keeps its own
 \code{prec = 0.001} on factor contrasts and its flat intercept.
 \code{\link[=prior_summary]{prior_summary()}} names what a fit ran under. A supplied value is

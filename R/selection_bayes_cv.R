@@ -145,6 +145,96 @@
 }
 
 
+# .fb_sel_grouping_columns() --- the data columns each random term's effect
+# is indexed by, read off the parsed model the emitters read.
+#
+# A column here is one both emitters build the term's index from: the group
+# of an intercept or a slope (`var`; a slope's covariate is not a grouping),
+# every factor of an interaction (`outer`, `inner`, `vars`), and the inner
+# factor of a structure written over an outer one (`diag(f):g`, `us(f):g`,
+# `fa(f, k):g`). The outer factor there selects which variance or covariance
+# block applies, and is not relabelled: given a level no training row has,
+# brms refuses it as a new level of the slope factor and INLA builds a new,
+# empty field for it.
+#
+# A smooth of a covariate (`spl(x)`, `s(x)`, `gp(x)`) and a residual term
+# (`units`, `at(f):units`) index no cluster, so they carry no column and
+# nothing to relabel. `unrelabelled` names every other term with no column,
+# so that no structure passes through `new_cluster` with its levels
+# untouched: a known-covariance term (`vm()`, `ped()`) indexes its matrix by
+# level, and a new level is a row the matrix does not have; an
+# autoregressive field indexes a lattice; and a type this function does not
+# list is named in the refusal too.
+.fb_sel_grouping_columns <- function(fb) {
+  columns <- character(0)
+  unrelabelled <- character(0)
+  for (t in fb$random_terms %||% list()) {
+    type <- t$type %||% "unknown"
+    if (!nzchar(type)) {
+      type <- "unknown"
+    }
+    found <- switch(
+      type,
+      simple = ,
+      ide = ,
+      id = ,
+      simple_slope_uncor = ,
+      simple_slope_cor = t$var,
+      nested = ,
+      combo = .fb_nested_vars(t),
+      at_simple = ,
+      us_gxe = ,
+      fa_gxe = ,
+      corh_gxe = t$inner,
+      spline = ,
+      smooth_mgcv = ,
+      smoother = ,
+      gp = ,
+      units = ,
+      at_units = character(0),
+      NULL
+    )
+    if (is.null(found)) {
+      named <- unlist(t[c("var", "outer", "inner", "row_var", "col_var")])
+      unrelabelled <- c(
+        unrelabelled,
+        paste0(type, "(", paste(named, collapse = ", "), ")")
+      )
+    } else {
+      columns <- c(columns, found)
+    }
+  }
+  list(columns = unique(columns), unrelabelled = unique(unrelabelled))
+}
+
+
+# .fb_sel_require_relabelable() --- refuse, before anything is fitted, a
+# `new_cluster` request on a base carrying a term that cannot take a new
+# level. `known_cluster` keeps every level and passes.
+.fb_sel_require_relabelable <- function(fb, prediction) {
+  if (!identical(prediction, "new_cluster")) {
+    return(invisible(NULL))
+  }
+  unrelabelled <- .fb_sel_grouping_columns(fb)$unrelabelled
+  if (length(unrelabelled) == 0L) {
+    return(invisible(NULL))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "selection_new_cluster_not_representable",
+    message = paste0(
+      "fb_select(): prediction = \"new_cluster\" gives each assessment row ",
+      "a grouping level no training row carries, and these random terms ",
+      "cannot take a new level without changing the structure they index: ",
+      paste(unrelabelled, collapse = ", "),
+      ". A known-covariance term indexes its matrix by level, and an ",
+      "autoregressive field indexes its lattice. Use prediction = ",
+      "\"known_cluster\", which keeps the levels, or a base without the term."
+    ),
+    terms = unrelabelled
+  ))
+}
+
+
 # .fb_sel_bayes_base_spec() --- the response, the protected fixed part, the
 # grouping variables and the data, read off a fitted base.
 #
@@ -172,15 +262,11 @@
     "~ ",
     if (length(labels) > 0L) paste(labels, collapse = " + ") else "1"
   ))
-  random_vars <- unique(unlist(lapply(
-    base$fb$random_terms %||% list(),
-    function(t) if (identical(t$type, "simple")) t$var else c(t$outer, t$inner)
-  )))
   list(
     response = base$fb$response,
     protected = protected,
     protected_labels = labels,
-    random_vars = random_vars %||% character(0),
+    random_vars = .fb_sel_grouping_columns(base$fb)$columns,
     # The base's offsets travel into every fold refit's formula.
     offsets = base$fb$offsets %||% character(0),
     data = base$data
@@ -396,6 +482,31 @@
 }
 
 
+# .fb_sel_bayes_bar_terms() --- the random terms a brms-grammar base wrote
+# into its model formula, as `(lhs | group)` terms, or none.
+#
+# Empty when the base recorded a `random` formula (the ASReml grammar), which
+# the refit re-issues as it is.
+.fb_sel_bayes_bar_terms <- function(info) {
+  if (!is.null(info$random)) {
+    return(character(0))
+  }
+  model <- info$fixed
+  if (inherits(model, "brmsformula")) {
+    model <- model$formula
+  }
+  if (!inherits(model, "formula")) {
+    return(character(0))
+  }
+  labels <- attr(stats::terms(model), "term.labels")
+  bars <- labels[grepl("|", labels, fixed = TRUE)]
+  if (length(bars) == 0L) {
+    return(character(0))
+  }
+  paste0("(", bars, ")")
+}
+
+
 # .fb_sel_bayes_refit() --- the base model, refitted on a fold, with the same
 # engine, structure and priors.
 #
@@ -426,6 +537,15 @@
   priors <- base$fb$priors
   if (!is.null(attr(priors, "fb_prior_default_basis"))) {
     priors <- NULL
+  }
+  # A base written in the brms grammar, `y ~ x + (x || g)`, records its
+  # random terms in the model formula and no `random`. The fold's formula is
+  # rebuilt from the fixed labels, so the random terms are carried across
+  # here; without them every fold refit of such a base fitted no random
+  # effect.
+  bars <- .fb_sel_bayes_bar_terms(info)
+  if (length(bars) > 0L) {
+    fixed <- .fb_sel_extend_fixed(fixed, bars)
   }
 
   opts <- .fb_engine_opts(engine) %||% list()
@@ -1017,6 +1137,9 @@
   provider <- provider %||% .fb_sel_bayes_provider(base)
   spec <- .fb_sel_bayes_base_spec(base)
   data <- spec$data
+  # Before the cost probe, which fits: a term that cannot take a new level
+  # refuses without a fit.
+  .fb_sel_require_relabelable(base$fb, prediction)
 
   # The refit rebuilds the base model on every fold, so every variable the
   # base model names has to be in the data the folds are cut from -- not only

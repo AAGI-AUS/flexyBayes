@@ -3,10 +3,12 @@
 #
 # Contract: SPEC_bayesian_selection_v5_2026-09-12.md sections 3.3, 7 and 10.
 #
-# Two codes land with this tranche, and each is thrown by
+# Two codes landed with the first tranche, and each is thrown by
 # R/selection_bayes_cv.R and triggered by a test in
 # tests/testthat/test-selection-bayes-cv.R. A registered code with no
-# triggering test is a string, not a refusal.
+# triggering test is a string, not a refusal. The third,
+# `selection_new_cluster_not_representable`, is thrown by the same file and
+# triggered in tests/testthat/test-selection-fold-isolation.R.
 #
 # `selection_provider_absent` is registered here because this is the first
 # module that needs it, and it is described for the whole provider set the
@@ -44,6 +46,23 @@
     registered_in_adr = "SPEC v5 section 10",
     plan_field = "selection_plan",
     since_version = "0.11.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_new_cluster_not_representable",
+    description = paste0(
+      "fb_select(): prediction = \"new_cluster\" gives each assessment row ",
+      "grouping levels no training row carries, and the base has a random ",
+      "term that cannot take a new level without changing the structure it ",
+      "indexes: a known-covariance term (vm(), ped()) indexes its matrix by ",
+      "level, and an autoregressive field indexes its lattice. The refusal ",
+      "comes before any fold is fitted; prediction = \"known_cluster\" keeps ",
+      "the levels."
+    ),
+    message_template = "fb_select(): prediction = \"new_cluster\" cannot relabel these random terms: %s.",
+    registered_in_adr = "SPEC v5 section 7",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
   )
 
   invisible(NULL)

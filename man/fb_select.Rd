@@ -59,7 +59,10 @@ that fold's analysis rows.}
 \item{prediction}{\code{"new_cluster"} (default) or \code{"known_cluster"}. A
 held-out cluster's own effect is not estimable from the training rows,
 so scoring it conditionally would reward the model for a random effect
-it was handed.}
+it was handed. Under \code{"new_cluster"} every column a random term's effect
+is indexed by is relabelled on the assessment rows; a \code{vm()}, \code{ped()} or
+autoregressive term cannot take a new level and refuses with
+\code{selection_new_cluster_not_representable}.}
 
 \item{decision}{An \code{\link[=fb_decision]{fb_decision()}}: the method, metric, rule and search.}
 

@@ -267,7 +267,8 @@
 #'   a different model for any response far from zero. INLA gives each
 #'   column built from a numeric variable the covariate-scaled default
 #'   `normal(0, 1e5 * sd(y) / sd(x))` on an identity link and
-#'   `normal(0, sqrt(1000) / sd(x))` on a log or logit link, so a
+#'   `normal(0, sqrt(1000) / sd(x))` on a log or logit link, with `sd(x)`
+#'   read over the rows whose response is observed, so a
 #'   covariate's units do not change the fit, and keeps its own
 #'   `prec = 0.001` on factor contrasts and its flat intercept.
 #'   [prior_summary()] names what a fit ran under. A supplied value is

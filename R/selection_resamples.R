@@ -489,6 +489,45 @@
 
 # --- the covariance a fold works in ----------------------------------- #
 
+# .fb_sel_benchmark_random() --- a base's random terms in the spelling
+# `.fb_sel_Z_from_vars()` reads: the group of a random intercept, and
+# `outer:inner` for a two-way interaction.
+#
+# Every other term refuses here by name. Those two are the structures the
+# covariance builder admits, and a term missing from its list is missing
+# from V: a random slope or a multi-way interaction used to reach it as
+# nothing, and a two-way interaction as two crossed intercepts, so the
+# benchmark scored a covariance the base does not have.
+.fb_sel_benchmark_random <- function(fb) {
+  out <- character(0)
+  refused <- character(0)
+  for (t in fb$random_terms %||% list()) {
+    type <- t$type %||% "unknown"
+    if (type %in% c("simple", "ide", "id")) {
+      out <- c(out, t$var)
+    } else if (identical(type, "nested")) {
+      out <- c(out, paste0(t$outer, ":", t$inner))
+    } else {
+      refused <- c(refused, type)
+    }
+  }
+  if (length(refused) > 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_covariance_not_buildable",
+      message = paste0(
+        "fb_select(): the generalised-least-squares benchmark builds its ",
+        "fold covariance from random intercepts and two-way interactions, ",
+        "and this base also carries random terms of these types: ",
+        paste(unique(refused), collapse = ", "),
+        ". The Bayesian workflow refits the base's own structure on every ",
+        "fold; the benchmark needs a base without those terms."
+      )
+    ))
+  }
+  unique(out)
+}
+
+
 # .fb_sel_Z_from_vars() --- the random-effect indicators for a data frame,
 # where the grouping is named directly rather than read off a fitted base.
 #
@@ -838,7 +877,21 @@
   offsets = character(0)
 ) {
   prediction <- match.arg(prediction)
-  y <- as.numeric(data[[response]])
+  # The response through the resolver the fit itself uses, so a transformed
+  # response (`log(y)`, `I(10 * y)`) is the modelled quantity. Read as a
+  # column name it was NULL, and the fold's variance components stopped
+  # inside the optimiser.
+  y <- .fb_response_values(list(response = response), data)
+  if (is.null(y)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_fold_variable_not_in_data",
+      message = paste0(
+        "fb_select(): the response `", response, "` is neither a column of ",
+        "the data nor an expression that evaluates over its rows."
+      )
+    ))
+  }
+  y <- as.numeric(y)
   # A Gaussian offset is subtracted here, before anything is whitened or
   # learned, and the fold works in y - o from then on. The components, the
   # pilot fit, the predictions and the scored residuals are all of y - o, and

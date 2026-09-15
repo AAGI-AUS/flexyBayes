@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=205
+      .refusal_registry: locked=TRUE n_keys=206
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -249,6 +249,7 @@
         selection_leakage_detected
         selection_missing_response_estimand_unnamed
         selection_missing_response_in_objective
+        selection_new_cluster_not_representable
         selection_offset_absorbed_twice
         selection_penalty_blocks_not_expressible
         selection_penalty_coordinate_basis_dependent

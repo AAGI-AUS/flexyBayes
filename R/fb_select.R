@@ -1746,7 +1746,6 @@
 .fb_select_benchmark <- function(base,
                                  candidates,
                                  protected,
-                                 random_vars,
                                  resamples,
                                  prediction,
                                  seed,
@@ -1763,7 +1762,7 @@
     response = base$fb$response,
     protected = protected,
     candidates = candidates,
-    random = random_vars,
+    random = .fb_sel_benchmark_random(base$fb),
     resamples = resamples,
     seed = seed,
     prediction = prediction,
@@ -1961,7 +1960,10 @@
 #' @param prediction `"new_cluster"` (default) or `"known_cluster"`. A
 #'   held-out cluster's own effect is not estimable from the training rows,
 #'   so scoring it conditionally would reward the model for a random effect
-#'   it was handed.
+#'   it was handed. Under `"new_cluster"` every column a random term's effect
+#'   is indexed by is relabelled on the assessment rows; a `vm()`, `ped()` or
+#'   autoregressive term cannot take a new level and refuses with
+#'   `selection_new_cluster_not_representable`.
 #' @param decision An [fb_decision()]: the method, metric, rule and search.
 #' @param engine An [fb_engine()] setting the sampler's chains, iterations
 #'   and control for the reference fit.
@@ -2067,10 +2069,6 @@ fb_select <- function(base,
       "1"
     }
   ))
-  random_vars <- unique(unlist(lapply(
-    base$fb$random_terms %||% list(),
-    function(t) if (identical(t$type, "simple")) t$var else c(t$outer, t$inner)
-  ))) %||% character(0)
 
   metric <- decision$metric
 
@@ -2224,7 +2222,6 @@ fb_select <- function(base,
       base = base,
       candidates = candidates,
       protected = protected,
-      random_vars = random_vars,
       resamples = resamples,
       prediction = prediction,
       seed = seed,
@@ -2261,7 +2258,6 @@ fb_select <- function(base,
       penalty = penalty,
       protected = protected,
       protected_labels = protected_labels,
-      random_vars = random_vars,
       resamples = resamples,
       prediction = prediction,
       decision = decision,
@@ -2327,7 +2323,6 @@ fb_select <- function(base,
         base = base,
         candidates = candidates,
         protected = protected,
-        random_vars = random_vars,
         resamples = resamples,
         prediction = prediction,
         seed = seed,
@@ -2446,6 +2441,12 @@ fb_select <- function(base,
   if (identical(decision$method, "projection")) {
     .fb_sel_require_projectable(base$fb)
   }
+  # The out-of-fold score `benchmark = TRUE` asks for relabels the grouping
+  # levels under `new_cluster`; a term that cannot take a new level refuses
+  # here, before the reference model is sampled.
+  if (isTRUE(benchmark)) {
+    .fb_sel_require_relabelable(base$fb, prediction)
+  }
 
   cost <- .fb_sel_cost_estimate(
     base,
@@ -2549,7 +2550,6 @@ fb_select <- function(base,
       base = base,
       candidates = candidates,
       protected = protected,
-      random_vars = random_vars,
       resamples = resamples,
       prediction = prediction,
       seed = seed,
@@ -2620,7 +2620,6 @@ fb_select <- function(base,
                                  penalty,
                                  protected,
                                  protected_labels,
-                                 random_vars,
                                  resamples,
                                  prediction,
                                  decision,
@@ -2666,7 +2665,6 @@ fb_select <- function(base,
     base = base,
     candidates = candidates,
     protected = protected,
-    random_vars = random_vars,
     resamples = resamples,
     prediction = prediction,
     seed = seed,
