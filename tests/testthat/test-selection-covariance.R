@@ -38,7 +38,8 @@ fb_sel_fixture <- function() {
   d$block <- factor(d$block)
   flexybayes(
     fixed = yield ~ gen, random = ~ rep + rep:block,
-    data = d, backend = "inla", verbose = FALSE
+    data = d, backend = "inla", verbose = FALSE,
+    prior = .fb_test_john_alpha_prior(d)
   )
 }
 
