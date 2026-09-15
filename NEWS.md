@@ -1,3 +1,197 @@
+# flexyBayes 0.12.0
+
+The model a fit reports is the model it ran. Gaussian models on INLA are fitted
+per row on a standardised response, default priors follow the units of the
+response and of each covariate, offsets fit on both engines, a stated bound on
+a standard deviation binds, and every fit records which prior reached which
+engine slot as the engine reports it back. No model family, penalty family,
+engine or exported function is added.
+
+## Breaking changes
+
+* **Gaussian models are fitted per row.** The aggregated Gaussian route
+  combined the within-cell sums of squares with a fixed gamma prior on the
+  residual precision, so the residual prior a caller stated, or the package's
+  default, was not the prior fitted, while `prior_summary()` reported it:
+  aggregated fits with residual bounds of 0.05 and 50 returned the same
+  residual standard deviation. `aggregate = "auto"` now fits a Gaussian model
+  per row. `aggregate = TRUE` on a Gaussian model, and `flexybayes_stream()`
+  on a Gaussian family, refuse with `aggregation_residual_prior_not_composed`
+  before any fit or chunk is read. `flexybayes_stream(fit = FALSE)` still
+  returns the Gaussian sufficient statistics, and binomial and Poisson models
+  still aggregate. The 0.10.0 release carries the same construction: an
+  aggregated Gaussian fit made with 0.10.0 should be refitted per row.
+
+* **Aggregated and streamed fits report no marginal likelihood.** On the
+  aggregated representation the engine's value omits constants that depend on
+  the data, and under standardisation it scales with the number of cells.
+  `summary()` reports the value as not available and names the reason
+  (`aggregated_evidence_unavailable`).
+
+* **Estimated correlation matrices are fitted on brms only.** `us(f):g` and
+  the correlated random slope `(x | g)` refuse on INLA with
+  `correlated_covariance_requires_brms`, and `backend = "auto"` routes both to
+  brms. On INLA each was one field under a joint Wishart prior, which ties the
+  variances to the correlations: `us(env):gen` on `agridat::besag.met`
+  returned a genetic correlation of 0.142 where ASReml returns 0.930.
+
+* **A response containing `NaN` or an infinite value refuses** with
+  `response_not_finite`, naming the rows. INLA fitted such a model without a
+  message, and brms stopped with an error that named neither the row nor the
+  value. `NA` is still a missing response, handled by `na_action`. On
+  `flexybayes_stream()` a missing count refuses too
+  (`aggregation_response_incomplete`), as `aggregate = TRUE` already did: the
+  cell holding it used to drop out of the fit without a message.
+
+* **INLA refuses a heterogeneous residual on a count family**, as brms does
+  (`heterogeneous_residual_family_has_no_sigma`). `residual = ~ dsum(~ units
+  | f)` on a Poisson or binomial model split the response into one likelihood
+  per section, which is the unsectioned model, and fitted it without a
+  message.
+
+## The fitted model is the written model
+
+* **Gaussian models on INLA run on a standardised response.** Every Gaussian
+  identity-link fit on INLA is fitted to `(y - m) / s`, with `m` the mean of
+  the response when the model has an intercept and `s` its standard deviation.
+  Fixed and random effects, hyperparameters, fitted values and the linear
+  predictor with their marginals, the marginal likelihood, DIC, WAIC, CPO, PO
+  and the draws are mapped back exactly, and stated priors are restated on the
+  standardised scale in closed form. The same model on a response recorded in
+  different units used to return different variance components without
+  failing. Checked across random-effect structures and response multipliers
+  from 0.01 to 1000.
+
+* **Default priors on INLA follow the units of the data.** An unstated
+  random-effect standard deviation takes the bounded default prior. It used to
+  take INLA's log-gamma precision prior, and on a design with a four-level
+  random intercept a call stating only the residual prior returned a block
+  standard deviation near 1e7 in 20 of 20 fits. The default bound on an
+  uncorrelated slope's standard deviation is divided by the standard deviation
+  of its covariate, and the default fixed-effect prior is scaled by each
+  numeric column's standard deviation: on `lme4::sleepstudy` with `Days`
+  multiplied by 0.001, 1 or 1000, the `Days` coefficient is 10.467285959588 at
+  every scale, 7.8e-12 from lme4. Stated priors are never rescaled, and every
+  filled default is recorded on the fit and printed by `prior_summary()`.
+
+* **The default bound reads a transformed response.** The bounded default on
+  the residual and group standard deviations is five standard deviations of
+  the response. It was read from a column named like the response, so
+  `log(y)` and `I(10 * y)` took a bound of 1 on both engines whatever the
+  units. It is now five standard deviations of the modelled response, after
+  any offset, on both engines.
+
+* **A tight uniform bound binds on INLA.** INLA starts its search at a
+  standard deviation of 0.135 for a random effect. A stated uniform bound
+  below that started the search outside the bound, where the prior is flat,
+  and the search never entered it: `sd(group = "geno") ~ uniform(0, 0.05)` on
+  a Poisson model returned 0.61. The search now starts inside the bound
+  whenever INLA's own starting point lies outside it, and the same fit returns
+  0.05. Every other fit is sent to INLA as before. When INLA fails on a model
+  that states a uniform bound, the refusal says so and names two remedies.
+
+* **Offsets in the fixed formula fit on both engines.** `offset(z)` used to be
+  dropped without a message: `Reaction ~ Days + offset(Days)` on
+  `lme4::sleepstudy` returned the coefficient of the model without the offset
+  (10.47 against lme4's 9.47). brms receives the offset in its formula and
+  INLA through `inla()`'s `offset` argument, and on the standardised Gaussian
+  response the centre, scale and default priors read `y - o`. On Poisson,
+  `offset(log(E))` is the same model as `exposure = "E"`. `predict()`
+  evaluates the offset on the fit data or on `newdata`, and a `newdata`
+  missing an offset column refuses (`newdata_offset_missing`). A binomial
+  offset on the aggregated route, projection selection with an offset, a
+  non-finite or wrongly sized offset (`fixed_offset_invalid`) and an offset in
+  the random or residual formula refuse by name. INLA agrees with lme4 on
+  `sleepstudy` to 1e-11.
+
+* **Every fit carries a model manifest** at `fit$extras$manifest`: every stated
+  or default prior with its source and the number of engine slots that used
+  it; every engine slot with the prior sent and the prior the engine reports
+  after fitting (INLA's `all.hyper`, brms's `prior_summary()`); the route; and
+  whether the marginal likelihood is available. `prior_summary()` prints from
+  it, including each input no slot used and the reason. A stated `sd()` prior
+  on one factor of a multi-way interaction, such as `"a"` on `a:b:cc`, refuses
+  with `prior_target_not_in_model`; it used to be accepted and not reach the
+  fit. A stated prior on the interaction itself, `sd(group = "a:b:cc")`, is
+  accepted on INLA.
+
+* **`fitted()` and `residuals()` work on aggregated count fits, and include
+  the random effects.** Both used to stop with "missing value where
+  TRUE/FALSE needed", and the fitted values stored on the fit were the fixed
+  part alone, off by up to 3.49 counts on a Poisson test design. Row-level
+  fitted values now come from INLA's cell fitted values mapped to each row
+  and multiplied by that row's exposure or trials and `exp(offset)`; they
+  match a per-row fit to within 1e-6. A streamed fit keeps a head sample of
+  its rows, and where that is shorter than the data, `fitted()`,
+  `residuals()`, `model.matrix()` and the emmeans and insight data hooks
+  refuse with `streamed_rows_not_retained`, and `update()` with
+  `update_streamed_fit_not_supported`. `nobs()`, `glance()$nobs` and
+  `summary()$n_design` report the same integer. `augment()` on INLA, the
+  log-density producer, and `predict()` and marginaleffects predictions on a
+  non-identity link now refuse with registered reason codes.
+
+* **`ranef()` on INLA reports the levels the user wrote** for every
+  random-effect index the INLA formula builder generates. Estimates, standard
+  errors and intervals are unchanged.
+
+## Selection
+
+* **Each fold learns its own preprocessing.** In `fb_select()` the penalised
+  reference model's centring, scaling and prior are learned on each fold's
+  analysis rows. Out-of-fold comparisons are gated on a declared score
+  contract at each model stage (`reference_predictive` and
+  `decision_predictive` on the certificate), the certificate records how
+  hyperparameters were treated and how the selection data were reused, and a
+  projection metric other than `elpd` refuses before any fit
+  (`projection_metric_unsupported`). projpred's own k-fold search refits the
+  reference model on the whole sample, and the certificate names that
+  approximation.
+
+* A base model's offset is subtracted in the fold substrate every provider
+  shares.
+
+## Smaller fixes
+
+* `fb_gblup_cv(seed = )` puts the caller's random-number state back when it
+  returns.
+* The warning on `predict(classify = )` given `newdata` names the argument brms
+  accepts for new levels, `allow_new_levels = TRUE`.
+* Package code reads list fields by exact name where `$` partial matching used
+  to supply them: the preflight's term label and level count, the plan's cell
+  estimate and the selection bridge's response convention. A multi-way fixed
+  term without a label now gets one label, `x:z`.
+* `fb_select()` has an example.
+
+## Documentation
+
+* The explanation of why shrinkage priors are not fitted on INLA is corrected
+  wherever it ships. Given one local scale per coefficient, a Laplace,
+  horseshoe or R2D2 prior is Gaussian; the model then carries a hyperparameter
+  for every coefficient, more than INLA's integration is built for. The
+  capability tables mark those rows `n/a` on INLA, because `fb_select()` fits
+  them on brms.
+* The scaling benchmark (`inst/validation/benchmark_scaling.md`) is measured
+  on a Poisson model: peak memory of 712 MB at ten million rows and 734 MB at
+  five billion, streamed from disk. The earlier Gaussian measurements are kept
+  as a dated record.
+* `API_STABILITY.md` records `triangulate()` as internal and the
+  `flexybayes_stream()` change. `inst/KNOWN_ISSUES.md` records the bound
+  change under issue 8 and lists the problems open for 0.13.0 as issues 10
+  to 16.
+
+## Refusals
+
+The registry holds 204 codes, 187 at 0.11.0. New in this release:
+`aggregation_residual_prior_not_composed`, `aggregated_evidence_unavailable`,
+`correlated_covariance_requires_brms`, `fixed_offset_unsupported`,
+`fixed_offset_invalid`, `newdata_offset_missing`,
+`projection_metric_unsupported`, `prior_family_has_no_residual_scale`,
+`prior_vc_sd_superseded_by_prior`, `evidence_not_computed`,
+`response_not_finite`, `streamed_rows_not_retained`,
+`update_streamed_fit_not_supported`, `augment_not_available_inla`,
+`log_density_producer_unavailable`, `predict_link_not_supported` and
+`marginaleffects_link_not_supported`.
+
 # flexyBayes 0.11.0
 
 `fb_select()` becomes a Bayesian verb. It fits a reference model in which a

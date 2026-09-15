@@ -132,8 +132,10 @@ reference:
       - print.fb_predict_classify
       - fitted.flexybayes
       - fitted.flexybayes_inla
+      - fitted.flexybayes_aggregated
       - residuals.flexybayes
       - residuals.flexybayes_inla
+      - residuals.flexybayes_aggregated
       - plot.flexybayes
       - anova.flexybayes
       - logLik.flexybayes

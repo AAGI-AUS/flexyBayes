@@ -234,6 +234,59 @@ Each is reproducible on this release. Priority is for the MET use case.
    the reporting of it: a hyperparameterisation or a default field prior
    under which an incomplete grid does not put the solution at a boundary
    in the first place.
+10. **Large Gaussian data has no aggregated route in this release.**
+    `aggregate = TRUE` and `flexybayes_stream()` refuse a Gaussian model
+    (`aggregation_residual_prior_not_composed`), because the aggregated
+    Gaussian likelihood combined the within-cell sums of squares with a
+    fixed prior on the residual precision and so did not fit the residual
+    prior `prior_summary()` reported. A Gaussian model is fitted per row,
+    which on a single random intercept completed at five million rows in
+    19.5 GB (see `inst/validation/benchmark_scaling.md`). *What is open*:
+    an aggregated Gaussian likelihood that composes the stated or default
+    residual prior exactly and restores the marginal likelihood, planned
+    for 0.13.0.
+11. **Held-out clusters under `prediction = "new_cluster"` are relabelled
+    for some grouping terms only.** `fb_select()` gives the assessment rows
+    new labels for the grouping of a simple random intercept, a nested term
+    and a heterogeneous-variance term, so their effects are predicted as new
+    clusters. It does not relabel the grouping of a random slope, of a
+    `vm()` or `ped()` term, or of a multi-way interaction, so on a base
+    carrying one of those the held-out rows keep their training labels for
+    that term. *What is open*: relabel every grouping column the emitter
+    uses, or refuse the term by name.
+12. **On INLA, a fold refit's default slope prior sees the held-out rows'
+    covariate.** Each INLA fold refit in `fb_select()` receives the training
+    rows and the assessment rows with the response set to missing, and the
+    default bound on an uncorrelated random slope's standard deviation is
+    divided by the standard deviation of its covariate over all of those
+    rows. The brms refits use the training rows only. *What is open*:
+    compute every covariate-scaled default from the training rows.
+13. **The selection certificate identifies columns by name.** The score
+    contract that decides whether two arms' out-of-fold scores are
+    comparable hashes column names: rescaling a covariate between arms
+    (`x1` to `1000 * x1 + 17`) leaves its digest unchanged, and a
+    transformed response is summarised without its values. *What is open*:
+    hash the values the arms were scored on.
+14. **The boundary warning on a random slope depends on the covariate's
+    units.** The warning for a variance component pinned at zero compares
+    the slope's standard deviation with a threshold that does not account
+    for the scale of its covariate, so the same model can warn or not
+    depending on the units the covariate is recorded in. *What is open*: a
+    term-aware threshold.
+15. **Blocks-format `vm()` and `ped()` fits on INLA return an empty
+    variance-component table.** The fit completes, and `summary()`'s
+    variance-component table for such a term is empty. The cause has not
+    been diagnosed.
+16. **A weakly identified, zero-heavy count model can end in an INLA
+    failure where 0.10.0 fitted it.** On a Poisson model with a random
+    intercept over many clusters of two and almost every response zero, the
+    group standard deviation is barely identified and its posterior runs to
+    the upper edge of the default bound (2.97 against 3 on one such design).
+    On some draws of that design INLA's program aborts, and
+    `backend = "inla"` refuses with `inla_program_failed`. The class is the
+    one issue 8 describes; the mechanism for this design is not established.
+    *Workaround*: state `sd(group = ...) ~ half_normal(scale = 1)`, which
+    fits the same design, or fit on brms.
 
 ## Closed since the previous revision
 

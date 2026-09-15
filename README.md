@@ -10,7 +10,7 @@ genotype-by-environment covariance -- fit by approximation in seconds rather
 than by MCMC in minutes. Where a model is outside what an engine can
 represent, the package says so by name instead of fitting something else.
 
-> **Development version 0.11.0.** Not on CRAN. Every export is at the
+> **Development version 0.12.0.** Not on CRAN. Every export is at the
 > experimental `lifecycle` stage and the API may change within the 0.x
 > series.
 
