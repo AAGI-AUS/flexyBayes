@@ -251,15 +251,18 @@ Each is reproducible on this release. Priority is for the MET use case.
     `fb_select()` gives the assessment rows new labels for every column a
     random term's effect is indexed by: the group of a random intercept, of
     a random slope and of an `ide()` term, every factor of a two-way or
-    multi-way interaction, and the inner factor of `diag(f):g`, `us(f):g`
-    and `fa(f, k):g`. A `vm()`, `ped()` or autoregressive term cannot take
-    a new level and refuses with `selection_new_cluster_not_representable`;
-    `prediction = "known_cluster"` keeps its levels. A base written in the
-    brms grammar, such as `y ~ x + (x || g)`, carries its random terms into
-    every fold refit. On the benchmark route a two-way interaction is one
-    covariance term, and every random term other than an intercept or a
-    two-way interaction (a random slope, a multi-way interaction,
-    `diag(f):g`, `vm()`) refuses with `selection_covariance_not_buildable`.
+    multi-way interaction, and the inner factor of `diag(f):g`. A `vm()`,
+    `ped()` or autoregressive term cannot take a new level and refuses with
+    `selection_new_cluster_not_representable`; `prediction = "known_cluster"`
+    keeps its levels. A base carrying `us(f):g` or `fa(f, k):g` never
+    reaches relabelling: `fb_select()` refuses it by name at the base gate,
+    before any fold runs (`selection_base_not_allowlisted`). A base written
+    in the brms grammar, such as `y ~ x + (x || g)`, carries its random
+    terms into every fold refit. On the benchmark route a two-way
+    interaction is one covariance term, and every random term other than an
+    intercept or a two-way interaction (a random slope, a multi-way
+    interaction, `diag(f):g`, `vm()`) refuses with
+    `selection_covariance_not_buildable`.
 12. **Closed: on INLA, a fold refit's default priors read its training
     rows.** Each INLA fold refit in `fb_select()` receives the training rows
     and the assessment rows with the response set to missing. The default
