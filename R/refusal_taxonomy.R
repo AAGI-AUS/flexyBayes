@@ -2884,3 +2884,81 @@ print.fb_refusals_table <- function(x, ...) {
   )
   invisible(NULL)
 }
+
+.populate_refusal_registry_aggregated_accessors <- function() {
+  .register_refusal(
+    reason_code = "streamed_rows_not_retained",
+    description = paste0(
+      "A row-level accessor (fitted(), residuals(), model.matrix(), ",
+      "insight::get_data(), emmeans::recover_data()) on a flexybayes_stream() ",
+      "fit that keeps fewer rows than it was fitted to. The stream keeps only ",
+      "the first rows it read, so values computed from them are not the ",
+      "values of the data."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "update_streamed_fit_not_supported",
+    description = paste0(
+      "update() on a flexybayes_stream() fit. The fit keeps neither the ",
+      "source it read nor every row, so a re-fit through flexybayes() would ",
+      "run on different data."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "augment_not_available_inla",
+    description = paste0(
+      "augment() on an INLA fit, which keeps no per-row model frame for the ",
+      "fitted-value and residual columns. tidy() and predict() are the ",
+      "alternatives."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "log_density_producer_unavailable",
+    description = paste0(
+      "fb_log_posterior() on a fit whose engine has no faithful log-density ",
+      "to evaluate: INLA's posterior is a Laplace approximation, and brms's ",
+      "log-density is defined on the Stan unconstrained scale. The condition ",
+      "also carries the class fb_c4_unavailable."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "predict_link_not_supported",
+    description = paste0(
+      "predict() without classify on an INLA fit whose link is not the ",
+      "identity. Posterior draws from fb_as_draws_simple() are the ",
+      "alternative."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "marginaleffects_link_not_supported",
+    description = paste0(
+      "A marginaleffects prediction on a fit whose link is not the identity. ",
+      "Posterior draws from fb_as_draws_simple() are the alternative."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Aggregated count accessors (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}

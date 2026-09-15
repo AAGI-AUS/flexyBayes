@@ -231,6 +231,8 @@ flexybayes_stream <- function(
     family = family,
     the_call = the_call,
     verbose = verbose,
+    trials = trials,
+    exposure = exposure,
     ...
   )
 }
@@ -1068,6 +1070,8 @@ flexybayes_stream <- function(
   family,
   the_call,
   verbose,
+  trials = NULL,
+  exposure = NULL,
   ...
 ) {
   data_name <- "streamed"
@@ -1084,10 +1088,20 @@ flexybayes_stream <- function(
 
   # Count families only: flexybayes_stream() refuses a Gaussian fit before
   # any chunk is read.
+  # A row's expected count scales with its own trials or exposure, which the
+  # cell totals absorbed; the row-level fitted values multiply it back in.
+  row_scale <- if (!is.null(trials)) {
+    as.numeric(head[[trials]])
+  } else if (!is.null(exposure)) {
+    as.numeric(head[[exposure]])
+  } else {
+    NULL
+  }
   fit <- emit_count_aggregated(
     fb = fb,
     fb_aggregated = agg,
     data = head,
+    row_scale = row_scale,
     backend = backend,
     verbose = verbose,
     the_call = the_call,

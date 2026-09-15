@@ -90,9 +90,7 @@ test_that("glance() returns the one-row shape on an aggregated (INLA) fit", {
   expect_s3_class(g, "data.frame")
   expect_identical(nrow(g), 1L)
   expect_named(g, .glance_cols)
-  # By value: the count route carries its row count as a double, exact past
-  # the integer limit.
-  expect_equal(g$nobs, 2000)
+  expect_identical(g$nobs, 2000L)
   expect_true(is.na(g$chains))
   expect_true(is.na(g$max_rhat))
 })

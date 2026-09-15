@@ -38,19 +38,24 @@
   v
 }
 
-.fb_get_data <- function(model, ...) .fb_fit_data(model)
+.fb_get_data <- function(model, ...) {
+  .fb_aggregated_rows_held(model, "insight::get_data()")
+  .fb_fit_data(model)
+}
 
 .fb_get_predict <- function(model, newdata = NULL, type = "response", ...) {
   fam <- tryCatch(family(model), error = function(e) list(link = "identity"))
   if (!identical(fam$link %||% "identity", "identity")) {
-    stop(
-      "marginaleffects support currently covers the identity link ",
-      "only; this fit uses link '",
-      fam$link,
-      "'. Work with the ",
-      "posterior draws via fb_as_draws_simple() instead.",
-      call. = FALSE
-    )
+    stop(.fb_refusal_condition(
+      reason_code = "marginaleffects_link_not_supported",
+      message = paste0(
+        "marginaleffects support currently covers the identity link ",
+        "only; this fit uses link '",
+        fam$link,
+        "'. Work with the ",
+        "posterior draws via fb_as_draws_simple() instead."
+      )
+    ))
   }
 
   if (is.null(newdata)) {

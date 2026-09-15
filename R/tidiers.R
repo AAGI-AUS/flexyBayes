@@ -434,10 +434,12 @@ glance.flexybayes_inla <- function(x, ...) {
 #' @rdname augment.flexybayes
 #' @export
 augment.flexybayes_inla <- function(x, data = NULL, ...) {
-  stop(
-    "augment() is not available for INLA fits (`flexybayes_inla`). ",
-    "Use tidy() for a coefficient-level summary, or predict() for ",
-    "fitted values.",
-    call. = FALSE
-  )
+  stop(.fb_refusal_condition(
+    reason_code = "augment_not_available_inla",
+    message = paste0(
+      "augment() is not available for INLA fits (`flexybayes_inla`). ",
+      "Use tidy() for a coefficient-level summary, or predict() for ",
+      "fitted values."
+    )
+  ))
 }

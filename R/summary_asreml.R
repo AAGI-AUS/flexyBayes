@@ -1571,9 +1571,28 @@
   n_design <- rec$n_design %||% object$extras$model_info$n_obs %||% NA_integer_
   n_observed <- rec$n_observed %||% n_design
   list(
-    n_design = as.integer(n_design),
-    n_observed = as.integer(n_observed)
+    n_design = .fb_row_count_value(n_design),
+    n_observed = .fb_row_count_value(n_observed)
   )
+}
+
+# .fb_row_count_value() --- a row count as R can hold it.
+#
+# An integer up to R's integer limit, and past it the double the sharded
+# streaming reader keeps, which as.integer() would turn into NA. The count
+# route records its row count through this, so nobs(), glance() and summary()
+# report one value of one type.
+#
+# @noRd
+# @keywords internal
+.fb_row_count_value <- function(n) {
+  if (is.null(n) || length(n) != 1L || is.na(n)) {
+    return(NA_integer_)
+  }
+  if (n <= .Machine$integer.max) {
+    return(as.integer(n))
+  }
+  as.double(n)
 }
 
 
