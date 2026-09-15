@@ -238,7 +238,7 @@ argument for the rest of the 0.x series.
 
 ## Pinning
 
-Production users who need stability should pin to a specific 0.10.x patch via
+Production users who need stability should pin to a specific 0.12.x patch via
 `renv::snapshot()` until v1.0 lands.
 
 ## Added on the 0.8.x line (all experimental)

@@ -926,7 +926,8 @@ for (fm in .s3c_families) {
        # Carries the dsum residual, so the count arm refuses for the same
        # reason the dsum_residual row above does.
        poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
-       src = paste0("capability matrix: full MET fits | fits, with the ",
+       src = paste0("capability matrix: baseline heteroscedastic MET fits | ",
+                    "fits, with the ",
                     "heterogeneous-residual row's no-residual-scale note")),
   list(key = "corh", call = "random = ~ corh(f):g", inla = "refuse_typed",
        brms = "refuse_typed",
@@ -1137,11 +1138,16 @@ for (i in seq_along(.cells)) {
 
 .add_cell(
   id = "S6-inla-weak-poisson", section = "S6",
+  # The response is drawn under its own seed, so a fixture added above
+  # cannot move the draw: 3 non-zero counts in 56 rows, on which INLA's
+  # program crashes under INLA 26.08.07 and 25.10.19 (known issue 16).
   code = paste0('flexybayes(y ~ x, random = ~ g, ',
-                "data = transform(d_weak, y = rpois(nrow(d_weak), 0.05)), ",
+                "data = {set.seed(20260916L); ",
+                "transform(d_weak, y = rpois(nrow(d_weak), 0.05))}, ",
                 'family = "poisson", backend = "inla")'),
-  expected = "fit",
-  expect_src = "field finding U3: a zero-heavy weakly identified count part",
+  expected = "refuse_typed",
+  expect_src = paste0("known issue 16: INLA's program crashes on this ",
+                      "3-count draw, refused as inla_program_failed"),
   backend = "inla", family = "poisson", variant = "weak_identification"
 )
 

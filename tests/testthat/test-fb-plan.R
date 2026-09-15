@@ -299,7 +299,7 @@ test_that("the plan says a combined MET model fits, because it does", {
   )
 
   expect_true(p$will_fit)
-  # It fits on INLA now. Both halves of the full MET model -- the
+  # It fits on INLA now. Both halves of the baseline MET model -- the
   # interaction random effect and the sectioned residual -- were refused
   # there before 0.10.0.9000, so the combination was unreachable and the
   # plan named brms after a structural gate refusal. The gate passes, so

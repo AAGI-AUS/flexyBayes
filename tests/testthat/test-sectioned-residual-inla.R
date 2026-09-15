@@ -68,7 +68,7 @@ test_that("INLA recovers one residual SD per section", {
   expect_false(any(grepl("fb_sectioned_response", names(got), fixed = TRUE)))
 })
 
-test_that("the full MET model fits: interaction random effect and dsum together", {
+test_that("the baseline MET model fits: interaction random effect and dsum", {
   # Both halves refused on INLA before 0.10.0.9000, so this combination was
   # unreachable there. It is the model ASReml is bought for.
   skip_if_not_installed("INLA")
