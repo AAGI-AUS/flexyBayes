@@ -23,6 +23,8 @@ test_that("a three-way interaction random term preflights without crashing", {
   # test exists for is unchanged: a three-way interaction must preflight to
   # a typed plan rather than a base-R crash.
   expect_identical(p$gate_outcome, "accept")
+  # `auto` resolves to INLA only where INLA is installed.
+  skip_if_not_installed("INLA")
   expect_identical(p$backend_chosen, "inla")
   expect_true(p$will_fit)
 })

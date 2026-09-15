@@ -51,6 +51,8 @@ test_that("a three-way interaction emits one index over all three factors", {
 test_that("a generated index does not silently overwrite a user column", {
   # The failure this prevents is silent: the field would be indexed by
   # whatever the user's column holds, and nothing downstream would say so.
+  # emit_inla() checks that INLA is installed before it reads the data.
+  skip_if_not_installed("INLA")
   tab <- data.frame(
     y = rnorm(24),
     a = factor(rep(letters[1:2], each = 12L)),

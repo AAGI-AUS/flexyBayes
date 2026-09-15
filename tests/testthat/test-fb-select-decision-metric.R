@@ -117,6 +117,9 @@ test_that("plan = TRUE returns the verdict the run would", {
 
 
 test_that("the check refuses only the pair the projection cannot choose on", {
+  # The pairs that pass the metric check reach the provider check, which
+  # needs brms for the Bayesian workflow.
+  skip_if_not_installed("brms")
   base <- fbdm_base()
   fbdm_tripwires()
 

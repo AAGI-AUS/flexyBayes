@@ -71,6 +71,8 @@ test_that("the two index names are distinct and derived from the term", {
 })
 
 test_that("a generated index name colliding with a user column refuses", {
+  # emit_inla() checks that INLA is installed before it reads the data.
+  skip_if_not_installed("INLA")
   tab <- .cs_fixture(n_g = 10L, n_i = 3L)
   tab$g_cor_x_id <- 1L
   fb <- fb_from_brms(y ~ x + (x | g), data = tab, family = "gaussian")

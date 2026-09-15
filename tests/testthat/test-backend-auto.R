@@ -177,6 +177,7 @@ test_that("the heterogeneous residual that used to drive this now fits", {
 # INLA genuinely cannot take still falls back by the documented path.
 
 test_that("backend = 'auto' keeps the multi-stratum residual on INLA", {
+  testthat::skip_if_not_installed("INLA")
   d <- mk_lgm_data()
   fit <- suppressMessages(flexybayes(
     yield ~ env,
