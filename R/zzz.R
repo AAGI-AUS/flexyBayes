@@ -145,6 +145,9 @@
   # engine did not compute.
   .populate_refusal_registry_model_manifest()
 
+  # 2026-09-15: the working response -- NaN and infinite response values.
+  .populate_refusal_registry_working_response()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

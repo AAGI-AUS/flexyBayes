@@ -210,6 +210,37 @@
   which(is.na(vals))
 }
 
+# .fb_refuse_nonfinite_response() --- refuse a response that is NaN or
+# infinite. Neither is a missing observation: they come from arithmetic on
+# the response, log(0) or 0 / 0, or from a data-entry error. Handed one, INLA
+# fitted the model without a word and brms failed with a message that named
+# neither the row nor the value. NA stays the business of the policy below.
+.fb_refuse_nonfinite_response <- function(fb, data) {
+  vals <- .fb_response_values(fb, data)
+  if (!is.numeric(vals)) {
+    return(invisible(NULL))
+  }
+  bad <- which(is.nan(vals) | is.infinite(vals))
+  if (length(bad) == 0L) {
+    return(invisible(NULL))
+  }
+  shown <- utils::head(bad, 5L)
+  stop(.fb_refusal_condition(
+    reason_code = "response_not_finite",
+    message = paste0(
+      "The response `", fb$response, "` has ", length(bad),
+      " value(s) that are not finite (",
+      paste0("row ", shown, ": ", as.character(vals[shown]), collapse = ", "),
+      if (length(bad) > length(shown)) ", ..." else "",
+      "). NaN and infinite values are not missing observations, so ",
+      "na_action does not apply to them. Set them to NA to treat them as ",
+      "missing, or correct the transformation that produced them (log(0) ",
+      "is -Inf)."
+    ),
+    family_class = "flexybayes_response_refusal"
+  ))
+}
+
 # .fb_design_index_vars() --- the variables a structured covariance is
 # indexed by. These are the columns whose completeness the covariance
 # representation depends on: an ar1_spatial term is emitted as a field
@@ -321,6 +352,9 @@
   # before the design is counted or completed.
   cov_step <- .fb_apply_covariate_policy(fb, data, policy$x)
   data <- cov_step$data
+
+  # Before the missing-response policy, which NaN and Inf are not part of.
+  .fb_refuse_nonfinite_response(fb, data)
 
   miss <- .fb_response_missing(fb, data)
 

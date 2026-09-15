@@ -2746,6 +2746,24 @@ print.fb_refusals_table <- function(x, ...) {
   invisible(NULL)
 }
 
+.populate_refusal_registry_working_response <- function() {
+  .register_refusal(
+    reason_code = "response_not_finite",
+    description = paste0(
+      "A response with NaN or infinite values, usually from a transformation ",
+      "such as log(0) or from a data-entry error. They are not missing ",
+      "observations, so na_action does not apply to them, and an engine ",
+      "handed them either fitted the model without saying so or failed ",
+      "without naming the row. The fit refuses before any engine is called."
+    ),
+    message_template = "%s",
+    registered_in_adr = "Working-response resolution (2026-09-15)",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}
+
 .populate_refusal_registry_grammar_contract <- function() {
   .register_refusal(
     reason_code = "grammar_arity_too_few",

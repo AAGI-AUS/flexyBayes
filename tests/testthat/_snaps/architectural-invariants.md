@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=197
+      .refusal_registry: locked=TRUE n_keys=198
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -223,6 +223,7 @@
         projection_structure_unsupported
         representation_unknown_for_preflight
         residual_type_unsupported_for_aggregation
+        response_not_finite
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer

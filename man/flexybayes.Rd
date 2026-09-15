@@ -248,6 +248,10 @@ the model that was written down. \code{"omit"} drops the rows
 grid then refuses downstream. \code{"fail"} refuses if any response is
 missing, and leaves the design grid alone.
 
+A response value that is \code{NaN} or infinite, as \code{log(0)} gives, is not a
+missing observation. It refuses by name under every setting
+(\code{response_not_finite}); set it to \code{NA} to treat it as missing.
+
 The argument also accepts the object an ASReml user already writes,
 \code{asreml::na.method(y = , x = )}, and the bare list of the same shape
 for readers without an asreml licence:

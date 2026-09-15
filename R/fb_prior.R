@@ -744,8 +744,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(list(scale = 2.5, basis = "logit_default"))
   }
 
-  y <- if (!is.null(data) && response %in% names(data)) {
-    data[[response]]
+  y <- if (is.data.frame(data)) {
+    .fb_response_values(list(response = response), data)
   } else {
     NULL
   }
@@ -868,8 +868,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     ))
   }
 
-  y <- if (!is.null(data) && response %in% names(data)) {
-    data[[response]]
+  # A transformed response, log(y) or I(10 * y), is not a column: it is read
+  # through the same resolver the rest of the fit uses, so the bound is five
+  # standard deviations of the quantity the residual is written on.
+  y <- if (is.data.frame(data)) {
+    .fb_response_values(list(response = response), data)
   } else {
     NULL
   }
