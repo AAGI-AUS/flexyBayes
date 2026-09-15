@@ -28,7 +28,7 @@
 #
 # Run from the package root. Not shipped (`^tools$` in .Rbuildignore).
 
-TARGET_VERSION <- "0.10.0.9000"
+TARGET_VERSION <- "0.12.0"
 TARGET_TIER <- "V2"
 # 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
 # Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
@@ -36,7 +36,10 @@ TARGET_TIER <- "V2"
 # executed in the met-and-genomics vignette, and genomic_summary() and
 # triangulate_genomic() operate on posterior draws. The /rpkg E1 cap of 30
 # is therefore missed by four, deliberately and on the record.
-MAX_EXPORTS <- 34L
+# Set to 36 on 2026-09-15 (Max, DEC-LEAN-01 = b): the count 0.11.0 shipped,
+# held as a ceiling that only falls. 0.13.0 reduces the exports to 25 or
+# fewer through a deprecation cycle.
+MAX_EXPORTS <- 36L
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -837,7 +840,12 @@ MAX_EXPORTS <- 34L
       # -- the guard could see the file and still not see the claim. The
       # regex tolerates the words a writer puts between "posterior" and
       # "is the same".
-      states <- "posterior[^.]{0,60}is (then )?the same"
+      # Anchored on "whether" (2026-09-15). Every statement of the identity
+      # reads "is the same whether the cell is imputed or omitted"; the
+      # unanchored pattern also matched the selection vignette's sentence
+      # denying that a shrinkage posterior's answer is the same as an
+      # optimiser's, which is not the identity and needs no caveat.
+      states <- "posterior[^.]{0,60}is (then )?the same whether"
       caveats <- "not (a promise )?about what[[:space:]]+an optimiser returns"
       bare <- character(0)
       for (f in surfaces) {
@@ -922,29 +930,34 @@ MAX_EXPORTS <- 34L
 )
 
 # ---------------------------------------------------------------------
-# Explicitly OUT of 0.10.0. Not criteria. Admitting one means editing
-# this file, which is the point.
+# Explicitly OUT of 0.12.0. Not criteria. Admitting one means editing
+# this file, which is the point. Targets that named 0.11 were not reached
+# there and were re-dated on 2026-09-15.
 # ---------------------------------------------------------------------
 
 .dod_out_of_scope <- list(
   c("V3 floors: MFD, SBC n_sim >= 1000, null-recovery, metamorphics",
-    "0.11"),
+    "0.14 (SBC harness, plan v2 Phase 3)"),
   c("Bayesian FA GxE on brms, the incumbent's headline model",
-    "0.11+"),
+    "Phase 4 spike candidate"),
   c("INLA-SPDE Matern; hierarchically shrunk INLA residual; Tweedie",
-    "0.11+"),
+    "Phase 4 candidate"),
   c("S3 solver-aware latent-field preflight",
-    "0.11+"),
+    "Phase 4 candidate"),
   c("The 11 ML side-track exports (gwas, gblup, gev, dirichlet)",
     "deferred"),
   c("omit + informative missingness: the 3M-evaluation spin",
-    "0.11, documented at 0.10.0"),
+    "not scheduled, documented at 0.10.0"),
   c("augment/omit variance disagreement under MCAR: the mechanism",
-    "0.11, claim corrected at 0.10.0"),
+    "not scheduled, claim corrected at 0.10.0"),
   c("covr driven to an 85 per cent floor",
     "not planned, measured once"),
   c("Full MET live evidence beyond 120 rows",
-    "0.11+")
+    "not scheduled"),
+  c("Exact aggregated Gaussian likelihood with the residual prior composed",
+    "0.13.0"),
+  c("Export count reduced to 25 or fewer by deprecation",
+    "0.13.0")
 )
 
 # ---------------------------------------------------------------------

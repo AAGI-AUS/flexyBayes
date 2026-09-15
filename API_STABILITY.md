@@ -65,7 +65,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |---|---|---|
-| `triangulate()` | experimental | Pairwise comparison of two posteriors from different engines on shared parameters, behind three gates. A model fingerprint (formula triple, family and link, data digest, recorded priors) refuses mismatched fits with `triangulate_incomparable_fits`. A per-fit diagnostics gate returns status `inconclusive` instead of a parameter verdict. A matched-prior gate marks a parameter `not_compared` when the two fits do not record the same prior for it. Metric set for 0.9.x: mean difference, SD ratio, quantile (tail) drift, Wasserstein-1 distance, and the SD-scaled forms of the last two. Overall `status` is `concordant`, `discordant`, or `inconclusive`, and the thresholds are documented heuristics on a gated overlap rather than calibrated tests. *(The earlier cross-engine R-hat-on-means metric was removed -- R-hat across independent engines is not a valid convergence statistic, and per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
+| `triangulate()` | internal, not exported since 0.11.0 | No longer part of the public surface: it is an internal check the package runs, and it carries no stability promise. The description below records what it does for readers of earlier releases, who can still reach it as `flexyBayes:::triangulate()`. Pairwise comparison of two posteriors from different engines on shared parameters, behind three gates. A model fingerprint (formula triple, family and link, data digest, recorded priors) refuses mismatched fits with `triangulate_incomparable_fits`. A per-fit diagnostics gate returns status `inconclusive` instead of a parameter verdict. A matched-prior gate marks a parameter `not_compared` when the two fits do not record the same prior for it. Metric set for 0.9.x: mean difference, SD ratio, quantile (tail) drift, Wasserstein-1 distance, and the SD-scaled forms of the last two. Overall `status` is `concordant`, `discordant`, or `inconclusive`, and the thresholds are documented heuristics on a gated overlap rather than calibrated tests. *(The earlier cross-engine R-hat-on-means metric was removed -- R-hat across independent engines is not a valid convergence statistic, and per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
 
 ## Priors
 
@@ -91,7 +91,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | `fb_penalty()` | experimental | Declare the joint shrinkage prior over the candidate block: `target ~ family(...)` formulas resolved in written order against the model matrix. Families: `ridge`, `laplace`, `elastic_net`, `regularized_horseshoe`, `r2d2`, and `none()` to exempt coordinates. Targets: `term(everything())`, `term(x1, x2)`, `term(c("x1", "x2"))`, `term(matches("^SLGA_"))`. |
 | `fb_resamples()` | experimental | Declare the resampling scheme a selection is scored on: folds on original units before any transformation, frozen factor levels, and an unseen level in an assessment fold refused rather than dropped. |
 | `fb_decision()` | experimental | Declare how the selection decision is made: the method (`projection`, `full`, `posterior_threshold`), the metric, the rule (`one_se`, `min`, `tolerance`) and the search. Validated at construction, so a rule missing the number it needs refuses before anything is fitted. |
-| `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, for `family = "gaussian"`, `"binomial"` or `"poisson"` (the count families take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting. |
+| `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, fitted for `family = "binomial"` or `"poisson"` (which take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting, for a Gaussian family too. **Changed in 0.12.0:** a Gaussian fit refuses with `aggregation_residual_prior_not_composed` before any chunk is read, because the aggregated Gaussian likelihood did not carry the residual prior; fit a Gaussian model per row. An aggregated or streamed fit reports no marginal likelihood (`aggregated_evidence_unavailable`). |
 
 ## Diagnostics and introspection
 
@@ -139,10 +139,12 @@ as stable as that contract:
 interface mirroring `stats::predict()`. Both take `type`, `se.fit`, `classify`
 and `level`; the brms method additionally takes `re_formula` and `summary`.
 There is no parent `predict.flexybayes()` method: it was removed at 0.9.3 so
-that each engine states its own prediction contract. Chunked output and
-new-level policy are not arguments of these methods -- `output_file` belongs
-to `fb_plan()` and `allow_new_levels` to the classify path -- and naming them
-here previously advertised three arguments that `...` silently swallowed.
+that each engine states its own prediction contract. Chunked output is
+not an argument of these methods: `output_file` belongs to `fb_plan()`. The
+brms method passes further arguments on to brms's own prediction functions,
+so `allow_new_levels = TRUE` reaches brms's new-level policy there; the INLA
+method takes no new-level argument. An earlier revision of this page
+advertised three arguments that `...` silently swallowed.
 Interval semantics are *posterior expected-response* (no residual observation
 noise), not posterior-predictive.
 

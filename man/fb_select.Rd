@@ -154,3 +154,27 @@ penalised-likelihood answer under a Bayesian label.
 \code{\link[=fb_penalty]{fb_penalty()}} for the prior, \code{\link[=fb_resamples]{fb_resamples()}} for the folds,
 \code{\link[=fb_decision]{fb_decision()}} for the rule.
 }
+\examples{
+\donttest{
+if (requireNamespace("INLA", quietly = TRUE) &&
+  requireNamespace("brms", quietly = TRUE)) {
+  set.seed(1)
+  d <- data.frame(
+    site = factor(rep(1:8, each = 10)),
+    x1 = rnorm(80),
+    x2 = rnorm(80)
+  )
+  d$y <- 1 + 0.5 * d$x1 + rnorm(8)[d$site] + rnorm(80)
+  base <- fb(y ~ 1 + (1 | site), data = d, backend = "inla", verbose = FALSE)
+  # The plan resolves the axes, the prior blocks and the structure gate,
+  # and estimates the cost, without fitting the reference model.
+  fb_select(
+    base,
+    candidates = ~ x1 + x2,
+    penalty = fb_penalty(term(everything()) ~ laplace(scale = 1)),
+    seed = 1L,
+    plan = TRUE
+  )
+}
+}
+}

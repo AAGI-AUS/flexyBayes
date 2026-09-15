@@ -181,7 +181,8 @@
   # the largest completed per-row fit on record, flagging that its field
   # size was not recorded. Since the 2026-08-26 correction of the ceilings
   # study no completed fit on the genotype-growth ladder exists, so the
-  # fallback is what a refusal reports today (1,000,000 rows, 360 cells).
+  # fallback is what a refusal reports today (5,000,000 rows, 360 cells, the
+  # per-row Poisson fit of the 2026-09-15 boundary study).
   with_field <- done & !is.na(df$random_effects)
   ok <- if (any(with_field)) with_field else done
   df_ok <- df[ok, , drop = FALSE]

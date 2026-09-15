@@ -1,107 +1,104 @@
-# Scaling benchmark: what "scales to large agricultural datasets" rests on
+# Scaling benchmark: the streamed fit of a count model
 
-The evidence behind the scaling claim in `DESCRIPTION` and `README.md`.
-The numbers are in `benchmark_scaling.csv` beside this file; this page says
-what was measured, on what, and where the claim stops.
+This page records what the streamed, aggregated fit of a binomial or Poisson
+model costs in time and memory, where the per-row fit stops, and where the
+evidence stops. It supports the "Exact sufficient-statistic aggregation
+(binomial, Poisson)" row of the capability table in `README.md`.
+`DESCRIPTION` makes no scaling claim. The numbers are in
+`benchmark_scaling.csv` beside this file.
 
-The mechanism is not a faster solver. It is that the models this package
-targets are fitted to data that is **massively replicated** -- the same
-handful of environments crossed with the same genotypes, over and over --
-and for the exponential-family models in scope the likelihood of a *cell*
-(a set of rows sharing a linear predictor) depends on those rows only
-through a small vector of sufficient statistics that is **additive across
-any partition of the rows**. So the statistics can be accumulated one chunk
-at a time and the chunks discarded. The fit that follows is a fit to `K`
-cells, not to `N` rows, and it is algebraically the same fit.
+The mechanism is not a faster solver. The models this package targets are
+fitted to data that is heavily replicated: the same handful of environments
+crossed with the same genotypes, over and over. For a binomial or Poisson
+model, the likelihood of a *cell* (the rows that share a linear predictor)
+depends on those rows only through a few sufficient statistics that add up
+across any partition of the rows. The statistics can therefore be
+accumulated one chunk at a time and each chunk discarded, and the fit that
+follows is a fit to `K` cells rather than `N` rows with the same posterior.
+
+In 0.12.0 this holds for the count families only. A Gaussian model is fitted
+per row: `aggregate = TRUE` and `flexybayes_stream()` refuse it by name
+(`aggregation_residual_prior_not_composed`), because the aggregated Gaussian
+likelihood does not carry a stated or default residual prior. The
+section "Earlier record: the streamed Gaussian route" below explains what
+that means for the measurements published before this release.
 
 ## What was measured
 
-Two studies, one design family. Six environments crossed with genotypes,
-gaussian random intercept, INLA backend, `y ~ env` with `random = ~ geno`.
-Every cell runs in a **fresh subprocess under `/usr/bin/time -l`**, so
-wall-clock and peak resident memory are the operating system's numbers for
-that process and not an estimate taken inside a long-lived session.
+Two studies on one design family: a Poisson model with a log link, six
+environments crossed with genotypes, `y ~ env` with `random = ~ geno`, a
+stated prior `sd(group = "geno") ~ uniform(lower = 0, upper = 3)`, INLA
+engine. Every cell runs in a **fresh subprocess under `/usr/bin/time -l`**,
+so wall-clock time and peak resident memory are the operating system's
+numbers for that process, not an estimate taken inside a long-lived session.
 
 | study | what it contrasts | K | sizes |
 |---|---|---:|---|
-| `boundary` | the per-row path against the streamed-aggregated path, over the range where both are feasible, up to the point where the per-row path is not | 360 | 1e5 to 5e7 rows |
-| `extreme` | the streamed path reading partitioned `.fst` shards from disk | 1200 | 1e7 to 5e9 rows |
-| `boundary-confirm` | the `boundary` cells that finish quickly, re-measured against this release | 360 | 1e5 to 1e7 rows |
+| `boundary` | the per-row fit against the streamed fit, over the range where both run | 360 | 1e5 to 5e7 rows |
+| `extreme` | the streamed fit reading partitioned `.fst` shards from disk | 1,200 | 1e7 to 5e9 rows |
 
-`boundary` and `extreme` were run on 2026-05-31 against the development tree
-released the same day as 0.6.0. `boundary-confirm` was run on 2026-08-19
-against an installed tarball build of **0.9.2**, this release, so the claim
-carries a current execution record rather than a historical one.
+**Machine and stack.** Apple M5, 32 GB RAM, 10 cores, macOS 26.6.2; R 4.6.1,
+INLA 26.8.7, `fst` 0.9.8. Run on 2026-09-15 against the development tree of
+0.12.0, with no other computation running.
 
-**Hardware and stack.** Apple silicon macOS, 32 GB RAM, 10 cores, R 4.5.2,
-INLA 25.10.19, `fst` 0.9.8. Both runs used the same machine class; the
-2026-08-19 run is on an Apple M5.
+## The boundary: per-row against streamed
 
-## The boundary: where the per-row path stops
-
-| method | N | wall (s) | peak (MB) | compression |
+| method | N | wall (s) | peak (MB) | intercept |
 |---|---:|---:|---:|---:|
-| per-row | 100,000 | 5.17 | 1,346 | -- |
-| per-row | 500,000 | 15.26 | 6,386 | -- |
-| per-row | 1,000,000 | 18.96 | 12,352 | -- |
-| per-row | 5,000,000 | **infeasible** -- exceeded the memory cap | | |
-| streamed | 100,000 | 2.95 | 399 | 3.6e-03 |
-| streamed | 1,000,000 | 2.80 | 470 | 3.6e-04 |
-| streamed | 5,000,000 | 2.97 | 779 | 7.2e-05 |
-| streamed | 10,000,000 | 2.92 | 1,234 | 3.6e-05 |
-| streamed | 50,000,000 | 4.05 | 3,712 | 7.2e-06 |
+| per-row | 100,000 | 3.08 | 992 | 1.27183 |
+| per-row | 500,000 | 7.87 | 3,955 | 1.26747 |
+| per-row | 1,000,000 | 14.00 | 7,938 | 1.27112 |
+| per-row | 5,000,000 | 108.49 | 19,542 | 1.26970 |
+| streamed | 100,000 | 1.48 | 450 | 1.27183 |
+| streamed | 1,000,000 | 1.43 | 500 | 1.27112 |
+| streamed | 5,000,000 | 1.54 | 742 | 1.26970 |
+| streamed | 10,000,000 | 1.71 | 991 | 1.26862 |
+| streamed | 50,000,000 | 2.93 | 3,042 | 1.26884 |
 
-The per-row path's memory grows with the row count and it stops between one
-and five million rows on a 32 GB machine. The streamed path's wall-clock is
-roughly flat across a 500-fold increase in `N`, because the fit is always a
-fit to 360 cells. The streamed rows here read an **in-memory** frame, so
-their `peak_mb` still carries the whole frame; the bounded-memory result is
-the `extreme` study below, where the data is read from disk.
+The per-row fit's memory grows with the row count: it completed at five
+million rows, using 19.5 GB of a 32 GB machine, and was not run beyond that.
+The streamed fit's wall-clock time stays between 1.4 and 2.9 seconds across a
+500-fold increase in `N`, because it is always a fit to 360 cells. At every
+size where both were run (1e5, 1e6 and 5e6 rows) the two recover the same
+intercept to five decimal places.
 
-## The extreme end: a billion rows through a flat memory envelope
+The streamed rows in this study read an **in-memory** data frame, so their
+peak memory includes the whole frame. The bounded-memory result is the
+`extreme` study, where the data is read from disk.
 
-| N | wall (s) | peak (MB) | disk (GB) | recovered intercept |
+## The extreme end: five billion rows in flat memory
+
+| N | wall, fit (s) | peak (MB) | disk (GB) | intercept |
 |---:|---:|---:|---:|---:|
-| 10,000,000 | 3.31 | 708 | 0.09 | 0.98542 |
-| 100,000,000 | 5.67 | 796 | 0.94 | 0.98552 |
-| 1,000,000,000 | 31.90 | 844 | 9.40 | 0.98565 |
-| 5,000,000,000 | 150.87 | 846 | 46.98 | 0.98568 |
+| 10,000,000 | 2.27 | 712 | 0.03 | 1.29528 |
+| 100,000,000 | 5.37 | 730 | 0.28 | 1.29592 |
+| 1,000,000,000 | 37.71 | 734 | 2.81 | 1.29595 |
+| 5,000,000,000 | 183.27 | 734 | 14.06 | 1.29591 |
 
-The column that carries the claim is `peak (MB)`: **708 MB at ten million
-rows, 846 MB at five billion**, a 500-fold increase in data through a
-roughly flat memory envelope, because only one chunk plus the 1,200-cell
-accumulator is ever resident. Wall-clock grows roughly linearly with `N` and
-is dominated by the one-pass read of the shards. The recovered intercept is
-stable to four decimal places across all four scales.
+Peak memory is **712 MB at ten million rows and 734 MB at five billion**, a
+500-fold increase in data with memory nearly unchanged, because only one
+chunk and the 1,200-cell accumulator are ever resident. The fit time grows
+roughly linearly with `N` and is dominated by the single pass over the
+shards. Writing the shards is not included in the fit time: it took 0.9, 6.5,
+61.3 and 302.0 seconds at the four sizes. The recovered intercept varies by
+less than 0.0007 across the four sizes.
 
-## The 0.9.2 confirmation
+The CSV records each of these rows with `family = "poisson"`. The `family`
+column was added in this revision, because the table now holds a Poisson
+study and a Gaussian one.
 
-| method | N | wall (s) | peak (MB) | intercept (0.9.2) | intercept (2026-05-31) |
-|---|---:|---:|---:|---:|---:|
-| per-row | 100,000 | 5.10 | 1,346 | 1.36265 | 1.36265 |
-| per-row | 1,000,000 | 21.99 | 9,583 | 1.34918 | 1.34918 |
-| streamed | 100,000 | 2.23 | 337 | 1.36265 | 1.36265 |
-| streamed | 1,000,000 | 2.30 | 410 | 1.34918 | 1.34918 |
-| streamed | 10,000,000 | 2.70 | 1,162 | 1.35327 | 1.35327 |
+## A realistic multi-environment design: where the per-row fit stops
 
-Same seed and same design, so the estimates are comparable directly: the
-release reproduces every recovered intercept **to five decimal places**, and
-the time and memory envelope is unchanged. That is the point of the
-confirmation -- not that the release is faster, but that the route the
-original study measured is still the route the release takes.
-
-## The 2026-08-22 ceilings study: a realistic multi-term MET design
-
-The studies above use a single random intercept (`random = ~ geno`) -- close
-to the cheapest latent field INLA can be asked to carry. A real
-multi-environment trial (MET) carries several crossed and nested random
-terms at once, and that changes where the *per-row* path stops by more than
-an order of magnitude. This study measures that, on
-`agridat::barrero.maize` grown by appending copies of the trial network with
-new years -- new environments and new genotype-by-year and
-genotype-by-location-by-year levels; the genotype list itself does not grow
--- fitting the reduced, one-residual-variance variant of the Barrero Table 6
-model:
+The studies above use a single random intercept, close to the cheapest
+latent field INLA can be asked to carry. A multi-environment trial carries
+several crossed and nested random terms at once, and that moves the point
+where the *per-row* fit stops by more than an order of magnitude. On
+2026-08-22, against 0.9.2 on a 32 GB, 10-core Apple silicon machine, the
+`agridat::barrero.maize` trial network was grown by appending copies of it
+with new years (new environments and new genotype-by-year and
+genotype-by-location-by-year levels; the genotype list itself does not grow)
+and the reduced, one-residual-variance form of the Barrero Table 6 model was
+fitted per row:
 
 ```
 fixed:    yield ~ loc + yearf + loc:yearf
@@ -109,98 +106,110 @@ random:   ~ gen + rep:loc:yearf + gen:yearf + gen:loc + gen:loc:yearf
 residual: ~ units
 ```
 
-on INLA against ASReml, each fit in its own capped subprocess, same 32 GB /
-10-core Apple silicon machine as above. Two rungs were run and both are
-logged in this workspace as raw console output, not extrapolated:
+| N | random effects | flexyBayes on INLA |
+|---:|---:|---|
+| 911,808 | 322,598 | **refused by the design-memory preflight** before any fit ran |
+| 1,823,616 | 1,031,084 | passed the preflight, then the INLA subprocess **failed with a segmentation fault after 2,494.4 s** (about 41.6 minutes) |
 
-| rung | N | random effects | flexyBayes / INLA | ASReml |
-|---|---:|---:|---|---|
-| k = 64 | 911,808 | 322,598 | **preflight refused** before any fit ran -- the design exceeds the memory ceiling (`run_scaling_k64.log`) | subprocess crashed (`could not start R ... has crashed or was killed`) |
-| k = 128 | 1,823,616 | 1,031,084 | ran past preflight, then the INLA subprocess **segmentation-faulted after 2,494.4 s** (about 41.6 minutes) -- `"The inla-program exited with an error"`, a raw, untyped death (`run_inla_k128.log`) | not run at this rung |
+Neither size produced a completed fit. The package now reports the second
+kind of failure by name (`inla_program_failed`) instead of passing on the
+engine's message. **The per-row INLA ceiling on this design family lies
+between 911,808 and 1,823,616 rows and has not been measured more closely.**
+ASReml, run beside it, failed at the smaller size and was not run at the
+larger one.
 
-Neither rung is a completed fit on either engine. Refusing the 911,808-row
-rung outright is this package's own contract working as intended -- nothing
-ran, nothing was wasted -- while the 1,823,616-row rung passes preflight and
-then dies mid-solve after most of an hour, which is exactly the raw-engine-
-death class the C2 fix (`inla_program_failed`) now catches, so a future run
-at this size gets a typed refusal in seconds rather than 41 minutes of
-silence followed by an opaque INLA string. **The flexyBayes/INLA ceiling on
-this design family is therefore bracketed between 911,808 and 1,823,616
-rows, and has not been measured or bisected**: there is no logged rung in
-this range, on this design, where the fit actually completes.
+An earlier revision of this record listed a completed flexyBayes fit at
+911,808 rows. No run log supports it: the run recorded at that size is the
+preflight refusal above, and the CSV row was corrected accordingly.
 
-A 911,808-row / 515,756-random-effect / 340.9-second flexyBayes *success* is
-quoted in `SCALE_STRATEGY_2026-08-22.md` and `EXEC_SPEC_v0.9.3_scale_2026-08-23.md`
-(workspace planning documents, not part of the package) and was carried from
-there into an earlier draft of this record's CSV as a `success` row. It does
-not check out against the run this workspace actually logged at that row
-count: `run_scaling_k64.log` and
-`dir_outcomes_barrero_scaling_22Aug2026/tab_scaling_ladder_k64.csv` both
-record a **preflight refusal** with **322,598** random effects, not 515,756
--- a figure this write-up reproduced independently by re-running the ladder
-script's own level-counting logic and matching it exactly. No artefact
-anywhere in this workspace carries a 515,756-effect, 340.9-second, success
-record for 911,808 rows. The CSV beside this file has been corrected rather
-than carrying the unverified number forward a fourth time.
+Gaussian models are fitted per row in 0.12.0 as they were in 0.9.2, so this
+study describes the route 0.12.0 takes. Its two rows carry
+`family = "gaussian"`.
 
-ASReml's own boundary on this same design family -- 58.4 s at 683,856 rows,
-70.7 s at 797,832 rows, then insufficient workspace from 854,820 rows -- is
-`SCALE_STRATEGY_2026-08-22.md` §1's own figure and was not independently
-re-run in this session; it is at least consistent in direction with the
-crash this study observed for ASReml at 911,808 rows.
+## Where the evidence stops
 
-## Where the claim stops
-
-1. **Model scope.** The exactness holds for gaussian-identity,
-   binomial-logit and poisson-log GLMMs with **factor** fixed effects and
+1. **Model scope.** Aggregation is exact for binomial models with a logit
+   link and Poisson models with a log link, with **factor** fixed effects and
    **random-intercept** grouping. Other links, continuous fixed effects,
    random slopes, structured covariance and smooths are outside the
-   aggregated path and are refused before any fit, not silently approximated.
+   aggregated route and are refused before any fit, not approximated.
+   Gaussian models are refused on this route in 0.12.0, as described above.
 2. **Compression, not row count, is the binding quantity.** Aggregation buys
-   nothing when `K` approaches `N`. The planner reports the compression so a
-   user sees this before fitting, and `aggregate = TRUE` on a design with no
-   compression to find is refused rather than run.
-3. **Residual prior on the aggregated Gaussian path.** That path composes
-   the within-cell sum-of-squares correction with INLA's residual precision
-   prior; a user-supplied residual prior is not threaded through the
-   composition. The count families carry no such caveat.
-4. **Numerical envelope.** Counts and sums accumulate as doubles, exact for
-   integer counts to `2^53`. At extreme effective sample size the custom
-   log-precision prior's log-density is recentred to approximately zero at
-   its mode so INLA's hyperparameter integration stays stable; the
-   recentring is an exact reparametrisation and leaves small-`N` fits
-   unchanged.
-5. **One machine.** Every number here is one hardware class and one run per
-   cell. They are an order-of-magnitude record of the memory and time
-   envelope, not a distribution, and nothing here is a comparison against
-   another package.
+   nothing when `K` approaches `N`. The planner reports the compression, so it
+   is visible before fitting.
+3. **Evidence.** The marginal likelihood of an aggregated fit is not reported
+   (`aggregated_evidence_unavailable`): the engine's value omits a constant
+   that depends on the data.
+4. **Numerical range.** Counts and sums accumulate as doubles, which are
+   exact for integer counts up to `2^53`.
+5. **One machine, one run per cell.** These numbers record the order of
+   magnitude of the time and memory envelope on one hardware class. They are
+   not a distribution, and nothing here compares against another package's
+   aggregation. A machine with less memory stops the per-row fit earlier:
+   five million rows used 19.5 GB here.
 
-## Equivalence: the scaling is not bought with an approximation
+## Equivalence: the scaling does not rest on an approximation
 
-The claim would be worth little if the aggregated path answered a different
-question. Three checks, all in the shipped test suite:
+The scaling would be worth little if the aggregated fit answered a different
+question. Three checks:
 
-- `tests/testthat/test-stream-aggregate.R` -- the streamed sufficient
+- `tests/testthat/test-stream-aggregate.R`: the streamed sufficient
   statistics equal a single-pass in-memory aggregation to a relative 1e-8,
-  are invariant to where the chunk boundary falls, and the count-family sums
+  do not depend on where the chunk boundaries fall, and the count-family sums
   are exact.
-- `tests/testthat/test-aggregation-equivalence-backend.R` -- at N = 6e4 the
-  per-row and streamed-aggregated INLA fits agree on the fixed effects to
-  1e-4 and on the hyperparameters to 5e-3, for gaussian, binomial and
-  poisson.
-- The `boundary` study's own `intercept` column: at each `N` where both
-  paths were run (1e5 and 1e6), they recover the same intercept to five
-  decimal places, on the 2026-05-31 study and on the 0.9.2 confirmation
-  alike (see the CSV).
+- `tests/testthat/test-aggregation-equivalence-backend.R`: for binomial and
+  Poisson models, the per-row and streamed INLA fits at N = 6e4, and the
+  per-row and in-memory aggregated fits at N = 3e4, agree on the fixed
+  effects to 1e-4 and on the hyperparameters to 5e-3.
+- The `boundary` study's `intercept` column: at 1e5, 1e6 and 5e6 rows the
+  per-row and streamed fits recover the same intercept to five decimal
+  places.
+
+## Earlier record: the streamed Gaussian route (2026-05-31 and 2026-08-19)
+
+Before 0.12.0 this page measured the same two studies on a **Gaussian**
+random-intercept model. On 2026-05-31, against the development tree released
+as 0.6.0 (R 4.5.2, INLA 25.10.19), the per-row fit stopped between one and
+five million rows, exceeding the memory cap at five million, and the streamed
+fit from `.fst` shards held peak memory between 708 MB at ten million rows
+and 846 MB at five billion. On 2026-08-19 an installed build of 0.9.2
+reproduced the fast cells of that study to five decimal places in the
+recovered intercept.
+
+The streamed Gaussian route those measurements describe is **refused in
+0.12.0**. Its aggregated likelihood combined the within-cell sums of squares
+with a fixed prior on the residual precision, so a stated or default residual
+prior was not the prior fitted. The route returns only once the aggregated
+Gaussian likelihood carries the residual prior exactly, and it will be
+measured again then. The Gaussian rows were removed from the CSV, and the
+figures above are the ones that record carried.
 
 ## Reproducing it
 
-```
-Rscript tools/benchmark_bigdata_boundary.R    # the boundary study
-Rscript tools/stress_bigdata_extreme.R        # the extreme study
+Both studies draw the same data-generating model:
+
+```r
+set.seed(2024L)
+env_effect  <- rnorm(6, 0, 0.3)
+geno_effect <- rnorm(n_geno, 0, 0.25)        # 60 genotypes (boundary), 200 (extreme)
+# each row: environment and genotype sampled uniformly,
+# y ~ Poisson(exp(1 + env_effect[env] + geno_effect[geno]))
+prior <- fb_prior(sd(group = "geno") ~ uniform(lower = 0, upper = 3))
+
+# boundary, rows drawn with set.seed(42L)
+flexybayes(y ~ env, random = ~geno, data = tab, family = "poisson",
+  backend = "inla", aggregate = FALSE, prior = prior)
+flexybayes_stream(y ~ env, random = ~geno, source = tab, family = "poisson",
+  backend = "inla", chunk_rows = 2e6, prior = prior)
+
+# extreme: shards of 5e7 rows written with fst::write_fst(compress = 60),
+# shard i drawn with set.seed(1000L + i)
+flexybayes_stream(y ~ env, random = ~geno, source = shard_paths,
+  family = "poisson", chunk_rows = 5e6, prior = prior, fit = TRUE)
 ```
 
-Both scripts are in the repository and excluded from the build. The
-`extreme` study writes tens of gigabytes of `.fst` shards and is not run
-casually. The `boundary-confirm` rows were produced by the same boundary
-design run against an installed tarball rather than a loaded source tree.
+Each fit ran as its own `Rscript` process under `/usr/bin/time -l`, and the
+five-billion-row size was run only after the one-billion-row size projected
+it under three hours. The extreme study writes 14 GB of shards at its largest
+size and is not run casually. `tools/benchmark_bigdata_boundary.R` and
+`tools/stress_bigdata_extreme.R` generate the earlier Gaussian design.

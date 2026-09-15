@@ -147,6 +147,9 @@ reference:
       - model.matrix.flexybayes
       - update.flexybayes
       - as.data.frame.fb_plan
+      - tidy.fb_select
+      - augment.fb_select
+      - plot.fb_select
   - title: Genomics
     desc: >
       Genomic selection and the cross-engine genomic accessors.

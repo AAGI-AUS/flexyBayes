@@ -100,41 +100,38 @@ files are projections of the same `comparison.rds`.
 
 ## `benchmark_scaling.csv` and `benchmark_scaling.md`
 
-**What.** The evidence behind the scaling claim in `DESCRIPTION` and
-`README.md`. `benchmark_scaling.md` says what was measured and where the
-claim stops; the CSV is the slim table, eighteen rows across three studies:
-the boundary between the per-row and the streamed-aggregated fit path
-(where the per-row path stops, and what the streamed one costs at the same
-size), the extreme end (partitioned `.fst` shards to five billion rows),
-and a re-measurement of the fast boundary cells against this release. Times
-and peak memory are the operating system's numbers for a fresh subprocess
-per cell (`/usr/bin/time -l`), not estimates taken inside a long-lived
-session.
+**What.** The time and memory record of the streamed, aggregated fit of a
+count model, behind the "Exact sufficient-statistic aggregation (binomial,
+Poisson)" row of the capability table in `README.md`. `benchmark_scaling.md`
+says what was measured and where the evidence stops. The CSV holds fifteen
+rows: nine from the boundary between the per-row and the streamed fit, four
+from the extreme end (partitioned `.fst` shards to five billion rows), both
+on a Poisson model, and two from the 2026-08-22 multi-environment ceilings
+study on a Gaussian model. The `family` column says which. Times and peak
+memory are the operating system's numbers for a fresh subprocess per cell
+(`/usr/bin/time -l`), not estimates taken inside a long-lived session.
 
-**Generating scripts.** `tools/benchmark_bigdata_boundary.R` and
-`tools/stress_bigdata_extreme.R`, in this repository and excluded from the
-build. The `boundary-confirm` rows were produced by the same boundary
-design run against an installed tarball rather than a loaded source tree.
+**Generating code.** The data-generating model and the calls for both
+Poisson studies are written out in the "Reproducing it" section of
+`benchmark_scaling.md`. `tools/benchmark_bigdata_boundary.R` and
+`tools/stress_bigdata_extreme.R`, excluded from the build, generate the
+earlier Gaussian design, whose streamed route 0.12.0 refuses.
 
 **Data.** Simulated. Six environments crossed with 60 genotypes (360 cells)
-for the boundary rows, six by 200 (1,200 cells) for the extreme rows;
-gaussian random intercept, INLA backend, seed `42`.
+for the boundary rows, six by 200 (1,200 cells) for the extreme rows; a
+Poisson model with a log link and a genotype random intercept, INLA engine.
 
-**Run.** `boundary` and `extreme` on 2026-05-31 against the development
-tree released the same day as 0.6.0; `boundary-confirm` on 2026-08-19
-against an installed tarball of 0.9.2. Apple silicon macOS, 32 GB RAM, 10
-cores, R 4.5.2, INLA 25.10.19, fst 0.9.8.
+**Run.** 2026-09-15 against the development tree of 0.12.0. Apple M5, 32 GB
+RAM, 10 cores, macOS 26.6.2, R 4.6.1, INLA 26.8.7, fst 0.9.8.
 
-**Reading it.** The claim rests on the `peak_mb` column, not on the wall
-clock: the per-row path's memory grows with the row count and stops between
-one and five million rows, while the streamed path holds one chunk plus the
-cell accumulator, so 708 MB at ten million rows becomes 846 MB at five
-billion. The `intercept` column is the cross-check on the other half --
-the aggregated path recovers the per-row estimate to five decimal places at
-every size where both were run, so the scaling is not bought with an
-approximation. One run per cell on one machine: this is an
-order-of-magnitude envelope, not a distribution, and it compares the
-package's two paths against each other rather than against another package.
+**Reading it.** The record rests on the `peak_mb` column: the per-row fit's
+memory grows with the row count, to 19.5 GB at five million rows, while the
+streamed fit from disk holds one chunk and the cell accumulator, 712 MB at
+ten million rows and 734 MB at five billion. The `intercept` column is the
+cross-check: the per-row and streamed fits recover the same intercept to five
+decimal places at every size where both were run. One run per cell on one
+machine: this is an order-of-magnitude envelope, not a distribution, and it
+compares the package's two routes with each other, not with another package.
 
 ## `scenarios.yaml`
 
