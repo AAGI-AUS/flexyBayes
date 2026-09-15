@@ -860,6 +860,15 @@
   FALSE
 }
 
+# The bare node type each becomes when `:` pairs it with a plain inner
+# factor (id() / ide() / a bare name): fa(env, k) -> fa_gxe, us(env) ->
+# us_gxe. .classify_interaction() writes the paired string below, and
+# .fb_select_gate() (R/fb_select.R) has to recognise both the bare and the
+# paired form of each as the same covariance structure -- one table for
+# both readers, so a name changed on one side cannot go unmatched on the
+# other.
+.FB_GXE_PAIR_TYPE <- c(fa = "fa_gxe", us = "us_gxe")
+
 # Classify what an a:b interaction means in ASReml context
 .classify_interaction <- function(l, r) {
   lt <- l$type
@@ -872,11 +881,15 @@
         message = paste0("fa() requires k >= 1; got k = ", l$k, ".")
       ))
     }
-    return(list(list(type = "fa_gxe", outer = l$var, k = l$k, inner = r$var)))
+    return(list(list(
+      type = .FB_GXE_PAIR_TYPE[["fa"]], outer = l$var, k = l$k, inner = r$var
+    )))
   }
   # US GxE:     us(env) : id(geno)
   if (lt == "us" && rt %in% c("id", "ide", "simple")) {
-    return(list(list(type = "us_gxe", outer = l$var, inner = r$var)))
+    return(list(list(
+      type = .FB_GXE_PAIR_TYPE[["us"]], outer = l$var, inner = r$var
+    )))
   }
   # CORH GxE:   corh(env) : id(geno) -- heterogeneous variances, ONE shared
   # correlation. Carried as its own node so the refusal can name it.

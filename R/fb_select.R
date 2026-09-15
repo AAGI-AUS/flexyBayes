@@ -43,13 +43,17 @@
 
 # .fb_select_gate() --- the axes answered before anything runs.
 #
-# A base is admitted only when every axis passes, and the refusal names the
-# measurement rather than the conclusion. `us()` and `fa()` on INLA stay out
-# regardless of how a particular fit behaved: the measured genetic
-# correlation is 0.142 against ASReml's 0.930, and multiplying the response
-# by ten -- an exact transformation under which a correlation is invariant --
-# does not reproduce it. A correlated random slope on INLA stays out on the
-# same measurement taken on a second route, and only on that engine: the brms
+# A base is admitted only when every axis passes, and the refusal states the
+# measurement behind the conclusion. `us()` stays off the allowlist
+# whichever engine fitted the base: INLA already refuses an estimated
+# correlation matrix at the base fit itself
+# (`correlated_covariance_requires_brms`, R/lgm_gate.R), on the same
+# measurement named below, so the only base that can reach here carrying one
+# is a brms fit, and no fold-refit test shows the selection substrate's
+# whitening rotation reproduces it. `fa()` fits on INLA only and is marked
+# experimental there; the same absence of a fold-refit test keeps it off the
+# allowlist too. A correlated random slope on INLA stays out on the same
+# measurement taken on a second route, and only on that engine: the brms
 # base is admitted.
 .fb_select_gate <- function(base) {
   if (!inherits(base, "flexybayes")) {
@@ -87,22 +91,43 @@
   }
 
   # Structures whose covariance is not admitted, by name and with the
-  # measurement that put them there.
+  # measurement that put them there. Read from .FB_GXE_PAIR_TYPE
+  # (R/parse_formula.R), the same table .classify_interaction() writes
+  # "us_gxe" and "fa_gxe" from: one source for both readers, so a name added
+  # there is caught here automatically.
   types <- vapply(
     base$fb$random_terms %||% list(),
     function(t) t$type %||% NA_character_, character(1L)
   )
-  bad <- intersect(types, c("us", "fa", "unstructured", "factor_analytic"))
-  if (length(bad) > 0L) {
+  us_bad <- intersect(types, c("us", .FB_GXE_PAIR_TYPE[["us"]]))
+  if (length(us_bad) > 0L) {
     stop(.fb_refusal_condition(
       reason_code = "selection_base_not_allowlisted",
       message = paste0(
-        "fb_select(): the base carries ", paste(bad, collapse = ", "),
-        ", which is not on the selection allowlist. INLA's us() returns a ",
-        "genetic correlation of 0.142 where ASReml returns 0.930, and ",
-        "rescaling the response by ten does not reproduce it, so a rotation ",
-        "built on that covariance would be badly misspecified while looking ",
-        "perfectly reproducible."
+        "fb_select(): the base carries ", paste(us_bad, collapse = ", "),
+        ", which is not on the selection allowlist. An estimated ",
+        "correlation matrix fits on brms only -- INLA already refuses it at ",
+        "the base fit, citing a genetic correlation of 0.142 against ",
+        "ASReml's 0.930 on agridat::besag.met, where rescaling the response ",
+        "by ten does not reproduce it -- and no fold-refit test shows the ",
+        "selection substrate's whitening rotation reproduces a brms fit's ",
+        "covariance for this structure, so it stays off the allowlist on ",
+        "either route."
+      )
+    ))
+  }
+  fa_bad <- intersect(types, c("fa", .FB_GXE_PAIR_TYPE[["fa"]]))
+  if (length(fa_bad) > 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_base_not_allowlisted",
+      message = paste0(
+        "fb_select(): the base carries ", paste(fa_bad, collapse = ", "),
+        ", which is not on the selection allowlist. A factor-analytic ",
+        "covariance fits on INLA only, and the package's own README already ",
+        "marks it experimental there: repeat fits of one model have ",
+        "disagreed. The selection substrate refits the base on every fold, ",
+        "and no test shows its whitening rotation is stable for this ",
+        "structure, so it stays off the allowlist."
       )
     ))
   }
