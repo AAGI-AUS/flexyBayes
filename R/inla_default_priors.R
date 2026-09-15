@@ -123,7 +123,37 @@
   list(shared = unique(shared), vm_ped = unique(vm_ped))
 }
 
+#' The rows a covariate-scaled default is learned on
+#'
+#' Every row whose working response is observed. A row with a missing
+#' response adds no term to the likelihood, so its covariate values carry no
+#' information about the effect a default is scaled for. Two routes hand the
+#' emit such rows: a fit with `na_action = "augment"`, and an `fb_select()`
+#' fold refit, which carries its assessment rows with the response set to
+#' `NA`. Read over every row, the fold's default moved with the covariates of
+#' the rows the fold is scored on. The response-scaled defaults already read
+#' the observed rows, so both kinds of default now read the same rows.
+#'
+#' @param fb An `fb_terms` object.
+#' @param data A data frame.
+#' @returns A logical vector over the rows of `data`; all `TRUE` when the
+#'   response cannot be resolved row by row.
+#' @noRd
+#' @keywords internal
+.fb_inla_default_rows <- function(fb, data) {
+  y <- .fb_working_response(fb, data)
+  if (is.matrix(y) && nrow(y) == nrow(data)) {
+    return(!apply(is.na(y), 1L, any))
+  }
+  if (is.null(y) || length(y) != nrow(data)) {
+    return(rep(TRUE, nrow(data)))
+  }
+  !is.na(y)
+}
+
 #' The standard deviation of each uncorrelated slope's covariate
+#'
+#' Read over the rows `.fb_inla_default_rows()` names.
 #'
 #' @param fb An `fb_terms` object.
 #' @param data The data the fit is built from, or `NULL`.
@@ -137,11 +167,12 @@
   if (is.null(data)) {
     return(out)
   }
+  rows <- .fb_inla_default_rows(fb, data)
   for (t in fb$random_terms %||% list()) {
     if (!identical(t$type %||% "", "simple_slope_uncor")) {
       next
     }
-    x <- data[[t$slope_var]]
+    x <- data[[t$slope_var]][rows]
     if (!is.numeric(x)) {
       next
     }
@@ -322,6 +353,10 @@
 #' hold the design as cell contrasts, and a numeric column never reaches
 #' them.
 #'
+#' `sd(x_j)` is read over the rows `.fb_inla_default_rows()` names. The
+#' design is built on every row, so its columns are the ones the fit
+#' carries.
+#'
 #' @param fb An `fb_terms` object.
 #' @param data The data the fit is built from.
 #' @returns A named numeric vector of prior standard deviations, in the
@@ -339,6 +374,14 @@
   mf <- stats::model.frame(form, data = data)
   tt <- attr(mf, "terms")
   mm <- stats::model.matrix(tt, mf)
+  # The design rows model.frame() kept, as rows of `data`, and of those the
+  # ones with an observed response.
+  kept <- seq_len(nrow(data))
+  omitted <- attr(mf, "na.action")
+  if (!is.null(omitted)) {
+    kept <- kept[-omitted]
+  }
+  observed <- .fb_inla_default_rows(fb, data)[kept]
   factors <- attr(tt, "factors")
   assign <- attr(mm, "assign")
   categorical <- vapply(
@@ -367,7 +410,7 @@
     if (isTRUE(all(categorical[vars]))) {
       next
     }
-    s <- stats::sd(mm[, j])
+    s <- stats::sd(mm[observed, j])
     if (!is.finite(s) || s <= 0) {
       next
     }

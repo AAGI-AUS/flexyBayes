@@ -246,22 +246,29 @@ Each is reproducible on this release. Priority is for the MET use case.
     an aggregated Gaussian likelihood that composes the stated or default
     residual prior exactly and restores the marginal likelihood, planned
     for 0.13.0.
-11. **Held-out clusters under `prediction = "new_cluster"` are relabelled
-    for some grouping terms only.** `fb_select()` gives the assessment rows
-    new labels for the grouping of a simple random intercept, a nested term
-    and a heterogeneous-variance term, so their effects are predicted as new
-    clusters. It does not relabel the grouping of a random slope, of a
-    `vm()` or `ped()` term, or of a multi-way interaction, so on a base
-    carrying one of those the held-out rows keep their training labels for
-    that term. *What is open*: relabel every grouping column the emitter
-    uses, or refuse the term by name.
-12. **On INLA, a fold refit's default slope prior sees the held-out rows'
-    covariate.** Each INLA fold refit in `fb_select()` receives the training
-    rows and the assessment rows with the response set to missing, and the
-    default bound on an uncorrelated random slope's standard deviation is
-    divided by the standard deviation of its covariate over all of those
-    rows. The brms refits use the training rows only. *What is open*:
-    compute every covariate-scaled default from the training rows.
+11. **Closed: held-out clusters under `prediction = "new_cluster"` are
+    relabelled for every grouping term, or the term refuses by name.**
+    `fb_select()` gives the assessment rows new labels for every column a
+    random term's effect is indexed by: the group of a random intercept, of
+    a random slope and of an `ide()` term, every factor of a two-way or
+    multi-way interaction, and the inner factor of `diag(f):g`, `us(f):g`
+    and `fa(f, k):g`. A `vm()`, `ped()` or autoregressive term cannot take
+    a new level and refuses with `selection_new_cluster_not_representable`;
+    `prediction = "known_cluster"` keeps its levels. A base written in the
+    brms grammar, such as `y ~ x + (x || g)`, carries its random terms into
+    every fold refit. On the benchmark route a two-way interaction is one
+    covariance term, and every random term other than an intercept or a
+    two-way interaction (a random slope, a multi-way interaction,
+    `diag(f):g`, `vm()`) refuses with `selection_covariance_not_buildable`.
+12. **Closed: on INLA, a fold refit's default priors read its training
+    rows.** Each INLA fold refit in `fb_select()` receives the training rows
+    and the assessment rows with the response set to missing. The default
+    bound on an uncorrelated random slope's standard deviation and the
+    default fixed-effect prior are scaled by covariate standard deviations
+    taken over the rows with an observed response, which in a fold refit are
+    its training rows, the rows the response-scaled defaults already read. A
+    fit with `na_action = "augment"` reads the same rows, so the covariates
+    of rows without a response leave its defaults unchanged.
 13. **The selection certificate identifies columns by name.** The score
     contract that decides whether two arms' out-of-fold scores are
     comparable hashes column names: rescaling a covariate between arms

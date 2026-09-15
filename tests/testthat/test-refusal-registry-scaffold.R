@@ -508,9 +508,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   #
   # The support audit adds one: an INLA fit outside the bound of a stated
   # prior (prior_support_violated) (= 205).
+  #
+  # Fold isolation adds one: a random term that cannot take a new level
+  # under prediction = "new_cluster"
+  # (selection_new_cluster_not_representable) (= 206).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 205L)
+  expect_equal(length(entries), 206L)
   expect_true("prior_support_violated" %in% entries)
   expect_true("response_not_finite" %in% entries)
   expect_true("streamed_rows_not_retained" %in% entries)
