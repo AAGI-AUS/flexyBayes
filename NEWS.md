@@ -1,3 +1,67 @@
+# flexyBayes 0.12.1
+
+A containment release. An INLA fit whose hyperparameter lies outside the bound
+of a stated prior is refused by name, the capability record the package
+installs is generated from the live registry, and the README and known issues
+state what each engine fits at the level the evidence supports. No model
+family, penalty family, engine or exported function is added.
+
+## Breaking changes
+
+* **INLA refuses a fit outside the bound of a stated prior**
+  (`prior_support_violated`). After every INLA fit, on the per-row route and
+  both aggregated routes, each hyperparameter under a uniform bound is checked
+  on the scale INLA fitted: its mode and its 2.5% and 97.5% quantiles must lie
+  inside the bound INLA received, within 0.1% of the standard deviation. The
+  refusal names the parameter, its standard deviation at the mode, the
+  interval, the bound, the INLA version and the route. `backend = "auto"`
+  falls back to brms, as for any INLA failure. On a Poisson design with a
+  random term aliased with a fixed factor, 0.12.0 under INLA 26.08.07 returned
+  45 of 100 repeated fits with a standard deviation near 1,400 against a bound
+  of 3; 0.12.1 fitted 72 of 100 inside the bound and refused 28. Under INLA
+  25.10.19 all 100 fitted inside. Every INLA fit records the check in
+  `fit$extras$support_audit` (known issue 17). This corrects the 0.12.0
+  statement that a stated bound binds on INLA.
+
+* **`na_action = "augment"` on brms refuses a missing Student-t response** by
+  name (`brms_cannot_augment_nongaussian`). 0.12.0 admitted the family and
+  stopped with an untyped emitter error. Augmentation on brms is admitted for
+  the gaussian and lognormal families, and the lognormal route is now checked
+  by a live fit against the complete-case posterior.
+
+## Claims and evidence
+
+* **The README, known issues and `?flexybayes` state what each engine fits.**
+  INLA fits nested and multi-stratum random effects, a per-environment
+  residual and the baseline heteroscedastic MET model (iid genotype, iid
+  genotype-by-environment and a sectioned residual), checked on small
+  simulated trials. Unstructured genotype-by-environment covariance fits on
+  brms only, and factor-analytic covariance on INLA is experimental. The
+  capability row formerly called the full MET model carries the baseline name.
+
+* **The installed capability record is generated from the registry.**
+  `inst/validation/execution_grid/capability_matrix.csv` is written by the
+  same generator as the README and known-issues tables, and an installed-
+  package test compares each shipped row with the live registry. The grid
+  outcome files come from this release's grid run on its tarball.
+
+* **Known issues 16 and 17 name their measured causes.** Issue 16, an INLA
+  program crash on a Poisson response with three non-zero counts, is refused
+  as `inla_program_failed` and is not a regression: the grid cell's data
+  changed when the grid fixture's random-number state moved. A half-normal
+  prior with scale 1.53 fits the same data. Issue 17 is the aliased-term
+  design above.
+
+* **The high-missingness warning reads a disagreement between engines as weak
+  identification.** The 30% threshold is described as a rule of thumb.
+
+* `API_STABILITY.md` pins to the 0.12.x line.
+
+* **The default variance prior is unchanged.** It stays the uniform bound on
+  each standard deviation, on both engines. No execution-grid cell that
+  fitted in 0.12.0 is refused by the check, and the full test suite passes
+  with it.
+
 # flexyBayes 0.12.0
 
 The model a fit reports is the model it ran. Gaussian models on INLA are fitted

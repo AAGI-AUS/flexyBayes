@@ -3,7 +3,7 @@
 ## Supported versions
 
 Security fixes are issued against the development release in progress
-(`0.12.0`, on the 0.12.x line) and the latest CRAN release (when present).
+(`0.12.1`, on the 0.12.x line) and the latest CRAN release (when present).
 Older released versions are not back-patched.
 
 | Version | Supported |

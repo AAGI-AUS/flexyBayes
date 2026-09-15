@@ -1,6 +1,6 @@
 ## Submission
 
-This is a new submission of `flexyBayes`, version 0.12.0.
+This is a new submission of `flexyBayes`, version 0.12.1.
 
 The package specifies mixed models in ASReml-style or brms-style formula
 syntax and estimates them through one of two inference engines, INLA or
@@ -23,17 +23,19 @@ unless it happened.
 
 ## R CMD check results
 
-The check artefacts for this release are `00check_v0.12.0_inla-present.log`
-and `00check_v0.12.0_inla-absent.log` -- one run with INLA installed, one
-without, since the package behaves differently, and is tested differently,
-in each case. Both are produced at the release bake (after the work
+The check artefacts for this release are
+`00check_v0.12.1_engines-present.log` and
+`00check_v0.12.1_engines-present_run2.log`, two runs with INLA, brms and
+cmdstanr installed, and `00check_v0.12.1_engines-absent.log`, one run with
+all three masked, since the package behaves differently, and is tested
+differently, in each case. Both are produced at the release bake (after the work
 recorded in `WS/review/phase_reports_0100/reports/`) and kept with the
 release records alongside the tarball; that is where to read the exact
-error/warning/note count for 0.12.0, rather than a number quoted here with
+error/warning/note count for 0.12.1, rather than a number quoted here with
 no artefact behind it.
 
 The note below is the one the check produces. It is transcribed from this
-release's own INLA-absent artefact rather than from an earlier release, so
+release's own engines-absent artefact rather than from an earlier release, so
 its shape is read off a run that happened and not asserted from memory.
 Both conditions that produce it are unchanged: `DESCRIPTION`'s
 `Additional_repositories:` names only the INLA repository, and its `URL:`
@@ -102,7 +104,7 @@ edited.
 process and starts no workers at all. It was `true` up to 0.9.3, but the
 declaration was never usable: parallel workers stalled indefinitely on
 the INLA and brms fits, so every release ran the suite sequentially from
-outside anyway. Declaring what actually runs is the honest setting, and
+outside anyway. Declaring what actually runs is the correct setting, and
 it is trivially within the CRAN two-core limit. Nothing in the package
 calls `parallel::detectCores()`, sets `mc.cores`, or opens a cluster,
 and both calls into INLA's posterior sampler pin

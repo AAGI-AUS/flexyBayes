@@ -12,7 +12,7 @@ genotype-by-environment covariance on INLA is experimental: repeat fits of one
 model have disagreed. A model an engine cannot represent is refused by name,
 and so is an INLA fit whose posterior leaves the support of a stated prior.
 
-> **Development version 0.12.0.** Not on CRAN. Every export is at the
+> **Development version 0.12.1.** Not on CRAN. Every export is at the
 > experimental `lifecycle` stage and the API may change within the 0.x
 > series.
 
