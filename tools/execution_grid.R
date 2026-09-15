@@ -546,8 +546,8 @@ for (spec in .M_CALLS) {
 # silent-wrong defects in the 0.9.1 field engagement.
 
 .s1_routes <- list(
-  list(key = "default", args = "", needle = "uniform\\(0,",
-       src = "R/flexybayes.R default_prior_active bounded-uniform default"),
+  list(key = "default", args = "", needle = "normal\\(0,",
+       src = "R/flexybayes.R default_prior_active half-normal default"),
   list(key = "vc_sd", args = ", prior_vc_sd = 3",
        needle = "lognormal\\(0, 3\\)",
        src = "man/flexybayes.Rd legacy lognormal(0, prior_vc_sd)"),

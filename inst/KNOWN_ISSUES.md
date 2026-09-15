@@ -263,7 +263,7 @@ Each is reproducible on this release. Priority is for the MET use case.
 12. **Closed: on INLA, a fold refit's default priors read its training
     rows.** Each INLA fold refit in `fb_select()` receives the training rows
     and the assessment rows with the response set to missing. The default
-    bound on an uncorrelated random slope's standard deviation and the
+    scale on an uncorrelated random slope's standard deviation and the
     default fixed-effect prior are scaled by covariate standard deviations
     taken over the rows with an observed response, which in a fold refit are
     its training rows, the rows the response-scaled defaults already read. A
@@ -340,9 +340,12 @@ Each is reproducible on this release. Priority is for the MET use case.
     is 3.05 and INLA's interval runs from 0.17 to 3.65, so the default INLA
     fit is refused in 8 of 8 repeats. *Workaround*: state a half-normal prior
     on the standard deviations, for example with scale the standard
-    deviation of the response, or fit on brms. *What is open*: the default
-    prior (the release plan moves it to a half-normal prior on both engines
-    in 0.13.0).
+    deviation of the response, or fit on brms. Since 0.13.0 the default
+    prior is `half_normal(scale = s)` on each standard deviation, on both
+    engines, with `s` equal to the former bound; it has no bound for an
+    interval to cross, and the default `john.alpha` fit returns. *What is
+    open*: a user-stated uniform bound is still refused when INLA's reported
+    interval reaches past it.
 
 ## Closed since the previous revision
 

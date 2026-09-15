@@ -226,7 +226,7 @@ summary.flexybayes <- function(object, ...) {
 #
 # Three tokens, because there are three cases and only two of them used
 # to be distinguishable:
-#   "package_default"    the auto-default bounded-uniform-on-SD prior
+#   "package_default"    the auto-default half-normal-on-SD prior
 #   "custom"             an explicit fb_prior() from the caller
 #   "per_row_equivalent" the legacy scalar bridge (and no recorded prior)
 #
@@ -259,7 +259,7 @@ summary.flexybayes <- function(object, ...) {
 # guarantee holds (aggregated posterior == per-row posterior under the
 # default prior); "package_default" names the prior the package injected
 # without claiming that equivalence, which is not established for the
-# bounded-uniform default on the aggregated route; the "custom" case
+# half-normal default on the aggregated route; the "custom" case
 # flags that an explicit prior was supplied and points at
 # prior_summary().
 .agg_fit_label <- function(mi) {
@@ -282,7 +282,7 @@ summary.flexybayes <- function(object, ...) {
       "aggregated posterior matches per-row)"
     ),
     package_default = paste0(
-      "package default (bounded uniform on SD; see prior_summary())"
+      "package default (half-normal on SD; see prior_summary())"
     ),
     custom = "custom (explicit prior supplied; see prior_summary())",
     pp
@@ -854,7 +854,7 @@ model.matrix.flexybayes <- function(object, ...) {
 #'
 #' A re-fit uses the prior the original fit resolved to, taken from the
 #' record on the fit itself rather than re-derived from the arguments.
-#' This matters because the auto-default bounded uniform on the
+#' This matters because the auto-default half-normal on the
 #' standard-deviation scale fires only when the call supplies neither a
 #' `prior` nor a `prior_vc_sd`, and a re-fit that re-issues the recorded
 #' `prior_vc_sd` supplies one by construction. Before 0.9.1 the
@@ -883,14 +883,14 @@ model.matrix.flexybayes <- function(object, ...) {
 #' a re-fit treats them differently.
 #'
 #' \itemize{
-#'   \item \strong{The auto-default} bounded uniform is the output of a
-#'     policy -- one bounded uniform per variance component the model
-#'     has, with the bound read off the data -- rather than a statement
+#'   \item \strong{The auto-default} half-normal is the output of a
+#'     policy -- one half-normal per variance component the model
+#'     has, with the scale read off the data -- rather than a statement
 #'     about particular terms. A re-fit passes neither `prior` nor either
 #'     scalar, so the policy runs again over the *updated* model and
 #'     data. On an identity `update()` the same data rebuild the same
-#'     bound, so nothing moves. On `update(fit, random = ~ g + h)` the
-#'     added term gets the same bounded uniform as its siblings.
+#'     scale, so nothing moves. On `update(fit, random = ~ g + h)` the
+#'     added term gets the same half-normal as its siblings.
 #'   \item \strong{A user-supplied `fb_prior()`} is a statement about the
 #'     terms it names, and is carried verbatim. A term the user did not
 #'     name -- including one an override has just added -- keeps
@@ -902,7 +902,7 @@ model.matrix.flexybayes <- function(object, ...) {
 #'
 #' The asymmetry is deliberate. Re-applying a policy's old output to a new
 #' model leaves a mixed state -- the original terms priored, the added one
-#' falling to the engine while its siblings keep the uniform -- which is
+#' falling to the engine while its siblings keep the default -- which is
 #' not what either the policy or the user asked for. Re-deciding a
 #' *user's* explicit prior, on the other hand, would put words in their
 #' mouth. Read [prior_summary()] on the re-fit to see what it ran under,
@@ -1076,7 +1076,7 @@ update.flexybayes <- function(object, ...) {
 
   # ---- The prior the fit ran under, not the one its arguments imply ----
   #
-  # flexybayes() decides whether the auto-default bounded uniform on the
+  # flexybayes() decides whether the auto-default half-normal on the
   # SD scale fires from argument missingness:
   #
   #   default_prior_active <- is.null(prior) && missing(prior_vc_sd)
@@ -1087,7 +1087,7 @@ update.flexybayes <- function(object, ...) {
   # engine choose its own hyperprior -- an identity update() moved
   # sd_Block from 2.278 to 1.144 on a per-row INLA fit, from 1.558 to
   # 0.980 on the aggregated Gaussian route, and the same way on brms,
-  # with $varcomp$prior changing from the resolved uniform to
+  # with $varcomp$prior changing from the resolved default to
   # "engine default" and nothing else saying so.
   #
   # Argument missingness is the wrong thing to re-derive the answer from,
@@ -1101,16 +1101,16 @@ update.flexybayes <- function(object, ...) {
   # auto-default built it -- the same attribute prior_summary() reads to
   # report `default_origin = "auto"`, and .fb_prior_record() to decide
   # `shared_default`. That object is not a choice the user made about
-  # these terms. It is the output of a POLICY: a bounded uniform on the
-  # SD scale, one per variance component the model has, with the bound
+  # these terms. It is the output of a POLICY: a half-normal on the
+  # SD scale, one per variance component the model has, with the scale
   # read off the data. Carrying the object re-applies yesterday's output
   # to today's model, and a model that gained a term gets a mixed state
   # -- the original terms priored, the new one falling to the engine
-  # while its siblings keep the uniform. So the policy is re-fired
+  # while its siblings keep the default. So the policy is re-fired
   # instead: neither `prior` nor either scalar is passed, `missing()`
   # holds on the gate above, and flexybayes() rebuilds the default over
   # the UPDATED model and data. On an identity re-fit the same data
-  # rebuild the same bound, so this is indistinguishable from carrying
+  # rebuild the same scale, so this is indistinguishable from carrying
   # the object.
   #
   # A user-supplied fb_prior() is the opposite: a bespoke statement about

@@ -386,7 +386,7 @@
           return(unname(recorded[[base_key]]))
         }
       }
-      # A per-level residual row. The declared uniform on the SD scale
+      # A per-level residual row. The declared prior on the SD scale
       # was retargeted onto the log-sigma coefficients at emit time, so
       # `sigma` names no parameter this model has and the spec keyed to
       # it would be the wrong cell. What reached the sampler is read off
@@ -498,7 +498,7 @@
 # actually ran under.
 #
 # `dsum(~ units | f)` makes the residual a distributional predictor, and
-# the package retargets the declared uniform-on-SD onto the log-sigma
+# the package retargets the declared SD prior onto the log-sigma
 # coefficients rather than leaving a spec pointing at a `sigma` the model
 # no longer has. The retargeted spec is what reached the sampler, so it
 # is read back off the engine's own prior table -- the same discipline

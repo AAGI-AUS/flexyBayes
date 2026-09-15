@@ -269,8 +269,12 @@ test_that("a partial prior keeps what was stated and records what was filled", {
   expect_equal(emitted$hyper$Subject$meta$family, "half_normal")
   expect_equal(emitted$hyper$Subject$meta$scale, 20 / s_y)
   expect_null(emitted$hyper$Subject$meta$package_chosen)
-  # Filled: 5 sd(y) divided by sd(Days), then by the response scale.
-  expect_equal(emitted$hyper$Days_Subject$meta$upper, 5 / stats::sd(d$Days))
+  # Filled: 5 sd(y) / divisor, divided by sd(Days), then by the response scale.
+  expect_identical(emitted$hyper$Days_Subject$meta$family, "half_normal")
+  expect_equal(
+    emitted$hyper$Days_Subject$meta$scale,
+    5 / flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR / stats::sd(d$Days)
+  )
   expect_true(emitted$hyper$Days_Subject$meta$package_chosen)
 
   fit <- .sad_quiet(flexybayes(
@@ -292,7 +296,7 @@ test_that("a partial prior keeps what was stated and records what was filled", {
   expect_false("sd_Days_Subject" %in% names(fp$engine_default_params))
 
   v <- summary(fit)$varcomp
-  expect_match(v$prior[v$component == "sd_Days_Subject"], "^uniform\\(lower=0")
+  expect_match(v$prior[v$component == "sd_Days_Subject"], "^half_normal\\(scale=")
 })
 
 test_that("a stated fixed-effect prior is not rescaled by its covariate", {
@@ -352,7 +356,7 @@ test_that("a factor contrast keeps INLA's own fixed-effect default", {
   d
 }
 
-test_that("a multi-way random interaction takes the bounded default", {
+test_that("a multi-way random interaction takes the half-normal default", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .sad_three_way()
@@ -361,8 +365,13 @@ test_that("a multi-way random interaction takes the bounded default", {
     fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",
     return_code = TRUE
   ))
-  # uniform(0, 5 sd(y)), restated on the standardised response.
-  expect_equal(emitted$hyper[["a:b:cc"]]$meta$upper, 5)
+  # half_normal(scale = 5 sd(y) / divisor), restated on the standardised
+  # response.
+  expect_identical(emitted$hyper[["a:b:cc"]]$meta$family, "half_normal")
+  expect_equal(
+    emitted$hyper[["a:b:cc"]]$meta$scale,
+    5 / flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR
+  )
   expect_match(
     .sad_formula_text(emitted$formula),
     "f(a_b_cc_id, model = \"iid\", hyper",
@@ -439,7 +448,11 @@ test_that("each block of a blocks-format vm() takes the default under a partial 
     fb, data = d, known_matrices = list(blocks = blocks),
     return_code = TRUE, verbose = FALSE
   ))
-  expect_equal(emitted$hyper$geno$meta$upper, 5)
+  expect_identical(emitted$hyper$geno$meta$family, "half_normal")
+  expect_equal(
+    emitted$hyper$geno$meta$scale,
+    5 / flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR
+  )
   form <- .sad_formula_text(emitted$formula)
   for (k in 1:2) {
     expect_match(

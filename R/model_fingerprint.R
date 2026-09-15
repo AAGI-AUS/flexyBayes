@@ -311,7 +311,7 @@
 #
 # Three sources, and the difference between them is the whole point:
 #
-#   "shared_default"  the package's own uniform-on-SD default, injected
+#   "shared_default"  the package's own half-normal default, injected
 #                     identically for every engine before dispatch
 #   "explicit"        a user-supplied fb_prior() spec
 #   "engine_default"  no prior this package chose -- the term is outside

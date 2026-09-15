@@ -26,7 +26,7 @@ skip_if_no_inla <- function() skip_if_not_installed("INLA")
 # prior, exactly as flexybayes() does before dispatch.
 .fixture_ir <- function(data, formula = y ~ x + (1 | g)) {
   ir <- fb_from_brms(formula, data = data)
-  ir$priors <- flexyBayes:::.default_uniform_prior(
+  ir$priors <- flexyBayes:::.default_half_normal_prior(
     data = data,
     response = ir$response,
     family = "gaussian",
@@ -126,8 +126,8 @@ test_that("a different prior on a shared parameter refuses and names it", {
   d <- .fixture_data()
   ir1 <- .fixture_ir(d)
   ir2 <- .fixture_ir(d)
-  # Same model, same data, a wider uniform on every SD.
-  ir2$priors <- flexyBayes:::.default_uniform_prior(
+  # Same model, same data, a wider half-normal on every SD.
+  ir2$priors <- flexyBayes:::.default_half_normal_prior(
     data = transform(d, y = d$y * 2),
     response = "y",
     family = "gaussian",
@@ -214,7 +214,7 @@ test_that("a variance component with no shared prior is not compared", {
     random = ~ us(env):gen,
     data = d
   )
-  ir$priors <- flexyBayes:::.default_uniform_prior(
+  ir$priors <- flexyBayes:::.default_half_normal_prior(
     data = d,
     response = "y",
     family = "gaussian",

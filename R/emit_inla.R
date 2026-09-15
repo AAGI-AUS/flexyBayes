@@ -205,7 +205,7 @@
 }
 
 # .fb_states_uniform_bound() --- does the caller's own prior put a uniform
-# bound on a standard deviation? The package default is a wide bound and is
+# bound on a standard deviation? The package default carries no bound and is
 # not counted.
 .fb_states_uniform_bound <- function(fb) {
   prior <- fb$priors
@@ -3520,20 +3520,20 @@ summary.flexybayes_inla <- function(object, ...) {
 # the simple_slope_cor branch for the measurement that established this.
 #
 # These helpers put R on the data's own scale, the same basis the package
-# already uses for its uniform-SD default.
+# already uses for its half-normal SD default.
 
 # Read off `fb` rather than off `data`: the formula builder is called with
 # the IR alone, including by the tests, so a scale derived from anything else
 # would make the emitted formula differ between the test path and the fit
-# path. The prior layer already carries the response's scale -- the uniform
-# default's upper bound is .FB_UNIFORM_SD_MULTIPLIER * sd(y) -- so this
+# path. The prior layer already carries the response's scale -- the
+# half-normal default's scale is .FB_DEFAULT_SD_MULTIPLIER * sd(y) -- so this
 # recovers sd(y) from it and uses the same basis rather than a second one.
 .fb_inla_response_var <- function(fb) {
   scale <- attr(fb$priors, "fb_prior_default_scale")
   if (is.null(scale) || !is.finite(scale) || scale <= 0) {
     return(NA_real_)
   }
-  (scale / .FB_UNIFORM_SD_MULTIPLIER)^2
+  (scale / .FB_DEFAULT_SD_MULTIPLIER)^2
 }
 
 # Intercept block on the response's variance, slope block on the response's

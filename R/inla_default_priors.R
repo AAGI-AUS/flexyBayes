@@ -7,10 +7,12 @@
 # fit stays one model:
 #
 #   * a random-effect standard deviation with no stated prior takes the
-#     bounded uniform default, uniform(0, U), with U = 5 sd(y) on an identity
-#     link and a constant on a log or logit link (.default_uniform_scale());
+#     half-normal default, half_normal(scale = s), with s = 5 sd(y) on an
+#     identity link and a constant on a log or logit link
+#     (.default_half_normal_scale());
 #   * the standard deviation of an uncorrelated slope is in response units
-#     per covariate unit, so its default bound is U / sd(x);
+#     per covariate unit, so its default scale is s / sd(x), on INLA and on
+#     brms (.fb_default_covariate_scaled());
 #   * a numeric fixed-effect column with no stated prior takes
 #     normal(0, K sd(y) / sd(x_j)), with sd(y) replaced by 1 and a smaller K
 #     on a log or logit link.
@@ -186,15 +188,67 @@
   out
 }
 
-# A uniform standard-deviation prior for a quantity divided by `s`.
+# A half-normal standard-deviation prior for a quantity divided by `s`.
 .fb_inla_divide_sd_spec <- function(spec, s) {
-  args <- spec$spec$args
-  args$upper <- args$upper / s
-  if (!is.null(args$lower)) {
-    args$lower <- args$lower / s
-  }
-  spec$spec$args <- args
+  spec$spec$args$scale <- spec$spec$args$scale / s
   spec
+}
+
+#' The auto-default's slope priors, divided by their covariates' SDs
+#'
+#' The standard deviation of an uncorrelated slope is in response units per
+#' covariate unit, so the auto-default's scale for it is divided by the
+#' standard deviation of the covariate, read over the rows
+#' `.fb_inla_default_rows()` names. Both engines call this, so the slope slot
+#' carries the same scale on INLA and on brms. A prior the caller wrote is
+#' never divided.
+#'
+#' @param fb An `fb_terms` object.
+#' @param data The data the fit is built from, or `NULL`.
+#' @returns A list: `covariate_scaled`, the divided specs named by group, and
+#'   `covariate_sd`, the divisor of each.
+#' @noRd
+#' @keywords internal
+.fb_default_covariate_scaled <- function(fb, data) {
+  stated <- fb$priors
+  scaled <- list()
+  from_default <- inherits(stated, "fb_prior") &&
+    !is.null(attr(stated, "fb_prior_default_basis"))
+  slope_sd <- if (from_default) .fb_inla_slope_covariate_sd(fb, data) else numeric(0)
+  for (spec in if (from_default) stated$specs else list()) {
+    k <- if (identical(spec$target$type, "sd")) spec$target$group else ""
+    if (k %in% names(slope_sd) && identical(spec$spec$family, "half_normal")) {
+      scaled[[k]] <- .fb_inla_divide_sd_spec(spec, slope_sd[[k]])
+    }
+  }
+  list(
+    covariate_scaled = scaled,
+    covariate_sd = slope_sd[names(slope_sd) %in% names(scaled)]
+  )
+}
+
+#' The auto-default with its slope priors divided, as brms receives it
+#'
+#' @param fb An `fb_terms` object.
+#' @param scaled The `covariate_scaled` list of
+#'   `.fb_default_covariate_scaled()`.
+#' @returns `fb$priors` with each divided spec in place of its original, the
+#'   attributes kept.
+#' @noRd
+#' @keywords internal
+.fb_default_prior_scaled <- function(fb, scaled) {
+  prior <- fb$priors
+  if (!length(scaled)) {
+    return(prior)
+  }
+  for (i in seq_along(prior$specs)) {
+    spec <- prior$specs[[i]]
+    k <- if (identical(spec$target$type, "sd")) spec$target$group else ""
+    if (k %in% names(scaled)) {
+      prior$specs[[i]] <- scaled[[k]]
+    }
+  }
+  prior
 }
 
 #' Every INLA variance-component prior, with what the caller left unstated
@@ -203,13 +257,13 @@
 #' Two additions to the `priors_to_inla()` list the emit built from what was
 #' stated. First, when the fit carries a prior of any kind -- an `fb_prior()`,
 #' partial or whole, or the legacy `prior_vc_sd` scalar -- each target of
-#' `.fb_inla_sd_targets()` with no entry takes the bounded uniform default.
+#' `.fb_inla_sd_targets()` with no entry takes the half-normal default.
 #' A fit with no prior at all is left alone: every public route resolves one
 #' before it reaches an emit (flexybayes() builds the auto-default and
 #' flexybayes_stream() attaches it), so that case is a direct internal call.
-#' Second, a slope bound the package chose, filled here or built by the
+#' Second, a slope scale the package chose, filled here or built by the
 #' auto-default, is divided by the standard deviation of its covariate. A
-#' bound the caller wrote is not.
+#' scale the caller wrote is not.
 #'
 #' Each added entry is marked `meta$package_chosen`, which is how the formula
 #' builder tells it from a stated prior on a structure that refuses one.
@@ -230,11 +284,9 @@
   stated <- fb$priors
   has_prior <- inherits(stated, "fb_prior") ||
     .fb_prior_scalar_supplied(fb, "vc_sd")
-  from_default <- inherits(stated, "fb_prior") &&
-    !is.null(attr(stated, "fb_prior_default_basis"))
   slope_sd <- .fb_inla_slope_covariate_sd(fb, data)
 
-  # On an offset model the bound is read from y - o, as the standardisation
+  # On an offset model the scale is read from y - o, as the standardisation
   # is (R/inla_standardise.R).
   if (is.null(resp_sd) && length(fb$offsets) && is.data.frame(data)) {
     resp_sd <- .fb_response_sd(fb, data)
@@ -245,7 +297,7 @@
     targets <- .fb_inla_sd_targets(fb)
     keys <- setdiff(c(targets$shared, targets$vm_ped), names(hyper_ctrl))
     if (length(keys)) {
-      upper <- .default_uniform_scale(
+      scale <- .default_half_normal_scale(
         data,
         fb$response,
         fb$family,
@@ -255,7 +307,7 @@
       for (k in keys) {
         spec <- list(
           target = list(type = "sd", group = k),
-          spec = list(family = "uniform", args = list(lower = 0, upper = upper))
+          spec = list(family = "half_normal", args = list(scale = scale))
         )
         if (k %in% names(slope_sd)) {
           spec <- .fb_inla_divide_sd_spec(spec, slope_sd[[k]])
@@ -265,15 +317,7 @@
     }
   }
 
-  covariate_scaled <- list()
-  if (from_default) {
-    for (spec in stated$specs) {
-      k <- if (identical(spec$target$type, "sd")) spec$target$group else ""
-      if (k %in% names(slope_sd) && identical(spec$spec$family, "uniform")) {
-        covariate_scaled[[k]] <- .fb_inla_divide_sd_spec(spec, slope_sd[[k]])
-      }
-    }
-  }
+  covariate_scaled <- .fb_default_covariate_scaled(fb, data)$covariate_scaled
 
   added <- c(covariate_scaled, filled)
   if (length(added)) {

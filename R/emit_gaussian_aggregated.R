@@ -506,8 +506,8 @@ emit_gaussian_aggregated <- function(
 
   # When hyper_ctrl carries a translated user prior for this RI, splice
   # it into the f(...) call. In the default case the synthesised
-  # uniform-on-SD prior (.default_uniform_prior() in flexybayes()) keys
-  # every random group, so hyper_ctrl carries the same faithful uniform
+  # half-normal prior (.default_half_normal_prior() in flexybayes()) keys
+  # every random group, so hyper_ctrl carries the same faithful
   # expression prior the per-row emit_inla() path uses -- both paths
   # share one prior (scale fixed once from the per-row data), which is
   # what makes the per-row and aggregated INLA fits algebraically

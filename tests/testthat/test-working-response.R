@@ -1,11 +1,12 @@
 # =============================================================================
-# The default variance bound reads the response the model is written on.
+# The default variance scale reads the response the model is written on.
 #
-# The bounded default is uniform(0, U) with U = 5 x the SD of the modelled
-# response. It was read from data[[response]], which is NULL for a transformed
-# response such as log(y) or I(10 * y), so the bound fell back to 1 on both
-# engines whatever the units. It is now read through the resolver the rest of
-# the fit uses, after the offset policy.
+# The default is half_normal(scale = s) with s = 5 x the SD of the modelled
+# response, over the adopted divisor. The scale (the bound of the uniform
+# default before 0.13.0) was read from data[[response]], which is NULL for a
+# transformed response such as log(y) or I(10 * y), so it fell back to 1 on
+# both engines whatever the units. It is now read through the resolver the
+# rest of the fit uses, after the offset policy.
 #
 # A NaN or infinite response is not a missing observation. INLA fitted such a
 # model without a word, and brms failed with a message that named neither the
@@ -49,25 +50,27 @@
   )
 }
 
-.five_sd <- function(v) 5 * stats::sd(v[is.finite(v)])
+.five_sd <- function(v) {
+  5 * stats::sd(v[is.finite(v)]) / flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR
+}
 
 .brms_sigma_bound <- function(code) {
   code <- paste(as.character(code), collapse = "\n")
   hit <- regmatches(
     code,
-    regexpr("uniform_lpdf\\(sigma \\| 0, [0-9.eE+-]+\\)", code)
+    regexpr("normal_lpdf\\(sigma \\| 0, [0-9.eE+-]+\\)", code)
   )
   if (length(hit) != 1L) {
     return(NA_real_)
   }
-  as.numeric(sub("^uniform_lpdf\\(sigma \\| 0, ([0-9.eE+-]+)\\)$", "\\1", hit))
+  as.numeric(sub("^normal_lpdf\\(sigma \\| 0, ([0-9.eE+-]+)\\)$", "\\1", hit))
 }
 
 # ---------------------------------------------------------------- #
-# 1. The default bound on each engine                                #
+# 1. The default scale on each engine                                #
 # ---------------------------------------------------------------- #
 
-test_that("the default residual bound on brms is five SDs of the modelled response", {
+test_that("the default residual scale on brms is five SDs of the modelled response", {
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   cases <- .resp_cases(.resp_data())
@@ -84,12 +87,12 @@ test_that("the default residual bound on brms is five SDs of the modelled respon
       .brms_sigma_bound(code),
       .five_sd(cs$modelled),
       tolerance = 1e-6,
-      label = paste0("brms sigma bound, ", cs$label)
+      label = paste0("brms sigma scale, ", cs$label)
     )
   }
 })
 
-test_that("the default residual and group bounds on INLA are five SDs of the modelled response", {
+test_that("the default residual and group scales on INLA are five SDs of the modelled response", {
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   cases <- .resp_cases(.resp_data())
@@ -104,17 +107,18 @@ test_that("the default residual and group bounds on INLA are five SDs of the mod
     ))
     scale <- code$response_standardisation$scale
     for (key in c("sigma", "g")) {
+      expect_identical(code$hyper[[key]]$meta$family, "half_normal")
       expect_equal(
-        code$hyper[[key]]$meta$upper * scale,
+        code$hyper[[key]]$meta$scale * scale,
         .five_sd(cs$modelled),
         tolerance = 1e-6,
-        label = paste0("INLA ", key, " bound on the original scale, ", cs$label)
+        label = paste0("INLA ", key, " scale on the original scale, ", cs$label)
       )
     }
   }
 })
 
-test_that("a bound INLA fills beside a stated prior reads the modelled response", {
+test_that("a scale INLA fills beside a stated prior reads the modelled response", {
   skip_if_not_installed("INLA")
   d <- .resp_data()
   code <- suppressMessages(flexybayes(
@@ -126,7 +130,7 @@ test_that("a bound INLA fills beside a stated prior reads the modelled response"
     return_code = TRUE
   ))
   expect_equal(
-    code$hyper[["g"]]$meta$upper * code$response_standardisation$scale,
+    code$hyper[["g"]]$meta$scale * code$response_standardisation$scale,
     .five_sd(log(d$y)),
     tolerance = 1e-6
   )

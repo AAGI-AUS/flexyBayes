@@ -323,10 +323,10 @@ default) uses brms's own settings. A no-op on the INLA path, as
 PC-canonical hybrid DSL (preferred). When supplied it overrides
 \code{prior_vc_sd} for the variance components it covers. See
 \code{\link[=fb_prior]{fb_prior()}}. On INLA, a random-effect standard deviation the prior
-does not name takes the package's bounded default, \code{uniform(0, U)}
-with the family-aware \code{U} described under \code{prior_vc_sd} (divided by
-the covariate's standard deviation for an uncorrelated slope), rather
-than INLA's own hyperprior; \code{\link[=prior_summary]{prior_summary()}} lists what was filled.
+does not name takes the package's default, \code{half_normal(scale = s)}
+with the family-aware \code{s} described under \code{prior_vc_sd} (divided by
+the covariate's standard deviation for an uncorrelated slope);
+\code{\link[=prior_summary]{prior_summary()}} lists what was filled.
 A standard deviation the prior does name is left exactly as written.}
 
 \item{prior_fixed_sd}{Numeric: SD for fixed-effect normal priors,
@@ -363,17 +363,18 @@ units, or leave the argument unsupplied on INLA.}
 
 \item{prior_vc_sd}{Numeric: hyperparameter for the legacy
 \code{lognormal(0, prior_vc_sd)} variance-component prior. \strong{Note:}
-when both \code{prior} and \code{prior_vc_sd} are left at their defaults,
-v0.1 activates a bounded-uniform default on the SD scale
-(\code{uniform(0, U)} with family-aware \code{U}: \code{5 * sd(y)} for Gaussian;
-\code{5} on the logit scale for binomial / beta; \code{3} on the log scale
-for Poisson / negative-binomial / gamma) for \code{sigma} and every
-named random-effect group, with the bound on the standard deviation
-of an uncorrelated random slope divided by the standard deviation of
-its numeric covariate on INLA -- a weakly-informative choice for
-moderate group counts; for very small \code{J}, Gelman (2006), \emph{Bayesian
-Analysis} 1(3):515-534, recommends a half-t / half-Cauchy instead
-(see the priors vignette). The legacy \code{lognormal(0, 1)} default
+when both \code{prior} and \code{prior_vc_sd} are left at their defaults, the
+package applies a half-normal default on the SD scale
+(\code{half_normal(scale = s)} with family-aware \code{s}: \code{5 * sd(y)} for
+Gaussian; \code{5} on the logit scale for binomial / beta; \code{3} on the log
+scale for Poisson / negative-binomial / gamma) to \code{sigma} and every
+named random-effect group, on both engines, with the scale on the
+standard deviation of an uncorrelated random slope divided by the
+standard deviation of its numeric covariate. It is weakly informative
+and has no upper bound; a half-t or half-Cauchy (Gelman 2006,
+\emph{Bayesian Analysis} 1(3):515-534) is stated through \code{\link[=fb_prior]{fb_prior()}}.
+Before 0.13.0 the default was \code{uniform(0, U)} with \code{U} equal to the
+scale above. The legacy \code{lognormal(0, 1)} default
 fires only when \code{prior_vc_sd} is passed explicitly. Silence the
 one-time announcement message via
 \code{options(flexyBayes.silence_default_prior_note = TRUE)}. When it is
@@ -444,10 +445,10 @@ The per-class table with its notes is in \code{README.md} and
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 
 \strong{Caution (small-group random effects).} Both engines apply the same
-default prior --- the exact uniform-on-SD, which the INLA path
-represents via an expression-prior on the log-precision rather than
-the former PC approximation --- so they agree on the variance
-component far more closely than in earlier versions. A model with
+default prior, the half-normal on each standard deviation, which the
+INLA path represents exactly as an expression prior on the
+log-precision, so they agree on the variance component far more
+closely than in earlier versions. A model with
 very few groups nonetheless carries a weakly-identified variance
 component (the data say little about the between-group spread), and
 INLA's Laplace approximation is less accurate there than full MCMC.

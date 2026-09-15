@@ -115,6 +115,16 @@
 #' not have is likewise refused at the fit, against the engine's own
 #' parameter list and in the vocabulary the caller wrote.
 #'
+#' @section The default prior:
+#'
+#' A fit that states neither `prior` nor `prior_vc_sd` runs under the
+#' package default: `half_normal(scale = s)` on the residual standard
+#' deviation and on the standard deviation of every variance component
+#' the default reaches, on both engines. `s` is `5 * sd(y)` on an identity
+#' link, `3` on a log link and `5` on a logit link; on an uncorrelated
+#' random slope on a numeric covariate `x` it is `s / sd(x)`. The default
+#' has no upper bound. [prior_summary()] prints the scale a fit ran under.
+#'
 #' @returns An `fb_prior` object, an S3 class inheriting from list,
 #'   whose `$specs` element carries the parsed `target` and `spec`
 #'   pairs.
@@ -816,45 +826,55 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   obj
 }
 
-# The multiplier that turns the response SD into the uniform default's
-# upper bound on the identity scale: U = .FB_UNIFORM_SD_MULTIPLIER * sd(y).
-# It is named because a second file depends on the *relationship* and not
-# just the number: with a heterogeneous residual the scalar sigma prior is
-# retargeted onto the log-sigma coefficients
-# (.brms_retarget_sigma_for_heterogeneous_residual() in R/priors_to_brms.R),
-# which recovers sd(y) by dividing U by this multiplier. Written out twice,
-# the two constants drifted apart, and the retarget inherited the superseded
-# PC default's 2.5 while the uniform default had moved to 5.
-.FB_UNIFORM_SD_MULTIPLIER <- 5
+# The default variance-component prior is half_normal(scale = s) on each
+# standard deviation, with s = U / .FB_DEFAULT_SCALE_DIVISOR, where U is the
+# bound the uniform default of 0.9.0 to 0.12.x used: 5 sd(y) on an identity
+# link, 3 on a log link, 5 on a logit link. The uniform was replaced because
+# INLA's reported interval for a weakly identified component can run past a
+# bound, which the support audit refuses (agridat::john.alpha,
+# `rep + rep:block`: 8 of 8 repeats); a half-normal has no bound to cross.
+# The divisor is the "matched to the current bound" rule adopted in unit
+# U-PRIOR-HN-1 against the anchored validation tests.
+.FB_DEFAULT_SCALE_DIVISOR <- 1
 
-# Pick a sensible upper bound U for the uniform-on-SD default per
-# (family, link). Returns (scale, basis):
-# - Gaussian / identity link: U = 5 * sd(y); basis = "identity_sd_uniform"
-# - Log link (Poisson, NegBin, Gamma): U = 3; basis = "log_link_uniform"
-#   covers a 20x ratio of group means -- wide for any realistic use.
-# - Logit link (Binomial, Beta): U = 5; basis = "logit_uniform"
-#   covers the full probability range.
-# Wider than the PC default's 2.5*sd because uniform is flat across
-# its support; the upper must be loose enough to be uninformative.
-# The U = 5*sd(y) bound is a flexyBayes heuristic. Uniform-on-SD is a
-# weakly-informative choice for moderate group counts; for very small J
-# Gelman (2006, Bayesian Analysis 1(3):515-534) recommends a half-t /
-# half-Cauchy instead -- available via fb_prior(); see the priors
-# vignette.
+# The multiplier that turns the response SD into the default's scale on the
+# identity scale: s = .FB_DEFAULT_SD_MULTIPLIER * sd(y). It is named because
+# two other places depend on the *relationship* and not just the number: with
+# a heterogeneous residual the scalar sigma prior is retargeted onto the
+# log-sigma coefficients (.brms_retarget_sigma_for_heterogeneous_residual()
+# in R/priors_to_brms.R), and the INLA Wishart scale (.fb_inla_response_var()
+# in R/emit_inla.R) is written on the response variance; both recover sd(y)
+# by dividing s by this multiplier. Written out twice, the constants drifted
+# apart once, and the retarget inherited the superseded PC default's 2.5
+# while the uniform default had moved to 5.
+.FB_DEFAULT_SD_MULTIPLIER <- 5 / .FB_DEFAULT_SCALE_DIVISOR
+
+# Pick the half-normal scale s of the default per (family, link). Returns
+# (scale, basis):
+# - Gaussian / identity link: s = 5 * sd(y) / d; basis = "identity_sd_half_normal"
+# - Log link (Poisson, NegBin, Gamma): s = 3 / d; basis = "log_link_half_normal"
+#   (3 on the log scale is a 20x ratio of group means).
+# - Logit link (Binomial, Beta): s = 5 / d; basis = "logit_half_normal"
+# where d is .FB_DEFAULT_SCALE_DIVISOR. The 5 * sd(y) is a flexyBayes
+# heuristic, wide enough to be weakly informative; Gelman (2006, Bayesian
+# Analysis 1(3):515-534) discusses half-t and half-Cauchy alternatives for
+# very small J, available via fb_prior().
 #
 # `resp_sd`, when given, is the response standard deviation read from
 # somewhere other than `data` -- the streamed route holds only a head sample
 # of the rows and reads it off the full sufficient statistics instead.
-.default_uniform_scale <- function(data, response, family, link = NULL,
-                                   resp_sd = NULL) {
+.default_half_normal_scale <- function(data, response, family, link = NULL,
+                                       resp_sd = NULL) {
   link_class <- .fb_default_link_class(family, link)
 
   if (identical(link_class, "logit")) {
-    return(list(scale = 5, basis = "logit_uniform"))
+    return(list(scale = 5 / .FB_DEFAULT_SCALE_DIVISOR,
+                basis = "logit_half_normal"))
   }
 
   if (identical(link_class, "log")) {
-    return(list(scale = 3, basis = "log_link_uniform"))
+    return(list(scale = 3 / .FB_DEFAULT_SCALE_DIVISOR,
+                basis = "log_link_half_normal"))
   }
 
   if (!is.null(resp_sd)) {
@@ -863,14 +883,14 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       sdv <- 1.0
     }
     return(list(
-      scale = .FB_UNIFORM_SD_MULTIPLIER * sdv,
-      basis = "identity_sd_uniform"
+      scale = .FB_DEFAULT_SD_MULTIPLIER * sdv,
+      basis = "identity_sd_half_normal"
     ))
   }
 
   # A transformed response, log(y) or I(10 * y), is not a column: it is read
-  # through the same resolver the rest of the fit uses, so the bound is five
-  # standard deviations of the quantity the residual is written on.
+  # through the same resolver the rest of the fit uses, so the scale is
+  # written on the quantity the residual is written on.
   y <- if (is.data.frame(data)) {
     .fb_response_values(list(response = response), data)
   } else {
@@ -878,18 +898,21 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   }
 
   if (!is.numeric(y)) {
-    return(list(scale = 1.0, basis = "identity_default_uniform"))
+    return(list(scale = 1.0, basis = "identity_default_half_normal"))
   }
   yv <- as.numeric(y)
   yv <- yv[is.finite(yv)]
   if (length(yv) < 2L) {
-    return(list(scale = 1.0, basis = "identity_too_small_uniform"))
+    return(list(scale = 1.0, basis = "identity_too_small_half_normal"))
   }
   sdv <- stats::sd(yv)
   if (!is.finite(sdv) || sdv <= 0) {
     sdv <- 1.0
   }
-  list(scale = .FB_UNIFORM_SD_MULTIPLIER * sdv, basis = "identity_sd_uniform")
+  list(
+    scale = .FB_DEFAULT_SD_MULTIPLIER * sdv,
+    basis = "identity_sd_half_normal"
+  )
 }
 
 # Which scale a default prior is written on: "logit" and "log" for the links
@@ -933,29 +956,28 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   "identity"
 }
 
-# Construct the v0.1 default uniform prior fb_prior() for a model.
-# Bounded uniform on SD: sigma ~ uniform(0, U) and every named random
-# group's SD ~ uniform(0, U).
+# Construct the default variance-component prior fb_prior() for a model:
+# sigma ~ half_normal(scale = s) and every named random group's
+# SD ~ half_normal(scale = s), with s from .default_half_normal_scale().
 #
-# The uniform-
-# on-SD default now also fires on vm() and ped() structured-cov
-# random terms. The two forms share the simple-RI scale derivation
-# (5 * sd(response) heuristic; identity / log / logit family-aware
-# branches via .default_uniform_scale()) because their natural
-# variance-matrix scaling is identity in the SD-on-the-Cholesky-
-# scaled-random-effect interpretation that codegen .code_random's
-# vm / ped branches use (u_<tag> = L_G %*% (z * sigma_<tag>); the
-# Cholesky absorbs G's scale and sigma is purely the residual-scale
-# multiplier). At 0.9.0 the nested interaction intercept, the
-# heterogeneous-variance diag / idh / at group and the unstructured us
-# group joined them -- see .fb_default_prior_targets() for which term
-# types reach the default and which are left to the engine.
+# The default also fires on vm() and ped() structured-cov random terms.
+# The two forms share the simple-RI scale derivation (5 * sd(response)
+# heuristic; identity / log / logit family-aware branches via
+# .default_half_normal_scale()) because their natural variance-matrix
+# scaling is identity in the SD-on-the-Cholesky-scaled-random-effect
+# interpretation that codegen .code_random's vm / ped branches use
+# (u_<tag> = L_G %*% (z * sigma_<tag>); the Cholesky absorbs G's scale and
+# sigma is purely the residual-scale multiplier). At 0.9.0 the nested
+# interaction intercept, the heterogeneous-variance diag / idh / at group
+# and the unstructured us group joined them -- see
+# .fb_default_prior_targets() for which term types reach the default and
+# which are left to the engine.
 #
 # `vm_ped_groups` is a character vector of `term$var` strings (one
 # per vm / ped random term) and is keyed identically to `random_groups`
-# in priors_to_legacy() / priors_to_inla() so the uniform_per_vc
+# in priors_to_legacy() / priors_to_inla() so the per-component
 # entries surface through the existing dispatch.
-.default_uniform_prior <- function(
+.default_half_normal_prior <- function(
   data,
   response,
   family,
@@ -964,10 +986,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   vm_ped_groups = character(0),
   resp_sd = NULL
 ) {
-  scl <- .default_uniform_scale(data, response, family, link, resp_sd = resp_sd)
+  scl <- .default_half_normal_scale(
+    data, response, family, link, resp_sd = resp_sd
+  )
   specs <- list(list(
     target = list(type = "sigma"),
-    spec = list(family = "uniform", args = list(lower = 0, upper = scl$scale))
+    spec = list(family = "half_normal", args = list(scale = scl$scale))
   ))
   for (g in unique(random_groups)) {
     if (!nzchar(g)) {
@@ -975,12 +999,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     }
     specs[[length(specs) + 1L]] <- list(
       target = list(type = "sd", group = g),
-      spec = list(family = "uniform", args = list(lower = 0, upper = scl$scale))
+      spec = list(family = "half_normal", args = list(scale = scl$scale))
     )
   }
   # vm() + ped() branch. Add a separate spec per structured group
   # so prior_summary() surfaces them distinctly from the simple-RI
-  # groups; carry a `_default_uniform_form` tag (vm / ped) so the
+  # groups; carry a `_default_form` tag (vm / ped) so the
   # surface can explain which structured form the spec came from.
   for (g in unique(vm_ped_groups)) {
     if (!nzchar(g)) {
@@ -988,9 +1012,9 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     }
     sp <- list(
       target = list(type = "sd", group = g),
-      spec = list(family = "uniform", args = list(lower = 0, upper = scl$scale))
+      spec = list(family = "half_normal", args = list(scale = scl$scale))
     )
-    attr(sp, "_default_uniform_form") <- "vm_or_ped"
+    attr(sp, "_default_form") <- "vm_or_ped"
     specs[[length(specs) + 1L]] <- sp
   }
   obj <- list(specs = specs)
@@ -1007,7 +1031,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # reaches, and which are left to whatever the engine does on its own.
 #
 # One walk over the IR's random terms, consumed twice: flexybayes() reads
-# `$shared` / `$vm_ped` to build the default uniform-on-SD prior, and the
+# `$shared` / `$vm_ped` to build the default half-normal prior, and the
 # model fingerprint (R/model_fingerprint.R) reads `$engine` to record the
 # parameters that carry no prior this package chose. Both consumers must
 # agree about which is which -- a term whose prior is the shared default in
@@ -1198,12 +1222,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   )
 }
 
-# One-time announcement of the v0.1.x default change (the uniform
-# default supersedes the former PC default). Silenceable via
-# options(flexyBayes.silence_default_prior_note = TRUE). The once-flag
-# is held in the package-internal emit-state env (see R/emit_state.R);
-# v0.3.9 migrated the flag out of the options() namespace where
-# unrelated callers could consume it before the intended emission.
+# One-time announcement of the default variance-component prior.
+# Silenceable via options(flexyBayes.silence_default_prior_note = TRUE).
+# The once-flag is held in the package-internal emit-state env (see
+# R/emit_state.R); v0.3.9 migrated the flag out of the options() namespace
+# where unrelated callers could consume it before the intended emission.
 .default_prior_note_once <- function(scale, basis) {
   if (isTRUE(getOption("flexyBayes.silence_default_prior_note", FALSE))) {
     return(invisible())
@@ -1212,13 +1235,14 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: variance-component prior default is uniform(0, U), U = ",
+    "flexyBayes: variance-component prior default is half_normal(scale = s), ",
+    "s = ",
     format(scale, digits = 3),
-    ", on the residual sigma and every named random-effect group; on INLA ",
-    "the SD of an uncorrelated random slope on a numeric covariate x takes ",
-    "uniform(0, U / sd(x)) instead. This is a weakly-informative choice ",
-    "for moderate group counts. For very small groups, Gelman (2006) ",
-    "recommends a half-Cauchy instead -- see ?fb_prior. Scale basis = \"",
+    ", on the residual sigma and every named random-effect group, on both ",
+    "engines; the SD of an uncorrelated random slope on a numeric covariate ",
+    "x takes half_normal(scale = s / sd(x)). It is weakly informative and ",
+    "has no upper bound. Other priors, including a half-Cauchy, are stated ",
+    "through ?fb_prior. Scale basis = \"",
     basis,
     "\". Pass `prior_vc_sd` explicitly for the legacy ",
     "lognormal(0, prior_vc_sd) default, `prior = fb_prior(...)` ",

@@ -45,7 +45,7 @@ for the ordinary independent-residual model.}
 reports on, with \code{"auto"} planning the route dispatch would take.}
 
 \item{priors}{An optional \code{fb_prior()} list. Defaults to the
-uniform-on-SD default the fit would inject.}
+half-normal-on-SD default the fit would inject.}
 
 \item{known_matrices}{A named list of structured-covariance matrices
 referenced by \code{vm()} or \code{ped()} terms. Empty when the model names

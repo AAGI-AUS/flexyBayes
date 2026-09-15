@@ -149,8 +149,12 @@ emit_brms <- function(
   # threaded into brms via data2 (empty list when there are none).
   brms_data2 <- .fb_brms_data2(fb, known_matrices, data)
   brms_family <- .fb_family_to_brms(fb$family, fb$link)
+  # The auto-default's scale on an uncorrelated slope is divided by its
+  # covariate's standard deviation, as on INLA, so the slope slot carries the
+  # same prior on both engines (R/inla_default_priors.R).
+  default_completion <- .fb_default_covariate_scaled(fb, data)
   brms_prior <- .priors_to_brms(
-    fb$priors %||%
+    .fb_default_prior_scaled(fb, default_completion$covariate_scaled) %||%
       list(legacy = TRUE, fixed_sd = prior_fixed_sd, vc_sd = prior_vc_sd),
     fb,
     prior_fixed_sd = prior_fixed_sd,
@@ -400,8 +404,12 @@ emit_brms <- function(
       fingerprint = .fb_model_fingerprint(
         fb,
         data,
-        prior_vc_sd = prior_vc_sd
+        prior_vc_sd = prior_vc_sd,
+        completion = default_completion
       ),
+      # The default slope priors divided by their covariates' standard
+      # deviations; prior_summary() reads it, as on INLA.
+      prior_completion = default_completion,
       model_info = list(
         n_obs = nrow(data),
         # brms_form may carry `(x || g)` which
@@ -423,7 +431,10 @@ emit_brms <- function(
       brms_prior = brms_prior,
       # Which prior became which brms prior row, as brms reports it back
       # (R/model_manifest.R).
-      manifest = .fb_manifest_brms(fb, brms_prior, brmsfit, tagged_prior),
+      manifest = .fb_manifest_brms(
+        fb, brms_prior, brmsfit, tagged_prior,
+        completion = default_completion
+      ),
       # The versions, threads and seed the fit ran with
       # (R/reproducibility_record.R). `cores` reaches brm() only through
       # `...`, and brms keeps no record of it on the fit.

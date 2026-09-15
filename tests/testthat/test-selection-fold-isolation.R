@@ -234,7 +234,7 @@ test_that("an extreme covariate only in the assessment rows leaves an INLA fold 
 
 # --- (ii) the working response in fold compilation ----------------------- #
 
-test_that("an offset model's fold default bound is five SDs of the training rows' modelled response", {
+test_that("an offset model's fold default scale is five SDs of the training rows' modelled response", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   fbfi_quiet()
@@ -246,14 +246,14 @@ test_that("an offset model's fold default bound is five SDs of the training rows
        verbose = FALSE)
   ))
   spec <- .fb_sel_bayes_base_spec(base)
-  uppers <- function(frame) {
+  scales <- function(frame) {
     inputs <- .fb_sel_bayes_fold_inputs(
       frame, split, "y", spec$protected, ~z1, random = spec$random_vars
     )
     fit <- fbfi_inla_refit(base, inputs$engine_data)
     vapply(
       fit$fb$priors$specs,
-      function(s) as.numeric(s$spec$args$upper),
+      function(s) as.numeric(s$spec$args$scale),
       numeric(1L)
     )
   }
@@ -261,9 +261,11 @@ test_that("an offset model's fold default bound is five SDs of the training rows
   extreme$y[split$assess_rows[[1L]]] <- 1e4
   train <- d[split$train_rows, , drop = FALSE]
 
-  clean <- uppers(d)
-  expect_true(all(clean == 5 * stats::sd(train$y - train$o)))
-  expect_identical(uppers(extreme), clean)
+  clean <- scales(d)
+  expect_true(all(
+    clean == 5 * stats::sd(train$y - train$o) / .FB_DEFAULT_SCALE_DIVISOR
+  ))
+  expect_identical(scales(extreme), clean)
 })
 
 

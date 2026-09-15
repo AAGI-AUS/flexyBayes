@@ -211,7 +211,7 @@ flexybayes_stream <- function(
   # failure on 4.
   if (is.null(prior)) {
     targets <- .fb_default_prior_targets(fb)
-    fb$priors <- .default_uniform_prior(
+    fb$priors <- .default_half_normal_prior(
       data = NULL,
       response = fb$response,
       family = family,

@@ -217,14 +217,13 @@ test_that("priors_to_inla() emits an exact uniform-on-SD expression prior", {
   expect_identical(out$sigma$meta$upper, 4)
 })
 
-test_that(".default_uniform_prior() maps to faithful INLA expression priors", {
+test_that(".default_half_normal_prior() maps to faithful INLA expression priors", {
   # The synthesised default reaches all three INLA paths via
-  # priors_to_inla(); it must carry the exact uniform-on-SD expression
-  # prior (matching the flat uniform the withdrawn native engine used,
-  # see NEWS.md 0.9.3), not the former PC approximation that disagreed
-  # with it on small group counts.
+  # priors_to_inla(); it must carry the exact half-normal expression
+  # prior, not the former PC approximation that disagreed with brms on
+  # small group counts.
   dat <- data.frame(y = stats::rnorm(60), g = factor(rep(1:5, each = 12)))
-  dp <- flexyBayes:::.default_uniform_prior(
+  dp <- flexyBayes:::.default_half_normal_prior(
     data = dat,
     response = "y",
     family = "gaussian",
@@ -232,8 +231,9 @@ test_that(".default_uniform_prior() maps to faithful INLA expression priors", {
   )
   out <- flexyBayes:::priors_to_inla(dp)
   expect_setequal(names(out), c("sigma", "g"))
-  expect_match(out$sigma$prior, "^expression:")
-  expect_match(out$g$prior, "^expression:")
+  expect_match(out$sigma$prior, "^expression: s=")
+  expect_match(out$g$prior, "^expression: s=")
+  expect_identical(out$g$meta$family, "half_normal")
   expect_false(any(vapply(
     out,
     function(e) identical(e$prior, "pc.prec"),
@@ -280,13 +280,18 @@ test_that(".default_prior_scale() picks family-aware scale", {
 })
 
 # ---------------------------------------------------------------- #
-# v0.1 uniform default (ADR 0004 supersedes ADR 0003 PC default)   #
+# Half-normal default (0.13.0; supersedes the uniform default of   #
+# ADR 0004, which superseded the ADR 0003 PC default)              #
 # ---------------------------------------------------------------- #
 
-test_that(".default_uniform_prior() builds uniform specs scaled by 5*sd(y) (Gaussian)", {
+# The former uniform bound U; the default's scale is U divided by the
+# adopted divisor (R/fb_prior.R).
+.hn_divisor <- function() flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR
+
+test_that(".default_half_normal_prior() builds half-normal specs scaled by 5*sd(y) (Gaussian)", {
   set.seed(11)
   d <- data.frame(y = rnorm(40, sd = 2), g = factor(rep(1:5, 8)))
-  p <- flexyBayes:::.default_uniform_prior(
+  p <- flexyBayes:::.default_half_normal_prior(
     data = d,
     response = "y",
     family = "gaussian",
@@ -294,25 +299,24 @@ test_that(".default_uniform_prior() builds uniform specs scaled by 5*sd(y) (Gaus
   )
   expect_s3_class(p, "fb_prior")
   expect_identical(p$specs[[1]]$target$type, "sigma")
-  expect_identical(p$specs[[1]]$spec$family, "uniform")
-  expect_identical(p$specs[[1]]$spec$args$lower, 0)
-  expect_true(abs(p$specs[[1]]$spec$args$upper - 5 * sd(d$y)) < 1e-9)
+  expect_identical(p$specs[[1]]$spec$family, "half_normal")
+  expect_named(p$specs[[1]]$spec$args, "scale")
+  expect_true(abs(p$specs[[1]]$spec$args$scale - 5 * sd(d$y) / .hn_divisor()) < 1e-9)
   expect_identical(p$specs[[2]]$target$type, "sd")
   expect_identical(p$specs[[2]]$target$group, "g")
-  expect_identical(p$specs[[2]]$spec$family, "uniform")
+  expect_identical(p$specs[[2]]$spec$family, "half_normal")
 })
 
-# AMBITION_STAGE.md §1.4: vm() + ped() structured-cov groups gain
-# uniform-on-SD defaults (extending ADR 0004). Subtests cover the
-# class of the returned object, the scale calculation, the
-# attribute presence on the result, and that the other structured
-# forms (at, us, fa, ar1) still fall through to the legacy
-# lognormal default (unchanged in this work).
+# AMBITION_STAGE.md §1.4: vm() + ped() structured-cov groups take the
+# default too (extending ADR 0004). Subtests cover the class of the
+# returned object, the scale calculation, the attribute presence on the
+# result, and that the other structured forms (at, us, fa, ar1) are not
+# enumerated by this builder.
 
-test_that(".default_uniform_prior() extends to vm() + ped() per §1.4", {
+test_that(".default_half_normal_prior() extends to vm() + ped() per §1.4", {
   set.seed(20260523L)
   d <- data.frame(y = stats::rnorm(50L, sd = 2))
-  p <- flexyBayes:::.default_uniform_prior(
+  p <- flexyBayes:::.default_half_normal_prior(
     data = d,
     response = "y",
     family = "gaussian",
@@ -327,25 +331,27 @@ test_that(".default_uniform_prior() extends to vm() + ped() per §1.4", {
   expect_length(p$specs, 3L)
   expect_identical(p$specs[[2]]$target$type, "sd")
   expect_identical(p$specs[[2]]$target$group, "geno_vm")
-  expect_identical(p$specs[[2]]$spec$family, "uniform")
+  expect_identical(p$specs[[2]]$spec$family, "half_normal")
   expect_identical(p$specs[[3]]$target$group, "animal_ped")
-  expect_identical(p$specs[[3]]$spec$family, "uniform")
-  # Scale calculation: identity-link Gaussian -> 5 * sd(y).
-  expect_true(abs(p$specs[[2]]$spec$args$upper - 5 * stats::sd(d$y)) < 1e-9)
+  expect_identical(p$specs[[3]]$spec$family, "half_normal")
+  # Scale calculation: identity-link Gaussian -> 5 * sd(y) / divisor.
+  expect_true(
+    abs(p$specs[[2]]$spec$args$scale - 5 * stats::sd(d$y) / .hn_divisor()) < 1e-9
+  )
   # Attribute trail: per-form marker + per-prior basis.
   expect_identical(
     attr(p, "fb_prior_default_vm_ped_groups"),
     c("geno_vm", "animal_ped")
   )
-  expect_identical(attr(p, "fb_prior_default_basis"), "identity_sd_uniform")
-  expect_identical(attr(p$specs[[2]], "_default_uniform_form"), "vm_or_ped")
-  expect_identical(attr(p$specs[[3]], "_default_uniform_form"), "vm_or_ped")
+  expect_identical(attr(p, "fb_prior_default_basis"), "identity_sd_half_normal")
+  expect_identical(attr(p$specs[[2]], "_default_form"), "vm_or_ped")
+  expect_identical(attr(p$specs[[3]], "_default_form"), "vm_or_ped")
 })
 
-test_that(".default_uniform_prior() reaches a vm/ped term with no simple random intercept beside it", {
+test_that(".default_half_normal_prior() reaches a vm/ped term with no simple random intercept beside it", {
   set.seed(20260524L)
   d <- data.frame(y = stats::rnorm(40L, sd = 3))
-  p <- flexyBayes:::.default_uniform_prior(
+  p <- flexyBayes:::.default_half_normal_prior(
     data = d,
     response = "y",
     family = "gaussian",
@@ -355,7 +361,7 @@ test_that(".default_uniform_prior() reaches a vm/ped term with no simple random 
   expect_identical(p$specs[[2]]$target$group, "geno_vm")
 })
 
-test_that(".default_uniform_prior() leaves at/us/fa/ar1 outside its default set", {
+test_that(".default_half_normal_prior() leaves at/us/fa/ar1 outside its default set", {
   set.seed(20260525L)
   d <- data.frame(y = stats::rnorm(40L))
   # The function takes only `random_groups` (simple/ide/id) and
@@ -364,7 +370,7 @@ test_that(".default_uniform_prior() leaves at/us/fa/ar1 outside its default set"
   # the same files), so they continue to fall through to the
   # legacy lognormal default at codegen time. We assert here that
   # passing no vm_ped_groups returns only sigma + simple-RI specs.
-  p <- flexyBayes:::.default_uniform_prior(
+  p <- flexyBayes:::.default_half_normal_prior(
     data = d,
     response = "y",
     family = "gaussian",
@@ -378,26 +384,26 @@ test_that(".default_uniform_prior() leaves at/us/fa/ar1 outside its default set"
   expect_null(attr(p, "fb_prior_default_vm_ped_groups"))
 })
 
-test_that(".default_uniform_scale() picks family-aware bounds", {
+test_that(".default_half_normal_scale() picks family-aware scales", {
   set.seed(12)
   d_g <- data.frame(y = rnorm(40, sd = 3))
-  s_g <- flexyBayes:::.default_uniform_scale(d_g, "y", "gaussian")
-  expect_identical(s_g$basis, "identity_sd_uniform")
-  expect_true(abs(s_g$scale - 5 * sd(d_g$y)) < 1e-9)
+  s_g <- flexyBayes:::.default_half_normal_scale(d_g, "y", "gaussian")
+  expect_identical(s_g$basis, "identity_sd_half_normal")
+  expect_true(abs(s_g$scale - 5 * sd(d_g$y) / .hn_divisor()) < 1e-9)
 
-  s_p <- flexyBayes:::.default_uniform_scale(NULL, "y", "poisson")
-  expect_identical(s_p$basis, "log_link_uniform")
-  expect_identical(s_p$scale, 3)
+  s_p <- flexyBayes:::.default_half_normal_scale(NULL, "y", "poisson")
+  expect_identical(s_p$basis, "log_link_half_normal")
+  expect_identical(s_p$scale, 3 / .hn_divisor())
 
-  s_b <- flexyBayes:::.default_uniform_scale(NULL, "y", "binomial")
-  expect_identical(s_b$basis, "logit_uniform")
-  expect_identical(s_b$scale, 5)
+  s_b <- flexyBayes:::.default_half_normal_scale(NULL, "y", "binomial")
+  expect_identical(s_b$basis, "logit_half_normal")
+  expect_identical(s_b$scale, 5 / .hn_divisor())
 
-  s_be <- flexyBayes:::.default_uniform_scale(NULL, "y", "beta")
-  expect_identical(s_be$basis, "logit_uniform")
-  expect_identical(s_be$scale, 5)
+  s_be <- flexyBayes:::.default_half_normal_scale(NULL, "y", "beta")
+  expect_identical(s_be$basis, "logit_half_normal")
+  expect_identical(s_be$scale, 5 / .hn_divisor())
 
-  s_nb <- flexyBayes:::.default_uniform_scale(NULL, "y", "negative_binomial")
-  expect_identical(s_nb$basis, "log_link_uniform")
-  expect_identical(s_nb$scale, 3)
+  s_nb <- flexyBayes:::.default_half_normal_scale(NULL, "y", "negative_binomial")
+  expect_identical(s_nb$basis, "log_link_half_normal")
+  expect_identical(s_nb$scale, 3 / .hn_divisor())
 })
