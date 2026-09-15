@@ -728,6 +728,7 @@ test_that("oracle 7: the fold blocks agree with the dense reference", {
     random = ~ rep + rep:block,
     data = d,
     backend = "inla",
+    prior = .fb_test_john_alpha_prior(d),
     verbose = FALSE
   ))
 

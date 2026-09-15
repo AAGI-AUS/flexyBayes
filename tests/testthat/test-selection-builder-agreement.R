@@ -158,6 +158,7 @@ fb_agree_fixture <- function(design = c("balanced_small", "balanced_large",
     rv <- stats::setNames(stats::rnorm(nlevels(d$rep)), levels(d$rep))
     d$repcov <- as.numeric(rv[as.character(d$rep)])
     fit <- flexybayes(yield ~ gen, random = ~ rep + rep:block, data = d,
+                      prior = .fb_test_john_alpha_prior(d),
                       backend = "inla", verbose = FALSE)
   } else {
     m <- switch(design,

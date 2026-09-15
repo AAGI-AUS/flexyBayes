@@ -50,7 +50,8 @@ fb_theta_fixture <- function() {
 
   fit <- flexybayes(
     fixed = yield ~ gen, random = ~ rep + rep:block,
-    data = d, backend = "inla", verbose = FALSE
+    data = d, backend = "inla", verbose = FALSE,
+    prior = .fb_test_john_alpha_prior(d)
   )
   reml <- lme4::lmer(yield ~ gen + (1 | rep) + (1 | rb), data = d, REML = TRUE)
 
