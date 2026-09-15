@@ -196,7 +196,14 @@ Each is reproducible on this release. Priority is for the MET use case.
    and the returned object's class and `backend` field record which
    engine produced it, so a fit can always be traced to its engine.
    *The crash is upstream. What remains ours is that the re-route is a
-   message rather than a refusal you have to acknowledge.*
+   message rather than a refusal you have to acknowledge.* Two changes in
+   0.12.0 bear on it. On `backend = "inla"` the refusal now says when the
+   model states a uniform bound, and names the two remedies above. A bound
+   tighter than the value INLA starts its search from is now enforced:
+   before 0.12.0 the search began outside the bound, where the prior is
+   flat, and never entered it, so `sd(group = "geno") ~ uniform(0, 0.05)`
+   on a Poisson model returned a standard deviation of 0.61. The search
+   now starts inside the bound, and the same fit returns 0.05.
 9. **The autoregressive field can lose its signal on an incomplete grid.**
    *Symptom*: the field standard deviation runs to a floor near 0.01, both
    correlations sit at approximately zero with credible intervals spanning

@@ -203,6 +203,22 @@
   )
 }
 
+# .fb_states_uniform_bound() --- does the caller's own prior put a uniform
+# bound on a standard deviation? The package default is a wide bound and is
+# not counted.
+.fb_states_uniform_bound <- function(fb) {
+  prior <- fb$priors
+  if (!inherits(prior, "fb_prior") ||
+    !is.null(attr(prior, "fb_prior_default_basis"))) {
+    return(FALSE)
+  }
+  any(vapply(
+    prior$specs,
+    function(s) identical(s$spec$family, "uniform"),
+    logical(1)
+  ))
+}
+
 # .inla_program_failed_condition() --- builds (does not raise) the
 # `inla_program_failed` typed refusal condition object (S2/C2, FS-25),
 # mirroring .fb_refusal_condition()'s own build-then-stop() idiom --
@@ -268,7 +284,17 @@
       "Remedies, in order of least to most disruptive: reduce the model ",
       "(fewer random-effect terms or coarser groupings); aggregate where ",
       "eligible (fb_plan() reports whether this design compresses); ",
-      "switch engine (backend = \"brms\"); or add memory and retry."
+      "switch engine (backend = \"brms\"); or add memory and retry.",
+      if (.fb_states_uniform_bound(fb)) {
+        paste0(
+          " This model also states a uniform bound on a standard deviation, ",
+          "and INLA fails in this way when a bound lies close to where the ",
+          "data put that standard deviation: widen the bound, or state ",
+          "half_normal() with the same scale, which has no hard edge."
+        )
+      } else {
+        ""
+      }
     ),
     family_class = "flexybayes_inla_engine_refusal",
     n_rows = n_rows,
@@ -2150,7 +2176,55 @@ emit_inla <- function(
   if (length(param)) {
     body <- paste0(body, ", param = c(", paste(param, collapse = ", "), ")")
   }
+  start <- .fb_inla_uniform_start(entry, .FB_INLA_LATENT_PRECISION_INITIAL)
+  if (!is.null(start)) {
+    body <- paste0(body, ", initial = ", sprintf("%.16g", start))
+  }
   paste0("hyper = list(prec = list(", body, "))")
+}
+
+# INLA's own starting value for each precision it estimates, on the log
+# precision scale, as INLA::inla.models() declares it (INLA 26.8.7). Every
+# latent model this package gives a standard-deviation prior starts at 4, a
+# standard deviation of exp(-2) = 0.135. The likelihoods differ, so their
+# residual starts are listed under the keyword .fb_inla_residual_hyper() names.
+.FB_INLA_LATENT_PRECISION_INITIAL <- 4
+
+.fb_inla_residual_initial <- function() {
+  c(
+    gaussian = 4,
+    lognormal = 0,
+    logistic = 1,
+    t = 0,
+    gamma = log(100),
+    beta = log(10)
+  )
+}
+
+# .fb_inla_uniform_start() --- a starting value inside a uniform bound's
+# support, or NULL when INLA's own start already lies inside it.
+#
+# The uniform-on-SD expression prior is -1e10 outside its support, flat, so
+# an optimiser that starts there has no gradient leading in. A bound of 0.05
+# on a Poisson group standard deviation near 0.6 came back at 0.61, with the
+# mode outside the support; started inside, the same fit returned 0.049999
+# (INLA 26.8.7). The start is the middle of the support on the
+# standard-deviation scale, and it is written only when the default lies
+# outside the support, so a fit whose start was already inside is sent as it
+# was before.
+.fb_inla_uniform_start <- function(entry, default_initial) {
+  meta <- entry$meta
+  if (!identical(meta$family, "uniform") || is.null(meta$upper)) {
+    return(NULL)
+  }
+  lower <- meta$lower %||% 0
+  upper <- meta$upper
+  lo <- -2 * log(upper)
+  hi <- if (lower > 0) -2 * log(lower) else Inf
+  if (default_initial >= lo && default_initial <= hi) {
+    return(NULL)
+  }
+  -2 * log((lower + upper) / 2)
 }
 
 # ---------------------------------------------------------------- #
@@ -2401,6 +2475,13 @@ emit_inla <- function(
   }
   body <- entry[c("prior", "param")]
   body <- body[!vapply(body, is.null, logical(1))]
+  default_initial <- .fb_inla_residual_initial()[[
+    tolower(as.character(family)[[1L]])
+  ]]
+  start <- .fb_inla_uniform_start(entry, default_initial)
+  if (!is.null(start)) {
+    body$initial <- start
+  }
   stats::setNames(list(stats::setNames(list(body), keyword)), "hyper")
 }
 
