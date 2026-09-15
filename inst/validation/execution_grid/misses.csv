@@ -1,2 +1,1 @@
 "miss_id","class","cell","expected","observed","detail","sha","date"
-"EG-2026-09-15-001","M3 claims-breach","S6-inla-weak-poisson","fit","refuse_typed","The INLA engine failed while fitting this design: ""The inla-program exited with an error. Unless you interupted it yourself, please rerun with verbose=TRUE and check the output carefully.   If this does not help, please contact the developers at <help@r-inla.org>."" This design has 56 rows and an est | field finding U3: a zero-heavy weakly identified count part",NA,"2026-09-15"

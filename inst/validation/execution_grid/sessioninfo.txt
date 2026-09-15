@@ -1,5 +1,5 @@
-flexyBayes Packaged: 2026-09-15 11:54:32 UTC
-flexyBayes version : 0.12.0
+flexyBayes Packaged: 2026-09-15 16:44:49 UTC
+flexyBayes version : 0.12.1
 
 R version 4.6.1 (2026-06-24)
 Platform: aarch64-apple-darwin23
@@ -20,7 +20,7 @@ attached base packages:
 
 other attached packages:
 [1] INLA_26.08.07     Matrix_1.7-6      brms_2.23.0       Rcpp_1.1.2       
-[5] flexyBayes_0.12.0
+[5] flexyBayes_0.12.1
 
 loaded via a namespace (and not attached):
  [1] tensorA_0.36.2.1       gtable_0.3.6           ggplot2_4.0.3         
