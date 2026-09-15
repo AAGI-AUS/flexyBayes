@@ -161,6 +161,11 @@ engine or exported function is added.
   estimate and the selection bridge's response convention. A multi-way fixed
   term without a label now gets one label, `x:z`.
 * `fb_select()` has an example.
+* On INLA, the warnings that the variance-component table could not be built,
+  or that a hyperparameter lost its row, no longer say the fit is unaffected.
+  Either can follow from a mode outside a stated prior bound, and both now
+  say to read `fit$inla$summary.hyperpar` against the bounds (known issue
+  17).
 
 ## Documentation
 

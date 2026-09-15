@@ -711,6 +711,70 @@ test_that("an unbuildable variance-component table warns and keeps the fit", {
   expect_true(is.data.frame(fit$inla$summary.hyperpar))
 })
 
+# The unbuildable table is not only a reporting failure. On a Poisson model
+# with two random intercepts under the default uniform-SD(0, 3) bound, about
+# half of identical INLA runs put a precision mode at 4.7e-07 (an SD near
+# 1,450, where the prior's log-density is -1e10) and the table then fails;
+# brms on the same model puts that SD at 0.53. The warning used to say the
+# posterior was unaffected, which is false for those fits.
+test_that("the unbuildable-table warning does not vouch for the posterior", {
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("testthat", "3.2.0")
+  skip_on_cran()
+  skip_on_ci()
+  .sas_silence()
+
+  testthat::local_mocked_bindings(
+    .inla_variance_comps = function(...) {
+      stop("zero non-NA points", call. = FALSE)
+    },
+    .package = "flexyBayes"
+  )
+
+  msgs <- testthat::capture_warnings(suppressMessages(flexybayes(
+    y ~ x,
+    random = ~g,
+    data = .sas_data(),
+    backend = "inla",
+    aggregate = FALSE,
+    verbose = FALSE,
+    mcmc_verbose = FALSE
+  )))
+  table_msg <- msgs[grepl("variance-component table could not be built", msgs)]
+
+  expect_length(table_msg, 1L)
+  expect_false(grepl("unaffected", table_msg))
+  expect_match(table_msg, "summary.hyperpar", fixed = TRUE)
+  expect_match(table_msg, "bound", fixed = TRUE)
+})
+
+test_that("the dropped-row warning does not vouch for the fit either", {
+  # A precision whose marginal is missing, or whose summaries are not finite,
+  # loses its row with a warning of its own. That path is reached by the same
+  # degenerate marginals, so it may not call the fit unaffected.
+  skip_if_not_installed("INLA")
+  object <- list(
+    inla = list(
+      summary.hyperpar = data.frame(
+        mean = 1, sd = 1, `0.025quant` = 0.5, `0.975quant` = 1.5,
+        row.names = "Precision for g",
+        check.names = FALSE
+      ),
+      marginals.hyperpar = list()
+    ),
+    fb = NULL
+  )
+
+  msgs <- testthat::capture_warnings(vc <- .inla_variance_comps(object))
+  row_msg <- msgs[grepl("no usable posterior marginal", msgs)]
+
+  expect_equal(nrow(vc), 0L)
+  expect_length(row_msg, 1L)
+  expect_false(grepl("unaffected", row_msg))
+  expect_match(row_msg, "summary.hyperpar", fixed = TRUE)
+  expect_match(row_msg, "bound", fixed = TRUE)
+})
+
 
 # ---------------------------------------------------------------- #
 # 8. The aggregated representation returns the same object          #

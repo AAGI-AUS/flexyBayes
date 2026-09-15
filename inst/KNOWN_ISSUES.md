@@ -287,6 +287,21 @@ Each is reproducible on this release. Priority is for the MET use case.
     one issue 8 describes; the mechanism for this design is not established.
     *Workaround*: state `sd(group = ...) ~ half_normal(scale = 1)`, which
     fits the same design, or fit on brms.
+17. **On INLA, a fit can return with a standard deviation far outside its
+    stated uniform bound.** On a Poisson model with two random intercepts
+    (six and three levels, the second with no effect) under the default
+    uniform bound of 3 on each standard deviation, identical runs differ.
+    In 13 of 24 runs across 0.10.0, 0.11.0 and this release, INLA's mode
+    for the six-level term's precision was 4.7e-07 or 5.4e-07, a standard
+    deviation near 1,400, where the prior's log-density is -1e10. On the
+    other runs, and on brms (median 0.53, 95% interval 0.17 to 2.11), the
+    same standard deviation is well inside the bound. The only signal is
+    the warning that the variance-component table could not be built,
+    because INLA's marginal for that precision cannot be integrated.
+    Whether issue 16 shares the cause is not established. *Workaround*:
+    when that warning appears, read `fit$inla$summary.hyperpar` against the
+    stated bounds before using the fit, and fit on brms if a mode lies
+    outside them.
 
 ## Closed since the previous revision
 

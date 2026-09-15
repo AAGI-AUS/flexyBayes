@@ -1557,21 +1557,24 @@ emit_inla <- function(
   # mapper reads the fitted object, not the raw INLA return.
   #
   # A summary table is a reading of the fit, not part of it, so a failure
-  # here must not destroy a posterior the engine computed successfully.
-  # It is surfaced as a warning naming the cause rather than swallowed:
-  # the fit comes back with an empty variance-component table and the
-  # user is told why.
+  # here must not discard what the engine returned. It is surfaced as a
+  # warning naming the cause, not swallowed: the fit comes back with an
+  # empty variance-component table and the user is told why. The warning
+  # does not vouch for the posterior, because a marginal that cannot be
+  # integrated has come from a mode outside a stated bound
+  # (inst/KNOWN_ISSUES.md, issue 17).
   out$extras$variance_comps <- tryCatch(
     .inla_variance_comps(out),
     error = function(e) {
       warning(
-        "flexyBayes: the INLA fit succeeded but its variance-component ",
+        "flexyBayes: INLA returned a fit but its variance-component ",
         "table could not be built (",
         conditionMessage(e),
         "). ",
-        "summary(fit)$varcomp will be empty; the posterior itself is ",
-        "unaffected and INLA's own hyperparameter table is at ",
-        "fit$inla$summary.hyperpar.",
+        "summary(fit)$varcomp will be empty. A hyperparameter marginal ",
+        "that cannot be integrated can come from a mode outside a stated ",
+        "prior bound, so read fit$inla$summary.hyperpar against the ",
+        "bounds before using this fit.",
         call. = FALSE
       )
       NULL
@@ -2989,8 +2992,10 @@ emit_inla <- function(
       "flexyBayes: the hyperparameter(s) ",
       paste(unavailable, collapse = ", "),
       " carry no usable posterior marginal, so no variance-component row ",
-      "was written for them and summary() will not report them. The fit ",
-      "itself is unaffected. Check that control.compute = ",
+      "was written for them and summary() will not report them. A marginal ",
+      "that is missing or cannot be integrated can come from a mode outside ",
+      "a stated prior bound, so read fit$inla$summary.hyperpar against the ",
+      "bounds before using this fit, and check that control.compute = ",
       "list(return.marginals = TRUE), which is the flexyBayes default, ",
       "reached the engine.",
       call. = FALSE
