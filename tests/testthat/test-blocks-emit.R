@@ -228,10 +228,10 @@ test_that("flexybayes(plan = TRUE) representation_plan carries block_diagonal cl
 })
 
 # ---------------------------------------------------------------- #
-# (h) lgm_gate accepts blocks format on vm/ped                      #
+# (h) lgm_gate refuses blocks format on vm/ped (U-VC-1)             #
 # ---------------------------------------------------------------- #
 
-test_that("lgm_gate accepts vm() with cov_representation$format = 'blocks'", {
+test_that("lgm_gate refuses vm() with cov_representation$format = 'blocks'", {
   dat <- data.frame(
     geno = factor(rep(seq_len(5L), length.out = 60L)),
     yield = rnorm(60L, 50, 5)
@@ -245,8 +245,10 @@ test_that("lgm_gate accepts vm() with cov_representation$format = 'blocks'", {
     known_matrices = list(Bs = Bs)
   )
   gated <- lgm_gate(fb)
-  expect_false(inherits(gated, "lgm_refusal"))
-  expect_true("lgm_compatible" %in% gated$capabilities)
+  expect_true(inherits(gated, "lgm_refusal"))
+  expect_identical(gated$failures[[1L]]$rule_id, "random_term_type_inla")
+  expect_match(gated$failures[[1L]]$reason, "blocks carrier is refused on INLA",
+               fixed = TRUE)
 })
 
 # ---------------------------------------------------------------- #

@@ -52,6 +52,12 @@ registered approximation scheme (reserved at v0.4.0 -- the carrier
 vocabulary is active and validated, while the approximate-covariance
 fit route activates in a subsequent release).
 
+A \code{"blocks"} carrier is one covariance with one standard deviation, and
+both engines refuse it by name: brms does not take it, and INLA would fit
+each block with its own standard deviation. The precision carrier of
+\code{Matrix::bdiag(lapply(blocks, solve))} states the same covariance on INLA,
+and the dense carrier of the block-diagonal matrix states it on brms.
+
 Inside a model formula the carrier is written inline -- the matrix
 argument names a matrix passed through \code{known_matrices}, exactly as
 the legacy keyword forms did. The construction-time check is a light

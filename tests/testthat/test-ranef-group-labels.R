@@ -333,45 +333,6 @@ test_that("ped() reports the animals it was given, on the right rows", {
   expect_lt(.rgl_placement_gap(fit, .rgl_intercept(fit), contrib), 0.1)
 })
 
-test_that("a block-diagonal vm() reports each block's own genotypes", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  set.seed(306L)
-  # Two blocks over consecutive levels, of sizes 3 and 4.
-  levs <- sprintf("line%02d", 1:7)
-  blocks <- list(
-    .rgl_kinship(levs[1:3], 307L),
-    .rgl_kinship(levs[4:7], 308L)
-  )
-  d <- data.frame(geno = factor(rep(levs, 5L)))
-  d$y <- 10 + stats::rnorm(7L, 0, 1.5)[as.integer(d$geno)] +
-    stats::rnorm(nrow(d), 0, 0.3)
-  # Under the default uniform bound INLA's interval for the four-level
-  # block runs past the bound, 1.09 to 8.98 against 6.78, and the support
-  # audit refuses the fit (8 of 8 repeats). This test reads labels, so the
-  # blocks' standard deviation takes a half-normal prior, which has no bound
-  # to cross; every block takes the prior keyed by the term's variable.
-  fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ vm(geno, cov = fb_cov(Bk, type = "blocks")),
-    data = d, known_matrices = list(Bk = blocks),
-    prior = fb_prior(sd(group = "geno") ~ half_normal(scale = stats::sd(d$y))),
-    backend = "inla", verbose = FALSE
-  ))
-  r <- ranef(fit)
-
-  expect_setequal(names(r), c("geno (block 1)", "geno (block 2)"))
-  expect_identical(r[["geno (block 1)"]]$level, levels(d$geno)[1:3])
-  expect_identical(r[["geno (block 2)"]]$level, levels(d$geno)[4:7])
-  in_first <- d$geno %in% levels(d$geno)[1:3]
-  contrib <- ifelse(
-    in_first,
-    .rgl_effect(r, "geno (block 1)", d$geno),
-    .rgl_effect(r, "geno (block 2)", d$geno)
-  )
-  expect_lt(.rgl_placement_gap(fit, .rgl_intercept(fit), contrib), 0.1)
-})
-
 test_that("ar1(t) reports the occasions it was fitted over", {
   skip_if_not_installed("INLA")
   skip_on_cran()

@@ -737,7 +737,9 @@ emit_inla <- function(
       # levels(<var>) are partitioned into K consecutive chunks of
       # sizes n_1, ..., n_K --- the validator's `block_sizes` slot is
       # the source of truth. The within-block position is the
-      # 1-based offset of that level within its block.
+      # 1-based offset of that level within its block. The gate refuses a
+      # blocks carrier on INLA (U-VC-1, R/lgm_gate.R check 8), so this
+      # branch runs only under a forced override of that check.
       if (!is.null(cov) && identical(cov$format, "blocks")) {
         blocks_meta <- .validate_blocks_input(
           known_matrices[[cov$data]],
