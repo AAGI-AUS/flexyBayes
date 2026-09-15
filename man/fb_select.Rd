@@ -74,7 +74,10 @@ so scoring it conditionally would reward the model for a random effect
 it was handed. Under \code{"new_cluster"} every column a random term's effect
 is indexed by is relabelled on the assessment rows; a \code{vm()}, \code{ped()} or
 autoregressive term cannot take a new level and refuses with
-\code{selection_new_cluster_not_representable}.}
+\code{selection_new_cluster_not_representable}. Each assessment row's level
+\code{L} becomes \code{L::fb_heldout}, checked row by row before any fold is
+fitted; a fold in which a training row already carries such a label
+refuses with the same code.}
 
 \item{decision}{An \code{\link[=fb_decision]{fb_decision()}}: the method, metric, rule and search.}
 

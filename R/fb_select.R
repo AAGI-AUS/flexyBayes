@@ -2264,7 +2264,10 @@
 #'   it was handed. Under `"new_cluster"` every column a random term's effect
 #'   is indexed by is relabelled on the assessment rows; a `vm()`, `ped()` or
 #'   autoregressive term cannot take a new level and refuses with
-#'   `selection_new_cluster_not_representable`.
+#'   `selection_new_cluster_not_representable`. Each assessment row's level
+#'   `L` becomes `L::fb_heldout`, checked row by row before any fold is
+#'   fitted; a fold in which a training row already carries such a label
+#'   refuses with the same code.
 #' @param decision An [fb_decision()]: the method, metric, rule and search.
 #' @param engine An [fb_engine()] setting the sampler's chains, iterations
 #'   and control for the reference fit.

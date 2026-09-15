@@ -55,9 +55,11 @@
       "grouping levels no training row carries, and the base has a random ",
       "term that cannot take a new level without changing the structure it ",
       "indexes: a known-covariance term (vm(), ped()) indexes its matrix by ",
-      "level, and an autoregressive field indexes its lattice. The refusal ",
-      "comes before any fold is fitted; prediction = \"known_cluster\" keeps ",
-      "the levels."
+      "level, and an autoregressive field indexes its lattice. It also ",
+      "refuses a fold whose relabelled grouping column is not, row by row, ",
+      "the one-to-one map of its levels, including a held-out label that a ",
+      "training row already carries. The refusal comes before any fold is ",
+      "fitted; prediction = \"known_cluster\" keeps the levels."
     ),
     message_template = "fb_select(): prediction = \"new_cluster\" cannot relabel these random terms: %s.",
     registered_in_adr = "SPEC v5 section 7",

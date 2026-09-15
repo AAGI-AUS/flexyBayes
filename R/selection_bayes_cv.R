@@ -368,10 +368,84 @@
 .fb_sel_bayes_heldout_labels <- function(data, assess_rows, random_vars) {
   for (v in random_vars) {
     column <- as.character(data[[v]])
-    column[assess_rows] <- paste0(column[assess_rows], "::fb_heldout")
+    column[assess_rows] <- .fb_sel_heldout_level(column[assess_rows])
     data[[v]] <- factor(column)
   }
   data
+}
+
+
+# .fb_sel_heldout_level() --- the held-out label of an original level.
+.fb_sel_heldout_level <- function(level) {
+  paste0(level, "::fb_heldout")
+}
+
+
+# .fb_sel_check_heldout_labels() --- every relabelled grouping column carries,
+# row by row, the level that row is meant to carry.
+#
+# The map is one-to-one and compared element-wise: a training row keeps its
+# own level, an assessment row carries the held-out label of its own level,
+# and no held-out label is a level a training row carries. A check on the
+# number of levels, or on rows per level, passes a relabelling that gives one
+# site's held-out rows another site's label; and a training level already
+# spelled like a held-out label would score the held-out rows as a known
+# cluster. Either refuses here, before any engine is called.
+.fb_sel_check_heldout_labels <- function(data, engine_data, split, random_vars) {
+  assess_rows <- split$assess_rows
+  for (v in random_vars) {
+    original <- as.character(data[[v]])
+    intended <- original
+    intended[assess_rows] <- .fb_sel_heldout_level(original[assess_rows])
+    relabelled <- as.character(engine_data[[v]])
+    wrong <- which(
+      is.na(relabelled) != is.na(intended) |
+        (!is.na(relabelled) & !is.na(intended) & relabelled != intended)
+    )
+    train_rows <- setdiff(seq_along(original), assess_rows)
+    shared <- intersect(relabelled[assess_rows], relabelled[train_rows])
+    shared <- shared[!is.na(shared)]
+    if (length(wrong) == 0L && length(shared) == 0L) {
+      next
+    }
+    detail <- if (length(wrong) > 0L) {
+      one <- length(wrong) == 1L
+      paste0(
+        if (one) "row " else "rows ",
+        paste(utils::head(wrong, 5L), collapse = ", "),
+        if (one) " carries " else " carry ",
+        paste0("'", utils::head(relabelled[wrong], 5L), "'", collapse = ", "),
+        " where the map gives ",
+        paste0("'", utils::head(intended[wrong], 5L), "'", collapse = ", ")
+      )
+    } else {
+      one <- length(shared) == 1L
+      paste0(
+        if (one) "the held-out label " else "the held-out labels ",
+        paste0("'", utils::head(shared, 5L), "'", collapse = ", "),
+        if (one) " is already a level" else " are already levels",
+        " of training rows, so the held-out rows would be scored as a known ",
+        "cluster. Rename the training ",
+        if (one) "level" else "levels",
+        ", or use prediction = \"known_cluster\""
+      )
+    }
+    stop(.fb_refusal_condition(
+      reason_code = "selection_new_cluster_not_representable",
+      message = paste0(
+        "fb_select(): prediction = \"new_cluster\" relabels `",
+        v,
+        "` on the assessment rows of fold ",
+        split$label,
+        ", and the relabelled column is not the one-to-one map of its ",
+        "levels: ",
+        detail,
+        "."
+      ),
+      terms = v
+    ))
+  }
+  invisible(NULL)
 }
 
 
@@ -443,7 +517,9 @@
   ]
 
   engine_data <- if (identical(prediction, "new_cluster")) {
-    .fb_sel_bayes_heldout_labels(data, split$assess_rows, random)
+    relabelled <- .fb_sel_bayes_heldout_labels(data, split$assess_rows, random)
+    .fb_sel_check_heldout_labels(data, relabelled, split, random)
+    relabelled
   } else {
     data
   }
