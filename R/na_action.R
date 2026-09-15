@@ -549,12 +549,12 @@
 # the estimand, once per session.
 #
 # The augmentation identity is algebraic and does not weaken as the missing
-# fraction rises. What weakens is the restricted likelihood it targets:
-# past roughly a third unobserved, variance components reach the boundary,
-# the surface flattens, and two correct implementations stop at different
-# points. That is a property of the design, not of the device, and the fit
-# proceeds -- but a user comparing this posterior against ASReml or lme4
-# needs to know it before reading a disagreement as a defect in either.
+# fraction rises: the fit targets the same posterior as deleting the rows.
+# What weakens is identification. Past roughly a third unobserved, variance
+# components reach the boundary, the surface flattens, and approximations and
+# repeat fits can disagree. The fit proceeds, and the warning tells a user
+# comparing this posterior against ASReml or lme4 to read a disagreement as
+# weak identification.
 #
 # Once per session rather than once per fit, in the manner of the routing
 # notes: a simulation study fitting the same design a thousand times
@@ -579,12 +579,14 @@
   warning(
     "flexyBayes: ", format(round(100 * frac, 1)), "% of the fitted rows ",
     "carry no observed response (", n_unobserved, " of ", n_rows,
-    "). Above roughly 30% the variance components can sit near a ",
-    "boundary or on a flat ridge, where two correct implementations ",
-    "legitimately stop at different points -- so a disagreement with ",
-    "ASReml, lme4 or another engine at this missing fraction is a ",
-    "property of the estimand rather than evidence against either fit. ",
-    "The augmentation identity itself is unaffected. Silence via ",
+    "). The augmentation identity is unaffected: the fit targets the same ",
+    "posterior as deleting those rows. Above roughly 30%, a rule of thumb, ",
+    "the variance components are weakly identified and can sit near a ",
+    "boundary or on a flat ridge, where approximations are sensitive and ",
+    "repeat fits can disagree. Read a disagreement with ASReml, lme4 or ",
+    "another engine at this missing fraction as a sign of weak ",
+    "identification, and check the fit on a second engine before relying ",
+    "on its variance components. Silence via ",
     "options(flexyBayes.silence_high_missingness_warning = TRUE).",
     call. = FALSE
   )

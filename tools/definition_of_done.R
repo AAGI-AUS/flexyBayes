@@ -952,7 +952,7 @@ MAX_EXPORTS <- 36L
     "not scheduled, claim corrected at 0.10.0"),
   c("covr driven to an 85 per cent floor",
     "not planned, measured once"),
-  c("Full MET live evidence beyond 120 rows",
+  c("Baseline MET live evidence beyond 120 rows",
     "not scheduled"),
   c("Exact aggregated Gaussian likelihood with the residual prior composed",
     "0.13.0"),

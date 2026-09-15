@@ -1054,27 +1054,27 @@
     since_version = "0.9.0"
   )
 
-  # Raised when a missing response reaches brms on a family whose response
-  # brms cannot sample. brms drops NA-response rows silently, so without
-  # this the augmentation layer would quietly become complete-case
-  # deletion; and its `mi()` addition term, which would fix that, is
-  # Gaussian-only.
+  # Raised when a missing response reaches brms on a family whose
+  # augmentation is not admitted. brms drops NA-response rows silently, so
+  # without this the augmentation layer would quietly become complete-case
+  # deletion; its `mi()` addition term, which fixes that, is admitted only
+  # for the gaussian and lognormal families, the two validated by live fits.
   .register_refusal(
     reason_code = "brms_cannot_augment_nongaussian",
     description = paste0(
-      "backend = \"brms\" cannot carry a missing response for a ",
-      "non-Gaussian family: its mi() addition term is Gaussian-only, and ",
-      "without it brms drops the rows."
+      "backend = \"brms\" cannot carry a missing response for this family: ",
+      "brms's mi() augmentation is admitted only for the gaussian and ",
+      "lognormal families, and without it brms drops the rows."
     ),
     message_template = paste0(
       "backend = \"brms\" cannot carry a missing response for this ",
       "family. brms drops rows whose response is NA, and its `mi()` ",
-      "addition term -- which would sample them instead -- is supported ",
-      "only for Gaussian-family responses. Fitting anyway would silently ",
+      "addition term, which samples them instead, is admitted only for ",
+      "the gaussian and lognormal families. Fitting anyway would silently ",
       "delete the incomplete cells under the name of augmentation. Use ",
       "backend = \"inla\", which carries a missing response as a native ",
-      "prediction target for every family, or pass na_action = \"omit\" ",
-      "to delete them deliberately."
+      "prediction target for the families it fits, or pass ",
+      "na_action = \"omit\" to delete them deliberately."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -2709,6 +2709,25 @@ print.fb_refusals_table <- function(x, ...) {
     plan_field = NA_character_,
     since_version = "0.11.0.9000"
   )
+}
+
+.populate_refusal_registry_prior_support <- function() {
+  .register_refusal(
+    reason_code = "prior_support_violated",
+    description = paste0(
+      "An INLA fit whose mode, or whose reported 2.5 or 97.5 per cent ",
+      "quantile, for a hyperparameter under a bounded prior lies outside ",
+      "that bound. The uniform prior on a standard deviation reaches INLA ",
+      "as a density of -1e10 outside its support, and INLA can still stop ",
+      "there. Every INLA fit is checked against INLA's own record of the ",
+      "priors it received, and a fit outside its prior's support is refused."
+    ),
+    message_template = "%s",
+    registered_in_adr = "U-SUPPORT-1 (2026-09-16), universal support audit",
+    plan_field = NA_character_,
+    since_version = "0.12.1"
+  )
+  invisible(NULL)
 }
 
 .populate_refusal_registry_aggregation_containment <- function() {

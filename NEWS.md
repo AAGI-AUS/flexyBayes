@@ -3,7 +3,9 @@
 The model a fit reports is the model it ran. Gaussian models on INLA are fitted
 per row on a standardised response, default priors follow the units of the
 response and of each covariate, offsets fit on both engines, a stated bound on
-a standard deviation binds, and every fit records which prior reached which
+a standard deviation binds (corrected in 0.12.1: INLA can still return a mode
+outside the bound, and 0.12.1 refuses such a fit), and every fit records which
+prior reached which
 engine slot as the engine reports it back. No model family, penalty family,
 engine or exported function is added.
 
@@ -81,7 +83,9 @@ engine or exported function is added.
   units. It is now five standard deviations of the modelled response, after
   any offset, on both engines.
 
-* **A tight uniform bound binds on INLA.** INLA starts its search at a
+* **A tight uniform bound binds on INLA** (corrected in 0.12.1: the start is
+  inside the bound, but the returned mode can still leave it; see known issue
+  17). INLA starts its search at a
   standard deviation of 0.135 for a random effect. A stated uniform bound
   below that started the search outside the bound, where the prior is flat,
   and the search never entered it: `sd(group = "geno") ~ uniform(0, 0.05)` on

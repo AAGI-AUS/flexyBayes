@@ -487,8 +487,8 @@ test_that("the combined MET model emits both blocks on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row(paste(
-    "Combined interaction random effects and heterogeneous residual",
-    "(full MET)"
+    "Baseline heteroscedastic MET: iid genotype, iid",
+    "genotype-by-environment and a sectioned residual"
   ))
   d <- .cap_data()
   .cap_expect(
@@ -992,8 +992,8 @@ test_that("every capability row carries a behaviour anchor here", {
     "Heterogeneous variances with one shared correlation",
     "Heterogeneous residual by factor level",
     paste(
-      "Combined interaction random effects and heterogeneous residual",
-      "(full MET)"
+      "Baseline heteroscedastic MET: iid genotype, iid",
+      "genotype-by-environment and a sectioned residual"
     ),
     "Factor-analytic genotype-by-environment covariance",
     "Multi-trait covariance",

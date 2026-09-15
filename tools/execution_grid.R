@@ -386,211 +386,28 @@ d_ar1_tg <- .tg_field(2001L)
 # exercises it; a matrix row with no entry here, or an entry naming a
 # row the matrix does not carry, stops the harness. The matrix is the
 # claim surface and this file is the execution -- neither may drift
-# past the other silently.
+# past the other silently. `.M_CALLS`, `.M_EXECUTED_ELSEWHERE` and the
+# capability_matrix.csv row builder live in tools/capability_grid_matrix.R,
+# shared with tools/generate_capability_matrix.R so the installed-evidence
+# CSV cannot drift from this grid's own copy.
 
 .matrix <- flexyBayes:::.fb_capability_matrix()
 
-.M_CALLS <- list(
-  list(
-    model_class = "Gaussian LMM, simple random intercept",
-    inla = 'flexybayes(y ~ env, random = ~ gen, data = d_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ gen, data = d_cap)'
-  ),
-  list(
-    model_class = paste(
-      "GLMM (binomial, Poisson, negative binomial, gamma, beta),",
-      "simple random effect"
-    ),
-    # One representative family here; S3b runs every admitted spelling
-    # on both engines.
-    inla = 'flexybayes(bin ~ env, random = ~ gen, data = d_cap, family = "binomial")',
-    brms = 'flexybayes(bin ~ env, random = ~ gen, data = d_cap, family = "binomial")'
-  ),
-  list(
-    model_class = "Hurdle gamma (zero mass plus a positive gamma part)",
-    inla = 'flexybayes(hg ~ env, random = ~ gen, data = d_cap, family = "hurdle_gamma")',
-    brms = 'flexybayes(hg ~ env, random = ~ gen, data = d_cap, family = "hurdle_gamma")'
-  ),
-  list(
-    model_class = "Uncorrelated random slope",
-    inla = 'flexybayes(y ~ x + (x || gen), data = d_cap)',
-    brms = 'flexybayes(y ~ x + (x || gen), data = d_cap)'
-  ),
-  list(
-    model_class = "Factor-by-numeric fixed interaction",
-    inla = 'flexybayes(y ~ env * x, random = ~ gen, data = d_cap)',
-    brms = 'flexybayes(y ~ env * x, random = ~ gen, data = d_cap)'
-  ),
-  list(
-    model_class = "Correlated random slope",
-    inla = 'flexybayes(y ~ x + (x | gen), data = d_cap)',
-    brms = 'flexybayes(y ~ x + (x | gen), data = d_cap)'
-  ),
-  list(
-    model_class = "Nested / interaction random effects, multi-stratum",
-    inla = 'flexybayes(y ~ env, random = ~ gen:env, data = d_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ gen:env, data = d_cap)'
-  ),
-  list(
-    model_class = "Heterogeneous variance by factor level",
-    inla = 'flexybayes(y ~ env, random = ~ diag(env):gen, data = d_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ diag(env):gen, data = d_cap)'
-  ),
-  list(
-    model_class = "Unstructured genotype-by-environment covariance",
-    inla = 'flexybayes(y ~ env, random = ~ us(env):gen, data = d_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ us(env):gen, data = d_cap)'
-  ),
-  list(
-    model_class = "Heterogeneous variances with one shared correlation",
-    inla = 'flexybayes(y ~ env, random = ~ corh(env):gen, data = d_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ corh(env):gen, data = d_cap)'
-  ),
-  list(
-    model_class = "Heterogeneous residual by factor level",
-    inla = paste0('flexybayes(y ~ env, random = ~ gen, ',
-                  'residual = ~ dsum(~ units | env), data = d_cap)'),
-    brms = paste0('flexybayes(y ~ env, random = ~ gen, ',
-                  'residual = ~ dsum(~ units | env), data = d_cap)')
-  ),
-  list(
-    model_class = paste(
-      "Combined interaction random effects and heterogeneous residual",
-      "(full MET)"
-    ),
-    inla = paste0('flexybayes(y ~ env, random = ~ gen + gen:env, ',
-                  'residual = ~ dsum(~ units | env), data = d_cap)'),
-    brms = paste0('flexybayes(y ~ env, random = ~ gen + gen:env, ',
-                  'residual = ~ dsum(~ units | env), data = d_cap)')
-  ),
-  list(
-    model_class = "Factor-analytic genotype-by-environment covariance",
-    inla = 'flexybayes(y ~ env, random = ~ fa(env, 1):gen, data = d_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ fa(env, 1):gen, data = d_cap)'
-  ),
-  list(
-    model_class = "Multi-trait covariance",
-    inla = paste0('flexybayes(y ~ env, random = ~ us(trait):vm(gen), ',
-                  'data = d_cap, known_matrices = list(K = k_cap))'),
-    brms = paste0('flexybayes(y ~ env, random = ~ us(trait):vm(gen), ',
-                  'data = d_cap, known_matrices = list(K = k_cap))')
-  ),
-  list(
-    # The row's own note splits the carriers: INLA takes the sparse
-    # precision, brms the dense covariance.
-    model_class = "Known-covariance genomic / pedigree random effect",
-    inla = paste0('flexybayes(y ~ env, ',
-                  'random = ~ vm(gen, cov = fb_cov(Q, type = "precision")), ',
-                  'data = d_cap, known_matrices = list(Q = q_cap))'),
-    brms = paste0('flexybayes(y ~ env, random = ~ vm(gen, K), ',
-                  'data = d_cap, known_matrices = list(K = k_cap))')
-  ),
-  list(
-    # `ped()` and `vm()` are two spellings of one known-covariance term
-    # -- every branch in the package tests `%in% c("vm", "ped")` -- so the
-    # capability is one row and the spelling is a surface on it. The grid
-    # executed `vm()` only, and `ped()` was advertised without ever being
-    # fitted (audit item 9, 2026-08-27). This cell fits the same row
-    # through the other spelling, on the carrier each engine documents:
-    # INLA the sparse precision, brms the dense covariance.
-    model_class = "Known-covariance genomic / pedigree random effect",
-    spelling_variant = "ped",
-    inla = paste0('flexybayes(y ~ env, ',
-                  'random = ~ ped(gen, cov = fb_cov(Q, type = "precision")), ',
-                  'data = d_cap, known_matrices = list(Q = q_cap))'),
-    brms = paste0('flexybayes(y ~ env, random = ~ ped(gen, K), ',
-                  'data = d_cap, known_matrices = list(K = k_cap))')
-  ),
-  list(
-    model_class = "Separable AR1 spatial field",
-    inla = 'flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d_capgrid)',
-    brms = 'flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d_capgrid)'
-  ),
-  list(
-    model_class = "Univariate P-spline",
-    inla = 'flexybayes(y ~ 1, random = ~ spl(x), data = d_cap)',
-    brms = 'flexybayes(y ~ 1, random = ~ spl(x), data = d_cap)'
-  ),
-  list(
-    model_class = "Observation weights (Gaussian, identity link)",
-    inla = 'flexybayes(y ~ env, random = ~ gen, data = d_cap, weights = w_cap)',
-    brms = 'flexybayes(y ~ env, random = ~ gen, data = d_cap, weights = w_cap)'
-  ),
-  list(
-    model_class = "Exact sufficient-statistic aggregation (binomial, Poisson)",
-    inla = paste0('flexybayes(cnt ~ env, random = ~ gen, data = d_agg, ',
-                  'aggregate = TRUE, family = "poisson")'),
-    brms = paste0('flexybayes(cnt ~ env, random = ~ gen, data = d_agg, ',
-                  'aggregate = TRUE, family = "poisson")')
-  ),
-  list(
-    model_class = "Exact sufficient-statistic aggregation (Gaussian)",
-    inla = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
-                  'aggregate = TRUE)'),
-    brms = paste0('flexybayes(y ~ env, random = ~ gen, data = d_agg, ',
-                  'aggregate = TRUE)')
-  ),
-  list(
-    model_class = "Per-trial separable AR1 field",
-    inla = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
-                  'data = d_ar1_at_trial)'),
-    brms = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
-                  'data = d_ar1_at_trial)')
-  ),
-  list(
-    model_class = "Grouped temporal AR1 field",
-    inla = 'flexybayes(y ~ 1, random = ~ ar1(t):g, data = d_ar1_tg)',
-    brms = 'flexybayes(y ~ 1, random = ~ ar1(t):g, data = d_ar1_tg)'
-  )
-)
+source(file.path(.pkg_root, "tools", "capability_grid_matrix.R"))
 
-# Matrix rows no M cell can execute, each with where it is executed instead.
-# A cell here is a flexybayes() call with the backend and budget appended,
-# and a joint shrinkage prior reaches no flexybayes() call: fb_select() is
-# its only public route, and its reference fit and folds are several brms
-# fits, past the per-cell timeout. Listed by name so the gap prints on every
-# run (added 2026-09-15; the rows arrived with 0.11.0 without cells).
-.M_EXECUTED_ELSEWHERE <- c(
-  "Ridge shrinkage prior on candidate fixed effects" = paste(
-    "fitted live by fb_select() on brms in",
-    "review/release_0.12.0/smoke/smoke_installed_package.R;",
-    "Stan code asserted in tests/testthat/test-penalty-stancode.R"
-  ),
-  "Laplace shrinkage prior on candidate fixed effects" =
-    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
-  "Elastic-net shrinkage prior on candidate fixed effects" =
-    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
-  "Regularised horseshoe shrinkage prior on candidate fixed effects" =
-    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled",
-  "R2D2 shrinkage prior on candidate fixed effects" =
-    "Stan code asserted in tests/testthat/test-penalty-stancode.R; not sampled"
-)
+.M_CALLS <- .fb_capability_grid_m_calls()
+
+# Matrix rows no M cell can execute, each with where it is executed instead
+# (tools/capability_grid_matrix.R). A cell here is a flexybayes() call with
+# the backend and budget appended. Listed by name so the gap prints on
+# every run (added 2026-09-15; the rows arrived with 0.11.0 without cells).
+.M_EXECUTED_ELSEWHERE <- .fb_capability_grid_m_executed_elsewhere()
 for (i1 in seq_along(.M_EXECUTED_ELSEWHERE)) {
   cat("matrix row outside the M section:", names(.M_EXECUTED_ELSEWHERE)[[i1]],
       "--", .M_EXECUTED_ELSEWHERE[[i1]], "\n")
 }
 
-.m_named <- vapply(.M_CALLS, function(z) z$model_class, character(1L))
-.m_missing <- setdiff(
-  .matrix$model_class,
-  c(.m_named, names(.M_EXECUTED_ELSEWHERE))
-)
-.m_extra <- setdiff(.m_named, .matrix$model_class)
-if (length(.m_missing) > 0L || length(.m_extra) > 0L) {
-  stop(
-    "The capability matrix and the grid's M section have drifted apart.\n",
-    if (length(.m_missing) > 0L) {
-      paste0("  matrix rows with no grid cell: ",
-             paste(.m_missing, collapse = " | "), "\n")
-    },
-    if (length(.m_extra) > 0L) {
-      paste0("  grid cells naming no matrix row: ",
-             paste(.m_extra, collapse = " | "), "\n")
-    },
-    "Every capability cell is executed, or the gate is not F28.",
-    call. = FALSE
-  )
-}
+.fb_capability_grid_check_drift(.matrix, .M_CALLS, .M_EXECUTED_ELSEWHERE)
 
 # The matrix verdict vocabulary, mapped to an executable expectation.
 #
@@ -612,16 +429,9 @@ if (length(.m_missing) > 0L || length(.m_extra) > 0L) {
   )
 }
 
-.m_slug <- function(x) {
-  s <- tolower(gsub("[^a-z0-9]+", "-", tolower(x)))
-  gsub("(^-|-$)", "", s)
-}
+.m_slug <- .fb_capability_grid_slug
 
-.matrix_cells <- data.frame(
-  cell = character(0), model_class = character(0),
-  spelling = character(0), backend = character(0),
-  verdict = character(0), stringsAsFactors = FALSE
-)
+.matrix_cells <- .fb_capability_grid_cells(.matrix, .M_CALLS)
 
 for (spec in .M_CALLS) {
   row <- .matrix[.matrix$model_class == spec$model_class, , drop = FALSE]
@@ -666,15 +476,6 @@ for (spec in .M_CALLS) {
       variant = paste0(.m_slug(spec$model_class), sfx),
       matrix_cell = key
     )
-    if (!key %in% .matrix_cells$cell) .matrix_cells <- rbind(.matrix_cells,
-      data.frame(
-      cell = key,
-      model_class = spec$model_class,
-      spelling = row$spelling,
-      backend = be,
-      verdict = verdict,
-      stringsAsFactors = FALSE
-    ))
   }
 }
 
@@ -1125,7 +926,8 @@ for (fm in .s3c_families) {
        # Carries the dsum residual, so the count arm refuses for the same
        # reason the dsum_residual row above does.
        poisson = list(inla = "refuse_typed", brms = "refuse_typed"),
-       src = paste0("capability matrix: full MET fits | fits, with the ",
+       src = paste0("capability matrix: baseline heteroscedastic MET fits | ",
+                    "fits, with the ",
                     "heterogeneous-residual row's no-residual-scale note")),
   list(key = "corh", call = "random = ~ corh(f):g", inla = "refuse_typed",
        brms = "refuse_typed",
@@ -1336,11 +1138,16 @@ for (i in seq_along(.cells)) {
 
 .add_cell(
   id = "S6-inla-weak-poisson", section = "S6",
+  # The response is drawn under its own seed, so a fixture added above
+  # cannot move the draw: 3 non-zero counts in 56 rows, on which INLA's
+  # program crashes under INLA 26.08.07 and 25.10.19 (known issue 16).
   code = paste0('flexybayes(y ~ x, random = ~ g, ',
-                "data = transform(d_weak, y = rpois(nrow(d_weak), 0.05)), ",
+                "data = {set.seed(20260916L); ",
+                "transform(d_weak, y = rpois(nrow(d_weak), 0.05))}, ",
                 'family = "poisson", backend = "inla")'),
-  expected = "fit",
-  expect_src = "field finding U3: a zero-heavy weakly identified count part",
+  expected = "refuse_typed",
+  expect_src = paste0("known issue 16: INLA's program crashes on this ",
+                      "3-count draw, refused as inla_program_failed"),
   backend = "inla", family = "poisson", variant = "weak_identification"
 )
 

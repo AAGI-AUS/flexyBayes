@@ -153,6 +153,9 @@
   # augment(), a log-density and a prediction on a non-identity link.
   .populate_refusal_registry_aggregated_accessors()
 
+  # 2026-09-16: an INLA fit outside the bound of a stated prior.
+  .populate_refusal_registry_prior_support()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

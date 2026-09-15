@@ -176,8 +176,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (missing_covariate_not_supported), and a design cell absent from the
   # data whose model variables were never recorded
   # (augment_cell_not_determinable) (= 65). brms drops NA-response rows and
-  # its mi() addition term is Gaussian-only, so a missing response on a
-  # non-Gaussian family refuses rather than being silently deleted
+  # its mi() addition term is admitted only for the gaussian and lognormal
+  # families, so a missing response on any other family refuses rather than
+  # being silently deleted
   # (brms_cannot_augment_nongaussian) (= 66). at(f, level):g conditions the
   # random effect on selected levels, which no active emitter represents and
   # which is a different model from the heterogeneous variance diag(f):g that
@@ -504,9 +505,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # fb_log_posterior() (log_density_producer_unavailable) (= 202), and
   # predict() and a marginaleffects prediction on a non-identity link
   # (predict_link_not_supported, marginaleffects_link_not_supported) (= 204).
+  #
+  # The support audit adds one: an INLA fit outside the bound of a stated
+  # prior (prior_support_violated) (= 205).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 204L)
+  expect_equal(length(entries), 205L)
+  expect_true("prior_support_violated" %in% entries)
   expect_true("response_not_finite" %in% entries)
   expect_true("streamed_rows_not_retained" %in% entries)
   expect_true("update_streamed_fit_not_supported" %in% entries)

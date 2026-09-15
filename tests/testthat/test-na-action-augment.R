@@ -254,11 +254,11 @@ test_that("the fit records what the layer did", {
 # High missing fraction: the estimand degrades, and the fit says so (S8)
 #
 # The augmentation identity is algebraic and holds at any missing fraction.
-# What weakens past roughly a third unobserved is the restricted likelihood
-# it targets -- variance components reach the boundary, the surface
-# flattens, and two correct implementations legitimately stop at different
-# points. The warning states that once per session so a user comparing
-# against ASReml or lme4 does not read a disagreement as a defect.
+# What weakens past roughly a third unobserved is identification -- variance
+# components reach the boundary, the surface flattens, and approximations and
+# repeat fits can disagree. The warning states that once per session and
+# tells a user comparing against ASReml or lme4 to read a disagreement as
+# weak identification.
 # =============================================================================
 
 .missing_frac_data <- function(n = 100L, frac_missing = 0.35, seed = 606L) {
@@ -309,8 +309,9 @@ test_that("the high-missingness warning names the boundary, not the device", {
   w <- tryCatch(.apply_augment(d), warning = function(w) w)
   expect_s3_class(w, "warning")
   expect_match(conditionMessage(w), "boundary")
-  expect_match(conditionMessage(w), "property of the estimand")
-  expect_match(conditionMessage(w), "augmentation identity itself is")
+  expect_match(conditionMessage(w), "weak identification")
+  expect_match(conditionMessage(w), "augmentation identity is unaffected")
+  expect_false(grepl("property of the estimand", conditionMessage(w)))
 })
 
 test_that("augmenting at 20 percent missing is silent", {

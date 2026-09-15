@@ -8,13 +8,16 @@ release: the package validates on the model classes it supports, and states
 plainly the ones it does not.
 
 The thing to know before relying on flexyBayes for a multi-environment trial:
-**the MET model -- interaction random effects together with a per-environment
-residual -- fits on brms, and the evidence behind that row is small-scale.**
-The combination generates both blocks in the emitted Stan program and samples
-cleanly on simulated data (the live test) with the pieces corroborated on
-`agridat::besag.met`. INLA refuses both halves structurally, and a national
-trial series has not been run. The detail is below, so the scale question can
-be answered collectively rather than rediscovered.
+**the baseline heteroscedastic MET model -- iid genotype, iid
+genotype-by-environment and a per-environment residual -- fits on both
+engines, and the evidence behind that row is small-scale.** On brms the
+combination generates both blocks in the emitted Stan program and samples
+cleanly on simulated data (the live test), with the pieces corroborated on
+`agridat::besag.met`; on INLA it recovers the simulated components (see the
+table). Unstructured and factor-analytic genotype-by-environment covariance
+combined with a sectioned residual do not plan on either engine, and a
+national trial series has not been run. The detail is below, so the scale
+question can be answered collectively.
 
 ## Backend support by model class
 
@@ -39,7 +42,7 @@ which had drifted from the emit layer in four places.
 | Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits | `(0 + f \| g)` on brms. Estimated correlation matrices are fitted on brms only: INLA refuses by name (`correlated_covariance_requires_brms`) and `backend = "auto"` routes to brms. The INLA route was one iidKd field under a joint Wishart prior, and paired against ASReml 4.2.0.392 on `agridat::besag.met` it returned a genetic correlation of 0.142 where ASReml returns 0.930, while eight identical calls on the response rescaled by ten none converged and returned correlations from -0.894 to +0.686 (finding O04). The correlated sibling of the diagonal structure -- `k(k+1)/2` parameters against `diag()`'s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |
 | Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA carries it through the multiple-likelihood interface, a matrix response with one Gaussian family per level; brms lowers it to distributional regression on log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for families with no residual scale; `at(f, level):units` conditions on selected levels, which is a different model, and refuses. |
-| Combined interaction random effects and heterogeneous residual (full MET) | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The full multi-environment-trial model. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
+| Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model, shown on small simulated data; unstructured and factor-analytic genotype-by-environment covariance do not combine with the sectioned residual on either engine. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | fits | refuses | Each common factor is one latent field entered per level of `f` as a SCALED COPY, and INLA's copy scaling IS the loading, so the loadings carry a posterior rather than a point estimate. Factor j is anchored at level j, the zero upper triangle ASReml uses against rotation, so an anchored loading is absent from the summary rather than reported as 1. Verified at k = 1 and k = 2. brms group-level effects are either uncorrelated or fully unstructured, with no factor-analytic form between. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision, pedigree-precision and block carriers, and brms additionally takes dense and Cholesky. Under `fb_select()`: shrinkage yes, projection no. A joint shrinkage prior over candidate fixed effects fits on a base carrying one of these terms, but the term lowers to `(1 \| gr(g, cov = K))` and projpred refuses a function call on the right-hand side of a group-term `\|` (probe C5), so the projection decision is red. `decision = "auto"`, the default, resolves to `full` there; naming `"projection"` refuses before the reference model is sampled. |
@@ -94,25 +97,23 @@ Where each stands today:
   (`tests/testthat/test-met-combined.R`) the fit returns every R-hat below
   1.05, no divergent transitions, and per-environment residual variances in
   the order they were simulated in. The capability row reads `fits` on that
-  evidence, and `auto` reaches brms for this class. What is still worth
+  evidence. What is still worth
   saying is that `us(env):gen` is a different matter -- at one observation
   per genotype-environment cell its covariance diagonal is confounded with
   the residual, and a longer chain does not separate them.
-- **INLA** refuses both by name. Interaction random effects are addressable
-  in principle (an `iid` effect over the combined factor), and INLA
-  collapses the finest strata on this model class, which is why the gate
-  refuses rather than reporting a zero. The 107-stratum residual is **not**
-  cleanly addressable: INLA integrates over hyperparameters numerically,
-  which is tractable for roughly 15 to 20 of them, and 5 + 107 = 112 is far
-  beyond that. This is a property of INLA, not of this code.
+- **INLA** fits both, separately and together, on the small simulated
+  multi-environment data of `tests/testthat/test-sectioned-residual-inla.R`,
+  where it recovers the genotype, genotype-by-environment and per-section
+  residual standard deviations. Scale is the limit. INLA integrates over its
+  hyperparameters numerically, and `lgm_gate()` refuses a model with more
+  than 15 of them by name (`hyperparam_budget`), so a residual with one
+  variance for each of 107 environments is refused on INLA.
 
-The direction of travel: **make brms the full-MET workhorse** -- the emit and
-the live fit are both in place, so the remaining work is scale (the verified
-fit is 120 rows, not a national trial series) -- and give **INLA** the
-interaction random effects
-plus a *hierarchically shrunk* residual (a prior
-`log sigma^2_env ~ Normal(mu, tau)` replacing 107 free hyperparameters with
-two, a model ASReml cannot fit and INLA can).
+The direction of travel: take the baseline MET model to realistic scale on
+**brms**, where the emit and the live fit are both in place (the verified fit
+is 120 rows, not a national trial series), and give **INLA** a
+*hierarchically shrunk* residual, a prior `log sigma^2_env ~ Normal(mu, tau)`
+that replaces 107 free hyperparameters with two.
 
 ## Open issues (contributions welcome)
 
@@ -277,31 +278,39 @@ Each is reproducible on this release. Priority is for the MET use case.
     variance-component table.** The fit completes, and `summary()`'s
     variance-component table for such a term is empty. The cause has not
     been diagnosed.
-16. **A weakly identified, zero-heavy count model can end in an INLA
-    failure where 0.10.0 fitted it.** On a Poisson model with a random
-    intercept over many clusters of two and almost every response zero, the
-    group standard deviation is barely identified and its posterior runs to
-    the upper edge of the default bound (2.97 against 3 on one such design).
-    On some draws of that design INLA's program aborts, and
-    `backend = "inla"` refuses with `inla_program_failed`. The class is the
-    one issue 8 describes; the mechanism for this design is not established.
-    *Workaround*: state `sd(group = ...) ~ half_normal(scale = 1)`, which
-    fits the same design, or fit on brms.
-17. **On INLA, a fit can return with a standard deviation far outside its
-    stated uniform bound.** On a Poisson model with two random intercepts
-    (six and three levels, the second with no effect) under the default
-    uniform bound of 3 on each standard deviation, identical runs differ.
-    In 13 of 24 runs across 0.10.0, 0.11.0 and this release, INLA's mode
-    for the six-level term's precision was 4.7e-07 or 5.4e-07, a standard
-    deviation near 1,400, where the prior's log-density is -1e10. On the
-    other runs, and on brms (median 0.53, 95% interval 0.17 to 2.11), the
-    same standard deviation is well inside the bound. The only signal is
-    the warning that the variance-component table could not be built,
-    because INLA's marginal for that precision cannot be integrated.
-    Whether issue 16 shares the cause is not established. *Workaround*:
-    when that warning appears, read `fit$inla$summary.hyperpar` against the
-    stated bounds before using the fit, and fit on brms if a mode lies
-    outside them.
+16. **A Poisson response that is almost all zeros, with a weakly identified
+    group, can crash INLA's program, and `backend = "inla"` refuses it.** On
+    a Poisson model with a random intercept over 28 clusters of two and 3
+    non-zero counts in 56 rows, INLA's program stops with a segmentation
+    fault after the mode is found, while it integrates over the group
+    precision. It happens on every release from 0.10.0 to 0.12.0 and under
+    INLA 26.08.07 and 25.10.19, and the package refuses with
+    `inla_program_failed`. The same design with 7 non-zero counts fits. It
+    is not a regression: the execution-grid cell that recorded 0.10.0 as
+    fitting drew the 7-count response, and a fixture added to the grid
+    later moved the random-number state so the cell drew the 3-count one.
+    The cause inside INLA is not established. *Workaround*: state
+    `sd(group = ...) ~ half_normal(scale = 1.53)`, which fitted the 3-count
+    design in 3 of 3 runs, or fit on brms.
+17. **On INLA, a hyperparameter marginal can lie far outside a stated
+    uniform bound, and the fit is refused.** On a Poisson model with two
+    random intercepts, one of which splits the rows exactly as a fixed
+    factor does, under the default uniform bound of 3 on each standard
+    deviation, the duplicated term's mode lies on the bound. INLA estimates
+    curvature by stepping across the bound, where the prior's log-density
+    is -1e10. Under INLA 26.08.07, in 45 of 100 identical runs the marginal
+    for the other term's precision had its mode near 5e-07, a standard
+    deviation near 1,400, while INLA's optimiser mode and brms (median 0.53,
+    95% interval 0.17 to 2.11) were inside the bound; under INLA 25.10.19,
+    100 of 100 runs stayed inside. 0.12.0 returned such a fit with a
+    warning. From 0.12.1 every INLA fit is checked against INLA's own record
+    of its priors, a fit whose mode or reported interval lies outside a
+    bound is refused with `prior_support_violated`, and the check is kept in
+    `fit$extras$support_audit`. *Workaround*: drop a random term that
+    duplicates a fixed factor, state
+    `sd(group = ...) ~ half_normal(scale = 1.53)` (no runaway fit in 24 runs
+    of the same design; posterior median 0.505 against 0.489 on brms), or
+    fit on brms.
 
 ## Closed since the previous revision
 

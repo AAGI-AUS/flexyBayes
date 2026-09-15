@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=204
+      .refusal_registry: locked=TRUE n_keys=205
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -216,6 +216,7 @@
         prior_spec_empty
         prior_spec_not_formula
         prior_spec_not_two_sided
+        prior_support_violated
         prior_target_argument_missing
         prior_target_not_a_single_name
         prior_target_not_in_model
