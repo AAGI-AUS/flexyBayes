@@ -71,8 +71,9 @@ family, penalty family, engine or exported function is added.
   execution-grid cell that fitted in 0.12.0 is refused by the check, but the
   `john.alpha` design above, the data of a validated ASReml comparison, is.
   The release plan therefore moves the default to a half-normal prior on
-  both engines in 0.13.0. Three tests whose fixtures had a weakly identified
-  component now state a half-normal prior or a wider bound.
+  both engines in 0.13.0. Tests that fit `john.alpha` as `rep + rep:block`
+  on INLA, and two with a weakly identified component, now state a
+  half-normal prior or a wider bound.
 
 # flexyBayes 0.12.0
 
