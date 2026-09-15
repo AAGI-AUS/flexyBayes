@@ -205,7 +205,11 @@ test_that("a record with no recorded policy refuses by name", {
     h = factor(rep(LETTERS[1:3], length.out = n))
   )
   b_g <- stats::rnorm(6L, sd = 0.3)[as.integer(d$g)]
-  eta <- 1.2 + 0.4 * (d$f == "b") - 0.3 * (d$f == "c") + b_g
+  # `h` carries an effect (SD 0.5 on the log scale). With none, INLA put the
+  # re-fit's group precision outside the default bound in 8 of 24 runs and the
+  # support audit refused it; with this effect it fitted inside in 24 of 24.
+  b_h <- stats::rnorm(3L, sd = 0.5)[as.integer(d$h)]
+  eta <- 1.2 + 0.4 * (d$f == "b") - 0.3 * (d$f == "c") + b_g + b_h
   d$y <- stats::rpois(n, exp(eta))
   d
 }
