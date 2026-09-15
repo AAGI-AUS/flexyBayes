@@ -70,8 +70,9 @@ test_that("glance() returns the one-row shape on an aggregated (INLA) fit", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   set.seed(20260826L)
+  # A Gaussian model is fitted per row, so the aggregated fit is a Poisson one.
   d <- data.frame(
-    y = stats::rnorm(2000L),
+    y = stats::rpois(2000L, 3),
     env = factor(rep(1:5, 400L)),
     geno = factor(rep(1:20, 100L))
   )
@@ -79,6 +80,7 @@ test_that("glance() returns the one-row shape on an aggregated (INLA) fit", {
     y ~ env,
     random = ~geno,
     data = d,
+    family = "poisson",
     backend = "inla",
     aggregate = TRUE,
     verbose = FALSE
@@ -88,7 +90,9 @@ test_that("glance() returns the one-row shape on an aggregated (INLA) fit", {
   expect_s3_class(g, "data.frame")
   expect_identical(nrow(g), 1L)
   expect_named(g, .glance_cols)
-  expect_identical(g$nobs, 2000L)
+  # By value: the count route carries its row count as a double, exact past
+  # the integer limit.
+  expect_equal(g$nobs, 2000)
   expect_true(is.na(g$chains))
   expect_true(is.na(g$max_rhat))
 })

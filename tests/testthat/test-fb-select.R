@@ -169,9 +169,13 @@ test_that("an aggregated-route fit refuses by name, not by falling over", {
   # downstream with a message about row counts.
   skip_on_cran()
   skip_if_not_installed("INLA")
+  # A Gaussian model is fitted per row, so the aggregated route is taken by
+  # a count response.
   d <- fb_sel_verb_data()
-  agg <- flexybayes(yield ~ 1, random = ~ site, data = d,
-                    backend = "inla", verbose = FALSE)
+  d$count <- stats::rpois(nrow(d), 3)
+  agg <- flexybayes(count ~ 1, random = ~ site, data = d, family = "poisson",
+                    backend = "inla", aggregate = TRUE, verbose = FALSE)
+  expect_s3_class(agg, "flexybayes_aggregated")
   expect_error(
     fb_select(agg, ~ clay, resamples = fb_resamples(unit = ~ site, v = 6L),
               workflow = "unpenalized_benchmark", seed = 1L),

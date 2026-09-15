@@ -306,14 +306,31 @@
       anchor = "test-weights-lowering.R"
     ),
     list(
-      model_class = "Exact sufficient-statistic aggregation",
+      model_class = "Exact sufficient-statistic aggregation (binomial, Poisson)",
       spelling = "`aggregate = TRUE`, `flexybayes_stream()`",
       inla = "fits",
       brms = "n/a",
-      note = "Exact cell-likelihood aggregation for iid exponential-family
-        models with small cell count. The brms path has no aggregated
+      note = "Exact cell-likelihood aggregation for binomial (logit) and
+        Poisson (log) models with a small cell count; the posterior is the
+        per-row posterior. The marginal likelihood is not reported
+        (`aggregated_evidence_unavailable`): the engine's value omits a
+        constant that depends on the data. The brms path has no aggregated
         emit.",
       anchor = "test-aggregation-equivalence-backend.R"
+    ),
+    list(
+      model_class = "Exact sufficient-statistic aggregation (Gaussian)",
+      spelling = "`aggregate = TRUE`, `flexybayes_stream(family = \"gaussian\")`",
+      inla = "refuses",
+      brms = "n/a",
+      note = "Refused by name (`aggregation_residual_prior_not_composed`).
+        The aggregated Gaussian route composes the within-cell sum of
+        squares with a fixed prior on the residual precision, so a stated
+        or default residual prior would not be the prior fitted. Gaussian
+        models are fitted per row, which is what `aggregate = \"auto\"`
+        does; `flexybayes_stream(fit = FALSE)` still returns the
+        sufficient statistics.",
+      anchor = "test-aggregation-gaussian-containment.R"
     ),
     list(
       model_class = "Ridge shrinkage prior on candidate fixed effects",

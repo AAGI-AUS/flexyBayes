@@ -42,11 +42,14 @@ test_that("print and summary on a live aggregated fit carry the family", {
     f = factor(sample(paste0("f", seq_len(5L)), n, replace = TRUE)),
     g = factor(sample(paste0("g", seq_len(20L)), n, replace = TRUE))
   )
-  d$y <- stats::rnorm(n)
+  # A Gaussian model is fitted per row (its aggregated route cannot carry
+  # the residual prior), so this label is exercised on a Bernoulli model.
+  d$y <- stats::rbinom(n, 1L, 0.4)
   fit <- suppressMessages(flexybayes(
     y ~ f,
     random = ~g,
     data = d,
+    family = "binomial",
     backend = "inla",
     aggregate = TRUE,
     verbose = FALSE
@@ -55,12 +58,12 @@ test_that("print and summary on a live aggregated fit carry the family", {
 
   print_out <- utils::capture.output(print(fit))
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-gaussian]", print_out, fixed = TRUE
+    "[flexyBayes / aggregated-binomial]", print_out, fixed = TRUE
   )))
 
   summary_out <- utils::capture.output(summary(fit))
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-gaussian]", summary_out, fixed = TRUE
+    "[flexyBayes / aggregated-binomial]", summary_out, fixed = TRUE
   )))
 })
 
@@ -118,22 +121,25 @@ test_that("print on a flexybayes_stream() fit names the backend and the aggregat
     f = factor(sample(paste0("f", seq_len(5L)), n, replace = TRUE)),
     g = factor(sample(paste0("g", seq_len(20L)), n, replace = TRUE))
   )
-  d$y <- stats::rnorm(n)
+  # A streamed Gaussian fit refuses, so the banner is checked on a Poisson
+  # stream.
+  d$y <- stats::rpois(n, 3)
   fit <- suppressMessages(flexybayes_stream(
     y ~ f,
     random = ~g,
     source = d,
+    family = "poisson",
     backend = "inla",
     verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes_aggregated")
   expect_identical(fit$exactness, "aggregated_exact")
   expect_identical(fit$extras$backend_decision$backend, "inla")
-  expect_identical(fit$extras$backend_decision$path, "aggregated_gaussian")
+  expect_identical(fit$extras$backend_decision$path, "aggregated_count")
 
   print_out <- utils::capture.output(print(fit))
   expect_true(any(grepl(
-    "backend:    inla (path = aggregated_gaussian )", print_out, fixed = TRUE
+    "backend:    inla (path = aggregated_count )", print_out, fixed = TRUE
   )))
   expect_true(any(grepl(
     "Engine:         INLA Laplace", print_out, fixed = TRUE

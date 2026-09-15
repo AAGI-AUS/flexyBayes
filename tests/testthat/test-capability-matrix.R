@@ -766,8 +766,8 @@ test_that("observation weights fit on both for Gaussian, typed refusal otherwise
   }
 })
 
-test_that("exact aggregation is eligible on the INLA path", {
-  r <- .cap_row("Exact sufficient-statistic aggregation")
+test_that("exact count aggregation is eligible on the INLA path", {
+  r <- .cap_row("Exact sufficient-statistic aggregation (binomial, Poisson)")
   expect_identical(r$inla, "fits")
   expect_identical(r$brms, "n/a")
   set.seed(13)
@@ -776,11 +776,43 @@ test_that("exact aggregation is eligible on the INLA path", {
     gen = factor(seq_len(6L)),
     env = factor(seq_len(3L))
   )
-  d$y <- stats::rnorm(nrow(d), 10, 2)
+  d$y <- stats::rpois(nrow(d), 4)
   plan <- suppressMessages(
-    flexybayes(y ~ env, random = ~gen, data = d, plan = TRUE, verbose = FALSE)
+    flexybayes(
+      y ~ env,
+      random = ~gen,
+      data = d,
+      family = "poisson",
+      plan = TRUE,
+      verbose = FALSE
+    )
   )
   expect_true(isTRUE(plan$aggregation$eligible))
+})
+
+test_that("exact Gaussian aggregation refuses by name on the INLA path", {
+  skip_if_not_installed("INLA")
+  r <- .cap_row("Exact sufficient-statistic aggregation (Gaussian)")
+  expect_identical(r$inla, "refuses")
+  expect_identical(r$brms, "n/a")
+  set.seed(13)
+  d <- expand.grid(
+    rep = factor(seq_len(20L)),
+    gen = factor(seq_len(6L)),
+    env = factor(seq_len(3L))
+  )
+  d$y <- stats::rnorm(nrow(d), 10, 2)
+  expect_error(
+    suppressMessages(flexybayes(
+      y ~ env,
+      random = ~gen,
+      data = d,
+      backend = "inla",
+      aggregate = TRUE,
+      verbose = FALSE
+    )),
+    class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
+  )
 })
 
 
@@ -971,7 +1003,8 @@ test_that("every capability row carries a behaviour anchor here", {
     "Grouped temporal AR1 field",
     "Univariate P-spline",
     "Observation weights (Gaussian, identity link)",
-    "Exact sufficient-statistic aggregation",
+    "Exact sufficient-statistic aggregation (binomial, Poisson)",
+    "Exact sufficient-statistic aggregation (Gaussian)",
     "Ridge shrinkage prior on candidate fixed effects",
     "Laplace shrinkage prior on candidate fixed effects",
     "Elastic-net shrinkage prior on candidate fixed effects",

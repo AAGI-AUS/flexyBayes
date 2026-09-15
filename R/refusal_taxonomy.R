@@ -2664,6 +2664,44 @@ print.fb_refusals_table <- function(x, ...) {
   invisible(NULL)
 }
 
+# 2026-09-15 -- Gaussian aggregation containment. The aggregated Gaussian
+# route cannot carry a residual prior, so Gaussian models are fitted per row,
+# and no fit on the aggregated representation reports a marginal likelihood.
+.populate_refusal_registry_aggregation_containment <- function() {
+  .register_refusal(
+    reason_code = "aggregation_residual_prior_not_composed",
+    description = paste0(
+      "A Gaussian model sent to the aggregated representation, by ",
+      "aggregate = TRUE or by flexybayes_stream(). The aggregated Gaussian ",
+      "route composes the within-cell sum of squares with a fixed gamma ",
+      "prior on the residual precision, so a stated or default residual ",
+      "prior would not be the prior fitted while prior_summary() reported ",
+      "it. Gaussian models are fitted per row; binomial and Poisson models ",
+      "still aggregate."
+    ),
+    message_template = "%s",
+    registered_in_adr = "DEC-AGG-01 (2026-09-14), strict Gaussian containment",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  .register_refusal(
+    reason_code = "aggregated_evidence_unavailable",
+    description = paste0(
+      "The marginal likelihood of a fit on the aggregated representation. ",
+      "The engine's value omits constants that depend on the data and, ",
+      "under response standardisation, scales by the number of cells ",
+      "instead of the number of rows, so it is not the marginal likelihood ",
+      "of the rows. summary() reports it as not available, naming this ",
+      "reason, rather than printing a number that cannot be compared."
+    ),
+    message_template = "%s",
+    registered_in_adr = "DEC-AGG-01 (2026-09-14), strict Gaussian containment",
+    plan_field = NA_character_,
+    since_version = "0.11.0.9000"
+  )
+  invisible(NULL)
+}
+
 .populate_refusal_registry_grammar_contract <- function() {
   .register_refusal(
     reason_code = "grammar_arity_too_few",

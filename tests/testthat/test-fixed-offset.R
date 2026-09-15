@@ -552,17 +552,14 @@ test_that("an offset model is invariant to rescaling the response and offset", {
   )
 }
 
-test_that("aggregated and streamed Gaussian fits with an offset are exact", {
-  # Against the per-row fit, three calls of each route (2026-09-13): fixed
-  # effects within 6.6e-12 and hyperparameters within 1.9e-6 relative; a
-  # second per-row call differs by 6.4e-12 and 2.2e-7. Tolerances 1e-8 and
-  # 1e-4 relative, the second as test-aggregation-equivalence-backend.R uses.
+test_that("aggregated and streamed Gaussian fits with an offset refuse by name", {
+  # The cell statistics still subtract the offset exactly, which the plan
+  # records. The aggregated and streamed Gaussian routes refuse, because they
+  # cannot carry the residual prior; their agreement with the per-row fit
+  # (measured 2026-09-13 at 6.6e-12 on the fixed effects) returns with that
+  # composition.
   skip_if_not_installed("INLA")
-  skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  threads <- INLA::inla.getOption("num.threads")
-  INLA::inla.setOption(num.threads = "1:1")
-  withr::defer(INLA::inla.setOption(num.threads = threads))
   d <- .off_cells()
 
   plan <- .fb_aggregation_plan(
@@ -572,27 +569,12 @@ test_that("aggregated and streamed Gaussian fits with an offset are exact", {
   expect_true(plan$eligible)
   expect_identical(plan$offset_route, "offset_subtracted_in_cell_statistics")
 
-  per_row <- .off_route("per_row", y ~ f + offset(z), "gaussian", d)
   for (route in c("aggregated", "stream")) {
-    fit <- .off_route(route, y ~ f + offset(z), "gaussian", d)
-    expect_identical(fit$exactness, "aggregated_exact")
-    b <- .off_fixed(fit)
-    expect_lt(max(abs(b[names(.off_fixed(per_row))] - .off_fixed(per_row))), 1e-8)
-    h <- .off_hyper(fit)
-    expect_equal(
-      unname(h[names(.off_hyper(per_row))]),
-      unname(.off_hyper(per_row)),
-      tolerance = 1e-4
+    expect_error(
+      .off_route(route, y ~ f + offset(z), "gaussian", d),
+      class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
     )
   }
-
-  # The per-row fixed-part fitted values carry the offset back: X b + z by
-  # hand (measured exact to 0 and 8.9e-16).
-  agg <- .off_route("aggregated", y ~ f + offset(z), "gaussian", d)
-  X <- stats::model.matrix(~ f, d)
-  hand <- as.numeric(X %*% coef(agg)[colnames(X)]) + d$z
-  expect_lt(max(abs(agg$glm$fitted.values - hand)), 1e-10)
-  expect_lt(max(abs(agg$glm$residuals - (d$y - hand))), 1e-10)
 })
 
 test_that("a Poisson offset reaches the aggregated route as exposure", {

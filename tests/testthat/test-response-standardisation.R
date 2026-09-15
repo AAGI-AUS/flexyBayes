@@ -299,29 +299,10 @@ test_that("draws are taken on the original scale", {
 
 # --- the aggregated route and the record ---------------------------------- #
 
-test_that("the aggregated route matches the per-row fixed effects at large scale", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-
-  set.seed(20260913L)
-  d <- expand.grid(rep = seq_len(20L), trt = factor(seq_len(5L)),
-                   blk = factor(seq_len(4L)))
-  d$y <- 1000 * (10 + as.numeric(d$trt) * 0.5 +
-                   stats::rnorm(nrow(d), 0, 0.3) +
-                   stats::rnorm(4L, 0, 0.4)[as.integer(d$blk)])
-  agg <- suppressWarnings(flexybayes(
-    fixed = y ~ trt, random = ~ blk, data = d,
-    backend = "inla", aggregate = TRUE, verbose = FALSE
-  ))
-  row <- suppressWarnings(flexybayes(
-    fixed = y ~ trt, random = ~ blk, data = d,
-    backend = "inla", aggregate = FALSE, verbose = FALSE
-  ))
-  expect_s3_class(agg, "flexybayes_aggregated")
-  expect_equal(agg$extras$summary$beta_means, coef(row), tolerance = 1e-4)
-  expect_equal(agg$extras$response_standardisation$scale, stats::sd(d$y))
-})
+# [removed] "the aggregated route matches the per-row fixed effects at large
+# scale" -- an aggregated Gaussian fit now refuses by name, because the
+# aggregated Gaussian route cannot carry the residual prior. The comparison
+# of its standardised fit with the per-row one returns with that composition.
 
 test_that("only a Gaussian identity-link fit is standardised", {
   skip_if_not_installed("INLA")

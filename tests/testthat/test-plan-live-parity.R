@@ -40,6 +40,9 @@
     g = factor(sample(paste0("g", seq_len(20L)), n, replace = TRUE))
   )
   d$y <- stats::rnorm(n)
+  # A Gaussian model is fitted per row, so the aggregated route is exercised
+  # on this count response.
+  d$count <- stats::rpois(n, 3)
   d
 }
 
@@ -165,9 +168,10 @@ test_that("an aggregation-eligible model still plans aggregated_inla", {
   skip_if_not_installed("INLA")
   d <- .parity_aggregatable_data()
   p <- flexybayes(
-    y ~ f,
+    count ~ f,
     random = ~g,
     data = d,
+    family = "poisson",
     backend = "auto",
     plan = TRUE
   )
@@ -182,9 +186,10 @@ test_that("an aggregation-eligible model still fits the aggregated route", {
   skip_if_not_installed("INLA")
   d <- .parity_aggregatable_data()
   fit <- suppressMessages(flexybayes(
-    y ~ f,
+    count ~ f,
     random = ~g,
     data = d,
+    family = "poisson",
     backend = "auto",
     aggregate = TRUE,
     verbose = FALSE

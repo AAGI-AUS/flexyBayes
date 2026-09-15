@@ -393,16 +393,19 @@
 #' @param aggregate One of `"auto"` (default), `TRUE`, or `FALSE`.
 #'   Exact sufficient-statistics aggregation gate. INLA is the only
 #'   engine with an aggregated emit. `"auto"` consults the aggregation
-#'   plan and routes through the per-cell path when the IR is in scope
-#'   (gaussian-identity, binomial-logit, or poisson-log; fixed plus
-#'   random intercept; productive compression) and the model reaches
-#'   INLA. `TRUE` forces aggregation and raises a structured refusal when
-#'   the plan declares ineligibility, or when no active engine offers an
-#'   aggregated route. `FALSE` skips the gate entirely. Aggregated fits
-#'   carry `$exactness == "aggregated_exact"` and the dispatch trace's
-#'   `path` slot reads `"aggregated_gaussian"` (gaussian) or
-#'   `"aggregated_count"` (binomial / poisson). For out-of-core datasets
-#'   that do not fit in memory, see [flexybayes_stream()].
+#'   plan and routes a binomial-logit or poisson-log model through the
+#'   per-cell path when the IR is in scope (fixed plus random intercept;
+#'   productive compression) and the model reaches INLA. A Gaussian model
+#'   is fitted per row: the aggregated Gaussian route cannot yet carry the
+#'   residual prior, so `TRUE` on a Gaussian model refuses by name
+#'   (`aggregation_residual_prior_not_composed`). `TRUE` also raises a
+#'   structured refusal when the plan declares ineligibility, or when no
+#'   active engine offers an aggregated route. `FALSE` skips the gate
+#'   entirely. Aggregated fits carry `$exactness == "aggregated_exact"`,
+#'   the dispatch trace's `path` slot reads `"aggregated_count"`, and
+#'   their summary reports no marginal likelihood
+#'   (`aggregated_evidence_unavailable`). For out-of-core datasets that
+#'   do not fit in memory, see [flexybayes_stream()].
 #' @param syntax One of `"auto"` (default), `"asreml"`, or `"brms"`.
 #'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
 #'   from the call shape (a bar-grouped formula is read as brms,

@@ -417,7 +417,7 @@ silenceable via \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} (ga
 installed).
 
 \strong{What each engine represents.}
-INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Factor-analytic genotype-by-environment covariance; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation. INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Multi-trait covariance; Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Factor-analytic genotype-by-environment covariance; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Combined interaction random effects and heterogeneous residual (full MET); Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
 The per-class table with its notes is in \code{README.md} and
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 
@@ -455,16 +455,19 @@ INLA-side code slot lands.}
 \item{aggregate}{One of \code{"auto"} (default), \code{TRUE}, or \code{FALSE}.
 Exact sufficient-statistics aggregation gate. INLA is the only
 engine with an aggregated emit. \code{"auto"} consults the aggregation
-plan and routes through the per-cell path when the IR is in scope
-(gaussian-identity, binomial-logit, or poisson-log; fixed plus
-random intercept; productive compression) and the model reaches
-INLA. \code{TRUE} forces aggregation and raises a structured refusal when
-the plan declares ineligibility, or when no active engine offers an
-aggregated route. \code{FALSE} skips the gate entirely. Aggregated fits
-carry \verb{$exactness == "aggregated_exact"} and the dispatch trace's
-\code{path} slot reads \code{"aggregated_gaussian"} (gaussian) or
-\code{"aggregated_count"} (binomial / poisson). For out-of-core datasets
-that do not fit in memory, see \code{\link[=flexybayes_stream]{flexybayes_stream()}}.}
+plan and routes a binomial-logit or poisson-log model through the
+per-cell path when the IR is in scope (fixed plus random intercept;
+productive compression) and the model reaches INLA. A Gaussian model
+is fitted per row: the aggregated Gaussian route cannot yet carry the
+residual prior, so \code{TRUE} on a Gaussian model refuses by name
+(\code{aggregation_residual_prior_not_composed}). \code{TRUE} also raises a
+structured refusal when the plan declares ineligibility, or when no
+active engine offers an aggregated route. \code{FALSE} skips the gate
+entirely. Aggregated fits carry \verb{$exactness == "aggregated_exact"},
+the dispatch trace's \code{path} slot reads \code{"aggregated_count"}, and
+their summary reports no marginal likelihood
+(\code{aggregated_evidence_unavailable}). For out-of-core datasets that
+do not fit in memory, see \code{\link[=flexybayes_stream]{flexybayes_stream()}}.}
 
 \item{plan}{Logical: if \code{TRUE}, short-circuit after intermediate
 representation (IR) build and return a \verb{<fb_plan>} object

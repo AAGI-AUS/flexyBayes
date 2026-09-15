@@ -254,49 +254,28 @@ test_that("a large-scale response fits on INLA through backend, pin and auto", {
   .ct_expect_same_model(auto, reference)
 })
 
-test_that("a large-scale response fits on the aggregated route", {
-  # An explicit backend = "inla" reaches the aggregated emit without the
-  # gate, which is why the refusal was written there separately.
+test_that("a large-scale Gaussian response refuses by name on the aggregated and streamed routes", {
+  # The aggregated and streamed Gaussian routes refuse whatever the response
+  # scale, because they cannot carry the residual prior. The refusal is that
+  # one, not a response-scale refusal; the per-row large-scale fits above
+  # carry the scale check.
   skip_if_not_installed("INLA")
-  skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d_big <- .ct_blocks(.ct_multiplier)
   expect_gt(stats::sd(d_big$y), 150)
-  d_ref <- d_big
-  d_ref$y <- d_ref$y / .ct_multiplier
 
-  fit_of <- function(d) {
+  expect_error(
     suppressWarnings(flexybayes(
-      fixed = y ~ trt, random = ~ blk, data = d,
+      fixed = y ~ trt, random = ~ blk, data = d_big,
       backend = "inla", aggregate = TRUE, verbose = FALSE
-    ))
-  }
-  big <- fit_of(d_big)
-  reference <- fit_of(d_ref)
-  expect_s3_class(big, "flexybayes_aggregated")
-  expect_s3_class(reference, "flexybayes_aggregated")
-  .ct_expect_same_model(big, reference)
-})
-
-test_that("a large-scale response fits on the streamed route", {
-  # flexybayes_stream() reaches the aggregated emit without the gate. A small
-  # source read in chunks of 150 rows keeps the test fast and still streams:
-  # 400 rows arrive in three chunks.
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  d_big <- .ct_blocks(.ct_multiplier)
-  d_ref <- d_big
-  d_ref$y <- d_ref$y / .ct_multiplier
-
-  fit_of <- function(d) {
-    suppressWarnings(suppressMessages(flexybayes_stream(
-      y ~ trt, random = ~ blk, source = d, backend = "inla",
+    )),
+    class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
+  )
+  expect_error(
+    flexybayes_stream(
+      y ~ trt, random = ~ blk, source = d_big, backend = "inla",
       chunk_rows = 150L, verbose = FALSE
-    )))
-  }
-  big <- fit_of(d_big)
-  reference <- fit_of(d_ref)
-  expect_s3_class(big, "flexybayes_aggregated")
-  .ct_expect_same_model(big, reference)
+    ),
+    class = "flexybayes_refusal_aggregation_residual_prior_not_composed"
+  )
 })

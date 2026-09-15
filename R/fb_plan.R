@@ -343,18 +343,30 @@ fb_plan <- function(
   # and the live fit -- which never reaches the aggregated emitter for a
   # gate-refused model -- went to brms instead. A plan that names a route
   # dispatch would not take is worse than no plan at all.
+  #
+  # A Gaussian model is not fitted on the aggregated representation, whose
+  # Gaussian route cannot yet carry the residual prior: "auto" plans the
+  # per-row route, and aggregate = TRUE plans no route, as dispatch refuses
+  # it (aggregation_residual_prior_not_composed).
   gate_accepted <- identical(gate_outcome, "accept")
+  aggregation_reachable <- isTRUE(agg$eligible) &&
+    gate_accepted &&
+    !preflight_refused &&
+    inla_installed &&
+    backend != "brms"
+  gaussian_contained <- identical(fb$family, "gaussian")
   if (
     (isTRUE(aggregate) || identical(aggregate, "auto")) &&
-      isTRUE(agg$eligible) &&
-      gate_accepted &&
-      !preflight_refused &&
-      inla_installed &&
-      backend != "brms"
+      aggregation_reachable &&
+      !gaussian_contained
   ) {
     chosen_backend <- "inla"
     chosen_path <- "aggregated_inla"
-    chosen_reason <- "gaussian_aggregated_eligible"
+    chosen_reason <- "count_aggregated_eligible"
+  } else if (isTRUE(aggregate) && aggregation_reachable && gaussian_contained) {
+    chosen_backend <- NA_character_
+    chosen_path <- "aggregation_residual_prior_not_composed"
+    chosen_reason <- "aggregation_residual_prior_not_composed"
   } else {
     chosen_backend <- routing$chosen_backend
     chosen_path <- routing$reason_code

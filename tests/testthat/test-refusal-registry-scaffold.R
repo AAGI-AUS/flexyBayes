@@ -479,9 +479,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (fixed_offset_invalid) (= 191), and a prediction whose new data lack a
   # column an offset reads (newdata_offset_missing) (= 192).
   # fixed_offset_unsupported stays for the routes that cannot carry one.
+  #
+  # Gaussian aggregation containment adds two: a Gaussian model sent to the
+  # aggregated representation, whose Gaussian route cannot carry the residual
+  # prior (aggregation_residual_prior_not_composed) (= 193), and the
+  # marginal likelihood of any aggregated fit, which is not the marginal
+  # likelihood of the rows (aggregated_evidence_unavailable) (= 194).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 192L)
+  expect_equal(length(entries), 194L)
+  expect_true("aggregation_residual_prior_not_composed" %in% entries)
+  expect_true("aggregated_evidence_unavailable" %in% entries)
   expect_true("fixed_offset_unsupported" %in% entries)
   expect_true("fixed_offset_invalid" %in% entries)
   expect_true("newdata_offset_missing" %in% entries)

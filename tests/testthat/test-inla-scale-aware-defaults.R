@@ -85,7 +85,7 @@
 
 # --- (a) an unstated random-effect SD ------------------------------------ #
 
-test_that("an unstated block SD takes the bounded default on every route", {
+test_that("an unstated block SD takes the bounded default on the per-row route", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -106,19 +106,14 @@ test_that("an unstated block SD takes the bounded default on every route", {
   ))
   reference <- .sad_component(stated, "sd_blk")
 
+  # The aggregated and streamed Gaussian routes now refuse by name (they
+  # cannot carry the residual prior; test-aggregation-gaussian-containment.R),
+  # so the per-row route is the one a Gaussian model takes.
   sigma_only <- fb_prior(sigma ~ uniform(lower = 0, upper = upper))
   routes <- list(
     per_row = function() {
       flexybayes(fixed = y ~ trt, random = ~blk, data = d, backend = "inla",
                  aggregate = FALSE, prior = sigma_only, verbose = FALSE)
-    },
-    aggregated = function() {
-      flexybayes(fixed = y ~ trt, random = ~blk, data = d, backend = "inla",
-                 aggregate = TRUE, prior = sigma_only, verbose = FALSE)
-    },
-    streamed = function() {
-      flexybayes_stream(fixed = y ~ trt, random = ~blk, source = d,
-                        backend = "inla", chunk_rows = nrow(d), verbose = FALSE)
     }
   )
 
@@ -343,31 +338,11 @@ test_that("a factor contrast keeps INLA's own fixed-effect default", {
 
 # --- the streamed route, the multi-way interaction, the blocks carrier ---- #
 
-test_that("the streamed default bound equals the per-row bound on the same data", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-
-  d <- .sad_blocks()
-  # Three chunks, so the scale comes from sums folded across chunks.
-  streamed <- .sad_quiet(flexybayes_stream(
-    fixed = y ~ trt, random = ~blk, source = d, backend = "inla",
-    chunk_rows = 150L, verbose = FALSE
-  ))
-  per_row <- .sad_quiet(flexybayes(
-    fixed = y ~ trt, random = ~blk, data = d, backend = "inla",
-    aggregate = FALSE, verbose = FALSE
-  ))
-  streamed_prior <- streamed$extras$fb_terms$priors
-  expect_s3_class(streamed_prior, "fb_prior")
-  expect_equal(attr(streamed_prior, "fb_prior_default_scale"), 5 * stats::sd(d$y),
-               tolerance = 1e-12)
-  expect_equal(attr(streamed_prior, "fb_prior_default_scale"),
-               attr(per_row$extras$fb_terms$priors, "fb_prior_default_scale"),
-               tolerance = 1e-12)
-  expect_identical(streamed$extras$fingerprint$prior_sources[["sd_blk"]],
-                   "shared_default")
-})
+# [removed] "the streamed default bound equals the per-row bound on the same
+# data" -- a streamed Gaussian fit now refuses by name, because the
+# aggregated Gaussian route cannot carry the residual prior, and the streamed
+# response-scale reading this compared went with it. The comparison returns
+# with that composition.
 
 .sad_three_way <- function() {
   set.seed(20260913L)

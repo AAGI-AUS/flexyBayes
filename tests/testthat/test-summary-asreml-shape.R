@@ -745,12 +745,18 @@ test_that("an unbuildable variance-component table warns and keeps the fit", {
   d
 }
 
+# A Gaussian model is not fitted on the aggregated representation (its route
+# cannot carry the residual prior), so the aggregated fixture is a Poisson
+# fit of the same design.
 .sas_agg_fit <- function() {
   if (is.null(.sas_cache$agg)) {
+    d <- .sas_agg_data()
+    d$y <- stats::rpois(nrow(d), lambda = 3)
     .sas_cache$agg <- suppressMessages(flexybayes(
       y ~ f,
       random = ~g,
-      data = .sas_agg_data(),
+      data = d,
+      family = "poisson",
       backend = "inla",
       aggregate = TRUE,
       verbose = FALSE,
@@ -799,7 +805,8 @@ test_that("$varcomp on an aggregated fit is the frozen table, not NULL", {
   expect_false(is.null(s$varcomp))
   expect_true(is.data.frame(s$varcomp))
   expect_identical(names(s$varcomp), .SAS_VARCOMP_COLS)
-  expect_true("sigma" %in% s$varcomp$component)
+  # A Poisson likelihood has no residual scale, so only the random-effect
+  # standard deviation has a row.
   expect_true("sd_g" %in% s$varcomp$component)
   # Every cell of the interval columns is a number, because the INLA
   # route has the marginals to compute one from.
@@ -859,7 +866,11 @@ test_that("the aggregated object keeps every other frozen promise", {
   # computational route, not a smaller dataset.
   expect_identical(s$n_design, 1000L)
   expect_identical(s$n_observed, 1000L)
-  expect_identical(s$n_design, stats::nobs(fit))
+  # Compared by value: the count route carries its row count as a double
+  # (exact past the integer limit), while the summary reports an integer.
+  # The accessor contract that should make the two types agree is tested
+  # separately.
+  expect_equal(s$n_design, stats::nobs(fit))
   # $random is the same six-column table per grouping factor.
   expect_true(is.list(s$random))
   expect_true("g" %in% names(s$random))
@@ -877,7 +888,7 @@ test_that("the aggregated summary names its representation and compression", {
   # The banner names the representation where a per-row fit names the
   # engine, and the compression line is on the header.
   expect_true(any(grepl(
-    "[flexyBayes / aggregated-gaussian]", printed, fixed = TRUE
+    "[flexyBayes / aggregated-poisson]", printed, fixed = TRUE
   )))
   expect_true(any(grepl("aggregation:.*->.*cells", printed)))
   expect_true(any(grepl("ratio.*:1", printed)))
@@ -930,7 +941,8 @@ test_that("the ASReml-hands accessors answer on an aggregated fit", {
   expect_true(is.data.frame(miss))
   expect_identical(nrow(miss), 0L)
 
-  expect_identical(stats::nobs(fit, type = "design"), 1000L)
+  # By value, for the reason given in the frozen-promise test above.
+  expect_equal(stats::nobs(fit, type = "design"), 1000)
   expect_identical(stats::nobs(fit, type = "observed"), 1000L)
 
   cls <- predict(fit, classify = "f")

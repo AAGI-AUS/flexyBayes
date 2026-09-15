@@ -51,11 +51,16 @@
 #' the cell-constant linear-predictor property and are likewise refused
 #' -- pass the data to [flexybayes()] per row for those models.
 #'
-#' Supported families are `"gaussian"` (identity link), `"binomial"`,
-#' and `"poisson"`. For binomial data supply `trials` to name the column
-#' of trial counts (a 0/1 response is treated as Bernoulli with one trial
-#' per row). For poisson data supply `exposure` to name an exposure
-#' column.
+#' Supported families for a fit are `"binomial"` and `"poisson"`. A
+#' `"gaussian"` fit refuses by name
+#' (`aggregation_residual_prior_not_composed`): the aggregated Gaussian
+#' route cannot yet carry the residual prior, so fit such data per row
+#' with [flexybayes()]. `fit = FALSE` still returns the Gaussian
+#' sufficient statistics. For binomial data supply `trials` to name the
+#' column of trial counts (a 0/1 response is treated as Bernoulli with one
+#' trial per row). For poisson data supply `exposure` to name an exposure
+#' column. A fit on the aggregated representation reports no marginal
+#' likelihood (`aggregated_evidence_unavailable`).
 #'
 #' An `offset()` in `fixed` is carried exactly on two of the three
 #' families. On `"gaussian"` it is subtracted from the response before the
@@ -119,12 +124,12 @@
 #'   df <- data.frame(
 #'     env = factor(sample(letters[1:6], n, replace = TRUE)),
 #'     geno = factor(sample(1:50, n, replace = TRUE)),
-#'     y = rnorm(n)
+#'     count = rpois(n, 3)
 #'   )
 #'   path <- tempfile(fileext = ".fst")
 #'   fst::write_fst(df, path)
-#'   fit <- flexybayes_stream(y ~ env, random = ~ geno, source = path,
-#'                            backend = "inla")
+#'   fit <- flexybayes_stream(count ~ env, random = ~ geno, source = path,
+#'                            family = "poisson", backend = "inla")
 #'   summary(fit)
 #' }
 #'
@@ -154,6 +159,25 @@ flexybayes_stream <- function(
   .check_stream_family(family)
   .check_stream_chunk_rows(chunk_rows)
 
+  # A Gaussian model is not fitted on the aggregated representation: that
+  # route cannot yet carry the residual prior, so the fit would not run
+  # under the prior prior_summary() reports. Refused before any chunk is
+  # read. The sufficient statistics alone (fit = FALSE) involve no prior.
+  if (isTRUE(fit) && identical(family, "gaussian")) {
+    stop(.fb_refusal_condition(
+      reason_code = "aggregation_residual_prior_not_composed",
+      message = paste0(
+        "flexybayes_stream() refused for family = \"gaussian\": the ",
+        "aggregated Gaussian route cannot yet carry the residual prior, so ",
+        "the fit would not run under the prior prior_summary() reports. Fit ",
+        "the data per row with flexybayes(), or call flexybayes_stream(..., ",
+        "fit = FALSE) for the sufficient statistics. The binomial and ",
+        "Poisson families still stream."
+      ),
+      family_class = "flexybayes_aggregate_refusal"
+    ))
+  }
+
   # IR is built from a head sample so term classification and factor
   # contrasts match the in-memory path exactly. An `.fst` source carries
   # the full factor-level dictionary in its metadata, so any row range
@@ -181,21 +205,10 @@ flexybayes_stream <- function(
     return(agg)
   }
 
-  # The IR was built from a head sample, so the response scale is read from
-  # the full sufficient statistics rather than from the head.
-  resp_sd <- NULL
-  if (identical(family, "gaussian")) {
-    ss <- agg$sufficient_stats
-    n <- sum(ss$n_k)
-    resp_var <- (sum(ss$S2_k) - sum(ss$S1_k)^2 / n) / (n - 1)
-    resp_sd <- if (n > 1 && resp_var >= 0) sqrt(resp_var) else NA_real_
-  }
-
   # No prior stated: the package's bounded default, as flexybayes() builds it
-  # for an in-memory fit, with the response scale read from the same full
-  # statistics. Left to INLA's own hyperprior on the standardised response, 20
-  # identical streamed fits of a four-block design gave a block SD above 1e6
-  # on 10 and an engine failure on 4.
+  # for an in-memory fit. Left to INLA's own hyperprior, 20 identical streamed
+  # fits of a four-block design gave a block SD above 1e6 on 10 and an engine
+  # failure on 4.
   if (is.null(prior)) {
     targets <- .fb_default_prior_targets(fb)
     fb$priors <- .default_uniform_prior(
@@ -204,7 +217,7 @@ flexybayes_stream <- function(
       family = family,
       random_groups = targets$shared,
       vm_ped_groups = targets$vm_ped,
-      resp_sd = resp_sd
+      resp_sd = NULL
     )
   }
 
@@ -1069,35 +1082,21 @@ flexybayes_stream <- function(
     )
   }
 
-  fit <- if (identical(family, "gaussian")) {
-    emit_gaussian_aggregated(
-      fb = fb,
-      fb_aggregated = agg,
-      data = head,
-      backend = backend,
-      verbose = verbose,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      family = family,
-      data_name = data_name,
-      ...
-    )
-  } else {
-    emit_count_aggregated(
-      fb = fb,
-      fb_aggregated = agg,
-      data = head,
-      backend = backend,
-      verbose = verbose,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      family = family,
-      data_name = data_name,
-      ...
-    )
-  }
+  # Count families only: flexybayes_stream() refuses a Gaussian fit before
+  # any chunk is read.
+  fit <- emit_count_aggregated(
+    fb = fb,
+    fb_aggregated = agg,
+    data = head,
+    backend = backend,
+    verbose = verbose,
+    the_call = the_call,
+    fixed = fixed,
+    random = random,
+    family = family,
+    data_name = data_name,
+    ...
+  )
 
   if (!is.null(fit$extras) && !is.null(fit$extras$aggregation_meta)) {
     fit$extras$aggregation_meta$streamed <- TRUE
@@ -1123,11 +1122,7 @@ flexybayes_stream <- function(
     fit$exactness <- "aggregated_exact"
     fit$extras$backend_decision <- .build_routing_decision(
       backend = backend,
-      path = if (identical(family, "gaussian")) {
-        "aggregated_gaussian"
-      } else {
-        "aggregated_count"
-      },
+      path = "aggregated_count",
       gate_checks = NULL,
       reason = sprintf(
         "streamed aggregation (N = %s, K = %s, ratio = %.2f:1)",

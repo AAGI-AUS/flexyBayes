@@ -136,6 +136,10 @@
   # brms.
   .populate_refusal_registry_inla_containment()
 
+  # 2026-09-15: Gaussian aggregation containment -- Gaussian models are
+  # fitted per row, and aggregated fits report no marginal likelihood.
+  .populate_refusal_registry_aggregation_containment()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

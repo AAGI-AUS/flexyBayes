@@ -25,7 +25,6 @@
   eta <- env_eff[env] + geno_eff[geno]
   y <- switch(
     family,
-    gaussian = eta + stats::rnorm(n, 0, 1.5),
     poisson = stats::rpois(n, exp(eta - 0.5)),
     binomial = stats::rbinom(n, 1, stats::plogis(eta - 1))
   )
@@ -33,14 +32,7 @@
 }
 
 .eq_prior <- function(family) {
-  if (identical(family, "gaussian")) {
-    fb_prior(
-      sigma ~ uniform(lower = 0, upper = 10),
-      sd(group = "geno") ~ uniform(lower = 0, upper = 10)
-    )
-  } else {
-    fb_prior(sd(group = "geno") ~ uniform(lower = 0, upper = 10))
-  }
+  fb_prior(sd(group = "geno") ~ uniform(lower = 0, upper = 10))
 }
 
 # INLA's Laplace engine is reproducible only single-threaded: under the
@@ -57,7 +49,10 @@ if (requireNamespace("INLA", quietly = TRUE)) {
   )
 }
 
-for (fam in c("gaussian", "binomial", "poisson")) {
+# The count families only. A streamed Gaussian fit refuses by name, because
+# the aggregated Gaussian route cannot carry the residual prior; see
+# test-aggregation-gaussian-containment.R.
+for (fam in c("binomial", "poisson")) {
   test_that(paste0("INLA: per-row == streamed-aggregated [", fam, "]"), {
   # Two live INLA fits at a size where both the per-row and the
   # aggregated paths are feasible: out of the devtools::check() path,

@@ -84,13 +84,16 @@ test_that("aggregate = TRUE refuses rather than compressing a missing response",
 
 test_that("the aggregated path is untouched when nothing is missing", {
   # The guard must not close a route that was working: a complete response
-  # still aggregates, and the fit still reports the aggregated path.
+  # still aggregates, and the fit still reports the aggregated path. A
+  # Gaussian model is fitted per row whatever its response, so the route is
+  # checked on a complete count response.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .rcbd_with_hole(n_missing = 0L)
+  d$y <- stats::rpois(nrow(d), 3)
   fit <- suppressMessages(flexybayes(
-    fixed = y ~ 1, random = ~ blk, residual = ~ units,
-    data = d, backend = "inla", verbose = FALSE
+    fixed = y ~ 1, random = ~ blk,
+    data = d, family = "poisson", backend = "inla", verbose = FALSE
   ))
   path <- fit$extras$backend_decision$path %||% ""
   expect_match(paste(path, collapse = " "), "aggregat")

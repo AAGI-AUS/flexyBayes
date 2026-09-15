@@ -92,7 +92,9 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=192
+      .refusal_registry: locked=TRUE n_keys=194
+        aggregated_evidence_unavailable
+        aggregation_residual_prior_not_composed
         aggregation_response_incomplete
         aggregation_route_unavailable
         approximate_route_not_yet_registered

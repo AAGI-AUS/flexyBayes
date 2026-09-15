@@ -272,16 +272,19 @@ test_that("tidy(effects = 'random') returns the random-effect rows of an aggrega
     g = factor(rep(seq_len(10L), each = 50L)),
     f1 = factor(rep(c("a", "b"), length.out = 500L))
   )
-  dat$y <- stats::rnorm(500L)
+  # A Gaussian model is fitted per row, so the aggregated fit is a Poisson
+  # one, and the premise is asserted rather than skipped on.
+  dat$y <- stats::rpois(500L, 3)
   fit <- suppressMessages(fb(
     y ~ f1 + (1 | g),
     data = dat,
+    family = "poisson",
     backend = "inla",
-    aggregate = "auto",
+    aggregate = TRUE,
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  skip_if_not(inherits(fit, "flexybayes_aggregated"))
+  expect_s3_class(fit, "flexybayes_aggregated")
 
   random <- tidy(fit, effects = "random")
   expect_true(all(.canonical_tidy_cols %in% names(random)))

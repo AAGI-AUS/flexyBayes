@@ -40,6 +40,9 @@ suppressPackageStartupMessages(library(testthat))
   )
   b_g <- stats::rnorm(5L, sd = 0.8)[as.integer(d$g)]
   d$y <- 1 + 0.6 * (d$f == "b") + 0.4 * d$x + b_g + stats::rnorm(n, sd = 0.5)
+  # A count response for the aggregated fit, drawn after `y` so the Gaussian
+  # fits see the same data. A Gaussian model is fitted per row.
+  d$count <- stats::rpois(n, 3)
   d
 }
 
@@ -116,9 +119,10 @@ suppressPackageStartupMessages(library(testthat))
 .uec_agg_fit <- function() {
   if (is.null(.uec_cache$agg)) {
     .uec_cache$agg <- suppressMessages(fb(
-      y ~ f,
+      count ~ f,
       random = ~g,
       data = .uec_data(),
+      family = "poisson",
       verbose = FALSE,
       mcmc_verbose = FALSE
     ))

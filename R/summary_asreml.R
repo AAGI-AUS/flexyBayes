@@ -1472,7 +1472,16 @@
       ))
     )
     kld <- kld[is.finite(kld)]
-    mlik <- if (is.null(object$inla$mlik)) {
+    # On the aggregated representation the engine's value is not the
+    # marginal likelihood of the rows: it omits data-only constants and,
+    # under standardisation, scales by the number of cells. It is not
+    # reported, and the reason travels with the missing value.
+    evidence_unavailable <- if (inherits(object, "flexybayes_aggregated")) {
+      "aggregated_evidence_unavailable"
+    } else {
+      NA_character_
+    }
+    mlik <- if (!is.na(evidence_unavailable) || is.null(object$inla$mlik)) {
       NA_real_
     } else {
       object$inla$mlik[1L, 1L]
@@ -1502,6 +1511,7 @@
       ok = .fb_convergence_verdict(object)$ok,
       mode_status = object$inla$mode$mode.status %||% NA_real_,
       mlik = mlik,
+      evidence_unavailable = evidence_unavailable,
       kld_max = if (length(kld) == 0L) NA_real_ else max(kld),
       numerical_confirm = confirm,
       numerical_confirm_reasons = object$num_check$reasons %||% character(0),
@@ -1797,12 +1807,22 @@
       " (0 = converged)\n",
       sep = ""
     )
-    cat(
-      "  Marginal log-likelihood: ",
-      format(round(cv$mlik, 3)),
-      "\n",
-      sep = ""
-    )
+    if (is.na(cv$evidence_unavailable %||% NA_character_)) {
+      cat(
+        "  Marginal log-likelihood: ",
+        format(round(cv$mlik, 3)),
+        "\n",
+        sep = ""
+      )
+    } else {
+      cat(
+        "  Marginal log-likelihood: not reported (",
+        cv$evidence_unavailable,
+        "). On the aggregated\n  representation the engine's value is not ",
+        "the marginal likelihood of the rows.\n",
+        sep = ""
+      )
+    }
     if (!is.na(cv$kld_max)) {
       cat(
         "  Largest symmetric KLD between the Gaussian approximation and ",

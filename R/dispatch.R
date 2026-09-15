@@ -1793,89 +1793,79 @@
     return(NULL)
   }
 
-  # Family branch. Gaussian uses the dedicated sufficient-statistics
-  # aggregator + gaussian emit; the binomial / poisson families use the
-  # family-generic streaming aggregator over the in-memory data (one
-  # chunk) + the count emit. Both produce the same <fb_aggregated> shape
-  # downstream methods consume.
+  # A Gaussian model is not fitted on the aggregated representation. The
+  # aggregated Gaussian route composes the within-cell sum of squares with
+  # a fixed gamma prior on the residual precision, so a stated or default
+  # residual prior would not be the prior fitted while prior_summary()
+  # reported it. Until that composition carries the residual prior,
+  # "auto" takes the per-row route and aggregate = TRUE refuses. Every
+  # refusal above still fires first, because each names a more specific
+  # reason. The count families carry no residual prior and aggregate below.
   if (identical(fb$family, "gaussian")) {
-    fb_aggregated <- .fb_aggregate_gaussian(fb, fb_dataset_meta)
-    fit <- emit_gaussian_aggregated(
-      fb = fb,
-      fb_aggregated = fb_aggregated,
-      data = data,
-      backend = eff_backend,
-      known_matrices = known_matrices,
-      weights = weights,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      seed = seed,
-      control = control,
-      prior_fixed_sd = prior_fixed_sd,
-      prior_vc_sd = prior_vc_sd,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose,
-      return_code = FALSE,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      residual = residual,
-      family = family,
-      link = link,
-      data_name = data_name,
-      na_action = na_action,
-      requested_backend = backend,
-      requested_aggregate = aggregate
-    )
-  } else {
-    # Exact aggregation for the count families requires unit-trial
-    # binomial (a 0/1 numeric response); a non-Bernoulli binomial needs
-    # per-row trial counts the cell sums cannot recover. This used to be
-    # checked here with an untyped stop() -- now dead code, because
-    # .refuse_non_binary_binomial_response() (D14 / WP-D) already refused
-    # unconditionally at the top of .dispatch_backend(), the only caller
-    # of .maybe_aggregate_gaussian(), before this branch is ever reached.
-    src <- .fb_stream_source(data, chunk_rows = max(nrow(data), 1L))
-    fb_aggregated <- .fb_stream_aggregate(
-      fb,
-      src,
-      trials = NULL,
-      exposure = NULL,
-      verbose = FALSE
-    )
-    fit <- emit_count_aggregated(
-      fb = fb,
-      fb_aggregated = fb_aggregated,
-      data = data,
-      backend = eff_backend,
-      known_matrices = known_matrices,
-      weights = weights,
-      n_samples = n_samples,
-      warmup = warmup,
-      chains = chains,
-      seed = seed,
-      control = control,
-      prior_fixed_sd = prior_fixed_sd,
-      prior_vc_sd = prior_vc_sd,
-      verbose = verbose,
-      mcmc_verbose = mcmc_verbose,
-      the_call = the_call,
-      fixed = fixed,
-      random = random,
-      residual = residual,
-      family = family,
-      link = link,
-      data_name = data_name,
-      na_action = na_action,
-      requested_backend = backend,
-      requested_aggregate = aggregate
-    )
+    if (isTRUE(aggregate)) {
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_residual_prior_not_composed",
+        message = paste0(
+          "`aggregate = TRUE` refused on a Gaussian model: the aggregated ",
+          "Gaussian route cannot yet carry the residual prior, so the fit ",
+          "would not run under the prior prior_summary() reports. Pass ",
+          "aggregate = FALSE, or leave it at \"auto\", which fits a Gaussian ",
+          "model per row. Binomial and Poisson models still aggregate."
+        ),
+        family_class = "flexybayes_aggregate_refusal"
+      ))
+    }
+    return(NULL)
   }
+
+  # The binomial and Poisson families use the family-generic streaming
+  # aggregator over the in-memory data (one chunk) and the count emit.
+  # Exact aggregation for the count families requires unit-trial
+  # binomial (a 0/1 numeric response); a non-Bernoulli binomial needs
+  # per-row trial counts the cell sums cannot recover. This used to be
+  # checked here with an untyped stop() -- now dead code, because
+  # .refuse_non_binary_binomial_response() (D14 / WP-D) already refused
+  # unconditionally at the top of .dispatch_backend(), the only caller
+  # of .maybe_aggregate_gaussian(), before this branch is ever reached.
+  src <- .fb_stream_source(data, chunk_rows = max(nrow(data), 1L))
+  fb_aggregated <- .fb_stream_aggregate(
+    fb,
+    src,
+    trials = NULL,
+    exposure = NULL,
+    verbose = FALSE
+  )
+  fit <- emit_count_aggregated(
+    fb = fb,
+    fb_aggregated = fb_aggregated,
+    data = data,
+    backend = eff_backend,
+    known_matrices = known_matrices,
+    weights = weights,
+    n_samples = n_samples,
+    warmup = warmup,
+    chains = chains,
+    seed = seed,
+    control = control,
+    prior_fixed_sd = prior_fixed_sd,
+    prior_vc_sd = prior_vc_sd,
+    verbose = verbose,
+    mcmc_verbose = mcmc_verbose,
+    the_call = the_call,
+    fixed = fixed,
+    random = random,
+    residual = residual,
+    family = family,
+    link = link,
+    data_name = data_name,
+    na_action = na_action,
+    requested_backend = backend,
+    requested_aggregate = aggregate
+  )
 
   fit$exactness <- "aggregated_exact"
   if (!is.null(fit$extras)) {
-    # The aggregated-gaussian path's chosen backend was already
+    # The aggregated path's chosen backend was already
     # resolved by .agg_resolve_backend() above; rejected_routes is
     # empty (the aggregation gate itself bypasses the routing policy
     # table -- this is its own dispatch path). preflight is NULL here
@@ -1885,11 +1875,7 @@
     # it as legitimately absent.
     fit$extras$backend_decision <- .build_routing_decision(
       backend = eff_backend,
-      path = if (identical(fb$family, "gaussian")) {
-        "aggregated_gaussian"
-      } else {
-        "aggregated_count"
-      },
+      path = "aggregated_count",
       gate_checks = NULL,
       # `K` is said twice on one fit and used to mean two things. This is
       # the PLANNER's cell count -- the product of the declared factor
