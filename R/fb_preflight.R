@@ -838,33 +838,35 @@
 
   if (identical(kind, "fixed")) {
     if (
-      ttype %in% c("smooth", "s", "t2", "smooth_mgcv") && !is.null(term$var)
+      ttype %in% c("smooth", "s", "t2", "smooth_mgcv") &&
+        !is.null(term[["var"]])
     ) {
-      return(paste0("s(", term$var, ")"))
+      return(paste0("s(", term[["var"]], ")"))
     }
-    if (identical(ttype, "spline") && !is.null(term$var)) {
-      return(paste0("spl(", term$var, ")"))
+    if (identical(ttype, "spline") && !is.null(term[["var"]])) {
+      return(paste0("spl(", term[["var"]], ")"))
     }
-    if (identical(ttype, "factor_interaction") && !is.null(term$vars)) {
-      return(paste(term$vars, collapse = ":"))
+    # A multi-way interaction carries its columns in `vars` and has no `var`.
+    if (!is.null(term[["vars"]])) {
+      return(paste(term[["vars"]], collapse = ":"))
     }
-    if (!is.null(term$var)) {
-      return(as.character(term$var))
+    if (!is.null(term[["var"]])) {
+      return(as.character(term[["var"]]))
     }
     return("<fixed:unnamed>")
   }
   # random
-  # `term$var` is a length > 1 character vector for interaction random
-  # terms (combo A:B:C -> c("A", "B", "C")); collapse it to a single
-  # "A:B:C" string so the label stays scalar. A vector label otherwise
-  # propagated into `per_term[[entry$label]] <- entry`, raising the
-  # base-R "no such index at level 1" error on any interaction term.
-  group <- if (!is.null(term$var)) {
-    paste(as.character(term$var), collapse = ":")
+  # A multi-way interaction random term (combo A:B:C) carries its columns in
+  # `vars` and has no `var`; they collapse to a single "A:B:C" string so the
+  # label stays scalar. A vector label otherwise propagated into
+  # `per_term[[entry$label]] <- entry`, raising the base-R "no such index at
+  # level 1" error on any interaction term.
+  group <- if (!is.null(term[["var"]])) {
+    paste(as.character(term[["var"]]), collapse = ":")
+  } else if (!is.null(term[["vars"]])) {
+    paste(as.character(term[["vars"]]), collapse = ":")
   } else if (identical(ttype, "nested")) {
     paste(c(term$outer, term$inner), collapse = ":")
-  } else if (identical(ttype, "combo") && !is.null(term$vars)) {
-    paste(as.character(term$vars), collapse = ":")
   } else {
     "?"
   }
@@ -954,8 +956,11 @@
     v <- term[[slot]]
     if (!is.null(v) && !is.na(v)) return(as.integer(v))
   }
-  if (!is.null(term$var)) {
-    k <- .fb_dataset_levels(fb_dataset, as.character(term$var))
+  # A multi-way interaction term carries its columns in `vars` and has no
+  # `var`; its level count is the number of observed combinations.
+  cols <- term[["var"]] %||% term[["vars"]]
+  if (!is.null(cols)) {
+    k <- .fb_dataset_levels(fb_dataset, as.character(cols))
     if (!is.na(k)) return(as.integer(k))
   }
   NA_integer_
