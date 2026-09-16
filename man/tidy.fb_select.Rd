@@ -15,7 +15,11 @@
 A \code{data.frame} with one row per design column: the column, the
 formula term it came from, its role, its block and family, whether the
 decision retained it, and, where a reference posterior was fitted, its
-posterior mean and standard deviation on the scientific scale.
+posterior mean and standard deviation on the scientific scale. Beside
+them, the penalised path's \code{folds_available}, \code{folds_entered},
+\code{path_entry_s}, \code{path_exit_s} and \code{path_reentries}, all \code{NA} for a
+protected column and on a run with no penalised path, with the path
+itself in the attributes \code{support_path} and \code{support_path_by_fold}.
 }
 \description{
 Tidy a selection into one row per candidate coefficient
@@ -29,4 +33,19 @@ factor and interaction column as dropped however the decision went, so
 the term recorded on the column map is what the match is made against. A
 posterior threshold is the one decision that chooses coefficient by
 coefficient, and its retention is matched on the column.
+
+Where a penalised optimiser ran -- as the workflow, or as the \code{glmnet} arm
+of \code{benchmark = TRUE} -- each row also carries what that path did with the
+column over its lambda grid, on the coordinate the grid was built on:
+\code{s = lambda / lambda_max}, with each fold's \code{lambda_max} read on its own
+training rows. \code{folds_available} counts the folds whose training rows
+identified the column at all, which is a different statement from the
+folds that never held it: a column a fold could not estimate was never on
+that fold's path. \code{path_entry_s} is the largest \code{s} at which any fold
+holds the column and \code{path_exit_s} the smallest \code{s} at which a fold that
+held it has let it go, so a column retained across the whole path has an
+entry and no exit. \code{path_reentries} is the largest number of returns in
+any one fold. Those summaries are taken from the attribute
+\code{support_path_by_fold}, one row per fold and column, and the membership at
+every point of every fold is the attribute \code{support_path}.
 }

@@ -3575,6 +3575,33 @@ print.fb_select <- function(x, digits = 4L, ...) {
 }
 
 
+#' The penalised optimiser's support history, as the accessors read it
+#'
+#' The `glmnet` arm records what its path did with every declared candidate
+#' column at every point of the tuning grid. Both tables are empty where no
+#' such arm ran, and where the family has no support to report.
+#'
+#' @param x An `fb_select` object.
+#' @return `list(points, by_fold)`: the membership at each point of each
+#'   fold, and one row per fold and column carrying that column's entry, exit
+#'   and re-entries.
+#' @noRd
+#' @keywords internal
+.fb_select_support_path <- function(x) {
+  support <- x$benchmark$glmnet$support
+  if (is.null(support$history) || is.null(support$history_by_fold)) {
+    return(.fb_sel_glmnet_support_history(
+      supports = NULL,
+      penalised_by_fold = list(),
+      declared_penalised = character(0),
+      alpha = NA_real_,
+      selects = FALSE
+    ))
+  }
+  list(points = support$history, by_fold = support$history_by_fold)
+}
+
+
 #' Tidy a selection into one row per candidate coefficient
 #'
 #' @details
@@ -3587,12 +3614,31 @@ print.fb_select <- function(x, digits = 4L, ...) {
 #' posterior threshold is the one decision that chooses coefficient by
 #' coefficient, and its retention is matched on the column.
 #'
+#' Where a penalised optimiser ran -- as the workflow, or as the `glmnet` arm
+#' of `benchmark = TRUE` -- each row also carries what that path did with the
+#' column over its lambda grid, on the coordinate the grid was built on:
+#' `s = lambda / lambda_max`, with each fold's `lambda_max` read on its own
+#' training rows. `folds_available` counts the folds whose training rows
+#' identified the column at all, which is a different statement from the
+#' folds that never held it: a column a fold could not estimate was never on
+#' that fold's path. `path_entry_s` is the largest `s` at which any fold
+#' holds the column and `path_exit_s` the smallest `s` at which a fold that
+#' held it has let it go, so a column retained across the whole path has an
+#' entry and no exit. `path_reentries` is the largest number of returns in
+#' any one fold. Those summaries are taken from the attribute
+#' `support_path_by_fold`, one row per fold and column, and the membership at
+#' every point of every fold is the attribute `support_path`.
+#'
 #' @param x An `fb_select` object.
 #' @param ... Ignored.
 #' @returns A `data.frame` with one row per design column: the column, the
 #'   formula term it came from, its role, its block and family, whether the
 #'   decision retained it, and, where a reference posterior was fitted, its
-#'   posterior mean and standard deviation on the scientific scale.
+#'   posterior mean and standard deviation on the scientific scale. Beside
+#'   them, the penalised path's `folds_available`, `folds_entered`,
+#'   `path_entry_s`, `path_exit_s` and `path_reentries`, all `NA` for a
+#'   protected column and on a run with no penalised path, with the path
+#'   itself in the attributes `support_path` and `support_path_by_fold`.
 #' @export
 tidy.fb_select <- function(x, ...) {
   map <- x$column_map
@@ -3652,12 +3698,64 @@ tidy.fb_select <- function(x, ...) {
   } else {
     "reference_posterior"
   }
+
+  # The penalised path, summarised per column over the folds. A protected
+  # column is on no penalised path and a run with no optimiser has none at
+  # all; both read NA rather than zero, which would say the path was walked
+  # and the column never entered.
+  path <- .fb_select_support_path(x)
+  by_fold <- path$by_fold
+  out$folds_available <- rep(NA_integer_, n)
+  out$folds_entered <- rep(NA_integer_, n)
+  out$path_entry_s <- rep(NA_real_, n)
+  out$path_exit_s <- rep(NA_real_, n)
+  out$path_reentries <- rep(NA_integer_, n)
+  for (i in seq_len(n)) {
+    rows <- by_fold[by_fold$column == out$term[[i]], , drop = FALSE]
+    if (nrow(rows) == 0L) {
+      next
+    }
+    entered <- rows[rows$n_in_support > 0L, , drop = FALSE]
+    out$folds_available[[i]] <- sum(rows$available)
+    out$folds_entered[[i]] <- nrow(entered)
+    if (nrow(entered) > 0L) {
+      out$path_entry_s[[i]] <- max(entered$first_entry_s)
+      if (any(!is.na(entered$last_exit_s))) {
+        out$path_exit_s[[i]] <- min(entered$last_exit_s, na.rm = TRUE)
+      }
+      out$path_reentries[[i]] <- max(entered$n_reentries)
+    }
+  }
+  attr(out, "support_path") <- path$points
+  attr(out, "support_path_by_fold") <- by_fold
   out
 }
 
 
 #' @export
 glance.fb_select <- function(x, ...) {
+  arm <- x$benchmark$glmnet
+  path <- .fb_select_support_path(x)
+  by_lambda <- if (is.null(arm$support$by_lambda)) {
+    NULL
+  } else {
+    as.data.frame(arm$support$by_lambda)
+  }
+  # The grid the support history walks, which is the benchmark arm: the fixed
+  # arm is one canonical point rather than a path.
+  indices <- if (is.null(by_lambda)) {
+    integer(0)
+  } else {
+    by_lambda$lambda_index[by_lambda$arm == "benchmark"]
+  }
+  entered <- if (nrow(path$by_fold) == 0L) {
+    NA_integer_
+  } else {
+    sum(tapply(
+      path$by_fold$n_in_support, path$by_fold$column,
+      function(v) any(v > 0L)
+    ))
+  }
   data.frame(
     workflow = x$workflow,
     provider = x$provider,
@@ -3676,6 +3774,17 @@ glance.fb_select <- function(x, ...) {
     covariance = x$certificate$covariance$estimand %||% NA_character_,
     builder = x$certificate$covariance$builder %||% NA_character_,
     fallback_fired = isTRUE(x$fallback_fired),
+    # The penalised optimiser's tuning report and the size of the path its
+    # support history walks. A run with no such arm carries them as absent.
+    tuning_scale = arm$selection$tuning_scale %||% NA_character_,
+    penalty_alpha = arm$support$alpha %||% NA_real_,
+    selected_s = arm$selection$selected_s %||% NA_real_,
+    path_points = if (length(indices) == 0L) {
+      NA_integer_
+    } else {
+      length(unique(indices))
+    },
+    path_columns_entered = entered,
     stringsAsFactors = FALSE
   )
 }

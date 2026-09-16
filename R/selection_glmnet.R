@@ -442,6 +442,120 @@
 }
 
 
+# .fb_sel_glmnet_support_history() --- the support over the tuning grid, per
+# fold and per declared candidate column.
+#
+# The grid is the benchmark arm: one `s` on every fold, and on each fold the
+# lambda that `s` names there (`.fb_sel_glmnet_grid()`). The fixed arm is one
+# canonical point whose `s` differs between folds, so it is not a path and
+# does not enter here.
+#
+# Two statements are kept apart. `available` is whether the fold's training
+# rows identified the column at all (R/selection_candidate_space.R); a column
+# the fold dropped was never on its path, and reporting it as one the fold
+# declined to hold would read a rank deficiency as a selection. `in_support`
+# is whether the fold's solution at that point gave it a non-zero coefficient.
+#
+# Entry and exit are read in the path's own order, from the null anchor
+# (`s = 1`) downwards: `first_entry_s` is the first point at which the column
+# is held, `last_exit_s` the last point at which it is out again having been
+# held, and `n_reentries` counts the entries after the first. A family with no
+# support -- ridge reaches zero only in the limit -- has no history, and the
+# empty pair of tables says so rather than reporting every coefficient as
+# selected.
+.fb_sel_glmnet_support_history <- function(supports,
+                                           penalised_by_fold,
+                                           declared_penalised,
+                                           alpha,
+                                           selects) {
+  empty <- list(
+    points = data.frame(
+      alpha = numeric(0), fold = character(0), lambda_index = integer(0),
+      s = numeric(0), lambda_canonical = numeric(0), column = character(0),
+      available = logical(0), in_support = logical(0),
+      stringsAsFactors = FALSE
+    ),
+    by_fold = data.frame(
+      alpha = numeric(0), fold = character(0), column = character(0),
+      available = logical(0), n_points = integer(0),
+      n_in_support = integer(0), first_entry_s = numeric(0),
+      last_exit_s = numeric(0), n_reentries = integer(0),
+      stringsAsFactors = FALSE
+    )
+  )
+  if (!isTRUE(selects) || length(declared_penalised) == 0L) {
+    return(empty)
+  }
+  tab <- as.data.frame(supports)
+  tab <- tab[tab$arm == "benchmark", , drop = FALSE]
+  if (nrow(tab) == 0L) {
+    return(empty)
+  }
+
+  points <- list()
+  by_fold <- list()
+  for (label in names(penalised_by_fold)) {
+    rows <- tab[tab$fold == label, , drop = FALSE]
+    rows <- rows[order(rows$lambda_index), , drop = FALSE]
+    n_points <- nrow(rows)
+    if (n_points == 0L) {
+      next
+    }
+    held <- lapply(
+      strsplit(rows$terms, ", ", fixed = TRUE),
+      function(support) support[nzchar(support)]
+    )
+    kept <- penalised_by_fold[[label]]
+    for (column in declared_penalised) {
+      in_support <- vapply(held, function(v) column %in% v, logical(1L))
+      available <- column %in% kept
+      points[[length(points) + 1L]] <- data.frame(
+        alpha = alpha,
+        fold = label,
+        lambda_index = as.integer(rows$lambda_index),
+        s = as.numeric(rows$s),
+        lambda_canonical = as.numeric(rows$lambda_canonical),
+        column = column,
+        available = available,
+        in_support = in_support,
+        stringsAsFactors = FALSE
+      )
+      # The transitions of one membership sequence. The point before the
+      # first is out by construction, so an entry at the first point counts
+      # as an entry and not as a state the path was already in.
+      previous <- c(FALSE, in_support[-n_points])
+      entries <- which(in_support & !previous)
+      exits <- which(!in_support & previous)
+      by_fold[[length(by_fold) + 1L]] <- data.frame(
+        alpha = alpha,
+        fold = label,
+        column = column,
+        available = available,
+        n_points = n_points,
+        n_in_support = sum(in_support),
+        first_entry_s = if (length(entries) > 0L) {
+          rows$s[[entries[[1L]]]]
+        } else {
+          NA_real_
+        },
+        last_exit_s = if (length(exits) > 0L) {
+          rows$s[[exits[[length(exits)]]]]
+        } else {
+          NA_real_
+        },
+        n_reentries = max(0L, length(entries) - 1L),
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+
+  list(
+    points = do.call(rbind, points),
+    by_fold = do.call(rbind, by_fold)
+  )
+}
+
+
 # .fb_sel_glmnet_decision() --- the decision settings, with the contract's
 # defaults filled in.
 .fb_sel_glmnet_decision <- function(decision = NULL) {
@@ -1139,6 +1253,17 @@
     sigma_fixed = TRUE
   )
 
+  # The support over the tuning grid: per fold and per declared column, the
+  # membership at each point, and where the column enters, leaves and returns
+  # on the coordinate the grid was built on.
+  history <- .fb_sel_glmnet_support_history(
+    computed$supports,
+    penalised_by_fold = computed$penalised_by_fold,
+    declared_penalised = computed$declared_penalised,
+    alpha = penalty$alpha_composite,
+    selects = semantics$selects
+  )
+
   structure(
     list(
       workflow = "penalized_optimizer",
@@ -1154,7 +1279,13 @@
         selection_resolution = semantics$selection_resolution,
         selects = semantics$selects,
         by_lambda = computed$supports,
-        selected = selection$selected_terms
+        selected = selection$selected_terms,
+        # The mixing parameter the whole path was walked at. A support
+        # history is read per alpha: alpha is a property of the path, not of
+        # a point on it.
+        alpha = penalty$alpha_composite,
+        history = history$points,
+        history_by_fold = history$by_fold
       ),
       canonical_objective = computed$canonical_objective,
       provider_objective = computed$provider_objective,
