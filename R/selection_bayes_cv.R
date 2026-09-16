@@ -1332,10 +1332,15 @@
   substrates <- list()
   derived_terms <- list()
   fit_seconds <- numeric(0)
+  fit_seeds <- integer(0)
   base_seed <- as.integer(seed %||% 0L)
-  t_start <- proc.time()
 
-  for (f in seq_along(folds)) {
+  # One fold's whole share of the work, as a function of its position: the
+  # engine inputs, each model's refit, its predictive draws and its scores.
+  # It reads the fold's own rows and the constants fixed before the loop, and
+  # it writes nothing outside itself, which is what lets a worker run it
+  # (R/selection_parallel.R).
+  fold_job <- function(f) {
     split <- folds[[f]]
     inputs <- .fb_sel_bayes_fold_inputs(
       data,
@@ -1360,8 +1365,11 @@
     # The fold's candidate space: every model on it leaves out the terms its
     # training rows do not identify, and the record says which.
     inputs$candidate_space <- space$folds[[split$label]]
-    substrates[[split$label]] <- inputs
     fold_fits <- list()
+    fold_scored <- list()
+    fold_terms <- list()
+    fold_seconds <- numeric(0)
+    fold_seeds <- integer(0)
 
     for (s in seq_along(sets)) {
       name <- names(sets)[[s]]
@@ -1391,7 +1399,8 @@
       } else {
         refit_fn(fold_data, fixed, fit_seed, fold_state)
       }
-      fit_seconds <- c(fit_seconds, unname((proc.time() - t_fit)["elapsed"]))
+      fold_seconds <- c(fold_seconds, unname((proc.time() - t_fit)["elapsed"]))
+      fold_seeds <- c(fold_seeds, fit_seed)
       fold_fits[[name]] <- fit
 
       predictive <- if (identical(provider, "inla")) {
@@ -1423,8 +1432,11 @@
         repeat_id = split$repeat_id,
         model = name
       )
-      rows[[length(rows) + 1L]] <- scored$rows
-      clusters[[name]] <- c(clusters[[name]], list(scored$clusters))
+      fold_scored[[length(fold_scored) + 1L]] <- list(
+        model = name,
+        rows = scored$rows,
+        clusters = scored$clusters
+      )
     }
 
     # Decision products read off this fold's fits, scored on the same
@@ -1434,8 +1446,8 @@
       fit_seed <- base_seed + 1000L * f + length(sets) + k
       predictive <- derived_models[[k]](fold_fits, inputs, fit_seed)
       if (!is.null(predictive$terms)) {
-        derived_terms[[split$label]] <- c(
-          derived_terms[[split$label]],
+        fold_terms <- c(
+          fold_terms,
           stats::setNames(list(predictive$terms), name)
         )
       }
@@ -1448,11 +1460,57 @@
         repeat_id = split$repeat_id,
         model = name
       )
-      rows[[length(rows) + 1L]] <- scored$rows
-      clusters[[name]] <- c(clusters[[name]], list(scored$clusters))
+      fold_scored[[length(fold_scored) + 1L]] <- list(
+        model = name,
+        rows = scored$rows,
+        clusters = scored$clusters
+      )
     }
+
+    list(
+      label = split$label,
+      inputs = inputs,
+      scored = fold_scored,
+      derived_terms = fold_terms,
+      fit_seconds = fold_seconds,
+      fit_seeds = fold_seeds
+    )
   }
+
+  # The folds do not read each other, so they may run at the same time. The
+  # plan is the machine's and not the model's: it reads one option and the
+  # cores, divides the engine threads out of them, and leaves every quantity
+  # the fold computes alone (R/selection_parallel.R).
+  plan <- .fb_sel_worker_plan(length(folds), provider = provider)
+  t_start <- proc.time()
+  results <- .fb_sel_fold_lapply(
+    seq_along(folds),
+    fold_job,
+    plan,
+    # brms caches a compiled Stan program by the hash of that program, and
+    # children compiling one shape at the same time write one cache entry.
+    # The first fold compiles every shape the loop needs, in the parent.
+    warm_first = identical(provider, "brms")
+  )
   elapsed <- unname((proc.time() - t_start)["elapsed"])
+
+  # Assembled in FOLD order, never in the order the workers finished, so
+  # every table is built as a serial run builds it.
+  for (res in results) {
+    substrates[[res$label]] <- res$inputs
+    for (item in res$scored) {
+      rows[[length(rows) + 1L]] <- item$rows
+      clusters[[item$model]] <- c(
+        clusters[[item$model]],
+        list(item$clusters)
+      )
+    }
+    if (length(res$derived_terms) > 0L) {
+      derived_terms[[res$label]] <- res$derived_terms
+    }
+    fit_seconds <- c(fit_seconds, res$fit_seconds)
+    fit_seeds <- c(fit_seeds, res$fit_seeds)
+  }
 
   by_model <- lapply(clusters, data.table::rbindlist)
   aggregated <- data.table::rbindlist(lapply(names(by_model), function(name) {
@@ -1511,6 +1569,14 @@
     # chose them on that fold.
     derived_terms = derived_terms,
     fits_per_fold = length(sets),
+    # The seed each refit ran under, in fold order and one per entry of
+    # `timing$fit_seconds`. Two models on one fold, and one model on two
+    # folds, are never handed the same stream, and a run reproduces another.
+    fit_seeds = fit_seeds,
+    # How the folds were run: a property of the machine rather than of the
+    # estimate, recorded here and deliberately absent from the certificate,
+    # which must compare equal between a serial and a concurrent run.
+    parallel = plan,
     timing = list(
       estimate_seconds = cost$seconds,
       estimate_source = cost$source,

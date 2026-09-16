@@ -543,9 +543,16 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (selection_penalty_group_structure_absent), and a grouped family asked
   # for on the Bayesian route, which has an optimiser provider and no brms
   # one (selection_penalty_family_optimizer_only) ).
+  #
+  # The fold-concurrency unit adds one: a worker that returned neither a
+  # result nor an error, which is a child killed from outside rather than a
+  # fold that failed (selection_parallel_worker_failed) (= 217). A fold that
+  # refuses inside a live worker keeps its own code, so no other refusal is
+  # duplicated for the concurrent path.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 216L)
+  expect_equal(length(entries), 217L)
+  expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("selection_penalty_group_structure_absent" %in% entries)
