@@ -171,6 +171,10 @@
   # tolerance declared before they were measured.
   .populate_refusal_registry_factor_analytic()
 
+  # 2026-09-16: a fold worker that neither completed nor refused, which is a
+  # child the operating system killed rather than a fold that failed.
+  .populate_refusal_registry_selection_parallel()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

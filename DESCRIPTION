@@ -29,6 +29,7 @@ Imports:
     generics,
     stats,
     methods,
+    parallel,
     graphics,
     mgcv,
     Matrix,

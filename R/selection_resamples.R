@@ -1536,7 +1536,13 @@
     route = "benchmark"
   )
 
-  for (split in folds) {
+  # One fold's whole share of the work, as a function of its position: the
+  # substrate its training rows define, and every model solved on it. It
+  # reads the fold's own rows and the constants fixed before the loop, and it
+  # writes nothing outside itself, which is what lets a worker run it
+  # (R/selection_parallel.R).
+  fold_job <- function(f) {
+    split <- folds[[f]]
     substrate <- .fb_sel_fold_substrate(
       data,
       split,
@@ -1548,7 +1554,7 @@
       offsets = offsets,
       fold_space = space$folds[[split$label]]
     )
-    substrates[[split$label]] <- substrate
+    fold_scored <- list()
 
     for (name in names(sets)) {
       # The set's columns this fold keeps; the set itself is declared once.
@@ -1581,8 +1587,32 @@
         repeat_id = split$repeat_id,
         model = name
       )
-      rows[[length(rows) + 1L]] <- scored$rows
-      clusters[[name]] <- c(clusters[[name]], list(scored$clusters))
+      fold_scored[[length(fold_scored) + 1L]] <- list(
+        model = name,
+        rows = scored$rows,
+        clusters = scored$clusters
+      )
+    }
+
+    list(label = split$label, substrate = substrate, scored = fold_scored)
+  }
+
+  # The folds do not read each other, so they may run at the same time. No
+  # engine fits on this route -- the fold is a REML plugin and a closed-form
+  # solve -- so there are no engine threads to divide, and a worker pins the
+  # linear algebra it calls instead (R/selection_parallel.R).
+  plan <- .fb_sel_worker_plan(length(folds), provider = NULL)
+  results <- .fb_sel_fold_lapply(seq_along(folds), fold_job, plan)
+
+  # Assembled in FOLD order, never in the order the workers finished.
+  for (res in results) {
+    substrates[[res$label]] <- res$substrate
+    for (item in res$scored) {
+      rows[[length(rows) + 1L]] <- item$rows
+      clusters[[item$model]] <- c(
+        clusters[[item$model]],
+        list(item$clusters)
+      )
     }
   }
 
@@ -1624,6 +1654,10 @@
     # standardisation and the pilot fit -- is read off its training rows,
     # which the leakage gate holds each substrate to.
     preprocessing = list(learned_on = "analysis_rows"),
+    # How the folds were run: a property of the machine rather than of the
+    # estimate, recorded here and deliberately absent from the certificate,
+    # which must compare equal between a serial and a concurrent run.
+    parallel = plan,
     # Read from the fold objects, never from an argument. Each substrate
     # carries the estimand of the `fb_sel_cov_spec` it actually worked in,
     # which `.fb_sel_reml_components()` set; a certificate built from this

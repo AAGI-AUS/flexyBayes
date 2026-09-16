@@ -2271,6 +2271,22 @@
 #' fold covariance remains available through `benchmark = TRUE` and is
 #' labelled `unpenalized_benchmark` wherever it appears.
 #'
+#' Fold refits run one at a time by default.
+#' `options(flexyBayes.selection_workers = n)` runs `n` of them at once on a
+#' platform that forks, and divides the engine threads between the workers so
+#' that workers times threads does not exceed the machine. Nothing the run
+#' records changes: the fold allocation, each fold's candidate space, the
+#' score contract, the certificate and the selected support are identical to
+#' the serial run's, and the worker count is deliberately absent from the
+#' certificate, which describes the estimate while the worker count describes
+#' the machine that produced it. Engine numbers move as they move between any
+#' two repeated runs on an engine whose posterior sampler is not
+#' bit-reproducible. Set `n` against MEMORY: every concurrent fold holds its
+#' own rows and its own engine process at the same time, so the count a
+#' machine supports follows from its memory, and usually sits well below its
+#' core count. A worker the operating system kills under that pressure
+#' refuses by name, and the aggregation keeps every fold or none.
+#'
 #' `fallback = "none"` is the default. A Bayesian request whose provider is
 #' absent refuses with `selection_provider_absent`, naming the package and
 #' the install line. `fallback = "glmnet"` is a deliberate choice; when it
