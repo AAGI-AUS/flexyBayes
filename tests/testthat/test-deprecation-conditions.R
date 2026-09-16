@@ -7,6 +7,8 @@
 # raises a `defunctError`. Every call warns: there is no once-per-session
 # latch. Nothing here needs an engine.
 
+withr::local_options(flexyBayes.deprecation_warnings = TRUE)
+
 .dep_data <- function() {
   withr::with_seed(1L, data.frame(
     y = stats::rnorm(60L),
@@ -28,7 +30,7 @@
   flexyBayes:::.new_flexybayes_review(
     code = "data {\n}",
     backend = "stan_via_brms",
-    ir = fb_from_asreml(y ~ x, data = d),
+    ir = flexyBayes:::.fb_from_asreml_impl(y ~ x, data = d),
     prior = NULL,
     data_name = "d",
     call = quote(flexybayes(y ~ x, data = d, review_code = TRUE)),
@@ -64,7 +66,7 @@ test_that("the class predicates warn with the documented class and still answer"
   )
   expect_true(out)
   expect_warning(
-    out <- is_fb_engine(fb_engine("inla")),
+    out <- is_fb_engine(suppressWarnings(fb_engine("inla"))),
     "inherits(x, \"fb_engine\")", fixed = TRUE, class = "flexybayes_deprecated"
   )
   expect_true(out)
@@ -80,6 +82,34 @@ test_that("fb() warns, names flexybayes(), and returns what flexybayes() returns
   expect_s3_class(via_fb, "fb_plan")
   expect_identical(as.data.frame(via_fb), as.data.frame(direct))
   expect_identical(formals(fb), formals(flexybayes))
+})
+
+test_that("the 0.13.0 compatibility surfaces warn and keep their result", {
+  d <- .dep_data()
+  expect_warning(
+    ir_a <- fb_from_asreml(y ~ x, random = ~ g, data = d),
+    "fb_plan()", fixed = TRUE, class = "flexybayes_deprecated"
+  )
+  expect_s3_class(ir_a, "fb_terms")
+  expect_warning(
+    ir_b <- fb_from_brms(y ~ x + (1 | g), data = d),
+    "fb_plan()", fixed = TRUE, class = "flexybayes_deprecated"
+  )
+  expect_s3_class(ir_b, "fb_terms")
+  expect_warning(
+    eng <- fb_engine("brms", chains = 2L),
+    "directly to `flexybayes()`", fixed = TRUE,
+    class = "flexybayes_deprecated"
+  )
+  expect_identical(eng$opts$chains, 2L)
+  expect_warning(
+    expect_error(
+      fb_brms(y ~ x, data = d, backend = "inla"),
+      class = "flexybayes_refusal_engine_pin_backend_conflict"
+    ),
+    "backend = \"brms\"", fixed = TRUE,
+    class = "flexybayes_deprecated"
+  )
 })
 
 test_that("fb_inla() warns before its own checks and names flexybayes(backend = \"inla\")", {
@@ -144,7 +174,9 @@ test_that("the warning and the defunct error carry the documented class vectors"
       "deprecatedWarning", "warning", "condition")
   )
   e <- tryCatch(
-    fb_from_asreml(y ~ env, rcov = ~ units, data = .dep_data()),
+    suppressWarnings(fb_from_asreml(
+      y ~ env, rcov = ~ units, data = .dep_data()
+    )),
     error = identity
   )
   expect_identical(
@@ -161,7 +193,7 @@ test_that("the defunct rcov argument refuses with a defunctError on every entry"
     "residual", class = "defunctError"
   )
   expect_error(
-    fb_from_asreml(y ~ env, rcov = ~ units, data = d),
+    suppressWarnings(fb_from_asreml(y ~ env, rcov = ~ units, data = d)),
     "residual", class = "defunctError"
   )
   expect_warning(

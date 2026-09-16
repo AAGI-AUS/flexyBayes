@@ -85,13 +85,24 @@
 #'   `paradigm` (one of `mcmc`, `laplace`, `vb`, `map`),
 #'   `toolchain_status` (one of `ready`, `requires_install`,
 #'   `unavailable`), and `opts`.
+#' @section Deprecated:
+#' `fb_engine()` is deprecated as of 0.13.0. Pass the backend and engine
+#' settings directly to [flexybayes()], or pass a named settings list to the
+#' `engine` argument of [fb_select()].
 #' @seealso [fb_approx()]
 #' @examples
-#' e <- fb_engine("brms", chains = 4L)
-#' e$paradigm
-#' e$toolchain_status
+#' plan <- flexybayes(y ~ x, data = data.frame(y = 1:4, x = 4:1),
+#'                    backend = "brms", chains = 4L, plan = TRUE)
+#' plan$backend_chosen
 #' @export
 fb_engine <- function(name, opts = list(), ...) {
+  .fb_warn_deprecated_export(
+    "fb_engine",
+    paste0(
+      "Pass `backend` and engine settings directly to `flexybayes()`, ",
+      "for example `flexybayes(..., backend = \"brms\", chains = 4L)`."
+    )
+  )
   .check_string_scalar(
     name,
     "fb_engine(): `name` must be a non-empty single string."

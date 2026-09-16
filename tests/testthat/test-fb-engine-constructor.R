@@ -18,6 +18,38 @@ test_that("fb_engine() returns the documented classed-object shape", {
   expect_identical(e$opts, list(chains = 4L))
 })
 
+test_that("fb_select accepts a named sampler-settings list", {
+  d <- data.frame(
+    y = stats::rnorm(24),
+    x = stats::rnorm(24),
+    site = factor(rep(1:6, each = 4))
+  )
+  ir <- flexyBayes:::.fb_from_asreml_impl(y ~ 1, random = ~site, data = d)
+  base <- structure(
+    list(
+      fb = ir,
+      data = d,
+      extras = list(call_info = list(
+        fixed = y ~ 1, random = ~site, family = "gaussian"
+      ))
+    ),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+  expect_no_error(fb_select(
+    base,
+    candidates = ~ x,
+    workflow = "bayes",
+    engine = list(chains = 2L, n_samples = 100L, warmup = 50L),
+    seed = 1L,
+    plan = TRUE
+  ))
+  expect_error(
+    fb_select(base, candidates = ~ x, engine = list(nope = 1), seed = 1L,
+              plan = TRUE),
+    "unrecognised setting"
+  )
+})
+
 test_that("fb_engine() maps each engine to its inference paradigm", {
   expect_identical(fb_engine("inla")$paradigm, "laplace")
   expect_identical(fb_engine("brms")$paradigm, "mcmc")

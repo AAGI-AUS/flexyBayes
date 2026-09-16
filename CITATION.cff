@@ -4,22 +4,22 @@ title: "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Sy
 abstract: >-
   Specify mixed models using familiar ASReml or brms-style formula syntax
   and estimate them via INLA or brms (Stan). The ASReml grammar reaches
-  INLA natively, so multi-stratum designs, per-environment residual
-  variances, unstructured and factor-analytic genotype-by-environment
-  covariance, known-covariance genomic and pedigree models, separable AR1
-  spatial fields and univariate P-splines are fitted by approximation
-  rather than by sampling. Results are returned in formats compatible with
-  the standard R modelling ecosystem. Structures no active engine
-  represents raise typed refusals naming the nearest implemented
-  alternative.
+  INLA natively for admitted latent-Gaussian structures, while brms provides
+  the sampling route and selected richer covariance models. The admitted
+  surface includes multi-stratum designs, per-environment residual variances,
+  baseline genotype-by-environment terms, known-precision genomic and
+  pedigree models, separable AR1 spatial fields and univariate P-splines.
+  Factor-analytic genotype-by-environment covariance is deliberately refused
+  in this release. Results use the standard R modelling ecosystem; unsupported
+  structures raise typed refusals naming the nearest implemented alternative.
 type: software
 authors:
   - given-names: "Max"
     family-names: "Moldovan"
     email: "max.moldovan@adelaide.edu.au"
     orcid: "https://orcid.org/0000-0001-9680-8474"
-version: 0.12.1
-date-released: "2026-09-16"
+version: 0.13.0
+date-released: "2026-09-17"
 license: MIT
 repository-code: "https://github.com/AAGI-AUS/flexyBayes"
 url: "https://github.com/AAGI-AUS/flexyBayes"

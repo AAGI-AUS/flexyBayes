@@ -63,10 +63,17 @@ six thousand in a divergence at the 0.95 default and completed cleanly
 at \code{fb_engine("brms", adapt_delta = 0.999)}.
 }
 
+\section{Deprecated}{
+
+\code{fb_engine()} is deprecated as of 0.13.0. Pass the backend and engine
+settings directly to \code{\link[=flexybayes]{flexybayes()}}, or pass a named settings list to the
+\code{engine} argument of \code{\link[=fb_select]{fb_select()}}.
+}
+
 \examples{
-e <- fb_engine("brms", chains = 4L)
-e$paradigm
-e$toolchain_status
+plan <- flexybayes(y ~ x, data = data.frame(y = 1:4, x = 4:1),
+                   backend = "brms", chains = 4L, plan = TRUE)
+plan$backend_chosen
 }
 \seealso{
 \code{\link[=fb_approx]{fb_approx()}}

@@ -2442,8 +2442,9 @@
 #'   fitted; a fold in which a training row already carries such a label
 #'   refuses with the same code.
 #' @param decision An [fb_decision()]: the method, metric, rule and search.
-#' @param engine An [fb_engine()] setting the sampler's chains, iterations
-#'   and control for the reference fit.
+#' @param engine `NULL`, or a named list setting `chains`, `n_samples`,
+#'   `warmup` and `adapt_delta` for the brms reference fit. Deprecated
+#'   [fb_engine()] objects remain accepted during the compatibility period.
 #' @param seed Required. The sampler, the posterior predictive check and the
 #'   projection search all consume the random-number stream, and a default
 #'   seed is an unreproducible run that looks reproducible.
@@ -2510,6 +2511,22 @@ fb_select <- function(base,
   prediction <- match.arg(prediction)
   decision <- .fb_select_check_decision(decision)
   dots <- .fb_select_absorb_deprecated(list(...))
+
+  if (!is.null(engine) && !inherits(engine, "fb_engine")) {
+    if (!is.list(engine) || is.null(names(engine)) || any(!nzchar(names(engine)))) {
+      stop("`engine` must be NULL or a named list of brms sampler settings.", call. = FALSE)
+    }
+    unknown_engine_opts <- setdiff(names(engine), .fb_engine_opt_names)
+    if (length(unknown_engine_opts)) {
+      stop(
+        "`engine` contains unrecognised setting",
+        if (length(unknown_engine_opts) == 1L) " " else "s ",
+        paste(shQuote(unknown_engine_opts), collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+  }
 
   if (!is.logical(benchmark) || length(benchmark) != 1L || is.na(benchmark)) {
     stop("`benchmark` must be TRUE or FALSE.", call. = FALSE)
@@ -2985,11 +3002,7 @@ fb_select <- function(base,
   # with: the contract's 0.95 is the floor, and the convergence gate refuses
   # on a single divergent transition, so a caller who hits one needs
   # somewhere to reach.
-  adapt_delta <- if (inherits(engine, "fb_engine")) {
-    engine$opts$adapt_delta
-  } else {
-    NULL
-  }
+  adapt_delta <- (.fb_engine_opts(engine) %||% list())$adapt_delta
   if (!is.null(adapt_delta)) {
     reference_args$control <- list(adapt_delta = adapt_delta)
   }

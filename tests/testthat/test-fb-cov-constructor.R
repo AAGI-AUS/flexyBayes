@@ -13,6 +13,11 @@
 #   (e) the four legacy keyword forms fire a lifecycle deprecation
 #       warning and continue to parse.
 
+# The suite suppresses compatibility warnings while exercising the historical
+# API surface. This file verifies the legacy `vm()` warning contract, so opt
+# back in explicitly.
+withr::local_options(flexyBayes.deprecation_warnings = TRUE)
+
 # Small SPD fixtures reused across blocks.
 .fb_cov_spd <- function(n = 3L) {
   M <- matrix(stats::rnorm(n * n), n, n)

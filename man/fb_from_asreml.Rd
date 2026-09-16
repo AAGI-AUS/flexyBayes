@@ -71,6 +71,12 @@ this directly: \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()
 the same arguments. Argument names and defaults mirror \code{\link[=flexybayes]{flexybayes()}}
 one-for-one, so this is a drop-in for that function's parsing step.
 }
+\section{Deprecated}{
+
+\code{fb_from_asreml()} is deprecated as of 0.13.0. Use \code{\link[=fb_plan]{fb_plan()}} to inspect
+the backend-neutral model plan without fitting it.
+}
+
 \examples{
 set.seed(1L)
 df <- data.frame(
@@ -78,8 +84,8 @@ df <- data.frame(
   geno  = factor(rep(letters[1:4], 5)),
   env   = factor(rep(c("a", "b"), 10))
 )
-ir <- fb_from_asreml(yield ~ env, random = ~ geno, data = df)
-class(ir)
+plan <- fb_plan(yield ~ env, random = ~ geno, data = df)
+class(plan)
 }
 \seealso{
 \code{\link[=flexybayes]{flexybayes()}} and \code{\link[=fb]{fb()}} for the universal fitting entry;

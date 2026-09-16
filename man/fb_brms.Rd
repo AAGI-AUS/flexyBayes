@@ -40,6 +40,12 @@ flexyBayes has no active engine for a structured-covariance term
 that is neither brms-representable nor latent-Gaussian feasible
 (see \code{NEWS.md}, 0.9.3).
 }
+\section{Deprecated}{
+
+\code{fb_brms()} is deprecated as of 0.13.0. Use
+\code{flexybayes(..., backend = "brms")}.
+}
+
 \examples{
 # Held back from the default example run because the brms route compiles
 # a Stan program before it samples, and the compile alone takes far
@@ -51,8 +57,11 @@ that is neither brms-representable nor latent-Gaussian feasible
 if (requireNamespace("brms", quietly = TRUE) &&
     requireNamespace("lme4", quietly = TRUE)) {
   data(sleepstudy, package = "lme4")
-  fit <- fb_brms(Reaction ~ Days + (1 | Subject), data = sleepstudy,
-                 chains = 1, n_samples = 4000, warmup = 1000, seed = 1)
+  fit <- flexybayes(
+    Reaction ~ Days + (1 | Subject), data = sleepstudy,
+    backend = "brms", chains = 1, n_samples = 4000, warmup = 1000,
+    seed = 1
+  )
   coef(fit)
 }
 }

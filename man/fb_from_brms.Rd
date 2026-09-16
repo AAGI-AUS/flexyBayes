@@ -66,6 +66,12 @@ uncorrelated random intercept+slope (\code{(x || g)}) are supported;
 correlated random slopes (\code{(x | g)}), smoothers, Gaussian processes
 and autocorrelation terms refuse at ingest with a structured message.
 }
+\section{Deprecated}{
+
+\code{fb_from_brms()} is deprecated as of 0.13.0. Use \code{\link[=fb_plan]{fb_plan()}} to inspect
+the backend-neutral model plan without fitting it.
+}
+
 \examples{
 set.seed(1L)
 df <- data.frame(
@@ -73,8 +79,8 @@ df <- data.frame(
   x = rnorm(30),
   g = factor(rep(letters[1:5], 6))
 )
-ir <- fb_from_brms(y ~ x + (1 | g), data = df)
-class(ir)
+plan <- fb_plan(y ~ x + (1 | g), data = df)
+class(plan)
 }
 \seealso{
 \code{\link[=fb]{fb()}} and \code{\link[=flexybayes]{flexybayes()}} for the universal fitting entry;

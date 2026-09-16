@@ -212,9 +212,14 @@ On both trials on this page, and under deletion at random, it changes the
 variance components hardly at all. That is not a disappointment, it is the
 ignorability result: when the reason a value is missing is unrelated to the
 value, the parameter posterior is the same whether the cell is carried or
-dropped. The factor-analytic fit also does not fail on a design with whole
-genotype-by-environment cells removed, which an earlier note in this project
-predicted it would.
+dropped only if both representations put the same prior on the same model
+parameters. A backend default prior can depend on the realised design matrix,
+so an explicit common prior is required before treating the two fits as this
+identity check. This posterior identity is not a promise about what an
+optimiser returns from two finite numerical runs. Factor-analytic GxE is not
+an admitted route in this release:
+both engines refuse it because repeated identical fits did not meet the
+repeatability contract.
 
 What carrying the cell does buy is the cell itself: a posterior for the
 response that was not observed, on the same footing as the ones that were.

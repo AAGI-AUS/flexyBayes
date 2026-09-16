@@ -73,22 +73,22 @@
         {
           "type": "integer",
           "attributes": {},
-          "value": [40]
+          "value": [120]
         },
         {
           "type": "integer",
           "attributes": {},
-          "value": [40]
+          "value": [120]
         },
         {
           "type": "integer",
           "attributes": {},
-          "value": [40]
+          "value": [120]
         },
         {
           "type": "double",
           "attributes": {},
-          "value": [0.9]
+          "value": [0.5]
         }
       ]
     }

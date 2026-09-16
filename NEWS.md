@@ -1,3 +1,84 @@
+# flexyBayes 0.13.0
+
+This release makes the selection and large-MET substrate materially safer and
+more reproducible. It is sufficient for the model-fitting and variable-
+selection stages of the planned nert workflow; study-specific data assembly,
+the M0--M2 orchestration and reporting remain in the study repository.
+
+## Selection at scale
+
+* `fb_select()` now exposes lasso, elastic net, group lasso, sparse group
+  lasso, exclusive lasso and the group-exclusive composite through the
+  explicitly frequentist `penalized_optimizer` workflow. Grouped penalties
+  use the package's proximal provider rather than passing through the brms
+  prior compiler. Bayesian requests for optimiser-only families still refuse
+  by name.
+* Every penalised fit records the relative path coordinate
+  `s = lambda / lambda_max`, fold-specific lambdas, complete support histories
+  (entry, exit, re-entry and availability), KKT/proximal diagnostics and the
+  grouping map. Protected terms remain outside the penalty.
+* Candidate spaces and learned transformations are compiled inside each
+  training fold. Rank-deficient candidates, assessment-only factor levels and
+  representations that cannot carry a fold-local drop have typed outcomes.
+  Score contracts and certificates hash the actual folds, responses and
+  design values.
+* Fold evaluation can run concurrently. Serial and concurrent runs preserve
+  exact folds, model order, selected support, scores and certificate content.
+  The measured three-worker pilot was 2.35 times faster than serial and used
+  about 11.5 GiB aggregate memory. Worker death is a typed refusal; users
+  should select workers by memory rather than core count.
+
+## Model and data integrity
+
+* The default variance-component and residual-scale prior is now half-normal
+  on the standard deviation, with a common scale convention across engines.
+  Audits no longer claim support merely because a bounded-uniform prior was
+  stated when an INLA approximation escaped that support.
+* Non-Gaussian INLA fits standardise numeric covariates and carry the
+  transformation into predictions and reported coefficients.
+* Family objects and character family names now pass through one exact
+  family/link gate. Unsupported families, contradictory links and invalid
+  response domains refuse before an engine runs.
+* Factor-analytic GxE is conservatively refused on both engines because
+  repeated identical fits did not satisfy the release's repeatability gate.
+  Known-covariance block carriers are likewise refused; use the equivalent
+  precision carrier. These are deliberate correctness boundaries, not claims
+  that complex MET covariance modelling is complete.
+* Missing-response augmentation continues to preserve design nodes. Posterior
+  equivalence with omission requires ignorability and a common prior on the
+  same parameters; backend defaults that depend on the realised design do not
+  establish that condition automatically.
+* Streaming, aggregation, family support, link handling and parallel-worker
+  failures now use typed refusals. Fits record provider versions, threads,
+  seeds and relevant reproducibility metadata.
+* Deferred brms review objects now preserve the caller's `seed` and `control`
+  settings when `proceed()` executes the reviewed model. Earlier builds kept
+  the draw counts but silently fell back to backend defaults for those two
+  settings.
+
+## API consolidation
+
+* `fb_brms()` is deprecated in favour of
+  `flexybayes(..., backend = "brms")`; `fb_engine()` is deprecated in favour
+  of direct fitting arguments, or a named sampler-settings list in
+  `fb_select(engine = )`.
+* `fb_from_asreml()` and `fb_from_brms()` are deprecated in favour of
+  `fb_plan()` for inspection. The compatibility functions still return their
+  historical objects and warn with class `flexybayes_deprecated`.
+* The earlier deprecations of `fb()`, `fb_inla()`, `is_fb_cov()`,
+  `is_fb_approx()`, `is_fb_engine()`, `cat_code()` and `proceed()` remain in
+  their warning-only period.
+
+## Known limits
+
+* The package does not provide the nert study's end-to-end pipeline, automatic
+  ASReml-like experimental-design recognition, or a generally validated
+  production solution for arbitrary complex METs. Factor-analytic GxE remains
+  outside the admitted surface.
+* Concurrent INLA work is memory-intensive. One three-worker stress run ended
+  in an INLA segmentation fault and was recovered as a typed worker failure;
+  this release does not claim that every worker count is safe.
+
 # flexyBayes 0.12.1
 
 A containment release. An INLA fit whose hyperparameter lies outside the bound

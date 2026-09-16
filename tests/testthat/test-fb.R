@@ -7,6 +7,11 @@
 # unexported and continues to be tested in test-fb-from-brms.R for
 # v0.2 work continuity.
 
+# The suite suppresses compatibility warnings while exercising the historical
+# API surface. This file is the warning-contract test for `fb()`, so opt back
+# in explicitly.
+withr::local_options(flexyBayes.deprecation_warnings = TRUE)
+
 mk_fb_data <- function() {
   set.seed(2026L)
   n <- 30L

@@ -57,6 +57,10 @@
 #'   `"flexybayes"`) carrying the live `brmsfit` on `$brms`; see
 #'   [flexybayes()] for the shared structure.
 #'
+#' @section Deprecated:
+#' `fb_brms()` is deprecated as of 0.13.0. Use
+#' `flexybayes(..., backend = "brms")`.
+#'
 #' @family flexyBayes engine pins
 #' @seealso [flexybayes()] and [fb()] for the universal entry that picks a
 #'   backend; [fb_inla()] for the other active engine pin;
@@ -72,13 +76,20 @@
 #' if (requireNamespace("brms", quietly = TRUE) &&
 #'     requireNamespace("lme4", quietly = TRUE)) {
 #'   data(sleepstudy, package = "lme4")
-#'   fit <- fb_brms(Reaction ~ Days + (1 | Subject), data = sleepstudy,
-#'                  chains = 1, n_samples = 4000, warmup = 1000, seed = 1)
+#'   fit <- flexybayes(
+#'     Reaction ~ Days + (1 | Subject), data = sleepstudy,
+#'     backend = "brms", chains = 1, n_samples = 4000, warmup = 1000,
+#'     seed = 1
+#'   )
 #'   coef(fit)
 #' }
 #' }
 #' @export
 fb_brms <- function(...) {
+  .fb_warn_deprecated_export(
+    "fb_brms",
+    "Use `flexybayes(..., backend = \"brms\")`."
+  )
   cl <- match.call()
   # Call-compatibility: the pre-v0.5.0 `formula = ` argument names the
   # same model-spec slot as the universal entry's `fixed`.

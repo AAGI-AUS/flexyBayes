@@ -307,18 +307,24 @@ test_that("brms fits the identical space-level model without legalisation, and i
   skip_on_cran()
   skip_if_no_brms()
   d <- .space_level_data()
-  # A label round-trip control (no numeric assertion below), so the
-  # tiny deliberate sampler budget's ESS warning is irrelevant to what
-  # this test checks -- muffled rather than fixed by a bigger budget
-  # (see helper-ess-warnings.R).
+  # A label round-trip control (no numeric assertion below), but the fitted
+  # object should still clear R-hat and divergence diagnostics. Keep the ESS
+  # helper narrowly scoped to any residual precision-only warning.
   fit <- .muffle_ess_warnings(flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
     random = ~ TRIAL + N_TRIAL,
     data = d,
     backend = "brms",
-    n_samples = 200L,
-    warmup = 200L,
-    chains = 1L,
+    prior = fb_prior(
+      sigma ~ half_normal(scale = 1),
+      sd(group = "TRIAL") ~ half_normal(scale = 1),
+      sd(group = "N_TRIAL") ~ half_normal(scale = 1)
+    ),
+    n_samples = 1000L,
+    warmup = 1000L,
+    chains = 2L,
+    seed = 20260916L,
+    control = list(adapt_delta = 0.99, max_treedepth = 15L),
     verbose = FALSE
   ))
   expect_s3_class(fit, "flexybayes_brms")

@@ -198,7 +198,7 @@ test_that("fb_met_summary() abstains with a typed condition on INLA", {
   # it is stated once rather than repeated per engine). Confirmed here on
   # an actual INLA fit, not just a hand-built stub.
   expect_null(err$backend)
-  expect_match(conditionMessage(err), "INLA")
+  expect_match(conditionMessage(err), "active backend")
   expect_match(conditionMessage(err), "brms")
   # The pointer names something that works for an active engine. It used
   # to name fb_structured_cov(), which abstains for every structure an

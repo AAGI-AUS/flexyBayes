@@ -50,13 +50,13 @@ fit <- flexybayes(
 )
 #> 
 #> -- flexyBayes: INLA fit ----------------------------------------
-#>   formula: yield ~ 1 + rep + f(rep_block_id, model = "iid", <prior: uniform-SD(0, 3.049)>) + f(gen, model = "iid", <prior: uniform-SD(0, 3.049)>)
+#>   formula: fb_standardised_response ~ 1 + rep + f(rep_block_id, model = "iid", <prior: half-normal-SD(5)>) + f(gen, model = "iid", <prior: half-normal-SD(5)>)
 #>   family:  gaussian
 #> ------------------------------------------------------------
 
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
-#>   functional  estimate    median std.error conf.low conf.high
-#> 1         h2 0.6376408 0.6407214 0.0998666 0.425785 0.8150101
+#>   functional  estimate    median std.error  conf.low conf.high
+#> 1         h2 0.6372743 0.6460724 0.1022189 0.4166852 0.8128454
 ```
 
 
@@ -135,11 +135,11 @@ out <- do.call(rbind, lapply(names(designs), function(nm) {
 }))
 rnd(out)
 #>                           design  n    h2 lower upper
-#> 1   24 genotypes, 3 reps (whole) 72 0.640 0.430 0.819
-#> 2           12 genotypes, 3 reps 36 0.679 0.391 0.894
-#> 3            6 genotypes, 3 reps 18 0.756 0.359 0.965
-#> 4 50% of plots dropped at random 36 0.385 0.051 0.793
-#> 5 65% of plots dropped at random 25 0.276 0.012 0.757
+#> 1   24 genotypes, 3 reps (whole) 72 0.640 0.428 0.817
+#> 2           12 genotypes, 3 reps 36 0.677 0.381 0.894
+#> 3            6 genotypes, 3 reps 18 0.756 0.373 0.965
+#> 4 50% of plots dropped at random 36 0.383 0.049 0.806
+#> 5 65% of plots dropped at random 25 0.276 0.012 0.764
 ```
 
 Every interval lies inside `[0, 1]`, because every draw does. They widen as
@@ -192,6 +192,7 @@ The point the factor-analytic fit was making here still stands, because it is
 a property of the delta method rather than of the structure. ASReml returns
 these three derived quantities on this trial:
 
+
 ``` r
 rnd(asreml_ref$met_derived)
 #>   functional estimate    se lower upper
@@ -208,6 +209,7 @@ correlation computed on every draw is a correlation on every draw.
 
 The same thing shows in the variance components. Environment 8's specific
 variance:
+
 
 ``` r
 rnd(asreml_ref$met_varcomp[
@@ -233,13 +235,14 @@ On both trials on this page, and under deletion at random, it changes the
 variance components hardly at all. That is not a disappointment, it is the
 ignorability result: when the reason a value is missing is unrelated to the
 value, the parameter posterior is the same whether the cell is carried or
-dropped. That identity is a statement about the posterior and not a promise
-about what an optimiser returns. The two settings hand the engine different
-index sets -- an intact design against a ragged one -- so on a fit whose mode
-is weakly identified they can land in different places even where the
-identity holds. The factor-analytic fit also does not fail on a design with whole
-genotype-by-environment cells removed, which an earlier note in this project
-predicted it would.
+dropped only if both representations put the same prior on the same model
+parameters. A backend default prior can depend on the realised design matrix,
+so an explicit common prior is required before treating the two fits as this
+identity check. This posterior identity is not a promise about what an
+optimiser returns from two finite numerical runs. Factor-analytic GxE is not
+an admitted route in this release:
+both engines refuse it because repeated identical fits did not meet the
+repeatability contract.
 
 What carrying the cell does buy is the cell itself: a posterior for the
 response that was not observed, on the same footing as the ones that were.

@@ -76,13 +76,23 @@ test_that("the default residual scale on brms is five SDs of the modelled respon
   cases <- .resp_cases(.resp_data())
 
   for (cs in cases) {
-    code <- suppressMessages(flexybayes(
-      fixed = cs$fixed,
-      random = ~g,
-      data = cs$data,
-      backend = "brms",
-      return_code = TRUE
-    ))
+    # The missing response is deliberate. brms reports the expected omission
+    # during both prior reachability and Stan-code construction; muffle only
+    # that exact dependency warning and leave every other warning visible.
+    code <- withCallingHandlers(
+      suppressMessages(flexybayes(
+        fixed = cs$fixed,
+        random = ~g,
+        data = cs$data,
+        backend = "brms",
+        return_code = TRUE
+      )),
+      warning = function(w) {
+        if (identical(conditionMessage(w), "Rows containing NAs were excluded from the model.")) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
     expect_equal(
       .brms_sigma_bound(code),
       .five_sd(cs$modelled),

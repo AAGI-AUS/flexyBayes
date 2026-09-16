@@ -296,10 +296,13 @@ name, because a zero is a value the plot did not have. A value
 arriving as an unreduced \code{na.method()} default vector is read as
 its first element, which is the policy ASReml itself would use.
 
-Under ignorability the posterior for the model parameters is the
-same whether a missing response is augmented or omitted --
-augmentation preserves the representation, not information. That
-identity is a statement about the posterior and not a promise about
+Under ignorability, and only when both representations put the same
+prior on the same model parameters, the posterior for those parameters
+is the same whether a missing response is augmented or omitted --
+augmentation preserves the representation, not information. A backend
+default prior can depend on the realised design matrix, so it does not
+establish that common-prior condition automatically. The identity is a
+statement about the posterior and not a promise about
 what an optimiser returns: the two settings hand the engine an
 intact design and a ragged one, and on a weakly identified mode they
 can land in different places. Where missingness depends on the

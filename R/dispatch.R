@@ -81,6 +81,12 @@
 .fb_engine_opts <- function(backend) {
   if (inherits(backend, "fb_engine") && length(backend$opts)) {
     backend$opts
+  } else if (
+    is.list(backend) &&
+      !inherits(backend, "fb_engine") &&
+      length(backend)
+  ) {
+    backend
   } else {
     NULL
   }

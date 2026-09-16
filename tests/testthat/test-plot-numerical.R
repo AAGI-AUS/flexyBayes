@@ -24,17 +24,22 @@
   testthat::skip_if_not_installed("brms")
 }
 
-# Cache one tiny fit for all snapshot tests in this file. Cheap
-# (n = 40, 100 samples, 1 chain) and deterministic given the seed.
+# Cache one small, signal-bearing fit for all snapshot tests in this file.
+# A genuine group signal avoids the near-zero variance funnel produced by
+# the former pure-noise fixture.
 .cached_fit <- local({
   fit <- NULL
   function() {
     if (is.null(fit)) {
       set.seed(20260427L)
+      n <- 120L
+      x <- stats::rnorm(n)
+      g <- factor(rep(seq_len(12L), each = 10L))
+      g_effect <- seq(-1.5, 1.5, length.out = 12L)
       d <- data.frame(
-        y = stats::rnorm(40L),
-        x = stats::rnorm(40L),
-        g = factor(rep(seq_len(5L), length.out = 40L))
+        y = 1 + 1.25 * x + g_effect[as.integer(g)] + stats::rnorm(n, sd = 0.5),
+        x = x,
+        g = g
       )
       # backend = "brms" explicitly: these snapshots read the MCMC
       # surface (posterior draws, fitted / residuals, the variance-
@@ -44,20 +49,25 @@
       #
       # The unpinned `flexybayes()` seed (distinct from the data's
       # set.seed() above) let Stan draw its own seed each run, which at
-      # the original 100-draw budget produced genuine low-ESS sampler
-      # warnings; pinning `seed=` and raising the budget cuts those down
-      # to a residual ESS-only warning, appropriate to muffle here since
-      # this cached fit backs structural/1-sig-fig snapshots only (see
-      # file header), never a numeric-agreement assertion.
+      # the original one-chain budget produced genuine R-hat and divergent-
+      # transition diagnostics. Use two adequately warmed chains so this
+      # structural fixture is also a statistically valid fitted object. A
+      # residual ESS-only warning may still be muffled because these are
+      # structural/1-sig-fig snapshots, never a precision assertion.
       fit <<- .muffle_ess_warnings(suppressMessages(flexybayes(
         fixed = y ~ x,
         random = ~g,
         data = d,
         backend = "brms",
-        n_samples = 300L,
-        warmup = 300L,
-        chains = 1L,
+        prior = fb_prior(
+          sigma ~ half_normal(scale = 1),
+          sd(group = "g") ~ half_normal(scale = 2)
+        ),
+        n_samples = 1000L,
+        warmup = 1000L,
+        chains = 2L,
         seed = 20260427L,
+        control = list(adapt_delta = 0.99),
         verbose = FALSE,
         mcmc_verbose = FALSE
       )))

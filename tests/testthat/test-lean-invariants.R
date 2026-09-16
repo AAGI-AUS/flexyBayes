@@ -147,7 +147,7 @@ test_that("exported calls that need no engine leave options and the random-numbe
 test_that("Imports and namespace imports stay within the listed set", {
   allowed <- c(
     "cli", "data.table", "generics",
-    "stats", "methods", "graphics", "mgcv", "Matrix", "utils"
+    "stats", "methods", "graphics", "mgcv", "Matrix", "parallel", "utils"
   )
   dcf <- read.dcf(system.file("DESCRIPTION", package = "flexyBayes"), fields = "Imports")
   imports <- trimws(sub("\\(.*\\)", "", strsplit(dcf[1L, "Imports"], ",")[[1L]]))

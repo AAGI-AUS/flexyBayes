@@ -233,7 +233,7 @@
     fb$prior_scalars <- ir$prior_scalars
   }
 
-  opts <- if (inherits(engine, "fb_engine")) engine$opts else list()
+  opts <- .fb_engine_opts(engine) %||% list()
   if (inherits(engine, "fb_engine") && !identical(engine$name, "brms")) {
     stop(
       ".fb_sel_reference_fit(): the reference fit is emitted through brms; ",

@@ -342,7 +342,12 @@ test_that("the default is a half-normal whose scale is the former bound over the
 test_that("every default slot on INLA carries the closed-form half-normal, by model class", {
   skip_on_cran()
   skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    # This test reads prior manifests, not posterior field identification.
+    # Collapse behaviour and its warning have dedicated coverage.
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
   f <- .hn1_data()
   classes <- .hn1_inla_classes(f)
 

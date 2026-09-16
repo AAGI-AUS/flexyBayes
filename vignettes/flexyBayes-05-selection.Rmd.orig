@@ -93,9 +93,10 @@ coefficients under the global-local prior too and records the approximation
 on the certificate.
 
 ```{r base-fit}
-base <- fb_brms(
+base <- flexybayes(
   y ~ 1 + (1 | site),
   data = d,
+  backend = "brms",
   chains = 2L,
   n_samples = 2000L,
   warmup = 1000L,
@@ -170,8 +171,8 @@ sel <- fb_select(
   penalty    = pen,
   resamples  = fb_resamples(unit = ~ site, v = 3L),
   decision   = fb_decision(method = "projection", rule = "one_se"),
-  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
-                         warmup = 1500L, adapt_delta = 0.99),
+  engine     = list(chains = 4L, n_samples = 1500L,
+                    warmup = 1500L, adapt_delta = 0.99),
   seed       = 20260912L
 )
 
@@ -267,9 +268,10 @@ coefficient. `laplace()` does; so do `ridge()` and `elastic_net()`.
 d$p1 <- stats::rnorm(nrow(d))
 d$y_p <- d$y + 0.7 * d$p1
 
-protected_base <- fb_brms(
+protected_base <- flexybayes(
   y_p ~ p1 + (1 | site),
   data = d,
+  backend = "brms",
   chains = 2L,
   n_samples = 2000L,
   warmup = 1000L,
@@ -284,8 +286,7 @@ protected_sel <- fb_select(
   penalty    = fb_penalty(term(everything()) ~ laplace(scale = 0.3)),
   resamples  = fb_resamples(unit = ~ site, v = 3L),
   decision   = fb_decision(method = "full"),
-  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
-                         warmup = 1500L),
+  engine     = list(chains = 4L, n_samples = 1500L, warmup = 1500L),
   seed       = 20260912L
 )
 
@@ -332,8 +333,8 @@ bench <- fb_select(
   resamples  = fb_resamples(unit = ~ site, v = 3L),
   decision   = fb_decision(method = "full"),
   benchmark  = TRUE,
-  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
-                         warmup = 1500L, adapt_delta = 0.99),
+  engine     = list(chains = 4L, n_samples = 1500L,
+                    warmup = 1500L, adapt_delta = 0.99),
   seed       = 20260912L
 )
 
@@ -440,8 +441,7 @@ inla_shrunk <- fb_select(
   penalty    = fb_penalty(term(everything()) ~ laplace(scale = 0.5)),
   resamples  = fb_resamples(unit = ~ site, v = 3L),
   decision   = fb_decision(method = "full"),
-  engine     = fb_engine("brms", chains = 4L, n_samples = 1500L,
-                         warmup = 1500L),
+  engine     = list(chains = 4L, n_samples = 1500L, warmup = 1500L),
   seed       = 20260912L
 )
 

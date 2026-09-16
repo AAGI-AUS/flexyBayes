@@ -83,8 +83,9 @@ refuses with the same code.}
 
 \item{decision}{An \code{\link[=fb_decision]{fb_decision()}}: the method, metric, rule and search.}
 
-\item{engine}{An \code{\link[=fb_engine]{fb_engine()}} setting the sampler's chains, iterations
-and control for the reference fit.}
+\item{engine}{\code{NULL}, or a named list setting \code{chains}, \code{n_samples},
+\code{warmup} and \code{adapt_delta} for the brms reference fit. Deprecated
+\code{\link[=fb_engine]{fb_engine()}} objects remain accepted during the compatibility period.}
 
 \item{seed}{Required. The sampler, the posterior predictive check and the
 projection search all consume the random-number stream, and a default

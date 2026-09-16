@@ -52,6 +52,10 @@
 #'
 #' @return An `fb_terms` object with `source = "asreml"`.
 #'
+#' @section Deprecated:
+#' `fb_from_asreml()` is deprecated as of 0.13.0. Use [fb_plan()] to inspect
+#' the backend-neutral model plan without fitting it.
+#'
 #' @family flexyBayes ingest adapters
 #' @seealso [flexybayes()] and [fb()] for the universal fitting entry;
 #'   [fb_from_brms()] for the other ingest dialect.
@@ -62,8 +66,8 @@
 #'   geno  = factor(rep(letters[1:4], 5)),
 #'   env   = factor(rep(c("a", "b"), 10))
 #' )
-#' ir <- fb_from_asreml(yield ~ env, random = ~ geno, data = df)
-#' class(ir)
+#' plan <- fb_plan(yield ~ env, random = ~ geno, data = df)
+#' class(plan)
 #' @export
 fb_from_asreml <- function(
   fixed,
@@ -79,10 +83,46 @@ fb_from_asreml <- function(
   prior_vc_sd = 1,
   rcov
 ) {
+  .fb_warn_deprecated_export(
+    "fb_from_asreml",
+    "Use `fb_plan()` to inspect the compiled model plan."
+  )
+  .fb_from_asreml_impl(
+    fixed = fixed,
+    random = random,
+    residual = residual,
+    data = data,
+    family = family,
+    link = link,
+    weights = weights,
+    known_matrices = known_matrices,
+    prior = prior,
+    prior_fixed_sd = prior_fixed_sd,
+    prior_vc_sd = prior_vc_sd,
+    rcov = if (missing(rcov)) NULL else rcov,
+    .rcov_missing = missing(rcov)
+  )
+}
+
+.fb_from_asreml_impl <- function(
+  fixed,
+  random = NULL,
+  residual = NULL,
+  data,
+  family = "gaussian",
+  link = NULL,
+  weights = NULL,
+  known_matrices = list(),
+  prior = NULL,
+  prior_fixed_sd = 100,
+  prior_vc_sd = 1,
+  rcov = NULL,
+  .rcov_missing = TRUE
+) {
   # `rcov` is the ASReml 3 spelling of the residual-structure argument,
   # renamed to `residual` in ASReml 4 and in flexyBayes 0.9.0. Kept only
   # as a tripwire that raises a guiding error if supplied.
-  if (!missing(rcov)) {
+  if (!isTRUE(.rcov_missing)) {
     .fb_stop_defunct(c(
       paste0(
         "The `rcov` argument of `fb_from_asreml()` was deprecated in ",
@@ -218,7 +258,7 @@ fb_from_asreml <- function(
   grammar <- .detect_grammar(fixed, random, residual, syntax)
   switch(
     grammar,
-    asreml = fb_from_asreml(
+    asreml = .fb_from_asreml_impl(
       fixed = fixed,
       random = random,
       residual = residual,
@@ -256,7 +296,7 @@ fb_from_asreml <- function(
           family_class = "flexybayes_grammar_brms_known_matrices_unsupported"
         ))
       }
-      fb_from_brms(
+      .fb_from_brms_impl(
         formula = fixed,
         data = data,
         family = family,

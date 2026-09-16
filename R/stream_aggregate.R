@@ -190,7 +190,7 @@ flexybayes_stream <- function(
   # across chunks.
   src <- .fb_stream_source(source, chunk_rows = as.integer(chunk_rows))
   head <- .fb_stream_head(src, fixed, random, trials, exposure)
-  fb <- fb_from_asreml(
+  fb <- .fb_from_asreml_impl(
     fixed = fixed,
     random = random,
     data = head,

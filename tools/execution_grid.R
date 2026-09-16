@@ -62,6 +62,8 @@
 #                   and writes under a `_smoke` suffix so a rehearsal
 #                   never overwrites a banked run.
 #   FB_GRID_CORES   core count, capped at 8.
+#   FB_GRID_SHA     source commit represented by the installed tarball.
+#                   Required when the extracted source has no own .git.
 #
 # `tools/stress_corner_to_corner.R` is NOT this gate; see its header.
 
@@ -137,14 +139,25 @@ dir.create(.raw_dir, recursive = TRUE, showWarnings = FALSE)
 
 .build <- .guard_installed_build()
 
-.head_sha <- tryCatch(
-  trimws(system2("git", c("-C", shQuote(.pkg_root), "rev-parse", "--short",
-                          "HEAD"),
-                 stdout = TRUE, stderr = FALSE)),
-  error = function(e) NA_character_
-)
-if (length(.head_sha) != 1L || !nzchar(.head_sha)) {
-  .head_sha <- NA_character_
+.head_sha <- trimws(Sys.getenv("FB_GRID_SHA"))
+if (!nzchar(.head_sha) && file.exists(file.path(.pkg_root, ".git"))) {
+  .head_sha <- tryCatch(
+    trimws(system2(
+      "git",
+      c("-C", shQuote(.pkg_root), "rev-parse", "--short", "HEAD"),
+      stdout = TRUE,
+      stderr = FALSE
+    )),
+    error = function(e) NA_character_
+  )
+}
+if (length(.head_sha) != 1L || !grepl("^[0-9a-f]{7,40}$", .head_sha)) {
+  stop(
+    "The execution grid needs the tarball's source commit. Set FB_GRID_SHA ",
+    "to its 7--40 character hexadecimal Git SHA; the harness will not ",
+    "borrow HEAD from an enclosing repository.",
+    call. = FALSE
+  )
 }
 .run_date <- format(Sys.Date(), "%Y-%m-%d")
 

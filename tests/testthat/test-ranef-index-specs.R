@@ -433,7 +433,12 @@ test_that("every specification relabels a table carrying its index values and no
 test_that("every specification's index values are the IDs a fitted INLA table carries", {
   skip_on_cran()
   skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    # This is an index-construction contract. Posterior spatial-collapse
+    # diagnostics are exercised in test-spatial-field-collapse.R.
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
   fixtures <- .ris_fixtures()
   checked <- 0L
   for (nm in names(fixtures)) {

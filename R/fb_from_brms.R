@@ -79,6 +79,10 @@
 #'
 #' @return An `fb_terms` object with `source = "brms"`.
 #'
+#' @section Deprecated:
+#' `fb_from_brms()` is deprecated as of 0.13.0. Use [fb_plan()] to inspect
+#' the backend-neutral model plan without fitting it.
+#'
 #' @family flexyBayes ingest adapters
 #' @seealso [fb()] and [flexybayes()] for the universal fitting entry;
 #'   [fb_from_asreml()] for the other active dialect.
@@ -89,10 +93,40 @@
 #'   x = rnorm(30),
 #'   g = factor(rep(letters[1:5], 6))
 #' )
-#' ir <- fb_from_brms(y ~ x + (1 | g), data = df)
-#' class(ir)
+#' plan <- fb_plan(y ~ x + (1 | g), data = df)
+#' class(plan)
 #' @export
 fb_from_brms <- function(
+  formula,
+  data,
+  family = "gaussian",
+  link = NULL,
+  prior = NULL,
+  weights = NULL,
+  prior_fixed_sd = 100,
+  prior_vc_sd = 1,
+  carry_n_rows = NULL,
+  ...
+) {
+  .fb_warn_deprecated_export(
+    "fb_from_brms",
+    "Use `fb_plan()` to inspect the compiled model plan."
+  )
+  .fb_from_brms_impl(
+    formula = formula,
+    data = data,
+    family = family,
+    link = link,
+    prior = prior,
+    weights = weights,
+    prior_fixed_sd = prior_fixed_sd,
+    prior_vc_sd = prior_vc_sd,
+    carry_n_rows = carry_n_rows,
+    ...
+  )
+}
+
+.fb_from_brms_impl <- function(
   formula,
   data,
   family = "gaussian",
@@ -146,7 +180,7 @@ fb_from_brms <- function(
       )
     }
     data <- .fb_from_brms_placeholder_data(formula)
-    fb <- fb_from_brms(
+    fb <- .fb_from_brms_impl(
       formula = formula,
       data = data,
       family = family,
@@ -877,4 +911,3 @@ fb_from_brms <- function(
     asreml_surface = asreml
   ))
 }
-

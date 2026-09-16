@@ -16,10 +16,13 @@
 # the completed grid reproduces the observed-data likelihood exactly.
 # Read in a Bayesian frame that construction is data augmentation
 # (Tanner and Wong 1987): the missing response is a latent quantity,
-# integrated out. Under ignorability (Rubin 1976) the posterior for the
-# model parameters is then the same whether the cell is imputed or
-# omitted from the likelihood -- what augmentation preserves is the
-# REPRESENTATION, not information.
+# integrated out. Under ignorability (Rubin 1976), and provided the two
+# representations use the same prior on the same model parameters, the
+# posterior for those parameters is then the same whether the cell is
+# imputed or omitted from the likelihood -- what augmentation preserves is
+# the REPRESENTATION, not information. This common-prior condition matters:
+# a backend default prior may depend on the realised design matrix and need
+# not remain the same after rows are omitted.
 #
 # That identity is a statement about the posterior, not a promise about
 # what an optimiser returns. The two settings hand the engine different

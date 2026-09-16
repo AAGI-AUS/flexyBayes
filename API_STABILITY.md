@@ -1,6 +1,6 @@
 # API stability -- flexyBayes
 
-`flexyBayes` is in the **0.12.1** development line. Every public export is at
+`flexyBayes` is in the **0.13.0** development line. Every public export is at
 the experimental `lifecycle` stage, so the guarantees below are deliberately
 weaker than they will be at v1.0: bug fixes and additions never break callers,
 but renamings, default changes, and shape changes are permitted within 0.x
@@ -42,7 +42,7 @@ refusal:
 | Export | Stage | Notes |
 |---|---|---|
 | `fb_inla()` | deprecated in 0.13.0 | Pins the INLA engine (approximate inference -- see "Inference semantics"). Call `flexybayes(..., backend = "inla")`. |
-| `fb_brms()` | experimental | Pins the Stan/brms engine via `brms::brm()`. |
+| `fb_brms()` | deprecated in 0.13.0 | Pins the Stan/brms engine via `brms::brm()`. Call `flexybayes(..., backend = "brms")`. |
 
 **Sampler arguments.** `seed` and `control` are part of the universal
 signature and reach `brms::brm()` unchanged, so a brms posterior is
@@ -59,8 +59,8 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |---|---|---|
-| `fb_from_brms()` | experimental | Parse brms-style syntax: `fb_from_brms(formula, data, family, ...)`. |
-| `fb_from_asreml()` | experimental | Parse ASReml-style syntax into the same representation. |
+| `fb_from_brms()` | deprecated in 0.13.0 | Compatibility parser for brms-style syntax. Use `fb_plan(..., syntax = "brms")` to inspect a model without fitting. |
+| `fb_from_asreml()` | deprecated in 0.13.0 | Compatibility parser for ASReml-style syntax. Use `fb_plan(..., syntax = "asreml")`. |
 
 ## Cross-engine comparison
 
@@ -81,7 +81,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 |---|---|---|
 | `fb_cov()` | experimental | Construct a structured-covariance specification carried on a random term. |
 | `is_fb_cov()` | deprecated in 0.13.0 | Test for that class. Use `inherits(x, "fb_cov")`. |
-| `fb_engine()` | experimental | Construct an engine specification (engine name plus sampler-control options) passable as `backend = fb_engine(...)`. |
+| `fb_engine()` | deprecated in 0.13.0 | Compatibility constructor. Pass `backend`, `chains`, `n_samples`, `warmup` and `control` directly to `flexybayes()`; `fb_select(engine = )` accepts a named sampler-settings list. |
 | `is_fb_engine()` | deprecated in 0.13.0 | Test for that class. Use `inherits(x, "fb_engine")`. |
 | `is_fb_approx()` | deprecated in 0.13.0 | Test for the `fb_approx` class. Use `inherits(x, "fb_approx")`. |
 | `fb_approx()`, `validate_approximation()` | experimental | Construct / validate an approximate-scheme request. Approximate schemes are gated: an unregistered scheme is refused with a structured message naming the available exact routes. |
@@ -91,7 +91,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | Export | Stage | Notes |
 |---|---|---|
 | `fb_plan()` | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
-| `fb_select()` | experimental | Bayesian selection over a fitted model. Fits a reference model in which a declared block of candidate fixed effects carries a joint shrinkage prior and the covariance is integrated over rather than plugged in, then reads a decision off it -- projection predictive where the structure gate passes, `full`, or a labelled posterior threshold. Every result records four independent axes (`workflow`, `provider`, `prior`, `decision`), and `benchmark = TRUE` adds a `glmnet` arm and an unpenalised generalised-least-squares arm on the same folds, each carrying one of three declared equivalence levels. `fallback = "none"` is the default: an absent Bayesian provider refuses by name rather than substituting an optimiser. |
+| `fb_select()` | experimental | Selection over a fitted model with an explicit workflow axis. `workflow = "bayes"` fits a posterior reference model; `workflow = "penalized_optimizer"` is a frequentist penalised-likelihood path (`glmnet` for ridge/lasso/elastic net and the package proximal provider for grouped families); `workflow = "unpenalized_benchmark"` is generalised least squares with plugged-in covariance. Every result records workflow, provider, prior and decision separately, so no optimiser is labelled Bayesian. Fold-local preprocessing, candidate availability, support history and score-contract hashes are recorded. |
 | `fb_penalty()` | experimental | Declare the joint shrinkage prior over the candidate block: `target ~ family(...)` formulas resolved in written order against the model matrix. Families: `ridge`, `laplace`, `elastic_net`, `regularized_horseshoe`, `r2d2`, and `none()` to exempt coordinates. Targets: `term(everything())`, `term(x1, x2)`, `term(c("x1", "x2"))`, `term(matches("^SLGA_"))`. |
 | `fb_resamples()` | experimental | Declare the resampling scheme a selection is scored on: folds on original units before any transformation, frozen factor levels, and an unseen level in an assessment fold refused rather than dropped. |
 | `fb_decision()` | experimental | Declare how the selection decision is made: the method (`projection`, `full`, `posterior_threshold`), the metric, the rule (`one_se`, `min`, `tolerance`) and the search. Validated at construction, so a rule missing the number it needs refuses before anything is fitted. |

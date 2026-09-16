@@ -28,7 +28,7 @@
 #
 # Run from the package root. Not shipped (`^tools$` in .Rbuildignore).
 
-TARGET_VERSION <- "0.12.1"
+TARGET_VERSION <- "0.13.0"
 TARGET_TIER <- "V2"
 # 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
 # Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
@@ -930,7 +930,7 @@ MAX_EXPORTS <- 36L
 )
 
 # ---------------------------------------------------------------------
-# Explicitly OUT of 0.12.1. Not criteria. Admitting one means editing
+# Explicitly OUT of 0.13.0. Not criteria. Admitting one means editing
 # this file, which is the point. Targets that named 0.11 were not reached
 # there and were re-dated on 2026-09-15.
 # ---------------------------------------------------------------------
@@ -955,9 +955,9 @@ MAX_EXPORTS <- 36L
   c("Baseline MET live evidence beyond 120 rows",
     "not scheduled"),
   c("Exact aggregated Gaussian likelihood with the residual prior composed",
-    "0.13.0"),
+    "0.15.0 exact-representation gate"),
   c("Export count reduced to 25 or fewer by deprecation",
-    "0.13.0")
+    "later removal release; 0.13.0 starts the warning period")
 )
 
 # ---------------------------------------------------------------------

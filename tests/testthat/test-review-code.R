@@ -26,11 +26,16 @@
 
 mk_review_data <- function() {
   set.seed(42)
-  n <- 30L
+  n <- 90L
+  env <- factor(rep(1:3, length.out = n))
+  geno <- factor(rep(1:9, length.out = n))
+  env_effect <- c(-3, 0, 4)
+  geno_effect <- seq(-6, 6, length.out = 9L)
   data.frame(
-    yield = rnorm(n, mean = 100, sd = 10),
-    env = factor(rep(1:3, length.out = n)),
-    geno = factor(rep(1:5, length.out = n))
+    yield = 100 + env_effect[as.integer(env)] +
+      geno_effect[as.integer(geno)] + rnorm(n, sd = 2),
+    env = env,
+    geno = geno
   )
 }
 
@@ -47,6 +52,8 @@ test_that("review_code = TRUE returns a flexybayes_review with the expected fiel
     yield ~ env,
     random = ~geno,
     data = d,
+    seed = 77L,
+    control = list(adapt_delta = 0.95),
     verbose = FALSE,
     mcmc_verbose = FALSE,
     review_code = TRUE
@@ -66,6 +73,8 @@ test_that("review_code = TRUE returns a flexybayes_review with the expected fiel
   expect_false(isTRUE(rev$proceeded))
   expect_null(rev$fit)
   expect_true(is.list(rev$proceed_args))
+  expect_identical(rev$proceed_args$seed, 77L)
+  expect_identical(rev$proceed_args$control, list(adapt_delta = 0.95))
 })
 
 
@@ -129,7 +138,7 @@ test_that("proceed(rev) advances into a fit and caches the result", {
 
   set.seed(20260521L)
   # Structural test (does proceed() advance into a fit and cache it?),
-  # not numeric agreement. The 200-draw / chains=1 budget produced a
+  # not numeric agreement. The former one-chain budget produced a
   # genuine R-hat warning plus a residual low-ESS warning that carries
   # flexyBayes's own convergence message rather than rstan's -- neither
   # is caught by .muffle_ess_warnings() (by design: it does not widen
@@ -143,8 +152,8 @@ test_that("proceed(rev) advances into a fit and caches the result", {
     data = d,
     n_samples = 1000,
     warmup = 1000,
-    chains = 1,
-    control = list(adapt_delta = 0.97),
+    chains = 2,
+    control = list(adapt_delta = 0.99),
     verbose = FALSE,
     mcmc_verbose = FALSE,
     review_code = TRUE
