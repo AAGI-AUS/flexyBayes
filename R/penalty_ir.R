@@ -72,7 +72,13 @@
     elastic_net = list(
       params = c("lambda", "alpha"),
       required = c("lambda", "alpha"),
-      domain = c(lambda = "positive", alpha = "unit_open"),
+      # `alpha` is half-open at one rather than open (P6, final specification
+      # B6): `alpha = 1` is the lasso corner of the elastic-net path, and
+      # `lambda_l2` at that corner is exactly zero rather than merely small,
+      # which is the pure-L1 problem `glmnet`'s own KKT residual already
+      # certifies. `alpha = 0` stays refused -- it is ridge(), which already
+      # has its own family and its own name on the certificate.
+      domain = c(lambda = "positive", alpha = "unit_half_open"),
       defaults = list(),
       hyperparameter_mode = "fixed",
       route = "stanvar_density",

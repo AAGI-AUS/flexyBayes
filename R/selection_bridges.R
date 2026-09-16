@@ -97,6 +97,30 @@
     as.numeric(value)
   }
 
+  # (0, 1]: elastic_net's alpha alone (P6, final specification B6). One is
+  # the lasso corner of the elastic-net path -- l2 = 0 there, not merely
+  # small -- and the fold with it reaches `.fb_sel_glmnet_at()` on the same
+  # (l1, l2) coordinate `laplace()` already uses, certified by the same KKT
+  # residual. Zero stays refused: that corner already has its own family,
+  # ridge(), and its own name on the certificate.
+  unit_half_open <- function(value, what) {
+    if (
+      !is.numeric(value) ||
+        length(value) != 1L ||
+        !is.finite(value) ||
+        value <= 0 ||
+        value > 1
+    ) {
+      stop(
+        "`",
+        what,
+        "` must be a single number inside (0, 1].",
+        call. = FALSE
+      )
+    }
+    as.numeric(value)
+  }
+
   parts <- switch(
     family,
     ridge = {
@@ -109,7 +133,7 @@
     },
     elastic_net = {
       lambda <- positive(hyper$lambda, "lambda")
-      alpha <- unit_open(hyper$alpha, "alpha")
+      alpha <- unit_half_open(hyper$alpha, "alpha")
       c(
         l1 = n * lambda * alpha, l2 = n * lambda * (1 - alpha), lg = 0, le = 0
       )

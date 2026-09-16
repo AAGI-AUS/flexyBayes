@@ -227,6 +227,117 @@ test_that("glmnet at the corrected map is the proximal mode, for elastic net", {
 })
 
 
+# --- P6: elastic_net(alpha = 1), the lasso endpoint ---------------------- #
+#
+# Final specification B6. The oracle is glmnet's own KKT residual at the
+# returned point, never a Bayesian summary. `alpha = 1` puts lambda_l2 at
+# exactly zero, the same (l1, l2) coordinate laplace() already reaches at
+# alpha_composite = 1 -- so the assertion below is the same shape as "glmnet
+# at the canonical map is the proximal mode, for lasso" above, entered from
+# elastic_net() instead of laplace().
+test_that("glmnet at the canonical map is the proximal mode, for the elastic-net lasso endpoint (P6)", {
+  skip_if_not_installed("glmnet")
+  fixture <- fb_glmnet_matrix()
+  convention <- .fb_sel_convention_at(
+    .fb_sel_glmnet_convention(),
+    fixture$z
+  )
+
+  for (lambda in c(0.05, 0.15, 0.4)) {
+    penalty <- .fb_sel_canonical_penalty(
+      "elastic_net",
+      list(lambda = lambda, alpha = 1),
+      n = fixture$n
+    )
+    expect_equal(penalty$lambda_l2, 0)
+    expect_equal(penalty$alpha_composite, 1)
+
+    provider <- .fb_sel_glmnet_at(
+      fixture$A,
+      fixture$z,
+      penalty$lambda_composite,
+      penalty$alpha_composite,
+      convention
+    )
+    internal <- .fb_sel_prox_mode(
+      fixture$A,
+      fixture$z,
+      "elastic_net",
+      list(lambda = lambda, alpha = 1),
+      tol = 1e-10
+    )
+    expect_identical(provider$route, "glmnet")
+    expect_identical(provider$alpha_glmnet, 1)
+    expect_lt(provider$kkt, 1e-6)
+    expect_equal(
+      unname(provider$beta),
+      unname(internal$beta),
+      tolerance = 1e-6
+    )
+  }
+})
+
+
+test_that("the lasso endpoint fits and certifies through the full glmnet path, against glmnet's own optimality conditions (P6)", {
+  skip_if_not_installed("glmnet")
+  built <- fb_glmnet_substrates()
+  path <- .fb_sel_glmnet_path(
+    built$substrates,
+    fb_glmnet_block("elastic_net", list(lambda = 0.2, alpha = 1)),
+    folds = built$folds,
+    decision = list(n_lambda = 6L),
+    seed = 11L
+  )
+
+  expect_identical(path$workflow, "penalized_optimizer")
+  expect_identical(path$provider, "glmnet")
+  expect_false(path$fully_bayesian)
+  # The equivalence level is reached exactly as it is for any other alpha of
+  # this family: alpha is a hyperparameter of elastic_net, not a distinct
+  # family, and the level is decided by family and provider, never by the
+  # value of alpha.
+  expect_identical(
+    path$equivalence_level$level,
+    "map_exact_fixed_covariance"
+  )
+  expect_identical(path$equivalence_level$prior_family, "elastic_net")
+
+  # The certificate: glmnet's own KKT residual at the returned point, on
+  # every fold, never a comparison against a Bayesian fit.
+  fixed_kkt <- path$kkt_by_lambda$kkt[path$kkt_by_lambda$arm == "fixed"]
+  expect_length(fixed_kkt, length(built$folds))
+  expect_lt(max(fixed_kkt), 1e-6)
+  expect_true(all(is.finite(path$canonical_objective$canonical_objective)))
+  expect_true(all(is.finite(path$provider_objective$provider_objective)))
+
+  # The fixed arm's own coordinate is the declared alpha, unconditionally on
+  # which route solved it: alpha = 1 on every fold.
+  fixed_rows <- path$path_coordinates[path$path_coordinates$arm == "fixed", ]
+  expect_true(nrow(fixed_rows) > 0)
+  expect_true(all(fixed_rows$alpha_canonical == 1))
+})
+
+
+test_that("elastic_net(alpha = 1) names its Bayesian counterpart in the shipped documentation (P6)", {
+  # Acceptance (final specification B6): the certified glmnet endpoint and
+  # the Bayesian lasso() / laplace() route are never conflated. The help
+  # text is the surface a reader of fb_penalty() actually sees, so this
+  # reads the installed .Rd rather than the roxygen source.
+  rd_path <- testthat::test_path("..", "..", "man", "fb_penalty.Rd")
+  skip_if(!file.exists(rd_path), "man/fb_penalty.Rd is not in the tree")
+  squish <- function(x) gsub("[[:space:]]+", " ", paste(x, collapse = " "))
+  text <- squish(readLines(rd_path, warn = FALSE))
+
+  expect_match(text, "lasso corner of the elastic", fixed = TRUE)
+  expect_match(text, "laplace()", fixed = TRUE)
+  expect_match(
+    text,
+    "posterior mean of a Laplace prior is not a lasso estimate",
+    fixed = TRUE
+  )
+})
+
+
 test_that("glmnet at the corrected map is the ridge closed form", {
   skip_if_not_installed("glmnet")
   fixture <- fb_glmnet_matrix()
