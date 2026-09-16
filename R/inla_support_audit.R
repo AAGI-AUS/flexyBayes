@@ -108,15 +108,32 @@
 #'
 #' @param theta_name An internal hyperparameter name.
 #' @param standardisation The response standardisation, or `NULL`.
+#' @param covariate The covariate standardisation, or `NULL`. A bound on an
+#'   uncorrelated slope's standard deviation is stated in response units per
+#'   covariate unit, so it is reported in those units whatever the engine
+#'   received.
 #' @returns A positive number; 1 when the fit was not standardised.
 #' @noRd
 #' @keywords internal
-.fb_support_sd_factor <- function(theta_name, standardisation) {
-  if (is.null(standardisation)) {
+.fb_support_sd_factor <- function(
+  theta_name,
+  standardisation,
+  covariate = NULL
+) {
+  if (is.null(standardisation) && is.null(covariate)) {
     return(1)
   }
   precision_name <- sub("^Log precision", "Precision", theta_name)
-  1 / sqrt(.fb_inla_hyper_factor(precision_name, standardisation))
+  factor <- 1
+  if (!is.null(standardisation)) {
+    factor <- factor /
+      sqrt(.fb_inla_hyper_factor(precision_name, standardisation))
+  }
+  if (!is.null(covariate)) {
+    factor <- factor /
+      sqrt(.fb_inla_covariate_hyper_factor(precision_name, covariate))
+  }
+  factor
 }
 
 #' Audit an INLA fit against the bounds of its stated priors
@@ -126,6 +143,9 @@
 #' @param standardisation The response standardisation the fit ran on, or
 #'   `NULL`. It maps only the reported standard deviations; the comparison
 #'   stays on the scale INLA fitted.
+#' @param covariate The covariate standardisation the fit ran on, or `NULL`.
+#'   It maps the reported standard deviations of the uncorrelated slope
+#'   fields, for the same reason and in the same way.
 #' @returns A data frame with one row per hyperparameter under a bounded
 #'   prior: `parameter`, `lower_sd`, `upper_sd`, `mode_sd`,
 #'   `interval_lower_sd`, `interval_upper_sd` and `inside`. Standard
@@ -134,7 +154,11 @@
 #'   The frame has zero rows when no prior is bounded.
 #' @noRd
 #' @keywords internal
-.fb_inla_support_audit <- function(inla_fit, standardisation = NULL) {
+.fb_inla_support_audit <- function(
+  inla_fit,
+  standardisation = NULL,
+  covariate = NULL
+) {
 
   # Priors INLA received, in the order of its hyperparameters -------------
 
@@ -173,7 +197,8 @@
     theta_names[bounded],
     .fb_support_sd_factor,
     numeric(1L),
-    standardisation = standardisation
+    standardisation = standardisation,
+    covariate = covariate
   )
   audit <- data.frame(
     parameter = theta_names[bounded],

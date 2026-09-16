@@ -259,8 +259,16 @@ test_that("the six full-specification INLA cells stay green", {
       error = function(e) e
     )
     expect_false(inherits(fit, "condition"), label = fam)
-    # Only the Gaussian fit runs on a standardised response.
-    expected <- if (identical(fam, "gaussian")) stats::sd(d$y)^2 / 16 else 1 / 16
+    # Each cell is read on the coordinates its engine received. The Gaussian
+    # fit runs on a standardised response, so a coefficient's precision
+    # multiplies by sd(y)^2; every other family runs on a standardised
+    # covariate, so it divides by sd(x)^2. The prior stated on the original
+    # scale is normal(0, 4) in every cell, and every cell maps back to it.
+    expected <- if (identical(fam, "gaussian")) {
+      stats::sd(d$y)^2 / 16
+    } else {
+      1 / 16 / stats::sd(d$x)^2
+    }
     expect_equal(fit$inla$.args$control.fixed$prec$x, expected, label = fam)
   }
 })

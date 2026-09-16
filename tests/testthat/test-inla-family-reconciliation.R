@@ -181,9 +181,11 @@ test_that("a beta fit on INLA carries a residual prior under phi", {
   ))
   expect_identical(emitted$family, "beta")
   # No fixed-effect prior was stated: the numeric column takes the
-  # covariate-scaled default on the logit scale, normal(0, sqrt(1000) / sd(x)),
-  # and nothing else is written.
-  expect_equal(emitted$control_fixed$prec, list(x = stats::sd(d$beta$x)^2 / 1000))
+  # covariate-scaled default on the logit scale, normal(0, sqrt(1000) / sd(x)).
+  # The fit runs on that covariate standardised, where the same prior reads
+  # normal(0, sqrt(1000)) and its precision is exactly 1 / 1000, carrying no
+  # trace of the units x was recorded in. Nothing else is written.
+  expect_equal(emitted$control_fixed$prec, list(x = 1 / 1000))
   expect_named(emitted$control_fixed, c("mean", "prec"))
   expect_named(emitted$control_family$hyper, "phi")
 })

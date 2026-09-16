@@ -386,32 +386,47 @@
 .fb_inla_posterior_sample <- function(object, n, ...) {
   draws <- INLA::inla.posterior.sample(n, object$inla, ...)
   spec <- object$extras$response_standardisation
-  if (is.null(spec) || !length(draws)) {
+  cstd <- object$extras$covariate_standardisation
+  if ((is.null(spec) && is.null(cstd)) || !length(draws)) {
     return(draws)
   }
 
   rows <- rownames(draws[[1L]]$latent)
   prefixes <- sub(":[0-9]+$", "", rows)
-  fixed <- rownames(object$inla$summary.fixed) %||% character(0)
-  random <- names(object$inla$summary.random) %||% character(0)
   a <- numeric(length(rows))
-  for (p in unique(prefixes)) {
-    if (p %in% c("Predictor", "(Intercept)")) {
-      a[prefixes == p] <- spec$centre
-    } else if (!p %in% c(fixed, random)) {
-      stop(
-        "flexyBayes internal error: the INLA draw row \"", p, "\" has no ",
-        "rule for mapping back from the standardised scale.",
-        call. = FALSE
-      )
+  b <- rep(1, length(rows))
+  if (!is.null(spec)) {
+    fixed <- rownames(object$inla$summary.fixed) %||% character(0)
+    random <- names(object$inla$summary.random) %||% character(0)
+    for (p in unique(prefixes)) {
+      if (p %in% c("Predictor", "(Intercept)")) {
+        a[prefixes == p] <- spec$centre
+      } else if (!p %in% c(fixed, random)) {
+        stop(
+          "flexyBayes internal error: the INLA draw row \"", p, "\" has no ",
+          "rule for mapping back from the standardised scale.",
+          call. = FALSE
+        )
+      }
     }
+    b <- b * spec$scale
+  }
+  # A covariate-standardised fit multiplies each row by a factor of its own:
+  # a coefficient by its design column's, a slope field by its covariate's,
+  # every other row by one (R/inla_covariate_standardisation.R).
+  if (!is.null(cstd)) {
+    b <- b * .fb_inla_covariate_draw_factor(prefixes, cstd)
+  }
+  hyper_factor <- function(nm) {
+    f <- if (is.null(spec)) 1 else .fb_inla_hyper_factor(nm, spec)
+    if (is.null(cstd)) f else f * .fb_inla_covariate_hyper_factor(nm, cstd)
   }
 
   lapply(draws, function(z) {
-    z$latent[, 1L] <- a + spec$scale * z$latent[, 1L]
+    z$latent[, 1L] <- a + b * z$latent[, 1L]
     if (length(z$hyperpar)) {
       z$hyperpar <- z$hyperpar * vapply(
-        names(z$hyperpar), .fb_inla_hyper_factor, numeric(1L), spec = spec
+        names(z$hyperpar), hyper_factor, numeric(1L)
       )
     }
     z
@@ -430,11 +445,17 @@
 .fb_inla_hyperpar_sample <- function(object, n, ...) {
   smp <- INLA::inla.hyperpar.sample(n, object$inla, ...)
   spec <- object$extras$response_standardisation
-  if (is.null(spec) || !is.matrix(smp)) {
+  cstd <- object$extras$covariate_standardisation
+  if ((is.null(spec) && is.null(cstd)) || !is.matrix(smp)) {
     return(smp)
   }
   for (nm in colnames(smp)) {
-    smp[, nm] <- smp[, nm] * .fb_inla_hyper_factor(nm, spec)
+    if (!is.null(spec)) {
+      smp[, nm] <- smp[, nm] * .fb_inla_hyper_factor(nm, spec)
+    }
+    if (!is.null(cstd)) {
+      smp[, nm] <- smp[, nm] * .fb_inla_covariate_hyper_factor(nm, cstd)
+    }
   }
   smp
 }
