@@ -241,6 +241,56 @@
   ))
 }
 
+# .fb_refuse_family_response_domain() --- refuse when the observed
+# response falls outside the domain the requested family's likelihood is
+# defined over (gamma / lognormal require a strictly positive response,
+# hurdle_gamma a non-negative one, beta an open unit interval; see
+# .fb_family_response_domain(), R/family_traits.R). A family absent from
+# that table has no domain check here.
+#
+# Runs after the nonfinite-response refusal and before the missing-
+# response policy: a missing (NA) response is carried as a latent
+# quantity under na_action, not read as a domain violation, and
+# .fb_response_domain_violation_rows() already passes NA over (a
+# comparison against NA is NA, and which() reads only TRUE). Before this
+# check, admitting a family onto .fb_family_links() was sufficient to
+# reach an engine -- lognormal (b979c5d) reached brms::brm() on a
+# non-positive response and stopped there untyped ("Family 'lognormal'
+# requires response greater than 0."); gamma, hurdle_gamma and beta did
+# the same, on brms and (bar lognormal, brms-only) as an unrelated
+# inla_program_failed diagnosis on INLA (U-FAM-SUPPORT, 2026-09-16).
+.fb_refuse_family_response_domain <- function(fb, data) {
+  fam <- tolower(as.character(fb$family %||% "")[[1L]])
+  domain <- .fb_family_response_domain()[[fam]]
+  if (is.null(domain)) {
+    return(invisible(NULL)) # no domain restriction recorded for this family
+  }
+  yv <- .fb_response_values(fb, data)
+  if (!is.numeric(yv)) {
+    return(invisible(NULL)) # nothing numeric to check against
+  }
+  bad <- .fb_response_domain_violation_rows(domain, yv)
+  if (length(bad) == 0L) {
+    return(invisible(NULL))
+  }
+  shown <- utils::head(bad, 5L)
+  stop(.fb_refusal_condition(
+    reason_code = "family_response_domain_violation",
+    message = paste0(
+      "family = \"", fb$family, "\" requires a response ",
+      .fb_response_domain_describe(domain), ". Column `", fb$response,
+      "` has ", length(bad), " value(s) outside that domain (",
+      paste0("row ", shown, ": ", as.character(yv[shown]), collapse = ", "),
+      if (length(bad) > length(shown)) ", ..." else "",
+      "). ",
+      .fb_response_domain_alternative(fam, yv[bad])
+    ),
+    family_class = "flexybayes_family_response_domain_refusal",
+    column = fb$response,
+    offending_rows = bad
+  ))
+}
+
 # .fb_design_index_vars() --- the variables a structured covariance is
 # indexed by. These are the columns whose completeness the covariance
 # representation depends on: an ar1_spatial term is emitted as a field
@@ -355,6 +405,12 @@
 
   # Before the missing-response policy, which NaN and Inf are not part of.
   .fb_refuse_nonfinite_response(fb, data)
+
+  # Before the missing-response policy for the same reason: a family's
+  # response-domain restriction (gamma / lognormal positive, beta an open
+  # unit interval, ...) is a fact about the observed values, not about
+  # rows na_action carries as latent.
+  .fb_refuse_family_response_domain(fb, data)
 
   miss <- .fb_response_missing(fb, data)
 

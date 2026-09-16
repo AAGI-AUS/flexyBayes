@@ -195,7 +195,12 @@ link it names rather than the log link \code{family = "gamma"} defaults
 to. Passing a family object together with a contradicting \code{link} is
 refused rather than resolved. A family outside this set is refused
 at the door; where the boundary is flexyBayes's own rather than the
-engines', the refusal says so and \code{inst/KNOWN_ISSUES.md} records it.}
+engines', the refusal says so and \code{inst/KNOWN_ISSUES.md} records it.
+A response outside the family's domain (0 or negative for \code{"gamma"}
+or \code{"lognormal"}, negative for \code{"hurdle_gamma"}, at or outside [0, 1]
+for \code{"beta"}) is refused by name (\code{family_response_domain_violation})
+before any engine runs; a missing (\code{NA}) response is \code{na_action}'s
+concern, not a domain violation.}
 
 \item{link}{Character or NULL: override the default link function
 (e.g., \code{"probit"} for binomial). Leave it unset when \code{family} is a
