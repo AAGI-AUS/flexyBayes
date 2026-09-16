@@ -104,14 +104,41 @@ forward: a family that targets blocks exactly, or \code{scope = "all_fixed"},
 under which the protected coefficients also sit under the global-local
 prior and the certificate records the approximation.
 
-The group, exclusive and adaptive families of the earlier grammar
-(\code{group_lasso()}, \code{exclusive_lasso()}, \code{sparse_group_lasso()},
-\code{group_exclusive()}, \code{adaptive()}) are withdrawn from this release and
-refuse by name. Their providers are not shipped, and a family without a
-provider is a promise rather than a method. This release names no
-successor for them: a structured-sparsity prior needs a prior, a
-provider and a gate that has been run, and none of the three exists
-here.
+\code{adaptive()} remains withdrawn and refuses by name: an adaptive penalty
+needs a first-stage estimate and a rule for turning it into weights, and
+a family without a provider is a promise rather than a method.
+}
+
+\section{Grouped families}{
+
+Four families read a grouping of the candidate columns. They are fitted by
+the penalised optimiser (\code{workflow = "penalized_optimizer"}) and have no
+brms form, so asking for one on the Bayesian route refuses by name rather
+than substituting the nearest prior.
+\tabular{lll}{
+   Family \tab Arguments \tab What it does \cr
+   \code{group_lasso(scale, group)} \tab \code{scale} > 0 \tab a group enters or leaves as a whole \cr
+   \code{sparse_group_lasso(scale, alpha, group)} \tab \code{alpha} in (0, 1) \tab a group enters as a whole, and thins inside \cr
+   \code{exclusive_lasso(scale, group)} \tab \code{scale} > 0 \tab members of a group compete \cr
+   \code{group_exclusive(group_scale, exclusive_scale, group)} \tab both > 0 \tab both at once \cr
+}
+
+
+\code{group} declares how the columns are grouped, and it is never inferred
+from the data. \code{"term"} makes each model term one group, so a factor's
+contrast columns move together and a numeric main effect is a group of
+one; \code{"block"} makes the specification's own target set one group, which
+is how a cluster of correlated measurements is declared to be a set of
+competitors. \code{group_lasso()}, \code{sparse_group_lasso()} and
+\code{group_exclusive()} default to \code{"term"}; \code{exclusive_lasso()} defaults to
+\code{"block"}. The rule and the resolved groups are recorded on the
+certificate. A grouping in which every group has one column refuses, since
+a group lasso would then be a lasso and an exclusive lasso a ridge.
+
+The exclusive penalty adds \code{sum_g (sum_j |beta_j|)^2 / 2} over groups,
+which encourages competition inside a group. It does not guarantee that
+exactly one member is non-zero, and on a group of one it is exactly
+\code{ridge()} at the same scale.
 }
 
 \examples{

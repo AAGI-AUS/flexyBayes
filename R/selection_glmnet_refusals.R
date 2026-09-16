@@ -49,5 +49,41 @@
     since_version = "0.11.0"
   )
 
+  .register_refusal(
+    reason_code = "selection_penalty_group_structure_absent",
+    description = paste0(
+      "fb_select(): a grouped penalty family was declared over a column set ",
+      "in which the declared grouping makes every group a singleton, so the ",
+      "grouping does nothing: a group lasso would be a lasso and an ",
+      "exclusive lasso a ridge. The family's answer would then be a ",
+      "different penalty than the one its name claims, which is the silent ",
+      "substitution this module refuses everywhere else. Declare the ",
+      "grouping the question needs -- `group = \"term\"` moves a factor's ",
+      "contrast columns together, `group = \"block\"` makes the ",
+      "specification's own targets one set of competitors."
+    ),
+    message_template = "fb_select(): the declared grouping names no group of more than one column: %s.",
+    registered_in_adr = "final specification B9",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_penalty_family_optimizer_only",
+    description = paste0(
+      "fb_penalty(): a grouped family -- group lasso, sparse group lasso, ",
+      "exclusive lasso or the group-exclusive composite -- was asked for on ",
+      "the Bayesian route. These families have a penalised-optimiser ",
+      "provider and no brms one: each is a penalty with a proximal operator ",
+      "rather than a density brms can be handed, and writing the nearest ",
+      "available prior under the requested family's name would be the ",
+      "substitution the equivalence levels exist to prevent."
+    ),
+    message_template = "fb_penalty(): %s has an optimiser provider and no Bayesian one.",
+    registered_in_adr = "final specification B9",
+    plan_field = "selection_plan",
+    since_version = "0.13.0"
+  )
+
   invisible(NULL)
 }
