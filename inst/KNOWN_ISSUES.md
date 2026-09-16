@@ -393,6 +393,20 @@ Each is reproducible on this release. Priority is for the MET use case.
     rows identify every candidate; or remove the unidentified columns from
     `candidates`. *What is open*: single-column drops in the formula
     refits, and a reference prior compiled over each fold's kept columns.
+20. **A weakly identified variance component can sit high with nothing
+    flagging it.** Since 0.13.0 the default prior on a standard deviation is
+    a half-normal with no upper bound, so the support audit, which checks a
+    stated bounded prior against the fitted marginal, has nothing to check on
+    a default fit. A component the data do not identify is then reported at
+    whatever value the prior and the likelihood settle on, with no refusal and
+    no warning: a duplicated random term that splits the rows exactly as a
+    fixed factor does returns a standard deviation of 4.9, where the former
+    uniform default bounded it at 3. The number is not wrong under the model
+    fitted; it reflects a component the design cannot identify. *Workaround*:
+    state a prior with `fb_prior()`, which is audited, or drop the duplicated
+    term. *What is open*: decision-bearing identification diagnostics, so a
+    component like this is reported as `inconclusive` rather than as an
+    estimate. Planned for 0.14.0 (`U-MISS-2`).
 
 ## Closed since the previous revision
 
