@@ -63,7 +63,7 @@
 #' |---|---|---|
 #' | `ridge(scale)` | `scale` > 0, prior sd on the standardised scale | fixed |
 #' | `laplace(scale)` | `scale` > 0 | fixed |
-#' | `elastic_net(lambda, alpha)` | `lambda` > 0, `alpha` in (0, 1) | fixed |
+#' | `elastic_net(lambda, alpha)` | `lambda` > 0, `alpha` in (0, 1\] | fixed |
 #' | `regularized_horseshoe(p0, slab_scale, slab_df, df, df_global, scope)` | `p0` in \[1, p - 1\] | global and local scales learned |
 #' | `r2d2(mean_R2, prec_R2, cons_D2, scope)` | the explained-variance grammar | learned |
 #'
@@ -72,6 +72,17 @@
 #' mean of a Laplace prior is not a lasso estimate -- the draws contain no
 #' exact zeros, so "selected" is always a named decision and never a property
 #' of the posterior.
+#'
+#' `elastic_net(lambda, alpha = 1)` is the lasso corner of the elastic-net
+#' path: `lambda_l2` is exactly zero there, and it fits and certifies on the
+#' `glmnet` provider, graded by `glmnet`'s own Karush-Kuhn-Tucker conditions
+#' rather than against any Bayesian summary. Its Bayesian counterpart is
+#' `laplace()` (the `lasso()` alias above), and the two are named side by
+#' side, not treated as one estimate under two engines: the posterior mean of
+#' a Laplace prior is not a lasso estimate, for exactly the reason `lasso()`
+#' already announces -- the draws carry no exact zeros. `alpha = 0` stays
+#' refused; that corner is `ridge()`, which already has its own name and its
+#' own row above.
 #'
 #' A `ridge` or `laplace` prior has a mode identity with the corresponding
 #' penalised objective **only with the covariance plugged in and the
@@ -702,6 +713,10 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
     "positive" = value > 0,
     "nonnegative" = value >= 0,
     "unit_open" = value > 0 && value < 1,
+    # (0, 1]: elastic_net's alpha alone (P6). One is admitted, the lasso
+    # corner of the elastic-net path; zero is not, because that corner
+    # already has its own name, ridge().
+    "unit_half_open" = value > 0 && value <= 1,
     "real" = TRUE,
     TRUE
   )
@@ -713,6 +728,7 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
     "positive" = "be strictly positive",
     "nonnegative" = "be >= 0",
     "unit_open" = "lie strictly inside (0, 1)",
+    "unit_half_open" = "lie inside (0, 1]",
     "lie in its domain"
   )
   stop(.fb_refusal_condition(

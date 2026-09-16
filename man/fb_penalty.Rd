@@ -72,7 +72,7 @@ equal breadth naming one coordinate leave no order and are refused.
    Family \tab Arguments \tab Hyperparameters \cr
    \code{ridge(scale)} \tab \code{scale} > 0, prior sd on the standardised scale \tab fixed \cr
    \code{laplace(scale)} \tab \code{scale} > 0 \tab fixed \cr
-   \code{elastic_net(lambda, alpha)} \tab \code{lambda} > 0, \code{alpha} in (0, 1) \tab fixed \cr
+   \code{elastic_net(lambda, alpha)} \tab \code{lambda} > 0, \code{alpha} in (0, 1] \tab fixed \cr
    \code{regularized_horseshoe(p0, slab_scale, slab_df, df, df_global, scope)} \tab \code{p0} in [1, p - 1] \tab global and local scales learned \cr
    \code{r2d2(mean_R2, prec_R2, cons_D2, scope)} \tab the explained-variance grammar \tab learned \cr
 }
@@ -83,6 +83,17 @@ alias of \code{laplace()}, and announces once per session that the posterior
 mean of a Laplace prior is not a lasso estimate -- the draws contain no
 exact zeros, so "selected" is always a named decision and never a property
 of the posterior.
+
+\code{elastic_net(lambda, alpha = 1)} is the lasso corner of the elastic-net
+path: \code{lambda_l2} is exactly zero there, and it fits and certifies on the
+\code{glmnet} provider, graded by \code{glmnet}'s own Karush-Kuhn-Tucker conditions
+rather than against any Bayesian summary. Its Bayesian counterpart is
+\code{laplace()} (the \code{lasso()} alias above), and the two are named side by
+side, not treated as one estimate under two engines: the posterior mean of
+a Laplace prior is not a lasso estimate, for exactly the reason \code{lasso()}
+already announces -- the draws carry no exact zeros. \code{alpha = 0} stays
+refused; that corner is \code{ridge()}, which already has its own name and its
+own row above.
 
 A \code{ridge} or \code{laplace} prior has a mode identity with the corresponding
 penalised objective \strong{only with the covariance plugged in and the
@@ -103,19 +114,15 @@ fixed effects beyond the intercept therefore refuses, and names both ways
 forward: a family that targets blocks exactly, or \code{scope = "all_fixed"},
 under which the protected coefficients also sit under the global-local
 prior and the certificate records the approximation.
-
-\code{adaptive()} remains withdrawn and refuses by name. An adaptive penalty
-needs a first-stage estimate and a rule for turning that estimate into
-weights, and this release ships neither.
 }
 
 \section{Grouped families}{
 
+
 Four families read a grouping of the candidate columns. They are fitted by
 the penalised optimiser (\code{workflow = "penalized_optimizer"}) and have no
 brms form, so asking for one on the Bayesian route refuses by name rather
-than substituting the nearest prior.
-\tabular{lll}{
+than substituting the nearest prior.\tabular{lll}{
    Family \tab Arguments \tab What it does \cr
    \code{group_lasso(scale, group)} \tab \code{scale} > 0 \tab a group enters or leaves as a whole \cr
    \code{sparse_group_lasso(scale, alpha, group)} \tab \code{alpha} in (0, 1) \tab a group enters as a whole, and thins inside \cr
@@ -135,10 +142,14 @@ competitors. \code{group_lasso()}, \code{sparse_group_lasso()} and
 certificate. A grouping in which every group has one column refuses, since
 a group lasso would then be a lasso and an exclusive lasso a ridge.
 
-The exclusive penalty adds \code{sum_g (sum_j |beta_j|)^2 / 2} over groups,
+The exclusive penalty adds \verb{sum_g (sum_j |beta_j|)^2 / 2} over groups,
 which encourages competition inside a group. It does not guarantee that
 exactly one member is non-zero, and on a group of one it is exactly
 \code{ridge()} at the same scale.
+
+\code{adaptive()} remains withdrawn and refuses by name. An adaptive penalty
+needs a first-stage estimate and a rule for turning that estimate into
+weights, and this release ships neither.
 }
 
 \examples{
