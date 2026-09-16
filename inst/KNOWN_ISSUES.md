@@ -43,7 +43,7 @@ which had drifted from the emit layer in four places.
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |
 | Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA carries it through the multiple-likelihood interface, a matrix response with one Gaussian family per level; brms lowers it to distributional regression on log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for families with no residual scale; `at(f, level):units` conditions on selected levels, which is a different model, and refuses. |
 | Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model, shown on small simulated data; unstructured and factor-analytic genotype-by-environment covariance do not combine with the sectioned residual on either engine. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
-| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | fits | refuses | Each common factor is one latent field entered per level of `f` as a SCALED COPY, and INLA's copy scaling IS the loading, so the loadings carry a posterior rather than a point estimate. Factor j is anchored at level j, the zero upper triangle ASReml uses against rotation, so an anchored loading is absent from the summary rather than reported as 1. Verified at k = 1 and k = 2. brms group-level effects are either uncorrelated or fully unstructured, with no factor-analytic form between. |
+| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Refused on both engines from 0.13.0 (`factor_analytic_not_repeatable`). INLA does represent the structure: each common factor is one latent field entered per level of `f` as a scaled copy, and INLA's copy scaling is the loading, so the loadings carry a posterior rather than a point estimate. What was never established is that a second identical call returns the same covariance. Measured under the 0.13.0 half-normal default against a tolerance fixed before the runs, the identified covariance `G = LL' + diag(psi)` repeated to better than 1.01 on two simulated designs and on `agridat::dasilva.maize`, and on `agridat::besag.met`, where the genetic signal is weak, eight identical calls spanned a ratio of 1.23 in a genotype-by-environment variance and a range of 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05. The loadings are also anchored at one for factor j at level j, taken from factor-level order, and that anchoring is representable only where the anchor level carries a common-factor loading; nothing checked it. brms has no factor-analytic lowering, so no engine fits it. `diag(env):gen` fits on both engines and `us(env):gen` on brms up to five environments. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or block carrier by name; brms takes dense, Cholesky and precision and refuses a block carrier. Under `fb_select()`: shrinkage yes, projection no. A joint shrinkage prior over candidate fixed effects fits on a base carrying one of these terms, but the term lowers to `(1 \| gr(g, cov = K))` and projpred refuses a function call on the right-hand side of a group-term `\|` (probe C5), so the projection decision is red. `decision = "auto"`, the default, resolves to `full` there; naming `"projection"` refuses before the reference model is sampled. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget -- four hyperparameters, one observation per grid node. This is not ASReml's three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
@@ -407,6 +407,35 @@ Each is reproducible on this release. Priority is for the MET use case.
     term. *What is open*: decision-bearing identification diagnostics, so a
     component like this is reported as `inconclusive` rather than as an
     estimate. Planned for 0.14.0 (`U-MISS-2`).
+21. **The factor-analytic covariance left the fitting route, because repeated
+    identical calls did not agree.** `fa(env, k):gen` fitted on INLA from
+    0.10.0.9000; from 0.13.0 both engines refuse it
+    (`factor_analytic_not_repeatable`). *Why*: the reference for this
+    structure is the identified covariance `G = LL' + diag(psi)`, which is
+    invariant to the rotation and sign the raw loadings are free in, and brms
+    has no factor-analytic lowering so there is no second engine to check it
+    against. Measured under the 0.13.0 half-normal default against a
+    tolerance fixed before the runs -- a ratio of 1.10 across eight repeats
+    on each diagonal entry of `G`, and a range of 0.05 on each genetic
+    correlation -- the structure repeated to 1.003 and 1.007 on the two
+    simulated designs the recovery claim rested on, and to 1.0001 on
+    `agridat::dasilva.maize`. On `agridat::besag.met` at 30 genotypes, a
+    trial with weak genetic signal, eight identical calls spanned 1.23 in a
+    genotype-by-environment variance and 0.12 in a genetic correlation. On
+    one thread seven of eight calls agreed exactly and the eighth landed on a
+    different mode, so the cause is the shape of the likelihood surface
+    rather than thread scheduling. Every call reported `mode.status = 0` and
+    a passing numerical confirm. A second property was never established
+    either: the loadings are anchored at one for factor *j* at level *j*,
+    taken from factor-level order, which represents the family only where the
+    anchor level carries a common-factor loading, and nothing checked that.
+    *Workaround*: `diag(env):gen`, one variance per environment with no
+    covariance between them, fits on both engines; `us(env):gen` fits on brms
+    for up to five environments and estimates the correlations directly.
+    *What is open*: an anchoring rule that selects the pivot from the data
+    rather than from level order, and a parameterisation whose mode is
+    identified on a low-signal trial. The emit is unchanged and still
+    reachable by a direct `emit_inla()` call, as the `us()` branch is.
 
 ## Closed since the previous revision
 

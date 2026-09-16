@@ -10,12 +10,19 @@
 # correlation derived from it) is invariant to that rotation and sign, so
 # G would be the identified quantity to report.
 #
-# No active backend fits an fa() term: INLA and brms both refuse a
-# factor-analytic structured-covariance term before a fit object exists
-# (.capability_inla() / lgm_gate() and .capability_brms()), so no surviving
-# fit ever carries a fa_gxe entry in parse_info$random -- the reconstruction
-# below is therefore never reached in practice, and this function reports
-# that there is nothing to summarise.
+# No active backend fits an fa() term, so no surviving fit carries a fa_gxe
+# entry in parse_info$random, the reconstruction below is not reached, and
+# this function reports that there is nothing to summarise.
+#
+# That sentence was false between 0.10.0.9000 and 0.12.1 and this file went
+# on asserting it: INLA emitted and fitted fa(f, k):g throughout, so a fit
+# DID carry a fa_gxe entry and this function told its caller there was no
+# factor-analytic term in a model that had one. It is true again from 0.13.0,
+# for a stated reason rather than by assumption -- the structure is refused
+# on both engines by factor_analytic_not_repeatable (R/dispatch.R), because
+# repeated identical INLA calls did not agree on the covariance. Should that
+# refusal ever be lifted, the G below is what this function must return, and
+# this comment is the notice that it stops being dead code the moment it is.
 
 #' Identified covariance for factor-analytic structured-covariance terms
 #'
@@ -29,9 +36,9 @@
 #' @param fit A flexybayes fit.
 #'
 #' @return An empty list (with a message): no active backend fits an
-#'   `fa()` term, so no fit ever carries one to reconstruct. Non-factor-
-#'   analytic structured terms (`us`, `ar1`) are reported as
-#'   not-yet-reconstructed.
+#'   `fa()` term -- both refuse it with `factor_analytic_not_repeatable` --
+#'   so no fit carries one to reconstruct. Non-factor-analytic structured
+#'   terms (`us`, `ar1`) are reported as not-yet-reconstructed.
 #'
 #' @examples
 #' # Reports on factor-analytic structured covariance. A fit carrying no

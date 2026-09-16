@@ -243,10 +243,16 @@ test_that("us(f):g fitted by emit_inla() reports its cells as g:f", {
   expect_lt(.rgl_placement_gap(fit, .rgl_intercept(fit), contrib), 0.1)
 })
 
-test_that("fa(f, k):g reports its factor and specific groups over g", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+test_that("fa(f, k):g has no random-effect table to label, because it refuses", {
+  # This block used to fit fa(env, 1):gen and check that ranef() labelled its
+  # factor and specific groups over gen. The structure left the fitting route
+  # at 0.13.0 (factor_analytic_not_repeatable): repeated identical calls did
+  # not agree on the covariance where the genetic signal is weak, so there is
+  # no fit to take a random-effect table from. The labelling code is
+  # unchanged and still covered for every structure that does fit; what is
+  # asserted here is that the refusal arrives instead of a fit, so this file
+  # records the reason its fa() coverage went away rather than losing it
+  # silently.
   set.seed(303L)
   d <- expand.grid(
     gen = factor(sprintf("G%02d", 1:15)),
@@ -258,25 +264,14 @@ test_that("fa(f, k):g reports its factor and specific groups over g", {
     matrix(stats::rnorm(45L, 0, 0.3), 15L, 3L)
   d$y <- 10 + mat_u[cbind(as.integer(d$gen), as.integer(d$env))] +
     stats::rnorm(nrow(d), 0, 0.3)
-  fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ fa(env, 1):gen, data = d,
-    backend = "inla", verbose = FALSE
-  ))
-  r <- ranef(fit)
-
-  groups <- c(
-    paste0("gen factor 1 (env = ", levels(d$env), ")"),
-    paste0("gen specific (env = ", levels(d$env), ")")
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ 1, random = ~ fa(env, 1):gen, data = d,
+      backend = "inla", verbose = FALSE
+    )),
+    error = function(e) e
   )
-  expect_setequal(names(r), groups)
-  for (g in groups) {
-    expect_identical(r[[g]]$level, levels(d$gen), info = g)
-  }
-  contrib <- vapply(seq_len(nrow(d)), function(i) {
-    .rgl_effect(r, paste0("gen factor 1 (env = ", d$env[i], ")"), d$gen[i]) +
-      .rgl_effect(r, paste0("gen specific (env = ", d$env[i], ")"), d$gen[i])
-  }, numeric(1L))
-  expect_lt(.rgl_placement_gap(fit, .rgl_intercept(fit), contrib), 0.1)
+  expect_s3_class(err, "flexybayes_refusal_factor_analytic_not_repeatable")
 })
 
 # A relationship matrix among n levels, positive definite, named by level.

@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=212
+      .refusal_registry: locked=TRUE n_keys=213
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -145,6 +145,7 @@
         fa_rank_exceeds_dim
         fa_rank_invalid
         fa_rank_missing
+        factor_analytic_not_repeatable
         family_argument_not_recognised
         fb_cov_missing_matrix
         fb_cov_type_unknown

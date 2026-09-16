@@ -201,16 +201,27 @@
     list(
       model_class = "Factor-analytic genotype-by-environment covariance",
       spelling = "`~ fa(env, k):gen`",
-      inla = "fits",
+      inla = "refuses",
       brms = "refuses",
-      note = "Each common factor is one latent field entered per level of `f`
-        as a SCALED COPY, and INLA's copy scaling IS the loading, so the
-        loadings carry a posterior rather than a point estimate. Factor j is
-        anchored at level j, the zero upper triangle ASReml uses against
-        rotation, so an anchored loading is absent from the summary rather
-        than reported as 1. Verified at k = 1 and k = 2. brms group-level
-        effects are either uncorrelated or fully unstructured, with no
-        factor-analytic form between.",
+      note = "Refused on both engines from 0.13.0
+        (`factor_analytic_not_repeatable`). INLA does represent the
+        structure: each common factor is one latent field entered per level
+        of `f` as a scaled copy, and INLA's copy scaling is the loading, so
+        the loadings carry a posterior rather than a point estimate. What was
+        never established is that a second identical call returns the same
+        covariance. Measured under the 0.13.0 half-normal default against a
+        tolerance fixed before the runs, the identified covariance
+        `G = LL' + diag(psi)` repeated to better than 1.01 on two simulated
+        designs and on `agridat::dasilva.maize`, and on `agridat::besag.met`,
+        where the genetic signal is weak, eight identical calls spanned a
+        ratio of 1.23 in a genotype-by-environment variance and a range of
+        0.12 in a genetic correlation, against tolerances of 1.10 and 0.05.
+        The loadings are also anchored at one for factor j at level j, taken
+        from factor-level order, and that anchoring is representable only
+        where the anchor level carries a common-factor loading; nothing
+        checked it. brms has no factor-analytic lowering, so no engine fits
+        it. `diag(env):gen` fits on both engines and `us(env):gen` on brms up
+        to five environments.",
       anchor = "test-capability-matrix.R"
     ),
     list(

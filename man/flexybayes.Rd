@@ -97,12 +97,18 @@ two lists.
 field described under "Spatial and temporal autoregressive fields"
 below.
 
-\strong{Parsed and refused by name} (recognised syntax, no active engine has
-a lowering for it): \code{fa()}, the factor-analytic genotype-by-environment
-covariance, is refused on both engines (\code{fa_not_representable}) -- it
-parses into the formula catalogue and stops there. \code{corh(f):g} and
-\code{at(f, level):g} are likewise real syntax with no active emit rather
-than unsupported syntax; both are described in full just below.
+\strong{Parsed and refused by name.} \code{fa(f, k):g}, the factor-analytic
+genotype-by-environment covariance, is refused on both engines from
+0.13.0 (\code{factor_analytic_not_repeatable}). INLA does represent it, by
+entering each common factor as scaled copies of a latent field, but
+repeated identical calls did not return the same covariance on a trial
+with weak genetic signal, and brms has no factor-analytic lowering.
+Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms for
+up to five levels. The bare spelling \code{fa(v, k)}, with no grouping factor
+for the covariance to apply to, keeps its own refusal
+(\code{fa_not_representable}). \code{corh(f):g} and \code{at(f, level):g} are likewise
+real syntax with no active emit rather than unsupported syntax; both are
+described in full just below.
 
 \strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
 one variance per level of \code{f} with no covariance between levels -- the
@@ -450,7 +456,7 @@ silenceable via \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} (ga
 installed).
 
 \strong{What each engine represents.}
-INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Factor-analytic genotype-by-environment covariance; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
 The per-class table with its notes is in \code{README.md} and
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 

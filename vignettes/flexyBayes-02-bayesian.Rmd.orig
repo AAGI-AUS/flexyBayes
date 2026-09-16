@@ -58,7 +58,7 @@ all, and that is the case where it earns its place.
 Where an engine's own default would be used instead, the `prior` column of
 `summary()` says `engine default` rather than naming a prior the fit never
 saw. A structure whose hyperparameters have no standard-deviation slot -- the
-unstructured and factor-analytic covariances on INLA -- is reported that way.
+unstructured covariance on INLA -- is reported that way.
 
 # The posterior
 

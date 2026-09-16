@@ -29,9 +29,10 @@ interpretable.
 }
 \section{Lifecycle}{
 
-No active engine emits an \code{fa(env, k):gen} term -- both INLA and brms
-refuse a factor-analytic structured-covariance term before a fit object
-exists -- so this function always abstains (\code{met_summary_not_available}).
+No active engine fits an \code{fa(env, k):gen} term: both refuse it with
+\code{factor_analytic_not_repeatable}, because repeated identical calls did not
+agree on the covariance. This function therefore always abstains
+(\code{met_summary_not_available}).
 What an active engine does report for a multi-environment trial is the
 variance components, through \code{\link[=summary]{summary()}}, and on brms the
 genotype-by-environment covariance of a \code{diag()} or \code{us()} term through

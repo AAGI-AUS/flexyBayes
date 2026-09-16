@@ -666,10 +666,41 @@
         )
       ))
     }
-    # fa_gxe is not refused here any more. INLA emits it; brms's own emit
-    # refuses it by name (brms_cannot_represent_term), which is the right
-    # altitude -- a per-engine limit belongs to that engine's emit, not to a
-    # dispatch-wide rule that speaks for both.
+    # fa_gxe is refused here again from 0.13.0, and for a different reason
+    # than the one withdrawn at 0.10.0.9000. That refusal claimed INLA had no
+    # factor-analytic representation, which was false: INLA enters each common
+    # factor as scaled copies of a latent field and the copy scaling is the
+    # loading. The emit works. What it does not do is return the same answer
+    # twice on a trial with weak genetic signal, and a variance component that
+    # moves between identical calls is a draw rather than an estimate.
+    #
+    # The altitude is dispatch-wide rather than the INLA emit because the
+    # limit is not INLA's representation: brms has no factor-analytic lowering
+    # at all, so there is no second engine to route to, and a per-engine
+    # refusal would send backend = "auto" to brms to collect a second, less
+    # informative refusal. One vocabulary, stated once, before any route.
+    if (identical(ty, "fa_gxe")) {
+      stop(.fb_refusal_condition(
+        reason_code = "factor_analytic_not_repeatable",
+        message = paste0(
+          "fa(", term$outer, ", ", term$k, "):", term$inner,
+          " asks for a factor-analytic genotype-by-environment covariance. ",
+          "flexyBayes fitted this on INLA from 0.10.0.9000 and does not from ",
+          "0.13.0: repeated identical calls do not agree closely enough for ",
+          "the number reported to be read as the covariance. On ",
+          "agridat::besag.met (30 genotypes, six environments) eight ",
+          "identical fits spanned a ratio of 1.23 in a genotype-by-",
+          "environment variance and a range of 0.12 in a genetic ",
+          "correlation, against the declared tolerances of 1.10 and 0.05. ",
+          "brms has no factor-analytic lowering, so there is no second ",
+          "engine to route to. Write diag(", term$outer, "):", term$inner,
+          ", one variance per environment with no covariance between them, ",
+          "which fits on both engines; or us(", term$outer, "):",
+          term$inner, " on brms for up to five environments, which ",
+          "estimates the correlations directly."
+        )
+      ))
+    }
     if (identical(ty, "ar2")) {
       stop(.fb_refusal_condition(
         reason_code = "ar2_not_representable",

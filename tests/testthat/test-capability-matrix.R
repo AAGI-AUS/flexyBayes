@@ -536,7 +536,13 @@ test_that("the combined MET model emits both blocks on brms", {
   expect_match(sigma, "sigma ~ 0 + env", fixed = TRUE)
 })
 
-test_that("factor-analytic GxE emits on INLA and refuses on brms", {
+test_that("factor-analytic GxE refuses on both engines", {
+  # Refused on both from 0.13.0 under one reason code. The refusal is
+  # dispatch-wide rather than per-engine because the limit is not INLA's
+  # representation -- that works -- but that repeated identical calls did
+  # not agree on the covariance, and brms has no factor-analytic lowering
+  # to route to. A per-engine refusal would send backend = "auto" to brms
+  # to collect a second, less informative message.
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   r <- .cap_row("Factor-analytic genotype-by-environment covariance")
@@ -544,17 +550,14 @@ test_that("factor-analytic GxE emits on INLA and refuses on brms", {
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ fa(env, 1):gen, data = d),
     r$inla,
-    "INLA"
+    "INLA",
+    condition_class = "flexybayes_refusal_factor_analytic_not_repeatable"
   )
-  # The refusal belongs to the engine that cannot do it, and says so under
-  # that engine's own reason code. `fa_not_representable` now covers only
-  # the bare `fa(v, k)` spelling, which has no grouping factor to apply the
-  # covariance to and no emit anywhere.
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ fa(env, 1):gen, data = d),
     r$brms,
     "brms",
-    condition_class = "flexybayes_refusal_brms_cannot_represent_term"
+    condition_class = "flexybayes_refusal_factor_analytic_not_repeatable"
   )
 })
 

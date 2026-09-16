@@ -3026,3 +3026,41 @@ print.fb_refusals_table <- function(x, ...) {
   )
   invisible(NULL)
 }
+
+
+# 2026-09-16 -- the factor-analytic covariance leaves the fitting route.
+#
+# The structure was admitted on INLA at 0.10.0.9000 on a simulated recovery
+# at k = 1 and k = 2. What was never established is that a second identical
+# call returns the same covariance. Measured before this refusal was written,
+# under the 0.13.0 half-normal default and a tolerance declared in advance:
+# on two simulated designs and on agridat::dasilva.maize the identified
+# covariance repeated to better than 1.01, and on agridat::besag.met, a trial
+# with weak genetic signal, eight identical calls spanned 1.23 in a variance
+# and 0.12 in a genetic correlation against tolerances of 1.10 and 0.05.
+#
+# The emit is left in place, reachable by a direct emit_inla() call, as the
+# us() branch is. What is withdrawn is the claim that the fitted numbers can
+# be read as the covariance.
+.populate_refusal_registry_factor_analytic <- function() {
+  .register_refusal(
+    reason_code = "factor_analytic_not_repeatable",
+    description = paste0(
+      "A factor-analytic genotype-by-environment covariance, fa(f, k):g, ",
+      "sent to a fit. INLA represents it by entering each common factor as ",
+      "scaled copies of a latent field, and that representation works; what ",
+      "it does not do is return the same covariance on a second identical ",
+      "call when the trial's genetic signal is weak, so a reported ",
+      "component is a draw from a distribution over modes rather than an ",
+      "estimate. brms has no factor-analytic lowering, so no engine fits ",
+      "the structure to a standard the package is willing to state. The ",
+      "diagonal structure diag(f):g fits on both engines, and us(f):g fits ",
+      "on brms for up to five levels."
+    ),
+    message_template = "%s",
+    registered_in_adr = "U-FA-1 (2026-09-16)",
+    plan_field = "rejected_routes",
+    since_version = "0.13.0"
+  )
+  invisible(NULL)
+}

@@ -175,10 +175,10 @@
       link = "identity", y = f$d_cap$y,
       slots = c("sigma:sigma", "sd:gen", "sd:gen:env")
     ),
-    "Factor-analytic genotype-by-environment covariance" = list(
-      fit = function() fb_inla(y ~ env, random = ~ fa(env, 1):gen, data = f$d_cap),
-      link = "identity", y = f$d_cap$y, slots = c("sigma:sigma", "sd:gen")
-    ),
+    # The factor-analytic row left this list at 0.13.0 with the structure
+    # itself: it is refused on both engines now
+    # (factor_analytic_not_repeatable), so it is no longer an INLA "fits"
+    # row and the completeness check below would reject it.
     "Known-covariance genomic / pedigree random effect" = list(
       fit = function() {
         fb_inla(y ~ env, random = ~ vm(gen, cov = fb_cov(Q, type = "precision")),
