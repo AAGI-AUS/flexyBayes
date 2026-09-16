@@ -160,6 +160,22 @@ family. The closed-form generalised-least-squares route on a plugged-in
 fold covariance remains available through \code{benchmark = TRUE} and is
 labelled \code{unpenalized_benchmark} wherever it appears.
 
+Fold refits run one at a time by default.
+\code{options(flexyBayes.selection_workers = n)} runs \code{n} of them at once on a
+platform that forks, and divides the engine threads between the workers so
+that workers times threads does not exceed the machine. Nothing the run
+records changes: the fold allocation, each fold's candidate space, the
+score contract, the certificate and the selected support are identical to
+the serial run's, and the worker count is deliberately absent from the
+certificate, because it describes the machine rather than the estimate.
+Engine numbers move as they move between any two repeated runs on an
+engine whose posterior sampler is not bit-reproducible. Set \code{n} against
+MEMORY rather than against the core count: every concurrent fold holds its
+own rows and its own engine process at the same time, so a machine runs
+far fewer folds at once than it has cores, and a worker the operating
+system kills under that pressure refuses by name rather than dropping a
+fold from the aggregation.
+
 \code{fallback = "none"} is the default. A Bayesian request whose provider is
 absent refuses with \code{selection_provider_absent}, naming the package and
 the install line. \code{fallback = "glmnet"} is a deliberate choice; when it
