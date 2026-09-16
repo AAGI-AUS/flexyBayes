@@ -11,9 +11,9 @@ fb_structured_cov(fit)
 }
 \value{
 An empty list (with a message): no active backend fits an
-\code{fa()} term, so no fit ever carries one to reconstruct. Non-factor-
-analytic structured terms (\code{us}, \code{ar1}) are reported as
-not-yet-reconstructed.
+\code{fa()} term -- both refuse it with \code{factor_analytic_not_repeatable} --
+so no fit carries one to reconstruct. Non-factor-analytic structured
+terms (\code{us}, \code{ar1}) are reported as not-yet-reconstructed.
 }
 \description{
 For each \code{fa(outer, k)} term in a fit, reconstruct the implied

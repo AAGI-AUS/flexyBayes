@@ -15,11 +15,16 @@
 # genotype-by-environment BLUPs themselves.
 #
 # These would be computed from the *realised* effects g_mat = F Lambda' +
-# delta (monitored by the fa codegen), which are identified -- rotation-
-# and sign-invariant -- unlike the raw loadings. No active backend fits an
-# fa() term (INLA and brms both refuse it as a structured-covariance term
-# outside their representable set -- see .capability_inla() / lgm_gate()
-# and .capability_brms()), so this function always abstains.
+# delta, which are identified -- rotation- and sign-invariant -- unlike the
+# raw loadings. No active backend fits an fa() term, so this function always
+# abstains.
+#
+# Between 0.10.0.9000 and 0.12.1 that last sentence was false: INLA fitted
+# fa(f, k):g and this function refused the breeder summary of a model the
+# package had just fitted. It holds again from 0.13.0 because the structure
+# is refused on both engines by factor_analytic_not_repeatable
+# (R/dispatch.R) -- repeated identical INLA calls did not agree on the
+# covariance -- and not because no engine can represent it.
 
 # --- the summary -------------------------------------------------- #
 
@@ -45,9 +50,10 @@
 #' @seealso [vpredict()] for posterior functionals of the variance
 #'   components, including genetic correlations.
 #' @section Lifecycle:
-#' No active engine emits an `fa(env, k):gen` term -- both INLA and brms
-#' refuse a factor-analytic structured-covariance term before a fit object
-#' exists -- so this function always abstains (`met_summary_not_available`).
+#' No active engine fits an `fa(env, k):gen` term: both refuse it with
+#' `factor_analytic_not_repeatable`, because repeated identical calls did not
+#' agree on the covariance. This function therefore always abstains
+#' (`met_summary_not_available`).
 #' What an active engine does report for a multi-environment trial is the
 #' variance components, through [summary()], and on brms the
 #' genotype-by-environment covariance of a `diag()` or `us()` term through
@@ -64,9 +70,10 @@ fb_met_summary <- function(
     reason_code = "met_summary_not_available",
     message = paste0(
       "fb_met_summary() is not available: breeder summaries are computed ",
-      "from realised factor-analytic effects, and no active backend emits ",
-      "an fa(env, k):gen term (INLA and brms both refuse a factor-",
-      "analytic structured-covariance term before a fit object exists). ",
+      "from realised factor-analytic effects, and no active backend fits ",
+      "an fa(env, k):gen term -- both refuse it with ",
+      "factor_analytic_not_repeatable, because repeated identical calls ",
+      "did not agree on the covariance. ",
       "What an active engine does report for a multi-environment trial is ",
       "the variance components, through summary(), and on brms the ",
       "genotype-by-environment covariance of a diag() or us() term ",

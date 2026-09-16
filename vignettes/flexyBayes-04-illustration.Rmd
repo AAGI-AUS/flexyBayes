@@ -160,57 +160,37 @@ And the point estimates are not the story. At 65 per cent deletion flexyBayes
 returns a heritability some distance from the whole-trial figure. Its interval
 still contains it, and still means what it says.
 
-# 3. A multi-environment trial: the loadings get a posterior
+# 3. A multi-environment trial: what the package will and will not report
 
 `dasilva.maize` is nine environments, fifty-five genotypes, three replicates,
-complete. The standard model is factor-analytic: one common factor across
-environments, one variance specific to each, one residual variance per
+complete. The standard model for it is factor-analytic: one common factor
+across environments, one variance specific to each, one residual variance per
 environment.
 
-| | ASReml | flexyBayes |
-|---|---|---|
-| random | `~ fa(env, 1):gen` | `~ fa(env, 1):gen` |
-| residual | `~ dsum(~ units \| env)` | `~ dsum(~ units \| env)` |
+flexyBayes fitted that model on INLA from 0.10.0.9000. From 0.13.0 it refuses
+it, on both engines, and on a page about trusting numbers the reason belongs
+in the open.
 
-Identical text. Both engines fit it, and they agree: the per-environment
-residual standard deviations match to two decimals, and so do the specific
-variances.
+INLA does represent the structure. Each common factor is one latent field
+entered per environment as a scaled copy, and the copy's scaling is the
+loading, so the loadings arrive with a posterior rather than a point estimate.
+The question never asked was whether a second identical call returns the same
+covariance. On this trial it does: eight identical fits agreed to about one
+part in ten thousand. On `agridat::besag.met`, where the genetic signal is
+weak, the same eight calls moved a genotype-by-environment variance by a
+factor of 1.23 and a genetic correlation by 0.12, and every one of them
+reported a converged mode and a passing numerical check. A structure that
+returns a different covariance each time it is asked is reporting where the
+optimiser started, and this package does not publish that as an estimate.
 
-What differs is what comes back. ASReml returns a loading and a standard
-error. flexyBayes returns a posterior for each loading, so any function of
-them -- the quantity a breeder actually asks about -- has a posterior too.
+What it does report for a multi-environment trial is `diag(env):gen`, one
+genetic variance per environment with no covariance between them, on either
+engine; and `us(env):gen` on brms for up to five environments, which estimates
+the correlations directly.
 
-The genetic correlation between two environments says whether they rank
-genotypes the same way. Under a one-factor model it is a function of the
-loadings and the specific variances, so it is one line:
-
-
-``` r
-data(dasilva.maize, package = "agridat")
-d <- dasilva.maize[order(dasilva.maize$env, dasilva.maize$gen), ]
-
-met <- flexybayes(yield ~ env, random = ~ fa(env, 1):gen,
-                  residual = ~ dsum(~ units | env),
-                  data = d, backend = "inla", verbose = FALSE)
-
-vpredict(met,
-  r_E5_E9 ~ (fa1_envE5 * sd_fa1) * (fa1_envE9 * sd_fa1) /
-    sqrt(((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2) *
-         ((fa1_envE9 * sd_fa1)^2 + sd_gen__envE9^2)),
-  r_E3_E8 ~ (fa1_envE3 * sd_fa1) * (fa1_envE8 * sd_fa1) /
-    sqrt(((fa1_envE3 * sd_fa1)^2 + sd_gen__envE3^2) *
-         ((fa1_envE8 * sd_fa1)^2 + sd_gen__envE8^2)),
-  h2_E5 ~ ((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2) /
-          ((fa1_envE5 * sd_fa1)^2 + sd_gen__envE5^2 + sigma_E5^2),
-  n_draws = 4000)
-#>   functional  estimate    median std.error  conf.low conf.high
-#> 1    r_E5_E9 0.6371187 0.6450666 0.1199627 0.3801449 0.8423240
-#> 2    r_E3_E8 0.7981862 0.8211757 0.1206796 0.5054688 0.9619411
-#> 3      h2_E5 0.5566210 0.5576646 0.0679189 0.4184597 0.6832296
-```
-
-The same three quantities from ASReml, by the delta method:
-
+The point the factor-analytic fit was making here still stands, because it is
+a property of the delta method rather than of the structure. ASReml returns
+these three derived quantities on this trial:
 
 ``` r
 rnd(asreml_ref$met_derived)
@@ -220,16 +200,14 @@ rnd(asreml_ref$met_derived)
 #> 3      h2_E5    0.570 0.072 0.429 0.712
 ```
 
-The heritability, which is well identified, agrees: 0.57 against 0.55, with
-near-identical intervals. The two correlations do not. Their delta-method
-intervals reach **1.03** and **1.34**. A correlation cannot exceed one, and
-these two are close enough to the boundary that a symmetric interval around
-them leaves the parameter space. The posterior intervals stay inside it,
-because a correlation computed on every draw is a correlation on every draw.
+Two of them are genetic correlations, and their delta-method intervals reach
+**1.03** and **1.34**. A correlation cannot exceed one. Both sit close enough
+to the boundary that a symmetric interval around a point estimate leaves the
+parameter space -- the failure a posterior does not have, because a
+correlation computed on every draw is a correlation on every draw.
 
-The same thing appears in the variance components themselves. Environment 8's
-specific variance:
-
+The same thing shows in the variance components. Environment 8's specific
+variance:
 
 ``` r
 rnd(asreml_ref$met_varcomp[
@@ -238,11 +216,12 @@ rnd(asreml_ref$met_varcomp[
 #> 8 fa(env, 1):gen!E8!var    0.0166 0.1369 0.121
 ```
 
-An estimate of 0.017 with a standard error of 0.137. A variance, with a
-standard error eight times its own size. flexyBayes reports that environment
-as a standard deviation of 0.27 with an interval from 0.06 to 1.02 -- wide,
-which is what the data support, and positive throughout, which a variance
-must be.
+An estimate of 0.017 with a standard error of 0.137: a variance whose standard
+error is eight times its own size. That is the case for reporting an interval
+that stays inside the parameter space, and it is a large part of why this
+package exists. It is also why the factor-analytic route is refused outright
+rather than shipped with a caveat. An interval is worth more than a standard
+error only when the fit behind it is the same fit twice.
 
 # 4. What missing cells do, and do not, change
 

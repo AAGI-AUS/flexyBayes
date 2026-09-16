@@ -39,12 +39,18 @@
 #'   field described under "Spatial and temporal autoregressive fields"
 #'   below.
 #'
-#'   **Parsed and refused by name** (recognised syntax, no active engine has
-#'   a lowering for it): `fa()`, the factor-analytic genotype-by-environment
-#'   covariance, is refused on both engines (`fa_not_representable`) -- it
-#'   parses into the formula catalogue and stops there. `corh(f):g` and
-#'   `at(f, level):g` are likewise real syntax with no active emit rather
-#'   than unsupported syntax; both are described in full just below.
+#'   **Parsed and refused by name.** `fa(f, k):g`, the factor-analytic
+#'   genotype-by-environment covariance, is refused on both engines from
+#'   0.13.0 (`factor_analytic_not_repeatable`). INLA does represent it, by
+#'   entering each common factor as scaled copies of a latent field, but
+#'   repeated identical calls did not return the same covariance on a trial
+#'   with weak genetic signal, and brms has no factor-analytic lowering.
+#'   Write `diag(f):g`, which fits on both engines, or `us(f):g` on brms for
+#'   up to five levels. The bare spelling `fa(v, k)`, with no grouping factor
+#'   for the covariance to apply to, keeps its own refusal
+#'   (`fa_not_representable`). `corh(f):g` and `at(f, level):g` are likewise
+#'   real syntax with no active emit rather than unsupported syntax; both are
+#'   described in full just below.
 #'
 #'   **Heterogeneous variances.** `diag(f):g`, `idh(f):g` and `at(f):g` all fit
 #'   one variance per level of `f` with no covariance between levels -- the

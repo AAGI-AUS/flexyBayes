@@ -47,14 +47,20 @@ test_that("every registry row names a test file that exists", {
   expect_equal(missing, character(0))
 })
 
-test_that("a conditional row states its precondition", {
+test_that("a qualified row states its precondition", {
   # `conditional` means covariance-family equivalent only where a stated
-  # precondition holds. A conditional row with an empty condition is a
-  # promise with the qualification removed.
+  # precondition holds; `refused` means the request terminates and the row
+  # has to say on what grounds. Both are promises carrying a qualification,
+  # and a blank condition is that qualification removed.
+  #
+  # Asserted over both classes rather than over `conditional` alone: the
+  # factor-analytic row was the last `conditional` one and became `refused`
+  # at 0.13.0, which would have left the old check passing over an empty set
+  # -- a guard that cannot fail is not a guard.
   reg <- .fb_translation_registry()
-  conditional <- reg[reg$class == "conditional", , drop = FALSE]
-  expect_gt(nrow(conditional), 0L)
-  expect_true(all(nzchar(conditional$condition)))
+  qualified <- reg[reg$class %in% c("conditional", "refused"), , drop = FALSE]
+  expect_gt(nrow(qualified), 0L)
+  expect_true(all(nzchar(qualified$condition)))
 })
 
 test_that("the ASReml 3 aliases are labelled as aliases, not as current syntax", {

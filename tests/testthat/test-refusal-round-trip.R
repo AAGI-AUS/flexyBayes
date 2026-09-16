@@ -131,25 +131,29 @@ test_that("str() is refused and names what to write instead", {
   expect_match(conditionMessage(bad), "us(f):g", fixed = TRUE)
 })
 
-test_that("a factor-analytic covariance emits on INLA and refuses on brms", {
-  # The refusal that used to cover both engines now covers the one that
-  # cannot do it. INLA enters each common factor as scaled copies of a
-  # latent field, so the dispatch-wide refusal was withdrawn; what remains
-  # on brms is that engine's own emit saying it has no lowering.
+test_that("a factor-analytic covariance is refused on both engines", {
+  # The dispatch-wide refusal returns at 0.13.0, and for a different reason
+  # than the one withdrawn at 0.10.0.9000. That one said INLA had no
+  # factor-analytic representation, which was false. This one says the
+  # representation does not repeat: on a trial with weak genetic signal
+  # eight identical calls moved the identified covariance further than the
+  # tolerance declared before they were run. brms has no lowering at all,
+  # so the refusal speaks for both rather than sending auto to brms for a
+  # second message.
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   d <- .rt_data()
-  ok <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
-                 backend = "inla")
-  expect_false(inherits(ok, "error"))
 
-  bad <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
-                  backend = "brms")
-  expect_s3_class(bad, "flexybayes_refusal_brms_cannot_represent_term")
-  expect_match(conditionMessage(bad), "backend = \"inla\"", fixed = TRUE)
+  for (be in c("inla", "brms")) {
+    bad <- .rt_emit(y ~ env, random = ~ fa(env, 1):gen, data = d,
+                    backend = be)
+    expect_s3_class(bad, "flexybayes_refusal_factor_analytic_not_repeatable")
+    # It names what to write instead, on both engines.
+    expect_match(conditionMessage(bad), "diag(env):gen", fixed = TRUE)
+  }
 
   # The bare spelling -- no grouping factor for the covariance to apply to
-  # -- keeps the original refusal, and still names the way to write it.
+  # -- keeps its own refusal, and still names the way to write it.
   bare <- .rt_emit(y ~ env, random = ~ fa(env, 1), data = d,
                    backend = "inla")
   expect_s3_class(bare, "flexybayes_refusal_fa_not_representable")

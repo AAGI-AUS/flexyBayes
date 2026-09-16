@@ -1,16 +1,37 @@
-# Factor-analytic genotype-by-environment covariance on INLA: fa(f, k):g.
+# Factor-analytic genotype-by-environment covariance: fa(f, k):g.
 #
-# ASReml's headline multi-environment-trial model, and the one flexyBayes
-# declared no engine could fit. INLA has no latent model called "factor
-# analytic", which is what the old refusal said; it does not need one. Each
-# common factor is a single latent field entered once per level of the outer
-# factor as a SCALED COPY, and `copy=`'s scaling parameter IS the loading --
-# so the loadings arrive with a posterior, which REML cannot give.
+# ASReml's headline multi-environment-trial model. INLA has no latent model
+# called "factor analytic" and does not need one: each common factor is a
+# single latent field entered once per level of the outer factor as a SCALED
+# COPY, and `copy=`'s scaling parameter IS the loading. Factor j is anchored
+# at level j and entered only from level j onward, the zero upper triangle
+# ASReml uses to identify the loading matrix against rotation.
 #
-# Factor j is anchored at level j (loading fixed at 1) and entered only from
-# level j onward: the zero upper triangle ASReml uses to identify the loading
-# matrix against rotation. An anchored loading is therefore absent from the
-# summary rather than reported as an estimate of 1.
+# That emit works and is still here. What is withdrawn at 0.13.0 is the claim
+# attached to its output. The structure is refused on both engines
+# (factor_analytic_not_repeatable) because repeated identical calls did not
+# agree on the covariance, and brms has no factor-analytic lowering to check
+# it against.
+#
+# The measurement, made against a tolerance fixed before the runs and not
+# moved afterwards: the reference is the identified covariance
+# G = Lambda Lambda' + diag(psi), which is invariant to the rotation and sign
+# the raw loadings are free in. Eight identical calls per design, tolerance a
+# ratio of 1.10 on each diagonal entry of G and a range of 0.05 on each
+# genetic correlation. The two simulated designs this file used to assert
+# recovery on repeated to 1.003 and 1.007, and agridat::dasilva.maize to
+# 1.0001; agridat::besag.met at 30 genotypes, where the genetic signal is
+# weak, spanned 1.23 and 0.12 on INLA's default threads and 1.20 and 0.09 on
+# one thread. Every call reported mode.status = 0 and a passing numerical
+# confirm. Evidence: review/units/U-FA-1_2026-09-16/.
+#
+# The live-fit recovery blocks that stood here (loadings at k = 1 including a
+# negative one, the k = 2 anchoring pattern, the specific variance under the
+# package prior, and the summary-label guard) were removed with the fitting
+# route: each fitted the structure, and none of them asked whether a second
+# identical call returned the same answer. The emit-level blocks below are
+# kept, because the emit is unchanged and still reachable through
+# emit_inla(), as the us() branch is.
 
 .fa_fixture <- function(seed = 51L, n_gen = 80L, n_rep = 6L,
                         loadings = c(1.0, 1.6, 0.5, -0.9),
@@ -30,7 +51,17 @@
   tab
 }
 
-test_that("the gate accepts fa(f, k):g for INLA", {
+# ---------------------------------------------------------------- #
+# The emit is unchanged                                             #
+# ---------------------------------------------------------------- #
+
+test_that("the INLA gate still admits fa(f, k):g", {
+  # The gate answers "can INLA represent this", and it can. The refusal is
+  # not here: it is dispatch-wide (.refuse_unrepresentable_structures()),
+  # because the limit is not INLA's representation but that the fitted
+  # numbers do not repeat, and brms has nothing to route to. Keeping the
+  # gate accurate about representability is what leaves the emit reachable
+  # through a direct emit_inla() call.
   tab <- .fa_fixture(n_gen = 12L, n_rep = 2L)
   fb <- fb_from_asreml(
     fixed = y ~ env,
@@ -59,122 +90,123 @@ test_that("the emitted formula carries scaled copies and specific variances", {
   expect_match(txt, "f(gen_psi_env_4, model = \"iid\"", fixed = TRUE)
 })
 
-test_that("fa() recovers the loadings, including a negative one", {
+# ---------------------------------------------------------------- #
+# The fitting route refuses, on every backend                       #
+# ---------------------------------------------------------------- #
+
+test_that("fa(f, k):g is refused on inla, brms and auto alike", {
+  # One reason code for all three. Before 0.13.0 backend = "inla" fitted,
+  # backend = "brms" gave that engine's own brms_cannot_represent_term, and
+  # backend = "auto" fitted on INLA -- three different answers to one
+  # question about whether the package will report this covariance.
+  tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
+  for (be in c("inla", "brms", "auto")) {
+    err <- tryCatch(
+      suppressMessages(flexybayes(
+        y ~ env,
+        random = ~ fa(env, 1):gen,
+        data = tab,
+        backend = be,
+        verbose = FALSE
+      )),
+      error = function(e) e
+    )
+    expect_s3_class(err, "flexybayes_refusal_factor_analytic_not_repeatable")
+    expect_identical(err$reason_code, "factor_analytic_not_repeatable")
+  }
+})
+
+test_that("the refusal fires before any engine runs", {
+  # Code generation never reaches an engine, so a refusal raised on the
+  # return_code = TRUE path is raised before the fit. This also means the
+  # refusal does not depend on INLA or brms being installed.
+  tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ env,
+      random = ~ fa(env, 2):gen,
+      data = tab,
+      backend = "inla",
+      return_code = TRUE,
+      verbose = FALSE
+    )),
+    error = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_refusal_factor_analytic_not_repeatable")
+})
+
+test_that("the refusal names the rank, the term and what to write instead", {
+  tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ env,
+      random = ~ fa(env, 2):gen,
+      data = tab,
+      backend = "inla",
+      verbose = FALSE
+    )),
+    error = function(e) e
+  )
+  msg <- conditionMessage(err)
+  expect_match(msg, "fa(env, 2):gen", fixed = TRUE)
+  expect_match(msg, "diag(env):gen", fixed = TRUE)
+  expect_match(msg, "us(env):gen", fixed = TRUE)
+  # It says why, in terms of the measurement rather than of representability.
+  expect_match(msg, "repeated identical calls", fixed = TRUE)
+  # And it does not offer the other engine as a way to get the fit, because
+  # brms has no lowering for the structure at all.
+  expect_false(grepl("backend = \"brms\"", msg, fixed = TRUE))
+})
+
+test_that("the refusal is targeted: the same data still fits without fa()", {
+  # A blanket refusal that caught neighbouring models would be a regression
+  # dressed as a fix. diag(env):gen is the structure the message recommends,
+  # on the same rows.
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-
-  loadings <- c(1.0, 1.6, 0.5, -0.9)
-  tab <- .fa_fixture(loadings = loadings)
+  tab <- .fa_fixture(n_gen = 12L, n_rep = 3L)
   fit <- suppressMessages(flexybayes(
     y ~ env,
-    random = ~ fa(env, 1):gen,
+    random = ~ diag(env):gen,
     data = tab,
     backend = "inla",
     verbose = FALSE
   ))
-  v <- summary(fit)$varcomp
-  got <- stats::setNames(v$estimate, v$component)
-
-  # Loadings 2..4; the first is anchored at 1 and not estimated.
-  for (e in 2:4) {
-    nm <- paste0("fa1_env", e)
-    expect_true(nm %in% names(got))
-    expect_equal(unname(got[[nm]]), loadings[[e]], tolerance = 0.15)
-  }
-  # A crossover environment must come back NEGATIVE, not merely small.
-  expect_lt(unname(got[["fa1_env4"]]), 0)
-
-  expect_equal(unname(got[["sd_fa1"]]), 0.9, tolerance = 0.20)
-  expect_equal(unname(got[["sigma"]]), 0.30, tolerance = 0.15)
-  expect_true("sd_gen__env1" %in% names(got))
+  expect_s3_class(fit, "flexybayes")
+  expect_true(any(grepl("^sd_gen__env", summary(fit)$varcomp$component)))
 })
 
-test_that("fa(f, 2) fits two factors with the anchoring pattern", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-
-  set.seed(77L)
-  n_gen <- 100L
-  n_env <- 5L
-  mat_l <- cbind(
-    c(1, 1.4, 0.6, -0.8, 1.1),
-    c(0, 1, 0.7, 0.4, -0.5)
+test_that("the bare fa(v, k) spelling keeps its own refusal", {
+  # fa(v, k) with no grouping factor has no covariance to apply and no emit
+  # anywhere; it is a different refusal and must not be swallowed by the new
+  # one.
+  tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
+  err <- tryCatch(
+    suppressMessages(flexybayes(
+      y ~ env,
+      random = ~ fa(env, 1),
+      data = tab,
+      backend = "inla",
+      verbose = FALSE
+    )),
+    error = function(e) e
   )
-  mat_u <- cbind(rnorm(n_gen, 0, 0.9), rnorm(n_gen, 0, 0.6)) %*% t(mat_l) +
-    matrix(rnorm(n_gen * n_env, 0, 0.25), ncol = n_env)
-  tab <- expand.grid(
-    gen = factor(seq_len(n_gen)),
-    env = factor(seq_len(n_env)),
-    rep = seq_len(5L)
-  )
-  tab$y <- 5 + mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
-    rnorm(nrow(tab), 0, 0.3)
+  expect_s3_class(err, "flexybayes_refusal_fa_not_representable")
+})
 
-  fit <- suppressMessages(flexybayes(
-    y ~ env,
+test_that("fa(f, k):g still parses, so the catalogue keeps the term", {
+  # The refusal is about what the package will report, not about what it can
+  # read. fb_terms() stays a formula catalogue.
+  tab <- .fa_fixture(n_gen = 8L, n_rep = 2L)
+  fb <- fb_from_asreml(
+    fixed = y ~ env,
     random = ~ fa(env, 2):gen,
     data = tab,
-    backend = "inla",
-    verbose = FALSE
-  ))
-  # mode.status is INLA's own convergence oracle; it is numeric, not integer.
-  expect_equal(as.numeric(fit$inla$mode$mode.status), 0)
-  v <- summary(fit)$varcomp
-  got <- stats::setNames(v$estimate, v$component)
-
-  for (e in 2:5) {
-    expect_equal(unname(got[[paste0("fa1_env", e)]]), mat_l[e, 1],
-                 tolerance = 0.20)
-  }
-  # Factor 2 is anchored at level 2, so it is estimated from level 3 on.
-  for (e in 3:5) {
-    expect_equal(unname(got[[paste0("fa2_env", e)]]), mat_l[e, 2],
-                 tolerance = 0.25)
-  }
-  expect_false("fa2_env1" %in% names(got))
-})
-
-test_that("the specific variance does not collapse under the package prior", {
-  # Left on INLA's default log-gamma precision, the specific variance at the
-  # level carrying the largest loading collapses: a true 0.25 came back at
-  # 0.007, with the interval excluding the truth. The package's own SD prior
-  # reaches these terms via .fb_default_prior_targets() and holds them off
-  # the boundary. This is the package's contribution on this structure, so it
-  # gets a test rather than a comment.
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-
-  tab <- .fa_fixture()
-  fit <- suppressMessages(flexybayes(
-    y ~ env,
-    random = ~ fa(env, 1):gen,
-    data = tab,
-    backend = "inla",
-    verbose = FALSE
-  ))
-  v <- summary(fit)$varcomp
-  spec <- v$estimate[grepl("^sd_gen__env", v$component)]
-  expect_length(spec, 4L)
-  expect_true(all(spec > 0.02),
-              info = paste("specific SDs:", paste(round(spec, 4),
-                                                  collapse = ", ")))
-})
-
-test_that("generated fa index names do not reach a summary label", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  tab <- .fa_fixture(n_gen = 30L, n_rep = 3L)
-  fit <- suppressMessages(flexybayes(
-    y ~ env,
-    random = ~ fa(env, 1):gen,
-    data = tab,
-    backend = "inla",
-    verbose = FALSE
-  ))
-  comps <- summary(fit)$varcomp$component
-  expect_false(any(grepl("_psi_|_fa1_env_|Beta for", comps)))
+    family = "gaussian"
+  )
+  expect_identical(fb$random_terms[[1L]]$type, "fa_gxe")
+  expect_identical(fb$random_terms[[1L]]$k, 2L)
+  expect_identical(fb$random_terms[[1L]]$outer, "env")
+  expect_identical(fb$random_terms[[1L]]$inner, "gen")
 })

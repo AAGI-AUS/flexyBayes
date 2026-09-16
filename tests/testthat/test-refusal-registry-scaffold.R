@@ -534,10 +534,15 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # its family's likelihood is defined over -- gamma / lognormal strictly
   # positive, hurdle_gamma non-negative, beta an open unit interval
   # (family_response_domain_violation) (= 213).
+  # The factor-analytic unit adds one: fa(f, k):g leaves the fitting route on
+  # both engines (factor_analytic_not_repeatable). INLA's representation of
+  # it works; what it does not do is return the same covariance on a second
+  # identical call when the genetic signal is weak.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 213L)
+  expect_equal(length(entries), 214L)
   expect_true("family_response_domain_violation" %in% entries)
+  expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("selection_score_contract_unverifiable" %in% entries)
   expect_true("selection_fold_protected_unidentified" %in% entries)
   expect_true("selection_fold_candidate_drop_not_representable" %in% entries)

@@ -166,6 +166,10 @@
   # positive, hurdle_gamma non-negative, beta an open unit interval) on a
   # response that violates it.
   .populate_refusal_registry_family_support()
+  # 2026-09-16: the factor-analytic covariance is withdrawn from the fitting
+  # route, because repeated identical calls did not agree within the
+  # tolerance declared before they were measured.
+  .populate_refusal_registry_factor_analytic()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
