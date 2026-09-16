@@ -2775,6 +2775,36 @@ print.fb_refusals_table <- function(x, ...) {
   invisible(NULL)
 }
 
+# .populate_refusal_registry_family_support() -- the response-domain gate
+# (R/na_action.R, .fb_refuse_family_response_domain()). Admitting a family
+# onto .fb_family_links() (R/utils.R) was necessary and sufficient to
+# reach an engine; nothing checked the response against the domain the
+# family's likelihood is defined over. lognormal (added b979c5d) on a
+# non-positive response reached brms::brm() and stopped there untyped
+# ("Family 'lognormal' requires response greater than 0."); gamma,
+# hurdle_gamma and beta reached the same untyped brms death, and (bar
+# lognormal, brms-only) an unrelated inla_program_failed diagnosis on
+# INLA that named neither the family nor the offending row
+# (U-FAM-SUPPORT, 2026-09-16).
+.populate_refusal_registry_family_support <- function() {
+  .register_refusal(
+    reason_code = "family_response_domain_violation",
+    description = paste0(
+      "The requested family's likelihood is defined over a response ",
+      "domain (gamma / lognormal strictly positive, hurdle_gamma non-",
+      "negative, beta an open unit interval) that the observed response ",
+      "violates. Refused before any backend code runs; a missing (NA) ",
+      "response is exempt -- it is na_action's concern, not a domain ",
+      "violation. Untyped before 0.13.0."
+    ),
+    message_template = "%s",
+    registered_in_adr = "U-FAM-SUPPORT-1 (2026-09-16)",
+    plan_field = NA_character_,
+    since_version = "0.13.0"
+  )
+  invisible(NULL)
+}
+
 .populate_refusal_registry_aggregation_containment <- function() {
   .register_refusal(
     reason_code = "aggregation_residual_prior_not_composed",

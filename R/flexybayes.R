@@ -139,6 +139,11 @@
 #'   refused rather than resolved. A family outside this set is refused
 #'   at the door; where the boundary is flexyBayes's own rather than the
 #'   engines', the refusal says so and `inst/KNOWN_ISSUES.md` records it.
+#'   A response outside the family's domain (0 or negative for `"gamma"`
+#'   or `"lognormal"`, negative for `"hurdle_gamma"`, at or outside \[0, 1\]
+#'   for `"beta"`) is refused by name (`family_response_domain_violation`)
+#'   before any engine runs; a missing (`NA`) response is `na_action`'s
+#'   concern, not a domain violation.
 #' @param link Character or NULL: override the default link function
 #'   (e.g., `"probit"` for binomial). Leave it unset when `family` is a
 #'   family object, which carries its own link. The links fitted, default

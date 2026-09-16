@@ -161,6 +161,12 @@
   # no rows to build from or fold.
   .populate_refusal_registry_stream_shape()
 
+  # 2026-09-16: the response-domain gate -- a family whose likelihood is
+  # defined over a restricted response domain (gamma / lognormal
+  # positive, hurdle_gamma non-negative, beta an open unit interval) on a
+  # response that violates it.
+  .populate_refusal_registry_family_support()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

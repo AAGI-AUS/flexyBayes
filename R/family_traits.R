@@ -121,3 +121,94 @@
   }
   unname(keywords[[key]])
 }
+
+# ---------------------------------------------------------------- #
+# Response support: which families require which response domain   #
+# ---------------------------------------------------------------- #
+
+# The response domain each flexyBayes family's likelihood is defined
+# over, keyed by the flexyBayes family spelling. A family absent from
+# this table is unrestricted (gaussian, binomial, binary, poisson,
+# negative_binomial, negbinom): the response gate has no domain check for
+# it here, and the existing binomial-specific guard
+# (.refuse_non_binary_binomial_response(), R/dispatch.R) covers the
+# 0/1 constraint that family carries.
+#
+# Ground truth is each engine's own likelihood, read off a live failure
+# rather than assumed from a family's textbook support: at brms 2.23.0,
+# brm() stops with "Family '<x>' requires response greater than 0" for
+# gamma and lognormal, "... greater than or equal to 0" for hurdle_gamma,
+# and both "... greater than 0" and "... smaller than 1" for beta; at
+# INLA 25.10.19 the inla-program dies on a zero or negative gamma
+# observation ("(m)Gamma data[i] (y) = <v> ... is void") and on a beta
+# observation at the boundary ("Beta data: N observations are either 0
+# or 1"). Before this table, admitting a family onto the roster
+# (.fb_family_links(), R/utils.R) was necessary and sufficient to reach
+# an engine; nothing checked the response against what the family can
+# represent, so lognormal (added b979c5d) and every other bounded-support
+# family here reached brms::brm() or the INLA subprocess and died
+# unrefused (U-FAM-SUPPORT, 2026-09-16).
+#
+#   "positive"      -- strictly greater than 0 (gamma, lognormal)
+#   "nonnegative"   -- 0 or greater, zero admitted (hurdle_gamma: the
+#                      hurdle mass point is exactly zero, the continuous
+#                      part is gamma)
+#   "unit_interval" -- strictly between 0 and 1, both bounds excluded
+#                      (beta)
+.fb_family_response_domain <- function() {
+  list(
+    gamma = "positive",
+    hurdle_gamma = "nonnegative",
+    lognormal = "positive",
+    beta = "unit_interval"
+  )
+}
+
+# Row indices of `y` that violate `domain`. NA entries are never flagged:
+# a comparison against NA is NA, and which() reads only TRUE, so a
+# response left NA for na_action to carry as a latent quantity is passed
+# over rather than read as an out-of-domain value.
+.fb_response_domain_violation_rows <- function(domain, y) {
+  switch(
+    domain,
+    positive = which(y <= 0),
+    nonnegative = which(y < 0),
+    unit_interval = which(y <= 0 | y >= 1),
+    integer(0)
+  )
+}
+
+# The domain, worded for the refusal message.
+.fb_response_domain_describe <- function(domain) {
+  switch(
+    domain,
+    positive = "strictly greater than 0",
+    nonnegative = "0 or greater",
+    unit_interval = "strictly between 0 and 1",
+    domain
+  )
+}
+
+# The nearest supported alternative for a family whose response domain
+# check just failed. gamma's own hurdle variant is the closer fit when
+# every offending value is an exact zero and none is negative -- the
+# hurdle mass point admits the zero, and the gamma part is unaffected;
+# every other case falls back to gaussian, the one family in the roster
+# with no domain restriction at all.
+.fb_response_domain_alternative <- function(fam, offending) {
+  if (
+    identical(fam, "gamma") &&
+      length(offending) > 0L &&
+      all(offending == 0)
+  ) {
+    return(paste0(
+      "family = \"hurdle_gamma\" admits an exact zero as a hurdle mass ",
+      "point plus a positive-gamma continuous part for the rest; use it ",
+      "if the zeros are genuine observations."
+    ))
+  }
+  paste0(
+    "family = \"gaussian\" places no restriction on the response and is ",
+    "the nearest supported alternative."
+  )
+}
