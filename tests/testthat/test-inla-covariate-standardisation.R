@@ -348,3 +348,33 @@ test_that("draws are taken on the original scale", {
   v <- vcov(fit, n_samples = 2000L)
   expect_equal(sqrt(diag(v)), sf$sd, tolerance = 0.1, ignore_attr = TRUE)
 })
+
+test_that("vpredict comes back in the covariate's own units", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+
+  # vpredict() is the only caller of the joint hyperparameter sampler, so it
+  # is the only route on which that mapping shows. A slope standard deviation
+  # is in response units per covariate unit; unmapped, it would sit a
+  # thousandfold from the table it belongs to at x * 1000.
+  #
+  # The tolerance is the sampler's own. Over five repeated draw sets on one
+  # fit, 2,000 draws each, the estimate ranged over 3.3 per cent of its mean
+  # at x and 2.9 per cent at x * 1000, and stayed within 2.0 per cent of the
+  # table value. 0.1 is about three times that spread, and a units error on
+  # this path is a factor of a thousand.
+  cells <- vapply(c(1, 1000), function(cc) {
+    d <- .cs_count_data("poisson")
+    d$x <- cc * d$x
+    fit <- .cs_quiet(flexybayes(
+      y ~ x + (x || g), data = d, family = "poisson",
+      backend = "inla", verbose = FALSE
+    ))
+    vp <- .cs_quiet(vpredict(fit, r ~ sd_x_g, n_draws = 2000L))
+    expect_equal(vp$estimate, .cs_component(fit, "sd_x_g"),
+                 tolerance = 0.1, label = paste0("x * ", cc))
+    vp$estimate * cc
+  }, numeric(1L))
+  expect_lt(diff(range(cells)) / abs(mean(cells)), 0.1)
+})
