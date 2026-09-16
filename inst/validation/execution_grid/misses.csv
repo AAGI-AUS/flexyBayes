@@ -1,1 +1,2 @@
 "miss_id","class","cell","expected","observed","detail","sha","date"
+"EG-2026-09-16-001","M2 raw-error","S3a-refuse-lognormal","refuse_typed","error_untyped","brms::brm() failed: Family 'lognormal' requires response greater than 0. | R/utils.R .resolve_family unsupported_family refusal; DESCRIPTION 'typed refusals naming the nearest implemented alternative'","7cf8cee","2026-09-16"
