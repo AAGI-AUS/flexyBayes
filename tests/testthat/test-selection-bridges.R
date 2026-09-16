@@ -224,13 +224,74 @@ test_that("the canonical penalty maps each family as section 4.3 fixes it", {
   expect_equal(elastic$alpha_composite, 0.4)
 
   expect_error(
-    .fb_sel_canonical_penalty("elastic_net", list(lambda = 1, alpha = 1), 10),
-    "strictly inside (0, 1)",
+    .fb_sel_canonical_penalty("ridge", list(scale = -1), 10),
+    "finite positive number",
+    fixed = TRUE
+  )
+})
+
+
+# --- P6: the lasso endpoint of elastic_net ------------------------------- #
+#
+# `alpha = 1` is the lasso corner of the elastic-net path (final
+# specification B6): lambda_l2 is exactly zero there, not merely small, and
+# the resulting (l1, l2) pair is the same canonical coordinate laplace()
+# already reaches at alpha_composite = 1. `alpha = 0` stays refused -- that
+# corner already has its own family, ridge().
+test_that("elastic_net admits alpha = 1 as an exact pure-lasso point (P6)", {
+  lasso_corner <- .fb_sel_canonical_penalty(
+    "elastic_net",
+    list(lambda = 1, alpha = 1),
+    n = 10
+  )
+  expect_equal(lasso_corner$lambda_l1, 10)
+  expect_equal(lasso_corner$lambda_l2, 0)
+  expect_equal(lasso_corner$alpha_composite, 1)
+
+  # The same (l1, l2) point a matching laplace() scale reaches: alpha = 1
+  # is not a new numeric corner, only a newly admitted name for one already
+  # exercised.
+  matching_laplace <- .fb_sel_canonical_penalty(
+    "laplace",
+    list(scale = 1 / 10),
+    n = 10
+  )
+  expect_equal(lasso_corner$lambda_l1, matching_laplace$lambda_l1)
+  expect_equal(lasso_corner$lambda_l2, matching_laplace$lambda_l2)
+})
+
+
+test_that("elastic_net's alpha stays refused outside (0, 1] (P6)", {
+  expect_error(
+    .fb_sel_canonical_penalty("elastic_net", list(lambda = 1, alpha = 0), 10),
+    "must be a single number inside (0, 1].",
     fixed = TRUE
   )
   expect_error(
-    .fb_sel_canonical_penalty("ridge", list(scale = -1), 10),
-    "finite positive number",
+    .fb_sel_canonical_penalty(
+      "elastic_net", list(lambda = 1, alpha = 1.01), 10
+    ),
+    "must be a single number inside (0, 1].",
+    fixed = TRUE
+  )
+  expect_error(
+    .fb_sel_canonical_penalty(
+      "elastic_net", list(lambda = 1, alpha = -0.1), 10
+    ),
+    "must be a single number inside (0, 1].",
+    fixed = TRUE
+  )
+})
+
+
+test_that("sparse_group_lasso's alpha is untouched by the elastic_net widening (P6)", {
+  # A falsifier for the fix: if the widening had touched the shared
+  # `unit_open` domain instead of adding a family-specific one, this would
+  # now admit alpha = 1 too, and sparse_group_lasso(alpha = 1) is a
+  # different, already-named family (group_lasso), not a corner of this one.
+  expect_error(
+    fb_penalty(term(everything()) ~ sparse_group_lasso(scale = 1, alpha = 1)),
+    "strictly inside (0, 1)",
     fixed = TRUE
   )
 })

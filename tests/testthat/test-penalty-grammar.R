@@ -55,6 +55,11 @@ fbpg_well_formed <- list(
     family = "elastic_net", args = list(lambda = 0.5, alpha = 0.25)
   ),
   list(
+    # P6, final specification B6: the lasso corner of the elastic-net path.
+    spec = term(everything()) ~ elastic_net(lambda = 0.5, alpha = 1),
+    family = "elastic_net", args = list(lambda = 0.5, alpha = 1)
+  ),
+  list(
     spec = term(everything()) ~ regularized_horseshoe(p0 = 3),
     family = "regularized_horseshoe",
     args = list(
@@ -404,10 +409,9 @@ fbpg_malformed <- list(
     code = "penalty_hyperparameter_invalid", mutation = "wrong_type"
   ),
   list(
-    spec = term(everything()) ~ elastic_net(lambda = 0.5, alpha = 1),
-    code = "penalty_hyperparameter_invalid", mutation = "out_of_domain"
-  ),
-  list(
+    # P6, final specification B6: alpha = 1 is now admitted (the lasso
+    # corner), so it moved to the well-formed half above. alpha = 0 stays
+    # refused -- that corner is ridge(), already named.
     spec = term(everything()) ~ elastic_net(lambda = 0.5, alpha = 0),
     code = "penalty_hyperparameter_invalid", mutation = "out_of_domain"
   ),
