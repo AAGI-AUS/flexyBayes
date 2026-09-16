@@ -427,6 +427,22 @@ test_that("the Bayesian route's bookkeeping is identical and its scores sit insi
       warning = function(w) invokeRestart("muffleWarning")
     )
   }
+
+  # Both arms fit at the SAME engine thread count, which is what makes this a
+  # test of concurrency. A worker pins itself to `cores %/% workers` engine
+  # threads, and INLA's arithmetic depends on that count: measured on this
+  # package's fixtures, moving an otherwise identical SERIAL fit from ten
+  # threads to three moved its scores by as much as two repeated runs at one
+  # thread moved them. Left unpinned here the serial arm would run at the
+  # test runner's single thread against the workers' several, and the block
+  # would read that thread change as a concurrency effect -- which is what it
+  # did, at 0.0316 against 0.0241, before the arms were matched. Both
+  # comparisons are measured in review/units/P4_2026-09-16.
+  plan <- fbpe_with_workers(2L, .fb_sel_worker_plan(2L, provider = "inla"))
+  old_threads <- INLA::inla.getOption("num.threads")
+  on.exit(INLA::inla.setOption(num.threads = old_threads), add = TRUE)
+  INLA::inla.setOption(num.threads = paste0(plan$threads_per_worker, ":1"))
+
   serial_runs <- list(quiet(run(1L)), quiet(run(1L)), quiet(run(1L)))
   concurrent <- quiet(run(2L))
   serial_a <- serial_runs[[1L]]
