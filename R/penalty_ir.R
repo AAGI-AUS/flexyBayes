@@ -110,6 +110,63 @@
       coordinate_wise = TRUE,
       provider_capabilities = list(brms = TRUE, inla = FALSE, glmnet = FALSE)
     ),
+    # The four grouped families (final specification B9). Their route is
+    # `optimizer_only`: each is a penalty with a proximal operator rather
+    # than a density brms can be handed, so the Bayesian compiler refuses
+    # them by name instead of substituting the nearest prior. `group` is the
+    # declared grouping rule, and it carries a family default rather than
+    # being inferred from the design -- a group is a statement about the
+    # model, and the certificate prints which rule was used.
+    group_lasso = list(
+      params = c("scale", "group"),
+      required = "scale",
+      domain = c(scale = "positive", group = "group_rule"),
+      defaults = list(group = "term"),
+      hyperparameter_mode = "fixed",
+      route = "optimizer_only",
+      # A group L2 norm cannot tell one column of a block from another:
+      # rotate the block and the norm is unchanged.
+      coordinate_wise = FALSE,
+      provider_capabilities = list(brms = FALSE, inla = FALSE, glmnet = TRUE)
+    ),
+    sparse_group_lasso = list(
+      params = c("scale", "alpha", "group"),
+      required = c("scale", "alpha"),
+      domain = c(
+        scale = "positive", alpha = "unit_open", group = "group_rule"
+      ),
+      defaults = list(group = "term"),
+      hyperparameter_mode = "fixed",
+      route = "optimizer_only",
+      coordinate_wise = TRUE,
+      provider_capabilities = list(brms = FALSE, inla = FALSE, glmnet = TRUE)
+    ),
+    exclusive_lasso = list(
+      params = c("scale", "group"),
+      required = "scale",
+      domain = c(scale = "positive", group = "group_rule"),
+      # The exclusive penalty exists to make the members of a declared
+      # cluster compete, so its default grouping is the specification's own
+      # target set rather than the individual term.
+      defaults = list(group = "block"),
+      hyperparameter_mode = "fixed",
+      route = "optimizer_only",
+      coordinate_wise = TRUE,
+      provider_capabilities = list(brms = FALSE, inla = FALSE, glmnet = TRUE)
+    ),
+    group_exclusive = list(
+      params = c("group_scale", "exclusive_scale", "group"),
+      required = c("group_scale", "exclusive_scale"),
+      domain = c(
+        group_scale = "positive", exclusive_scale = "positive",
+        group = "group_rule"
+      ),
+      defaults = list(group = "term"),
+      hyperparameter_mode = "fixed",
+      route = "optimizer_only",
+      coordinate_wise = TRUE,
+      provider_capabilities = list(brms = FALSE, inla = FALSE, glmnet = TRUE)
+    ),
     none = list(
       params = character(0),
       required = character(0),
@@ -133,15 +190,14 @@
 }
 
 
-# The v3 grammar's group, exclusive and adaptive families. Their component
-# traits stay in `.fb_sel_penalty_component_traits()` because the resolver
-# still reasons about them; the public grammar refuses them by name until
-# their providers ship.
+# The v3 grammar families that still have no provider. The four grouped ones
+# shipped at 0.13.0 with the penalised-optimiser provider and their own gates,
+# and left this list then; `adaptive()` has not, because an adaptive penalty
+# needs a first-stage estimate and a rule for turning it into weights, and
+# neither exists here. A family without a provider is a promise rather than a
+# method, so it refuses by name.
 .fb_pen_withdrawn_families <- function() {
-  c(
-    "group_lasso", "exclusive_lasso", "sparse_group_lasso",
-    "group_exclusive", "adaptive"
-  )
+  "adaptive"
 }
 
 

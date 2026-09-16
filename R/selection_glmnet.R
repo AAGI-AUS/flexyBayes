@@ -81,11 +81,13 @@
         family,
         "` has no provider in this release. The optimiser workflow serves ",
         paste(supported, collapse = ", "),
-        " only. The group, exclusive, sparse-group and adaptive families of ",
-        "the v3 grammar are withdrawn until each ships with its own provider ",
-        "and its own gates; their component traits remain in the resolver, ",
-        "and a family without a provider is a promise rather than a ",
-        "capability."
+        " only. The four grouped families left this list at 0.13.0, when ",
+        "their proximal provider and its gates shipped. Two kinds of family ",
+        "still have no optimiser provider: `adaptive()`, which needs a ",
+        "first-stage estimate and a rule for turning that estimate into ",
+        "weights, and the class-wide global-local families, which brms ",
+        "fits and this workflow does not. Each refuses by name until its ",
+        "own provider and its own gates ship."
       ),
       penalty_family = family,
       supported = supported
@@ -326,7 +328,9 @@
   alpha,
   convention,
   thresh = 1e-16,
-  maxit = 1e6
+  maxit = 1e6,
+  penalty = NULL,
+  groups = NULL
 ) {
   A <- as.matrix(A)
   z <- as.numeric(z)
@@ -343,6 +347,41 @@
       alpha_glmnet = NA_real_,
       kkt = 0,
       canonical_objective = 0.5 * sum(z^2),
+      provider_objective = NA_real_
+    ))
+  }
+
+  # A grouped penalty is not a `glmnet` problem at any lambda: its `alpha` is
+  # a scalar over coordinates and has no group norm, so there is no map to
+  # make and none is attempted. The path point is a multiplier on the four
+  # declared numbers, and the solver is the module's own, certified by the
+  # residual computed from the grouped subdifferential.
+  if (isTRUE(penalty$grouped)) {
+    scaled <- list(
+      lambda_l1 = penalty$lambda_l1 * lambda_canonical,
+      lambda_l2 = penalty$lambda_l2 * lambda_canonical,
+      lambda_group = penalty$lambda_group * lambda_canonical,
+      lambda_exclusive = penalty$lambda_exclusive * lambda_canonical,
+      family = penalty$family
+    )
+    solved <- .fb_sel_prox_mode_grouped(
+      A,
+      z,
+      scaled,
+      groups,
+      tol = 1e-9,
+      max_iter = 2e5
+    )
+    return(list(
+      beta = solved$beta,
+      route = "internal_prox",
+      lambda_glmnet = NA_real_,
+      alpha_glmnet = NA_real_,
+      kkt = .fb_sel_kkt_residual_grouped(A, z, solved$beta, scaled, groups),
+      canonical_objective = solved$objective,
+      # `glmnet` has no objective at this point, and recording a number from
+      # a problem it never solved would be the fiction the certificate is
+      # built to prevent.
       provider_objective = NA_real_
     ))
   }
@@ -434,6 +473,46 @@
       family = "elastic_net",
       selects = TRUE,
       support_semantics = "coefficient",
+      path_parameter = "lambda",
+      null_anchor = "finite",
+      selection_resolution = "coefficient"
+    ),
+    # The grouped families. The group norm is non-smooth at the origin, so a
+    # group lasso and the composite have a finite null anchor exactly as a
+    # lasso does. The exclusive penalty does NOT: (le / 2) S_g^2 has gradient
+    # zero at the origin, so it reaches the null only in the limit, the way
+    # ridge does -- but unlike ridge it still selects, because a member of an
+    # active group is thresholded at le S_g, which is positive. A family can
+    # select and have no finite anchor, and saying otherwise would put the
+    # grid where the sequence stopped.
+    group_lasso = list(
+      family = "group_lasso",
+      selects = TRUE,
+      support_semantics = "group",
+      path_parameter = "lambda",
+      null_anchor = "finite",
+      selection_resolution = "group"
+    ),
+    sparse_group_lasso = list(
+      family = "sparse_group_lasso",
+      selects = TRUE,
+      support_semantics = "group_and_coefficient",
+      path_parameter = "lambda",
+      null_anchor = "finite",
+      selection_resolution = "coefficient"
+    ),
+    exclusive_lasso = list(
+      family = "exclusive_lasso",
+      selects = TRUE,
+      support_semantics = "coefficient_within_group",
+      path_parameter = "lambda",
+      null_anchor = "infinite",
+      selection_resolution = "coefficient"
+    ),
+    group_exclusive = list(
+      family = "group_exclusive",
+      selects = TRUE,
+      support_semantics = "group_and_coefficient",
       path_parameter = "lambda",
       null_anchor = "finite",
       selection_resolution = "coefficient"
@@ -606,7 +685,10 @@
 # lambda names. The Bayesian workflow carries block-specific priors exactly;
 # the optimiser benchmark refuses rather than fitting a nearby problem under
 # the requested problem's label.
-.fb_sel_glmnet_blocks <- function(blocks, candidate_names, n) {
+.fb_sel_glmnet_blocks <- function(blocks,
+                                  candidate_names,
+                                  n,
+                                  candidate_terms = NULL) {
   if (!is.list(blocks) || length(blocks) == 0L) {
     stop(
       "`blocks` must be a non-empty list of resolved penalty blocks.",
@@ -707,12 +789,75 @@
     ))
   }
 
+  ordered_columns <- sort(all_columns)
+  grouping <- NULL
+  if (isTRUE(penalties[[1L]]$grouped)) {
+    if (is.null(candidate_terms)) {
+      stop(
+        "internal contract violation: a grouped penalty family reached the ",
+        "provider without the model term of each candidate column, so its ",
+        "grouping cannot be derived. The term map is read from the fold's ",
+        "candidate space.",
+        call. = FALSE
+      )
+    }
+    rule <- penalties[[1L]]$group_rule %||% "term"
+    # Under `block` the group is the specification's own target set, so a
+    # column's group is the resolved block that claimed it; under `term` it
+    # is the model term the column came from.
+    labels <- if (identical(rule, "block")) {
+      # The resolved blocks are this function's own normalisation of the
+      # caller's list and carry no `id`: their identity is their position,
+      # which is the order the specifications were written in.
+      owner <- integer(length(candidate_names))
+      for (i in seq_along(resolved)) {
+        owner[resolved[[i]]$columns] <- i
+      }
+      paste0("block_", owner[ordered_columns])
+    } else {
+      candidate_terms[ordered_columns]
+    }
+    grouping <- .fb_sel_group_index(
+      candidate_names[ordered_columns],
+      labels,
+      rule = "term"
+    )
+    grouping$rule <- rule
+    grouping$rule_description <- unname(.fb_sel_group_rules()[[rule]])
+    grouping$declared$term <- candidate_terms[ordered_columns]
+
+    if (all(grouping$sizes <= 1L)) {
+      stop(.fb_refusal_condition(
+        reason_code = "selection_penalty_group_structure_absent",
+        message = paste0(
+          "fb_select(): `",
+          families[[1L]],
+          "()` was declared with group = \"",
+          rule,
+          "\", and every group it resolves to has one column: ",
+          paste(names(grouping$sizes), collapse = ", "),
+          ". A grouping that groups nothing changes the penalty into a ",
+          "different one -- a group lasso becomes a lasso and an exclusive ",
+          "lasso a ridge -- and this module does not fit a nearby problem ",
+          "under the requested problem's name. Declare the grouping the ",
+          "question needs: group = \"term\" moves a factor's contrast ",
+          "columns together, group = \"block\" makes the specification's ",
+          "own targets one set of competitors."
+        ),
+        penalty_family = families[[1L]],
+        group_rule = rule,
+        groups = names(grouping$sizes)
+      ))
+    }
+  }
+
   list(
     blocks = resolved,
     family = families[[1L]],
-    columns = sort(all_columns),
-    column_names = candidate_names[sort(all_columns)],
-    penalty = penalties[[1L]]
+    columns = ordered_columns,
+    column_names = candidate_names[ordered_columns],
+    penalty = penalties[[1L]],
+    grouping = grouping
   )
 }
 
@@ -807,7 +952,9 @@
   parts,
   lambda_canonical,
   alpha,
-  convention
+  convention,
+  penalty = NULL,
+  groups = NULL
 ) {
   payload <- parts$payload
   solved <- .fb_sel_glmnet_at(
@@ -815,7 +962,9 @@
     payload$y,
     lambda_canonical,
     alpha,
-    convention
+    convention,
+    penalty = penalty,
+    groups = groups
   )
   beta_penalised <- solved$beta
 
@@ -873,10 +1022,67 @@
 # Ridge has no finite null anchor (v3 section 7). Its grid is decades either
 # side of the prior's own canonical lambda, the same on every fold, and its
 # tuning coordinate is lambda itself.
-.fb_sel_glmnet_grid <- function(parts_by_fold, penalty, decision) {
+.fb_sel_glmnet_grid <- function(parts_by_fold,
+                                penalty,
+                                decision,
+                                groups_by_fold = NULL) {
   alpha <- penalty$alpha_composite
   anchor <- penalty$lambda_composite
   labels <- names(parts_by_fold)
+
+  # A grouped penalty walks a multiplier on its four declared numbers. Where
+  # the family has a finite null anchor the multiplier is expressed as a
+  # fraction of each fold's own anchor, exactly as the ungrouped path does;
+  # where it has none -- the exclusive penalty is smooth at the origin -- the
+  # grid is decades either side of the declared point and the coordinate is
+  # the multiplier itself, which is the rule ridge already follows.
+  if (isTRUE(penalty$grouped)) {
+    if (isTRUE(penalty$finite_anchor)) {
+      s <- exp(seq(
+        0,
+        log(decision$lambda_min_ratio),
+        length.out = decision$n_lambda
+      ))
+      lambda_max <- vapply(
+        labels,
+        function(label) {
+          payload <- parts_by_fold[[label]]$payload
+          if (ncol(payload$x) == 0L) {
+            return(0)
+          }
+          .fb_sel_grouped_lambda_max(
+            payload$x, payload$y, penalty, groups_by_fold[[label]]
+          )
+        },
+        numeric(1L)
+      )
+      lambda_max[!is.finite(lambda_max) | lambda_max <= 0] <- anchor
+      names(lambda_max) <- labels
+      lambda <- lapply(lambda_max, function(m) m * s)
+      names(lambda) <- labels
+      return(list(
+        tuning_scale = "s = multiplier / multiplier_max",
+        s = s,
+        lambda_max = lambda_max,
+        lambda = lambda
+      ))
+    }
+    common <- sort(
+      unique(c(anchor * 10^seq(2, -2, length.out = decision$n_lambda), anchor)),
+      decreasing = TRUE
+    )
+    lambda_max <- stats::setNames(rep(NA_real_, length(labels)), labels)
+    lambda <- stats::setNames(
+      rep(list(common), length(labels)), labels
+    )
+    return(list(
+      tuning_scale = "penalty multiplier",
+      s = rep(NA_real_, length(common)),
+      lambda_max = lambda_max,
+      lambda = lambda
+    ))
+  }
+
   if (alpha > 0) {
     s <- exp(seq(
       0,
@@ -944,7 +1150,6 @@
   seed = NULL,
   cluster = NULL
 ) {
-  .fb_sel_require_glmnet()
   decision <- .fb_sel_glmnet_decision(decision)
 
   substrates <- if (inherits(substrate, "fb_sel_substrate")) {
@@ -984,20 +1189,56 @@
 
   candidate_names <- colnames(substrates[[1L]]$x_candidate)
   n_train <- length(substrates[[1L]]$train_rows)
-  resolved <- .fb_sel_glmnet_blocks(blocks, candidate_names, n = n_train)
+  declared_space <- substrates[[1L]]$candidate_space$declared
+  candidate_terms <- declared_space$term[
+    match(candidate_names, declared_space$column)
+  ]
+  resolved <- .fb_sel_glmnet_blocks(
+    blocks,
+    candidate_names,
+    n = n_train,
+    candidate_terms = candidate_terms
+  )
   penalty <- resolved$penalty
   semantics <- .fb_sel_support_semantics(resolved$family)
-  convention_base <- .fb_sel_glmnet_convention()
+  # The provider gate asks for `glmnet` only where `glmnet` does the work. A
+  # grouped family is solved by this module's own proximal solver and needs
+  # no `glmnet` at all, so requiring it would be a dependency nobody uses.
+  grouped <- isTRUE(penalty$grouped)
+  if (!grouped) {
+    .fb_sel_require_glmnet()
+  }
+  convention_base <- if (grouped) NULL else .fb_sel_glmnet_convention()
 
   run <- function() {
     parts_by_fold <- lapply(substrates, function(s) {
       .fb_sel_glmnet_reduction(s, resolved$columns)
     })
-    conventions <- lapply(parts_by_fold, function(parts) {
-      .fb_sel_convention_at(convention_base, parts$payload$y)
-    })
+    conventions <- if (grouped) {
+      stats::setNames(vector("list", length(labels)), labels)
+    } else {
+      lapply(parts_by_fold, function(parts) {
+        .fb_sel_convention_at(convention_base, parts$payload$y)
+      })
+    }
+    # Each fold's own grouping, over the penalised columns its training rows
+    # identify. A group partly dropped there is fitted on its survivors with
+    # its weight recomputed, and the membership record says so.
+    groups_by_fold <- if (!grouped) {
+      NULL
+    } else {
+      stats::setNames(lapply(labels, function(label) {
+        .fb_sel_group_fold_index(
+          resolved$grouping,
+          parts_by_fold[[label]]$penalised_names,
+          fold_label = label
+        )
+      }), labels)
+    }
 
-    grid <- .fb_sel_glmnet_grid(parts_by_fold, penalty, decision)
+    grid <- .fb_sel_glmnet_grid(
+      parts_by_fold, penalty, decision, groups_by_fold
+    )
     # The lambdas of each arm, one vector per fold. The fixed arm is the one
     # canonical point the declared hyperparameters name, the same on every
     # fold; a benchmark point is one `s`, and a different lambda on each fold.
@@ -1040,7 +1281,9 @@
             parts,
             lambda_canonical,
             penalty$alpha_composite,
-            conventions[[label]]
+            conventions[[label]],
+            penalty = penalty,
+            groups = groups_by_fold[[label]]
           )
           scale <- s$learned$preprocessing_scale
           estimates <- solution$beta_penalised
@@ -1185,6 +1428,11 @@
       grid = grid,
       arms = arms,
       conventions = conventions,
+      group_membership = if (is.null(groups_by_fold)) {
+        NULL
+      } else {
+        do.call(rbind, lapply(groups_by_fold, function(g) g$membership))
+      },
       # Per fold, the penalised columns its training rows identify, beside
       # the declared ones.
       penalised_by_fold = lapply(parts_by_fold, function(p) p$penalised_names),
@@ -1245,7 +1493,7 @@
 
   equivalence <- .fb_sel_equivalence_level(
     prior_family = resolved$family,
-    provider = "glmnet",
+    provider = if (grouped) "prox" else "glmnet",
     # The fold plugs its covariance in and the whitened objective carries a
     # unit residual scale by construction, so both are held fixed here. This
     # is read off what the substrate did, not off an argument.
@@ -1267,10 +1515,15 @@
   structure(
     list(
       workflow = "penalized_optimizer",
-      provider = "glmnet",
+      # The provider that did the arithmetic, read off the route rather than
+      # assumed from the module's name.
+      provider = if (grouped) "prox" else "glmnet",
       fully_bayesian = FALSE,
       family = resolved$family,
       blocks = resolved$blocks,
+      # The declared grouping, its rule in words, and the weight rule, so a
+      # reader can see which columns were grouped and why.
+      grouping = resolved$grouping,
       penalty = penalty,
       coefficients_original_scale = computed$coefficients,
       fitted_values = computed$fitted,
@@ -1285,13 +1538,24 @@
         # a point on it.
         alpha = penalty$alpha_composite,
         history = history$points,
-        history_by_fold = history$by_fold
+        history_by_fold = history$by_fold,
+        # The same membership summed to the group, for a family whose answer
+        # is about groups, and the per-fold record of which groups a fold
+        # could fit whole.
+        group_history = .fb_sel_group_support_history(
+          history$points, resolved$grouping
+        ),
+        group_membership = computed$group_membership
       ),
       canonical_objective = computed$canonical_objective,
       provider_objective = computed$provider_objective,
       kkt_by_lambda = computed$kkt,
       path_coordinates = computed$coordinates,
-      provider_version = as.character(utils::packageVersion("glmnet")),
+      provider_version = if (grouped) {
+        as.character(utils::packageVersion("flexyBayes"))
+      } else {
+        as.character(utils::packageVersion("glmnet"))
+      },
       provider_lambda_convention = convention_base,
       equivalence_level = equivalence,
       decision = decision,

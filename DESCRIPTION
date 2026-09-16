@@ -44,6 +44,8 @@ Suggests:
     posterior,
     projpred,
     glmnet,
+    grpreg,
+    quadprog,
     emmeans,
     estimability,
     marginaleffects,

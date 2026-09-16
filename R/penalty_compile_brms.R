@@ -130,6 +130,26 @@
       next
     }
 
+    # A grouped family reaches here only when the Bayesian route was asked
+    # for. It has a provider -- the penalised optimiser -- so the refusal is
+    # not the withdrawal code, and it names the workflow that does fit it
+    # rather than leaving the caller with a route they cannot take.
+    if (identical(b$route, "optimizer_only")) {
+      stop(.fb_refusal_condition(
+        reason_code = "selection_penalty_family_optimizer_only",
+        message = paste0(
+          "fb_penalty(): `", b$family, "()` is fitted by the penalised ",
+          "optimiser and has no brms form. It is a penalty with a proximal ",
+          "operator, not a density brms can be given, and no nearby prior ",
+          "is substituted under its name. Ask for it with ",
+          "workflow = \"penalized_optimizer\", or choose ridge(), ",
+          "laplace() or elastic_net(), which the Bayesian route compiles ",
+          "exactly."
+        ),
+        penalty_family = b$family
+      ))
+    }
+
     stop(
       ".fb_pen_compile_brms(): block ", b$id, " carries the unknown route `",
       b$route, "`.",

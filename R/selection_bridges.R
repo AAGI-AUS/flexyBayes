@@ -30,7 +30,10 @@
 # .fb_sel_penalty_families() --- the three families with a mode identity that
 # this release ships to an optimiser.
 .fb_sel_penalty_families <- function() {
-  c("ridge", "laplace", "elastic_net")
+  c(
+    "ridge", "laplace", "elastic_net",
+    "group_lasso", "sparse_group_lasso", "exclusive_lasso", "group_exclusive"
+  )
 }
 
 
@@ -76,44 +79,100 @@
     as.numeric(value)
   }
 
+  unit_open <- function(value, what) {
+    if (
+      !is.numeric(value) ||
+        length(value) != 1L ||
+        !is.finite(value) ||
+        value <= 0 ||
+        value >= 1
+    ) {
+      stop(
+        "`",
+        what,
+        "` must be a single number strictly inside (0, 1).",
+        call. = FALSE
+      )
+    }
+    as.numeric(value)
+  }
+
   parts <- switch(
     family,
     ridge = {
       scale <- positive(hyper$scale, "scale")
-      c(l1 = 0, l2 = 1 / scale^2)
+      c(l1 = 0, l2 = 1 / scale^2, lg = 0, le = 0)
     },
     laplace = {
       scale <- positive(hyper$scale, "scale")
-      c(l1 = 1 / scale, l2 = 0)
+      c(l1 = 1 / scale, l2 = 0, lg = 0, le = 0)
     },
     elastic_net = {
       lambda <- positive(hyper$lambda, "lambda")
-      alpha <- hyper$alpha
-      if (
-        !is.numeric(alpha) ||
-          length(alpha) != 1L ||
-          !is.finite(alpha) ||
-          alpha <= 0 ||
-          alpha >= 1
-      ) {
-        stop(
-          "`alpha` must be a single number strictly inside (0, 1).",
-          call. = FALSE
-        )
-      }
-      c(l1 = n * lambda * alpha, l2 = n * lambda * (1 - alpha))
+      alpha <- unit_open(hyper$alpha, "alpha")
+      c(
+        l1 = n * lambda * alpha, l2 = n * lambda * (1 - alpha), lg = 0, le = 0
+      )
+    },
+    # The grouped families. Each states its scale the way the ungrouped
+    # family with the same homogeneity does, so the exact limits hold and no
+    # new convention is invented: a group norm is homogeneous of degree one
+    # like a Laplace scale (lg = 1 / scale), and the exclusive penalty is
+    # homogeneous of degree two like a ridge scale (le = 1 / scale^2). That
+    # second choice is what makes a singleton exclusive group EXACTLY a
+    # ridge, which is the identity the solver tests pin.
+    group_lasso = {
+      scale <- positive(hyper$scale, "scale")
+      c(l1 = 0, l2 = 0, lg = 1 / scale, le = 0)
+    },
+    sparse_group_lasso = {
+      scale <- positive(hyper$scale, "scale")
+      alpha <- unit_open(hyper$alpha, "alpha")
+      c(l1 = alpha / scale, l2 = 0, lg = (1 - alpha) / scale, le = 0)
+    },
+    exclusive_lasso = {
+      scale <- positive(hyper$scale, "scale")
+      c(l1 = 0, l2 = 0, lg = 0, le = 1 / scale^2)
+    },
+    group_exclusive = {
+      group_scale <- positive(hyper$group_scale, "group_scale")
+      exclusive_scale <- positive(hyper$exclusive_scale, "exclusive_scale")
+      c(l1 = 0, l2 = 0, lg = 1 / group_scale, le = 1 / exclusive_scale^2)
     }
   )
 
+  grouped <- family %in% .fb_sel_grouped_families()
   composite <- parts[["l1"]] + parts[["l2"]]
+  # A grouped penalty is not a point on the (lambda, alpha) line the provider
+  # map speaks, so it carries a multiplier instead: the path scales all four
+  # numbers together and the declared hyperparameters are the point at one.
+  # `finite_anchor` says whether the family has a null at a finite multiplier
+  # at all -- the exclusive penalty is smooth at the origin and has none, for
+  # the same reason ridge has none.
   list(
     family = family,
     lambda_l1 = parts[["l1"]],
     lambda_l2 = parts[["l2"]],
+    lambda_group = parts[["lg"]],
+    lambda_exclusive = parts[["le"]],
+    grouped = grouped,
+    group_rule = if (grouped) hyper$group %||% "term" else NA_character_,
+    finite_anchor = if (grouped) {
+      parts[["l1"]] > 0 || parts[["lg"]] > 0
+    } else {
+      parts[["l1"]] > 0
+    },
     # The composite coordinate the provider map speaks: pen(beta) =
     # lambda_composite [ alpha ||beta||_1 + (1 - alpha)/2 ||beta||_2^2 ].
-    lambda_composite = composite,
-    alpha_composite = if (composite > 0) parts[["l1"]] / composite else 0,
+    # A grouped penalty has no such coordinate; its path multiplier is one.
+    lambda_composite = if (grouped) 1 else composite,
+    alpha_composite = if (grouped) {
+      NA_real_
+    } else if (composite > 0) {
+      parts[["l1"]] / composite
+    } else {
+      0
+    },
     n = as.numeric(n),
     hyperparameters = hyper
   )
@@ -630,7 +689,14 @@
   list(
     glmnet = c("none", "ridge", "laplace", "elastic_net"),
     closed_form = c("none", "ridge"),
-    prox = c("none", "ridge", "laplace", "elastic_net"),
+    # The internal proximal solver expresses every family this release
+    # ships, grouped ones included: each has a proximal operator written
+    # from its own subdifferential and a KKT certificate measured at the
+    # point it returns.
+    prox = c(
+      "none", "ridge", "laplace", "elastic_net",
+      .fb_sel_grouped_families()
+    ),
     gls_reml_plugin = "none"
   )
 }

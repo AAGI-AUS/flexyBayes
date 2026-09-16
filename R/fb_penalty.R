@@ -93,14 +93,39 @@
 #' under which the protected coefficients also sit under the global-local
 #' prior and the certificate records the approximation.
 #'
-#' The group, exclusive and adaptive families of the earlier grammar
-#' (`group_lasso()`, `exclusive_lasso()`, `sparse_group_lasso()`,
-#' `group_exclusive()`, `adaptive()`) are withdrawn from this release and
-#' refuse by name. Their providers are not shipped, and a family without a
-#' provider is a promise rather than a method. This release names no
-#' successor for them: a structured-sparsity prior needs a prior, a
-#' provider and a gate that has been run, and none of the three exists
-#' here.
+#' @section Grouped families:
+#'
+#' Four families read a grouping of the candidate columns. They are fitted by
+#' the penalised optimiser (`workflow = "penalized_optimizer"`) and have no
+#' brms form, so asking for one on the Bayesian route refuses by name rather
+#' than substituting the nearest prior.
+#'
+#' | Family | Arguments | What it does |
+#' |---|---|---|
+#' | `group_lasso(scale, group)` | `scale` > 0 | a group enters or leaves as a whole |
+#' | `sparse_group_lasso(scale, alpha, group)` | `alpha` in (0, 1) | a group enters as a whole, and thins inside |
+#' | `exclusive_lasso(scale, group)` | `scale` > 0 | members of a group compete |
+#' | `group_exclusive(group_scale, exclusive_scale, group)` | both > 0 | both at once |
+#'
+#' `group` declares how the columns are grouped, and it is never inferred
+#' from the data. `"term"` makes each model term one group, so a factor's
+#' contrast columns move together and a numeric main effect is a group of
+#' one; `"block"` makes the specification's own target set one group, which
+#' is how a cluster of correlated measurements is declared to be a set of
+#' competitors. `group_lasso()`, `sparse_group_lasso()` and
+#' `group_exclusive()` default to `"term"`; `exclusive_lasso()` defaults to
+#' `"block"`. The rule and the resolved groups are recorded on the
+#' certificate. A grouping in which every group has one column refuses, since
+#' a group lasso would then be a lasso and an exclusive lasso a ridge.
+#'
+#' The exclusive penalty adds `sum_g (sum_j |beta_j|)^2 / 2` over groups,
+#' which encourages competition inside a group. It does not guarantee that
+#' exactly one member is non-zero, and on a group of one it is exactly
+#' `ridge()` at the same scale.
+#'
+#' `adaptive()` remains withdrawn and refuses by name. An adaptive penalty
+#' needs a first-stage estimate and a rule for turning that estimate into
+#' weights, and this release ships neither.
 #'
 #' @param ... One or more two-sided formulas, `target ~ family(...)`,
 #'   resolved in the order written.
@@ -618,6 +643,29 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
         reason_code = "penalty_hyperparameter_invalid",
         message = paste0(
           label, " must be \"candidates\" or \"all_fixed\". Got ",
+          .fb_prior_deparse(value), "."
+        )
+      ))
+    }
+    return(invisible(NULL))
+  }
+
+  # The declared grouping rule of a grouped family. It is a hyperparameter
+  # rather than an argument of fb_penalty() because it belongs to the family:
+  # a group lasso groups terms and an exclusive lasso groups the block, and
+  # both defaults are stated in the family table.
+  if (identical(domain, "group_rule")) {
+    ok <- is.character(value) && length(value) == 1L && !is.na(value) &&
+      value %in% names(.fb_sel_group_rules())
+    if (!ok) {
+      stop(.fb_refusal_condition(
+        reason_code = "penalty_hyperparameter_invalid",
+        message = paste0(
+          label, " must name a grouping rule: ",
+          paste0("\"", names(.fb_sel_group_rules()), "\"", collapse = " or "),
+          ". \"term\" makes each model term a group, so a factor's contrast ",
+          "columns move together; \"block\" makes the specification's own ",
+          "targets one set of competitors. Got ",
           .fb_prior_deparse(value), "."
         )
       ))
