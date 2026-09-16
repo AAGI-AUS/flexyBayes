@@ -529,9 +529,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # rows do not identify (selection_fold_protected_unidentified), and a
   # candidate drop the route cannot represent
   # (selection_fold_candidate_drop_not_representable) (= 212).
+  #
+  # The grouped-penalty unit adds two: a declared grouping in which every
+  # group is a singleton, so the family would silently be a different penalty
+  # (selection_penalty_group_structure_absent), and a grouped family asked
+  # for on the Bayesian route, which has an optimiser provider and no brms
+  # one (selection_penalty_family_optimizer_only) (= 214).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 212L)
+  expect_equal(length(entries), 214L)
+  expect_true("selection_penalty_group_structure_absent" %in% entries)
+  expect_true("selection_penalty_family_optimizer_only" %in% entries)
   expect_true("selection_score_contract_unverifiable" %in% entries)
   expect_true("selection_fold_protected_unidentified" %in% entries)
   expect_true("selection_fold_candidate_drop_not_representable" %in% entries)

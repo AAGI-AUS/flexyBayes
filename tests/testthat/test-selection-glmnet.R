@@ -279,38 +279,23 @@ test_that("an absent provider refuses by name (defect D7)", {
 })
 
 
-test_that("a withdrawn penalty family refuses by name", {
-  for (family in c(
-    "group_lasso",
-    "exclusive_lasso",
-    "sparse_group_lasso",
-    "group_exclusive",
-    "adaptive",
-    "regularized_horseshoe",
-    "r2d2"
-  )) {
+test_that("a family with no optimiser provider refuses by name", {
+  # The class-wide global-local families are Bayesian-only, and `adaptive()`
+  # has no provider at all. The four grouped families left this list at
+  # 0.13.0, when their proximal provider and its gates shipped
+  # (tests/testthat/test-selection-grouped-penalties.R).
+  for (family in c("adaptive", "regularized_horseshoe", "r2d2")) {
     expect_error(
       .fb_sel_glmnet_assert_family(family),
       class = "flexybayes_refusal_selection_penalty_family_withdrawn"
     )
   }
-  for (family in c("ridge", "laplace", "elastic_net")) {
+  for (family in c(
+    "ridge", "laplace", "elastic_net",
+    "group_lasso", "sparse_group_lasso", "exclusive_lasso", "group_exclusive"
+  )) {
     expect_identical(.fb_sel_glmnet_assert_family(family), family)
   }
-})
-
-
-test_that("a group_lasso block refuses before any fold is fitted", {
-  skip_if_not_installed("glmnet")
-  built <- fb_glmnet_substrates()
-  expect_error(
-    .fb_sel_glmnet_path(
-      built$substrates,
-      fb_glmnet_block("group_lasso", list(scale = 1)),
-      folds = built$folds
-    ),
-    class = "flexybayes_refusal_selection_penalty_family_withdrawn"
-  )
 })
 
 

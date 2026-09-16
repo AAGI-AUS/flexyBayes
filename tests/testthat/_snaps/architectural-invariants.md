@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=212
+      .refusal_registry: locked=TRUE n_keys=214
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -256,8 +256,10 @@
         selection_offset_absorbed_twice
         selection_penalty_blocks_not_expressible
         selection_penalty_coordinate_basis_dependent
+        selection_penalty_family_optimizer_only
         selection_penalty_family_unknown
         selection_penalty_family_withdrawn
+        selection_penalty_group_structure_absent
         selection_penalty_spec_malformed
         selection_penalty_target_ambiguous
         selection_penalty_target_not_in_model

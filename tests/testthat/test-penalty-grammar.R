@@ -524,23 +524,36 @@ fbpg_malformed <- list(
     spec = term(x1) ~ none(scale = 1),
     code = "grammar_named_argument_unknown", mutation = "unknown_name"
   ),
-  # ---- withdrawn families ----------------------------------------------------
+  # ---- grouped families, admitted at 0.13.0 ----------------------------------
+  # These four stopped refusing as withdrawn when their penalised-optimiser
+  # provider shipped. They are kept in the corpus, refusing for what is
+  # actually wrong with each call: a family that is admitted still has an
+  # argument contract, and these rows are what shows it is enforced.
   list(
     spec = term(everything()) ~ group_lasso(),
-    code = "selection_penalty_family_withdrawn", mutation = "withdrawn"
+    code = "penalty_hyperparameter_invalid", mutation = "omission"
   ),
   list(
     spec = term(everything()) ~ exclusive_lasso(),
-    code = "selection_penalty_family_withdrawn", mutation = "withdrawn"
+    code = "penalty_hyperparameter_invalid", mutation = "omission"
   ),
   list(
     spec = term(everything()) ~ sparse_group_lasso(gamma = 0.5),
-    code = "selection_penalty_family_withdrawn", mutation = "withdrawn"
+    code = "grammar_named_argument_unknown", mutation = "unknown_name"
   ),
   list(
     spec = term(everything()) ~ group_exclusive(ratio = 1),
-    code = "selection_penalty_family_withdrawn", mutation = "withdrawn"
+    code = "grammar_named_argument_unknown", mutation = "unknown_name"
   ),
+  list(
+    spec = term(everything()) ~ group_lasso(scale = 1, group = "factor"),
+    code = "penalty_hyperparameter_invalid", mutation = "out_of_domain"
+  ),
+  list(
+    spec = term(everything()) ~ sparse_group_lasso(scale = 1, alpha = 1),
+    code = "penalty_hyperparameter_invalid", mutation = "out_of_domain"
+  ),
+  # ---- withdrawn families ----------------------------------------------------
   list(
     spec = term(everything()) ~ adaptive(power = 1),
     code = "selection_penalty_family_withdrawn", mutation = "withdrawn"
@@ -705,12 +718,17 @@ test_that("every table family has a route, a mode and provider capabilities", {
   expect_setequal(
     names(tbl),
     c("ridge", "laplace", "elastic_net", "regularized_horseshoe", "r2d2",
-      "none")
+      "group_lasso", "sparse_group_lasso", "exclusive_lasso",
+      "group_exclusive", "none")
   )
   for (nm in names(tbl)) {
     e <- tbl[[nm]]
+    # `optimizer_only` joined the route vocabulary at 0.13.0 with the four
+    # grouped families: a penalty carrying a proximal operator rather than a
+    # density brms can be handed.
     expect_true(e$route %in%
-      c("coef_rows", "class_wide", "stanvar_density", "none"), info = nm)
+      c("coef_rows", "class_wide", "stanvar_density", "optimizer_only",
+        "none"), info = nm)
     expect_true(e$hyperparameter_mode %in% c("fixed", "learned"), info = nm)
     expect_setequal(names(e$provider_capabilities), c("brms", "inla", "glmnet"))
     expect_true(all(e$required %in% e$params), info = nm)
@@ -728,12 +746,24 @@ test_that("every table family has a route, a mode and provider capabilities", {
 })
 
 
-test_that("the withdrawn families are exactly the v3 grammar's five", {
-  expect_setequal(
-    flexyBayes:::.fb_pen_withdrawn_families(),
-    c("group_lasso", "exclusive_lasso", "sparse_group_lasso",
-      "group_exclusive", "adaptive")
-  )
+test_that("the withdrawn family is adaptive, and only adaptive", {
+  # The four grouped families left this list at 0.13.0, when their
+  # penalised-optimiser provider and its gates shipped. `adaptive()` did not:
+  # it needs a first-stage estimate and a rule for turning that estimate into
+  # weights, and neither exists here.
+  expect_setequal(flexyBayes:::.fb_pen_withdrawn_families(), "adaptive")
+  for (family in c(
+    "group_lasso", "sparse_group_lasso", "exclusive_lasso", "group_exclusive"
+  )) {
+    expect_false(
+      family %in% flexyBayes:::.fb_pen_withdrawn_families(),
+      info = family
+    )
+    expect_true(
+      family %in% flexyBayes:::.fb_pen_supported_families(),
+      info = family
+    )
+  }
   # Their component traits stay in the resolver, which is what makes the
   # refusal a public-grammar decision rather than a deletion.
   traits <- flexyBayes:::.fb_sel_penalty_component_traits()
