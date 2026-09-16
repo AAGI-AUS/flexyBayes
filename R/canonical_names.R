@@ -77,7 +77,7 @@
 #'       `"per_row_equivalent"` is the legacy scalar bridge, whose
 #'       precision prior makes the aggregated posterior match the
 #'       per-row posterior to numerical precision.
-#'       `"package_default"` is the automatic bounded-uniform-on-SD
+#'       `"package_default"` is the automatic half-normal-on-SD
 #'       prior, which claims no such equivalence on this route.
 #'       `"custom"` is an explicit prior from the caller (see the
 #'       "Matched priors" note on [triangulate()]).}

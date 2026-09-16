@@ -5,7 +5,7 @@
 # in one of three shapes:
 #
 #   (1) an `fb_prior` object (user-supplied OR the auto-default
-#       uniform-on-SD constructed by `.default_uniform_prior()`);
+#       half-normal constructed by `.default_half_normal_prior()`);
 #   (2) the legacy-bridge list `list(fixed_sd, vc_sd, legacy = TRUE)`
 #       carried when neither a user `fb_prior()` nor the auto-default
 #       fired (rare; default-fire is the standard path);
@@ -14,13 +14,13 @@
 # Closest precedent: `brms::prior_summary()` / `rstanarm::prior_summary()`.
 # The flexyBayes implementation differs in one intentional way: it
 # surfaces whether the prior came from the auto-default (so users know
-# the bounded uniform on SD is the working prior, not a placeholder).
+# the half-normal on SD is the working prior the fit ran under).
 
 #' Resolved-prior summary for a flexyBayes fit
 #'
 #' Returns the resolved priors used to fit the model -- either the
-#' user-supplied `fb_prior()` object, the auto-default bounded
-#' uniform on the standard-deviation scale (Gelman, 2006), or the
+#' user-supplied `fb_prior()` object, the auto-default half-normal
+#' on the standard-deviation scale, or the
 #' legacy scalar bridge (`prior_fixed_sd` + `prior_vc_sd`). The
 #' return value is an S3 object with a `print()` method; the
 #' underlying `fb_prior` (when applicable) is exposed under
@@ -41,12 +41,12 @@
 #'     \item{`fb_prior`}{The `fb_prior` object (when
 #'       `kind == "fb_prior"`).}
 #'     \item{`default_origin`}{`"auto"` when the prior was
-#'       constructed by the bounded-uniform auto-default;
+#'       constructed by the half-normal auto-default;
 #'       `"user"` when supplied via the `prior` argument; `NA` for
 #'       legacy / no-prior cases.}
 #'     \item{`default_scale`, `default_basis`}{Attributes carried by
-#'       the auto-default prior naming the response-scale upper
-#'       bound and its basis (response-scale `sd(y)`, logit-scale
+#'       the auto-default prior naming the half-normal scale
+#'       and its basis (response-scale `sd(y)`, logit-scale
 #'       constant, log-scale constant). `NULL` when the prior was
 #'       user-supplied.}
 #'     \item{`fixed_sd`, `vc_sd`}{Legacy scalar values (when
@@ -158,8 +158,8 @@ prior_summary.default <- function(object, ...) {
 #
 # On brms a sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
 # residual a distributional predictor: the model has no scalar `sigma`,
-# and the declared uniform on the SD scale is retargeted onto the
-# log-sigma coefficients. Printing `sigma ~ uniform(0, U)` for such a fit
+# and the declared prior on the SD scale is retargeted onto the
+# log-sigma coefficients. Printing `sigma ~ half_normal(scale = s)` for such a fit
 # names a parameter the model does not contain and a distribution Stan
 # did not use, so the summary carries the retarget explicitly. INLA fits one
 # likelihood per section and applies the declared prior to each section's
@@ -661,12 +661,12 @@ print.prior_summary_flexybayes <- function(x, ...) {
     fb_prior = {
       if (identical(x$default_origin, "auto")) {
         cat(
-          "  Source: auto-default bounded uniform on SD ",
-          "(weakly-informative; half-Cauchy advised for small J)\n",
+          "  Source: auto-default half-normal on SD ",
+          "(weakly informative, no upper bound)\n",
           sep = ""
         )
         if (!is.null(x$default_scale)) {
-          cat("    Upper bound U = ", format(x$default_scale), "\n", sep = "")
+          cat("    Scale s        = ", format(x$default_scale), "\n", sep = "")
         }
         if (!is.null(x$default_basis)) {
           cat("    Scale basis    = ", x$default_basis, "\n", sep = "")
@@ -737,7 +737,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
       "  distributional predictor with one log-sigma coefficient per level\n",
       "  of `",
       x$residual_lowered_to,
-      "`, and a declared uniform on the SD\n",
+      "`, and a declared prior on the SD\n",
       "  scale is retargeted onto those coefficients on the log scale --\n",
       "  it is not applied as written above.\n",
       sep = ""

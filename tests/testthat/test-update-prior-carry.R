@@ -1,7 +1,7 @@
 # =============================================================================
 # The prior a re-fit runs under.
 #
-# The auto-default bounded uniform on the SD scale fires only when the call
+# The auto-default half-normal on the SD scale fires only when the call
 # supplies neither a `prior` nor a `prior_vc_sd`. update() re-issues the
 # recorded `prior_vc_sd`, so the gate saw an argument that was present and
 # the default never fired on a re-fit: the model fell through to the legacy
@@ -105,7 +105,7 @@ test_that("an identity update() on a per-row INLA fit keeps its prior", {
   # Cell for cell: the prior column of the variance-component table is the
   # surface a user reads, and it is what changed.
   expect_identical(.upc_prior_cells(sm1), .upc_prior_cells(sm0))
-  expect_true(all(grepl("^uniform\\(", .upc_prior_cells(sm1))))
+  expect_true(all(grepl("^half_normal\\(", .upc_prior_cells(sm1))))
   # The band is set well inside the defect it guards and outside the
   # engine's own reproducibility. Two runs of the same INLA model on this
   # machine have differed in the third decimal of sd_Block (2.2779 against
@@ -345,7 +345,7 @@ test_that("a fit carrying no prior record re-fits as it did before", {
 # An update() that ADDS a random term exposes the difference between the
 # two things the prior record can hold. Carrying the auto-default's
 # object re-applies yesterday's output to today's model, and the added
-# term falls to the engine while its siblings keep the bounded uniform --
+# term falls to the engine while its siblings keep the default --
 # a mixed state in one table, visible on the vignette's own first page.
 # The auto-default is a policy, so it is re-fired over the updated model
 # instead. A user's fb_prior() names its terms and is carried verbatim,
@@ -378,9 +378,9 @@ test_that("adding a term under the auto-default priors every component", {
 
   # The added term is present, and priored like the rest.
   expect_true(all(c("sigma", "sd_Block", "sd_Site") %in% names(cells)))
-  expect_true(all(grepl("^uniform\\(", cells)))
+  expect_true(all(grepl("^half_normal\\(", cells)))
   expect_false(any(cells %in% "engine default"))
-  # One bound, shared: the policy read it off the same data for every
+  # One scale, shared: the policy read it off the same data for every
   # component, so a mixed table is what this test exists to rule out.
   expect_identical(length(unique(unname(cells))), 1L)
   # And the re-fit reports the policy as the policy, not as a user prior.
@@ -413,10 +413,13 @@ test_that("adding a term under a user prior leaves it to the engine", {
   expect_identical(unname(cells[["sigma"]]), unname(cells[["sd_Block"]]))
   # The term the user never named is treated exactly as it would have been on
   # a first fit that added it: on INLA, an unstated standard deviation takes
-  # the package's bounded default, uniform(0, 5 sd(y)).
+  # the package's default, half_normal(scale = 5 sd(y) / divisor).
   expect_identical(
     unname(cells[["sd_Site"]]),
-    sprintf("uniform(lower=0, upper=%.12g)", 5 * stats::sd(d$y))
+    sprintf(
+      "half_normal(scale=%.12g)",
+      5 * stats::sd(d$y) / flexyBayes:::.FB_DEFAULT_SCALE_DIVISOR
+    )
   )
   # The prior is still theirs, not re-decided into a policy.
   expect_identical(prior_summary(refit)$default_origin, "user")

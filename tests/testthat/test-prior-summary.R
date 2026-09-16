@@ -83,7 +83,7 @@ test_that("the package default is reported on every per-level row too", {
   ))
   v <- summary(fit)$varcomp
   rows <- v[startsWith(v$component, "sd_gen__"), ]
-  expect_true(all(startsWith(rows$prior, "uniform(lower=0")))
+  expect_true(all(startsWith(rows$prior, "half_normal(scale=")))
   # The cell must agree with the residual row, which shares the default.
   expect_equal(unique(rows$prior), v$prior[v$component == "sigma"])
 })

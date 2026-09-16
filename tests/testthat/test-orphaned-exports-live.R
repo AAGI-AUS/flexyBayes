@@ -67,12 +67,12 @@ test_that("prior_summary() reports the auto-default on a live INLA fit", {
   expect_identical(ps$kind, "fb_prior")
   expect_identical(ps$backend, "inla")
   expect_identical(ps$default_origin, "auto")
-  expect_identical(ps$default_basis, "identity_sd_uniform")
+  expect_identical(ps$default_basis, "identity_sd_half_normal")
   expect_true(is.numeric(ps$default_scale) && ps$default_scale > 0)
 
   txt <- utils::capture.output(print(ps))
   expect_true(any(grepl("backend = inla", txt, fixed = TRUE)))
-  expect_true(any(grepl("auto-default bounded uniform", txt, fixed = TRUE)))
+  expect_true(any(grepl("auto-default half-normal", txt, fixed = TRUE)))
   # A simple random-intercept model has nothing outside the walker, so
   # there is no engine-default block to print.
   expect_length(ps$engine_default, 0L)

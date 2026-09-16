@@ -190,13 +190,14 @@ On the auto-default path -- when neither an `fb_prior()` nor a legacy
 
 | Target | Default | Basis |
 |---|---|---|
-| Residual `sigma` (Gaussian, identity link) | `uniform(0, 5 * sd(y))` | flexyBayes heuristic (weakly-informative bounded SD prior) |
-| Residual `sigma` (log link -- Poisson, negative binomial, gamma) | `uniform(0, 3)` on the log scale | flexyBayes heuristic |
-| Residual `sigma` (logit link -- binomial, beta) | `uniform(0, 5)` on the logit scale | flexyBayes heuristic |
-| `sd(group)` for `simple` / `ide` / `id` random terms | `uniform(0, U)`, `U` by family as above | flexyBayes heuristic |
-| `sd(group)` and `sd(slope)` for an uncorrelated slope `(x \|\| g)` | `uniform(0, U)`, `U` by family | flexyBayes heuristic |
-| `sd(group)` for `vm()`, `ped()` structured-cov terms | `uniform(0, U)`, `U` by family | flexyBayes heuristic |
-| `sd(group)` for a `gen:env` interaction intercept, and the per-level SDs of `diag()` / `idh()` / `at()` and `us()` | `uniform(0, U)`, `U` by family | flexyBayes heuristic (added at 0.9.0) |
+| Residual `sigma` (Gaussian, identity link) | `half_normal(scale = 5 * sd(y))` | flexyBayes heuristic (weakly informative SD prior with no upper bound; 0.13.0) |
+| Residual `sigma` (log link -- Poisson, negative binomial, gamma) | `half_normal(scale = 3)` on the log scale | flexyBayes heuristic |
+| Residual `sigma` (logit link -- binomial, beta) | `half_normal(scale = 5)` on the logit scale | flexyBayes heuristic |
+| `sd(group)` for `simple` / `ide` / `id` random terms | `half_normal(scale = s)`, `s` by family as above | flexyBayes heuristic |
+| `sd(group)` for an uncorrelated slope `(x \|\| g)` | `half_normal(scale = s)`, `s` by family | flexyBayes heuristic |
+| `sd(slope)` for an uncorrelated slope `(x \|\| g)` on a numeric `x` | `half_normal(scale = s / sd(x))`, on both engines | flexyBayes heuristic (response units per covariate unit) |
+| `sd(group)` for `vm()`, `ped()` structured-cov terms | `half_normal(scale = s)`, `s` by family | flexyBayes heuristic |
+| `sd(group)` for a `gen:env` interaction intercept, and the per-level SDs of `diag()` / `idh()` / `at()` and `us()` | `half_normal(scale = s)`, `s` by family | flexyBayes heuristic (added at 0.9.0) |
 | `us(f):g` level correlations | brms's own LKJ | recorded as engine-default |
 | AR1 field hyperparameters (`ar1()`, `ar1(row):ar1(col)`) | INLA's own hyperpriors | recorded as engine-default |
 | Any other random-term type (a multi-way interaction, `spl()`, `fa()`) | the engine's own default | recorded as engine-default |
@@ -207,11 +208,12 @@ reason are written into the fit's prior provenance, so `triangulate()`'s
 matched-prior gate reports it as `not_compared` rather than comparing two
 engines that were never asked the same question.
 
-The bounded-uniform-on-SD default is a flexyBayes heuristic in the spirit of
-Gelman (2006), which argues for bounded / weakly-informative variance priors over
-the conjugate inverse-gamma. Note that Gelman (2006) specifically recommends a
-half-Cauchy for the few-groups regime; the bounded uniform is chosen here for its
-cross-engine translatability, and the PC prior remains the recommended explicit
+The half-normal-on-SD default is a flexyBayes heuristic in the spirit of
+Gelman (2006), which argues for weakly informative variance priors over the
+conjugate inverse-gamma. It is exact on both engines, and it has no upper bound
+for an approximate posterior interval to run past. Its scale is the bound of the
+`uniform(0, U)` default it replaced in 0.13.0. Gelman (2006) discusses a
+half-Cauchy for the few-groups regime, and the PC prior remains an explicit
 choice (`fb_prior(sigma ~ pc(upper = U, prob = p))`) when the number of groups is
 small. The legacy scalar bridge (`prior_fixed_sd`, `prior_vc_sd`) preserves the
 original `lognormal(0, prior_vc_sd)` semantics verbatim when `prior_vc_sd` is

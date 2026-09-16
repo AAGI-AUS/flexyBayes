@@ -251,8 +251,8 @@ emit_count_aggregated <- function(
     "1"
   }
 
-  # In the default case the synthesised uniform-on-SD prior keys every
-  # random group, so hyper_ctrl carries the same faithful uniform
+  # In the default case the synthesised half-normal prior keys every
+  # random group, so hyper_ctrl carries the same faithful
   # expression prior the per-row emit_inla() path uses (both paths share
   # one prior). The fallback below fires only when no fb_prior is in play
   # (e.g. the legacy `prior_vc_sd` path) or a user supplies a partial

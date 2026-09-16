@@ -95,6 +95,18 @@ not have is likewise refused at the fit, against the engine's own
 parameter list and in the vocabulary the caller wrote.
 }
 
+\section{The default prior}{
+
+
+A fit that states neither \code{prior} nor \code{prior_vc_sd} runs under the
+package default: \code{half_normal(scale = s)} on the residual standard
+deviation and on the standard deviation of every variance component
+the default reaches, on both engines. \code{s} is \code{5 * sd(y)} on an identity
+link, \code{3} on a log link and \code{5} on a logit link; on an uncorrelated
+random slope on a numeric covariate \code{x} it is \code{s / sd(x)}. The default
+has no upper bound. \code{\link[=prior_summary]{prior_summary()}} prints the scale a fit ran under.
+}
+
 \examples{
 p <- fb_prior(
   sigma                 ~ pc(upper = 2, prob = 0.05),

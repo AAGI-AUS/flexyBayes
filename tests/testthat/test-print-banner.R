@@ -298,9 +298,10 @@ test_that("on complete data the two counts agree", {
 }
 
 test_that("the printed INLA formula names its priors instead of coding", {
-  # A uniform-on-SD prior reaches INLA as a C expression: about a hundred
-  # characters of theta, -1.0e10 and return(...) spliced into the
-  # formula. Printing it buries the model in the encoding of one prior.
+  # An SD-scale prior reaches INLA as a C expression: about a hundred
+  # characters of theta, sig and return(...) spliced into the formula.
+  # Printing it buries the model in the encoding of one prior. The default
+  # here is the half-normal (0.13.0); a stated uniform adds -1.0e10.
   skip_if_not_installed("INLA")
   skip_on_cran()
   .pb_silence()
@@ -309,7 +310,7 @@ test_that("the printed INLA formula names its priors instead of coding", {
   # The premise: this fit's emitted formula really does carry the blob.
   full <- paste(deparse(fit$extras$formula), collapse = " ")
   expect_match(full, "hyper = list(", fixed = TRUE)
-  expect_match(full, "-1.0e10", fixed = TRUE)
+  expect_match(full, "expression: s=", fixed = TRUE)
 
   txt <- paste(utils::capture.output(print(fit)), collapse = "\n")
   expect_match(txt, "INLA formula", fixed = TRUE)
@@ -319,7 +320,7 @@ test_that("the printed INLA formula names its priors instead of coding", {
   expect_false(grepl("theta", txt, fixed = TRUE))
   # The model itself is still legible, and the prior is named.
   expect_match(txt, "f(g, model = \"iid\"", fixed = TRUE)
-  expect_match(txt, "<prior: uniform-SD(0, ", fixed = TRUE)
+  expect_match(txt, "<prior: half-normal-SD(", fixed = TRUE)
 
   # A field print still shows its own formula, blob-free.
   field_txt <- paste(

@@ -240,6 +240,13 @@ test_that("the N30 design fits inside every bound or refuses by name", {
   .psa_silence()
   d <- .psa_n30_data()
 
+  # The bound of 3 on each standard deviation is stated. It was the package
+  # default on a log link until 0.13.0, whose half-normal default carries no
+  # bound for the audit to check.
+  bound_3 <- fb_prior(
+    sd(group = "g") ~ uniform(lower = 0, upper = 3),
+    sd(group = "h") ~ uniform(lower = 0, upper = 3)
+  )
   for (i1 in seq_len(6L)) {
     res <- tryCatch(
       suppressWarnings(flexybayes(
@@ -248,6 +255,7 @@ test_that("the N30 design fits inside every bound or refuses by name", {
         data = d,
         family = "poisson",
         backend = "inla",
+        prior = bound_3,
         verbose = FALSE
       )),
       error = function(e) e
@@ -258,7 +266,7 @@ test_that("the N30 design fits inside every bound or refuses by name", {
       audit <- res$extras$support_audit
       expect_true(all(audit$inside))
       # Independent of the audit: every reported precision mode implies a
-      # standard deviation inside the default bound of 3.
+      # standard deviation inside the stated bound of 3.
       hp <- res$inla$summary.hyperpar
       prec_rows <- grepl("^Precision for ", rownames(hp))
       expect_true(all(1 / sqrt(hp[prec_rows, "mode"]) <= 3 * (1 + 1e-3)))
@@ -291,24 +299,36 @@ test_that("every INLA fit an entry point returns has been through the audit", {
     .fb_inla_restart_probe = function(...) NULL
   )
 
+  # Each fit states a uniform bound, so every audit record has rows to show:
+  # the package default is a half-normal (0.13.0), which carries none. The
+  # bounds are the former defaults, 5 sd(y) and 3 on the log link.
+  u_y <- 5 * stats::sd(d$y)
+  bounded <- fb_prior(
+    sigma ~ uniform(lower = 0, upper = u_y),
+    sd(group = "g") ~ uniform(lower = 0, upper = u_y)
+  )
+  bounded_count <- fb_prior(sd(group = "g") ~ uniform(lower = 0, upper = 3))
+
   per_row <- flexybayes(
-    y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE
+    y ~ x, random = ~g, data = d, backend = "inla", prior = bounded,
+    verbose = FALSE
   )
   alias <- suppressWarnings(
-    fb(y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE),
+    fb(y ~ x, random = ~g, data = d, backend = "inla", prior = bounded,
+       verbose = FALSE),
     classes = "flexybayes_deprecated"
   )
   pinned <- suppressWarnings(
-    fb_inla(y ~ x, random = ~g, data = d, verbose = FALSE),
+    fb_inla(y ~ x, random = ~g, data = d, prior = bounded, verbose = FALSE),
     classes = "flexybayes_deprecated"
   )
   aggregated <- flexybayes(
     cnt ~ h, random = ~g, data = d, family = "poisson", backend = "inla",
-    aggregate = TRUE, verbose = FALSE
+    aggregate = TRUE, prior = bounded_count, verbose = FALSE
   )
   streamed <- flexybayes_stream(
     fixed = cnt ~ h, random = ~g, source = d, family = "poisson",
-    verbose = FALSE
+    prior = bounded_count, verbose = FALSE
   )
   refit <- stats::update(per_row, random = ~ g + h)
   d_fold <- d

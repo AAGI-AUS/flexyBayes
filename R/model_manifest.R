@@ -969,6 +969,9 @@
 #'   the same prior table.
 #' @param tagged_prior The rows `.priors_to_brms()` built, carrying the input
 #'   identifier of each row in the `fb_input_ids` attribute.
+#' @param completion The default slope priors the brms emit divided by their
+#'   covariates' standard deviations (`.fb_default_covariate_scaled()`), or
+#'   `NULL`.
 #' @returns An `fb_manifest`.
 #' @noRd
 #' @keywords internal
@@ -976,7 +979,8 @@
   fb,
   emitted_prior,
   brmsfit,
-  tagged_prior = emitted_prior
+  tagged_prior = emitted_prior,
+  completion = NULL
 ) {
   emitted <- as.data.frame(emitted_prior %||% data.frame())
   tagged <- as.data.frame(tagged_prior %||% data.frame())
@@ -1001,7 +1005,8 @@
   }
   inputs <- .fb_manifest_inputs(
     fb,
-    scalars = scalars[!duplicated(names(scalars))]
+    scalars = scalars[!duplicated(names(scalars))],
+    completion = completion
   )
 
   # Rows with no specification behind them: joint blocks the selection

@@ -266,7 +266,7 @@ Each is reproducible on this release. Priority is for the MET use case.
 12. **Closed: on INLA, a fold refit's default priors read its training
     rows.** Each INLA fold refit in `fb_select()` receives the training rows
     and the assessment rows with the response set to missing. The default
-    bound on an uncorrelated random slope's standard deviation and the
+    scale on an uncorrelated random slope's standard deviation and the
     default fixed-effect prior are scaled by covariate standard deviations
     taken over the rows with an observed response, which in a fold refit are
     its training rows, the rows the response-scaled defaults already read. A
@@ -308,19 +308,24 @@ Each is reproducible on this release. Priority is for the MET use case.
     with one shared standard deviation, and an accuracy bound for INLA's
     variance components.
 16. **A Poisson response that is almost all zeros, with a weakly identified
-    group, can crash INLA's program, and `backend = "inla"` refuses it.** On
-    a Poisson model with a random intercept over 28 clusters of two and 3
-    non-zero counts in 56 rows, INLA's program stops with a segmentation
-    fault after the mode is found, while it integrates over the group
-    precision. It happens on every release from 0.10.0 to 0.12.0 and under
-    INLA 26.08.07 and 25.10.19, and the package refuses with
-    `inla_program_failed`. The same design with 7 non-zero counts fits. It
+    group under a uniform bound, can crash INLA's program, and
+    `backend = "inla"` refuses it.** On a Poisson model with a random
+    intercept over 28 clusters of two and 3 non-zero counts in 56 rows,
+    INLA's program stops with a segmentation fault after the mode is found,
+    while it integrates over the group precision. It happens on every
+    release from 0.10.0 to 0.12.0 and under INLA 26.08.07 and 25.10.19, and
+    on 0.12.1 under INLA 26.08.07 (execution grid), all under the uniform
+    default, and the package refuses with `inla_program_failed`. The same design with 7 non-zero counts fits. It
     is not a regression: the execution-grid cell that recorded 0.10.0 as
     fitting drew the 7-count response, and a fixture added to the grid
     later moved the random-number state so the cell drew the 3-count one.
-    The cause inside INLA is not established. *Workaround*: state
-    `sd(group = ...) ~ half_normal(scale = 1.53)`, which fitted the 3-count
-    design in 3 of 3 runs, or fit on brms.
+    The cause inside INLA is not established. Since 0.13.0 the default
+    half-normal prior fits the 3-count design (3 of 3 runs; the group
+    standard deviation's 95% interval 0.10 to 3.89, against 0.04 to 3.27 on
+    brms under the same prior, where the sampler reported 138 divergent
+    transitions in 4,000 draws), and a stated `uniform(0, 3)` on the group
+    standard deviation still crashes in 3 of 3 runs. *Workaround*: keep a
+    half-normal prior on the group standard deviation, or fit on brms.
 17. **On INLA, a hyperparameter marginal can lie far outside a stated
     uniform bound, and the fit is refused.** On a Poisson model with two
     random intercepts, one of which splits the rows exactly as a fixed
@@ -348,9 +353,12 @@ Each is reproducible on this release. Priority is for the MET use case.
     is 3.05 and INLA's interval runs from 0.17 to 3.65, so the default INLA
     fit is refused in 8 of 8 repeats. *Workaround*: state a half-normal prior
     on the standard deviations, for example with scale the standard
-    deviation of the response, or fit on brms. *What is open*: the default
-    prior (the release plan moves it to a half-normal prior on both engines
-    in 0.13.0).
+    deviation of the response, or fit on brms. Since 0.13.0 the default
+    prior is `half_normal(scale = s)` on each standard deviation, on both
+    engines, with `s` equal to the former bound; it has no bound for an
+    interval to cross, and the default `john.alpha` fit returns. *What is
+    open*: a user-stated uniform bound is still refused when INLA's reported
+    interval reaches past it.
 18. **Formula transforms that read other rows are refused on the Bayesian
     selection route.** `fb_select()` refits the model formula on every fold,
     and INLA evaluates it over the fold's training and assessment rows

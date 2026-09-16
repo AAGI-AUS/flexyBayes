@@ -267,10 +267,10 @@
 #'   PC-canonical hybrid DSL (preferred). When supplied it overrides
 #'   `prior_vc_sd` for the variance components it covers. See
 #'   [fb_prior()]. On INLA, a random-effect standard deviation the prior
-#'   does not name takes the package's bounded default, `uniform(0, U)`
-#'   with the family-aware `U` described under `prior_vc_sd` (divided by
-#'   the covariate's standard deviation for an uncorrelated slope), rather
-#'   than INLA's own hyperprior; [prior_summary()] lists what was filled.
+#'   does not name takes the package's default, `half_normal(scale = s)`
+#'   with the family-aware `s` described under `prior_vc_sd` (divided by
+#'   the covariate's standard deviation for an uncorrelated slope);
+#'   [prior_summary()] lists what was filled.
 #'   A standard deviation the prior does name is left exactly as written.
 #' @param prior_fixed_sd Numeric: SD for fixed-effect normal priors,
 #'   applied uniformly to the intercept, factor contrasts, continuous
@@ -305,17 +305,18 @@
 #'   units, or leave the argument unsupplied on INLA.
 #' @param prior_vc_sd Numeric: hyperparameter for the legacy
 #'   `lognormal(0, prior_vc_sd)` variance-component prior. **Note:**
-#'   when both `prior` and `prior_vc_sd` are left at their defaults,
-#'   v0.1 activates a bounded-uniform default on the SD scale
-#'   (`uniform(0, U)` with family-aware `U`: `5 * sd(y)` for Gaussian;
-#'   `5` on the logit scale for binomial / beta; `3` on the log scale
-#'   for Poisson / negative-binomial / gamma) for `sigma` and every
-#'   named random-effect group, with the bound on the standard deviation
-#'   of an uncorrelated random slope divided by the standard deviation of
-#'   its numeric covariate on INLA -- a weakly-informative choice for
-#'   moderate group counts; for very small `J`, Gelman (2006), *Bayesian
-#'   Analysis* 1(3):515-534, recommends a half-t / half-Cauchy instead
-#'   (see the priors vignette). The legacy `lognormal(0, 1)` default
+#'   when both `prior` and `prior_vc_sd` are left at their defaults, the
+#'   package applies a half-normal default on the SD scale
+#'   (`half_normal(scale = s)` with family-aware `s`: `5 * sd(y)` for
+#'   Gaussian; `5` on the logit scale for binomial / beta; `3` on the log
+#'   scale for Poisson / negative-binomial / gamma) to `sigma` and every
+#'   named random-effect group, on both engines, with the scale on the
+#'   standard deviation of an uncorrelated random slope divided by the
+#'   standard deviation of its numeric covariate. It is weakly informative
+#'   and has no upper bound; a half-t or half-Cauchy (Gelman 2006,
+#'   *Bayesian Analysis* 1(3):515-534) is stated through [fb_prior()].
+#'   Before 0.13.0 the default was `uniform(0, U)` with `U` equal to the
+#'   scale above. The legacy `lognormal(0, 1)` default
 #'   fires only when `prior_vc_sd` is passed explicitly. Silence the
 #'   one-time announcement message via
 #'   `options(flexyBayes.silence_default_prior_note = TRUE)`. When it is
@@ -392,10 +393,10 @@
 #'   `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
 #'
 #'   **Caution (small-group random effects).** Both engines apply the same
-#'   default prior --- the exact uniform-on-SD, which the INLA path
-#'   represents via an expression-prior on the log-precision rather than
-#'   the former PC approximation --- so they agree on the variance
-#'   component far more closely than in earlier versions. A model with
+#'   default prior, the half-normal on each standard deviation, which the
+#'   INLA path represents exactly as an expression prior on the
+#'   log-precision, so they agree on the variance component far more
+#'   closely than in earlier versions. A model with
 #'   very few groups nonetheless carries a weakly-identified variance
 #'   component (the data say little about the between-group spread), and
 #'   INLA's Laplace approximation is less accurate there than full MCMC.
@@ -629,11 +630,11 @@ flexybayes <- function(
   data_name <- deparse(substitute(data))
 
   # Detect "all defaults" -- user supplied neither an fb_prior() nor
-  # an explicit prior_vc_sd. In that case the v0.1 default fires:
-  # build a bounded-uniform default keyed to the response scale (per
-  # family / link) for sigma + every random group surfaced by the IR,
-  # and emit the one-time announcement message. The uniform default
-  # supersedes the earlier PC default.
+  # an explicit prior_vc_sd. In that case the default fires: build a
+  # half-normal default keyed to the response scale (per family / link)
+  # for sigma + every random group surfaced by the IR, and emit the
+  # one-time announcement message. The half-normal default (0.13.0)
+  # supersedes the uniform default, which superseded the PC default.
   default_prior_active <- is.null(prior) && missing(prior_vc_sd)
 
   # Which of the two scalar prior arguments the caller actually wrote.
@@ -741,7 +742,7 @@ flexybayes <- function(
     # from a cross-engine comparison rather than compare two answers to
     # two different questions.
     prior_targets <- .fb_default_prior_targets(fb)
-    unif_default <- .default_uniform_prior(
+    hn_default <- .default_half_normal_prior(
       data = data,
       response = fb$response,
       # The family and link the gate resolved, which also covers a family
@@ -750,15 +751,15 @@ flexybayes <- function(
       link = fb$link,
       random_groups = prior_targets$shared,
       vm_ped_groups = prior_targets$vm_ped,
-      # On an offset model the bound U = 5 sd reads y - o, on both engines,
+      # On an offset model the scale reads sd(y - o), on both engines,
       # as the INLA standardisation does (R/inla_standardise.R).
       resp_sd = if (length(fb$offsets)) .fb_response_sd(fb, data) else NULL
     )
-    fb$priors <- unif_default
-    prior <- unif_default
+    fb$priors <- hn_default
+    prior <- hn_default
     .default_prior_note_once(
-      scale = attr(unif_default, "fb_prior_default_scale"),
-      basis = attr(unif_default, "fb_prior_default_basis")
+      scale = attr(hn_default, "fb_prior_default_scale"),
+      basis = attr(hn_default, "fb_prior_default_basis")
     )
   }
 

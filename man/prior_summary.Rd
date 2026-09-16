@@ -33,12 +33,12 @@ components below.
 \item{\code{fb_prior}}{The \code{fb_prior} object (when
 \code{kind == "fb_prior"}).}
 \item{\code{default_origin}}{\code{"auto"} when the prior was
-constructed by the bounded-uniform auto-default;
+constructed by the half-normal auto-default;
 \code{"user"} when supplied via the \code{prior} argument; \code{NA} for
 legacy / no-prior cases.}
 \item{\code{default_scale}, \code{default_basis}}{Attributes carried by
-the auto-default prior naming the response-scale upper
-bound and its basis (response-scale \code{sd(y)}, logit-scale
+the auto-default prior naming the half-normal scale
+and its basis (response-scale \code{sd(y)}, logit-scale
 constant, log-scale constant). \code{NULL} when the prior was
 user-supplied.}
 \item{\code{fixed_sd}, \code{vc_sd}}{Legacy scalar values (when
@@ -68,8 +68,8 @@ used, with the reason code.}
 }
 \description{
 Returns the resolved priors used to fit the model -- either the
-user-supplied \code{fb_prior()} object, the auto-default bounded
-uniform on the standard-deviation scale (Gelman, 2006), or the
+user-supplied \code{fb_prior()} object, the auto-default half-normal
+on the standard-deviation scale, or the
 legacy scalar bridge (\code{prior_fixed_sd} + \code{prior_vc_sd}). The
 return value is an S3 object with a \code{print()} method; the
 underlying \code{fb_prior} (when applicable) is exposed under

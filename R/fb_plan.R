@@ -72,7 +72,7 @@
 #'   `"inla"`, or `"brms"`. Chooses the engine the plan
 #'   reports on, with `"auto"` planning the route dispatch would take.
 #' @param priors      An optional `fb_prior()` list. Defaults to the
-#'   uniform-on-SD default the fit would inject.
+#'   half-normal-on-SD default the fit would inject.
 #' @param known_matrices  A named list of structured-covariance matrices
 #'   referenced by `vm()` or `ped()` terms. Empty when the model names
 #'   none.

@@ -160,7 +160,7 @@ test_that("prior_fixed_sd reaches Stan when it is supplied", {
   # prior, which is the combination that used to discard it: passing the
   # scalar alone left `default_prior_active` TRUE and the legacy bridge,
   # the only consumer of the scalar, was never reached.
-  expect_true(any(grepl("uniform_lpdf(sd_1 | 0,", lines, fixed = TRUE)))
+  expect_true(any(grepl("normal_lpdf(sd_1 | 0,", lines, fixed = TRUE)))
 })
 
 test_that("prior_fixed_sd reaches INLA's control.fixed when it is supplied", {

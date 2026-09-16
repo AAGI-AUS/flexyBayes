@@ -729,30 +729,31 @@
 # on data that also carries observation weights) the `0 + f` shape wins,
 # so the target stays `class = "b"`.
 #
-# THE REPLACEMENT IS A CHOICE, AND IT IS ANNOUNCED. The default uniform(0, U)
-# on the residual SD has no exact counterpart on a log-scale linear predictor,
-# so it cannot be carried across unchanged; any prior here is a new decision
-# rather than a translation. brms's own default for these coefficients is
-# flat, which is not a decision this package is willing to make silently
-# either. So the scale that produced U is reused -- the uniform default sets
-# U = .FB_UNIFORM_SD_MULTIPLIER * sd(y) on the identity scale, hence
-# sd(y) = U / .FB_UNIFORM_SD_MULTIPLIER -- and each log-sigma coefficient gets
+# THE REPLACEMENT IS A CHOICE, AND IT IS ANNOUNCED. The default
+# half_normal(scale = s) on the residual SD has no exact counterpart on a
+# log-scale linear predictor, so it cannot be carried across unchanged; any
+# prior here is a new decision rather than a translation. brms's own default
+# for these coefficients is flat, which is not a decision this package is
+# willing to make silently either. So the scale that produced s is reused --
+# the default sets s = .FB_DEFAULT_SD_MULTIPLIER * sd(y) on the identity
+# scale, hence sd(y) = s / .FB_DEFAULT_SD_MULTIPLIER -- and each log-sigma
+# coefficient gets
 # normal(log(sd(y)), 1): a prior whose median residual SD is sd(y) and whose
 # 95% range spans roughly a factor of seven either side. Weakly informative,
 # on the data's own scale, and stated in the prior note rather than inferred
 # from behaviour.
 #
 # The divisor was written here as a literal 2.5 until 0.9.0, which was the
-# superseded PC default's multiplier rather than the uniform default's 5. The
-# location it produced was log(2 * sd(y)), so the prior's median residual SD
-# was twice the data SD instead of the sd(y) this paragraph claims. Reading
-# the multiplier off the constant that sets U keeps the inversion exact and
-# the two files from drifting again.
+# superseded PC default's multiplier rather than the then uniform default's 5.
+# The location it produced was log(2 * sd(y)), so the prior's median residual
+# SD was twice the data SD instead of the sd(y) this paragraph claims. Reading
+# the multiplier off the constant that sets the default's scale keeps the
+# inversion exact and the two files from drifting again.
 #
 # On a user-supplied prior the inversion is a heuristic rather than an
 # identity: `upper` is whatever numeric the sigma spec ends with, and only a
-# uniform(0, U) built by the default machinery is guaranteed to stand in the
-# documented relation to sd(y).
+# half_normal(scale = s) built by the default machinery is guaranteed to
+# stand in the documented relation to sd(y).
 .brms_retarget_sigma_for_heterogeneous_residual <- function(specs, fb) {
   het <- Filter(
     function(t) identical(t$type %||% "", "at_units"),
@@ -779,7 +780,7 @@
   specs <- Filter(function(s) !identical(s$class %||% "", "sigma"), specs)
 
   loc <- if (is.finite(upper) && upper > 0) {
-    log(upper / .FB_UNIFORM_SD_MULTIPLIER)
+    log(upper / .FB_DEFAULT_SD_MULTIPLIER)
   } else {
     0
   }

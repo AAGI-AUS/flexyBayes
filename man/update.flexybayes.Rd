@@ -37,7 +37,7 @@ special-case into a silent default.
 
 A re-fit uses the prior the original fit resolved to, taken from the
 record on the fit itself rather than re-derived from the arguments.
-This matters because the auto-default bounded uniform on the
+This matters because the auto-default half-normal on the
 standard-deviation scale fires only when the call supplies neither a
 \code{prior} nor a \code{prior_vc_sd}, and a re-fit that re-issues the recorded
 \code{prior_vc_sd} supplies one by construction. Before 0.9.1 the
@@ -66,14 +66,13 @@ all, re-fits on the recorded scalars exactly as it did before.
 a re-fit treats them differently.
 
 \itemize{
-\item \strong{The auto-default} bounded uniform is the output of a
-policy -- one bounded uniform per variance component the model
-has, with the bound read off the data -- rather than a statement
-about particular terms. A re-fit passes neither \code{prior} nor either
+\item \strong{The auto-default} half-normal is the output of a
+policy: one half-normal per variance component the model has,
+with the scale read off the data. A re-fit passes neither \code{prior} nor either
 scalar, so the policy runs again over the \emph{updated} model and
 data. On an identity \code{update()} the same data rebuild the same
-bound, so nothing moves. On \code{update(fit, random = ~ g + h)} the
-added term gets the same bounded uniform as its siblings.
+scale, so nothing moves. On \code{update(fit, random = ~ g + h)} the
+added term gets the same half-normal as its siblings.
 \item \strong{A user-supplied \code{fb_prior()}} is a statement about the
 terms it names, and is carried verbatim. A term the user did not
 name -- including one an override has just added -- keeps
@@ -85,7 +84,7 @@ object does not name keeps the values the original ran under.
 
 The asymmetry is deliberate. Re-applying a policy's old output to a new
 model leaves a mixed state -- the original terms priored, the added one
-falling to the engine while its siblings keep the uniform -- which is
+falling to the engine while its siblings keep the default -- which is
 not what either the policy or the user asked for. Re-deciding a
 \emph{user's} explicit prior, on the other hand, would put words in their
 mouth. Read \code{\link[=prior_summary]{prior_summary()}} on the re-fit to see what it ran under,
