@@ -74,10 +74,10 @@
       "fb_penalty(): a grouped family -- group lasso, sparse group lasso, ",
       "exclusive lasso or the group-exclusive composite -- was asked for on ",
       "the Bayesian route. These families have a penalised-optimiser ",
-      "provider and no brms one: each is a penalty with a proximal operator ",
-      "rather than a density brms can be handed, and writing the nearest ",
-      "available prior under the requested family's name would be the ",
-      "substitution the equivalence levels exist to prevent."
+      "provider and no brms one: each is a penalty carrying a proximal ",
+      "operator, and brms takes a density. Writing the nearest available ",
+      "prior under the requested family's name would be the substitution ",
+      "the equivalence levels exist to prevent."
     ),
     message_template = "fb_penalty(): %s has an optimiser provider and no Bayesian one.",
     registered_in_adr = "final specification B9",

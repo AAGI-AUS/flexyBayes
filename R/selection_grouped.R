@@ -598,7 +598,7 @@
         family,
         "` stopped after ",
         iterations,
-        " iteration(s) with a KKT residual of ",
+        " iterations with a KKT residual of ",
         format(best, digits = 3),
         ", above the tolerance ",
         format(tol, digits = 3),

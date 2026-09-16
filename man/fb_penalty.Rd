@@ -104,9 +104,9 @@ forward: a family that targets blocks exactly, or \code{scope = "all_fixed"},
 under which the protected coefficients also sit under the global-local
 prior and the certificate records the approximation.
 
-\code{adaptive()} remains withdrawn and refuses by name: an adaptive penalty
-needs a first-stage estimate and a rule for turning it into weights, and
-a family without a provider is a promise rather than a method.
+\code{adaptive()} remains withdrawn and refuses by name. An adaptive penalty
+needs a first-stage estimate and a rule for turning that estimate into
+weights, and this release ships neither.
 }
 
 \section{Grouped families}{

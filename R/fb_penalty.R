@@ -123,9 +123,9 @@
 #' exactly one member is non-zero, and on a group of one it is exactly
 #' `ridge()` at the same scale.
 #'
-#' `adaptive()` remains withdrawn and refuses by name: an adaptive penalty
-#' needs a first-stage estimate and a rule for turning it into weights, and
-#' a family without a provider is a promise rather than a method.
+#' `adaptive()` remains withdrawn and refuses by name. An adaptive penalty
+#' needs a first-stage estimate and a rule for turning that estimate into
+#' weights, and this release ships neither.
 #'
 #' @param ... One or more two-sided formulas, `target ~ family(...)`,
 #'   resolved in the order written.

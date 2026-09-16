@@ -82,11 +82,12 @@
         "` has no provider in this release. The optimiser workflow serves ",
         paste(supported, collapse = ", "),
         " only. The four grouped families left this list at 0.13.0, when ",
-        "their proximal provider and its gates shipped. What remains ",
-        "without an optimiser provider is `adaptive()`, which needs a ",
-        "first-stage estimate and a rule for turning it into weights, and ",
-        "the class-wide global-local families, which are Bayesian-only; a ",
-        "family without a provider is a promise rather than a capability."
+        "their proximal provider and its gates shipped. Two kinds of family ",
+        "still have no optimiser provider: `adaptive()`, which needs a ",
+        "first-stage estimate and a rule for turning that estimate into ",
+        "weights, and the class-wide global-local families, which brms ",
+        "fits and this workflow does not. Each refuses by name until its ",
+        "own provider and its own gates ship."
       ),
       penalty_family = family,
       supported = supported
