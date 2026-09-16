@@ -167,14 +167,14 @@ that workers times threads does not exceed the machine. Nothing the run
 records changes: the fold allocation, each fold's candidate space, the
 score contract, the certificate and the selected support are identical to
 the serial run's, and the worker count is deliberately absent from the
-certificate, because it describes the machine rather than the estimate.
-Engine numbers move as they move between any two repeated runs on an
-engine whose posterior sampler is not bit-reproducible. Set \code{n} against
-MEMORY rather than against the core count: every concurrent fold holds its
-own rows and its own engine process at the same time, so a machine runs
-far fewer folds at once than it has cores, and a worker the operating
-system kills under that pressure refuses by name rather than dropping a
-fold from the aggregation.
+certificate, which describes the estimate while the worker count describes
+the machine that produced it. Engine numbers move as they move between any
+two repeated runs on an engine whose posterior sampler is not
+bit-reproducible. Set \code{n} against MEMORY: every concurrent fold holds its
+own rows and its own engine process at the same time, so the count a
+machine supports follows from its memory, and usually sits well below its
+core count. A worker the operating system kills under that pressure
+refuses by name, and the aggregation keeps every fold or none.
 
 \code{fallback = "none"} is the default. A Bayesian request whose provider is
 absent refuses with \code{selection_provider_absent}, naming the package and

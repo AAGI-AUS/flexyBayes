@@ -216,7 +216,8 @@
       "Nothing is aggregated from a partial set of folds. Lower ",
       "options(flexyBayes.selection_workers) and run again: fold refits ",
       "hold their rows in memory at the same time, so the workers a machine ",
-      "supports are set by memory rather than by its core count."
+      "supports follow from its memory, and usually sit well below its core ",
+      "count."
     ),
     fold = index
   ))
@@ -255,11 +256,10 @@
 #' The forked half of `.fb_sel_fold_lapply()`
 #'
 #' `mc.preschedule = FALSE` gives each fold its own child, so one fold's
-#' memory is returned to the machine when that fold finishes rather than
-#' held until a block of them does. `mc.set.seed = FALSE` leaves the child's
-#' random stream as the parent's: every draw inside a fold is seeded from
-#' the fold's own seed, so a per-child stream would be a source of variation
-#' where the design has none.
+#' memory returns to the machine as soon as that fold finishes.
+#' `mc.set.seed = FALSE` leaves the child's random stream as the parent's:
+#' every draw inside a fold is seeded from the fold's own seed, so a
+#' per-child stream would be a source of variation where the design has none.
 #'
 #' @inheritParams .fb_sel_fold_lapply
 #' @return The folds' results, in fold order.
