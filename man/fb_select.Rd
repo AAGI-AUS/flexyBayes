@@ -48,8 +48,10 @@ certificate.}
 Bayesian provider is absent, never after a failure.}
 
 \item{benchmark}{\code{TRUE} also runs the unpenalised generalised-least-squares
-arm and, where a penalty was given, the \code{glmnet} arm on the same folds
--- and scores the reference model itself out of fold, so the arms have
+arm and, where a penalty was given, the penalised-optimiser arm on the
+same folds (\code{glmnet} for ridge, Laplace and elastic net; \code{prox} for
+grouped penalties) -- and scores the reference model itself out of fold,
+so the arms have
 one loss at one unit to be placed beside. That last part is what the
 certificate's \code{reference_predictive} and \code{decision_predictive} tables
 report -- the full-design models at one stage, the chosen models at the
@@ -62,7 +64,7 @@ claiming a comparison nobody made. It costs one reference refit per
 fold per model, and each fold's preprocessing and prior are learned on
 that fold's analysis rows. A projection's submodel is scored with terms
 searched again on each fold's reference fit, at the size the
-whole-sample decision chose. The \code{glmnet} arm's tuning point is reported
+whole-sample decision chose. The optimiser arm's tuning point is reported
 as \code{s = lambda / lambda_max}, each fold's \code{lambda_max} read on its
 training rows, beside the lambda that point is on each fold.}
 
@@ -123,8 +125,9 @@ a Bayesian label:
 \describe{
 \item{\code{workflow}}{\code{"bayes"}, \code{"penalized_optimizer"} or
 \code{"unpenalized_benchmark"}.}
-\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"} or
-\code{"gls_reml_plugin"}.}
+\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"}, \code{"prox"} or
+\code{"gls_reml_plugin"}; \code{"prox"} is the package's deterministic
+proximal solver for grouped penalties.}
 \item{\code{prior}}{the joint prior, or \code{"none"}.}
 \item{\code{decision}}{\code{"full"}, \code{"projection"}, \code{"posterior_threshold"} or
 \code{"optimizer_support"}.}
@@ -204,10 +207,6 @@ Bayesian route drops whole terms and refuses a term aliased only in part, and
 the penalised reference's out-of-fold score refuses any drop, both with
 \code{selection_fold_candidate_drop_not_representable}.
 }
-\seealso{
-\code{\link[=fb_penalty]{fb_penalty()}} for the prior, \code{\link[=fb_resamples]{fb_resamples()}} for the folds,
-\code{\link[=fb_decision]{fb_decision()}} for the rule.
-}
 \examples{
 \donttest{
 if (requireNamespace("INLA", quietly = TRUE) &&
@@ -232,4 +231,8 @@ if (requireNamespace("INLA", quietly = TRUE) &&
   )
 }
 }
+}
+\seealso{
+\code{\link[=fb_penalty]{fb_penalty()}} for the prior, \code{\link[=fb_resamples]{fb_resamples()}} for the folds,
+\code{\link[=fb_decision]{fb_decision()}} for the rule.
 }

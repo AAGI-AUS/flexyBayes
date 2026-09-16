@@ -351,20 +351,22 @@
 
 # --- the penalty pipeline ------------------------------------------------ #
 
-# .fb_select_fit_candidate_transform() --- fb_penalty() to a compiled brms
-# prior, learned on the rows it is given.
+# .fb_select_fit_candidate_transform() --- learn the candidate transform and
+# compile only the representation the requested workflow executes.
 #
 # It is the fit half of a fit/apply pair. The reference posterior calls it on
 # the whole sample; the out-of-fold score calls it on each fold's analysis
 # rows, so every constant it learns -- the centres and scales, the
-# coefficient map, `calibration_n`, `n_train` and the compiled prior -- is a
-# function of the rows handed to it and of nothing else.
+# coefficient map and `calibration_n` -- and, on the Bayesian route, the
+# compiled prior and `n_train` -- is a function of the rows handed to it and
+# of nothing else.
 #
 # Four steps, in the order the contract fixes them, and each of them is a
 # function a sibling unit owns: resolve the targets against the model matrix
 # (`.fb_pen_resolve`), learn the scaling constants (`.fb_pen_scaling`),
 # decide which of those constants the reference fit can actually apply, and
-# compile (`.fb_pen_compile_brms`).
+# compile the workflow's representation (`.fb_pen_compile_brms` for Bayes;
+# a compiler-shaped, prior-free record for the optimiser).
 #
 # The third step is the one that needs saying. The scaling is declared on the
 # candidate DESIGN columns, and the reference fit is a re-emission of the
@@ -380,15 +382,21 @@
 #' @param data The rows every constant is learned on.
 #' @param candidates,penalty,protected_labels As for `fb_select()`.
 #' @param calibration A `.fb_select_calibration_n()` record for `data`.
-#' @return The resolved blocks, the compiled prior, the column map and the
-#'   constants `.fb_select_apply_candidate_transform()` reads.
+#' @param workflow The workflow whose representation is being prepared.
+#' @return The resolved blocks, the workflow representation, the column map
+#'   and the constants `.fb_select_apply_candidate_transform()` reads.
 #' @noRd
 #' @keywords internal
 .fb_select_fit_candidate_transform <- function(data,
                                                candidates,
                                                penalty,
                                                protected_labels,
-                                               calibration) {
+                                               calibration,
+                                               workflow = c(
+                                                 "bayes",
+                                                 "penalized_optimizer"
+                                               )) {
+  workflow <- match.arg(workflow)
   candidate_labels <- attr(
     stats::terms(candidates, data = data),
     "term.labels"
@@ -492,11 +500,15 @@
   coef_names_all <- .fb_pen_brms_coef_names(
     colnames(map$X)[map$assign != 0L]
   )
-  compiled <- .fb_pen_compile_brms(
-    blocks,
-    coef_names_all,
-    n_train = calibration$n
-  )
+  compiled <- if (identical(workflow, "bayes")) {
+    .fb_pen_compile_brms(
+      blocks,
+      coef_names_all,
+      n_train = calibration$n
+    )
+  } else {
+    .fb_select_compile_optimizer(blocks, coef_names_all)
+  }
 
   # The constants the apply step reads: one row per candidate column in a
   # block, and whether the apply step moves it.
@@ -583,6 +595,7 @@
 #' @param base A normalised base fit carrying `$data`.
 #' @param candidates,penalty,protected_labels As for `fb_select()`.
 #' @param calibration A `.fb_select_calibration_n()` record, or `NULL`.
+#' @param workflow The workflow whose representation is being prepared.
 #' @return The fit step's result plus `reference_data` and `approximations`.
 #' @noRd
 #' @keywords internal
@@ -590,11 +603,16 @@
                                        candidates,
                                        penalty,
                                        protected_labels,
-                                       calibration = NULL) {
+                                       calibration = NULL,
+                                       workflow = c(
+                                         "bayes",
+                                         "penalized_optimizer"
+                                       )) {
+  workflow <- match.arg(workflow)
   data <- base$data
   calibration <- calibration %||% .fb_select_calibration_n(NULL, data)
   resolved <- .fb_select_fit_candidate_transform(
-    data, candidates, penalty, protected_labels, calibration
+    data, candidates, penalty, protected_labels, calibration, workflow
   )
   resolved$reference_data <- .fb_select_apply_candidate_transform(
     data, resolved
@@ -623,6 +641,59 @@
   }
   resolved$approximations <- approximations
   resolved
+}
+
+
+#' Record an optimiser transform without pretending it is a brms prior
+#'
+#' The optimiser consumes resolved penalty blocks directly. Compiling those
+#' blocks through brms is both unnecessary and wrong for an `optimizer_only`
+#' family: grouped penalties are proximal objectives, not densities. This
+#' record keeps the common transform shape used by plans and certificates,
+#' but has no prior rows or Stan variables because neither is executed.
+#'
+#' @param blocks Resolved penalty blocks.
+#' @param coef_names_all Population-level coefficient names in design order.
+#' @return A compiler-shaped record for the optimiser route.
+#' @noRd
+#' @keywords internal
+.fb_select_compile_optimizer <- function(blocks, coef_names_all) {
+  .fb_pen_assert_targeting(blocks, coef_names_all)
+  lapply(blocks, function(block) {
+    .fb_sel_glmnet_assert_family(block$family)
+  })
+
+  rows <- lapply(blocks, function(block) {
+    idx <- match(block$coef_names, coef_names_all)
+    if (anyNA(idx)) {
+      stop(
+        ".fb_select_compile_optimizer(): resolved coefficient(s) are not ",
+        "in the fitted design: ",
+        paste(block$coef_names[is.na(idx)], collapse = ", "),
+        ".",
+        call. = FALSE
+      )
+    }
+    data.frame(
+      coefficient = block$coef_names,
+      b_index = as.integer(idx),
+      block = rep(block$id, length(idx)),
+      family = rep(block$family, length(idx)),
+      route = rep("penalized_optimizer", length(idx)),
+      hyperparameter_mode = rep(block$hyperparameter_mode, length(idx)),
+      stringsAsFactors = FALSE
+    )
+  })
+  param_map <- do.call(rbind, rows)
+  param_map <- param_map[order(param_map$b_index), , drop = FALSE]
+  rownames(param_map) <- NULL
+
+  list(
+    prior = NULL,
+    stanvars = NULL,
+    param_map = param_map,
+    route = "penalized_optimizer"
+  )
 }
 
 
@@ -2139,7 +2210,10 @@
   )
 
   if (!is.null(blocks) && length(blocks) > 0L) {
-    if (!.fb_sel_provider_installed("glmnet")) {
+    families <- unique(vapply(blocks, function(b) b$family, character(1L)))
+    grouped_provider <- length(families) > 0L &&
+      all(families %in% .fb_sel_grouped_families())
+    if (!grouped_provider && !.fb_sel_provider_installed("glmnet")) {
       refusals <- c(refusals, paste0(
         "selection_provider_absent: the `glmnet` benchmark arm was ",
         "requested and `glmnet` is not installed. The Bayesian answer ",
@@ -2200,7 +2274,7 @@
           scoring_unit = if (is.null(cluster_key)) "fold" else resamples$unit,
           equivalence_level = .fb_sel_equivalence_level(
             prior_family = prior_family,
-            provider = "glmnet",
+            provider = path$provider,
             covariance_fixed = FALSE,
             sigma_fixed = FALSE,
             shared_predictive_table = shared_predictive_table
@@ -2234,8 +2308,9 @@
 #' \describe{
 #'   \item{`workflow`}{`"bayes"`, `"penalized_optimizer"` or
 #'     `"unpenalized_benchmark"`.}
-#'   \item{`provider`}{`"brms"`, `"inla"`, `"glmnet"` or
-#'     `"gls_reml_plugin"`.}
+#'   \item{`provider`}{`"brms"`, `"inla"`, `"glmnet"`, `"prox"` or
+#'     `"gls_reml_plugin"`; `"prox"` is the package's deterministic
+#'     proximal solver for grouped penalties.}
 #'   \item{`prior`}{the joint prior, or `"none"`.}
 #'   \item{`decision`}{`"full"`, `"projection"`, `"posterior_threshold"` or
 #'     `"optimizer_support"`.}
@@ -2336,8 +2411,10 @@
 #' @param fallback `"none"` (default) or `"glmnet"`. Fires only when the
 #'   Bayesian provider is absent, never after a failure.
 #' @param benchmark `TRUE` also runs the unpenalised generalised-least-squares
-#'   arm and, where a penalty was given, the `glmnet` arm on the same folds
-#'   -- and scores the reference model itself out of fold, so the arms have
+#'   arm and, where a penalty was given, the penalised-optimiser arm on the
+#'   same folds (`glmnet` for ridge, Laplace and elastic net; `prox` for
+#'   grouped penalties) -- and scores the reference model itself out of fold,
+#'   so the arms have
 #'   one loss at one unit to be placed beside. That last part is what the
 #'   certificate's `reference_predictive` and `decision_predictive` tables
 #'   report -- the full-design models at one stage, the chosen models at the
@@ -2350,7 +2427,7 @@
 #'   fold per model, and each fold's preprocessing and prior are learned on
 #'   that fold's analysis rows. A projection's submodel is scored with terms
 #'   searched again on each fold's reference fit, at the size the
-#'   whole-sample decision chose. The `glmnet` arm's tuning point is reported
+#'   whole-sample decision chose. The optimiser arm's tuning point is reported
 #'   as `s = lambda / lambda_max`, each fold's `lambda_max` read on its
 #'   training rows, beside the lambda that point is on each fold.
 #' @param resamples An [fb_resamples()] specification.
@@ -2761,7 +2838,12 @@ fb_select <- function(base,
 
   # --- the Bayesian route, with a joint shrinkage prior -------------------- #
   resolved <- .fb_select_resolve_penalty(
-    base, candidates, penalty, protected_labels, calibration = calibration
+    base,
+    candidates,
+    penalty,
+    protected_labels,
+    calibration = calibration,
+    workflow = "bayes"
   )
   prior_family <- paste(
     unique(vapply(resolved$blocks, function(b) b$family, character(1L))),
@@ -3089,15 +3171,29 @@ fb_select <- function(base,
                                  structure_gate = NULL,
                                  decision_resolution = NULL) {
   resolved <- .fb_select_resolve_penalty(
-    base, candidates, penalty, protected_labels, calibration = calibration
+    base,
+    candidates,
+    penalty,
+    protected_labels,
+    calibration = calibration,
+    workflow = "penalized_optimizer"
   )
   prior_family <- paste(
     unique(vapply(resolved$blocks, function(b) b$family, character(1L))),
     collapse = " + "
   )
+  optimizer_provider <- if (all(vapply(
+    resolved$blocks,
+    function(block) block$family %in% .fb_sel_grouped_families(),
+    logical(1L)
+  ))) {
+    "prox"
+  } else {
+    "glmnet"
+  }
   axes <- list(
     workflow = "penalized_optimizer",
-    provider = "glmnet",
+    provider = optimizer_provider,
     prior = prior_family,
     decision = "optimizer_support"
   )
@@ -3116,8 +3212,6 @@ fb_select <- function(base,
       decision_resolution = decision_resolution
     ))
   }
-  .fb_sel_require_glmnet()
-
   bench <- .fb_select_benchmark(
     base = base,
     candidates = candidates,
@@ -3135,8 +3229,8 @@ fb_select <- function(base,
     stop(.fb_refusal_condition(
       reason_code = "selection_provider_absent",
       message = paste0(
-        "fb_select(): the penalised-optimiser workflow produced no `glmnet` ",
-        "arm. ",
+        "fb_select(): the penalised-optimiser workflow produced no ",
+        "optimiser arm. ",
         paste(bench$refusals, collapse = " ")
       )
     ))
@@ -3172,7 +3266,7 @@ fb_select <- function(base,
     approximations = resolved$approximations,
     refusals = bench$refusals,
     calibration = calibration,
-    provider_versions = .fb_select_provider_versions("glmnet"),
+    provider_versions = .fb_select_provider_versions(optimizer_provider),
     fallback_fired = fallback_fired,
     requested_workflow = requested_workflow,
     structure_gate = structure_gate,

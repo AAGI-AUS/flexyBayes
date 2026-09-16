@@ -124,14 +124,18 @@ test_that("the worker plan reads the option, the folds and the cores", {
   fbpe_with_workers(3L, {
     # A worker with no fold to run is a process for nothing.
     capped <- .fb_sel_worker_plan(2L, provider = "inla")
-    expect_identical(capped$workers, 2L)
+    expect_identical(capped$workers, min(2L, capped$cores))
     expect_true(is.character(capped$note) && nzchar(capped$note))
 
     plan <- .fb_sel_worker_plan(5L, provider = "inla")
     expect_identical(plan$workers, min(3L, plan$cores))
     # Workers times engine threads does not exceed the machine.
-    expect_lte(plan$workers * plan$threads_per_worker, plan$cores)
-    expect_gte(plan$threads_per_worker, 1L)
+    if (plan$workers > 1L) {
+      expect_lte(plan$workers * plan$threads_per_worker, plan$cores)
+      expect_gte(plan$threads_per_worker, 1L)
+    } else {
+      expect_true(is.na(plan$threads_per_worker))
+    }
   })
 
   # A request that is not a count is refused rather than rounded.
@@ -264,13 +268,9 @@ test_that("a grouped penalty solves the same problem concurrently", {
   fbpe_skip_without_fork()
   d <- fbpe_data()
   # The grouped families are solved by this module's own proximal operator on
-  # the substrates the fold loop builds, so the grouped check is run where
-  # the concurrency is. It does not go through fb_select() because in this
-  # tree it cannot: the optimiser route resolves its penalty through the brms
-  # compiler, which refuses every grouped family by name
-  # (selection_penalty_family_optimizer_only). That is measured and recorded
-  # in review/units/P4_2026-09-16, and belongs to the unit that owns the
-  # grouped families rather than to this one.
+  # the substrates the fold loop builds. This block isolates the scheduler
+  # from public-verb assembly; the following block repeats the identity check
+  # through fb_select(), which became reachable in integration unit P8-INT.
   grouped_run <- function(workers) {
     cv <- fbpe_with_workers(workers, .fb_sel_cv(
       data = d,
@@ -325,6 +325,60 @@ test_that("a grouped penalty solves the same problem concurrently", {
     concurrent$path$support_by_resolution
   )
   expect_identical(serial$path$kkt_by_lambda, concurrent$path$kkt_by_lambda)
+})
+
+
+test_that("the public grouped optimiser is bit-identical concurrently", {
+  skip_on_cran()
+  # R's check harness may deliberately report one core even on a fork-capable
+  # host. The scheduler contract is tested with a bounded three-core plan;
+  # the process mechanism itself remains the real parallel::mclapply route.
+  testthat::local_mocked_bindings(
+    .fb_sel_worker_cores = function() 3L
+  )
+  fbpe_skip_without_fork()
+  d <- fbpe_data()
+  fb <- fb_from_asreml(y ~ p1, random = ~site, data = d)
+  fb$family <- "gaussian"
+  fb$link <- "identity"
+  base <- structure(
+    list(
+      fb = fb,
+      data = d,
+      extras = list(call_info = list(
+        fixed = y ~ p1, random = ~site, family = "gaussian"
+      ))
+    ),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+  run <- function(workers) {
+    fbpe_with_workers(workers, fb_select(
+      base,
+      candidates = ~ z1 + z2 + g3,
+      penalty = fb_penalty(
+        term(everything()) ~ group_lasso(scale = 0.4, group = "block")
+      ),
+      workflow = "penalized_optimizer",
+      resamples = fb_resamples(unit = ~site, v = 3L),
+      decision = fb_decision(method = "full", metric = "rmse"),
+      seed = 1L
+    ))
+  }
+  serial <- run(1L)
+  concurrent <- run(3L)
+
+  expect_identical(serial$provider, "prox")
+  expect_identical(concurrent$provider, "prox")
+  expect_identical(serial$certificate, concurrent$certificate)
+  expect_identical(serial$selection, concurrent$selection)
+  expect_identical(
+    serial$benchmark$glmnet$support,
+    concurrent$benchmark$glmnet$support
+  )
+  expect_identical(
+    serial$benchmark$glmnet$kkt,
+    concurrent$benchmark$glmnet$kkt
+  )
 })
 
 

@@ -589,19 +589,22 @@ test_that("a group lasso moves a factor's contrast columns together", {
   )
   expect_identical(path$support_by_resolution$semantics, "group")
   expect_true(path$support_by_resolution$selects)
+  grouped_columns <- path$grouping$declared$column[
+    path$grouping$declared$term == "f"
+  ]
+  expect_identical(length(grouped_columns), 2L)
 
   # The property: at every tuning point of every fold, the two contrast
   # columns of a factor are both held or both out. A coefficient-wise penalty
   # cannot promise this, which is what G3 below shows.
   coefs <- path$coefficients_original_scale
   candidates <- coefs[coefs$role == "candidate", ]
-  grouped_terms <- c("fb", "fc")
   for (arm_name in unique(candidates$arm)) {
     for (index in unique(candidates$lambda_index)) {
       for (fold in unique(candidates$fold)) {
         rows <- candidates[
           candidates$arm == arm_name & candidates$lambda_index == index &
-            candidates$fold == fold & candidates$term %in% grouped_terms,
+            candidates$fold == fold & candidates$term %in% grouped_columns,
         ]
         if (nrow(rows) != 2L || anyNA(rows$estimate)) {
           next
@@ -614,33 +617,21 @@ test_that("a group lasso moves a factor's contrast columns together", {
     }
   }
 
-  # G3. A lasso on the same folds splits the same factor, so the assertion
-  # above is a property of the penalty and not of this design.
-  lasso <- .fb_sel_glmnet_path(
-    built$substrates,
-    fbgp_block("laplace", list(scale = 0.25)),
-    folds = built$folds,
-    decision = list(n_lambda = 8L),
-    seed = 5L
+  # G3. A coefficient-wise lasso can split two coordinates. This tiny
+  # orthogonal problem is a deterministic negative control for the predicate
+  # above; using another path on the random fixture made the control depend on
+  # whether a coarse lambda grid happened to visit the split interval.
+  x_lasso <- diag(2)
+  colnames(x_lasso) <- c("contrast_1", "contrast_2")
+  split <- .fb_sel_glmnet_fit(
+    x_lasso,
+    y = c(2, 0.1),
+    alpha = 1,
+    lambda = 0.2,
+    thresh = 1e-14,
+    maxit = 1e5
   )
-  lasso_coefs <- lasso$coefficients_original_scale
-  lasso_candidates <- lasso_coefs[lasso_coefs$role == "candidate", ]
-  split_seen <- FALSE
-  for (index in unique(lasso_candidates$lambda_index)) {
-    for (fold in unique(lasso_candidates$fold)) {
-      rows <- lasso_candidates[
-        lasso_candidates$lambda_index == index &
-          lasso_candidates$fold == fold &
-          lasso_candidates$term %in% grouped_terms,
-      ]
-      if (nrow(rows) == 2L && !anyNA(rows$estimate)) {
-        if (sum(abs(rows$estimate) > 0) == 1L) {
-          split_seen <- TRUE
-        }
-      }
-    }
-  }
-  expect_true(split_seen)
+  expect_identical(sum(abs(split) > 1e-8), 1L)
 })
 
 
@@ -1046,4 +1037,158 @@ test_that("the certificate records the grouping rule and every group", {
   expect_identical(path$family, "group_exclusive")
   expect_equal(path$penalty$lambda_group, 1 / 0.5)
   expect_equal(path$penalty$lambda_exclusive, 1 / 0.8^2)
+})
+
+
+# =============================================================================
+# The public route (release integration P8-INT).
+#
+# The solver-level contract above is necessary but not sufficient: 0.13.0 is
+# the first release in which these families are promised to fb_select() users.
+# This block therefore starts at the exported verb and is deliberately not a
+# second set of proximal-operator tests.
+# =============================================================================
+
+fbgp_stub_base <- function(d) {
+  fb <- fb_from_asreml(y ~ x, random = ~site, data = d)
+  fb$family <- "gaussian"
+  fb$link <- "identity"
+  structure(
+    list(
+      fb = fb,
+      data = d,
+      extras = list(
+        call_info = list(
+          fixed = y ~ x,
+          random = ~site,
+          family = "gaussian"
+        )
+      )
+    ),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+}
+
+
+fbgp_public_penalties <- function() {
+  list(
+    group_lasso = fb_penalty(
+      term(everything()) ~ group_lasso(scale = 0.7)
+    ),
+    sparse_group_lasso = fb_penalty(
+      term(everything()) ~ sparse_group_lasso(scale = 0.7, alpha = 0.35)
+    ),
+    exclusive_lasso = fb_penalty(
+      term(everything()) ~ exclusive_lasso(scale = 0.7)
+    ),
+    group_exclusive = fb_penalty(
+      term(everything()) ~ group_exclusive(
+        group_scale = 0.7, exclusive_scale = 0.9
+      )
+    )
+  )
+}
+
+
+test_that("all grouped families resolve through the public optimiser plan", {
+  d <- fbgp_data(n_cluster = 8L, per = 6L)
+  base <- fbgp_stub_base(d)
+  for (family in names(fbgp_public_penalties())) {
+    plan <- fb_select(
+      base,
+      candidates = ~ f + g + z1 + z2 + z3 + z4,
+      penalty = fbgp_public_penalties()[[family]],
+      workflow = "penalized_optimizer",
+      resamples = fb_resamples(unit = ~site, v = 2L),
+      seed = 91L,
+      plan = TRUE
+    )
+    expect_s3_class(plan, "fb_select_plan")
+    expect_identical(plan$selection$provider, "prox")
+    expect_identical(plan$selection$prior_route, "optimizer_only")
+    expect_false(plan$selection$stanvars)
+  }
+})
+
+
+test_that("all grouped families execute through fb_select and certify prox", {
+  d <- fbgp_data(n_cluster = 8L, per = 6L)
+  base <- fbgp_stub_base(d)
+  for (family in names(fbgp_public_penalties())) {
+    fit <- fb_select(
+      base,
+      candidates = ~ f + g + z1 + z2 + z3 + z4,
+      penalty = fbgp_public_penalties()[[family]],
+      workflow = "penalized_optimizer",
+      resamples = fb_resamples(unit = ~site, v = 2L),
+      decision = fb_decision(method = "full", metric = "rmse"),
+      seed = 91L
+    )
+    expect_s3_class(fit, "fb_select")
+    expect_identical(fit$workflow, "penalized_optimizer")
+    expect_identical(fit$provider, "prox")
+    expect_identical(fit$benchmark$glmnet$provider, "prox")
+    expect_identical(fit$prior, family)
+    expect_true(is.data.frame(tidy(fit)))
+    expect_identical(nrow(glance(fit)), 1L)
+    expect_gt(nrow(fit$benchmark$glmnet$kkt), 0L)
+    expect_true(all(is.finite(fit$benchmark$glmnet$kkt$kkt)))
+    expect_true(is.data.frame(
+      fit$benchmark$glmnet$support$group_history
+    ))
+  }
+})
+
+
+test_that("a grouped family still refuses on the public Bayesian route", {
+  d <- fbgp_data(n_cluster = 8L, per = 6L)
+  expect_error(
+    fb_select(
+      fbgp_stub_base(d),
+      candidates = ~ f + g + z1 + z2 + z3 + z4,
+      penalty = fbgp_public_penalties()$group_lasso,
+      workflow = "bayes",
+      resamples = fb_resamples(unit = ~site, v = 2L),
+      decision = fb_decision(method = "full", metric = "rmse"),
+      seed = 92L,
+      plan = TRUE
+    ),
+    class = "flexybayes_refusal_selection_penalty_family_optimizer_only"
+  )
+})
+
+
+test_that("the public grouped route needs no glmnet but remains non-Bayesian", {
+  d <- fbgp_data(n_cluster = 8L, per = 6L)
+  base <- fbgp_stub_base(d)
+  penalty <- fbgp_public_penalties()$group_lasso
+
+  testthat::local_mocked_bindings(
+    .fb_sel_provider_installed = function(package) FALSE
+  )
+  fit <- fb_select(
+    base,
+    candidates = ~ f + g + z1 + z2 + z3 + z4,
+    penalty = penalty,
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 2L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 92L
+  )
+  expect_identical(fit$provider, "prox")
+  expect_false(fit$benchmark$glmnet$fully_bayesian)
+
+  expect_error(
+    fb_select(
+      base,
+      candidates = ~ f + g + z1 + z2 + z3 + z4,
+      penalty = penalty,
+      workflow = "bayes",
+      resamples = fb_resamples(unit = ~site, v = 2L),
+      decision = fb_decision(method = "full", metric = "rmse"),
+      seed = 92L,
+      plan = TRUE
+    ),
+    class = "flexybayes_refusal_selection_fallback_not_authorised"
+  )
 })
