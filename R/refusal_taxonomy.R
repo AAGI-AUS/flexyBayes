@@ -3051,8 +3051,8 @@ print.fb_refusals_table <- function(x, ...) {
       "scaled copies of a latent field, and that representation works; what ",
       "it does not do is return the same covariance on a second identical ",
       "call when the trial's genetic signal is weak, so a reported ",
-      "component is a draw from a distribution over modes rather than an ",
-      "estimate. brms has no factor-analytic lowering, so no engine fits ",
+      "component records where the optimiser settled on that call. brms ",
+      "has no factor-analytic lowering, so no engine fits ",
       "the structure to a standard the package is willing to state. The ",
       "diagonal structure diag(f):g fits on both engines, and us(f):g fits ",
       "on brms for up to five levels."
