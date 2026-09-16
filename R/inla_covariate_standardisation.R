@@ -95,7 +95,7 @@
 #' formula transform reads the column through a function, and `log(x / d)` is
 #' not `log(x)` divided by anything, so the coefficient could not be mapped
 #' back. The response, an offset and an addition term are not covariates. A
-#' grouping factor indexes a field rather than weighting one. The correlated
+#' grouping factor indexes a field; it does not weight one. The correlated
 #' slope's covariate scales a Wishart prior built from `var(y) / var(x)`
 #' (R/emit_inla.R), which a division would state twice. A protected column is
 #' left exactly as the caller recorded it.
@@ -268,7 +268,7 @@
 #' covariate unit, so a covariate divided by `d` multiplies it by `d`. The
 #' map is `.fb_inla_map_hyper_entry()`, which divides, so it is handed
 #' `1 / d`; every prior family that reaches it is closed under that map, and
-#' one that is not refuses there rather than reaching INLA misstated.
+#' one that is not refuses there, so no misstated prior reaches INLA.
 #'
 #' @param hyper_ctrl The `priors_to_inla()` list.
 #' @param cstd The covariate standardisation record.
@@ -291,8 +291,7 @@
 #' A coefficient multiplied by `d` has its prior mean multiplied by `d` and
 #' its precision divided by `d^2`. Only a coefficient the caller or the
 #' package gave a prior is restated; one with neither keeps INLA's own
-#' default on the standardised coordinates, which is what makes that default
-#' free of the covariate's units. The intercept is untouched, because the
+#' default on the standardised coordinates. The intercept is untouched: the
 #' standardisation does not centre.
 #'
 #' @param control_fixed The `control.fixed` list the emit built.
