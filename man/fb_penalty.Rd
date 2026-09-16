@@ -87,13 +87,12 @@ of the posterior.
 \code{elastic_net(lambda, alpha = 1)} is the lasso corner of the elastic-net
 path: \code{lambda_l2} is exactly zero there, and it fits and certifies on the
 \code{glmnet} provider, graded by \code{glmnet}'s own Karush-Kuhn-Tucker conditions
-rather than against any Bayesian summary. Its Bayesian counterpart is
-\code{laplace()} (the \code{lasso()} alias above), and the two are named side by
-side, not treated as one estimate under two engines: the posterior mean of
-a Laplace prior is not a lasso estimate, for exactly the reason \code{lasso()}
-already announces -- the draws carry no exact zeros. \code{alpha = 0} stays
-refused; that corner is \code{ridge()}, which already has its own name and its
-own row above.
+at the point it returns. Its Bayesian counterpart is \code{laplace()} (the
+\code{lasso()} alias above), and the two are named side by side: the posterior
+mean of a Laplace prior is not a lasso estimate, for exactly the reason
+\code{lasso()} already announces -- the draws carry no exact zeros. \code{alpha = 0}
+stays refused; that corner is \code{ridge()}, which already has its own name
+and its own row above.
 
 A \code{ridge} or \code{laplace} prior has a mode identity with the corresponding
 penalised objective \strong{only with the covariance plugged in and the

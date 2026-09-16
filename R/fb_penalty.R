@@ -76,13 +76,12 @@
 #' `elastic_net(lambda, alpha = 1)` is the lasso corner of the elastic-net
 #' path: `lambda_l2` is exactly zero there, and it fits and certifies on the
 #' `glmnet` provider, graded by `glmnet`'s own Karush-Kuhn-Tucker conditions
-#' rather than against any Bayesian summary. Its Bayesian counterpart is
-#' `laplace()` (the `lasso()` alias above), and the two are named side by
-#' side, not treated as one estimate under two engines: the posterior mean of
-#' a Laplace prior is not a lasso estimate, for exactly the reason `lasso()`
-#' already announces -- the draws carry no exact zeros. `alpha = 0` stays
-#' refused; that corner is `ridge()`, which already has its own name and its
-#' own row above.
+#' at the point it returns. Its Bayesian counterpart is `laplace()` (the
+#' `lasso()` alias above), and the two are named side by side: the posterior
+#' mean of a Laplace prior is not a lasso estimate, for exactly the reason
+#' `lasso()` already announces -- the draws carry no exact zeros. `alpha = 0`
+#' stays refused; that corner is `ridge()`, which already has its own name
+#' and its own row above.
 #'
 #' A `ridge` or `laplace` prior has a mode identity with the corresponding
 #' penalised objective **only with the covariance plugged in and the
