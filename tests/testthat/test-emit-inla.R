@@ -225,7 +225,7 @@ test_that("emit_inla() return_code returns formula and family without fitting", 
   expect_named(
     res,
     c("formula", "family", "hyper", "control_family", "control_fixed",
-      "response_standardisation")
+      "response_standardisation", "covariate_standardisation")
   )
   expect_s3_class(res$formula, "formula")
   expect_identical(res$family, "gaussian")

@@ -642,6 +642,27 @@ emit_inla <- function(
       standardisation
     )
   }
+  # A fit with no response standardisation runs on standardised numeric
+  # covariates instead, which is where the scale sensitivity of a
+  # non-Gaussian fit sits (R/inla_covariate_standardisation.R). The two are
+  # exclusive: a Gaussian identity-link fit is already one model in its
+  # response's units, and standardising both at once would restate every
+  # prior twice.
+  covariate_std <- if (is.null(standardisation)) {
+    .fb_inla_covariate_standardisation(fb, data)
+  } else {
+    NULL
+  }
+  if (!is.null(covariate_std)) {
+    hyper_ctrl <- .fb_inla_covariate_standardise_hyper(
+      hyper_ctrl,
+      covariate_std
+    )
+    control_fixed <- .fb_inla_covariate_standardise_control_fixed(
+      control_fixed,
+      covariate_std
+    )
+  }
   control_family <- .build_inla_control_family(hyper_ctrl, family = inla_family)
 
   if (return_code) {
@@ -656,7 +677,8 @@ emit_inla <- function(
       hyper = hyper_ctrl,
       control_family = control_family,
       control_fixed = control_fixed,
-      response_standardisation = standardisation
+      response_standardisation = standardisation,
+      covariate_standardisation = covariate_std
     )))
   }
 
@@ -686,6 +708,14 @@ emit_inla <- function(
     data_inla[[.FB_INLA_STANDARDISED_RESPONSE]] <-
       (as.numeric(.fb_response_values(fb, data)) - standardisation$centre) /
       standardisation$scale
+  }
+  # Each standardised covariate, divided in the data list INLA reads. The
+  # column keeps its name, so the formula, the design and every coefficient
+  # label are the ones the fit would otherwise have carried; only the numbers
+  # in the column change, and every reading of them is mapped back below.
+  for (nm in names(covariate_std$divisor %||% numeric(0))) {
+    data_inla[[nm]] <- as.numeric(data_inla[[nm]]) /
+      covariate_std$divisor[[nm]]
   }
   # v0.3.10: blocks-format vm/ped terms generate
   # K per-block precision matrices that need to live in `data_inla`
@@ -1383,7 +1413,7 @@ emit_inla <- function(
   # Every bounded prior is checked against the fit INLA returned, before
   # anything is mapped back, because the bounds INLA received are on the
   # scale it fitted (R/inla_support_audit.R).
-  support_audit <- .fb_inla_support_audit(fit, standardisation)
+  support_audit <- .fb_inla_support_audit(fit, standardisation, covariate_std)
   .fb_inla_enforce_support(support_audit, "per_row")
 
   # Every reading of the fit below is taken on the original scale. The
@@ -1398,6 +1428,12 @@ emit_inla <- function(
           num_check$restart_probe[[nm]] - mlik_shift
       }
     }
+  }
+  # The covariate standardisation leaves the linear predictor unchanged row
+  # by row, so the marginal likelihood the restart probe compares is the same
+  # number on both coordinate systems and needs no shift.
+  if (!is.null(covariate_std)) {
+    fit <- .fb_inla_covariate_back_transform(fit, covariate_std)
   }
   # isFALSE, not `!`: `pass` is tri-state now and `if (NA)` is an error.
   # An unverified fit is not warned about as though it had failed.
@@ -1524,6 +1560,11 @@ emit_inla <- function(
         # The centre and scale the fit ran on, NULL for a fit that was not
         # standardised. The draw accessors read it to map draws back.
         response_standardisation = standardisation,
+        # The divisor of each standardised covariate, and the factor each
+        # coefficient and slope field carried on those coordinates, NULL for
+        # a fit whose covariates were not standardised. The draw accessors
+        # read it as they read the response record above.
+        covariate_standardisation = covariate_std,
         # The priors this fit carries that nobody stated: the standard
         # deviations filled with the package default, the default slope
         # bounds divided by their covariate's standard deviation, and the
