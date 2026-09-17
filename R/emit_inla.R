@@ -47,6 +47,22 @@
   do.call(INLA::inla, args)
 }
 
+# A host may report no core count at all. INLA turns that missing value into
+# the malformed default `NA:1`, prints a parser failure, and silently falls
+# back to another thread plan. The fit remains usable, but its actual resource
+# contract is neither what the object records nor what the caller chose.
+# Supply the conservative one-thread spelling only in that case. A valid host
+# default remains INLA's to resolve, and an explicit `num.threads` in `...`
+# always wins.
+.fb_inla_threads_if_cores_unknown <- function(
+    detected = parallel::detectCores(logical = TRUE)) {
+  detected <- suppressWarnings(as.integer(detected))
+  if (length(detected) != 1L || is.na(detected) || detected < 1L) {
+    return("1:1")
+  }
+  NULL
+}
+
 # .inla_is_program_death_message() --- TRUE when an error message
 # names the INLA program dying, rather than a flexyBayes-side argument
 # or formula error. Deliberately narrow: FS-25's observed failure text
@@ -1304,6 +1320,12 @@ emit_inla <- function(
   )
   if (length(control_fixed)) {
     inla_args$control.fixed <- control_fixed
+  }
+  if (is.null(inla_args$num.threads)) {
+    fallback_threads <- .fb_inla_threads_if_cores_unknown()
+    if (!is.null(fallback_threads)) {
+      inla_args$num.threads <- fallback_threads
+    }
   }
   # The offset reaches INLA through inla()'s `offset` argument, evaluated
   # here from the model description, rather than as `offset()` in the

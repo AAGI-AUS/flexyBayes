@@ -100,16 +100,14 @@ edited.
 
 ## Cores
 
-`Config/testthat/parallel` is `false`, so the suite runs in the calling
-process and starts no workers at all. It was `true` up to 0.9.3, but the
-declaration was never usable: parallel workers stalled indefinitely on
-the INLA and brms fits, so every release ran the suite sequentially from
-outside anyway. Declaring what actually runs is the correct setting, and
-it is trivially within the CRAN two-core limit. Nothing in the package
-calls `parallel::detectCores()`, sets `mc.cores`, or opens a cluster,
-and both calls into INLA's posterior sampler pin
-`num.threads = "1:1"`. No sampler is given a `cores` argument anywhere
-in the tests, examples or vignettes, so brms runs on its default of one.
+`Config/testthat/parallel` is `false`, so the check suite runs files in the
+calling process. User-requested concurrent selection is capped by
+`parallel::detectCores()` and is not activated by tests, examples or
+vignettes. Where a restricted host returns no core count, the package falls
+back to one selection worker and passes `num.threads = "1:1"` to INLA rather
+than allowing the malformed `NA:1` default. Both calls into INLA's posterior
+sampler also pin `num.threads = "1:1"`. No Stan sampler receives a `cores`
+argument during checks, examples or vignette rendering, so brms uses one core.
 
 ## Reverse dependencies
 

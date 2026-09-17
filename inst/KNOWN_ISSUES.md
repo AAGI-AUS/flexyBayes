@@ -530,6 +530,13 @@ two-part decomposition with the parts fitted jointly.
   capture, and it is cosmetic and does not affect results. Not reproducible on
   every platform.
 
+- **Missing host core count.** Some sandboxed macOS sessions return `NA` from
+  `parallel::detectCores()`, from which INLA constructs `NA:1` and then prints
+  a parser fallback. From 0.13.0, flexyBayes passes `1:1` when the caller gave
+  no thread setting and the host count is unavailable. A valid INLA default or
+  explicit caller value is not replaced. This corrects the resource record; it
+  does not suppress the separate INLA-binary hardware-probe chatter above.
+
 ## How to help
 
 - Pick an issue above. Items 1 and 5 are the highest-value and lowest-risk. The IR /

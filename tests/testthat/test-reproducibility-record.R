@@ -5,7 +5,7 @@
 # the seed it ran with, and print() and summary() show them. The expected
 # values are read here from R, the engines and the environment, not from the
 # record: `R.version.string`, `utils::packageVersion()`,
-# CmdStan's own version, `INLA::inla.getOption("num.threads")` and the
+# CmdStan's own version, the `num.threads` INLA actually received and the
 # `num_threads` CmdStan writes. A seed Stan drew for itself is checked by
 # refitting under the recorded value and comparing the draws.
 
@@ -207,7 +207,7 @@
         label,
         "num_threads",
         rec$threads$num_threads,
-        INLA::inla.getOption("num.threads")
+        as.character(fit$inla$.args$num.threads)
       ),
       .vr_compare(label, "seed as_run", rec$seed$as_run, NA_integer_)
     )
@@ -292,7 +292,7 @@
     want <- c(
       want,
       paste("INLA", .vr_version("INLA")),
-      paste("INLA num.threads", INLA::inla.getOption("num.threads")),
+      paste("INLA num.threads", rec$threads$num_threads),
       "INLA takes no seed"
     )
   } else {

@@ -55,6 +55,12 @@ the M0--M2 orchestration and reporting remain in the study repository.
   settings when `proceed()` executes the reviewed model. Earlier builds kept
   the draw counts but silently fell back to backend defaults for those two
   settings.
+* When a host supplies no detectable core count, an INLA fit now receives the
+  conservative `num.threads = "1:1"` setting instead of INLA's malformed
+  `NA:1` default and undocumented parser fallback. Explicit caller settings
+  and valid host defaults are unchanged. Some INLA builds still print their
+  own hardware-probe chatter; this is recorded as an upstream environment
+  note rather than suppressed as if it were a package warning.
 
 ## API consolidation
 
@@ -78,6 +84,11 @@ the M0--M2 orchestration and reporting remain in the study repository.
 * Concurrent INLA work is memory-intensive. One three-worker stress run ended
   in an INLA segmentation fault and was recovered as a typed worker failure;
   this release does not claim that every worker count is safe.
+* The nert release-shaped smoke test found a structurally aliased variety-type
+  parameterisation. flexyBayes selection already refuses an unidentified
+  protected design and records unavailable candidate columns; choosing among
+  variety identity, type and within-type contrasts remains an estimand decision
+  for the study, not an automatic formula rewrite by this package.
 
 # flexyBayes 0.12.1
 
