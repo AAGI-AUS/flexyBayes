@@ -19,6 +19,7 @@ test_that("fb_engine() returns the documented classed-object shape", {
 })
 
 test_that("fb_select accepts a named sampler-settings list", {
+  skip_if_not_installed("brms")
   d <- data.frame(
     y = stats::rnorm(24),
     x = stats::rnorm(24),

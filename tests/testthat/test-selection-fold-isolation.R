@@ -751,6 +751,7 @@ test_that("a transform with no training-row rule refuses by name on the benchmar
 
 
 test_that("the Bayesian fold refits refuse a transform by name before anything is fitted", {
+  skip_if_not_installed("brms")
   d <- fbfi_data()
   base <- fbfi_stub(d, y ~ x + (1 | site))
   reached <- 0L

@@ -22,7 +22,7 @@ MASK=("${@:-brms INLA}")
 [ $# -gt 0 ] && MASK=("$@") || MASK=(brms INLA)
 
 PKG_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LIB_SRC="$(Rscript -e 'cat(.libPaths()[1])')"
+LIB_SRC="$(Rscript --vanilla -e 'cat(.libPaths()[1])')"
 SCR="$(mktemp -d)"
 LIB="$SCR/lib"
 mkdir -p "$LIB"
@@ -38,10 +38,10 @@ echo "masked: ${MASK[*]}"
 echo "library: $LIB"
 for m in "${MASK[@]}"; do
   printf "  %-8s visible? %s\n" "$m" \
-    "$(R_LIBS_USER="$LIB" Rscript -e "cat(requireNamespace('$m', quietly=TRUE))" 2>/dev/null)"
+    "$(R_LIBS_USER="$LIB" Rscript --vanilla -e "cat(requireNamespace('$m', quietly=TRUE))" 2>/dev/null)"
 done
 
-R_LIBS_USER="$LIB" NOT_CRAN=true Rscript -e '
+R_LIBS_USER="$LIB" NOT_CRAN=true Rscript --vanilla -e '
   suppressMessages(pkgload::load_all(".", quiet = TRUE))
   r <- as.data.frame(testthat::test_dir("tests/testthat",
                                         reporter = "silent",

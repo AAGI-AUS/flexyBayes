@@ -123,6 +123,7 @@ test_that("a fit inside every bound returns a record and is not refused", {
 })
 
 test_that("a mode outside the bound is refused by name", {
+  skip_if_not_installed("brms")
   # The N30 mode: precision 4.7e-07, a standard deviation near 1,460.
   fake <- .psa_fake_fit(theta_g = log(4.7e-07), q_g = c(-15, -14))
   audit <- .fb_inla_support_audit(fake)

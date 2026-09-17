@@ -359,6 +359,7 @@ test_that("the benchmark and optimiser workflows carry the contract onto the obj
 # --- (v) refusals before any engine runs -------------------------------- #
 
 test_that("a protected column the training rows do not identify refuses by name before anything is fitted", {
+  skip_if_not_installed("brms")
   d <- p2_data()
   folds <- p2_folds(d)
   held <- unique(as.character(d$location[folds[[1L]]$assess_rows]))
@@ -399,6 +400,7 @@ test_that("a protected column the training rows do not identify refuses by name 
 
 
 test_that("a candidate level present only in assessment rows refuses before the cost probe fits", {
+  skip_if_not_installed("brms")
   d <- p2_data()
   d$soil <- factor(ifelse(
     d$location == "L1", "sand",
@@ -430,6 +432,7 @@ test_that("a candidate level present only in assessment rows refuses before the 
 
 
 test_that("a term aliased in part drops one column on the benchmark route and refuses on the Bayesian one", {
+  skip_if_not_installed("brms")
   d <- p2_data()
   d$zone <- factor(c("A", "B", "C")[(as.integer(d$trial) - 1L) %% 3L + 1L])
   candidates <- ~ c1 + c2 + c3 + c4 + c5 + c6 + zone

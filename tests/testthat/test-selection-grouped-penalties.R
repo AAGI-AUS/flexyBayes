@@ -948,6 +948,7 @@ test_that("a grouping that names no group refuses by name", {
 
 
 test_that("a grouped family on the Bayesian route refuses by name", {
+  skip_if_not_installed("brms")
   # The grouped families have an optimiser provider and no brms one. Asking
   # for the Bayesian workflow must say that, rather than reaching the compiler
   # and stopping on an unknown route.
@@ -1141,6 +1142,7 @@ test_that("all grouped families execute through fb_select and certify prox", {
 
 
 test_that("a grouped family still refuses on the public Bayesian route", {
+  skip_if_not_installed("brms")
   d <- fbgp_data(n_cluster = 8L, per = 6L)
   expect_error(
     fb_select(
