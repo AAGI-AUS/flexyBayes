@@ -64,6 +64,10 @@
   `glance(x, against = y)` differences two such runs unit by unit.
 * The Bayesian workflow's fold refits now keep a base's `prior_vc_sd` and
   `prior_fixed_sd`; before, they ran under the package's default priors.
+* At `s = 1` the penalised optimiser's support is now empty, as the exact
+  solution there is. Rounding left values of order 1e-16 that counted as
+  selected, so a one-standard-error choice of `s = 1` could report columns in
+  the chosen support and in `tidy()$retained`.
 
 # flexyBayes 0.13.1
 
