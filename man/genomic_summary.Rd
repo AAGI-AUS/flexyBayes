@@ -26,8 +26,8 @@ heritability \eqn{h^2}, genomic estimated breeding values (GEBVs) with
 posterior reliability, and the genetic / residual variances -- from a
 fitted \code{vm()} (genomic / GBLUP) or \code{ped()} (pedigree) model. The
 quantities are read from the posterior draws engine-agnostically: an
-INLA or brms GBLUP fit returns the same summary object, so a
-multi-backend genomic analysis is directly triangulatable.
+INLA or brms GBLUP fit returns the same summary object, so the two
+engines' genomic summaries can be read side by side.
 }
 \details{
 The heritability is computed per draw as

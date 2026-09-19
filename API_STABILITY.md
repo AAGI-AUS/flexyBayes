@@ -7,8 +7,8 @@ but renamings, default changes, and shape changes are permitted within 0.x
 through a deprecation cycle of at least one minor release, in which the old
 call warns with a condition of class `flexybayes_deprecated`.
 
-This document describes the **lean core**: the mixed-model fitting and
-cross-engine triangulation surface. The orchestra-composition layer (surrogate
+This document describes the **lean core**: the mixed-model fitting
+surface. The orchestra-composition layer (surrogate
 emulators, ensemble sources, simulator-derived priors, the synthesised
 fourth-opinion slot) lives in the companion package **flexyBayesOrchestra** and
 is documented there.
@@ -66,7 +66,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 
 | Export | Stage | Notes |
 |---|---|---|
-| `triangulate()` | internal, not exported since 0.11.0 | No longer part of the public surface: it is an internal check the package runs, and it carries no stability promise. The description below records what it does for readers of earlier releases, who can still reach it as `flexyBayes:::triangulate()`. Pairwise comparison of two posteriors from different engines on shared parameters, behind three gates. A model fingerprint (formula triple, family and link, data digest, recorded priors) refuses mismatched fits with `triangulate_incomparable_fits`. A per-fit diagnostics gate returns status `inconclusive` instead of a parameter verdict. A matched-prior gate marks a parameter `not_compared` when the two fits do not record the same prior for it. Metric set for 0.9.x: mean difference, SD ratio, quantile (tail) drift, Wasserstein-1 distance, and the SD-scaled forms of the last two. Overall `status` is `concordant`, `discordant`, or `inconclusive`, and the thresholds are documented heuristics on a gated overlap rather than calibrated tests. *(The earlier cross-engine R-hat-on-means metric was removed -- R-hat across independent engines is not a valid convergence statistic, and per-fit within-engine R-hat is reported on each fit.)* Metric additions are non-breaking; removals or renamings ride a deprecation cycle. |
+| `triangulate()` | removed in 0.14.0 | Internal from 0.11.0 and removed in 0.14.0, together with `triangulate_genomic()`, `triangulate_gwas()` and the refusal code `triangulate_incomparable_fits`. Nothing in the package called it, and agreement between two engines fitted from one parsed model cannot detect a translation error both share. The canonical draws it compared remain available on each fit through `posterior::as_draws_df()` and `canonical_names()`. |
 
 ## Priors
 
@@ -204,9 +204,8 @@ On the auto-default path -- when neither an `fb_prior()` nor a legacy
 | Fixed-effect coefficients | each engine's own default -- brms: flat on the population-level coefficients and a response-centred `student_t` on the intercept; INLA: `prec = 0.001` on the slopes and a flat intercept | `prior_fixed_sd` is applied when it is supplied, on every backend; unsupplied, the engine's default stands and `prior_summary()` names it |
 
 "Recorded as engine-default" is a contract, not a shrug: the parameter and the
-reason are written into the fit's prior provenance, so `triangulate()`'s
-matched-prior gate reports it as `not_compared` rather than comparing two
-engines that were never asked the same question.
+reason are written into the fit's prior provenance, so `prior_summary()` lists
+it by name with the reason.
 
 The half-normal-on-SD default is a flexyBayes heuristic in the spirit of
 Gelman (2006), which argues for weakly informative variance priors over the
@@ -220,7 +219,8 @@ original `lognormal(0, prior_vc_sd)` semantics verbatim when `prior_vc_sd` is
 passed explicitly, and does so on both active engines: brms receives a
 `lognormal(0, prior_vc_sd)` prior row and INLA the expression prior that writes
 the same density on the standard-deviation scale, so the two carry one prior and
-`triangulate()` compares the components rather than excluding them.
+the fit's prior record lists the components as carried rather than as engine
+defaults.
 
 ## Deprecation policy
 
@@ -251,14 +251,14 @@ Production users who need stability should pin to a specific 0.12.x patch via
 
 The 0.8.x line added the entries below. All were **experimental** under the
 ladder above; none changed the stability posture of the lean-core
-fitting / triangulation surface. **Rows marked withdrawn are no longer
+fitting surface. **Rows marked withdrawn are no longer
 exported as of 0.10.0** (see `NEWS.md`); the functions remain in the package as
 internals, so a caller reaching one now gets "could not find function" rather
 than the behaviour described.
 
 | Export | Added | Notes |
 |---|---|---|
-| `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard triangulation. `triangulate_gwas()` **withdrawn at 0.10.0**. |
+| `triangulate_genomic()` / `triangulate_gwas()` | 0.8.0 | Genomic / GWAS cross-engine and field-standard comparison. `triangulate_gwas()` **withdrawn at 0.10.0**; both **removed in 0.14.0**. |
 | `fb_met_summary()` | 0.8.0 | **Withdrawn at 0.10.0.** Breeder summary of a factor-analytic GxE fit. It is computed from realised factor-analytic effects, which only the engine withdrawn in 0.9.3 produced, so it now abstains unconditionally with `met_summary_not_available` and names what an active engine reports instead (`summary()` for the components, `brms::VarCorr()` for a `diag()` or `us()` covariance). |
 | `fb_gblup_cv()` | 0.8.0 | Genomic-prediction accuracy by cross-validation. |
 | `fb_gwas()` | 0.8.0 | EMMAX / P3D whole-genome scan. **Withdrawn at 0.10.0.** |

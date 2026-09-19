@@ -1,39 +1,10 @@
-# Triangulation independence-axis vocabulary (ADR 0029; v0.4.0 Wave 2
+# Backend-independence axis vocabulary (ADR 0029; v0.4.0 Wave 2
 # Phase 2B).
 #
 # Coverage: closed-vocabulary enforcement, per-pair registry symmetry +
-# shape + lock, the one remaining backend pair (0.9.3 withdraws two of
-# the original three v0.4.0 pairs along with the engine they named --
-# see NEWS.md), and the triangulate() report-shape extension
-# (independence + axis_justification) wired end-to-end through
-# synthetic fits whose source resolves to a real backend label.
-
-# ---------------------------------------------------------------- #
-# Synthetic fits: dispatch fb_as_draws_simple on a leading synthetic  #
-# class while .triangulate_source() reads the trailing real backend   #
-# class. So triangulate() sees a registered (brms, inla) pair without #
-# running a real backend.                                              #
-# ---------------------------------------------------------------- #
-
-fb_as_draws_simple.synthetic_brms <- function(fit, ...) fit$draws
-fb_as_draws_simple.synthetic_inla <- function(fit, ...) fit$draws
-.S3method(
-  "fb_as_draws_simple",
-  "synthetic_brms",
-  fb_as_draws_simple.synthetic_brms
-)
-.S3method(
-  "fb_as_draws_simple",
-  "synthetic_inla",
-  fb_as_draws_simple.synthetic_inla
-)
-
-.mk_brms_fit <- function(draws) {
-  structure(list(draws = draws), class = c("synthetic_brms", "flexybayes_brms"))
-}
-.mk_inla_fit <- function(draws) {
-  structure(list(draws = draws), class = c("synthetic_inla", "flexybayes_inla"))
-}
+# shape + lock, and the one remaining backend pair (0.9.3 withdraws two
+# of the original three v0.4.0 pairs along with the engine they named --
+# see NEWS.md).
 
 # ---------------------------------------------------------------- #
 # Closed vocabulary                                                 #
@@ -129,52 +100,10 @@ test_that("the backend-independence registry is locked after .onLoad()", {
 })
 
 # ---------------------------------------------------------------- #
-# triangulate() report-shape extension                             #
+# Snapshot: registered pairs and axes (ADR-amendment forcing function) #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate() labels a registered pair with its independence axes", {
-  set.seed(1L)
-  d_b <- list(beta = rnorm(200L), sigma = abs(rnorm(200L)))
-  d_i <- list(beta = rnorm(200L), sigma = abs(rnorm(200L)))
-  tri <- triangulate(.mk_brms_fit(d_b), .mk_inla_fit(d_i))
-  expect_setequal(tri$independence, c("algorithmic", "implementation"))
-  expect_type(tri$axis_justification, "character")
-  expect_match(tri$axis_justification, "Laplace")
-})
-
-test_that("triangulate() on an unregistered pair leaves the axis fields empty (backward-compat)", {
-  set.seed(2L)
-  mk <- function(d) structure(list(draws = d), class = "synthetic_fit")
-  fb_as_draws_simple.synthetic_fit <<- function(fit, ...) fit$draws
-  .S3method(
-    "fb_as_draws_simple",
-    "synthetic_fit",
-    fb_as_draws_simple.synthetic_fit
-  )
-  d <- list(beta = rnorm(100L))
-  tri <- triangulate(mk(d), mk(d))
-  expect_length(tri$independence, 0L)
-  expect_true(is.na(tri$axis_justification))
-  # the Wasserstein columns still render
-  expect_true("W1" %in% names(tri$metrics) || nrow(tri$metrics) >= 0L)
-})
-
-test_that("print.triangulate_result shows the independence line for a registered pair", {
-  set.seed(3L)
-  d_b <- list(beta = rnorm(150L))
-  d_i <- list(beta = rnorm(150L))
-  tri <- triangulate(.mk_brms_fit(d_b), .mk_inla_fit(d_i))
-  out <- utils::capture.output(print(tri))
-  expect_true(any(grepl("independence:", out, fixed = TRUE)))
-  expect_true(any(grepl("algorithmic", out, fixed = TRUE)))
-})
-
-# ---------------------------------------------------------------- #
-# Snapshot: axis-label rendering (ADR-amendment forcing function)   #
-# ---------------------------------------------------------------- #
-
-test_that("axis-label rendering is stable across the registered pairs", {
-  withr::local_options(cli.num_colors = 1L) # plain text -> stable snapshot
+test_that("the registered pairs and their axes are stable", {
   reg <- flexyBayes:::.backend_independence_registry
   expect_snapshot({
     for (k in sort(ls(reg))) {
@@ -182,7 +111,7 @@ test_that("axis-label rendering is stable across the registered pairs", {
       cat(
         paste(entry$pair, collapse = "--"),
         ": ",
-        flexyBayes:::.format_independence_axes(entry$axes),
+        paste(entry$axes, collapse = " + "),
         "\n",
         sep = ""
       )

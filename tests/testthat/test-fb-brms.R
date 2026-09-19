@@ -393,40 +393,10 @@ test_that("fb(review_code = TRUE, backend = 'inla') raises structured refusal", 
 
 
 # ---------------------------------------------------------------- #
-# (13) triangulate(fit_brms, fit_inla) auto-resolves canonical     #
-#      names via the ADR 0005 registry (no name_map supplied)      #
+# (13) [removed] canonical-name alignment across brms and INLA,     #
+#      covered by test-as-draws-generics.R ("both engines answer    #
+#      with the same parameter tokens")                             #
 # ---------------------------------------------------------------- #
-
-test_that("triangulate() on fb_brms() brms + INLA fits resolves canonical names automatically", {
-  testthat::skip_if_not_installed("brms")
-  testthat::skip_if_not_installed("INLA")
-  testthat::skip_on_cran()
-  testthat::skip_on_ci()
-  d <- mk_brms_gaussian_data()
-  fit_b <- suppressMessages(suppressWarnings(flexybayes(
-    y ~ x + (1 | g1),
-    data = d,
-    backend = "brms",
-    n_samples = 500L,
-    warmup = 500L,
-    chains = 1L,
-    seed = 20260523L,
-    control = list(adapt_delta = 0.97),
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )))
-  fit_i <- suppressMessages(flexybayes(
-    y ~ x + (1 | g1),
-    data = d,
-    backend = "inla",
-    verbose = FALSE
-  ))
-  tri <- triangulate(fit_b, fit_i)
-  expect_true(all(
-    c("(Intercept)", "x", "sd_g1", "sigma") %in%
-      tri$common
-  ))
-})
 
 
 # ---------------------------------------------------------------- #

@@ -1035,13 +1035,13 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # model fingerprint (R/model_fingerprint.R) reads `$engine` to record the
 # parameters that carry no prior this package chose. Both consumers must
 # agree about which is which -- a term whose prior is the shared default in
-# one place and an engine default in the other is exactly the silent
-# mismatch triangulate()'s matched-prior gate exists to catch, so the two
-# views are derived here rather than written out twice.
+# one place and an engine default in the other would make the fit's prior
+# record, which prior_summary() prints, disagree with the prior the fit
+# carried, so the two views are derived here rather than written out twice.
 #
 # `$shared` and `$vm_ped` are group names in the key the prior DSL uses
 # (`sd(group = <name>)`); `$engine` is a data.frame of *canonical parameter
-# names* (the brms-shaped names triangulate() compares on) with the reason
+# names* (the brms-shaped names of R/canonical_names.R) with the reason
 # each is left alone.
 #
 # The uncorrelated-slope form contributes two entries, the intercept
@@ -1539,7 +1539,7 @@ priors_to_inla <- function(prior) {
       # mass at sigma = 0 and so shrank a small-group variance component
       # more than brms's flat uniform did, producing a
       # cross-engine prior mismatch that surfaced as spurious
-      # triangulation disagreement on the variance components. The
+      # cross-engine disagreement on the variance components. The
       # expression prior is the faithful representation, so the two
       # engines now carry genuinely the same default prior and there is
       # no approximation to flag.

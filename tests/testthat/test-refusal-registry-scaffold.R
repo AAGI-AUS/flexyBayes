@@ -195,9 +195,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # untyped stop becomes a named refusal (brms_cannot_represent_term) (= 78),
   # and a numeric variable inside a random interaction is refused rather than
   # resolved to one of its two readings
-  # (numeric_variable_in_random_interaction) (= 79). triangulate() gains a
-  # comparability gate, and two fits of different models are refused rather
-  # than compared (triangulate_incomparable_fits) (= 80). Aligning the class
+  # (numeric_variable_in_random_interaction) (= 79). The cross-engine
+  # comparison gains a comparability gate, and two fits of different models
+  # are refused rather than compared (= 80). Aligning the class
   # graph so INLA fits inherit `flexybayes` makes five parent methods
   # reachable on them, and the four that cannot answer from an INLA fit's
   # slots refuse by name rather than erroring obscurely or returning an
@@ -549,9 +549,12 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # fold that failed (selection_parallel_worker_failed) (= 217). A fold that
   # refuses inside a live worker keeps its own code, so no other refusal is
   # duplicated for the concurrent path.
+  #
+  # 0.14.0 removes the cross-engine comparison, and its one code, the
+  # comparability refusal registered at 0.9.0, goes with it (= 216).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 217L)
+  expect_equal(length(entries), 216L)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
@@ -668,7 +671,6 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("conditional_loglik_not_available" %in% entries)
   expect_true("model_matrix_not_recoverable" %in% entries)
   expect_true("update_call_not_reconstructable" %in% entries)
-  expect_true("triangulate_incomparable_fits" %in% entries)
   expect_true("at_level_conditioning_unsupported" %in% entries)
   expect_true("ar1_residual_not_representable" %in% entries)
   expect_true("stan_cannot_represent_ar1_field" %in% entries)

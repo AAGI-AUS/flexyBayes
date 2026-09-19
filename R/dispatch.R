@@ -1055,7 +1055,7 @@
   # Stan passthrough via brms. Opt-in only -- backend = "auto" never
   # routes to Stan because brms's first-call compile latency (30-60s)
   # would silently break the auto-dispatch transparent-fast-path
-  # promise. Users wanting Stan triangulation set backend = "brms"
+  # promise. Users wanting a Stan fit set backend = "brms"
   # explicitly on fb_brms(); flexybayes() (the asreml entry) does
   # not advertise the value because asreml structured-covariance
   # terms (fa, us, ar1) do not translate losslessly to brms.

@@ -41,9 +41,7 @@ residual standard deviation, and \verb{sd_<group>} for the
 standard deviation of each random-effect group. Variance components
 are on the \strong{standard-deviation scale} whatever the engine stored:
 INLA's precision hyperparameters are transformed on the way out, so
-\code{sd_g} is a draw of a standard deviation and not of a precision. This
-is the same view \code{\link[=triangulate]{triangulate()}} compares, and it is built by the same
-internal seam, so a name in one is a name in the other.
+\code{sd_g} is a draw of a standard deviation and not of a precision.
 }
 \section{Where the draws come from}{
 
@@ -84,6 +82,5 @@ posteriors.
 list, with no \pkg{posterior} dependency; \code{\link[=canonical_names]{canonical_names()}} for
 the name map itself; \code{\link[=prior_summary]{prior_summary()}} for the priors those draws
 were taken under; \code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \verb{$converge} slot
-carries the engine's own convergence diagnostics; \code{\link[=triangulate]{triangulate()}}
-for a two-engine comparison over the same canonical view.
+carries the engine's own convergence diagnostics.
 }

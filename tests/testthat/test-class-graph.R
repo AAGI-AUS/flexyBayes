@@ -57,7 +57,7 @@ test_that("INLA-specific methods still win dispatch over the parent", {
   expect_output(print(fit), "INLA")
   expect_true(is.numeric(stats::coef(fit)))
   expect_identical(
-    flexyBayes:::.triangulate_source(fit),
+    flexyBayes:::.fb_conv_engine_label(fit),
     "inla"
   )
 })

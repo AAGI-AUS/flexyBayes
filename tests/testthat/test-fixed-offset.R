@@ -745,7 +745,7 @@ test_that("predict() on brms refuses new data that lack an offset column", {
   )
 })
 
-test_that("the fingerprint, triangulate() and the printed surfaces record it", {
+test_that("the fingerprint and the printed surfaces record it", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -755,21 +755,6 @@ test_that("the fingerprint, triangulate() and the printed surfaces record it", {
 
   expect_identical(fit$extras$fingerprint$offset, "offset(z)")
   expect_identical(plain$extras$fingerprint$offset, "<none>")
-  diff <- .fb_fingerprint_first_difference(
-    fit$extras$fingerprint,
-    plain$extras$fingerprint
-  )
-  expect_identical(diff$element, "offset")
-  # A fingerprint recorded before the element existed described a model with
-  # no offset, and still compares clean against one.
-  old <- plain$extras$fingerprint
-  old$offset <- NULL
-  expect_null(.fb_fingerprint_first_difference(old, plain$extras$fingerprint))
-  .off_expect_refusal(
-    triangulate(fit, plain),
-    "triangulate_incomparable_fits",
-    "differ on the offset"
-  )
 
   ps <- prior_summary(fit)
   expect_identical(ps$offsets, "offset(z)")
@@ -993,10 +978,4 @@ test_that("brms and INLA agree on an offset model under one stated prior", {
   expect_lt(gap[[2L]], 0.1)
   expect_lt(gap[[3L]], 1.5)
   expect_lt(gap[[4L]], 0.15)
-  # One model on both engines: the fingerprints agree, so triangulate() does
-  # not refuse the pair.
-  expect_null(.fb_fingerprint_first_difference(
-    brms_fit$extras$fingerprint,
-    inla_fit$extras$fingerprint
-  ))
 })

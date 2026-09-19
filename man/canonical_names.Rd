@@ -43,15 +43,14 @@ precision prior makes the aggregated posterior match the
 per-row posterior to numerical precision.
 \code{"package_default"} is the automatic half-normal-on-SD
 prior, which claims no such equivalence on this route.
-\code{"custom"} is an explicit prior from the caller (see the
-"Matched priors" note on \code{\link[=triangulate]{triangulate()}}).}
+\code{"custom"} is an explicit prior from the caller.}
 }
 }
 \description{
 Returns the backend-native -> canonical parameter-name map for a
 fit, plus per-parameter value transforms where applicable (e.g.,
 the INLA precision-to-SD \code{sqrt(1/prec)} transform applied to
-hyperparameters before triangulation). The canonical convention
+hyperparameter draws before they are renamed). The canonical convention
 follows brms (\code{(Intercept)}, \verb{<term>}, \verb{sd_<group>}, \code{sigma},
 \verb{r_<group>[<level>]}).
 }

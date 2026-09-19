@@ -114,8 +114,8 @@ Fits a Bayesian reference model in which a declared block of candidate
 fixed effects carries a joint shrinkage prior and the covariance structure
 is integrated over rather than plugged in; selects a parsimonious submodel
 by projection predictive inference where the structure permits it, and
-refuses by name where it does not; and, on request, triangulates the
-result against an external penalised optimiser on the same folds.
+refuses by name where it does not; and, on request, compares the
+result with an external penalised optimiser on the same folds.
 }
 \details{
 Every result records four independent fields rather than one \code{engine}

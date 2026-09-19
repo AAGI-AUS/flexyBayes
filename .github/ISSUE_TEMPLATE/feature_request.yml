@@ -44,7 +44,6 @@ body:
         - Modelling API (flexybayes(), fb())
         - Priors DSL (fb_prior())
         - Backend dispatch / capability gating
-        - Triangulation
         - Vignettes / documentation
         - Tooling / CI / packaging
         - Other

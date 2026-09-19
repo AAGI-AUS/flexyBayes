@@ -12,8 +12,7 @@ proceed(x, ...)
 \arguments{
 \item{x}{A \verb{<flexybayes_review>} object holding the deferred fit.}
 
-\item{...}{Reserved for future deferred-execution classes, such as a
-deferred triangulation.}
+\item{...}{Reserved for future deferred-execution classes.}
 }
 \value{
 The fit object the originating call would have returned, of

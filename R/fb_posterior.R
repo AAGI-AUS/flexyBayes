@@ -10,10 +10,9 @@
 #
 # INLA's raw `inla.posterior.sample()` output -- fixed effects indexed as
 # "(Intercept):1", hyperparameters named "Precision for ...", plus one
-# per-observation "Predictor:k" latent node -- is thereby canonicalised the
-# same way `triangulate()` already does internally, but as a reusable
-# accessor. Testing INLA as a conformance CANDIDATE (rather than only a
-# name-mapped reference) needs this.
+# per-observation "Predictor:k" latent node -- is thereby canonicalised by
+# one reusable accessor. Testing INLA as a conformance CANDIDATE (rather
+# than only a name-mapped reference) needs this.
 #
 # Internal seed; the public `fb_posterior` interface (native marginals +
 # optional joint draws + provenance + diagnostic-validity flags) builds on
@@ -29,8 +28,7 @@
 # unchanged -- they are assumed already canonical.
 #
 # Value transforms (e.g. INLA precision -> SD) key on the native name and
-# apply BEFORE any rename, matching triangulate()'s ordering, so a caller
-# never double-applies them.
+# apply BEFORE any rename, so a caller never double-applies them.
 .fb_canonical_draws <- function(fit, n_samples = 1000L, drop = TRUE) {
   draws <- fb_as_draws_simple(fit, n_samples = n_samples)
   if (!is.list(draws) || is.null(names(draws))) {

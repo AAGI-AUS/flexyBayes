@@ -19,13 +19,11 @@
 # list between ADR 0031 Phase 3 and the 0.9.3 withdrawal of its engine
 # entirely (see NEWS.md).
 #
-# triangulate() left the roster at 0.10.0.9000. It was demoted, not deleted:
-# the R Journal review objected to cross-engine agreement being sold as the
-# package's signature output, which it should not be -- both fits come from
-# the same parsed representation, so a mistranslation is common-mode and
-# triangulates perfectly. It survives as an internal validation harness and
-# as the oracle the backend-conformance tests read, and is reachable as
-# flexyBayes:::triangulate(). Five verbs.
+# The cross-engine comparison verb left the roster at 0.10.0.9000, on the
+# R Journal review's objection to cross-engine agreement being sold as the
+# package's signature output: both fits come from the same parsed
+# representation, so a mistranslation is common-mode and agrees perfectly.
+# It stayed internal until 0.14.0, which removed it. Five verbs.
 .FB_VERBS <- c(
   "flexybayes",
   "fb_brms",
@@ -79,11 +77,6 @@ test_that("exactly five verbs are exported (ADR 0030 §3)", {
     expect_true(v %in% exports, info = paste("verb not exported:", v))
   }
   expect_length(.FB_VERBS, 5L)
-  # And the demoted one is genuinely gone from the surface, not merely
-  # absent from this list.
-  expect_false("triangulate" %in% exports)
-  expect_false("triangulate_genomic" %in% exports)
-  expect_true(is.function(flexyBayes:::triangulate))
 })
 
 test_that("the verb list is stable (snapshot)", {

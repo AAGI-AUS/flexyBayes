@@ -44,6 +44,5 @@ by the condition class rather than by reading the message.
 \seealso{
 \code{\link[=summary.flexybayes]{summary.flexybayes()}}, whose \verb{$converge} slot carries the
 engine's own diagnostics; \code{\link[=as_draws_df.flexybayes]{as_draws_df.flexybayes()}} for the
-posterior itself; \code{\link[=triangulate]{triangulate()}} for comparing two engines' fits of
-one model; \code{\link[=fb_refusals]{fb_refusals()}} for the refusal vocabulary.
+posterior itself; \code{\link[=fb_refusals]{fb_refusals()}} for the refusal vocabulary.
 }

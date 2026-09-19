@@ -1,3 +1,10 @@
+# flexyBayes (development version)
+
+* The internal cross-engine comparison `triangulate()`, with
+  `triangulate_genomic()` and `triangulate_gwas()`, is removed. Nothing in
+  the package called it, and agreement between two engines fitted from one
+  parsed model cannot detect a translation error both share.
+
 # flexyBayes 0.13.1
 
 A patch release for penalised selection. It adds two read-outs of a penalised

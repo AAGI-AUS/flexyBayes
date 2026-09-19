@@ -338,8 +338,7 @@
 #'   density on the standard-deviation scale: brms as a
 #'   `lognormal(0, prior_vc_sd)` prior row, INLA as the expression prior
 #'   that writes that density in INLA's log-precision parameterisation.
-#'   The two engines therefore carry the same variance-component prior,
-#'   which is what [triangulate()] requires before it compares them.
+#'   The two engines therefore carry the same variance-component prior.
 #' @param verbose Logical: print the generated backend code to the console.
 #' @param mcmc_verbose Logical: show the sampler's progress bar. Has no
 #'   effect on the deterministic INLA path.
@@ -752,9 +751,8 @@ flexybayes <- function(
     # Which terms the default reaches is decided in one place,
     # .fb_default_prior_targets(), because the model fingerprint has to
     # record the same split: a variance component the walker skipped
-    # carries whatever the engine chose, and triangulate() must exclude it
-    # from a cross-engine comparison rather than compare two answers to
-    # two different questions.
+    # carries whatever the engine chose, and prior_summary() must list it
+    # as an engine default rather than as the shared prior.
     prior_targets <- .fb_default_prior_targets(fb)
     hn_default <- .default_half_normal_prior(
       data = data,

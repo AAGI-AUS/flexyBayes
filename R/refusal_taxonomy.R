@@ -1586,19 +1586,6 @@
     since_version = "0.9.0"
   )
   .register_refusal(
-    reason_code = "triangulate_incomparable_fits",
-    description = paste0(
-      "Two fits handed to triangulate() whose model fingerprints disagree ",
-      "-- a different formula, family, link, dataset or recorded prior. The ",
-      "distance between their posteriors would measure the difference ",
-      "between two questions rather than between two engines."
-    ),
-    message_template = "%s",
-    registered_in_adr = "Spec 3 B7",
-    plan_field = NA_character_,
-    since_version = "0.9.0"
-  )
-  .register_refusal(
     reason_code = "row_count_exceeds_integer",
     description = paste0(
       "A single-file or in-memory source reports more rows than R's ",

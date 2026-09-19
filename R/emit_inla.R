@@ -2963,8 +2963,8 @@ emit_inla <- function(
 # The table is written in the five-column shape the brms path writes
 # (component, estimate, sd, q2.5, q97.5) because broom's tidier reads
 # those names (R/tidiers.R). The canonical component names come from the
-# same registry mapper triangulate() and the draws accessors use, so one
-# component answers to one name everywhere.
+# same registry mapper the draws accessors use, so one component answers
+# to one name everywhere.
 .inla_variance_comps <- function(object) {
   empty <- data.frame(
     component = character(0),
