@@ -75,6 +75,11 @@
   out-of-fold loss over `s` and the elastic-net mixing parameter from results
   run at other mixing values on the same score contract, with each result's
   chosen point marked. It needs plotly, now in Suggests.
+* `fb_select(ablation = TRUE)` drops each declared block of the penalised
+  path in turn, walks the path again on the same folds, and reports in
+  `tidy(level = "group")` the change in held-out loss per unit with its
+  standard error, and the change in log predictive density where
+  `refit = list(method = "bayes")` ran. The read-out is not nested.
 
 # flexyBayes 0.13.1
 

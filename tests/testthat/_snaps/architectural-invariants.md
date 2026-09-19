@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=225
+      .refusal_registry: locked=TRUE n_keys=226
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -237,6 +237,7 @@
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer
+        selection_ablation_route_undefined
         selection_base_not_allowlisted
         selection_base_shape_unreadable
         selection_candidates_not_constant_within_term

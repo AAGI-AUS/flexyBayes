@@ -29,6 +29,12 @@ states both. \code{block_share_median}, \code{block_share_lower} and
 \code{block_share_upper} are the posterior median and 95\% interval of the share
 of between-trial variance the declared block explains, pooled over folds.
 
+With \code{ablation = TRUE}, \code{ablation_blocks} counts the blocks whose ablation
+ran, \code{ablation_metric} is the loss they were scored at,
+\code{ablation_nested} is \code{FALSE} (see "Grouped ablation" in \code{\link[=fb_select]{fb_select()}}) and
+\code{ablation_contract_hash} identifies the contract every path shares; each
+block's difference is in \code{tidy(x, level = "group")}.
+
 With \code{against}, a second valuation on the same value contract (the same
 data, \code{resamples}, \code{seed} and \code{prediction}), \code{value_difference} is the sum
 over units of the paired differences \code{elpd_u(x) - elpd_u(against)}, and

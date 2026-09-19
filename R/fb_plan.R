@@ -1124,7 +1124,8 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                reference_engine = NA_character_,
                                decision_resolution = NULL,
                                stability = NULL,
-                               covariance = NA_character_) {
+                               covariance = NA_character_,
+                               ablation = NULL) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1213,7 +1214,10 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
     # Subsample stability of the penalised path, where one runs: the
     # declared settings and the count of penalised fits they cost beside the
     # cross-validated path's.
-    stability = stability
+    stability = stability,
+    # The grouped ablation, where one was asked for: the declared blocks and
+    # the fits they cost beside the cross-validated path's.
+    ablation = ablation
   )
 
   structure(list(selection = selection), class = c("fb_select_plan", "list"))
@@ -1320,6 +1324,24 @@ print.fb_select_plan <- function(x, ...) {
         sep = ""
       )
     }
+  }
+  ab <- s$ablation
+  if (!is.null(ab)) {
+    cat(
+      "  Ablation:     ", length(ab$blocks), " declared block",
+      if (length(ab$blocks) == 1L) "" else "s", " (",
+      paste(ab$blocks, collapse = ", "), "), each dropped in turn\n",
+      "                 ", ab$path_fits, " penalised fits and ",
+      ab$protected_fits, " protected-model fits, against ", ab$cv_path_fits,
+      " for the cross-validated path; no covariance estimate",
+      if (ab$engine_refits > 0L) {
+        paste0("; ", ab$engine_refits, " engine refits of the ablated supports")
+      } else {
+        ""
+      },
+      "\n",
+      sep = ""
+    )
   }
   if (length(s$approximations) > 0L) {
     cat("  Approximations this route commits to:\n", sep = "")
