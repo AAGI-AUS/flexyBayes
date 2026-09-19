@@ -549,9 +549,16 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # fold that failed (selection_parallel_worker_failed) (= 217). A fold that
   # refuses inside a live worker keeps its own code, so no other refusal is
   # duplicated for the concurrent path.
+  #
+  # The process-isolation unit adds two: isolation asked for without callr
+  # (isolation_requires_callr), and a separate R process that ended before it
+  # returned (isolated_process_died) (= 219). A condition raised inside the
+  # separate process keeps its own code.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 217L)
+  expect_equal(length(entries), 219L)
+  expect_true("isolation_requires_callr" %in% entries)
+  expect_true("isolated_process_died" %in% entries)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)

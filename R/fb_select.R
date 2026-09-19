@@ -2512,6 +2512,9 @@ fb_select <- function(base,
   prediction <- match.arg(prediction)
   decision <- .fb_select_check_decision(decision)
   dots <- .fb_select_absorb_deprecated(list(...))
+  # Read here so that a request for process isolation the session cannot
+  # honour refuses before any fold runs (R/process_isolation.R).
+  .fb_isolation_active("fb_select()")
 
   if (!is.null(engine) && !inherits(engine, "fb_engine")) {
     if (!is.list(engine) || is.null(names(engine)) || any(!nzchar(names(engine)))) {

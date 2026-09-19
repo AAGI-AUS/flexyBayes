@@ -1,3 +1,12 @@
+# flexyBayes (development version)
+
+* `options(flexyBayes.isolation = "process")` runs each engine fit, and each
+  fold of `fb_select()`, in a separate R process started through callr (in
+  Suggests). If that process is killed, the call refuses with
+  `isolated_process_died`, naming the engine, the function called and the
+  signal or exit status, and the session carries on. The default, `"none"`,
+  fits in the session as before.
+
 # flexyBayes 0.13.1
 
 A patch release for penalised selection. It adds two read-outs of a penalised
