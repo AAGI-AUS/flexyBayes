@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=222
+      .refusal_registry: locked=TRUE n_keys=225
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -177,6 +177,7 @@
         known_matrix_level_mismatch
         log_density_producer_unavailable
         loo_requires_sampler_draws
+        loss_surface_requires_plotly
         low_rank_rank_exceeds_basis
         low_rank_rank_invalid
         low_rank_scheme_required
@@ -255,6 +256,7 @@
         selection_fold_variable_not_in_data
         selection_formula_transform_not_fold_local
         selection_leakage_detected
+        selection_loss_surface_undefined
         selection_missing_response_estimand_unnamed
         selection_missing_response_in_objective
         selection_missing_response_not_carried
@@ -290,6 +292,7 @@
         selection_weights_loss_route_requires_residual_only
         selection_weights_not_positive
         smooth_variable_not_in_data
+        spatial_field_requires_ar1_field
         stan_cannot_represent_ar1_field
         stan_cannot_represent_ar1_residual
         stan_cannot_represent_structured_cov

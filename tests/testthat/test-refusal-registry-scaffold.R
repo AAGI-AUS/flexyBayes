@@ -571,6 +571,12 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (selection_refit_support_undefined), and two valuations whose value
   # contracts differ asked to be differenced
   # (selection_value_contract_mismatch) (= 222).
+  #
+  # The package figures add three: a spatial-field display asked of a fit
+  # with no separable field (spatial_field_requires_ar1_field), the loss
+  # surface without plotly (loss_surface_requires_plotly), and optimiser
+  # results that do not span a loss surface on one score contract
+  # (selection_loss_surface_undefined) (= 225).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_missing_response_not_carried" %in% entries)
@@ -579,7 +585,10 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_dense_covariance_too_large" %in% entries)
   expect_true("selection_refit_support_undefined" %in% entries)
   expect_true("selection_value_contract_mismatch" %in% entries)
-  expect_equal(length(entries), 222L)
+  expect_true("spatial_field_requires_ar1_field" %in% entries)
+  expect_true("loss_surface_requires_plotly" %in% entries)
+  expect_true("selection_loss_surface_undefined" %in% entries)
+  expect_equal(length(entries), 225L)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
