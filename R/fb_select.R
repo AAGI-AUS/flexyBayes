@@ -73,6 +73,19 @@
     ))
   }
 
+  # A base fitted before 0.14.0 from a brms::bf() object carrying a part the
+  # ingest dropped was fitted as a different model, and every fold refit
+  # would repeat that. It refuses under the ingest's own code.
+  recorded <- base$extras$call_info$fixed
+  if (inherits(recorded, "brmsformula")) {
+    .fb_brms_refuse_unfitted_parts(
+      recorded,
+      family = base$fb$family,
+      link = base$fb$link,
+      caller = "fb_select(): in the base's model, "
+    )
+  }
+
   fam <- base$fb$family %||% NA_character_
   link <- base$fb$link %||% NA_character_
   if (!identical(fam, "gaussian") || !identical(link, "identity")) {

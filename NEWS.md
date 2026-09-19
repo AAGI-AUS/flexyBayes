@@ -16,6 +16,12 @@
   more. The row notes, and the structures neither engine fits, are in
   `KNOWN_ISSUES.md`.
 * The default-prior message printed on a first fit is two sentences.
+* A `brms::bf()` object with a non-linear formula, a formula or fixed value
+  for a distributional parameter, or a family other than the `family`
+  argument now refuses with `brms_ingest_feature_unsupported`. Before, both
+  engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without `sigma ~ x` and
+  fitted the `family` argument in place of a family named inside `bf()`, and
+  `nl = TRUE` stopped with an untyped error.
 
 # flexyBayes 0.13.1
 
