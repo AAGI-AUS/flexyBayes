@@ -1074,13 +1074,9 @@ flexybayes <- function(
     ) {
       fit$extras$call_info$na_action <- na_policy$y
     }
-    # The emits record a known variance they carried; a vector of zeros
-    # attached nothing, and is recorded here as it was given.
-    if (
-      !is.null(known_variance) &&
-        !is.null(fit$extras$call_info) &&
-        is.null(fit$extras$call_info$known_variance)
-    ) {
+    # A known variance is recorded as it was given, only when it was: the
+    # record of a fit without one keeps its fields.
+    if (!is.null(known_variance) && !is.null(fit$extras$call_info)) {
       fit$extras$call_info$known_variance <- known_variance
     }
   }

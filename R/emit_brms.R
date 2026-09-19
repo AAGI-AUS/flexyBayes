@@ -373,8 +373,6 @@ emit_brms <- function(
         link = link,
         known_matrices = known_matrices,
         weights = weights,
-        # As supplied, for update() to re-issue (R/known_variance.R).
-        known_variance = .fb_known_variance_term(fb)$values,
         n_samples = n_samples,
         warmup = warmup,
         chains = chains,

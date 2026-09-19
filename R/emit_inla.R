@@ -1553,8 +1553,6 @@ emit_inla <- function(
           link = link,
           known_matrices = known_matrices,
           weights = weights,
-          # As supplied, for update() to re-issue (R/known_variance.R).
-          known_variance = .fb_known_variance_term(fb)$values,
           n_samples = NULL,
           warmup = NULL,
           chains = NULL,
