@@ -46,17 +46,15 @@
     reason_code = "prior_family_unsupported_inla",
     description = paste0(
       "A joint shrinkage prior over the candidate fixed effects reached ",
-      "lgm_gate() on a model routed at INLA. A Laplace, regularised ",
-      "horseshoe or R2D2 prior is Gaussian given one local scale per ",
-      "coefficient, so the model can be written as a latent Gaussian model, ",
-      "but it then carries a hyperparameter for every coefficient in the ",
-      "block, and INLA's numerical integration is built for models with a ",
-      "few hyperparameters. Ridge and elastic-net blocks have no INLA ",
-      "implementation. No public call reaches this refusal: fb_select() ",
-      "fits its reference model on brms whatever engine fitted the base. ",
-      "The check is kept as an internal guard."
+      "lgm_gate() on a model routed at INLA. flexyBayes fits joint ",
+      "shrinkage priors on brms only and has no INLA route for them. No ",
+      "public call reaches this refusal: fb_select() fits its reference ",
+      "model on brms whatever engine fitted the base. The check is kept as ",
+      "an internal guard."
     ),
-    message_template = "the joint shrinkage prior(s) %s cannot be fitted by INLA.",
+    message_template = paste0(
+      "joint shrinkage priors are fitted on brms only (%s)."
+    ),
     registered_in_adr = "SPEC v5 section 4.5",
     plan_field = "selection_plan",
     since_version = "0.11.0"

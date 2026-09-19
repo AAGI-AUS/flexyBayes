@@ -898,8 +898,9 @@ fb_from_brms <- function(
         "`.\n"
       )
     },
-    "backend = \"inla\" refuses both: INLA's f() machinery does not ",
-    "represent a\n  structured covariance across factor levels."
+    "On INLA, diag(", slope_variable, "):", grouping_factor, " fits and ",
+    "us(", slope_variable, "):", grouping_factor, " is refused:\n  ",
+    "flexyBayes fits estimated correlation matrices on brms only."
   )
   stop(.fb_refusal_condition(
     reason_code = "brms_factor_random_slope_unsupported",

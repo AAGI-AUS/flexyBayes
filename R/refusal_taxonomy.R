@@ -609,17 +609,16 @@
   .register_refusal(
     reason_code = "low_rank_smooth_unsupported",
     description = paste0(
-      "A smooth requesting the low_rank_smooth approximation was routed ",
-      "to a backend that cannot honour it. No active engine represents ",
-      "the rank-K basis truncation, so the request refuses under `auto` ",
-      "as well as under an explicit `inla` / `brms`."
+      "A smooth requesting the low_rank_smooth approximation. flexyBayes ",
+      "has no route for the rank-K basis truncation on either engine, so ",
+      "the request refuses under `auto` as well as under an explicit ",
+      "`inla` / `brms`."
     ),
     message_template = paste0(
-      "A smooth requesting the low_rank_smooth approximation has no ",
-      "active emit path: INLA fits a smooth via rw2 and brms via Stan ",
-      "spline bases, and neither can apply the rank-K basis truncation. ",
-      "Drop the representation = ... argument to fit the exact smooth on ",
-      "either active engine."
+      "flexyBayes cannot fit a smooth with the low_rank_smooth ",
+      "approximation: it has no route for the approximation on either ",
+      "engine. Drop the representation = ... argument and write the ",
+      "smooth as spl(x), which fits on INLA."
     ),
     registered_in_adr = "ADR 0027",
     plan_field = NA_character_,
@@ -1009,21 +1008,25 @@
   )
 
   # -- backend capability gates (dispatch.R) -------
-  # Raised when flexybayes(backend = "brms") meets an asreml structured-
-  # covariance term (vm/ped/fa/us/ar1) that Stan cannot represent. The
-  # brms capability predicate (R/backend_registry.R, .capability_brms)
-  # is the declarative source; the dispatch brms branch raises this code.
+  # Raised when flexybayes(backend = "brms") meets a structured-covariance
+  # term the brms lowering does not take: a vm() / ped() term with a blocks
+  # or low-rank carrier, or a structured term with no grouping factor. The
+  # brms capability predicate (R/backend_registry.R, .capability_brms) is
+  # the declarative source; the dispatch brms branch raises this code and
+  # uses the template below as the message.
   .register_refusal(
     reason_code = "stan_cannot_represent_structured_cov",
     description = paste0(
-      "backend = \"brms\" (Stan) cannot represent an asreml structured-",
-      "covariance term (vm/ped/fa/us/ar1)."
+      "flexyBayes has no brms lowering for a structured-covariance term in ",
+      "the model: a vm() / ped() term with a blocks or low-rank carrier, ",
+      "or a structured term written without a grouping factor."
     ),
     message_template = paste0(
-      "backend = \"brms\" (Stan) cannot represent this model: it ",
-      "contains an asreml structured-covariance term (one of ",
-      "vm/ped/fa/us/ar1) with no lossless brms/Stan translation. Re-fit ",
-      "with backend = \"inla\" when latent-Gaussian feasible."
+      "flexyBayes cannot fit this model on brms: it has no brms lowering ",
+      "for one of its structured-covariance terms: a vm() or ped() term ",
+      "with a blocks or low-rank carrier, or a us() term written without ",
+      "a grouping factor. Give vm() a dense, Cholesky or precision carrier, ",
+      "or write the structure as us(f):g."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1041,16 +1044,15 @@
   .register_refusal(
     reason_code = "stan_cannot_represent_ar1_residual",
     description = paste0(
-      "backend = \"brms\" (Stan) cannot represent an AR1 or separable ",
-      "AR1xAR1 residual covariance."
+      "flexyBayes has no brms lowering for an AR1 or separable AR1xAR1 ",
+      "residual covariance."
     ),
     message_template = paste0(
-      "backend = \"brms\" (Stan) cannot represent this model: it ",
-      "specifies an AR1 / separable AR1xAR1 residual covariance, and ",
-      "the brms emitter has no residual-structure lowering -- fitting ",
-      "would silently return an independent-residual model. Re-fit with ",
-      "backend = \"inla\", which emits the separable field over a ",
-      "complete one-observation-per-node grid."
+      "flexyBayes cannot fit this model on brms: it has no brms lowering ",
+      "for an AR1 or separable AR1xAR1 residual, and fitting without it ",
+      "would return an independent-residual model. Write the field on the ",
+      "random side and fit it with backend = \"inla\" on a complete grid ",
+      "with one observation per node."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1065,18 +1067,17 @@
   .register_refusal(
     reason_code = "brms_cannot_augment_nongaussian",
     description = paste0(
-      "backend = \"brms\" cannot carry a missing response for this family: ",
-      "brms's mi() augmentation is admitted only for the gaussian and ",
-      "lognormal families, and without it brms drops the rows."
+      "A missing response on brms for a family other than gaussian and ",
+      "lognormal, the two flexyBayes has checked with brms's mi() term. ",
+      "Without mi() brms drops the rows."
     ),
     message_template = paste0(
-      "backend = \"brms\" cannot carry a missing response for this ",
-      "family. brms drops rows whose response is NA, and its `mi()` ",
-      "addition term, which samples them instead, is admitted only for ",
-      "the gaussian and lognormal families. Fitting anyway would silently ",
-      "delete the incomplete cells under the name of augmentation. Use ",
-      "backend = \"inla\", which carries a missing response as a native ",
-      "prediction target for the families it fits, or pass ",
+      "flexyBayes carries a missing response on brms only for the ",
+      "gaussian and lognormal families, the two checked with brms's `mi()` ",
+      "term; for any other family brms would drop the rows whose response ",
+      "is NA, deleting the incomplete cells under the name of ",
+      "augmentation. Use backend = \"inla\", which carries a missing ",
+      "response as a prediction target for the families it fits, or pass ",
       "na_action = \"omit\" to delete them deliberately."
     ),
     registered_in_adr = "ADR 0031",
@@ -1252,14 +1253,14 @@
     reason_code = "at_level_conditioning_unsupported",
     description = paste0(
       "at(f, level):g conditions a random effect on selected levels of f, ",
-      "which no active emitter represents. It is NOT the heterogeneous ",
-      "variance structure diag(f):g, and is refused rather than fitted as ",
-      "one."
+      "and flexyBayes has no lowering for it on either engine. It is a ",
+      "different model from the heterogeneous variance structure ",
+      "diag(f):g, and is refused by name."
     ),
     message_template = paste0(
       "at(<factor>, <level>):<term> conditions the random effect on ",
       "selected levels, which is a different model from a heterogeneous ",
-      "variance across all of them. No active backend represents the ",
+      "variance across all of them, and flexyBayes has no lowering for the ",
       "conditioned form. Drop the level to fit diag(<factor>):<term>."
     ),
     registered_in_adr = "ADR 0031",
@@ -1268,24 +1269,25 @@
   )
 
   # corh() is the structure between diag() and us(): k variances plus ONE
-  # shared correlation. brms group-level effects offer only the two ends --
-  # uncorrelated, or fully unstructured -- so the middle has no faithful
-  # emit. Approximating it in either direction changes the parameter count
-  # and the meaning, so it is named and refused instead.
+  # shared correlation. flexyBayes lowers only the two ends -- uncorrelated,
+  # or fully unstructured -- so the middle has no emit. Approximating it in
+  # either direction changes the parameter count and the meaning, so it is
+  # named and refused instead. (INLA has an exchangeable group model, with
+  # one variance and one shared correlation, that flexyBayes does not use;
+  # tests/testthat/test-engine-claims.R.)
   .register_refusal(
     reason_code = "corh_no_equicorrelation_representation",
     description = paste0(
-      "corh(f):g requests heterogeneous variances with a single shared ",
-      "correlation. No active backend represents an equicorrelation ",
-      "group-level structure; brms offers uncorrelated or fully ",
-      "unstructured and nothing between."
+      "corh(f):g, or cor(f), asks for one correlation shared by every pair ",
+      "of levels. flexyBayes has no lowering for it on either engine."
     ),
     message_template = paste0(
-      "corh(<factor>):<term> requests heterogeneous variances with one ",
-      "shared correlation, which no active backend represents. Use ",
-      "diag(<factor>):<term> for heterogeneous variances with no ",
-      "correlation, or us(<factor>):<term> to estimate every pairwise ",
-      "correlation freely."
+      "corh(<factor>):<term> asks for separate variances with one shared ",
+      "correlation. flexyBayes has no lowering for it on either engine. Use ",
+      "diag(<factor>):<term> for separate variances without correlation, ",
+      "us(<factor>):<term> on brms to estimate every correlation, or ",
+      "random = ~ <term> + <factor>:<term> for one variance with a shared ",
+      "correlation of zero or more."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1334,15 +1336,15 @@
   .register_refusal(
     reason_code = "stan_cannot_represent_structured_residual",
     description = paste0(
-      "backend = \"brms\" (Stan) cannot represent a structured residual ",
-      "covariance outside the iid `units` form."
+      "flexyBayes has no brms lowering for a residual structure other ",
+      "than the iid `units` residual and a residual per section."
     ),
     message_template = paste0(
-      "backend = \"brms\" (Stan) cannot represent this model: its ",
-      "residual term is outside the iid `units` form brms carries as ",
-      "the family scale parameter, and the brms emitter has no ",
-      "residual-structure lowering -- fitting would silently return an ",
-      "independent-residual model."
+      "flexyBayes cannot fit this model on brms: its residual term is ",
+      "neither the iid `units` residual nor a residual per section, and ",
+      "flexyBayes has no brms lowering for it, so fitting would return an ",
+      "independent-residual model. Write the residual as ~ units or ",
+      "~ dsum(~ units | f)."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1424,14 +1426,14 @@
   .register_refusal(
     reason_code = "auto_no_active_route",
     description = paste0(
-      "backend = \"auto\" found no active backend able to faithfully fit ",
-      "the model: INLA refused it and brms cannot represent it. No silent ",
-      "fallback -- auto refuses."
+      "backend = \"auto\" found neither engine able to fit the model: the ",
+      "INLA route refused it and flexyBayes has no brms lowering for it. ",
+      "There is no silent fallback, so auto refuses."
     ),
     message_template = paste0(
-      "backend = \"auto\": no active backend can faithfully fit this model ",
-      "(INLA refused; brms cannot represent it). Reformulate for ",
-      "INLA / brms, or fit a structure the active engines support."
+      "backend = \"auto\": flexyBayes cannot fit this model on INLA or on ",
+      "brms. Pass backend = \"inla\" or backend = \"brms\" to see which ",
+      "term each route refuses, and change that term."
     ),
     registered_in_adr = "Reshape R1 / S4.1 / A3",
     plan_field = "rejected_routes",
@@ -1471,11 +1473,10 @@
   .register_refusal(
     reason_code = "ar1_residual_not_representable",
     description = paste0(
-      "A separable AR1 process written on the residual side. INLA ",
-      "represents it as a latent random field plus the observation-level ",
-      "Gaussian noise -- four parameters -- and cannot fit ASReml's ",
-      "three-parameter nugget-free residual, so the residual spelling is ",
-      "refused rather than fitted under a name it does not have."
+      "A separable AR1 process written on the residual side. flexyBayes ",
+      "fits an AR1 process as a latent field plus the Gaussian observation ",
+      "error, four parameters, and not as ASReml's three-parameter residual ",
+      "without that error, so the residual spelling is refused by name."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 2 D-A",
@@ -1485,16 +1486,16 @@
   .register_refusal(
     reason_code = "stan_cannot_represent_ar1_field",
     description = paste0(
-      "A random-side AR1 or separable AR1xAR1 latent field on brms. The ",
-      "field is a Kronecker autoregressive precision that only the INLA ",
-      "emit builds; brms has no lowering for it."
+      "A random-side AR1 or separable AR1xAR1 latent field on brms. ",
+      "flexyBayes builds the field on INLA only and has no brms lowering ",
+      "for it."
     ),
     message_template = paste0(
-      "A random-side AR1 field -- ar1(t), or the separable ",
-      "ar1(row):ar1(col) -- is emitted by INLA only, as a latent ",
-      "autoregressive field plus the Gaussian observation nugget. brms has ",
-      "no lowering for a Kronecker autoregressive precision, so it would ",
-      "return an independent-effect model under the same name. Fit it with ",
+      "flexyBayes fits a random-side AR1 field -- ar1(t), or the separable ",
+      "ar1(row):ar1(col) -- on INLA only, as a latent autoregressive field ",
+      "plus the Gaussian observation nugget. It has no brms lowering for ",
+      "the field, and fitting without it would return an ",
+      "independent-effect model under the same name. Fit it with ",
       "backend = \"inla\" on a complete grid with one observation per node."
     ),
     registered_in_adr = "Spec 2 D-A",
@@ -1539,9 +1540,9 @@
   .register_refusal(
     reason_code = "fa_not_representable",
     description = paste0(
-      "A factor-analytic covariance, fa(f, k) or fa(f, k):g. It parses for ",
-      "the formula catalogue and no active engine emits a factor-analytic ",
-      "covariance."
+      "A factor-analytic covariance written without a grouping factor, ",
+      "fa(f, k). It parses for the formula catalogue, and flexyBayes does ",
+      "not fit a factor-analytic covariance in any form."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 2 S1",
@@ -1553,7 +1554,8 @@
     description = paste0(
       "An interaction of two structured terms that matches none of the ",
       "recognised interaction patterns -- us(trait):vm(gen), say. It parsed ",
-      "into the catalogue's generic-interaction node, which no engine emits."
+      "into the catalogue's generic-interaction node, which flexyBayes has ",
+      "no lowering for on either engine."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 2 S1",
@@ -1617,8 +1619,9 @@
     reason_code = "met_summary_not_available",
     description = paste0(
       "fb_met_summary() was called on a fit it cannot summarise: the ",
-      "breeder summary reads realised factor-analytic effects, and no ",
-      "active engine emits an fa() term, so this refusal is unconditional."
+      "breeder summary reads realised factor-analytic effects, and ",
+      "flexyBayes fits no fa() term on either engine, so this refusal is ",
+      "unconditional."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 5 A5.1",
@@ -1983,8 +1986,8 @@
   .register_refusal(
     reason_code = "prior_not_translatable_for_backend",
     description = paste0(
-      "The selected backend has no representation for a supplied prior ",
-      "specification. Before 0.9.2 the INLA route discarded such a row ",
+      "flexyBayes does not translate a supplied prior specification for the ",
+      "selected backend. Before 0.9.2 the INLA route discarded such a row ",
       "silently while prior_summary() printed it as applied, and the brms ",
       "route refused it with an untyped error."
     ),
@@ -3008,10 +3011,11 @@ print.fb_refusals_table <- function(x, ...) {
   .register_refusal(
     reason_code = "log_density_producer_unavailable",
     description = paste0(
-      "fb_log_posterior() on a fit whose engine has no faithful log-density ",
-      "to evaluate: INLA's posterior is a Laplace approximation, and brms's ",
-      "log-density is defined on the Stan unconstrained scale. The condition ",
-      "also carries the class fb_c4_unavailable."
+      "fb_log_posterior() on a fit from either engine: flexyBayes has no ",
+      "log-density producer for them. INLA's posterior is a Laplace ",
+      "approximation, and brms's log-density is defined on the Stan ",
+      "unconstrained scale. The condition also carries the class ",
+      "fb_c4_unavailable."
     ),
     message_template = "%s",
     registered_in_adr = "Aggregated count accessors (2026-09-15)",
@@ -3068,11 +3072,10 @@ print.fb_refusals_table <- function(x, ...) {
       "scaled copies of a latent field, and that representation works; what ",
       "it does not do is return the same covariance on a second identical ",
       "call when the trial's genetic signal is weak, so a reported ",
-      "component records where the optimiser settled on that call. brms ",
-      "has no factor-analytic lowering, so no engine fits ",
-      "the structure to a standard the package is willing to state. The ",
-      "diagonal structure diag(f):g fits on both engines, and us(f):g fits ",
-      "on brms for up to five levels."
+      "component records where the optimiser settled on that call. ",
+      "flexyBayes has no factor-analytic lowering for brms, so neither ",
+      "engine fits the structure here. The diagonal structure diag(f):g ",
+      "fits on both engines, and us(f):g fits on brms."
     ),
     message_template = "%s",
     registered_in_adr = "U-FA-1 (2026-09-16)",

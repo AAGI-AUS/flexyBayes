@@ -93,5 +93,9 @@ test_that(".brms_term_refusal_message() distinguishes spl() (INLA route) from s(
   # false claim that s(x) itself is what runs as a random walk there.
   expect_match(smooth_msg, "spl(x)", fixed = TRUE)
   expect_false(grepl('s(x) with backend = "inla"', smooth_msg, fixed = TRUE))
-  expect_match(smooth_msg, "no active engine", fixed = TRUE)
+  # brms fits s() in its own formula (test-engine-claims.R), so the message
+  # says flexyBayes fits it on neither engine, not that no engine does.
+  expect_match(smooth_msg, "flexyBayes fits an s(x) smooth on neither engine",
+    fixed = TRUE)
+  expect_false(grepl("no active engine", smooth_msg, fixed = TRUE))
 })

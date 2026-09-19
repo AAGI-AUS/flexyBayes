@@ -53,8 +53,9 @@ vocabulary is active and validated, while the approximate-covariance
 fit route activates in a subsequent release).
 
 A \code{"blocks"} carrier is one covariance with one standard deviation, and
-both engines refuse it by name: brms does not take it, and INLA would fit
-each block with its own standard deviation. The precision carrier of
+flexyBayes refuses it by name on both engines: its brms route has no
+blocks carrier, and its INLA route would fit each block with its own
+standard deviation. The precision carrier of
 \code{Matrix::bdiag(lapply(blocks, solve))} states the same covariance on INLA,
 and the dense carrier of the block-diagonal matrix states it on brms.
 

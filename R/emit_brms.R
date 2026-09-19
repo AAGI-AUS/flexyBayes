@@ -757,11 +757,10 @@ emit_brms <- function(
 
     # corh(f):g asks for heterogeneous variances with ONE correlation shared
     # by every pair of levels -- k + 1 parameters, sitting between diag()'s k
-    # and us()'s k(k+1)/2. brms offers no such structure: a group-level term
-    # is either uncorrelated (`||`) or fully unstructured (`|`), with prior
-    # classes `sd` and `cor` and nothing between them. (brms does have a
-    # compound-symmetry structure, cosy(), but it applies to the RESIDUAL
-    # autocorrelation, not to group-level effects.)
+    # and us()'s k(k+1)/2. flexyBayes writes a brms group-level term either
+    # uncorrelated (`||`) or fully unstructured (`|`) and has no lowering for
+    # the structure between them. Dispatch refuses it before this emit runs
+    # (R/dispatch.R); the branch stays for a direct emit call.
     #
     # Approximating it with us() would fit k(k+1)/2 - 1 parameters nobody
     # asked for and report correlations the model was meant to constrain
@@ -770,26 +769,7 @@ emit_brms <- function(
     if (identical(ttype, "corh_gxe")) {
       stop(.fb_refusal_condition(
         reason_code = "corh_no_equicorrelation_representation",
-        message = paste0(
-          "corh(",
-          term$outer,
-          "):",
-          term$inner,
-          " requests heterogeneous ",
-          "variances with a single shared correlation. No active backend ",
-          "represents that structure: brms group-level effects are either ",
-          "uncorrelated or fully unstructured, with nothing between. Use ",
-          "diag(",
-          term$outer,
-          "):",
-          term$inner,
-          " for heterogeneous ",
-          "variances with no correlation, or us(",
-          term$outer,
-          "):",
-          term$inner,
-          " to estimate every pairwise correlation freely."
-        )
+        message = .fb_corh_refusal_message(term)
       ))
     }
 
@@ -990,6 +970,24 @@ emit_brms <- function(
   brms::bf(main, stats::as.formula(paste("sigma ~", sigma_rhs)))
 }
 
+
+# The refusal for corh(f):g, shared by the dispatch guard and the brms emit
+# so the two cannot drift apart. `g + f:g` is the same covariance as one
+# variance for every level with a shared correlation of zero or more:
+# Var = s_g^2 + s_gf^2 and Cov = s_g^2.
+.fb_corh_refusal_message <- function(term) {
+  outer <- term$outer %||% "f"
+  inner <- term$inner %||% "g"
+  paste0(
+    "corh(", outer, "):", inner, " asks for separate variances with one ",
+    "shared correlation. flexyBayes has no lowering for it on either ",
+    "engine. Use diag(", outer, "):", inner, " for separate variances ",
+    "without correlation, us(", outer, "):", inner, " on brms to estimate ",
+    "every correlation, or random = ~ ", inner, " + ", outer, ":", inner,
+    " for one variance with a shared correlation of zero or more."
+  )
+}
+
 # .brms_term_refusal_message() --- what to tell a user whose random term has
 # no branch in the reconstruction above.
 #
@@ -1010,17 +1008,13 @@ emit_brms <- function(
       ") with backend = \"inla\"."
     ),
     "smooth_mgcv" = paste0(
-      "An mgcv smooth basis has no brms lowering in the ASReml grammar, ",
-      "and no active engine fits s(",
+      "flexyBayes fits an s(",
       var_name,
-      ") at all: INLA's rw2 route is spl(",
+      ") smooth on neither engine; brms fits s() in its own formula, ",
+      "outside flexyBayes. Use spl(",
       var_name,
-      "), a different term type built on an ASReml-style basis, not a ",
-      "lowering of the mgcv smooth. Use spl(",
-      var_name,
-      ") with backend = \"inla\" instead of s(",
-      var_name,
-      ")."
+      ") with backend = \"inla\": a second-order random walk on an ",
+      "ASReml-style basis, which is a different smooth from mgcv's."
     ),
     "polynomial" = paste0(
       "Fit pol(",
@@ -1062,10 +1056,16 @@ emit_brms <- function(
       ", K) on its own, or use ASReml for the crossed form."
     ),
     "fa_gxe" = paste0(
-      "brms group-level effects are either uncorrelated or fully ",
-      "unstructured, with no factor-analytic form between the two. INLA ",
-      "emits this one, entering each common factor as scaled copies of a ",
-      "latent field, so fit it with backend = \"inla\"."
+      "flexyBayes fits a factor-analytic covariance on neither engine. ",
+      "Write diag(",
+      term$outer %||% "<outer>",
+      "):",
+      term$inner %||% "<inner>",
+      " for one variance per level, or us(",
+      term$outer %||% "<outer>",
+      "):",
+      term$inner %||% "<inner>",
+      " on brms for every correlation."
     ),
     # The fallback claims nothing about the other engine. Which structures
     # INLA emits changes as the emit grows, and a sentence here saying "no
@@ -1074,17 +1074,15 @@ emit_brms <- function(
     # places. The capability table is generated from one source and is the
     # thing to point at.
     paste0(
-      "This structure has no brms lowering. fb_terms() will describe what ",
-      "was parsed, and the capability table in the README lists what each ",
-      "engine fits."
+      "fb_terms() describes what was parsed, and the capability table in ",
+      "the README lists what each engine fits."
     )
   )
   paste0(
-    "brms cannot represent the random term type \"",
+    "flexyBayes cannot fit the random term type \"",
     ttype,
-    "\": the brms formula reconstruction has no lowering for it, and ",
-    "emitting the model without the term would answer a different ",
-    "question. ",
+    "\" on brms: it has no brms lowering for it, and fitting the model ",
+    "without the term would answer a different question. ",
     route
   )
 }

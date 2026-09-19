@@ -665,10 +665,10 @@
         reason_code = "fa_not_representable",
         message = paste0(
           "fa(", term$var, ", k) names a factor-analytic covariance with no ",
-          "grouping factor to apply it to. Write it as fa(", term$var,
-          ", k):<group>, which INLA emits as scaled copies of a common ",
-          "factor, or use us(", term$var, "):<group> for the full ",
-          "unstructured covariance."
+          "grouping factor. flexyBayes does not fit a factor-analytic ",
+          "covariance in any form. Write diag(", term$var, "):<group> for ",
+          "one variance per level, or us(", term$var, "):<group> on brms ",
+          "for the full covariance."
         )
       ))
     }
@@ -690,20 +690,15 @@
         reason_code = "factor_analytic_not_repeatable",
         message = paste0(
           "fa(", term$outer, ", ", term$k, "):", term$inner,
-          " asks for a factor-analytic genotype-by-environment covariance. ",
-          "flexyBayes fitted this on INLA from 0.10.0.9000 and does not from ",
-          "0.13.0: repeated identical calls do not agree closely enough for ",
-          "the number reported to be read as the covariance. On ",
-          "agridat::besag.met (30 genotypes, six environments) eight ",
-          "identical fits spanned a ratio of 1.23 in a genotype-by-",
-          "environment variance and a range of 0.12 in a genetic ",
-          "correlation, against the declared tolerances of 1.10 and 0.05. ",
-          "brms has no factor-analytic lowering, so there is no second ",
-          "engine to route to. Write diag(", term$outer, "):", term$inner,
-          ", one variance per environment with no covariance between them, ",
-          "which fits on both engines; or us(", term$outer, "):",
-          term$inner, " on brms for up to five environments, which ",
-          "estimates the correlations directly."
+          " asks for a factor-analytic genotype-by-environment covariance, ",
+          "which flexyBayes does not fit on either engine: on INLA, ",
+          "repeated identical calls did not agree on the covariance (on ",
+          "agridat::besag.met eight fits spanned a ratio of 1.23 in a ",
+          "genotype-by-environment variance, against a tolerance of 1.10), ",
+          "and flexyBayes has no factor-analytic lowering for brms. Write ",
+          "diag(", term$outer, "):", term$inner, ", one variance per ",
+          "environment, which fits on both engines, or us(", term$outer,
+          "):", term$inner, " on brms, which estimates every correlation."
         )
       ))
     }
@@ -711,12 +706,11 @@
       stop(.fb_refusal_condition(
         reason_code = "ar2_not_representable",
         message = paste0(
-          "ar2(", term$var, ") requests a second-order autoregressive ",
-          "structure. Neither active engine emits one: the INLA emit ",
-          "builds first-order autoregressive fields only, and brms has no ",
-          "lowering for a group-level autoregressive precision at all. ",
-          "Use ar1(", term$var, ") for the first-order process, or ASReml ",
-          "for ar2()."
+          "ar2(", term$var, ") asks for a second-order autoregressive ",
+          "structure. flexyBayes writes first-order autoregressive terms ",
+          "only, on INLA. Use ar1(", term$var, ") for the first-order ",
+          "process; for a second-order one, INLA's own ar model takes ",
+          "higher orders, and ASReml fits ar2()."
         )
       ))
     }
@@ -724,14 +718,21 @@
       stop(.fb_refusal_condition(
         reason_code = "corh_no_equicorrelation_representation",
         message = paste0(
-          "cor(", term$var, ") requests one common correlation shared by ",
-          "every pair of levels. No active engine represents that ",
-          "structure: brms group-level effects are either uncorrelated or ",
-          "fully unstructured, with nothing between, and INLA's f() has no ",
-          "equicorrelation model. Use us(", term$var, "):g to estimate ",
-          "every pairwise correlation freely, or diag(", term$var,
-          "):g for heterogeneous variances with no correlation."
+          "cor(", term$var, ") asks for one correlation shared by every ",
+          "pair of levels. flexyBayes has no lowering for it on either ",
+          "engine. Use us(", term$var, "):g on brms to estimate every ",
+          "correlation, or diag(", term$var, "):g for separate variances ",
+          "without correlation."
         )
+      ))
+    }
+    # corh(f):g is refused here, on every engine, rather than by the brms
+    # emit alone: the INLA gate used to refuse it as an emit gap and point
+    # at brms, which then refused it too.
+    if (identical(ty, "corh_gxe")) {
+      stop(.fb_refusal_condition(
+        reason_code = "corh_no_equicorrelation_representation",
+        message = .fb_corh_refusal_message(term)
       ))
     }
     if (identical(ty, "str")) {
@@ -750,18 +751,24 @@
     if (identical(ty, "interaction_generic")) {
       left <- term$left$type %||% "?"
       right <- term$right$type %||% "?"
+      multi_trait <- identical(left, "us") && right %in% c("vm", "ped")
       stop(.fb_refusal_condition(
         reason_code = "interaction_not_representable",
         message = paste0(
-          "The interaction of a \"", left, "\" term with a \"", right,
-          "\" term matches none of the structured-interaction patterns ",
-          "flexyBayes emits, so it parsed into the catalogue's generic ",
-          "interaction node and no engine can lower it. The recognised ",
-          "structured interactions are fa(f, k):g, us(f):g, corh(f):g, ",
-          "diag(f):g, at(f):units, ar1(r):ar1(c), vm(g, K):f and the ",
-          "plain factor crossings a:b and a:b:c. A multi-trait covariance ",
-          "-- us(trait):vm(gen) -- is the common case here and no active ",
-          "engine represents it."
+          "flexyBayes cannot fit the interaction of a \"", left,
+          "\" term with a \"", right, "\" term. It matches none of the ",
+          "structured interactions flexyBayes recognises: fa(f, k):g, ",
+          "us(f):g, corh(f):g, diag(f):g, at(f):units, ar1(r):ar1(c), ",
+          "vm(g, K):f and the crossings a:b and a:b:c. ",
+          if (multi_trait) {
+            paste0(
+              "flexyBayes has no lowering for a multi-trait covariance, ",
+              "us(trait):vm(gen); fit it with brms directly, as ",
+              "(0 + trait | gr(gen, cov = K)), or fit each trait separately."
+            )
+          } else {
+            "Write the structure as one of these."
+          }
         )
       ))
     }
@@ -852,17 +859,15 @@
   paste0(
     "residual = ~ ", spelling, " asks for ASReml's ",
     if (separable) "separable " else "",
-    "autoregressive residual: a single correlated residual with no ",
-    "independent plot error, ", asreml_params, ". INLA ",
-    "represents an AR1 process as a latent random field plus the ",
-    "observation-level Gaussian noise -- ", field_params, " -- which nests ",
-    "ASReml's model as the nugget goes to zero but returns different ",
-    "correlations on data with real plot-to-plot noise. flexyBayes will ",
-    "not fit the ", field_params, " model under the ", named_as, " name. ",
-    "Two routes: write the field on the random side, random = ~ ",
-    spelling, ", which fits the field-plus-nugget model under its own ",
-    "name on INLA (one observation per grid node); or use ASReml itself ",
-    "for the exact residual formulation (Gilmour, Cullis, & Verbyla, 1997)."
+    "autoregressive residual: one correlated residual with no independent ",
+    "plot error, ", asreml_params, ". flexyBayes fits an autoregressive ",
+    "process as a latent field plus the Gaussian observation error, ",
+    field_params, ", which is a different model from the ", named_as,
+    " one and gives different correlations when the data carry ",
+    "plot-to-plot noise. Write the field on the random side, random = ~ ",
+    spelling, ", which fits that model under its own name on INLA (one ",
+    "observation per grid node), or use ASReml for the residual form ",
+    "(Gilmour, Cullis, & Verbyla, 1997)."
   )
 }
 
@@ -1034,19 +1039,17 @@
     }
   }
 
-  # low_rank_smooth truncates the dense mgcv smooth basis; INLA
-  # represents smooths via rw2 and brms via Stan spline bases, and
-  # neither can honour the truncation, so no active engine produces it --
-  # unconditionally, including `auto`.
+  # low_rank_smooth truncates the dense mgcv smooth basis, and flexyBayes
+  # has no route for the truncated basis on either engine, so it refuses
+  # unconditionally, including under `auto`.
   if (length(.collect_approx(fb$random_terms)) > 0L) {
     stop(.fb_refusal_condition(
       reason_code = "low_rank_smooth_unsupported",
       message = paste0(
-        "A smooth requesting the low_rank_smooth approximation has no ",
-        "active emit path: INLA fits a smooth via rw2 and brms via Stan ",
-        "spline bases, and neither can apply the rank-K basis ",
-        "truncation. Drop the representation = ... argument to fit the ",
-        "exact smooth on either active engine."
+        "flexyBayes cannot fit a smooth with the low_rank_smooth ",
+        "approximation: it has no route for the approximation on either ",
+        "engine. Drop the representation = ... argument and write the ",
+        "smooth as spl(x), which fits on INLA."
       ),
       family_class = "flexybayes_low_rank_smooth_unsupported_refusal"
     ))
@@ -1084,7 +1087,7 @@
           entry$message_template
         } else {
           paste0(
-            "backend = \"brms\" (Stan) cannot represent this model (",
+            "flexyBayes cannot fit this model on brms (",
             cap$reason_code, ")."
           )
         },
@@ -1206,30 +1209,27 @@
       ) {
         if (identical(fallback_backend, "brms")) {
           message(
-            "backend = \"auto\": lgm_gate() refused (",
+            "backend = \"auto\": the INLA route refused this model (",
             primary$rule_id,
-            "), so routing to brms -- the full-HMC backend, which ",
-            "represents this model where INLA does not. Pass ",
-            "backend = \"brms\" to silence."
+            "), so it is fitted on brms. Pass backend = \"brms\" to ",
+            "silence this note."
           )
         } else if (is_multistratum) {
           message(
-            "backend = \"auto\": lgm_gate() refused (",
+            "backend = \"auto\": the INLA route refused this model (",
             primary$rule_id,
-            "); this is a multi-stratum designed experiment and brms (the ",
-            "faithful backend) is unavailable or cannot represent it, so ",
-            "no active backend can faithfully fit this model. Install ",
-            "brms for the faithful path."
+            "), and brms is not installed or flexyBayes cannot fit the ",
+            "model on it, so neither engine fits it. Install brms, or ",
+            "change the term the refusal names."
           )
         } else {
           message(
-            "backend = \"auto\": lgm_gate() refused (",
+            "backend = \"auto\": the INLA route refused this model (",
             primary$rule_id,
             ": ",
             primary$reason,
-            "); brms cannot represent this model either, so no active ",
-            "backend can faithfully fit it. Pass backend = \"inla\" to ",
-            "surface the refusal as an error."
+            "), and flexyBayes cannot fit it on brms either. Pass ",
+            "backend = \"inla\" to see the refusal as an error."
           )
         }
         .emit_state_set("auto_fallback_note", TRUE)
@@ -1278,8 +1278,7 @@
                 "routing to brms. "
               } else {
                 paste0(
-                  "brms cannot represent this model either, so no ",
-                  "active backend can faithfully fit it. "
+                  "flexyBayes cannot fit this model on brms either. "
                 )
               },
               "Install INLA from ",
@@ -1389,9 +1388,8 @@
               message(
                 "backend = \"auto\": INLA failed numerically (",
                 conditionMessage(inla_fit$cond),
-                "); brms cannot represent this model either, so no active ",
-                "backend can faithfully fit it. Pass backend = \"inla\" ",
-                "to surface the error as such."
+                "), and flexyBayes cannot fit this model on brms either. ",
+                "Pass backend = \"inla\" to see the error as such."
               )
             }
             .emit_state_set("auto_inla_numerical_fallback_note", TRUE)
@@ -1484,10 +1482,9 @@
     stop(.fb_refusal_condition(
       reason_code = "auto_no_active_route",
       message = paste0(
-        "backend = \"auto\": no active backend can faithfully fit this ",
-        "model (INLA refused it and brms cannot represent it). ",
-        "Reformulate for INLA / brms, or fit a structure the ",
-        "active engines support."
+        "backend = \"auto\": flexyBayes cannot fit this model on INLA or ",
+        "on brms. Pass backend = \"inla\" or backend = \"brms\" to see ",
+        "which term each route refuses, and change that term."
       ),
       family_class = "flexybayes_auto_no_route_refusal",
       backend = "auto"
@@ -1775,10 +1772,9 @@
     return(NULL)
   }
 
-  # Heterogeneous residual (at_units) on the aggregated path: INLA needs
-  # the (deferred) multi-likelihood stack, and no active engine has an
-  # alternative aggregated route. A named transitional loss (spike 1 /
-  # S13): refuse aggregate = TRUE, else fall through to the per-row path.
+  # Heterogeneous residual (at_units) on the aggregated path: the aggregated
+  # INLA emit has no sectioned residual, and there is no aggregated route on
+  # brms. Refuse aggregate = TRUE, else fall through to the per-row path.
   uses_at_units <- length(fb$residual_terms) > 0L &&
     any(vapply(
       fb$residual_terms,
@@ -1795,10 +1791,9 @@
         class = c("flexybayes_aggregate_refusal", "error", "condition"),
         list(
           message = paste0(
-            "`aggregate = TRUE` refused: heterogeneous residual at_units ",
-            "on the aggregated path has no active route -- INLA requires ",
-            "the multi-likelihood stack (deferred). Pass ",
-            "aggregate = FALSE for the per-row path."
+            "`aggregate = TRUE` refused: flexyBayes's aggregated route has ",
+            "no sectioned residual. Pass aggregate = FALSE to fit the model ",
+            "row by row."
           ),
           call = the_call,
           reason_codes = "structured_residual_not_aggregatable",

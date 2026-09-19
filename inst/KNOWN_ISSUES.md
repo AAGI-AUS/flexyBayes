@@ -2,10 +2,8 @@
 
 This file ships with the package (`system.file("KNOWN_ISSUES.md", package =
 "flexyBayes")`). It is the current statement of what flexyBayes fits, what it
-refuses, and where the open computational problems sit, together with an
-invitation to the team to help close them. It is written for the internal
-release: the package validates on the model classes it supports, and states
-plainly the ones it does not.
+refuses, and where the open computational problems sit. Contributions to any
+of them are welcome.
 
 The thing to know before relying on flexyBayes for a multi-environment trial:
 **the baseline heteroscedastic MET model -- iid genotype, iid
@@ -14,10 +12,9 @@ engines, and the evidence behind that row is small-scale.** On brms the
 combination generates both blocks in the emitted Stan program and samples
 cleanly on simulated data (the live test), with the pieces corroborated on
 `agridat::besag.met`; on INLA it recovers the simulated components (see the
-table). Unstructured and factor-analytic genotype-by-environment covariance
-combined with a sectioned residual do not plan on either engine, and a
-national trial series has not been run. The detail is below, so the scale
-question can be answered collectively.
+table). `us(env):gen` with a sectioned residual is written out on brms but has
+not been checked against a reference fit, `fa()` is refused on both engines,
+and a national trial series has not been run. The detail is below.
 
 ## Backend support by model class
 
@@ -25,43 +22,44 @@ The table below is generated from a single R-level source
 (`.fb_capability_matrix()`) by `tools/generate_capability_matrix.R`, and every
 verdict in it is re-derived from the gate and emit code by
 `tests/testthat/test-capability-matrix.R`. A hand edit to the rows fails that
-test. This replaces the hand-maintained matrix that shipped through 0.8.x,
-which had drifted from the emit layer in four places.
+test. A note that says INLA or brms cannot do something is checked against the
+engine itself in `tests/testthat/test-engine-claims.R`; every other refusal
+is flexyBayes's own, and its note says so. The README carries the rows at
+least one engine fits, without the notes.
 
 <!-- capability-matrix:begin -->
+<!-- Generated from .fb_capability_matrix() in R/capability_matrix.R by tools/generate_capability_matrix.R. Edit the R table and re-run the generator; tests/testthat/test-capability-matrix.R fails on a hand edit here. -->
 | Model class | Spelling | INLA | brms | Notes |
 |---|---|:-:|:-:|---|
-| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The class both engines emit, and the one their agreement is checked on in the test suite. |
-| GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | INLA's likelihood allowlist is read from `INLA::inla.models()` when INLA is installed. |
-| Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | brms-native (`dpars` mu, shape, hu); the zero-mass probability `hu` keeps brms's own prior. INLA's likelihood roster carries no counterpart, so the family gate refuses it there and `auto` routes to brms. |
-| Uncorrelated random slope | `(x \|\| g)` | fits | fits | Two independent iid fields on INLA, one for the intercept and one for the slope, checked against lme4's REML fit of the same model. Reported as `sd_<g>` and `sd_<x>_<g>` on INLA and as `sd_<g>` and `sd_<g>__<x>` on brms; canonical_names() maps both to the INLA spelling. |
-| Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | fits | fits | An ordinary treatment-coded design matrix on both engines. The INLA posterior means sit on the least-squares estimates of the same model under a weak prior. |
-| Correlated random slope | `(x \| g)` | refuses | fits | The uncorrelated slope with the correlation freed: one intercept SD, one slope SD and the correlation between them. brms writes `(x \| g)` verbatim and reports `sd_<g>`, `sd_<g>__<x>` and `cor_<g>__Intercept__<x>`. Estimated correlation matrices are fitted on brms only: INLA refuses by name (`correlated_covariance_requires_brms`) and `backend = "auto"` routes to brms. The INLA route was one iid2d field under a joint Wishart prior, and paired against ASReml 4.2.0.392 and lme4 on `lme4::sleepstudy` it returned a slope variance of 46.4 at the posterior mode against 35.08 and 35.07, while rescaling the response by ten moved the intercept-slope correlation from 0.02 to 0.969 where REML holds at 0.066 (oracle row 19, defect D1 of finding S01). |
-| Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | fits | fits | An iid field over the interaction index on INLA, `(1 \| a:b)` on brms -- the same model, and the two agree with lme4's REML fit of it on `agridat::john.alpha`. Only observed cells get a level, as in lme4 and brms. |
-| Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | fits | fits | One variance per level of `f`, no covariance between levels. All three spellings emit identical code. INLA writes k independent iid fields, one per level; brms writes `(0 + f \|\| g)`. Both report the component as `sd_<g>__<f><level>` and agree with lme4's REML fit of the same model. `at(f, level)` conditions on selected levels -- a different model -- and still refuses. |
-| Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits | `(0 + f \| g)` on brms. Estimated correlation matrices are fitted on brms only: INLA refuses by name (`correlated_covariance_requires_brms`) and `backend = "auto"` routes to brms. The INLA route was one iidKd field under a joint Wishart prior, and paired against ASReml 4.2.0.392 on `agridat::besag.met` it returned a genetic correlation of 0.142 where ASReml returns 0.930, while eight identical calls on the response rescaled by ten none converged and returned correlations from -0.894 to +0.686 (finding O04). The correlated sibling of the diagonal structure -- `k(k+1)/2` parameters against `diag()`'s `k`. At one observation per cell the residual variance is confounded with the diagonal of the covariance: the covariance block converges and `sigma` does not, and a longer chain does not help. Replicate within cell, or put an informative prior on the residual. |
-| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | No active engine has an equicorrelation group-level structure. Use `diag(f):g` or `us(f):g`. |
-| Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA carries it through the multiple-likelihood interface, a matrix response with one Gaussian family per level; brms lowers it to distributional regression on log sigma, `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for families with no residual scale; `at(f, level):units` conditions on selected levels, which is a different model, and refuses. |
-| Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model, shown on small simulated data; unstructured and factor-analytic genotype-by-environment covariance do not combine with the sectioned residual on either engine. Both halves refused on INLA before 0.10.0.9000, so the combination was unreachable there. It now recovers the genotype, genotype-by-environment and all three per-section residual standard deviations on simulated data. |
-| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | Refused on both engines from 0.13.0 (`factor_analytic_not_repeatable`). INLA does represent the structure: each common factor is one latent field entered per level of `f` as a scaled copy, and INLA's copy scaling is the loading, so the loadings carry a posterior rather than a point estimate. What was never established is that a second identical call returns the same covariance. Measured under the 0.13.0 half-normal default against a tolerance fixed before the runs, the identified covariance `G = LL' + diag(psi)` repeated to better than 1.01 on two simulated designs and on `agridat::dasilva.maize`, and on `agridat::besag.met`, where the genetic signal is weak, eight identical calls spanned a ratio of 1.23 in a genotype-by-environment variance and a range of 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05. The loadings are also anchored at one for factor j at level j, taken from factor-level order, and that anchoring is representable only where the anchor level carries a common-factor loading; nothing checked it. brms has no factor-analytic lowering, so no engine fits it. `diag(env):gen` fits on both engines and `us(env):gen` on brms up to five environments. |
-| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | No active engine represents a trait-by-genotype unstructured covariance. |
-| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | INLA takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or block carrier by name; brms takes dense, Cholesky and precision and refuses a block carrier. Under `fb_select()`: shrinkage yes, projection no. A joint shrinkage prior over candidate fixed effects fits on a base carrying one of these terms, but the term lowers to `(1 \| gr(g, cov = K))` and projpred refuses a function call on the right-hand side of a group-term `\|` (probe C5), so the projection decision is red. `decision = "auto"`, the default, resolves to `full` there; naming `"projection"` refuses before the reference model is sampled. |
-| Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget -- four hyperparameters, one observation per grid node. This is not ASReml's three-parameter nugget-free residual, so the residual spelling refuses and names this one. |
-| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, via INLA's `replicate =` mechanism, but the row correlation, column correlation and field SD are shared across every level -- not estimated per trial. `at(trial, level):ar1(row):ar1(col)` (a level argument, asking for a single conditioned trial or for per-trial hyperparameters) refuses by name (`at_field_per_level_hyper_not_representable`). brms has no lowering for either spelling. |
-| Grouped temporal AR1 field | `random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)` | fits | refuses | AR1 along `t` within each level of `g` and independent across levels: one correlation, one field SD and the Gaussian nugget, three hyperparameters shared by every level. The units-by-occasions repeated-measures covariance of Verbyla and Cullis (1992), written on the random side; an occasion a unit missed stays as a design row with the response NA under `na_action = "augment"`. Either factor order is accepted. brms has no lowering for the grouped autoregressive precision and refuses. |
-| Univariate P-spline | `~ spl(x)` | fits | refuses | Mapped to INLA's second-order random walk. brms has no lowering for the smooth basis. An analogue of ASReml's spline rather than a translation of it -- basis, scaling and prediction rule differ, and no equivalence has been established (see TRANSLATION.md). |
-| Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weighting, Var(y_i) = sigma^2 / w_i (the ASReml / lme4 / glm(weights=) sense): INLA's `scale = w`; on brms a known offset on the sigma distributional parameter, NOT brms's own `weights()` addition term (a different, likelihood-power quantity per brms's own documentation). Both engines match lme4::lmer(weights=) closely on a shared simulated fixture. Any other family, or a non-identity link on Gaussian, refuses by name (`weights_requires_gaussian`); `aggregate = TRUE` alongside weights also refuses by name (`weights_not_aggregatable`). |
-| Exact sufficient-statistic aggregation (binomial, Poisson) | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a | Exact cell-likelihood aggregation for binomial (logit) and Poisson (log) models with a small cell count; the posterior is the per-row posterior. The marginal likelihood is not reported (`aggregated_evidence_unavailable`): the engine's value omits a constant that depends on the data. The brms path has no aggregated emit. |
-| Exact sufficient-statistic aggregation (Gaussian) | `aggregate = TRUE`, `flexybayes_stream(family = "gaussian")` | refuses | n/a | Refused by name (`aggregation_residual_prior_not_composed`). The aggregated Gaussian route composes the within-cell sum of squares with a fixed prior on the residual precision, so a stated or default residual prior would not be the prior fitted. Gaussian models are fitted per row, which is what `aggregate = "auto"` does; `flexybayes_stream(fit = FALSE)` still returns the sufficient statistics. |
-| Ridge shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ ridge(scale))` | n/a | fits | A joint shrinkage prior over a declared block of candidate fixed effects, compiled to one coefficient-specific `normal` row per candidate so the block is targeted exactly and no protected coefficient is touched. Only `fb_select()` takes a shrinkage prior, and it fits its reference model on brms whatever engine fitted the base, carrying the base's structure and priors through and recording the re-emission on the certificate. No call asks INLA to fit one, and INLA has no implementation of the block. |
-| Laplace shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ laplace(scale))` | n/a | fits | One coefficient-specific `double_exponential` row per candidate. The posterior mean is not a lasso estimate and the draws carry no exact zeros; the alias `lasso()` says so once per session. Fitted on brms, as for ridge. A Laplace prior is Gaussian given one local scale per coefficient, so the model can be written as a latent Gaussian model, but it then carries a hyperparameter for every coefficient, and INLA's numerical integration is built for models with a few hyperparameters. |
-| Elastic-net shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ elastic_net(lambda, alpha))` | n/a | fits | The canonical elastic-net density written as a `target +=` contribution over the candidate indices through `stanvars` and `check = FALSE`, so the block is targeted exactly while a protected coefficient keeps its own prior row. Fixed hyperparameters only in this release, because the normalising constant is then irrelevant. Fitted on brms, as for ridge. |
-| Regularised horseshoe shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ regularized_horseshoe(p0))` | n/a | fits | brms's native `horseshoe()`, with `par_ratio` set from `p0` and calibrated against the number of resampling units rather than the number of rows. Exact block targeting ONLY when the base's fixed part is intercept-only: it is a class-wide prior, brms refuses a coefficient-specific row beside a class-wide special prior, so a base carrying protected fixed effects beyond the intercept refuses with `penalty_block_targeting_unsupported`. The two ways forward are `laplace()`, `ridge()` or `elastic_net()`, which target the block exactly, or `scope = "all_fixed"`, an opt-in under which the protected coefficients also sit under the global-local prior, the projection search forces them into every submodel, and the certificate records the named approximation `protected_under_global_shrinkage`. A candidate block containing a design column the re-emitted reference cannot standardise -- a factor contrast, an interaction product -- refuses with `penalty_candidate_columns_unscaled`. Fitted on brms, as for ridge; like the Laplace prior, it is Gaussian only given a local scale per coefficient. |
-| R2D2 shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))` | n/a | fits | brms's native `R2D2()`, whose scales are stated on the explained-variance grammar rather than on a coefficient scale, so `p0` is refused for it. Class-wide, with the same targeting rule as the regularised horseshoe: exact only when the base's fixed part is intercept-only, otherwise `laplace()`, `ridge()` or `elastic_net()`, or `scope = "all_fixed"` with the named approximation. Unstandardised candidate columns refuse as for the horseshoe. Fitted on brms, as for ridge. |
+| Gaussian LMM, simple random intercept | `random = ~ g` / `(1 \| g)` | fits | fits | The class both engines fit, and the one on which the tests check that the two agree. |
+| GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect | `(1 \| g)` with `family =` | fits | fits | On INLA each family is checked against `INLA::inla.models()` when INLA is installed. |
+| Hurdle gamma (zero mass plus a positive gamma part) | `family = "hurdle_gamma"` | refuses | fits | A brms family (parameters mu, shape and hu); `hu` keeps brms's own prior. INLA has no hurdle-gamma likelihood, so the INLA route refuses it and `backend = "auto"` sends it to brms. |
+| Uncorrelated random slope | `(x \|\| g)` | fits | fits | Two independent iid fields on INLA, one for the intercept and one for the slope, checked against lme4's REML fit of the same model. Reported as `sd_<g>` and `sd_<x>_<g>` on INLA and as `sd_<g>` and `sd_<g>__<x>` on brms; `canonical_names()` maps both to the INLA names. |
+| Factor-by-numeric fixed interaction | `y ~ f * x` with numeric `x` | fits | fits | An ordinary treatment-coded design matrix on both engines. Under a weak prior the INLA posterior means sit on the least-squares estimates of the same model. |
+| Correlated random slope | `(x \| g)` | refuses | fits | One intercept SD, one slope SD and the correlation between them. brms takes `(x \| g)` as written and reports `sd_<g>`, `sd_<g>__<x>` and `cor_<g>__Intercept__<x>`. flexyBayes fits estimated correlation matrices on brms only, and `backend = "auto"` sends them there. On INLA the structure was one iid2d field under a joint Wishart prior. Paired against ASReml 4.2 and lme4 on `lme4::sleepstudy` it gave a slope variance of 46.4 at the posterior mode, against 35.08 and 35.07, and rescaling the response by ten moved the intercept-slope correlation from 0.02 to 0.969, where REML stays at 0.066. |
+| Nested / interaction random effects, multi-stratum | `~ gen:env`, `~ env:rep:block` | fits | fits | An iid field over the interaction index on INLA and `(1 \| a:b)` on brms. They are the same model, and both agree with lme4's REML fit of it on `agridat::john.alpha`. Only observed cells get a level, as in lme4 and brms. |
+| Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | fits | fits | One variance per level of `f`, no covariance between levels. The three spellings give identical code: k independent iid fields on INLA, `(0 + f \|\| g)` on brms. Both report `sd_<g>__<f><level>` and agree with lme4's REML fit of the same model. `at(f, level)` conditions on selected levels, which is a different model, and is refused. |
+| Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits | Written `(0 + f \| g)` on brms. flexyBayes fits estimated correlation matrices on brms only, and `backend = "auto"` sends them there. On INLA the structure was one iidKd field under a joint Wishart prior. On `agridat::besag.met` it gave a genetic correlation of 0.142 where ASReml gives 0.930, and eight identical calls on the response rescaled by ten did not converge and returned correlations from -0.894 to +0.686. The structure has k(k+1)/2 parameters against the k of `diag()`. With one observation per cell the residual variance is confounded with the diagonal of the covariance, and a longer chain does not separate them: replicate within cells, or put an informative prior on the residual. |
+| Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. With one variance for every level and a correlation of zero or more, the same covariance is `random = ~ g + f:g`, which fits on both engines. INLA has an exchangeable group model with one variance and one shared correlation, which flexyBayes does not use. Use `diag(f):g` for separate variances without correlation, or `us(f):g` on brms for every correlation. |
+| Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA fits one Gaussian likelihood per level; brms fits `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for a family with no residual scale, and for `at(f, level):units`, which conditions on selected levels. |
+| Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model. On small simulated data both engines recover the genotype, genotype-by-environment and per-section residual standard deviations. `us(env):gen` with the sectioned residual is written out on brms but has not been checked against a reference fit, and `fa()` is refused on both engines. |
+| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | flexyBayes does not fit this structure on either engine. INLA can represent it, one latent field per common factor entered at each level as a scaled copy, but repeated identical calls did not return the same covariance where the genetic signal is weak: on `agridat::besag.met` eight calls spanned a ratio of 1.23 in a genotype-by-environment variance and 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05 set before the runs. Two simulated designs and `agridat::dasilva.maize` repeated to better than 1.01. The loadings are also anchored by factor-level order, and nothing checked that the anchor level carries a loading. flexyBayes has no factor-analytic lowering for brms. `diag(env):gen` fits on both engines, and `us(env):gen` on brms. |
+| Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. brms writes it directly, as `(0 + trait \| gr(gen, cov = K))` on data with one row per trait or with `mvbind()` on data with one column per trait. INLA can build it from a known-covariance field for each trait joined by a scaled `copy`. flexyBayes emits neither. Fit it with brms directly, or fit each trait separately. |
+| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | On INLA flexyBayes takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or blocks carrier by name; on brms it takes dense, Cholesky and precision carriers and refuses a blocks carrier. In `fb_select()` a joint shrinkage prior over candidate fixed effects fits on a base with one of these terms, but the projection decision does not: the term is written `(1 \| gr(g, cov = K))`, and projpred refuses a function call on the right of a group term's `\|`. The default `decision = "auto"` resolves to `full` there, and naming `"projection"` refuses before the reference model is sampled. |
+| Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget: four hyperparameters, one observation per grid node. This is not ASReml's three-parameter residual without a nugget, so the residual spelling refuses and points to this one. flexyBayes has no brms lowering for the field. |
+| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, through INLA's `replicate =` mechanism. The row correlation, column correlation and field SD are shared by every level, not estimated per trial. `at(trial, level):ar1(row):ar1(col)`, which asks for one trial or for per-trial hyperparameters, refuses by name. flexyBayes has no brms lowering for either spelling. |
+| Grouped temporal AR1 field | `random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)` | fits | refuses | AR1 along `t` within each level of `g`, independent across levels: one correlation, one field SD and the Gaussian nugget, shared by every level. This is the units-by-occasions repeated-measures covariance of Verbyla and Cullis (1992), written on the random side; an occasion a unit missed stays as a row with the response `NA` under `na_action = "augment"`. Either factor order is accepted. flexyBayes has no brms lowering for it. |
+| Univariate P-spline | `~ spl(x)` | fits | refuses | Fitted on INLA as a second-order random walk. It is an analogue of ASReml's spline, not a translation: the basis, scaling and prediction rule differ, and no equivalence has been established (see TRANSLATION.md). flexyBayes has no brms lowering for it. |
+| Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weights, Var(y_i) = sigma^2 / w_i, as in ASReml, lme4 and `glm(weights = )`: INLA's `scale = w`, and on brms a known offset on sigma rather than brms's own `weights()` term, which multiplies each observation's log-likelihood instead. Both engines match `lme4::lmer(weights = )` closely on a shared simulated fixture. Any other family, or a non-identity link on the Gaussian, refuses by name, and so does `aggregate = TRUE` with weights. |
+| Exact sufficient-statistic aggregation (binomial, Poisson) | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a | Exact cell-likelihood aggregation for binomial (logit) and Poisson (log) models with few cells; the posterior equals the per-row posterior. The marginal likelihood is not reported, because the engine's value omits a constant that depends on the data. flexyBayes has no aggregated route on brms. |
+| Exact sufficient-statistic aggregation (Gaussian) | `aggregate = TRUE`, `flexybayes_stream(family = "gaussian")` | refuses | n/a | Refused by name. The aggregated Gaussian route combined the within-cell sums of squares with a fixed prior on the residual precision, so a stated or default residual prior would not be the prior fitted. Gaussian models are fitted per row, which is what `aggregate = "auto"` does; `flexybayes_stream(fit = FALSE)` still returns the sufficient statistics. |
+| Ridge shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ ridge(scale))` | n/a | fits | A joint shrinkage prior over a declared block of candidate fixed effects: one `normal` prior row per candidate, so the block is targeted exactly and no protected coefficient is touched. Only `fb_select()` takes a shrinkage prior, and it fits its reference model on brms whatever engine fitted the base, carrying the base's structure and priors through and recording this on the certificate. flexyBayes has no INLA route for the block. |
+| Laplace shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ laplace(scale))` | n/a | fits | One `double_exponential` prior row per candidate. The posterior mean is not a lasso estimate, and the draws carry no exact zeros; the alias `lasso()` says so once per session. Fitted on brms, as for ridge. |
+| Elastic-net shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ elastic_net(lambda, alpha))` | n/a | fits | The elastic-net density added to the Stan program over the candidate coefficients, so the block is targeted exactly while a protected coefficient keeps its own prior. The hyperparameters are fixed, so the normalising constant does not matter. Fitted on brms, as for ridge. |
+| Regularised horseshoe shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ regularized_horseshoe(p0))` | n/a | fits | brms's `horseshoe()`, with `par_ratio` set from `p0` and calibrated against the number of resampling units rather than rows. It is a prior on the whole coefficient class, and brms refuses a coefficient prior beside it, so it targets the block exactly only when the base's fixed part is the intercept alone; otherwise it refuses by name. Two ways forward: `laplace()`, `ridge()` or `elastic_net()`, which target the block exactly, or `scope = "all_fixed"`, under which the protected coefficients also take the horseshoe, the projection search keeps them in every submodel, and the certificate records the approximation. A candidate column the reference cannot standardise, such as a factor contrast or an interaction product, refuses by name. Fitted on brms, as for ridge. |
+| R2D2 shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))` | n/a | fits | brms's `R2D2()`, whose scales are stated as explained variance rather than on a coefficient scale, so `p0` is refused for it. It covers the whole coefficient class, with the same rule as the horseshoe: exact only when the base's fixed part is the intercept alone; otherwise `laplace()`, `ridge()` or `elastic_net()`, or `scope = "all_fixed"`. Unstandardised candidate columns refuse as for the horseshoe. Fitted on brms, as for ridge. |
 
-`fits` -- the engine emits the structure and a test exercises it. `emits` -- the engine generates the structure and no live fit has yet confirmed it samples acceptably. `refuses` -- the request raises rather than fitting something else. `n/a` -- the class does not apply to that engine's interface.
-
-This block is generated from `.fb_capability_matrix()` by `tools/generate_capability_matrix.R`. Edit the R table, re-run the generator, and let `tests/testthat/test-capability-matrix.R` check that every verdict still matches the gate and emit code. Do not edit the rows here by hand.
+`fits`: the engine fits it, and a test checks the fit. `refuses`: flexyBayes stops with a message saying why and what to use instead. `n/a`: the request does not apply to that engine.
 <!-- capability-matrix:end -->
 
 `fits` does not promise that every fit converges at vignette-scale budgets.
@@ -104,10 +102,12 @@ Where each stands today:
 - **INLA** fits both, separately and together, on the small simulated
   multi-environment data of `tests/testthat/test-sectioned-residual-inla.R`,
   where it recovers the genotype, genotype-by-environment and per-section
-  residual standard deviations. Scale is the limit. INLA integrates over its
-  hyperparameters numerically, and `lgm_gate()` refuses a model with more
-  than 15 of them by name (`hyperparam_budget`), so a residual with one
-  variance for each of 107 environments is refused on INLA.
+  residual standard deviations. Scale is the open question. INLA integrates
+  over its hyperparameters numerically, and flexyBayes refuses an INLA model
+  with more than 15 of them by name (`hyperparam_budget`). That count takes a
+  sectioned residual as one hyperparameter however many sections it has, so
+  a residual with one variance for each of 107 environments is not refused,
+  and no fit of that size has been checked.
 
 The direction of travel: take the baseline MET model to realistic scale on
 **brms**, where the emit and the live fit are both in place (the verified fit
@@ -132,8 +132,11 @@ Each is reproducible on this release. Priority is for the MET use case.
    reproduces Stan to within 1.5 to 6.5 per cent, and no Wishart scale gave
    REML-sized variances with a correlation left to the data, so the joint
    prior couples the variances and the correlations whatever the response
-   scale. Readmitting either structure on INLA would take a prior that
-   separates the two, which INLA's built-in models do not provide.
+   scale. INLA's correlated iid models (iid2d to iid5d, and iidkd) carry a
+   Wishart prior only. Readmitting either structure on INLA would take a
+   prior that separates the variances from the correlations, for example a
+   construction from scaled copies of independent fields, which flexyBayes
+   does not build.
 2. **Take the combined MET fit to realistic scale.** The emit and one live
    fit are in place (120 rows, 4 chains, clean diagnostics). What is missing
    is the same check on a trial series of realistic size, where
@@ -141,13 +144,15 @@ Each is reproducible on this release. Priority is for the MET use case.
    Those are reachable -- `flexybayes()` and `fb_brms()` forward `seed` and
    `control` to `brms::brm()` -- so the gap is the run, not the route.
    *Closes the package's headline gap.*
-3. **INLA: interaction / nested random effects.** Map `a:b` to
-   `f(interaction(a, b), model = "iid")` and characterise the finest-stratum
-   collapse rather than refusing categorically. *Unblocks GxE on the fast
-   engine.*
-4. **Heteroscedastic residual on INLA.** A hierarchical / few-stratum
-   reformulation. The full many-independent-variance form is outside INLA's
-   envelope -- do not promise it.
+3. **Closed: INLA fits interaction and nested random effects.** `a:b` and
+   `a:b:c` are fitted as an iid field over the interaction index, and agree
+   with lme4's REML fit of the same model on `agridat::john.alpha` (see the
+   table).
+4. **A residual with many sections on INLA.** A residual per section fits on
+   INLA (see the table), and the hyperparameter cap does not limit the number
+   of sections (see above). *What is open*: checking fits with many sections,
+   and a hierarchical form, a prior `log sigma^2_env ~ Normal(mu, tau)`, that
+   replaces many free variances with two.
 5. **Exact aggregation of a factor interaction.** The per-row INLA path
    fits `y ~ a*b` on any family (see the resolved list below), but the
    aggregated path cannot: it expands the fixed effects to a model matrix
@@ -188,9 +193,10 @@ Each is reproducible on this release. Priority is for the MET use case.
    *Workaround*: widen the bound -- `uniform(0, 10)` fits the same model
    cleanly -- or use a prior with no upper bound at all, such as
    `sd(group = "Block") ~ half_normal(scale = 3)`, which expresses the same
-   scale belief without a hard edge. The package's own auto-default is a
-   bounded uniform, so a user narrowing that bound is an ordinary path into
-   this rather than an exotic one. On `backend = "auto"` the crash is
+   scale belief without a hard edge. Since 0.13.0 the package's default is a
+   half-normal on each standard deviation, which has no upper bound, so this
+   needs a uniform bound stated with `fb_prior()`. On `backend = "auto"` the
+   crash is
    still not a typed refusal: dispatch re-routes to brms and returns a
    Stan fit where an INLA failure happened. It is no longer silent --
    the re-route emits a one-shot message naming the numerical fallback,
@@ -245,7 +251,7 @@ Each is reproducible on this release. Priority is for the MET use case.
     19.5 GB (see `inst/validation/benchmark_scaling.md`). *What is open*:
     an aggregated Gaussian likelihood that composes the stated or default
     residual prior exactly and restores the marginal likelihood, planned
-    for 0.13.0.
+    for 0.16.0 at the earliest.
 11. **Closed: held-out clusters under `prediction = "new_cluster"` are
     relabelled for every grouping term, or the term refuses by name.**
     `fb_select()` gives the assessment rows new labels for every column a
@@ -406,15 +412,15 @@ Each is reproducible on this release. Priority is for the MET use case.
     state a prior with `fb_prior()`, which is audited, or drop the duplicated
     term. *What is open*: decision-bearing identification diagnostics, so a
     component like this is reported as `inconclusive` rather than as an
-    estimate. Planned for 0.14.0 (`U-MISS-2`).
+    estimate. Planned for 0.15.0.
 21. **The factor-analytic covariance left the fitting route, because repeated
     identical calls did not agree.** `fa(env, k):gen` fitted on INLA from
     0.10.0.9000; from 0.13.0 both engines refuse it
     (`factor_analytic_not_repeatable`). *Why*: the reference for this
     structure is the identified covariance `G = LL' + diag(psi)`, which is
-    invariant to the rotation and sign the raw loadings are free in, and brms
-    has no factor-analytic lowering so there is no second engine to check it
-    against. Measured under the 0.13.0 half-normal default against a
+    invariant to the rotation and sign the raw loadings are free in, and
+    flexyBayes has no factor-analytic lowering for brms, so there is no second
+    engine to check it against. Measured under the 0.13.0 half-normal default against a
     tolerance fixed before the runs -- a ratio of 1.10 across eight repeats
     on each diagonal entry of `G`, and a range of 0.05 on each genetic
     correlation -- the structure repeated to 1.003 and 1.007 on the two
@@ -431,11 +437,32 @@ Each is reproducible on this release. Priority is for the MET use case.
     anchor level carries a common-factor loading, and nothing checked that.
     *Workaround*: `diag(env):gen`, one variance per environment with no
     covariance between them, fits on both engines; `us(env):gen` fits on brms
-    for up to five environments and estimates the correlations directly.
+    and estimates the correlations directly.
     *What is open*: an anchoring rule that selects the pivot from the data
     rather than from level order, and a parameterisation whose mode is
     identified on a low-signal trial. The emit is unchanged and still
     reachable by a direct `emit_inla()` call, as the `us()` branch is.
+22. **Separate variances with one shared correlation, `corh(f):g`, are refused
+    on both engines.** The structure sits between `diag(f):g`, with k
+    variances, and `us(f):g`, with k(k+1)/2 parameters: k variances and one
+    correlation. flexyBayes has no lowering for it. INLA has an exchangeable
+    group model with one variance and one shared correlation, which
+    flexyBayes does not use. *Workaround*: with one variance for every level
+    and a correlation of zero or more, `random = ~ g + f:g` is the same
+    covariance and fits on both engines; otherwise use `diag(f):g`, or
+    `us(f):g` on brms. *What is open*: a lowering, checked against a
+    reference fit. `cor(f)`, one correlation with no variances of its own, is
+    refused for the same reason.
+23. **A multi-trait covariance, `us(trait):vm(gen)`, is refused on both
+    engines.** flexyBayes has no lowering for a covariance between traits
+    crossed with a known relationship matrix. Both engines can represent it:
+    brms writes it as `(0 + trait | gr(gen, cov = K))` on data with one row
+    per trait, or with `mvbind()` on data with one column per trait, and INLA
+    can build it from a known-covariance field for each trait joined by a
+    scaled `copy` (`tests/testthat/test-engine-claims.R`). *Workaround*: fit
+    the model with brms directly, or fit each trait separately. *What is
+    open*: a lowering on either engine, which is a new model structure and
+    waits for a release that admits one.
 
 ## Closed since the previous revision
 
@@ -500,9 +527,10 @@ own family roster. That is deliberate -- a family is admitted when this
 package has an emit for it and a test exercises it -- but the refusal used
 to say only "unsupported", which left a reader unable to tell a flexyBayes
 boundary from an engine one. The four families a field engagement reached
-for, each checked against the installed engines rather than recalled:
+for, each checked against the installed engines by
+`tests/testthat/test-engine-claims.R`:
 
-| Family | brms 2.23.0 | INLA 25.10.19 | flexyBayes | Where the boundary is |
+| Family | brms 2.23.0 | INLA 26.08.07 | flexyBayes | Where the boundary is |
 |---|:-:|:-:|:-:|---|
 | `hurdle_gamma` | native (`dpars` mu, shape, hu) | absent | **fits on brms since 0.9.2** | -- |
 | `zero_inflated_gamma` | absent (`brmsfamily()` refuses) | absent | refuses | Neither engine has it. Use `hurdle_gamma`: for a gamma positive part, which has no mass at zero, the hurdle and the zero-inflated model are the same model. |

@@ -2887,10 +2887,8 @@ fb_select <- function(base,
       "reference_fitted_on_brms: the base was fitted by ", engine_name,
       " and the reference model carrying the joint shrinkage prior is ",
       "re-emitted on brms with the base's structure and its own priors ",
-      "carried through, because INLA does not fit a joint shrinkage prior: ",
-      "a Laplace, horseshoe or R2D2 prior is Gaussian only given a local ",
-      "scale per coefficient, and INLA's integration is built for a few ",
-      "hyperparameters"
+      "carried through, because flexyBayes fits a joint shrinkage prior on ",
+      "brms only"
     ))
   }
   # The projection's own k-fold search refits the reference through brms,

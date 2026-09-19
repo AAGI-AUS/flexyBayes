@@ -1227,7 +1227,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # The once-flag is held in the package-internal emit-state env (see
 # R/emit_state.R); v0.3.9 migrated the flag out of the options() namespace
 # where unrelated callers could consume it before the intended emission.
-.default_prior_note_once <- function(scale, basis) {
+.default_prior_note_once <- function(scale) {
   if (isTRUE(getOption("flexyBayes.silence_default_prior_note", FALSE))) {
     return(invisible())
   }
@@ -1235,20 +1235,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: variance-component prior default is half_normal(scale = s), ",
-    "s = ",
+    "flexyBayes: by default the residual and every random-effect group ",
+    "have a half_normal(scale = ",
     format(scale, digits = 3),
-    ", on the residual sigma and every named random-effect group, on both ",
-    "engines; the SD of an uncorrelated random slope on a numeric covariate ",
-    "x takes half_normal(scale = s / sd(x)). It is weakly informative and ",
-    "has no upper bound. Other priors, including a half-Cauchy, are stated ",
-    "through ?fb_prior. Scale basis = \"",
-    basis,
-    "\". Pass `prior_vc_sd` explicitly for the legacy ",
-    "lognormal(0, prior_vc_sd) default, `prior = fb_prior(...)` ",
-    "for full control, or ",
-    "options(flexyBayes.silence_default_prior_note = TRUE) to ",
-    "silence this notice."
+    ") prior on their standard deviation, with the scale divided by sd(x) ",
+    "for a random slope on x. See ?fb_prior to set other priors; ",
+    "options(flexyBayes.silence_default_prior_note = TRUE) hides this note."
   )
   .emit_state_set("default_prior_note", TRUE)
 }
