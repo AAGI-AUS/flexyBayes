@@ -2065,9 +2065,13 @@
   .register_refusal(
     reason_code = "brms_ingest_feature_unsupported",
     description = paste0(
-      "A brms formula feature outside the ingest layer's scope (an ",
-      "extended term the walker collected but cannot lower). Untyped ",
-      "before 0.9.2."
+      "A brms formula feature outside the ingest layer's scope: an ",
+      "extended term the walker collected but cannot lower, or a part of a ",
+      "brms::bf() object the ingest does not carry to an engine (a ",
+      "non-linear declaration, a formula or fixed value for a distributional ",
+      "parameter, or a family that differs from the `family` argument). ",
+      "The extended terms were untyped before 0.9.2, and the brms::bf() ",
+      "parts were dropped with no message before 0.14.0."
     ),
     message_template = "%s",
     registered_in_adr = "Field sweep FS-6",

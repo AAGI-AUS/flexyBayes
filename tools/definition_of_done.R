@@ -41,6 +41,12 @@ TARGET_TIER <- "V2"
 # held as a ceiling that only falls. 0.13.0 reduces the exports to 25 or
 # fewer through a deprecation cycle.
 MAX_EXPORTS <- 36L
+# D5 is a ratchet on the lint count. It used to assert zero lints while 155
+# stood. The baseline is the count lintr::lint_package() returns with the
+# development tree loaded (D5's own command), measured on 2026-09-19 with
+# lintr 3.4.0. The gate fails when the count rises above it; when the count
+# falls, lower the baseline in the same commit so the gain is kept.
+LINT_BASELINE <- 155L
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -724,8 +730,79 @@ MAX_EXPORTS <- 36L
                        paste(utils::head(absent, 8), collapse = ", "))
               else paste0("all ", length(exps), " exports declared"))
     }
+  ),
+  list(
+    # Added 2026-09-19 with the 0.14.0 release plan. The package's work is
+    # its authors', so no tracked file names a coding assistant or its
+    # vendor. The words are matched whole and in any case, over every text
+    # file git tracks; the exceptions are listed, one line each.
+    id = "B16", cost = "quick", owner = "maintainer", blocking = TRUE,
+    what = "no git-tracked file names a coding assistant or its vendor",
+    check = function() {
+      hits <- .dod_vendor_hits()
+      if (!is.null(hits$error)) {
+        return(.dod_ok(FALSE, hits$error))
+      }
+      .dod_ok(
+        length(hits$lines) == 0L,
+        if (length(hits$lines))
+          paste0(length(hits$lines), " line(s): ",
+                 paste(utils::head(hits$lines, 5), collapse = "; "))
+        else paste0("clean, ", hits$n_excepted, " listed exception(s) matched")
+      )
+    }
   )
 )
+
+# B16's word list. Each word is assembled from two fragments so that this
+# file, which git tracks, does not match its own check.
+.dod_vendor_words <- function() {
+  c(paste0("clau", "de"), paste0("anthro", "pic"), paste0("co", "dex"),
+    paste0("chat", "gpt"), paste0("co", "pilot"), paste0("gr", "ok"))
+}
+
+# B16's exceptions: a file and one exact line in it. Only the editor-settings
+# directory the first word names, kept out of git and out of the build.
+.dod_vendor_exceptions <- function() {
+  settings_dir <- paste0(".", .dod_vendor_words()[[1L]])
+  list(
+    c(".gitignore", paste0(settings_dir, "/")),
+    c(".Rbuildignore", paste0("^\\", settings_dir, "$")),
+    c(".Rbuildignore", paste0("^\\", settings_dir, "/.*$"))
+  )
+}
+
+# Every line of a git-tracked text file that names a word of
+# .dod_vendor_words(), as "file:line:text", less the listed exceptions.
+# git grep reads the working-tree copy of each tracked file and skips binary
+# files (-I). Its exit status is 1 when nothing matched; any other non-zero
+# status is a failed search, reported as an error and never as clean.
+.dod_vendor_hits <- function() {
+  pat <- paste0("(", paste(.dod_vendor_words(), collapse = "|"), ")")
+  out <- suppressWarnings(system2(
+    "git",
+    c("grep", "-n", "-I", "-i", "-w", "-E", "-e", shQuote(pat)),
+    stdout = TRUE, stderr = TRUE
+  ))
+  status <- attr(out, "status") %||% 0L
+  if (identical(as.integer(status), 1L) && length(out) == 0L) {
+    return(list(lines = character(0), n_excepted = 0L, error = NULL))
+  }
+  if (!identical(as.integer(status), 0L)) {
+    return(list(lines = character(0), n_excepted = 0L, error = paste0(
+      "git grep failed (status ", status, "): ",
+      paste(utils::head(out, 2), collapse = " ")
+    )))
+  }
+  file <- sub("^([^:]*):[0-9]+:.*$", "\\1", out)
+  text <- sub("^[^:]*:[0-9]+:", "", out)
+  excepted <- vapply(seq_along(out), function(i) {
+    any(vapply(.dod_vendor_exceptions(), function(ex) {
+      identical(file[[i]], ex[[1L]]) && identical(text[[i]], ex[[2L]])
+    }, logical(1)))
+  }, logical(1))
+  list(lines = out[!excepted], n_excepted = sum(excepted), error = NULL)
+}
 
 # ---------------------------------------------------------------------
 # Section C - consistency invariants (the "functional and consistent"
@@ -885,11 +962,22 @@ MAX_EXPORTS <- 36L
        what = "execution grid: 0 divergent, 0 untyped, 0 crash",
        command = "Rscript tools/execution_grid.R"),
   list(id = "D5", cost = "full", owner = "maintainer", blocking = TRUE,
-       what = "lintr::lint_package() returns 0 lints (lint.yaml hard-gates)",
+       what = paste0("lint count does not rise above the baseline of ",
+                     LINT_BASELINE),
        # with the dev tree loaded, as CI does via local::. -- against a
        # stale installed build object_usage_linter reports phantoms
        command = paste("Rscript -e 'pkgload::load_all(quiet=TRUE);",
-                       "print(length(lintr::lint_package()))'")),
+                       "print(length(lintr::lint_package()))'"),
+       check = function() {
+         if (!requireNamespace("pkgload", quietly = TRUE) ||
+               !requireNamespace("lintr", quietly = TRUE)) {
+           return(.dod_ok(FALSE, "pkgload/lintr absent; cannot count lints"))
+         }
+         suppressMessages(pkgload::load_all(".", quiet = TRUE))
+         n <- length(lintr::lint_package())
+         .dod_ok(n <= LINT_BASELINE,
+                 sprintf("%d lints, baseline %d", n, LINT_BASELINE))
+       }),
   list(id = "D6", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "pkgdown builds clean",
        command = "Rscript -e 'pkgdown::build_site()'"),

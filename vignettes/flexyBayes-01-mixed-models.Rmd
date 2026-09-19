@@ -70,10 +70,10 @@ fit <- flexybayes(
   data    = john.alpha,
   backend = "inla"
 )
-#> flexyBayes: variance-component prior default is uniform(0, 3.05) on every SD (residual sigma + every named random-effect group): a weakly-informative choice for moderate group counts. For very small groups, Gelman (2006) recommends a half-Cauchy instead -- see ?fb_prior. Scale basis = "identity_sd_uniform". Pass `prior_vc_sd` explicitly for the legacy lognormal(0, prior_vc_sd) default, `prior = fb_prior(...)` for full control, or options(flexyBayes.silence_default_prior_note = TRUE) to silence this notice.
+#> flexyBayes: by default the residual and every random-effect group have a half_normal(scale = 3.05) prior on their standard deviation, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
 #> 
 #> -- flexyBayes: INLA fit ----------------------------------------
-#>   formula: yield ~ 1 + rep + f(rep_block_id, model = "iid", <prior: uniform-SD(0, 3.049)>) + f(gen, model = "iid", <prior: uniform-SD(0, 3.049)>)
+#>   formula: fb_standardised_response ~ 1 + rep + f(rep_block_id, model = "iid", <prior: half-normal-SD(5)>) + f(gen, model = "iid", <prior: half-normal-SD(5)>)
 #>   family:  gaussian
 #> ------------------------------------------------------------
 ```
@@ -84,56 +84,10 @@ nesting written the same way.
 
 ``` r
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
-#> Bayesian mixed model summary  [flexyBayes / inla]
-#> ============================================================== 
-#>   Fixed    : yield ~ rep 
-#>   Random   : ~rep:block + gen 
-#>   Model    : G: block within rep; gen iid; R: units 
-#>   Family   : gaussian / identity 
-#>   Representation: exact (model, not inference)
-#>   Engine:         INLA Laplace
-#>   N        : 72 design rows, 72 observed responses
-#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 1.2 sec
-#> 
-#> -- Fixed effects (posterior mean, 95% credible interval) --------
-#>         term estimate std.error conf.low conf.high
-#>  (Intercept)   4.5182    0.1598   4.2016    4.8348
-#>        repR2   0.2978    0.1936  -0.0887    0.6844
-#>        repR3  -0.4140    0.1936  -0.8006   -0.0275
-#> 
-#> -- Variance components (95% credible interval) ------------------
-#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
-#>     component estimate std.error conf.low conf.high
-#>         sigma   0.2926    0.0364   0.2290    0.3716
-#>  sd_rep:block   0.2880    0.0779   0.1632    0.4677
-#>        sd_gen   0.3974    0.0734   0.2736    0.5610
-#>                          prior note
-#>  uniform(lower=0, upper=3.049)     
-#>  uniform(lower=0, upper=3.049)     
-#>  uniform(lower=0, upper=3.049)     
-#> 
-#> -- Hyperparameters (INLA, precision scale) ---------------------
-#>                                            mean     sd 0.025quant 0.5quant
-#> Precision for the Gaussian observations 12.2228 3.0393     7.2295  11.8925
-#> Precision for rep_block_id              14.9642 8.7734     4.5838  12.8731
-#> Precision for gen                        7.0003 2.6398     3.1725   6.5569
-#>                                         0.975quant    mode
-#> Precision for the Gaussian observations    19.1153 11.2915
-#> Precision for rep_block_id                 37.7743  9.6132
-#> Precision for gen                          13.4056  5.7510
-#> 
-#> -- Convergence -----------------------------------------------
-#>   Engine    : INLA nested Laplace approximation
-#>   Mode status: 0 (0 = converged)
-#>   Marginal log-likelihood: -65.806
-#>   Largest symmetric KLD between the Gaussian approximation and the
-#>   corrected marginal: 3.81e-07
-#>   Numerical confirm: PASS
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2926128 0.2289836 0.3715736
-#> 2 sd_rep:block 0.2880186 0.1632153 0.4677094
-#> 3       sd_gen 0.3973746 0.2736096 0.5610380
+#> 1        sigma 0.2925200 0.2288441 0.3713358
+#> 2 sd_rep:block 0.2878225 0.1630017 0.4669508
+#> 3       sd_gen 0.3970952 0.2733143 0.5602151
 ```
 
 Three variances, one per stratum. Read them as standard deviations on the
@@ -156,7 +110,7 @@ field.
 ``` r
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
 #>   functional  estimate    median std.error  conf.low conf.high
-#> 1         h2 0.6364475 0.6410511 0.1012723 0.4363606 0.8171327
+#> 1         h2 0.6439036 0.6501203 0.0977051 0.4431125 0.8180388
 ```
 
 Around two thirds here. That number is the reason for the model: it is not
@@ -172,10 +126,10 @@ The shrunken genotype means -- BLUPs in the REML vocabulary -- come back with
 ``` r
 head(ranef(fit)$gen, 4)
 #>   group level     estimate std.error   conf.low  conf.high
-#> 1   gen   G01  0.497124923 0.1904677  0.1243162  0.8737115
-#> 2   gen   G02  0.005307195 0.1854212 -0.3595152  0.3703353
-#> 3   gen   G03 -0.777470576 0.1973553 -1.1685611 -0.3925607
-#> 4   gen   G04  0.005927353 0.1858484 -0.3606915  0.3708332
+#> 1   gen   G01  0.497093255 0.1904808  0.1242598  0.8736975
+#> 2   gen   G02  0.005308450 0.1854306 -0.3595318  0.3703540
+#> 3   gen   G03 -0.777421435 0.1973737 -1.1685273 -0.3924692
+#> 4   gen   G04  0.005926284 0.1858581 -0.3607092  0.3708515
 ```
 
 # What to read next

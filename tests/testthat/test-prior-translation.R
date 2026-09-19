@@ -33,8 +33,13 @@
   data.frame(y = eta + stats::rnorm(n), x = x, g = g)
 }
 
-.pt_silence <- function() {
-  options(flexyBayes.silence_default_prior_note = TRUE)
+# Set for the caller's frame and restored when it exits, so a later test file
+# in the same process still sees the default-prior note.
+.pt_silence <- function(envir = parent.frame()) {
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    .local_envir = envir
+  )
 }
 
 .pt_brms_args <- list(

@@ -28,6 +28,18 @@
   `fb_decision(stability_subsamples = )` adds subsample stability selection
   (Meinshausen and Buhlmann 2010) over half-samples of the resampling unit.
   It is off by default, and `plan = TRUE` states its cost.
+* A `brms::bf()` object with a non-linear formula, a formula or fixed value
+  for a distributional parameter, or a family other than the `family`
+  argument now refuses with `brms_ingest_feature_unsupported`. Before, both
+  engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without `sigma ~ x` and
+  fitted the `family` argument in place of a family named inside `bf()`, and
+  `nl = TRUE` stopped with an untyped error.
+* `fb_select()` refuses a base whose data have a missing response when the
+  unpenalised benchmark, the penalised optimiser or `benchmark = TRUE` is
+  asked for (`selection_missing_response_not_carried`). It used to stop
+  inside the optimiser with an untyped error.
+* *Mixed models in brief* and *Bayesian estimation in brief* are rebuilt and
+  show the half-normal default prior.
 
 # flexyBayes 0.13.1
 
