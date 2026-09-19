@@ -458,6 +458,22 @@
 #'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
 #'   from the call shape (a bar-grouped formula is read as brms,
 #'   otherwise ASReml); the other values force a grammar.
+#' @param known_variance Optional numeric vector of length N: a known
+#'   variance for each response, added to the estimated residual variance,
+#'   `Var(y_i) = sigma^2 + v_i`. This is the second stage of a two-stage
+#'   analysis, where each response is a first-stage estimate (a variety
+#'   mean in one trial, say) and `v_i` is the variance of that estimate.
+#'   `weights` is a different model, `Var(y_i) = sigma^2 / w_i`; given
+#'   both, the residual variance is `sigma^2 / w_i + v_i`. Lowered for
+#'   `family = "gaussian"` with the identity link: brms fits
+#'   `y | se(sqrt(v), sigma = TRUE)`, and INLA a row effect with known
+#'   variance `v_i`. The summaries report `sigma` as the estimated part,
+#'   and fitted values on both engines leave the known part out. A vector
+#'   of zeros fits the model without it. Any other family refuses with
+#'   `known_variance_not_supported`, and a vector that is not one finite,
+#'   non-negative value per row with `known_variance_invalid`.
+#'   [fb_select()] carries it into the fold covariance under
+#'   `covariance = "base_model"`.
 #'
 #' @returns An object of class `"flexybayes"`, a list with three
 #'   components.
@@ -561,6 +577,7 @@ flexybayes <- function(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 ) {
   # `rcov` was the ASReml 3 name for the residual-structure argument;
@@ -724,6 +741,16 @@ flexybayes <- function(
   )
   fb$prior_scalars <- prior_scalars
 
+  # A known variance per row travels as a column of the data, so that the
+  # missing-data layer below drops, keeps and adds it with its rows
+  # (R/known_variance.R).
+  if (!is.null(known_variance)) {
+    .fb_known_variance_check(known_variance, data)
+    attached <- .fb_known_variance_attach(fb, data, known_variance, aggregate)
+    fb <- attached$fb
+    data <- attached$data
+  }
+
   # Missing responses, resolved once the IR exists so the layer can see
   # which variables index a structured covariance. Under the default,
   # a row whose response is missing is retained and carried as a latent
@@ -734,7 +761,11 @@ flexybayes <- function(
   # wrote -- an asreml na.method() value, a bare list, or a string.
   na_policy <- .fb_normalise_na_action(na_action)
   na_meta <- .fb_apply_na_action(fb, data, na_policy)
-  data <- na_meta$data
+  data <- .fb_known_variance_fill(
+    fb,
+    na_meta$data,
+    na_meta$meta$n_cells_completed
+  )
   # The IR caches the row count for the preflight size estimates, so it
   # has to follow the augmented data rather than the data as supplied.
   if (!is.null(fb$data_summary)) {
@@ -865,6 +896,9 @@ flexybayes <- function(
     the_call_proceed$data <- data
     if (!is.null(weights)) {
       the_call_proceed$weights <- weights
+    }
+    if (!is.null(known_variance)) {
+      the_call_proceed$known_variance <- known_variance
     }
     if (length(known_matrices)) {
       the_call_proceed$known_matrices <- known_matrices
@@ -1039,6 +1073,15 @@ flexybayes <- function(
         is.null(fit$extras$call_info$na_action)
     ) {
       fit$extras$call_info$na_action <- na_policy$y
+    }
+    # The emits record a known variance they carried; a vector of zeros
+    # attached nothing, and is recorded here as it was given.
+    if (
+      !is.null(known_variance) &&
+        !is.null(fit$extras$call_info) &&
+        is.null(fit$extras$call_info$known_variance)
+    ) {
+      fit$extras$call_info$known_variance <- known_variance
     }
   }
   .fb_warn_poor_convergence(fit)

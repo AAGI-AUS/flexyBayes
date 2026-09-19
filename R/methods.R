@@ -1034,6 +1034,13 @@ update.flexybayes <- function(object, ...) {
     }
   }
 
+  # A known variance per row is a column of the fitted data
+  # (R/known_variance.R). It is re-issued from that column, aligned to the
+  # rows the re-fit is handed, and the carrying columns leave the data so the
+  # re-fit attaches it once.
+  known_variance <- dat[[.FB_KNOWN_VARIANCE_COL]]
+  dat <- dat[setdiff(names(dat), .fb_known_variance_columns())]
+
   args <- list(
     fixed = cl$fixed,
     random = cl$random,
@@ -1043,6 +1050,7 @@ update.flexybayes <- function(object, ...) {
     link = cl$link,
     known_matrices = cl$known_matrices,
     weights = cl$weights,
+    known_variance = known_variance,
     n_samples = cl$n_samples,
     warmup = cl$warmup,
     chains = cl$chains,

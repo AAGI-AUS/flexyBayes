@@ -179,6 +179,10 @@
   # and a process that ended before it returned.
   .populate_refusal_registry_process_isolation()
 
+  # 2026-09-19: a known variance per row that is malformed, or asked of a
+  # model or an fb_select() route that cannot carry it.
+  .populate_refusal_registry_known_variance()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

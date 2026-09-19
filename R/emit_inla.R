@@ -725,6 +725,15 @@ emit_inla <- function(
       (as.numeric(.fb_response_values(fb, data)) - standardisation$centre) /
       standardisation$scale
   }
+  # A known variance per row: the row effect's index, and its scale on the
+  # coordinates the fit runs on, so that it adds v_i to row i's variance on
+  # the original scale (R/known_variance.R).
+  known_variance <- .fb_known_variance_values(fb, data)
+  if (!is.null(known_variance)) {
+    data_inla[[.FB_INLA_KNOWN_INDEX]] <- seq_len(nrow(data))
+    data_inla[[.FB_INLA_KNOWN_SCALE]] <- sqrt(known_variance) /
+      (standardisation$scale %||% 1)
+  }
   # Each standardised covariate, divided in the data list INLA reads. The
   # column keeps its name, so the formula, the design and every coefficient
   # label are the ones the fit would otherwise have carried; only the numbers
@@ -1544,6 +1553,8 @@ emit_inla <- function(
           link = link,
           known_matrices = known_matrices,
           weights = weights,
+          # As supplied, for update() to re-issue (R/known_variance.R).
+          known_variance = .fb_known_variance_term(fb)$values,
           n_samples = NULL,
           warmup = NULL,
           chains = NULL,
@@ -2226,6 +2237,12 @@ emit_inla <- function(
         call. = FALSE
       )
     }
+  }
+
+  # A known variance per row enters as a row effect of fixed unit precision,
+  # scaled by the columns emit_inla() builds (R/known_variance.R).
+  if (!is.null(.fb_known_variance_term(fb))) {
+    rhs_terms <- c(rhs_terms, .fb_inla_known_variance_formula_term())
   }
 
   rhs <- paste(rhs_terms, collapse = " + ")

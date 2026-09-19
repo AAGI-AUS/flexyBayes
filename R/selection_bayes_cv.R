@@ -619,7 +619,8 @@
   provider,
   engine = NULL,
   seed = NULL,
-  na_action = NULL
+  na_action = NULL,
+  carry_known_variance = FALSE
 ) {
   info <- base$extras$call_info %||% list()
   if (!is.null(info$weights)) {
@@ -629,6 +630,27 @@
       "the benchmark workflow.",
       call. = FALSE
     )
+  }
+  # A known variance per row (R/known_variance.R) travels in its column of
+  # the fold's data. The fold covariance carries it into the refit; every
+  # other refit here feeds a posterior predictive score that leaves it out,
+  # and refuses.
+  known_variance <- NULL
+  if (!is.null(.fb_known_variance_term(base$fb %||% base$extras$fb_terms))) {
+    if (!isTRUE(carry_known_variance)) {
+      .fb_sel_known_variance_refuse_route(
+        "a Bayesian refit whose posterior predictive draws are scored"
+      )
+    }
+    known_variance <- data[[.FB_KNOWN_VARIANCE_COL]]
+    if (is.null(known_variance)) {
+      .fb_known_variance_refuse(paste0(
+        "fb_select(): the base carries a known variance per row, and the ",
+        "data handed to the fold refit has no `", .FB_KNOWN_VARIANCE_COL,
+        "` column to read it from."
+      ))
+    }
+    data <- data[setdiff(names(data), .fb_known_variance_columns())]
   }
   priors <- base$fb$priors
   if (!is.null(attr(priors, "fb_prior_default_basis"))) {
@@ -681,6 +703,9 @@
     args$na_action <- na_action
   } else if (!is.null(info$na_action)) {
     args$na_action <- info$na_action
+  }
+  if (!is.null(known_variance)) {
+    args$known_variance <- known_variance
   }
   # The sampler settings are absent on the INLA path, where the nested
   # Laplace approximation has no chains to run; a NULL is dropped rather

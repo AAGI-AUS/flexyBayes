@@ -178,6 +178,13 @@
   }
 
   ir <- .fb_fit_ir(base)
+  # The reference model is re-emitted from the IR, which a known variance per
+  # row would not reach (R/known_variance.R).
+  if (!is.null(.fb_known_variance_term(ir))) {
+    .fb_sel_known_variance_refuse_route(
+      "the projection's reference fit, whose posterior draws are projected,"
+    )
+  }
   data <- data %||% .fb_sel_fit_data(base)
   call_info <- base$extras$call_info
   if (is.null(ir) || is.null(data) || is.null(call_info$fixed)) {

@@ -144,6 +144,12 @@ emit_brms <- function(
   if (.fb_weights_nonconstant(ir_weights)) {
     data[[.FB_BRMS_WEIGHTS_OFFSET_COL]] <- -0.5 * log(ir_weights)
   }
+  # A known variance per row reaches brms as the standard error its
+  # `se(, sigma = TRUE)` addition term reads (R/known_variance.R).
+  known_variance <- .fb_known_variance_values(fb, data)
+  if (!is.null(known_variance)) {
+    data[[.FB_BRMS_KNOWN_SE_COL]] <- sqrt(known_variance)
+  }
   brms_form <- .fb_to_brms_formula(fb)
   # Materialised relationship covariances for any vm() / ped() term,
   # threaded into brms via data2 (empty list when there are none).
@@ -367,6 +373,8 @@ emit_brms <- function(
         link = link,
         known_matrices = known_matrices,
         weights = weights,
+        # As supplied, for update() to re-issue (R/known_variance.R).
+        known_variance = .fb_known_variance_term(fb)$values,
         n_samples = n_samples,
         warmup = warmup,
         chains = chains,
@@ -850,6 +858,15 @@ emit_brms <- function(
   addition <- character(0)
   if (isTRUE(attr(fb, "brms_mi_response"))) {
     addition <- c(addition, "mi()")
+  }
+  # A known variance per row: brms's likelihood becomes
+  # normal(mu, sqrt(sigma^2 + se^2)), with sigma the estimated part
+  # (R/known_variance.R).
+  if (!is.null(.fb_known_variance_term(fb))) {
+    addition <- c(
+      addition,
+      paste0("se(", .FB_BRMS_KNOWN_SE_COL, ", sigma = TRUE)")
+    )
   }
   lhs <- if (length(addition)) {
     paste(response, "|", paste(addition, collapse = " + "))
@@ -2104,6 +2121,7 @@ predict.flexybayes_brms <- function(
   # object.
   if (!is.null(newdata)) {
     .fb_offset_values(.fb_fit_ir(object), newdata, newdata = TRUE)
+    newdata <- .fb_brms_known_se_newdata(object, newdata)
   }
 
   post_mat <- if (is.null(newdata)) {
