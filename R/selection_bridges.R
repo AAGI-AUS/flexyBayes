@@ -721,7 +721,8 @@
       "none", "ridge", "laplace", "elastic_net",
       .fb_sel_grouped_families()
     ),
-    gls_reml_plugin = "none"
+    gls_reml_plugin = "none",
+    gls_base_model = "none"
   )
 }
 

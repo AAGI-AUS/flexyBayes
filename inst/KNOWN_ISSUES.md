@@ -265,10 +265,14 @@ Each is reproducible on this release. Priority is for the MET use case.
     before any fold runs (`selection_base_not_allowlisted`). A base written
     in the brms grammar, such as `y ~ x + (x || g)`, carries its random
     terms into every fold refit. On the benchmark route a two-way
-    interaction is one covariance term, and every random term other than an
-    intercept or a two-way interaction (a random slope, a multi-way
-    interaction, `diag(f):g`, `vm()`) refuses with
-    `selection_covariance_not_buildable`.
+    interaction is one covariance term. With the default
+    `covariance = "reml_plugin"` every random term other than an intercept or
+    a two-way interaction (a random slope, a multi-way interaction,
+    `diag(f):g`, `vm()`) refuses with `selection_covariance_not_buildable`.
+    `covariance = "base_model"` reads the fold covariance from a refit of the
+    base model and builds random slopes, `diag(f):g`, a single-trial
+    `ar1(row):ar1(col)` field and `vm()` or `ped()` known covariances. A
+    multi-way interaction still refuses with that code.
 12. **Closed: on INLA, a fold refit's default priors read its training
     rows.** Each INLA fold refit in `fb_select()` receives the training rows
     and the assessment rows with the response set to missing. The default

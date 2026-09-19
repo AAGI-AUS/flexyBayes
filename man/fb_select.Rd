@@ -18,6 +18,7 @@ fb_select(
   seed = NULL,
   budget = NULL,
   plan = FALSE,
+  covariance = c("reml_plugin", "base_model"),
   ...
 )
 }
@@ -97,10 +98,27 @@ estimated cost exceeds it.}
 \item{plan}{\code{TRUE} returns the resolved axes, the prior blocks, the
 projection structure gate and a cost estimate without fitting anything.}
 
-\item{...}{Reserved. \code{metric} and \code{covariance} are accepted here for one
-release with a deprecation notice; \code{metric} now lives in
-\code{\link[=fb_decision]{fb_decision()}}, and the covariance summary is a property of the
-benchmark workflow and is read off the folds rather than declared.}
+\item{covariance}{The source of the fold covariance V that the benchmark
+and optimiser workflows whiten by and plug in. \code{"reml_plugin"}, the
+default, estimates V by restricted maximum likelihood on each fold's
+training rows, for random intercepts and two-way interactions.
+\code{"base_model"} refits the base model on each fold's training rows with
+its own formula, random and residual structure, priors and engine, and
+takes each variance at its posterior mean; it also builds uncorrelated
+random slopes, \code{diag(f):g}, a single-trial \code{ar1(row):ar1(col)} field and
+\code{vm()} or \code{ped()} known covariances, at the cost of one refit per fold.
+The Bayesian workflow integrates the covariance, so the argument applies
+to it only with \code{benchmark = TRUE}. V is formed as a dense matrix only
+while one n by n matrix over the data fits within
+\code{options(flexyBayes.selection_dense_gb = )}, 0.5 GiB (8,192 rows) by
+default. Above that, a V that is block-diagonal over a grouping of its
+random terms is factored block by block, and any other V refuses with
+\code{selection_dense_covariance_too_large}. The argument's earlier form, an
+estimand string (\code{"plugin_mean_covariance"} and two others), is
+deprecated and runs the default.}
+
+\item{...}{Reserved. \code{metric} is accepted here for one release with a
+deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
 }
 \value{
 An object of class \code{fb_select} carrying the four resolved axes,
@@ -126,9 +144,10 @@ a Bayesian label:
 \describe{
 \item{\code{workflow}}{\code{"bayes"}, \code{"penalized_optimizer"} or
 \code{"unpenalized_benchmark"}.}
-\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"}, \code{"prox"} or
-\code{"gls_reml_plugin"}; \code{"prox"} is the package's deterministic
-proximal solver for grouped penalties.}
+\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"}, \code{"prox"},
+\code{"gls_reml_plugin"} or \code{"gls_base_model"}; \code{"prox"} is the package's
+deterministic proximal solver for grouped penalties, and the last two
+name the source of the benchmark's fold covariance.}
 \item{\code{prior}}{the joint prior, or \code{"none"}.}
 \item{\code{decision}}{\code{"full"}, \code{"projection"}, \code{"posterior_threshold"} or
 \code{"optimizer_support"}.}

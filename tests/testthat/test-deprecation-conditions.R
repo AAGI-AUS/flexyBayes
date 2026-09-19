@@ -219,8 +219,9 @@ test_that("the fb_select() argument deprecations raise the documented class", {
     "`fb_decision()`", fixed = TRUE, class = "flexybayes_deprecated"
   )
   expect_warning(
-    absorb(list(covariance = "diagonal")),
-    "benchmark workflow", fixed = TRUE, class = "flexybayes_deprecated"
+    flexyBayes:::.fb_select_resolve_covariance("plugin_mean_covariance"),
+    "source of the fold covariance", fixed = TRUE,
+    class = "flexybayes_deprecated"
   )
 })
 
