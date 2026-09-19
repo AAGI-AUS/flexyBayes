@@ -169,6 +169,64 @@ test_that("glmnet at the canonical map is the proximal mode, for lasso", {
 })
 
 
+test_that("a glmnet point above the path threshold is solved again, not accepted", {
+  skip_if_not_installed("glmnet")
+  fixture <- fb_glmnet_matrix()
+  convention <- .fb_sel_convention_at(
+    .fb_sel_glmnet_convention(),
+    fixture$z
+  )
+  penalty <- .fb_sel_canonical_penalty(
+    "laplace",
+    list(scale = 0.2),
+    n = fixture$n
+  )
+  exact <- .fb_sel_prox_mode(
+    fixture$A,
+    fixture$z,
+    "laplace",
+    list(scale = 0.2),
+    tol = 1e-10
+  )$beta
+  # Two provider answers the certificate must not accept: the optimum moved
+  # off itself on its own support, which the restricted solve repairs, and a
+  # point on the wrong support, which only a fresh proximal solve repairs.
+  near <- exact
+  near[exact != 0] <- exact[exact != 0] * (1 + 1e-3)
+  wrong <- stats::setNames(rep(0.5, length(exact)), names(exact))
+  cases <- list(
+    list(beta = near, route = "glmnet_polished"),
+    list(beta = wrong, route = "internal_prox")
+  )
+  for (case in cases) {
+    expect_gt(
+      .fb_sel_kkt_residual_lambda(
+        fixture$A,
+        fixture$z,
+        case$beta,
+        penalty$lambda_l1,
+        0
+      ),
+      1e-6
+    )
+    testthat::local_mocked_bindings(
+      .fb_sel_glmnet_fit = function(...) case$beta
+    )
+    provider <- .fb_sel_glmnet_at(
+      fixture$A,
+      fixture$z,
+      penalty$lambda_composite,
+      penalty$alpha_composite,
+      convention
+    )
+    expect_identical(provider$route, case$route)
+    expect_lte(provider$kkt, .fb_sel_path_kkt_tolerance())
+    expect_equal(unname(provider$beta), unname(exact), tolerance = 1e-6)
+    expect_identical(names(provider$beta), colnames(fixture$A))
+  }
+})
+
+
 test_that("glmnet at the corrected map is the proximal mode, for elastic net", {
   skip_if_not_installed("glmnet")
   fixture <- fb_glmnet_matrix()

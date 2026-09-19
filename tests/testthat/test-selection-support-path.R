@@ -585,6 +585,84 @@ test_that("entrance-path plot returns scored path and labelled entries", {
   expect_true(all(plotted$entries$variable %in% fbsp_declared))
 })
 
+test_that("the entrance path places a column at its median first entry across its folds", {
+  # A hand-written four-fold history. The expected entries are read off this
+  # table by hand, not computed by the code under test:
+  #   z1  enters at 0.8, 0.5, 0.5 and 0.2      second largest of four: 0.5
+  #   z2  enters on one fold in four           fewer than half: no label
+  #   z3  never enters                         no label
+  #   z4  estimable on two folds, enters on
+  #       both, at 0.3 and 0.1                 largest of two: 0.3
+  #   z5  enters on two folds in four, at
+  #       0.8 and 0.2                          second largest of four: 0.2
+  first <- list(
+    z1 = c(0.8, 0.5, 0.5, 0.2),
+    z2 = c(0.8, NA, NA, NA),
+    z3 = c(NA, NA, NA, NA),
+    z4 = c(0.3, 0.1, NA, NA),
+    z5 = c(0.8, NA, 0.2, NA)
+  )
+  history <- do.call(rbind, lapply(names(first), function(column) {
+    data.frame(
+      alpha = 1, fold = as.character(1:4), column = column,
+      available = if (column == "z4") c(TRUE, TRUE, FALSE, FALSE) else TRUE,
+      n_points = 6L,
+      n_in_support = ifelse(is.na(first[[column]]), 0L, 2L),
+      first_entry_s = first[[column]], last_exit_s = NA_real_,
+      n_reentries = 0L, stringsAsFactors = FALSE
+    )
+  }))
+  x <- structure(list(benchmark = list(glmnet = list(
+    selection = list(
+      scores = data.frame(
+        s = c(1, 0.8, 0.5, 0.3, 0.2, 0.1),
+        score = c(2, 1.8, 1.6, 1.55, 1.57, 1.6)
+      ),
+      metric = "rmse", selected_s = 0.3,
+      tuning_scale = "s = lambda / lambda_max"
+    ),
+    support = list(history_by_fold = history),
+    scoring_unit = "site"
+  ))), class = "fb_select")
+  path <- tempfile(fileext = ".pdf")
+  grDevices::pdf(path)
+  on.exit({
+    grDevices::dev.off()
+    unlink(path)
+  }, add = TRUE)
+  plotted <- plot(x, type = "entrance_path")
+  expect_identical(plotted$entries$variable, c("z1", "z4", "z5"))
+  expect_identical(plotted$entries$entry_s, c(0.5, 0.3, 0.2))
+  expect_identical(plotted$entries$n_folds_available, c(4L, 2L, 4L))
+  expect_identical(plotted$entries$n_folds_entered, c(4L, 2L, 2L))
+  # Each label sits on a grid point, so its ordinate is that point's score.
+  expect_identical(plotted$entries$score, c(1.6, 1.55, 1.57))
+})
+
+test_that("the entrance path names the missing coordinate of a penalty with no finite anchor", {
+  fbsp_quiet()
+  d <- fbsp_data()
+  sel <- fb_select(
+    fbsp_stub_base(d), ~ z1 + z2 + z3 + z4 + z5,
+    penalty = fb_penalty(term(everything()) ~ exclusive_lasso(scale = 0.7)),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 2L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 1L
+  )
+  # The path held candidates, so a message saying that nothing entered would
+  # be false; what is missing is the relative-penalty coordinate.
+  expect_true(any(
+    sel$benchmark$glmnet$support$history_by_fold$n_in_support > 0L
+  ))
+  expect_false(any(is.finite(sel$benchmark$glmnet$selection$scores$s)))
+  expect_message(
+    out <- plot(sel, type = "entrance_path"),
+    "no finite null anchor"
+  )
+  expect_null(out)
+})
+
 test_that("assessment predictions expose the selected scored rows and contract", {
   skip_if_not_installed("glmnet")
   fbsp_quiet()
@@ -622,6 +700,34 @@ test_that("assessment predictions expose the selected scored rows and contract",
   expect_match(unique(predictions$contract_hash), "^[0-9a-f]{32}$")
   expect_identical(unique(predictions$prediction), "new_cluster")
   expect_identical(unique(predictions$response), "y")
+})
+
+test_that("the assessment-prediction hash is the certificate's contract at the decision stage", {
+  skip_if_not_installed("glmnet")
+  fbsp_quiet()
+  d <- fbsp_data()
+  sel <- fb_select(
+    fbsp_stub_base(d), ~ z1 + z2 + z3 + z4 + z5,
+    penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.15)),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 4L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 1L
+  )
+  predictions <- augment(sel, type = "assessment_predictions")
+  # The certificate stores the reference-stage contract of the same folds,
+  # rows, response and design. Rehashing its fields with the stage set to
+  # "decision" must give the hash the predictions carry, and the reference
+  # hash itself must not, so the stage is part of what the hash identifies.
+  reference <- sel$certificate$reference_predictive$contract
+  expect_s3_class(reference, "fb_select_score_contract")
+  decision <- reference
+  decision$stage <- "decision"
+  expect_identical(
+    unique(predictions$contract_hash),
+    .fb_select_contract_hash(decision)
+  )
+  expect_false(identical(unique(predictions$contract_hash), reference$hash))
 })
 
 test_that("assessment-prediction schema is stable where no optimiser ran", {

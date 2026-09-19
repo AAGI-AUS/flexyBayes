@@ -4053,9 +4053,14 @@ augment.fb_select <- function(
 #' @param x An `fb_select` object.
 #' @param type `"elpd_by_size"`, `"rank_stability"`, `"shrinkage"`,
 #'   `"benchmark"` or `"entrance_path"`. The last plots the common
-#'   out-of-fold loss against `s = lambda / lambda_max` and labels the first
-#'   variables entering the penalised path. It is available for optimiser
-#'   workflows and optimiser benchmark arms.
+#'   out-of-fold loss against `s = lambda / lambda_max` and labels each
+#'   candidate at its median first entry: the point on `s` by which at least
+#'   half of the folds that could estimate it had admitted it. A candidate
+#'   admitted on fewer than half of those folds is not labelled. The ordinate
+#'   is the mean over scoring units of each unit's score, not an inclusion
+#'   probability. It is available for optimiser workflows and optimiser
+#'   benchmark arms whose penalty has a finite null anchor, which excludes
+#'   `ridge()` and `exclusive_lasso()`.
 #' @param ... Passed to the underlying plotting call.
 #' @returns Invisibly, the data the display was drawn from. Called for the
 #'   plot it draws.
@@ -4196,6 +4201,43 @@ plot.fb_select <- function(x,
   ))
 }
 
+# .fb_select_median_entry() --- where each candidate typically enters the
+# path, read off the per-fold support history.
+#
+# The folds counted for a column are the ones whose training rows could
+# estimate it. Its median first entry is the point on s by which at least
+# half of those folds had admitted it: the ceiling(k / 2)-th largest first
+# entry over k folds, which is the median for odd k and the earlier of the
+# two middle entries for even k, so the label sits on a grid point. A fold on
+# which the column never entered counts against it rather than dropping out,
+# so a column admitted on one fold in five is not placed as if that fold were
+# typical; a column admitted on fewer than half of its folds is not labelled.
+.fb_select_median_entry <- function(history) {
+  available <- history[history$available, , drop = FALSE]
+  rows <- lapply(unique(available$column), function(column) {
+    part <- available[available$column == column, , drop = FALSE]
+    entered <- part$n_in_support > 0L & is.finite(part$first_entry_s)
+    first <- sort(part$first_entry_s[entered], decreasing = TRUE)
+    needed <- ceiling(nrow(part) / 2)
+    data.frame(
+      variable = column,
+      entry_s = if (length(first) >= needed) first[[needed]] else NA_real_,
+      n_folds_available = nrow(part),
+      n_folds_entered = sum(entered),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  if (is.null(out)) {
+    return(data.frame(
+      variable = character(0), entry_s = numeric(0),
+      n_folds_available = integer(0), n_folds_entered = integer(0),
+      stringsAsFactors = FALSE
+    ))
+  }
+  out[is.finite(out$entry_s), , drop = FALSE]
+}
+
 .fb_select_plot_entrance <- function(x, max_labels = 15L,
                                      label_cex = 0.7, ...) {
   arm <- x$benchmark$glmnet
@@ -4207,26 +4249,34 @@ plot.fb_select <- function(x,
       "no penalised optimiser path was scored out of fold"
     ))
   }
+  # Ridge and the exclusive lasso reach the null only in the limit, so their
+  # grid is walked on the penalty itself and carries no s coordinate.
+  if (!any(is.finite(scores$s))) {
+    return(.fb_select_plot_unavailable(
+      "the entrance path",
+      paste0(
+        "this penalty has no finite null anchor, so its path was walked on `",
+        arm$selection$tuning_scale %||% "the penalty",
+        "` rather than on s = lambda / lambda_max"
+      )
+    ))
+  }
   if (!is.data.frame(history) || nrow(history) == 0L) {
     return(.fb_select_plot_unavailable(
       "the entrance path",
       "this penalty has no finite coefficient-support path"
     ))
   }
-  entered <- history[history$n_in_support > 0L &
-                       is.finite(history$first_entry_s), , drop = FALSE]
-  if (nrow(entered) == 0L) {
+  entries <- .fb_select_median_entry(history)
+  if (nrow(entries) == 0L) {
     return(.fb_select_plot_unavailable(
       "the entrance path",
-      "no candidate entered on any assessment fold"
+      paste0(
+        "no candidate entered on at least half of the folds that could ",
+        "estimate it"
+      )
     ))
   }
-  entries <- stats::aggregate(
-    entered$first_entry_s,
-    list(variable = entered$column),
-    stats::median
-  )
-  names(entries)[[2L]] <- "entry_s"
   entries <- entries[order(entries$entry_s, decreasing = TRUE), , drop = FALSE]
   max_labels <- as.integer(max_labels)
   if (!is.finite(max_labels) || max_labels < 0L) {
@@ -4237,6 +4287,7 @@ plot.fb_select <- function(x,
     which.min(abs(scores$s - s))
   }, integer(1L))
   entries$score <- scores$score[nearest]
+  rownames(entries) <- NULL
   metric <- arm$selection$metric %||% "loss"
   graphics::plot(
     scores$s, scores$score,
@@ -4244,7 +4295,12 @@ plot.fb_select <- function(x,
     xlim = rev(range(scores$s, finite = TRUE)),
     xlab = expression("relative penalty " * s == lambda / lambda[max] *
                         " (strong to weak)"),
-    ylab = paste0("out-of-fold ", metric),
+    # The score is the mean over scoring units of each unit's own value,
+    # which is not the pooled value over rows.
+    ylab = paste0(
+      "out-of-fold ", metric, ", mean of per-",
+      arm$scoring_unit %||% "unit", " values"
+    ),
     main = "Predictive performance along the entrance path",
     ...
   )

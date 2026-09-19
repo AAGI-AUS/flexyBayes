@@ -1155,6 +1155,51 @@ test_that("all grouped families execute through fb_select and certify prox", {
 })
 
 
+test_that("several exclusive blocks compose into one certified objective", {
+  # Three declared blocks of three strongly correlated members each, fitted
+  # as one objective: one `group = "block"` row per block, so one group per
+  # row. Every tuning point of every fold is held to the path threshold.
+  d <- .fb_sel_with_seed(61L, {
+    n_cluster <- 10L
+    per <- 8L
+    n <- n_cluster * per
+    site <- factor(rep(seq_len(n_cluster), each = per))
+    out <- data.frame(site = site, x = stats::rnorm(n))
+    for (block in c("a", "b", "c")) {
+      latent <- stats::rnorm(n)
+      for (member in 1:3) {
+        out[[paste0(block, member)]] <- sqrt(0.95) * latent +
+          sqrt(0.05) * stats::rnorm(n)
+      }
+    }
+    out$y <- 1 + 0.5 * out$x + 0.8 * out$a1 - 0.6 * out$b2 +
+      stats::rnorm(n_cluster, sd = 0.8)[as.integer(site)] +
+      stats::rnorm(n, sd = 0.6)
+    out
+  })
+  penalty <- fb_penalty(
+    term(matches("^a")) ~ exclusive_lasso(scale = 0.7, group = "block"),
+    term(matches("^b")) ~ exclusive_lasso(scale = 0.7, group = "block"),
+    term(matches("^c")) ~ exclusive_lasso(scale = 0.7, group = "block")
+  )
+  fit <- fb_select(
+    fbgp_stub_base(d),
+    candidates = ~ a1 + a2 + a3 + b1 + b2 + b3 + c1 + c2 + c3,
+    penalty = penalty,
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 2L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 93L
+  )
+  arm <- fit$benchmark$glmnet
+  expect_identical(arm$provider, "prox")
+  expect_identical(arm$family, "exclusive_lasso")
+  expect_setequal(unique(arm$support$group_history$group), paste0("block_", 1:3))
+  expect_true(all(arm$kkt$kkt <= .fb_sel_path_kkt_tolerance()))
+  expect_identical(nrow(augment(fit, type = "assessment_predictions")), nrow(d))
+})
+
+
 test_that("a grouped family still refuses on the public Bayesian route", {
   skip_if_not_installed("brms")
   d <- fbgp_data(n_cluster = 8L, per = 6L)

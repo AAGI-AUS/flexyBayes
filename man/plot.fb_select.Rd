@@ -15,9 +15,14 @@
 
 \item{type}{\code{"elpd_by_size"}, \code{"rank_stability"}, \code{"shrinkage"},
 \code{"benchmark"} or \code{"entrance_path"}. The last plots the common
-out-of-fold loss against \code{s = lambda / lambda_max} and labels the first
-variables entering the penalised path. It is available for optimiser
-workflows and optimiser benchmark arms.}
+out-of-fold loss against \code{s = lambda / lambda_max} and labels each
+candidate at its median first entry: the point on \code{s} by which at least
+half of the folds that could estimate it had admitted it. A candidate
+admitted on fewer than half of those folds is not labelled. The ordinate
+is the mean over scoring units of each unit's score, not an inclusion
+probability. It is available for optimiser workflows and optimiser
+benchmark arms whose penalty has a finite null anchor, which excludes
+\code{ridge()} and \code{exclusive_lasso()}.}
 
 \item{...}{Passed to the underlying plotting call.}
 }

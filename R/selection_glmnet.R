@@ -34,9 +34,12 @@
 # residual on the whitened, response-scaled substrate. 1e-6 is the threshold
 # against which the glmnet bridge has been validated throughout this module.
 # Keeping a stricter 1e-9 only for grouped path points created a provider-
-# dependent acceptance rule and rejected numerically immaterial residuals in
-# the NERT stress run after 200,000 iterations. The lower-level solvers retain
-# their strict 1e-9 defaults for oracle tests and callers that request them.
+# dependent acceptance rule and rejected numerically immaterial residuals on
+# a large correlated block after 200,000 iterations. Every path point is held
+# to it, whichever provider computed the point: `.fb_sel_glmnet_at()` checks
+# a `glmnet` answer against it as well. The lower-level solvers keep their
+# stricter defaults (1e-9 grouped, 1e-10 ungrouped) for oracle tests and
+# callers that request them.
 .fb_sel_path_kkt_tolerance <- function() 1e-6
 
 
@@ -427,6 +430,43 @@
       maxit = maxit
     )
     route <- "glmnet"
+    # `glmnet` stops on a change in its own scaled objective, which is not an
+    # optimality certificate. On a strongly correlated block it stops, or
+    # runs out of iterations, with a canonical KKT residual well above the
+    # path threshold, and such a point used to be scored as if it were the
+    # optimum. It is now solved again: first by the exact restricted solve on
+    # the support `glmnet` found, then, where that support was wrong, by the
+    # internal proximal solver, which certifies the point or refuses by name.
+    tol <- .fb_sel_path_kkt_tolerance()
+    if (.fb_sel_kkt_residual_lambda(A, z, beta, lambda_l1, lambda_l2) > tol) {
+      polished <- .fb_sel_polish(
+        A,
+        z,
+        crossprod(A),
+        drop(crossprod(A, z)),
+        beta,
+        lambda_l1,
+        lambda_l2
+      )
+      if (
+        !is.null(polished) &&
+          .fb_sel_kkt_residual_lambda(A, z, polished, lambda_l1, lambda_l2) <=
+            tol
+      ) {
+        beta <- stats::setNames(polished, colnames(A))
+        route <- "glmnet_polished"
+      } else {
+        beta <- .fb_sel_prox_mode_lambda(
+          A,
+          z,
+          lambda_l1,
+          lambda_l2,
+          tol = tol,
+          max_iter = 2e5
+        )$beta
+        route <- "internal_prox"
+      }
+    }
   }
 
   list(
