@@ -7,8 +7,9 @@
 #
 #   Injection identity. The REML plug-in's own variance components, fed into
 #   the base-model route in place of the refit, give the same path, support
-#   and scores bit for bit: everything downstream of the components is the
-#   same computation whichever source supplied them.
+#   and scores bit for bit, for nested and for crossed intercepts:
+#   everything downstream of the components is the same computation
+#   whichever source supplied them.
 #
 #   Agreement. On one fixture the two sources choose the same support, and
 #   their out-of-fold scores differ by less than the standard error of
@@ -23,8 +24,9 @@
 #   `known_cluster` and V_SS under `new_cluster`.
 #
 #   Blocking. Above the dense bound a block-diagonal V is factored block by
-#   block. Each block of V equals the dense V's block exactly, and the path
-#   agrees with the dense route's to rounding.
+#   block. Each block of V equals the dense V's block exactly, for nested
+#   intercepts and for a random slope, and the path agrees with the dense
+#   route's to rounding.
 #
 #   The bound. A covariance that would be formed densely above it refuses by
 #   name before any fold runs.
@@ -224,6 +226,28 @@ test_that("the plug-in's components fed through base_model give an identical pat
 })
 
 
+test_that("crossed intercepts: the plug-in's components give an identical path through base_model", {
+  skip_if_not_installed("glmnet")
+  skip_if_not_installed("INLA")
+  fbcm_quiet()
+  d <- fbcm_site_data()
+  base <- fbcm_stub_base(d, random = ~ site + year)
+  reml <- fbcm_select(base)
+  injection <- fbcm_reml_injection(d, ~x, c("site", "year"))
+  local_mocked_bindings(.fb_sel_cov_fold_refit = injection$fn)
+  injected <- fbcm_select(base, covariance = "base_model")
+  expect_identical(injection$calls$labels, c("1", "2", "3", "4"))
+  expect_identical(injected$benchmark$glmnet$coefficients,
+                   reml$benchmark$glmnet$coefficients)
+  expect_identical(injected$benchmark$glmnet$support,
+                   reml$benchmark$glmnet$support)
+  expect_identical(injected$scores, reml$scores)
+  # No grouping holds both terms: the certificate says the base-model V was
+  # factored densely.
+  expect_identical(injected$certificate$covariance$builder, "dense_cholesky")
+})
+
+
 # --- (ii) agreement with the plug-in ------------------------------------- #
 
 test_that("the base-model and REML plug-in routes agree on the support and within each route's standard error", {
@@ -236,6 +260,7 @@ test_that("the base-model and REML plug-in routes agree on the support and withi
                      verbose = FALSE)
   reml <- fbcm_select(base)
   model <- fbcm_select(base, covariance = "base_model")
+  expect_identical(model$certificate$covariance$source, "base_model")
 
   expect_setequal(model$selection$chosen_terms, reml$selection$chosen_terms)
   expect_true("z1" %in% model$selection$chosen_terms)
@@ -456,54 +481,63 @@ test_that("vm() and ped() precision carriers run end to end, with V = s^2 Z K Z'
 test_that("above the dense bound a block-diagonal V is factored block by block, exactly V's blocks", {
   skip_if_not_installed("INLA")
   d <- fbcm_site_data()
-  base <- fbcm_stub_base(d, random = ~ site + site:year)
-  base <- .fb_sel_bayes_normalise_base(base)
-  components <- list(
-    residual = 0.4,
-    terms = c(site = 1.3, `site:year` = 0.3),
-    rho = list()
+  slope <- fbcm_stub_base(d)
+  slope$fb <- suppressWarnings(fb_from_brms(y ~ x + (x || site), data = d))
+  slope$fb$family <- "gaussian"
+  slope$fb$link <- "identity"
+  cases <- list(
+    nested = list(
+      base = fbcm_stub_base(d, random = ~ site + site:year),
+      terms = c(site = 1.3, `site:year` = 0.3)
+    ),
+    slope = list(base = slope, terms = c(site = 1.3, x_site = 0.2))
   )
-  dense_model <- .fb_sel_cov_model(base, seed = 1L)
-  expect_identical(dense_model$whitening$mode, "dense")
-  withr::local_options(flexyBayes.selection_dense_gb = 1e-6)
-  block_model <- .fb_sel_cov_model(base, seed = 1L)
-  expect_identical(block_model$whitening$mode, "by_block")
-  expect_identical(block_model$whitening$group, "site")
-  expect_identical(block_model$whitening$n_blocks, 12L)
-
   folds <- .fb_sel_folds(fb_resamples(v = 3L), d)
   split <- folds[[1L]]
   tr <- split$train_rows
   as_ <- split$assess_rows
-  dense_spec <- .fb_sel_cov_fold_spec(dense_model, components)
-  block_spec <- .fb_sel_cov_fold_spec(block_model, components)
-  for (prediction in c("known_cluster", "new_cluster")) {
-    dense <- .fb_sel_fold_blocks(dense_spec, tr, as_, prediction)
-    by_block <- .fb_sel_fold_blocks_by_group(block_spec, tr, as_, prediction)
-    # Each block of V is the dense V's block, value for value.
-    for (b in by_block$factor_tt$blocks) {
-      rows <- tr[b$positions]
-      expect_identical(
-        .fb_sel_block_covariance(block_spec, rows, rows),
-        dense$v_tt[b$positions, b$positions, drop = FALSE]
-      )
-    }
-    expect_lt(abs(by_block$logdet_v_tt - dense$logdet_v_tt) /
-                abs(dense$logdet_v_tt), 1.5e-8)
-    y <- matrix(d$y[tr], ncol = 1L)
-    expect_lt(
-      fbcm_rel(.fb_sel_whiten_train(by_block$factor_tt, y),
-               forwardsolve(t(dense$factor_tt), y)),
-      1.5e-8
-    )
-    key <- as.character(d$site[as_])
-    for (k in unique(key)) {
-      index <- which(key == k)
+  for (case in cases) {
+    base <- .fb_sel_bayes_normalise_base(case$base)
+    components <- list(residual = 0.4, terms = case$terms, rho = list())
+    withr::local_options(flexyBayes.selection_dense_gb = 0.5)
+    dense_model <- .fb_sel_cov_model(base, seed = 1L)
+    expect_identical(dense_model$whitening$mode, "dense")
+    withr::local_options(flexyBayes.selection_dense_gb = 1e-6)
+    block_model <- .fb_sel_cov_model(base, seed = 1L)
+    expect_identical(block_model$whitening$mode, "by_block")
+    expect_identical(block_model$whitening$group, "site")
+    expect_identical(block_model$whitening$n_blocks, 12L)
+
+    dense_spec <- .fb_sel_cov_fold_spec(dense_model, components)
+    block_spec <- .fb_sel_cov_fold_spec(block_model, components)
+    for (prediction in c("known_cluster", "new_cluster")) {
+      dense <- .fb_sel_fold_blocks(dense_spec, tr, as_, prediction)
+      by_block <- .fb_sel_fold_blocks_by_group(block_spec, tr, as_, prediction)
+      # Each block of V is the dense V's block, value for value.
+      for (b in by_block$factor_tt$blocks) {
+        rows <- tr[b$positions]
+        expect_identical(
+          .fb_sel_block_covariance(block_spec, rows, rows),
+          dense$v_tt[b$positions, b$positions, drop = FALSE]
+        )
+      }
+      expect_lt(abs(by_block$logdet_v_tt - dense$logdet_v_tt) /
+                  abs(dense$logdet_v_tt), 1.5e-8)
+      y <- matrix(d$y[tr], ncol = 1L)
       expect_lt(
-        fbcm_rel(.fb_sel_conditional_rows(by_block$v_s_given_t, index),
-                 dense$v_s_given_t[index, index]),
+        fbcm_rel(.fb_sel_whiten_train(by_block$factor_tt, y),
+                 forwardsolve(t(dense$factor_tt), y)),
         1.5e-8
       )
+      key <- as.character(d$site[as_])
+      for (k in unique(key)) {
+        index <- which(key == k)
+        expect_lt(
+          fbcm_rel(.fb_sel_conditional_rows(by_block$v_s_given_t, index),
+                   dense$v_s_given_t[index, index]),
+          1.5e-8
+        )
+      }
     }
   }
 })
