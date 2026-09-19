@@ -28,6 +28,10 @@
   `fb_decision(stability_subsamples = )` adds subsample stability selection
   (Meinshausen and Buhlmann 2010) over half-samples of the resampling unit.
   It is off by default, and `plan = TRUE` states its cost.
+* At `s = 1` the penalised optimiser's support is now empty, as the exact
+  solution there is. Rounding left values of order 1e-16 that counted as
+  selected, so a one-standard-error choice of `s = 1` could report columns in
+  the chosen support and in `tidy()$retained`.
 
 # flexyBayes 0.13.1
 

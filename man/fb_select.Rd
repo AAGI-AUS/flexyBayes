@@ -66,7 +66,12 @@ that fold's analysis rows. A projection's submodel is scored with terms
 searched again on each fold's reference fit, at the size the
 whole-sample decision chose. The optimiser arm's tuning point is reported
 as \code{s = lambda / lambda_max}, each fold's \code{lambda_max} read on its
-training rows, beside the lambda that point is on each fold.}
+training rows, beside the lambda that point is on each fold. Its support
+at a point is the set of non-zero penalised coefficients after one rule:
+at \code{s >= 1} every one is zero, the exact solution there; elsewhere a
+coefficient is set to zero when removing it moves its own gradient
+coordinate by at most the path's KKT threshold of \code{1e-6}, and the point
+without it still meets that threshold.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 

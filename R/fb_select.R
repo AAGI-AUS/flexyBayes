@@ -2476,7 +2476,12 @@
 #'   searched again on each fold's reference fit, at the size the
 #'   whole-sample decision chose. The optimiser arm's tuning point is reported
 #'   as `s = lambda / lambda_max`, each fold's `lambda_max` read on its
-#'   training rows, beside the lambda that point is on each fold.
+#'   training rows, beside the lambda that point is on each fold. Its support
+#'   at a point is the set of non-zero penalised coefficients after one rule:
+#'   at `s >= 1` every one is zero, the exact solution there; elsewhere a
+#'   coefficient is set to zero when removing it moves its own gradient
+#'   coordinate by at most the path's KKT threshold of `1e-6`, and the point
+#'   without it still meets that threshold.
 #' @param resamples An [fb_resamples()] specification.
 #' @param prediction `"new_cluster"` (default) or `"known_cluster"`. A
 #'   held-out cluster's own effect is not estimable from the training rows,

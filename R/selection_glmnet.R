@@ -43,6 +43,55 @@
 .fb_sel_path_kkt_tolerance <- function() 1e-6
 
 
+# .fb_sel_path_support() --- the one rule for which penalised coefficients a
+# path point holds.
+#
+# `.fb_sel_glmnet_at()` applies it to every path point of a family that
+# selects, whichever provider solved the point, before the point is
+# certified, stored or scored. Every support the optimiser reports is then
+# read from the returned vector as a non-zero coefficient: the support at
+# each point and the chosen one, entry and exit along the path, group
+# membership, the stability frequencies, and the coefficient tables they are
+# checked against.
+#
+# A solver's zero is not exact. At `lambda = lambda_max` the exact solution is
+# the zero vector, yet the column attaining the anchor comes back at about
+# 1e-16, and read as held it is a selection the optimum does not contain.
+#
+# - At or beyond the fold's null anchor (`at_null_anchor`: s >= 1 on a family
+#   with a finite anchor) every penalised coefficient is zero, which is the
+#   exact solution there.
+# - Elsewhere a coefficient is set to zero when removing it moves its own
+#   coordinate of the smooth part's gradient, |beta_j| (||a_j||^2 + l2), by
+#   no more than the path's KKT threshold, provided the point without such
+#   coefficients still meets that threshold (`residual`). Otherwise the point
+#   is kept as solved.
+#
+# A coefficient the exact optimum holds at a size below what the certificate
+# resolves is therefore reported as zero.
+.fb_sel_path_support <- function(beta,
+                                 A,
+                                 lambda_l2,
+                                 residual,
+                                 at_null_anchor = FALSE) {
+  if (length(beta) == 0L) {
+    return(beta)
+  }
+  if (isTRUE(at_null_anchor)) {
+    beta[] <- 0
+    return(beta)
+  }
+  tol <- .fb_sel_path_kkt_tolerance()
+  below <- beta != 0 & abs(beta) * (colSums(A^2) + lambda_l2) <= tol
+  if (!any(below)) {
+    return(beta)
+  }
+  removed <- beta
+  removed[below] <- 0
+  if (residual(removed) <= tol) removed else beta
+}
+
+
 # .fb_sel_provider_installed() --- is a provider package available.
 #
 # One line, and it exists as its own binding so the absent-provider refusal
@@ -337,6 +386,10 @@
 # section 8.1's one-column closed form is deliberately not used: it has not
 # been independently re-derived and falsified, and that document says it does
 # not ship until it has been.
+#
+# A path point of a family that selects (`selects = TRUE`) passes through the
+# support rule, `.fb_sel_path_support()`, before it is certified;
+# `at_null_anchor` says the point is at or beyond the fold's null anchor.
 .fb_sel_glmnet_at <- function(
   A,
   z,
@@ -346,7 +399,9 @@
   thresh = 1e-16,
   maxit = 1e6,
   penalty = NULL,
-  groups = NULL
+  groups = NULL,
+  selects = FALSE,
+  at_null_anchor = FALSE
 ) {
   A <- as.matrix(A)
   z <- as.numeric(z)
@@ -388,13 +443,32 @@
       tol = .fb_sel_path_kkt_tolerance(),
       max_iter = 2e5
     )
+    residual <- function(beta) {
+      .fb_sel_kkt_residual_grouped(A, z, beta, scaled, groups)
+    }
+    beta <- solved$beta
+    if (isTRUE(selects)) {
+      beta <- .fb_sel_path_support(
+        beta,
+        A,
+        scaled$lambda_l2,
+        residual,
+        at_null_anchor = at_null_anchor
+      )
+    }
     return(list(
-      beta = solved$beta,
+      beta = beta,
       route = "internal_prox",
       lambda_glmnet = NA_real_,
       alpha_glmnet = NA_real_,
-      kkt = .fb_sel_kkt_residual_grouped(A, z, solved$beta, scaled, groups),
-      canonical_objective = solved$objective,
+      kkt = residual(beta),
+      canonical_objective = .fb_sel_objective_grouped(
+        A,
+        z,
+        beta,
+        .fb_sel_penalty_parts(scaled),
+        .fb_sel_group_parts(groups, ncol(A))
+      ),
       # `glmnet` has no objective at this point, and recording a number from
       # a problem it never solved would be the fiction the certificate is
       # built to prevent.
@@ -467,6 +541,15 @@
         route <- "internal_prox"
       }
     }
+  }
+  if (isTRUE(selects)) {
+    beta <- .fb_sel_path_support(
+      beta,
+      A,
+      lambda_l2,
+      function(b) .fb_sel_kkt_residual_lambda(A, z, b, lambda_l1, lambda_l2),
+      at_null_anchor = at_null_anchor
+    )
   }
 
   list(
@@ -994,7 +1077,9 @@
   alpha,
   convention,
   penalty = NULL,
-  groups = NULL
+  groups = NULL,
+  selects = FALSE,
+  at_null_anchor = FALSE
 ) {
   payload <- parts$payload
   solved <- .fb_sel_glmnet_at(
@@ -1004,7 +1089,9 @@
     alpha,
     convention,
     penalty = penalty,
-    groups = groups
+    groups = groups,
+    selects = selects,
+    at_null_anchor = at_null_anchor
   )
   beta_penalised <- solved$beta
 
@@ -1316,6 +1403,8 @@
           }
           s <- substrates[[label]]
           parts <- parts_by_fold[[label]]
+          # `s_point` is defined only where the grid has a finite null
+          # anchor, and at or beyond it the solution is exactly zero.
           solution <- .fb_sel_glmnet_fold_solution(
             s,
             parts,
@@ -1323,7 +1412,9 @@
             penalty$alpha_composite,
             conventions[[label]],
             penalty = penalty,
-            groups = groups_by_fold[[label]]
+            groups = groups_by_fold[[label]],
+            selects = semantics$selects,
+            at_null_anchor = isTRUE(s_point >= 1)
           )
           scale <- s$learned$preprocessing_scale
           estimates <- solution$beta_penalised
@@ -1420,6 +1511,8 @@
               lambda_max = grid$lambda_max[[label]],
               fold = label
             )
+          # The support, read from the vector the support rule returned
+          # (`.fb_sel_path_support()`).
           nonzero <- names(
             solution$beta_penalised
           )[abs(solution$beta_penalised) > 0]
