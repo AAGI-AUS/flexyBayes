@@ -897,8 +897,15 @@ flexybayes <- function(
     if (!is.null(weights)) {
       the_call_proceed$weights <- weights
     }
-    if (!is.null(known_variance)) {
-      the_call_proceed$known_variance <- known_variance
+    # A known variance is a column of `data` by now (R/known_variance.R).
+    # The call carries it as the argument, aligned to these rows, and the
+    # data without it, so that evaluating the call attaches it once.
+    known_rows <- data[[.FB_KNOWN_VARIANCE_COL]]
+    if (!is.null(known_rows)) {
+      the_call_proceed$data <- data[
+        setdiff(names(data), .fb_known_variance_columns())
+      ]
+      the_call_proceed$known_variance <- known_rows
     }
     if (length(known_matrices)) {
       the_call_proceed$known_matrices <- known_matrices

@@ -447,6 +447,44 @@ test_that("weights and a known variance compose as sigma^2 / w + v on both engin
 })
 
 
+test_that("backend = \"auto\", review_code then proceed(), and a separate process carry it", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("brms")
+  fbkv_quiet()
+  d <- fbkv_stage2()
+  inla <- flexybayes(ybar ~ variety, random = ~trial, data = d,
+                     known_variance = d$v, backend = "inla", verbose = FALSE)
+  auto <- flexybayes(ybar ~ variety, random = ~trial, data = d,
+                     known_variance = d$v, verbose = FALSE)
+  expect_s3_class(auto, "flexybayes_inla")
+  expect_lt(fbkv_rel(fbkv_variances(auto)$mean, fbkv_variances(inla)$mean),
+            1e-4)
+
+  args <- list(ybar ~ variety, random = ~trial, data = d,
+               known_variance = d$v, backend = "brms", chains = 1,
+               n_samples = 300, warmup = 300, seed = 3L)
+  review <- do.call(flexybayes, c(args, review_code = TRUE))
+  proceeded <- suppressWarnings(proceed(review))
+  direct <- suppressWarnings(do.call(
+    flexybayes, c(args, verbose = FALSE, mcmc_verbose = FALSE)
+  ))
+  expect_identical(as.matrix(proceeded$brms), as.matrix(direct$brms))
+
+  skip_if_not_installed("callr")
+  isolated <- withr::with_options(
+    list(flexyBayes.isolation = "process"),
+    flexybayes(ybar ~ variety, random = ~trial, data = d,
+               known_variance = d$v, backend = "inla", verbose = FALSE)
+  )
+  expect_identical(isolated$extras$isolation$mode, "process")
+  expect_lt(
+    fbkv_rel(fbkv_variances(isolated)$mean, fbkv_variances(inla)$mean),
+    1e-4
+  )
+})
+
+
 # --- (iv) rows through the missing-data layer ----------------------------- #
 
 test_that("a known variance follows its rows through omit and augment", {
