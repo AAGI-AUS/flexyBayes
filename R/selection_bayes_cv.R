@@ -669,6 +669,14 @@
     verbose = FALSE,
     mcmc_verbose = FALSE
   )
+  # The scalar prior arguments describe the model as `prior` does: a base
+  # fitted with `prior_fixed_sd` or `prior_vc_sd` is refitted under them, and
+  # a base fitted without them keeps the package default.
+  for (which in c("fixed_sd", "vc_sd")) {
+    if (.fb_prior_scalar_supplied(base$fb, which)) {
+      args[[paste0("prior_", which)]] <- .fb_prior_scalar_value(base$fb, which)
+    }
+  }
   if (!is.null(na_action)) {
     args$na_action <- na_action
   } else if (!is.null(info$na_action)) {

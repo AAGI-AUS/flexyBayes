@@ -150,6 +150,7 @@ reference:
       - update.flexybayes
       - as.data.frame.fb_plan
       - tidy.fb_select
+      - glance.fb_select
       - augment.fb_select
       - plot.fb_select
   - title: Genomics

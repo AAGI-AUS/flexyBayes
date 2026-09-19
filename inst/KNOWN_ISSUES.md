@@ -387,7 +387,10 @@ Each is reproducible on this release. Priority is for the MET use case.
     factor or interaction term with only some of its columns unidentified
     on a fold is refused. The penalised reference's out-of-fold score
     (`benchmark = TRUE` with a penalty) compiles its prior over the whole
-    candidate block, so any drop there is refused. *Workaround*: score the
+    candidate block, so any drop there is refused. The Bayesian refit of a
+    frozen support (`fb_select(refit = )`) writes each support column as a
+    design column of its own, so it refits such a fold on the columns the
+    fold kept. *Workaround*: score the
     candidates with `workflow = "unpenalized_benchmark"` or the `glmnet`
     arm, which drop single columns; cut the folds on a unit whose training
     rows identify every candidate; or remove the unidentified columns from

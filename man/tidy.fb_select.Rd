@@ -9,7 +9,11 @@
 \arguments{
 \item{x}{An \code{fb_select} object.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored.
+Where \code{refit = list(method = "bayes")} refitted each fold's frozen
+support, \code{value_folds_in_support} counts the folds whose refit held the
+column, and \code{value_in_block} says whether its term is in the block the
+block share is stated for.}
 }
 \value{
 A \code{data.frame} with one row per design column: the column, the
@@ -19,7 +23,9 @@ posterior mean and standard deviation on the scientific scale. Beside
 them, the penalised path's \code{folds_available}, \code{folds_entered},
 \code{path_entry_s}, \code{path_exit_s} and \code{path_reentries}, all \code{NA} for a
 protected column and on a run with no penalised path, with the path
-itself in the attributes \code{support_path} and \code{support_path_by_fold}.
+itself in the attributes \code{support_path} and \code{support_path_by_fold}; and
+the refit's \code{value_folds_in_support} and \code{value_in_block}, \code{NA} where no
+refit ran and, for the first, on a protected column.
 }
 \description{
 Tidy a selection into one row per candidate coefficient

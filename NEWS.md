@@ -1,3 +1,14 @@
+# flexyBayes (development version)
+
+* `fb_select(refit = list(method = "bayes"))` refits the support the penalised
+  optimiser chose on each fold as a Bayesian model on the base's own engine,
+  scores each held-out row by its log predictive density, and reports the
+  per-unit sums, their total with its standard error across units, and the
+  share of between-trial variance a declared block explains.
+  `glance(x, against = y)` differences two such runs unit by unit.
+* The Bayesian workflow's fold refits now keep a base's `prior_vc_sd` and
+  `prior_fixed_sd`; before, they ran under the package's default priors.
+
 # flexyBayes 0.13.1
 
 A patch release for penalised selection. It adds two read-outs of a penalised
