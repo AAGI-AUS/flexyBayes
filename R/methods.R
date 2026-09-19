@@ -1039,7 +1039,9 @@ update.flexybayes <- function(object, ...) {
   # rows the re-fit is handed, and the carrying columns leave the data so the
   # re-fit attaches it once.
   known_variance <- dat[[.FB_KNOWN_VARIANCE_COL]]
-  dat <- dat[setdiff(names(dat), .fb_known_variance_columns())]
+  if (any(.fb_known_variance_columns() %in% names(dat))) {
+    dat <- dat[setdiff(names(dat), .fb_known_variance_columns())]
+  }
 
   args <- list(
     fixed = cl$fixed,
