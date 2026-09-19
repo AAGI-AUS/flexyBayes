@@ -4,6 +4,18 @@
   `triangulate_genomic()` and `triangulate_gwas()`, is removed. Nothing in
   the package called it, and agreement between two engines fitted from one
   parsed model cannot detect a translation error both share.
+* Refusals, the capability table and the help pages no longer describe a gap
+  in flexyBayes as a limit of INLA or brms. Two such statements were false:
+  brms writes a multi-trait covariance with a known relationship matrix, and
+  INLA has an exchangeable group model. Statements about the engines that
+  remain are checked against the engines in `test-engine-claims.R`.
+* `corh(f):g` now refuses by name on INLA as it does on brms, and the INLA
+  refusal of a model the brms route also refuses no longer points at brms.
+* The README keeps what the package does, how to install it, one worked
+  example, the table of models at least one engine fits, and where to read
+  more. The row notes, and the structures neither engine fits, are in
+  `KNOWN_ISSUES.md`.
+* The default-prior message printed on a first fit is two sentences.
 
 # flexyBayes 0.13.1
 
