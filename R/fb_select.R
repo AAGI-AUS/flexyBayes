@@ -2501,9 +2501,9 @@
 #'   `options(flexyBayes.selection_dense_gb = )`, 0.5 GiB (8,192 rows) by
 #'   default. Above that, a V that is block-diagonal over a grouping of its
 #'   random terms is factored block by block, and any other V refuses with
-#'   `selection_dense_covariance_too_large`. An estimand string such as
-#'   `"plugin_mean_covariance"`, the argument's earlier form, is deprecated
-#'   and runs the default.
+#'   `selection_dense_covariance_too_large`. The argument's earlier form, an
+#'   estimand string (`"plugin_mean_covariance"` and two others), is
+#'   deprecated and runs the default.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'

@@ -113,9 +113,9 @@ while one n by n matrix over the data fits within
 \code{options(flexyBayes.selection_dense_gb = )}, 0.5 GiB (8,192 rows) by
 default. Above that, a V that is block-diagonal over a grouping of its
 random terms is factored block by block, and any other V refuses with
-\code{selection_dense_covariance_too_large}. An estimand string such as
-\code{"plugin_mean_covariance"}, the argument's earlier form, is deprecated
-and runs the default.}
+\code{selection_dense_covariance_too_large}. The argument's earlier form, an
+estimand string (\code{"plugin_mean_covariance"} and two others), is
+deprecated and runs the default.}
 
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
