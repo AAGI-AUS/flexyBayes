@@ -301,6 +301,13 @@ fitted.flexybayes_inla <- function(object, ...) {
   if (is.finite(n_obs) && length(out) > n_obs) {
     out <- out[seq_len(n_obs)]
   }
+  # A known variance per row is a row effect in INLA's linear predictor and
+  # part of the likelihood on brms; the fitted value is the mean without it
+  # (R/known_variance.R).
+  known <- .fb_inla_known_variance_effect(object)
+  if (!is.null(known)) {
+    out <- out - known
+  }
   out
 }
 

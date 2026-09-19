@@ -453,6 +453,9 @@
       seed = seed,
       n = n,
       slots = slots,
+      # Each row's known variance, added to the residual on V's diagonal in
+      # every fold, or NULL (R/known_variance.R).
+      known_variance = .fb_sel_known_variance(base),
       builder = if (isTRUE(blocking$applicable)) {
         "block_cholesky"
       } else {
@@ -497,7 +500,8 @@
     provider,
     engine = engine,
     seed = seed,
-    na_action = if (identical(provider, "inla")) "augment" else NULL
+    na_action = if (identical(provider, "inla")) "augment" else NULL,
+    carry_known_variance = TRUE
   )
   out <- .fb_sel_cov_components(fit, slots)
   out$rows_passed <- nrow(fold_data)
@@ -598,7 +602,8 @@
       z,
       components$residual,
       components$terms[names(z)],
-      estimand
+      estimand,
+      known_variance = model$known_variance
     )
   } else {
     names_slots <- vapply(model$slots, function(s) s$name, character(1L))
@@ -606,7 +611,8 @@
       list(),
       components$residual,
       components$terms[names_slots],
-      estimand
+      estimand,
+      known_variance = model$known_variance
     )
     spec$slots <- model$slots
     spec$blocks <- model$whitening$blocks
@@ -670,7 +676,7 @@
 # term, and every entry equals the dense V's entry exactly.
 .fb_sel_block_covariance <- function(cov_spec, rows_a, rows_b) {
   out <- if (identical(rows_a, rows_b)) {
-    diag(cov_spec$residual, nrow = length(rows_a))
+    diag(.fb_sel_residual_diagonal(cov_spec, rows_a), nrow = length(rows_a))
   } else {
     matrix(0, nrow = length(rows_a), ncol = length(rows_b))
   }
@@ -857,6 +863,7 @@
       ),
       engine = NA_character_,
       engine_version = NA_character_,
+      known_variance = FALSE,
       builder = NA_character_,
       whitening = list(mode = "dense", bound_gb = .fb_sel_dense_gb()),
       equivalence_level = "map_exact_fixed_covariance",
@@ -874,6 +881,9 @@
     ),
     engine = cov_model$provider,
     engine_version = cov_model$engine_version,
+    # Whether each row's known variance was added to the residual on V's
+    # diagonal (R/known_variance.R).
+    known_variance = !is.null(cov_model$known_variance),
     builder = cov_model$builder,
     whitening = cov_model$whitening[
       c("mode", "group", "n_blocks", "largest_block", "bound_gb")

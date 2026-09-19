@@ -18,7 +18,9 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("john.alpha", package = "agridat", envir = e)
         d <- e$john.alpha
-        d$gen <- factor(d$gen); d$rep <- factor(d$rep); d$block <- factor(d$block)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
+        d$block <- factor(d$block)
         d
       },
       asreml = function(d) {
@@ -42,7 +44,9 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("john.alpha", package = "agridat", envir = e)
         d <- e$john.alpha
-        d$gen <- factor(d$gen); d$rep <- factor(d$rep); d$block <- factor(d$block)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
+        d$block <- factor(d$block)
         d
       },
       asreml = function(d) {
@@ -66,7 +70,9 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("besag.met", package = "agridat", envir = e)
         d <- e$besag.met
-        d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+        d$env <- factor(d$county)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
         d <- d[!is.na(d$yield), ]
         d <- d[order(d$env, d$gen), ]
         rownames(d) <- NULL
@@ -93,7 +99,8 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("yan.winterwheat", package = "agridat", envir = e)
         d <- e$yan.winterwheat
-        d$gen <- factor(d$gen); d$env <- factor(d$env)
+        d$gen <- factor(d$gen)
+        d$env <- factor(d$env)
         d <- d[order(d$env, d$gen), ]
         rownames(d) <- NULL
         d
@@ -127,10 +134,13 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("besag.met", package = "agridat", envir = e)
         d <- e$besag.met
-        d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+        d$env <- factor(d$county)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
         d <- d[!is.na(d$yield), ]
         d <- d[d$env %in% levels(d$env)[seq_len(2)], ]
-        d$env <- droplevels(d$env); d$gen <- droplevels(d$gen)
+        d$env <- droplevels(d$env)
+        d$gen <- droplevels(d$gen)
         d <- d[order(d$env, d$gen), ]
         rownames(d) <- NULL
         d
@@ -169,10 +179,13 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("besag.met", package = "agridat", envir = e)
         d <- e$besag.met
-        d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+        d$env <- factor(d$county)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
         d <- d[!is.na(d$yield), ]
         d <- d[d$env %in% levels(d$env)[seq_len(3)], ]
-        d$env <- droplevels(d$env); d$gen <- droplevels(d$gen)
+        d$env <- droplevels(d$env)
+        d$gen <- droplevels(d$gen)
         d <- d[order(d$env, d$gen), ]
         rownames(d) <- NULL
         d
@@ -227,7 +240,9 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("john.alpha", package = "agridat", envir = e)
         d <- e$john.alpha
-        d$gen <- factor(d$gen); d$rep <- factor(d$rep); d$block <- factor(d$block)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
+        d$block <- factor(d$block)
         set.seed(20260911L)
         # Weights varying by a factor of four, so a dropped or inverted
         # weight cannot pass unnoticed.
@@ -235,8 +250,11 @@ scenario_registry <- function() {
         d
       },
       asreml = function(d) {
-        asreml::asreml(fixed = yield ~ gen, random = ~ rep, weights = wt,
-                       data = d, trace = FALSE)
+        asreml::asreml(
+          fixed = yield ~ gen, random = ~ rep,
+          weights = wt, # nolint: object_usage_linter.
+          data = d, trace = FALSE
+        )
       },
       flexybayes = function(d) {
         flexyBayes::flexybayes(fixed = yield ~ gen, random = ~ rep,
@@ -256,7 +274,9 @@ scenario_registry <- function() {
         e <- new.env()
         utils::data("besag.met", package = "agridat", envir = e)
         d <- e$besag.met
-        d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+        d$env <- factor(d$county)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
         d <- d[!is.na(d$yield), ]
         d <- d[order(d$env, d$gen), ]
         rownames(d) <- NULL
@@ -294,14 +314,17 @@ scenario_registry <- function() {
     # exists to catch.
 
     "17_v1_alpha_nested" = list(
-      label = "Alpha lattice: intercept-only against genotype-fixed, two strata",
+      label =
+        "Alpha lattice: intercept-only against genotype-fixed, two strata",
       registry_row = "Nested and interacted iid terms",
       factor_cols = c("gen", "rep", "block"),
       data = function() {
         e <- new.env()
         utils::data("john.alpha", package = "agridat", envir = e)
         d <- e$john.alpha
-        d$gen <- factor(d$gen); d$rep <- factor(d$rep); d$block <- factor(d$block)
+        d$gen <- factor(d$gen)
+        d$rep <- factor(d$rep)
+        d$block <- factor(d$block)
         d
       },
       asreml_protected = function(d) {
@@ -334,7 +357,8 @@ scenario_registry <- function() {
     ),
 
     "18_v1_sim_met_candidates" = list(
-      label = "Twenty sites by ten plots: one protected covariate and six candidates",
+      label =
+        "Twenty sites by ten plots: one protected covariate and six candidates",
       registry_row = "Simple iid random intercept",
       factor_cols = c("site"),
       data = function() {
@@ -383,7 +407,8 @@ scenario_registry <- function() {
     ),
 
     "19_v1_random_slope" = list(
-      label = "Correlated random intercept and slope on a repeated-measures trial",
+      label =
+        "Correlated random intercept and slope on a repeated-measures trial",
       registry_row = "Correlated slope",
       factor_cols = c("Subject"),
       data = function() {

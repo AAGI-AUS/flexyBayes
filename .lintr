@@ -10,5 +10,7 @@ exclusions: list(
     "tests/testthat/_snaps",
     "vignettes",
     "inst/examples",                   # illustrative cross-backend scripts; style-relaxed
-    "tests/testthat" = list(line_length_linter = Inf)  # tests carry long fixtures + expected strings
+    "tests/testthat" = list(line_length_linter = Inf),  # tests carry long fixtures + expected strings
+    "R/fb_penalty.R" = list(line_length_linter = c(67, 68, 115, 116, 117, 118)),  # roxygen markdown table rows; a pipe-table row is one physical line and cannot be wrapped
+    "data-raw/asreml_reference.R" = list(object_usage_linter = Inf)  # runs only under a separate R 4.5 install with the proprietary asreml package, which no CI machine has
   )

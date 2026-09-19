@@ -31,11 +31,14 @@ met <- function(n_env = NULL, n_gen = NULL) {
   e <- new.env()
   utils::data("besag.met", package = "agridat", envir = e)
   d <- e$besag.met
-  d$env <- factor(d$county); d$gen <- factor(d$gen); d$rep <- factor(d$rep)
+  d$env <- factor(d$county)
+  d$gen <- factor(d$gen)
+  d$rep <- factor(d$rep)
   d <- d[!is.na(d$yield), ]
   if (!is.null(n_env)) d <- d[d$env %in% levels(d$env)[seq_len(n_env)], ]
   if (!is.null(n_gen)) d <- d[d$gen %in% levels(d$gen)[seq_len(n_gen)], ]
-  d$env <- droplevels(d$env); d$gen <- droplevels(d$gen)
+  d$env <- droplevels(d$env)
+  d$gen <- droplevels(d$gen)
   d <- d[order(d$env, d$gen), ]
   rownames(d) <- NULL
   d
@@ -52,28 +55,90 @@ sim_slope <- function() {
 }
 
 structures <- list(
-  "iid_intercept"   = list(d = function() met(), f = function(d)
-    flexybayes(yield ~ env, random = ~ gen, data = d, backend = "inla", verbose = FALSE)),
-  "nested"          = list(d = function() met(), f = function(d)
-    flexybayes(yield ~ env, random = ~ env:rep, data = d, backend = "inla", verbose = FALSE)),
-  "diag_gxe"        = list(d = function() met(), f = function(d)
-    flexybayes(yield ~ env, random = ~ diag(env):gen, data = d, backend = "inla", verbose = FALSE)),
-  "dsum_residual"   = list(d = function() met(), f = function(d)
-    flexybayes(yield ~ env, random = ~ gen, residual = ~ dsum(~ units | env),
-               data = d, backend = "inla", verbose = FALSE)),
-  "combined_met"    = list(d = function() met(), f = function(d)
-    flexybayes(yield ~ env, random = ~ diag(env):gen, residual = ~ dsum(~ units | env),
-               data = d, backend = "inla", verbose = FALSE)),
-  "us_dim2"         = list(d = function() met(n_env = 2L), f = function(d)
-    flexybayes(yield ~ env, random = ~ us(env):gen, data = d, backend = "inla", verbose = FALSE)),
-  "us_dim3"         = list(d = function() met(n_env = 3L), f = function(d)
-    flexybayes(yield ~ env, random = ~ us(env):gen, data = d, backend = "inla", verbose = FALSE)),
-  "fa1"             = list(d = function() met(n_gen = 30L), f = function(d)
-    flexybayes(yield ~ env, random = ~ fa(env, 1):gen, data = d, backend = "inla", verbose = FALSE)),
-  "cor_slope"       = list(d = function() sim_slope(), f = function(d)
-    flexybayes(y ~ x + (x | g), data = d, backend = "inla", verbose = FALSE)),
-  "uncor_slope"     = list(d = function() sim_slope(), f = function(d)
-    flexybayes(y ~ x + (x || g), data = d, backend = "inla", verbose = FALSE))
+  "iid_intercept" = list(
+    d = function() met(),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ gen,
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "nested" = list(
+    d = function() met(),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ env:rep,
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "diag_gxe" = list(
+    d = function() met(),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ diag(env):gen,
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "dsum_residual" = list(
+    d = function() met(),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ gen, residual = ~ dsum(~ units | env),
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "combined_met" = list(
+    d = function() met(),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ diag(env):gen, residual = ~ dsum(~ units | env),
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "us_dim2" = list(
+    d = function() met(n_env = 2L),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ us(env):gen,
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "us_dim3" = list(
+    d = function() met(n_env = 3L),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ us(env):gen,
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "fa1" = list(
+    d = function() met(n_gen = 30L),
+    f = function(d) {
+      flexybayes(
+        yield ~ env, random = ~ fa(env, 1):gen,
+        data = d, backend = "inla", verbose = FALSE
+      )
+    }
+  ),
+  "cor_slope" = list(
+    d = function() sim_slope(),
+    f = function(d) {
+      flexybayes(y ~ x + (x | g), data = d, backend = "inla", verbose = FALSE)
+    }
+  ),
+  "uncor_slope" = list(
+    d = function() sim_slope(),
+    f = function(d) {
+      flexybayes(y ~ x + (x || g), data = d, backend = "inla", verbose = FALSE)
+    }
+  )
 )
 
 id <- Sys.getenv("FB_STRUCT")
@@ -102,7 +167,8 @@ resid <- vapply(runs, function(r) {
   if (length(s)) unname(s[[1]]) else stats::median(r, na.rm = TRUE)
 }, numeric(1))
 
-flip <- FALSE; ratio_max <- 1
+flip <- FALSE
+ratio_max <- 1
 for (cm in setdiff(comps, "sigma")) {
   vals <- vapply(runs, function(r) unname(r[[cm]]), numeric(1))
   collapsed <- vals < COLLAPSE_FRACTION * resid
@@ -143,10 +209,16 @@ if (exists("last_fit", inherits = FALSE)) {
 probe_txt <- if (is.null(probe)) {
   "probe=not_run"
 } else {
-  sprintf("probe=%s(delta=%+.1f)", if (isTRUE(probe$better)) "FLAGGED" else "clear", probe$delta)
+  sprintf(
+    "probe=%s(delta=%+.1f)",
+    if (isTRUE(probe$better)) "FLAGGED" else "clear",
+    probe$delta
+  )
 }
-cat(sprintf("%s\t%s\tn_comp=%d\tmax_ratio=%.2f\tcollapse_flip=%s\t%s\truns=%d\n",
-            id, verdict, length(comps), ratio_max, flip, probe_txt, N_RUNS),
+cat(sprintf(
+      "%s\t%s\tn_comp=%d\tmax_ratio=%.2f\tcollapse_flip=%s\t%s\truns=%d\n",
+      id, verdict, length(comps), ratio_max, flip, probe_txt, N_RUNS
+    ),
     file = out, append = TRUE)
 cat(sprintf("%-16s %-14s max_ratio=%6.2f flip=%-5s %s\n",
             id, verdict, ratio_max, flip, probe_txt))

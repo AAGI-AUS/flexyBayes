@@ -31,9 +31,9 @@ with no penalised path, with the path itself in the attributes
 \code{support_path} and \code{support_path_by_fold}; with a Bayesian refit, also
 \code{value_folds_in_support} and \code{value_in_block}, \code{NA} where no refit ran.
 At \code{level = "group"}, one row
-per group with its \code{rule}, \code{n_columns}, \code{columns} and the same profile
-and stability columns, and the per-fold group record in the attribute
-\code{support_path_by_fold}.
+per group with its \code{rule}, \code{n_columns}, \code{columns}, the same profile
+and stability columns and the five ablation columns, and the per-fold
+group record in the attribute \code{support_path_by_fold}.
 }
 \description{
 Tidy a selection into one row per candidate coefficient
@@ -79,6 +79,13 @@ grouping of a grouped penalty (the model term under \code{group = "term"}, the
 specification under \code{group = "block"}), and otherwise the penalty
 specification that claimed the column, named \code{block_1}, \code{block_2}, ... in
 the order the specifications were written.
+
+With \code{ablation = TRUE}, each group row also carries
+\code{ablation_loss_difference}, the mean over held-out units of the unit's loss
+with the group dropped minus its loss under the full path, its standard
+error \code{ablation_loss_se} and \code{ablation_n_units}; with the Bayesian refit as
+well, \code{ablation_elpd_difference} and \code{ablation_elpd_se}. They are \code{NA}
+where no ablation ran or the group's ablation was refused.
 
 Where \code{\link[=fb_decision]{fb_decision()}} asked for subsample stability, each row also
 carries \code{stability_available}, the subsamples that could estimate it,

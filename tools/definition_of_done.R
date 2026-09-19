@@ -41,12 +41,10 @@ TARGET_TIER <- "V2"
 # held as a ceiling that only falls. 0.13.0 reduces the exports to 25 or
 # fewer through a deprecation cycle.
 MAX_EXPORTS <- 36L
-# D5 is a ratchet on the lint count. It used to assert zero lints while 155
-# stood. The baseline is the count lintr::lint_package() returns with the
-# development tree loaded (D5's own command), measured on 2026-09-19 with
-# lintr 3.4.0. The gate fails when the count rises above it; when the count
-# falls, lower the baseline in the same commit so the gain is kept.
-LINT_BASELINE <- 155L
+# D5 asserts zero lints, measured on 2026-09-19 with lintr 3.4.0 and the
+# development tree loaded (D5's own command). The gate fails on any lint,
+# matching the hard gate in .github/workflows/lint.yaml.
+LINT_BASELINE <- 0L
 
 # ---------------------------------------------------------------------
 # Helpers

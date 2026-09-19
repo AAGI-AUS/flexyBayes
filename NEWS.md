@@ -56,6 +56,12 @@
   memory bound, `options(flexyBayes.selection_dense_gb = )` (0.5 GiB, 8,192
   rows). Above it, a covariance that would be formed as a dense matrix refuses
   with `selection_dense_covariance_too_large` instead of exhausting memory.
+* `flexybayes(known_variance = v)` adds a known variance to each row's
+  residual variance, `Var(y_i) = sigma^2 + v_i`, for the second stage of a
+  two-stage analysis. brms fits it as `se(sqrt(v), sigma = TRUE)` and INLA as a
+  row effect with known variance. `fb_select(covariance = "base_model")`
+  carries it into the fold covariance, and the routes that would leave it out
+  refuse with `known_variance_not_supported`.
 * `fb_select(refit = list(method = "bayes"))` refits the support the penalised
   optimiser chose on each fold as a Bayesian model on the base's own engine,
   scores each held-out row by its log predictive density, and reports the
@@ -75,6 +81,11 @@
   out-of-fold loss over `s` and the elastic-net mixing parameter from results
   run at other mixing values on the same score contract, with each result's
   chosen point marked. It needs plotly, now in Suggests.
+* `fb_select(ablation = TRUE)` drops each declared block of the penalised
+  path in turn, walks the path again on the same folds, and reports in
+  `tidy(level = "group")` the change in held-out loss per unit with its
+  standard error, and the change in log predictive density where
+  `refit = list(method = "bayes")` ran. The read-out is not nested.
 
 # flexyBayes 0.13.1
 

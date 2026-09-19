@@ -63,7 +63,10 @@ record <- list(
     runner_sha256 = Sys.getenv("FB_RUNNER_SHA"),
     dirty = identical(Sys.getenv("FB_DIRTY"), "TRUE"),
     run_command = Sys.getenv("FB_RUN_CMD"),
-    blas = tryCatch(extSoftVersion()[["BLAS"]], error = function(e) NA_character_),
+    blas = tryCatch(
+      extSoftVersion()[["BLAS"]],
+      error = function(e) NA_character_
+    ),
     lapack = tryCatch(La_library(), error = function(e) NA_character_),
     rng_kind = paste(RNGkind(), collapse = " / "),
     platform = R.version$platform
@@ -73,8 +76,16 @@ record <- list(
 if (inherits(asr, "error") || inherits(fb, "error")) {
   record$status <- "not_compared"
   record$reason <- paste0(
-    if (inherits(asr, "error")) paste0("asreml did not fit: ", conditionMessage(asr)) else "",
-    if (inherits(fb, "error")) paste0("flexybayes did not fit: ", conditionMessage(fb)) else ""
+    if (inherits(asr, "error")) {
+      paste0("asreml did not fit: ", conditionMessage(asr))
+    } else {
+      ""
+    },
+    if (inherits(fb, "error")) {
+      paste0("flexybayes did not fit: ", conditionMessage(fb))
+    } else {
+      ""
+    }
   )
   saveRDS(record, file.path(out_dir, paste0(id, ".rds")))
   cat(id, "\tNOT_COMPARED\t", record$reason, "\n", sep = "")
@@ -117,8 +128,10 @@ checks <- c(checks, cmp_fixed(asr, s, fixed_map))
 for (b in sc$blup) {
   ra <- asreml::summary.asreml(asr, coef = TRUE)$coef.random
   keep <- grep(paste0("^", b$asreml, "_"), rownames(ra))
-  blup_asr <- stats::setNames(ra[keep, "solution"],
-                              sub(paste0("^", b$asreml, "_"), "", rownames(ra)[keep]))
+  blup_asr <- stats::setNames(
+    ra[keep, "solution"],
+    sub(paste0("^", b$asreml, "_"), "", rownames(ra)[keep])
+  )
   # ranef() returns a named list of data frames, one per group, not a
   # single frame. Read the contract rather than the shape it happened to
   # print in.
@@ -168,10 +181,16 @@ if (is.function(sc$asreml_protected)) {
   if (inherits(asr_p, "error") || inherits(fb_p, "error")) {
     v1$status <- "not_compared"
     v1$reason <- paste0(
-      if (inherits(asr_p, "error"))
-        paste0("asreml protected fit failed: ", conditionMessage(asr_p)) else "",
-      if (inherits(fb_p, "error"))
-        paste0("flexybayes protected fit failed: ", conditionMessage(fb_p)) else ""
+      if (inherits(asr_p, "error")) {
+        paste0("asreml protected fit failed: ", conditionMessage(asr_p))
+      } else {
+        ""
+      },
+      if (inherits(fb_p, "error")) {
+        paste0("flexybayes protected fit failed: ", conditionMessage(fb_p))
+      } else {
+        ""
+      }
     )
   } else {
     s_p <- summary(fb_p)
@@ -209,7 +228,8 @@ if (is.function(sc$asreml_protected)) {
 }
 
 record$checks <- checks
-record$elapsed_sec <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
+record$elapsed_sec <-
+  round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
 record$status <- "compared"
 
 saveRDS(record, file.path(out_dir, paste0(id, ".rds")))
@@ -218,10 +238,19 @@ np <- sum(vapply(checks, function(c) isTRUE(c$pass), logical(1)))
 nf <- sum(vapply(checks, function(c) identical(c$pass, FALSE), logical(1)))
 nn <- sum(vapply(checks, function(c) is.na(c$pass), logical(1)))
 ns <- sum(vapply(record$structural, function(c) isTRUE(c$pass), logical(1)))
-nsf <- sum(vapply(record$structural, function(c) identical(c$pass, FALSE), logical(1)))
+nsf <- sum(vapply(
+  record$structural,
+  function(c) identical(c$pass, FALSE),
+  logical(1)
+))
 l3 <- record$layer3$checks %||% list()
 l3p <- sum(vapply(l3, function(c) isTRUE(c$pass), logical(1)))
 l3f <- sum(vapply(l3, function(c) identical(c$pass, FALSE), logical(1)))
 l3n <- sum(vapply(l3, function(c) is.na(c$pass), logical(1)))
-cat(sprintf("%s\tstructural %d pass / %d fail\tnumeric %d pass / %d fail / %d not-asserted\tlayer3 %d / %d / %d\t%.0fs\n",
-            id, ns, nsf, np, nf, nn, l3p, l3f, l3n, record$elapsed_sec))
+cat(sprintf(
+  paste0(
+    "%s\tstructural %d pass / %d fail\tnumeric %d pass / %d fail / %d ",
+    "not-asserted\tlayer3 %d / %d / %d\t%.0fs\n"
+  ),
+  id, ns, nsf, np, nf, nn, l3p, l3f, l3n, record$elapsed_sec
+))

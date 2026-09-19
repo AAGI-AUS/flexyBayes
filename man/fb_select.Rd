@@ -20,6 +20,7 @@ fb_select(
   plan = FALSE,
   covariance = c("reml_plugin", "base_model"),
   refit = NULL,
+  ablation = FALSE,
   ...
 )
 }
@@ -133,6 +134,12 @@ random intercept whose variance is the between-trial variance (default:
 the base's only random intercept); \code{n_draws}, the posterior draws per
 fold (default 4000).}
 
+\item{ablation}{\code{FALSE} (the default), or \code{TRUE} to drop each declared
+block of the penalised path in turn and report the change in held-out
+loss; see "Grouped ablation". It needs
+\code{workflow = "penalized_optimizer"}, and refuses with
+\code{selection_ablation_route_undefined} elsewhere, before any fit.}
+
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
 }
@@ -140,8 +147,15 @@ deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
 An object of class \code{fb_select} carrying the four resolved axes,
 the reference fit, the column map, the decision, the out-of-fold scores,
 the increment over the protected model, the diagnostics, any benchmark
-arms, the folds and the certificate. With \code{plan = TRUE}, an object of
-class \code{fb_select_plan}.
+arms, the folds and the certificate. With \code{ablation = TRUE}, its element
+\code{ablation} holds one row per block (\code{blocks}), the paired unit table
+(\code{units}), each ablated path's per-row predictions (\code{rows}, with the
+log predictive density \code{lpd} where the refit ran), chosen supports
+(\code{supports}) and tuning curves (\code{paths}), the density's paired unit
+table (\code{value_units}) and the columns each ablated refit held
+(\code{value_supports}), and the contract. With \code{plan = TRUE}, an object of
+class \code{fb_select_plan}, whose
+\code{selection$ablation} counts the ablation's fits.
 }
 \description{
 Fits a Bayesian reference model in which a declared block of candidate
@@ -293,6 +307,41 @@ numerator is the sample variance of \code{m_t} over the fold's \code{T} training
 levels (divisor \code{T - 1}) and \code{sigma^2} is the variance of the \code{group}
 random intercept. The draws of every fold are pooled, and the posterior
 median and 95\% interval reported.
+}
+
+\section{Grouped ablation}{
+
+Under shrinkage a coefficient's size is not a column's importance.
+With \code{workflow = "penalized_optimizer"}, \code{ablation = TRUE} drops each
+declared block of penalised columns in turn -- the groups
+\code{tidy(x, level = "group")} reports: the grouping of a grouped penalty, and
+otherwise each penalty specification -- and walks the path again on the
+same folds, with the same fold covariance, over the same grid of
+\code{s = lambda / lambda_max}, tuned by the same rule. Each held-out unit's
+loss, at the metric the path was tuned on and averaged over repeats, is
+paired with its loss under the full path. \code{tidy(x, level = "group")}
+reports the mean over units of the difference, the unit's loss without the
+block minus with it, so positive means the block lowers the held-out loss,
+and its standard error \code{sd(d_u) / sqrt(U)} over the \code{U} units. A block
+whose removal leaves no penalised column leaves the protected columns,
+fitted by generalised least squares on each fold. A block whose remaining
+penalty the path refuses is reported with the refusal and no difference.
+With \code{refit = list(method = "bayes")}, each ablated path's frozen supports
+are refitted as well, and the held-out log predictive density difference,
+\code{elpd} with the block minus without it, is reported beside the loss with
+the valuation's standard error.
+
+Every path is scored under one contract, which identifies the fold of
+every row, the scoring unit, the target, the response and the metric, and
+its hash is on the result. The read-out is not nested: each path's tuning
+point is chosen on the out-of-fold scores of all folds, including the fold
+whose units are then scored, and the full and ablated paths share that
+reuse. On the package's synthetic two-block fixture (eight data seeds, both
+rules), choosing the point on inner folds of each training fold instead
+moved a signal block's difference by a median of 0.14 standard errors and
+changed none of 32 verdicts. A block that carries no signal is not read as
+important there, but its difference can be negative beyond one standard
+error: without it the path is tuned to less shrinkage.
 }
 
 \examples{

@@ -999,6 +999,9 @@
 # @keywords internal
 .fb_random_inla <- function(object) {
   sr <- object$inla$summary.random
+  # The row effect that carries a known variance per row is part of the
+  # residual, not a random effect of the model (R/known_variance.R).
+  sr <- sr[setdiff(names(sr), .FB_INLA_KNOWN_INDEX)]
   if (!is.list(sr) || length(sr) == 0L) {
     return(list())
   }

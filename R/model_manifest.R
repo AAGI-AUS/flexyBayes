@@ -264,7 +264,11 @@
 # A prior as one line of text: an INLA expression prior is its own text, a
 # fixed effect's normal prior is INLA's mean and precision, and any other
 # named prior is followed by its parameters.
-.fb_manifest_prior_text <- function(prior, param_text, section = NA_character_) {
+.fb_manifest_prior_text <- function(
+  prior,
+  param_text,
+  section = NA_character_
+) {
   if (is.na(prior) && is.na(param_text)) {
     return(NA_character_)
   }

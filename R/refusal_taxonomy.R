@@ -817,8 +817,8 @@
       "Unsupported family \"%s\". flexyBayes supports: gaussian, ",
       "binomial, binary, poisson, negative_binomial, negbinom, ",
       "gamma, beta, hurdle_gamma, lognormal. Other families (including ",
-      "survival / time-to-event and multivariate responses) are planned future ",
-      "work; see fb_refusals()."
+      "survival / time-to-event and multivariate responses) are planned ",
+      "future work; see fb_refusals()."
     ),
     registered_in_adr = "audit-2026-05-30",
     plan_field = NA_character_,

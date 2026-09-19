@@ -31,6 +31,7 @@ flexybayes(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 )
 
@@ -60,6 +61,7 @@ fb(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 )
 }
@@ -532,6 +534,23 @@ Selects how \code{fixed} is interpreted. \code{"auto"} detects the grammar
 from the call shape (a bar-grouped formula is read as brms,
 otherwise ASReml); the other values force a grammar.}
 
+\item{known_variance}{Optional numeric vector of length N: a known
+variance for each response, added to the estimated residual variance,
+\code{Var(y_i) = sigma^2 + v_i}. This is the second stage of a two-stage
+analysis, where each response is a first-stage estimate (a variety
+mean in one trial, say) and \code{v_i} is the variance of that estimate.
+\code{weights} is a different model, \code{Var(y_i) = sigma^2 / w_i}; given
+both, the residual variance is \code{sigma^2 / w_i + v_i}. Lowered for
+\code{family = "gaussian"} with the identity link: brms fits
+\code{y | se(sqrt(v), sigma = TRUE)}, and INLA a row effect with known
+variance \code{v_i}. The summaries report \code{sigma} as the estimated part,
+and fitted values on both engines leave the known part out. A vector
+of zeros fits the model without it. Any other family refuses with
+\code{known_variance_not_supported}, and a vector that is not one finite,
+non-negative value per row with \code{known_variance_invalid}.
+\code{\link[=fb_select]{fb_select()}} carries it into the fold covariance under
+\code{covariance = "base_model"}.}
+
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and
 flexyBayes follows the ASReml 4 name. Supplying \code{rcov} now raises an
@@ -577,11 +596,11 @@ callr the request refuses with
 to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()}, \code{proceed()} and each fold of
 \code{\link[=fb_select]{fb_select()}}. The default, \code{"none"}, fits in this session.
 
-If the operating system kills that process, or compiled code crashes
-inside it, the call refuses with \code{isolated_process_died}, naming the engine, the function
-called, and the exit status or signal, and this session carries on. A
-failure inside the fit, a refusal for instance, arrives exactly as it
-would without the option. The call is not retried.
+If the operating system kills that process, or compiled code crashes inside
+it, the call refuses with \code{isolated_process_died}, naming the engine, the
+function called, and the exit status or signal, and this session carries on.
+A failure inside the fit, a refusal for instance, arrives exactly as it would
+without the option. The call is not retried.
 
 The separate process loads the flexyBayes code this session loaded and
 starts from this session's options, INLA settings, environment variables

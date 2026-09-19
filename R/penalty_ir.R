@@ -767,7 +767,6 @@ print.fb_prior_blocks <- function(x, ...) {
   outside <- setdiff(coef_names_all, b$coef_names)
 
   if (identical(scope, "all_fixed")) {
-    extra <- setdiff(coef_names_all, covered)
     if (length(setdiff(covered, b$coef_names)) > 0L) {
       stop(.fb_refusal_condition(
         reason_code = "penalty_block_targeting_unsupported",

@@ -40,6 +40,11 @@
 #                                       .fb_sel_value_pair()
 #                                       test-selection-value.R
 #
+# One code lands with the grouped ablation (0.14.0):
+#
+#   selection_ablation_route_undefined  R/selection_ablation.R, the route
+#                                       test-selection-ablation.R
+#
 # A registered code with no triggering test is a string, not a refusal.
 
 .populate_refusal_registry_selection_verb <- function() {
@@ -54,7 +59,10 @@
       "`fallback = \"glmnet\"` runs the optimiser under its own name, ",
       "relabels the workflow, prints the substitution and certifies it."
     ),
-    message_template = "fb_select(): the Bayesian workflow needs %s, which is not installed, and fallback = \"none\".",
+    message_template = paste0(
+      "fb_select(): the Bayesian workflow needs %s, which is not installed, ",
+      "and fallback = \"none\"."
+    ),
     registered_in_adr = "SPEC v5 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -105,7 +113,8 @@
       "before 0.13.0 carries no version field and a polynomial checksum over ",
       "column names, which cannot tell a rescaled covariate from the original."
     ),
-    message_template = "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
+    message_template =
+      "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
     registered_in_adr = "U-SCORE-1 (DEC-HASH-01)",
     plan_field = "selection_plan",
     since_version = "0.13.0"
@@ -139,7 +148,10 @@
       "family shrinks every coefficient without setting one to zero, as ",
       "ridge() does. The refusal comes before any refit."
     ),
-    message_template = "fb_select(): refit = list(method = \"bayes\") has no frozen support to refit: %s.",
+    message_template = paste0(
+      "fb_select(): refit = list(method = \"bayes\") has no frozen support to ",
+      "refit: %s."
+    ),
     registered_in_adr = "fb_select(refit = ), 0.14.0",
     plan_field = "selection_plan",
     since_version = "0.14.0"
@@ -155,8 +167,27 @@
       "valuation. Units that were not held out together do not pair, so no ",
       "difference is formed. The fields that differ are named."
     ),
-    message_template = "fb_select(): the two valuations' value contracts differ in: %s.",
+    message_template =
+      "fb_select(): the two valuations' value contracts differ in: %s.",
     registered_in_adr = "fb_select(refit = ), 0.14.0",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_ablation_route_undefined",
+    description = paste0(
+      "fb_select(): ablation = TRUE drops each declared block of the ",
+      "penalised optimiser's path and walks the path again on the same ",
+      "folds, and the workflow is not the penalised optimiser, so no path is ",
+      "walked as the answer. The refusal comes before any fit and before the ",
+      "plan."
+    ),
+    message_template = paste0(
+      "fb_select(): ablation = TRUE needs workflow = ",
+      "\"penalized_optimizer\"; workflow = \"%s\" walks no penalised path."
+    ),
+    registered_in_adr = "fb_select(ablation = ), 0.14.0",
     plan_field = "selection_plan",
     since_version = "0.14.0"
   )

@@ -67,6 +67,16 @@
   )
 ) {
   estimand <- match.arg(estimand)
+  # Every builder that reads these components writes the residual as
+  # sigma^2 I, with no place for a known variance per row
+  # (R/known_variance.R).
+  ir <- object$fb %||% object$extras$fb_terms
+  if (!is.null(.fb_known_variance_term(ir))) {
+    .fb_sel_known_variance_refuse_route(paste0(
+      "a covariance built from the fitted base's own variance components, ",
+      "whose residual is one variance common to every row,"
+    ))
+  }
   vc <- .fb_sel_summary(object)$varcomp
 
   if (is.null(vc) || nrow(vc) == 0L) {
@@ -406,7 +416,8 @@ print.fb_sel_whitener <- function(x, ...) {
   cat("  rows     : ", x$n, "\n", sep = "")
   cat(
     "  blocks   : ", x$n_blocks,
-    if (!is.null(x$block_factor)) paste0(" over `", x$block_factor, "`") else "",
+    if (!is.null(x$block_factor)) paste0(" over `", x$block_factor, "`") else
+      "",
     "\n",
     sep = ""
   )

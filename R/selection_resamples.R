@@ -849,12 +849,15 @@
 # both its training block and its cross-block from the same object;
 # `.fb_sel_Z_from_vars()` builds it from a data frame and
 # `.fb_sel_random_designs()` from a fitted base. `residual` and `terms` are on
-# the VARIANCE scale and `terms` is matched to `Z` by name.
+# the VARIANCE scale and `terms` is matched to `Z` by name. `known_variance`,
+# one value per row of the data, is added to the residual on the diagonal
+# (R/known_variance.R).
 .fb_sel_cov_spec <- function(
   Z,
   residual,
   terms,
-  estimand = "reml_plugin_covariance"
+  estimand = "reml_plugin_covariance",
+  known_variance = NULL
 ) {
   if (length(Z) > 0L && !setequal(names(Z), names(terms))) {
     stop(
@@ -869,10 +872,20 @@
   if (!is.numeric(residual) || length(residual) != 1L || residual <= 0) {
     stop("`residual` must be a single positive variance.", call. = FALSE)
   }
-  structure(
-    list(Z = Z, residual = residual, terms = terms, estimand = estimand),
-    class = "fb_sel_cov_spec"
-  )
+  spec <- list(Z = Z, residual = residual, terms = terms, estimand = estimand)
+  if (!is.null(known_variance)) {
+    spec$known_variance <- known_variance
+  }
+  structure(spec, class = "fb_sel_cov_spec")
+}
+
+# .fb_sel_residual_diagonal() --- the diagonal the residual contributes over
+# some rows: its variance, plus each row's known variance where there is one.
+.fb_sel_residual_diagonal <- function(cov_spec, rows) {
+  if (is.null(cov_spec$known_variance)) {
+    return(cov_spec$residual)
+  }
+  cov_spec$residual + cov_spec$known_variance[rows]
 }
 
 
@@ -906,8 +919,16 @@
   n_train <- length(train_rows)
   n_assess <- length(assess_rows)
 
-  v_tt <- diag(cov_spec$residual, nrow = n_train, ncol = n_train)
-  v_ss <- diag(cov_spec$residual, nrow = n_assess, ncol = n_assess)
+  v_tt <- diag(
+    .fb_sel_residual_diagonal(cov_spec, train_rows),
+    nrow = n_train,
+    ncol = n_train
+  )
+  v_ss <- diag(
+    .fb_sel_residual_diagonal(cov_spec, assess_rows),
+    nrow = n_assess,
+    ncol = n_assess
+  )
   v_st_structural <- matrix(0, nrow = n_assess, ncol = n_train)
 
   for (nm in names(cov_spec$Z)) {
@@ -1122,6 +1143,10 @@
   x_candidate <- .fb_sel_apply_preprocessing(x_candidate, preprocessing)
 
   if (is.null(cov_spec)) {
+    # The REML plug-in estimates a residual variance common to every row.
+    if (.FB_KNOWN_VARIANCE_COL %in% names(data)) {
+      .fb_sel_known_variance_refuse_reml()
+    }
     Z <- .fb_sel_Z_from_vars(data, random)
     components <- .fb_sel_reml_components(
       y,
