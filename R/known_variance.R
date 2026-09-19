@@ -59,6 +59,7 @@
 # non-negative variance per row of `data`.
 .fb_known_variance_check <- function(known_variance, data) {
   n <- nrow(data)
+  values <- function(k) paste0(k, if (k == 1L) " value is" else " values are")
   problem <- if (!is.numeric(known_variance) || is.matrix(known_variance)) {
     paste0("a ", class(known_variance)[[1L]], " was given")
   } else if (length(known_variance) != n) {
@@ -66,12 +67,10 @@
       "it has ", length(known_variance), " values and `data` has ", n,
       " rows"
     )
-  } else if (anyNA(known_variance) || any(!is.finite(known_variance))) {
-    paste0(
-      sum(!is.finite(known_variance)), " value(s) are missing or not finite"
-    )
+  } else if (any(!is.finite(known_variance))) {
+    paste0(values(sum(!is.finite(known_variance))), " missing or not finite")
   } else if (any(known_variance < 0)) {
-    paste0(sum(known_variance < 0), " value(s) are negative")
+    paste0(values(sum(known_variance < 0)), " negative")
   }
   if (is.null(problem)) {
     return(invisible(NULL))
