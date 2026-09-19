@@ -68,6 +68,13 @@
   solution there is. Rounding left values of order 1e-16 that counted as
   selected, so a one-standard-error choice of `s = 1` could report columns in
   the chosen support and in `tidy()$retained`.
+* Two displays. `plot(fit, type = "spatial_field")` draws the posterior mean
+  of an `ar1(row):ar1(col)` field on the trial's row-by-column array, titled
+  with the `trial` identifier the caller gives. On a selection,
+  `plot(x, type = "loss_surface", alongside = list(...))` draws the
+  out-of-fold loss over `s` and the elastic-net mixing parameter from results
+  run at other mixing values on the same score contract, with each result's
+  chosen point marked. It needs plotly, now in Suggests.
 
 # flexyBayes 0.13.1
 

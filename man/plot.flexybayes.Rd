@@ -36,21 +36,33 @@ predictive check overlaying replicated datasets on the observed
 response, which needs predictive draws and so refuses by name on a
 fit that carries none (see \code{\link[=pp_check.flexybayes]{pp_check.flexybayes()}}); and
 \code{"variogram"}, the empirical semivariance of the residuals over the
-design index. \code{NULL} (the default) resolves to \code{"diagnostics"} on a
-sampled fit and \code{"residuals"} otherwise.}
+design index; and \code{"spatial_field"}, the posterior mean of a separable
+autoregressive field, \code{random = ~ ar1(row):ar1(col)}, drawn on the
+row-by-column array of the trial on the response scale. \code{NULL} (the
+default) resolves to \code{"diagnostics"} on a sampled fit and
+\code{"residuals"} otherwise.}
 
 \item{...}{Further arguments passed to the underlying plotting call,
 for example \code{variable} to restrict which parameters a diagnostic
-display covers, or \code{type} and \code{ndraws} for \code{"pp_check"}.}
+display covers, or \code{type} and \code{ndraws} for \code{"pp_check"}. The spatial
+field takes \code{trial}, the identifier printed in its title and the only
+label it adds to the array's own row and column labels; on a fit with
+one field per trial, \code{random = ~ at(trial):ar1(row):ar1(col)}, it names
+the level whose field is drawn.}
 }
 \value{
 Invisibly, the object the underlying plotting call returns --
 a \pkg{ggplot2} object for the displays built with it, the
-semivariance table for \code{"variogram"}, and \code{NULL} for those drawn on
-the base graphics device. Called for the plot it draws.
+semivariance table for \code{"variogram"}, for \code{"spatial_field"} a list
+holding \code{values} (the field, one row per row level and one column per
+column level), \code{row_var}, \code{col_var}, \code{trial}, \code{title} and \code{spelling}
+(the field's term as written), and \code{NULL}
+for those drawn on the base graphics device. A fit with no separable
+field refuses \code{"spatial_field"} with
+\code{spatial_field_requires_ar1_field}. Called for the plot it draws.
 }
 \description{
-Draws one of seven standard displays for a fitted model, chosen by
+Draws one of eight standard displays for a fitted model, chosen by
 \code{type}. Every backend reaches the same method, and a display that needs
 a slot a given engine does not populate -- posterior draws on the
 deterministic INLA path, for instance -- prints a message naming what

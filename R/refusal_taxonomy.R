@@ -1212,6 +1212,71 @@
     since_version = "0.9.1"
   )
 
+  # The spatial field display draws the posterior mean of a separable
+  # autoregressive field. A fit whose terms name no row-by-column array has
+  # no field, which is a property of the model rather than a gap in the
+  # display.
+  .register_refusal(
+    reason_code = "spatial_field_requires_ar1_field",
+    description = paste0(
+      "plot(type = \"spatial_field\") draws the posterior mean of the ",
+      "separable autoregressive field random = ~ ar1(row):ar1(col), and the ",
+      "fit's random terms name no such field."
+    ),
+    message_template = paste0(
+      "plot(type = \"spatial_field\") draws the posterior mean of a ",
+      "separable spatial field, and this fit carries none. Fit one with ",
+      "random = ~ ar1(row):ar1(col)."
+    ),
+    registered_in_adr = "0.14.0 figures",
+    plan_field = NA_character_,
+    since_version = "0.14.0"
+  )
+
+  # A suggested-package guard, as for emmeans above: the loss surface is a
+  # three-dimensional plotly display, and plotly is suggested rather than
+  # imported.
+  .register_refusal(
+    reason_code = "loss_surface_requires_plotly",
+    description = paste0(
+      "plot(type = \"loss_surface\") on an fb_select result draws a ",
+      "three-dimensional surface with plotly, a suggested package that is ",
+      "not installed."
+    ),
+    message_template = paste0(
+      "plot(type = \"loss_surface\") draws a three-dimensional surface with ",
+      "plotly, which is not installed. Install it with ",
+      "install.packages(\"plotly\")."
+    ),
+    registered_in_adr = "0.14.0 figures",
+    plan_field = NA_character_,
+    since_version = "0.14.0"
+  )
+
+  # One fb_select() call walks the path on s at one elastic-net mixing
+  # value, so the loss surface over s and alpha is drawn from several
+  # results. They are drawn together only when their losses were scored on
+  # one score contract, on one grid and chosen by one rule; otherwise two
+  # rows of the surface would not be the same quantity.
+  .register_refusal(
+    reason_code = "selection_loss_surface_undefined",
+    description = paste0(
+      "plot(type = \"loss_surface\") was given optimiser results that do ",
+      "not span a surface: fewer than two elastic-net mixing values, a ",
+      "mixing value given twice, an entry with no path on ",
+      "s = lambda / lambda_max, or results that differ in score contract, ",
+      "grid on s, decision rule, penalised columns or covariance source."
+    ),
+    message_template = paste0(
+      "plot(type = \"loss_surface\") draws the out-of-fold loss of ",
+      "optimiser results at two or more elastic-net mixing values, scored ",
+      "on one score contract: %s."
+    ),
+    registered_in_adr = "0.14.0 figures",
+    plan_field = NA_character_,
+    since_version = "0.14.0"
+  )
+
   # Raised when a model carrying observation weights reaches dispatch.
   # The ingest adapters parse `weights` into an addition term, but no
   # active emitter consumes it: brms and INLA both generate identical

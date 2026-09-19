@@ -4619,7 +4619,8 @@ augment.fb_select <- function(
 #'
 #' @param x An `fb_select` object.
 #' @param type `"elpd_by_size"`, `"rank_stability"`, `"shrinkage"`,
-#'   `"benchmark"`, `"entrance_path"` or `"entrance_heatmap"`.
+#'   `"benchmark"`, `"entrance_path"`, `"entrance_heatmap"` or
+#'   `"loss_surface"`.
 #'   `"entrance_path"` plots the common out-of-fold loss against
 #'   `s = lambda / lambda_max` on a logarithmic axis and labels each
 #'   candidate at its median first entry, `tidy(x)$entry_s_median`: the
@@ -4637,15 +4638,37 @@ augment.fb_select <- function(
 #'   that hold it, and a stable row is starred. Both displays are available
 #'   for optimiser workflows and optimiser benchmark arms whose penalty has a
 #'   finite null anchor, which excludes `ridge()` and `exclusive_lasso()`.
+#'
+#'   `"loss_surface"` draws, with \pkg{plotly}, the out-of-fold loss of the
+#'   entrance path over `s` and the elastic-net mixing parameter `alpha`. One
+#'   `fb_select()` call walks one mixing value, so the surface is built from
+#'   `x` and the results passed as `alongside`, one per further mixing value,
+#'   run with the same base, candidates, resamples, seed and decision. They
+#'   are drawn together only when they share one score contract (the same
+#'   assignment of units to folds, response, design, metric and scoring
+#'   unit), one grid on `s`, one decision rule, one set of penalised columns
+#'   and one covariance source; otherwise the display refuses with
+#'   `selection_loss_surface_undefined`. Each cell is the loss the path
+#'   stored at that point. The diamond is the point `x` selected, and each
+#'   other result's selected point is an open circle at its own `alpha`; the
+#'   display compares the mixing values and chooses none of them. Without
+#'   \pkg{plotly} it refuses with `loss_surface_requires_plotly`.
 #' @param ... Passed to the underlying plotting call. The entrance heat map
-#'   also takes `level`, `source`, `max_rows` (default 40) and `label_cex`.
-#' @returns Invisibly, the data the display was drawn from. Called for the
-#'   plot it draws.
+#'   also takes `level`, `source`, `max_rows` (default 40) and `label_cex`;
+#'   the loss surface takes `alongside`, a list of `fb_select` objects at the
+#'   other mixing values.
+#' @returns Invisibly, the data the display was drawn from. For
+#'   `"loss_surface"`, the \pkg{plotly} widget, returned visibly and
+#'   carrying the values it was drawn from as its `values` attribute:
+#'   `surface` (one row per mixing value and grid point), `chosen` (each
+#'   result's selected point, `primary` marking the one of `x`), `metric`,
+#'   `scoring_unit` and `contract_hash`. Called for the plot it draws.
 #' @export
 plot.fb_select <- function(x,
                            type = c("elpd_by_size", "rank_stability",
                                     "shrinkage", "benchmark",
-                                    "entrance_path", "entrance_heatmap"),
+                                    "entrance_path", "entrance_heatmap",
+                                    "loss_surface"),
                            ...) {
   type <- match.arg(type)
   switch(
@@ -4655,7 +4678,8 @@ plot.fb_select <- function(x,
     shrinkage = .fb_select_plot_shrinkage(x, ...),
     benchmark = .fb_select_plot_benchmark(x, ...),
     entrance_path = .fb_select_plot_entrance(x, ...),
-    entrance_heatmap = .fb_select_plot_entrance_heatmap(x, ...)
+    entrance_heatmap = .fb_select_plot_entrance_heatmap(x, ...),
+    loss_surface = .fb_select_plot_loss_surface(x, ...)
   )
 }
 

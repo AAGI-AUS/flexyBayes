@@ -7,7 +7,7 @@
 \method{plot}{fb_select}(
   x,
   type = c("elpd_by_size", "rank_stability", "shrinkage", "benchmark", "entrance_path",
-    "entrance_heatmap"),
+    "entrance_heatmap", "loss_surface"),
   ...
 )
 }
@@ -15,7 +15,8 @@
 \item{x}{An \code{fb_select} object.}
 
 \item{type}{\code{"elpd_by_size"}, \code{"rank_stability"}, \code{"shrinkage"},
-\code{"benchmark"}, \code{"entrance_path"} or \code{"entrance_heatmap"}.
+\code{"benchmark"}, \code{"entrance_path"}, \code{"entrance_heatmap"} or
+\code{"loss_surface"}.
 \code{"entrance_path"} plots the common out-of-fold loss against
 \code{s = lambda / lambda_max} on a logarithmic axis and labels each
 candidate at its median first entry, \code{tidy(x)$entry_s_median}: the
@@ -32,14 +33,35 @@ holds it there, and a marker sits at the row's median entry; with
 \code{source = "stability"} a cell is the share of the stability subsamples
 that hold it, and a stable row is starred. Both displays are available
 for optimiser workflows and optimiser benchmark arms whose penalty has a
-finite null anchor, which excludes \code{ridge()} and \code{exclusive_lasso()}.}
+finite null anchor, which excludes \code{ridge()} and \code{exclusive_lasso()}.
+
+\code{"loss_surface"} draws, with \pkg{plotly}, the out-of-fold loss of the
+entrance path over \code{s} and the elastic-net mixing parameter \code{alpha}. One
+\code{fb_select()} call walks one mixing value, so the surface is built from
+\code{x} and the results passed as \code{alongside}, one per further mixing value,
+run with the same base, candidates, resamples, seed and decision. They
+are drawn together only when they share one score contract (the same
+assignment of units to folds, response, design, metric and scoring
+unit), one grid on \code{s}, one decision rule, one set of penalised columns
+and one covariance source; otherwise the display refuses with
+\code{selection_loss_surface_undefined}. Each cell is the loss the path
+stored at that point. The diamond is the point \code{x} selected, and each
+other result's selected point is an open circle at its own \code{alpha}; the
+display compares the mixing values and chooses none of them. Without
+\pkg{plotly} it refuses with \code{loss_surface_requires_plotly}.}
 
 \item{...}{Passed to the underlying plotting call. The entrance heat map
-also takes \code{level}, \code{source}, \code{max_rows} (default 40) and \code{label_cex}.}
+also takes \code{level}, \code{source}, \code{max_rows} (default 40) and \code{label_cex};
+the loss surface takes \code{alongside}, a list of \code{fb_select} objects at the
+other mixing values.}
 }
 \value{
-Invisibly, the data the display was drawn from. Called for the
-plot it draws.
+Invisibly, the data the display was drawn from. For
+\code{"loss_surface"}, the \pkg{plotly} widget, returned visibly and
+carrying the values it was drawn from as its \code{values} attribute:
+\code{surface} (one row per mixing value and grid point), \code{chosen} (each
+result's selected point, \code{primary} marking the one of \code{x}), \code{metric},
+\code{scoring_unit} and \code{contract_hash}. Called for the plot it draws.
 }
 \description{
 Displays for a selection
