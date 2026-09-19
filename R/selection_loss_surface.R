@@ -97,7 +97,7 @@
 #' @param x An `fb_select` object; its selected point is the highlighted one.
 #' @param alongside A list of `fb_select` objects at other mixing values.
 #' @param ... Ignored.
-#' @return The plotly widget, visibly so that it prints, with attribute
+#' @return The plotly widget, returned visibly, with attribute
 #'   `values`: `surface` (one row per mixing value and grid point: `alpha`,
 #'   `lambda_index`, `s`, `loss`, `se`), `chosen` (one row per result:
 #'   `alpha`, `lambda_index`, `s`, `loss`, `primary`), `metric`,

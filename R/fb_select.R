@@ -4658,8 +4658,8 @@ augment.fb_select <- function(
 #'   the loss surface takes `alongside`, a list of `fb_select` objects at the
 #'   other mixing values.
 #' @returns Invisibly, the data the display was drawn from. For
-#'   `"loss_surface"`, the \pkg{plotly} widget, returned visibly so that it
-#'   prints, carrying the values it was drawn from as its `values` attribute:
+#'   `"loss_surface"`, the \pkg{plotly} widget, returned visibly and
+#'   carrying the values it was drawn from as its `values` attribute:
 #'   `surface` (one row per mixing value and grid point), `chosen` (each
 #'   result's selected point, `primary` marking the one of `x`), `metric`,
 #'   `scoring_unit` and `contract_hash`. Called for the plot it draws.

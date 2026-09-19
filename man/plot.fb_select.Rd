@@ -57,8 +57,8 @@ other mixing values.}
 }
 \value{
 Invisibly, the data the display was drawn from. For
-\code{"loss_surface"}, the \pkg{plotly} widget, returned visibly so that it
-prints, carrying the values it was drawn from as its \code{values} attribute:
+\code{"loss_surface"}, the \pkg{plotly} widget, returned visibly and
+carrying the values it was drawn from as its \code{values} attribute:
 \code{surface} (one row per mixing value and grid point), \code{chosen} (each
 result's selected point, \code{primary} marking the one of \code{x}), \code{metric},
 \code{scoring_unit} and \code{contract_hash}. Called for the plot it draws.
