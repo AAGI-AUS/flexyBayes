@@ -28,7 +28,7 @@
 #   the paired difference and its standard error are recomputed here from
 #   the two stored tables.
 #
-#   The block share. Three groups of twelve trials are built so that in
+#   The block share. Three groups of forty trials are built so that in
 #   every union of two groups the signal covariate and the trial effect have
 #   mean zero, equal sample variance and zero cross-product: the share of
 #   between-trial variance the signal explains is 0.5 in every training fold
@@ -177,7 +177,7 @@ fbv_expected <- function(sel, d, target) {
   out
 }
 
-# Three groups of twelve trials of five plots. Within each group the signal
+# Three groups of forty trials of five plots. Within each group the signal
 # `s1`, the trial effect `u` and the noise `n1` are the columns of an
 # orthonormal basis orthogonal to the constant, scaled to sample variance
 # one; so in any union of groups they keep mean zero, equal sample variance
@@ -185,7 +185,7 @@ fbv_expected <- function(sel, d, target) {
 fbv_share_data <- function(seed = 202L) {
   .fb_sel_with_seed(seed, {
     n_group <- 3L
-    per_group <- 12L
+    per_group <- 40L
     plots <- 5L
     n_trial <- n_group * per_group
     group <- rep(seq_len(n_group), each = per_group)
@@ -530,12 +530,15 @@ test_that("the block share covers a known share by construction, and a noise blo
   expect_identical(g$block_share_lower, share$pooled$lower)
   expect_identical(g$block_share_upper, share$pooled$upper)
 
-  # The noise covariate is protected, so it is in every fold's model. Its
-  # coefficient is centred at zero with a standard error near
-  # sqrt(1.05 / 23) on 24 training trials, so its share is near
-  # 1.05 chi-squared(1) / 23, whose median is 0.021; "near zero" is a
-  # pooled median below 0.1.
-  expect_lt(noise$value$block_share$pooled$median, 0.1)
+  # The noise covariate is protected, so it is in every fold's model. On T
+  # training trials with m plots each, its coefficient is centred at zero
+  # with variance (sigma_t^2 + sigma_e^2 / m) / ((T - 1) V(n1)), so each
+  # draw's share is near (1 + sigma_e^2 / (m sigma_t^2)) chi-squared(1) /
+  # (T - 1). "Near zero" is a pooled median below five times that
+  # distribution's median: with T = 80, m = 5, sigma_e = 0.5, sigma_t = 1,
+  # 5 * 1.05 * 0.455 / 79 = 0.030.
+  near_zero <- 5 * (1 + 0.5^2 / 5) * stats::qchisq(0.5, 1) / 79
+  expect_lt(noise$value$block_share$pooled$median, near_zero)
   expect_lt(
     noise$value$block_share$pooled$median,
     share$pooled$lower
@@ -614,7 +617,7 @@ test_that("glance, tidy and augment carry the valuation", {
   by_unit <- tapply(rows$lpd, rows$unit, sum)
   expect_equal(units$elpd, as.numeric(by_unit[units$unit]), tolerance = 1e-12)
   expect_identical(units$n_rows, as.integer(table(rows$unit)[units$unit]))
-  expect_identical(nrow(units), 36L)
+  expect_identical(nrow(units), nlevels(d$trial))
 
   g <- glance(sel)
   expect_equal(g$value_elpd, sum(units$elpd), tolerance = 1e-12)
@@ -622,26 +625,33 @@ test_that("glance, tidy and augment carry the valuation", {
     g$value_elpd_se, sqrt(nrow(units)) * stats::sd(units$elpd),
     tolerance = 1e-12
   )
-  expect_identical(g$value_n_units, 36L)
+  expect_identical(g$value_n_units, nlevels(d$trial))
   expect_identical(g$value_unit, "trial")
   expect_identical(g$value_contract_hash, unique(rows$contract_hash))
   expect_true(nzchar(g$value_formula))
 
   # The refit does not reselect: each fold's frozen support is the
-  # optimiser's support on that fold at the chosen point.
-  arm <- sel$benchmark$glmnet
+  # optimiser's support on that fold at the chosen point. Read on the run
+  # whose folds hold different supports, so a support pooled over folds, or
+  # chosen again, would differ from it.
+  reselect <- fbv_runs("new_cluster")[[1L]]
+  arm <- reselect$benchmark$glmnet
   path <- as.data.frame(arm$support$by_lambda)
   chosen <- path[
     path$arm == "benchmark" &
       path$lambda_index == arm$selection$selected_lambda_index, ,
     drop = FALSE
   ]
+  held <- lapply(chosen$terms, function(t) {
+    parts <- strsplit(t, ", ", fixed = TRUE)[[1L]]
+    parts[nzchar(parts)]
+  })
+  expect_gt(length(unique(lapply(held, sort))), 1L)
+  supports <- reselect$value$supports
   for (i in seq_len(nrow(chosen))) {
-    held <- strsplit(chosen$terms[[i]], ", ", fixed = TRUE)[[1L]]
-    held <- held[nzchar(held)]
     expect_setequal(
-      sel$value$supports$column[sel$value$supports$fold == chosen$fold[[i]]],
-      held
+      supports$column[supports$fold == as.character(chosen$fold[[i]])],
+      held[[i]]
     )
   }
 
