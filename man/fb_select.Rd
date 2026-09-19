@@ -151,9 +151,10 @@ arms, the folds and the certificate. With \code{ablation = TRUE}, its element
 \code{ablation} holds one row per block (\code{blocks}), the paired unit table
 (\code{units}), each ablated path's per-row predictions (\code{rows}, with the
 log predictive density \code{lpd} where the refit ran), chosen supports
-(\code{supports}) and tuning curves (\code{paths}), the density's paired unit table (\code{value_units}) and the
-columns each ablated refit held (\code{value_supports}), and the
-contract. With \code{plan = TRUE}, an object of class \code{fb_select_plan}, whose
+(\code{supports}) and tuning curves (\code{paths}), the density's paired unit
+table (\code{value_units}) and the columns each ablated refit held
+(\code{value_supports}), and the contract. With \code{plan = TRUE}, an object of
+class \code{fb_select_plan}, whose
 \code{selection$ablation} counts the ablation's fits.
 }
 \description{
