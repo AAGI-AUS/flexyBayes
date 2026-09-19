@@ -1,51 +1,16 @@
-# flexyBayes (development version)
+# flexyBayes 0.14.0
 
-* The internal cross-engine comparison `triangulate()`, with
-  `triangulate_genomic()` and `triangulate_gwas()`, is removed. Nothing in
-  the package called it, and agreement between two engines fitted from one
-  parsed model cannot detect a translation error both share.
-* Refusals, the capability table and the help pages no longer describe a gap
-  in flexyBayes as a limit of INLA or brms. Two such statements were false:
-  brms writes a multi-trait covariance with a known relationship matrix, and
-  INLA has an exchangeable group model. Statements about the engines that
-  remain are checked against the engines in `test-engine-claims.R`.
-* `corh(f):g` now refuses by name on INLA as it does on brms, and the INLA
-  refusal of a model the brms route also refuses no longer points at brms.
-* The README keeps what the package does, how to install it, one worked
-  example, the table of models at least one engine fits, and where to read
-  more. The row notes, and the structures neither engine fits, are in
-  `KNOWN_ISSUES.md`.
-* The default-prior message printed on a first fit is two sentences.
-* Entrance read-outs for penalised selection. `tidy()` adds `entry_s_median`,
-  the point on `s` by which half of the folds able to estimate a column had
-  admitted it, with its quartiles and their spread. It is the point
-  `plot(type = "entrance_path")` labels, and `path_entry_s` keeps its meaning,
-  the earliest entry on any fold. `tidy(level = "group")` gives the same
-  profile for a grouped penalty's groups and for declared penalty blocks.
-  `plot(type = "entrance_heatmap")` shows the share of folds holding each
-  candidate or group along `s`, and the entrance path now uses a logarithmic
-  `s` axis so its labels no longer overprint.
-  `fb_decision(stability_subsamples = )` adds subsample stability selection
-  (Meinshausen and Buhlmann 2010) over half-samples of the resampling unit.
-  It is off by default, and `plan = TRUE` states its cost.
-* A `brms::bf()` object with a non-linear formula, a formula or fixed value
-  for a distributional parameter, or a family other than the `family`
-  argument now refuses with `brms_ingest_feature_unsupported`. Before, both
-  engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without `sigma ~ x` and
-  fitted the `family` argument in place of a family named inside `bf()`, and
-  `nl = TRUE` stopped with an untyped error.
-* `fb_select()` refuses a base whose data have a missing response when the
-  unpenalised benchmark, the penalised optimiser or `benchmark = TRUE` is
-  asked for (`selection_missing_response_not_carried`). It used to stop
-  inside the optimiser with an untyped error.
-* *Mixed models in brief* and *Bayesian estimation in brief* are rebuilt and
-  show the half-normal default prior.
-* `options(flexyBayes.isolation = "process")` runs each engine fit, and each
-  fold of `fb_select()`, in a separate R process started through callr (in
-  Suggests). If that process is killed, the call refuses with
-  `isolated_process_died`, naming the engine, the function called and the
-  signal or exit status, and the session carries on. The default, `"none"`,
-  fits in the session as before.
+The release for a two-stage analysis of a designed multi-environment trial.
+Penalised selection can now take its fold covariance from a refit of the base
+model, carry known first-stage variances into the second stage, value the
+support the optimiser chose by held-out log predictive density, and rank
+declared blocks by what removing each one costs in held-out loss. Each engine
+fit and each fold can run in its own process. One internal function is
+removed, and the statements the package makes about INLA and brms are checked
+against the engines.
+
+## Selection for a two-stage design
+
 * `fb_select()` gains `covariance = "base_model"`, which reads the fold
   covariance of the benchmark and optimiser workflows from a refit of the base
   model on each fold's training rows. It builds random slopes, `diag(f):g`, a
@@ -70,10 +35,26 @@
   `glance(x, against = y)` differences two such runs unit by unit.
 * The Bayesian workflow's fold refits now keep a base's `prior_vc_sd` and
   `prior_fixed_sd`; before, they ran under the package's default priors.
-* At `s = 1` the penalised optimiser's support is now empty, as the exact
-  solution there is. Rounding left values of order 1e-16 that counted as
-  selected, so a one-standard-error choice of `s = 1` could report columns in
-  the chosen support and in `tidy()$retained`.
+* `fb_select(ablation = TRUE)` drops each declared block of the penalised
+  path in turn, walks the path again on the same folds, and reports in
+  `tidy(level = "group")` the change in held-out loss per unit with its
+  standard error, and the change in log predictive density where
+  `refit = list(method = "bayes")` ran. The read-out is not nested.
+
+## Selection read-outs
+
+* Entrance read-outs for penalised selection. `tidy()` adds `entry_s_median`,
+  the point on `s` by which half of the folds able to estimate a column had
+  admitted it, with its quartiles and their spread. It is the point
+  `plot(type = "entrance_path")` labels, and `path_entry_s` keeps its meaning,
+  the earliest entry on any fold. `tidy(level = "group")` gives the same
+  profile for a grouped penalty's groups and for declared penalty blocks.
+  `plot(type = "entrance_heatmap")` shows the share of folds holding each
+  candidate or group along `s`, and the entrance path now uses a logarithmic
+  `s` axis so its labels no longer overprint.
+  `fb_decision(stability_subsamples = )` adds subsample stability selection
+  (Meinshausen and Buhlmann 2010) over half-samples of the resampling unit.
+  It is off by default, and `plan = TRUE` states its cost.
 * Two displays. `plot(fit, type = "spatial_field")` draws the posterior mean
   of an `ar1(row):ar1(col)` field on the trial's row-by-column array, titled
   with the `trial` identifier the caller gives. On a selection,
@@ -81,11 +62,59 @@
   out-of-fold loss over `s` and the elastic-net mixing parameter from results
   run at other mixing values on the same score contract, with each result's
   chosen point marked. It needs plotly, now in Suggests.
-* `fb_select(ablation = TRUE)` drops each declared block of the penalised
-  path in turn, walks the path again on the same folds, and reports in
-  `tidy(level = "group")` the change in held-out loss per unit with its
-  standard error, and the change in log predictive density where
-  `refit = list(method = "bayes")` ran. The read-out is not nested.
+
+## Fitting in a separate process
+
+* `options(flexyBayes.isolation = "process")` runs each engine fit, and each
+  fold of `fb_select()`, in a separate R process started through callr (in
+  Suggests). If that process is killed, the call refuses with
+  `isolated_process_died`, naming the engine, the function called and the
+  signal or exit status, and the session carries on. The default, `"none"`,
+  fits in the session as before.
+
+## Refusals and corrections
+
+* A `brms::bf()` object with a non-linear formula, a formula or fixed value
+  for a distributional parameter, or a family other than the `family`
+  argument now refuses with `brms_ingest_feature_unsupported`. Before, both
+  engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without `sigma ~ x` and
+  fitted the `family` argument in place of a family named inside `bf()`, and
+  `nl = TRUE` stopped with an untyped error.
+* `fb_select()` refuses a base whose data have a missing response when the
+  unpenalised benchmark, the penalised optimiser or `benchmark = TRUE` is
+  asked for (`selection_missing_response_not_carried`). It used to stop
+  inside the optimiser with an untyped error.
+* At `s = 1` the penalised optimiser's support is now empty, as the exact
+  solution there is. Rounding left values of order 1e-16 that counted as
+  selected, so a one-standard-error choice of `s = 1` could report columns in
+  the chosen support and in `tidy()$retained`.
+
+## What the package states about the engines
+
+* Refusals, the capability table and the help pages no longer describe a gap
+  in flexyBayes as a limit of INLA or brms. Two such statements were false:
+  brms writes a multi-trait covariance with a known relationship matrix, and
+  INLA has an exchangeable group model. Statements about the engines that
+  remain are checked against the engines in `test-engine-claims.R`.
+* `corh(f):g` now refuses by name on INLA as it does on brms, and the INLA
+  refusal of a model the brms route also refuses no longer points at brms.
+
+## Documentation and messages
+
+* The README keeps what the package does, how to install it, one worked
+  example, the table of models at least one engine fits, and where to read
+  more. The row notes, and the structures neither engine fits, are in
+  `KNOWN_ISSUES.md`.
+* *Mixed models in brief* and *Bayesian estimation in brief* are rebuilt and
+  show the half-normal default prior.
+* The default-prior message printed on a first fit is two sentences.
+
+## Removals
+
+* The internal cross-engine comparison `triangulate()`, with
+  `triangulate_genomic()` and `triangulate_gwas()`, is removed. Nothing in
+  the package called it, and agreement between two engines fitted from one
+  parsed model cannot detect a translation error both share.
 
 # flexyBayes 0.13.1
 

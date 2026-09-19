@@ -6,7 +6,7 @@ The table under "What it fits" lists the models each engine fits. A model the
 chosen engine cannot fit is refused with a message saying why and what to use
 instead.
 
-> **Version 0.13.1.** Not on CRAN. Every export is at the
+> **Version 0.14.0.** Not on CRAN. Every export is at the
 > experimental `lifecycle` stage and the API may change within the 0.x
 > series.
 
