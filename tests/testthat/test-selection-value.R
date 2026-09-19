@@ -374,6 +374,28 @@ test_that("a fold refit carries the base's scalar priors", {
 })
 
 
+test_that("scoring a block of rows at a time gives the scores of all rows at once", {
+  draws <- 50L
+  rows <- 23L
+  mean <- .fb_sel_with_seed(5L, matrix(stats::rnorm(draws * rows), draws, rows))
+  variance <- .fb_sel_with_seed(6L, stats::rexp(draws) + 0.5)
+  y <- .fb_sel_with_seed(7L, stats::rnorm(rows))
+  whole <- .fb_sel_value_score(y, mean, variance)
+  blocks <- .fb_sel_value_score_blocks(
+    y,
+    function(columns) list(mean = mean[, columns, drop = FALSE], variance = variance),
+    size = 5L
+  )
+  expect_identical(blocks, whole)
+  # The density of each row, written out here: the log of the mean over
+  # draws of the Gaussian density.
+  by_hand <- vapply(seq_len(rows), function(j) {
+    log(mean(stats::dnorm(y[[j]], mean[, j], sqrt(variance))))
+  }, numeric(1L))
+  expect_equal(whole$lpd, by_hand, tolerance = 1e-12)
+})
+
+
 # --- (ii) the stored density against the closed form --------------------- #
 
 test_that("the stored per-row log predictive density equals the closed-form Gaussian predictive", {

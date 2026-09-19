@@ -112,8 +112,8 @@
       "penalised optimiser froze on each fold, and the request has none to ",
       "refit: the workflow is not the penalised optimiser, which alone ",
       "chooses a support on each fold's training rows, or the penalty ",
-      "family, such as ridge(), shrinks every coefficient without setting ",
-      "one to zero. The refusal comes before any refit."
+      "family shrinks every coefficient without setting one to zero, as ",
+      "ridge() does. The refusal comes before any refit."
     ),
     message_template = "fb_select(): refit = list(method = \"bayes\") has no frozen support to refit: %s.",
     registered_in_adr = "fb_select(refit = ), 0.14.0",

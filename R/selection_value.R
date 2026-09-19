@@ -65,8 +65,8 @@
   if (!is.list(refit) || is.null(names(refit)) ||
         any(!nzchar(names(refit)))) {
     stop(
-      "`refit` must be NULL or a named list, such as ",
-      "list(method = \"bayes\").",
+      "`refit` must be NULL or a named list; list(method = \"bayes\") ",
+      "refits with the defaults.",
       call. = FALSE
     )
   }
@@ -107,7 +107,7 @@
     if (!inherits(block, "formula") || length(block) != 2L) {
       stop(
         "`refit$block` must be a one-sided formula over terms of the base's ",
-        "fixed part or of `candidates`, such as ~ z1 + z2.",
+        "fixed part or of `candidates`.",
         call. = FALSE
       )
     }
@@ -232,8 +232,8 @@
         "fb_select(): refit = list(method = \"bayes\") refits the support ",
         "the penalised optimiser froze on each fold, and a ", arm$family,
         " path shrinks every coefficient without setting one to zero, so ",
-        "it has no support to freeze. Nothing was refitted. Use a family ",
-        "that selects, such as laplace(), elastic_net() or a grouped family."
+        "it has no support to freeze. Nothing was refitted. Use laplace(), ",
+        "elastic_net() or a grouped family, which set coefficients to zero."
       ),
       family = arm$family
     ))
@@ -293,7 +293,8 @@
 #' Score assessment rows from per-draw Gaussian predictive moments
 #'
 #' @param y The assessment rows' observed response.
-#' @param mean,variance Draws in rows, assessment rows in columns.
+#' @param mean Draws in rows, assessment rows in columns.
+#' @param variance The same shape as `mean`, or one variance per draw.
 #' @return `list(lpd, mean, sd)`, one entry per assessment row: the log of
 #'   the draw-averaged density, and the mean and standard deviation of the
 #'   mixture over draws.
@@ -301,6 +302,9 @@
 #' @keywords internal
 .fb_sel_value_score <- function(y, mean, variance) {
   n_draws <- nrow(mean)
+  if (!is.matrix(variance)) {
+    variance <- matrix(variance, n_draws, length(y))
+  }
   logdens <- stats::dnorm(
     matrix(y, nrow = n_draws, ncol = length(y), byrow = TRUE),
     mean = mean,
@@ -313,6 +317,33 @@
     lpd = apply(logdens, 2L, .fb_sel_logmeanexp),
     mean = centre,
     sd = sqrt(colMeans(variance) + spread)
+  )
+}
+
+
+#' Score assessment rows a block of rows at a time
+#'
+#' Each block's predictive moments are built, scored and dropped before the
+#' next, so no draws-by-rows matrix larger than one block is held.
+#'
+#' @param y The assessment rows' observed response.
+#' @param moments `function(columns)` returning `list(mean, variance)` for
+#'   those assessment rows, in the shapes `.fb_sel_value_score()` takes.
+#' @param size Rows per block.
+#' @return As `.fb_sel_value_score()`.
+#' @noRd
+#' @keywords internal
+.fb_sel_value_score_blocks <- function(y, moments, size = 1000L) {
+  n <- length(y)
+  parts <- lapply(seq.int(1L, n, by = size), function(first) {
+    columns <- seq.int(first, min(n, first + size - 1L))
+    m <- moments(columns)
+    .fb_sel_value_score(y[columns], m$mean, m$variance)
+  })
+  list(
+    lpd = unlist(lapply(parts, function(p) p$lpd), use.names = FALSE),
+    mean = unlist(lapply(parts, function(p) p$mean), use.names = FALSE),
+    sd = unlist(lapply(parts, function(p) p$sd), use.names = FALSE)
   )
 }
 
@@ -464,15 +495,16 @@
   assess <- split$assess_rows
   y <- inputs$assessment$y
   if (analytic) {
-    beta <- latent(paste0(colnames(X), ":1"))
-    beta <- matrix(beta, nrow = ncol(X))
+    beta <- matrix(latent(paste0(colnames(X), ":1")), nrow = ncol(X))
     offset <- .fb_offset_total(offsets, engine_data)
-    mean <- t(X[assess, , drop = FALSE] %*% beta)
-    if (!is.null(offset)) {
-      mean <- mean + matrix(offset[assess], nrow(mean), ncol(mean), byrow = TRUE)
-    }
-    unseen_variance <- rowSums(1 / hyper[, precisions, drop = FALSE])
-    variance <- matrix(sigma2 + unseen_variance, nrow(mean), ncol(mean))
+    offset <- if (is.null(offset)) numeric(length(assess)) else offset[assess]
+    variance <- sigma2 + rowSums(1 / hyper[, precisions, drop = FALSE])
+    scored <- .fb_sel_value_score_blocks(y, function(columns) {
+      rows <- assess[columns]
+      mean <- t(X[rows, , drop = FALSE] %*% beta) +
+        matrix(offset[columns], nrow(hyper), length(columns), byrow = TRUE)
+      list(mean = mean, variance = variance)
+    })
   } else {
     predictor <- grep("^Predictor:", latent_names)
     if (length(predictor) != nrow(engine_data)) {
@@ -483,15 +515,15 @@
         call. = FALSE
       )
     }
-    mean <- t(vapply(
-      draws, function(z) z$latent[predictor[assess], 1L], numeric(length(assess))
-    ))
-    if (length(assess) == 1L) {
-      mean <- t(mean)
-    }
-    variance <- matrix(sigma2, nrow(mean), ncol(mean))
+    scored <- .fb_sel_value_score_blocks(y, function(columns) {
+      index <- predictor[assess[columns]]
+      mean <- matrix(
+        vapply(draws, function(z) z$latent[index, 1L], numeric(length(index))),
+        nrow = length(index)
+      )
+      list(mean = t(mean), variance = sigma2)
+    })
   }
-  scored <- .fb_sel_value_score(y, mean, variance)
 
   share <- NULL
   share_reason <- NA_character_
@@ -572,40 +604,48 @@
 
   y <- inputs$assessment$y
   if (analytic) {
-    mean <- .fb_sel_with_seed(seed %||% 1L, brms::posterior_epred(
-      fit$brms, newdata = newdata, re_formula = NA, draw_ids = ids
-    ))
-    unseen <- matrix(0, nrow(mean), ncol(mean))
-    for (g in unique(groups)) {
-      in_group <- which(groups == g)
-      z <- lapply(coefs[in_group], function(c) {
-        if (identical(c, "Intercept")) rep(1, nrow(newdata)) else newdata[[c]]
-      })
-      s <- draws[, sd_names[in_group], drop = FALSE]
-      for (a in seq_along(in_group)) {
-        unseen <- unseen + outer(s[, a]^2, z[[a]]^2)
-        for (b in seq_len(a - 1L)) {
-          cor_name <- paste0(
-            "cor_", g, "__", coefs[in_group][[b]], "__", coefs[in_group][[a]]
-          )
-          if (cor_name %in% colnames(draws)) {
-            unseen <- unseen + 2 * outer(
-              draws[, cor_name] * s[, a] * s[, b], z[[a]] * z[[b]]
+    scored <- .fb_sel_value_score_blocks(y, function(columns) {
+      part <- newdata[columns, , drop = FALSE]
+      mean <- .fb_sel_with_seed(seed %||% 1L, brms::posterior_epred(
+        fit$brms, newdata = part, re_formula = NA, draw_ids = ids
+      ))
+      # Each group's unseen effect on a row: sum over its coefficients of
+      # z^2 sd^2, plus 2 z_a z_b cor sd_a sd_b over each correlated pair.
+      variance <- matrix(sigma2, nrow(mean), ncol(mean))
+      for (g in unique(groups)) {
+        in_group <- which(groups == g)
+        z <- lapply(coefs[in_group], function(c) {
+          if (identical(c, "Intercept")) rep(1, nrow(part)) else part[[c]]
+        })
+        s <- draws[, sd_names[in_group], drop = FALSE]
+        for (a in seq_along(in_group)) {
+          variance <- variance + outer(s[, a]^2, z[[a]]^2)
+          for (b in seq_len(a - 1L)) {
+            cor_name <- paste0(
+              "cor_", g, "__", coefs[in_group][[b]], "__", coefs[in_group][[a]]
             )
+            if (cor_name %in% colnames(draws)) {
+              variance <- variance + 2 * outer(
+                draws[, cor_name] * s[, a] * s[, b], z[[a]] * z[[b]]
+              )
+            }
           }
         }
       }
-    }
-    variance <- sigma2 + unseen
+      list(mean = mean, variance = variance)
+    })
   } else {
     predictive <- .fb_sel_predict_fold_brms(
       fit, seq_len(nrow(newdata)), newdata,
       prediction = prediction, n_draws = n_draws, seed = seed
     )
-    mean <- predictive$mu
-    variance <- matrix(predictive$sigma^2, nrow(mean), ncol(mean))
+    scored <- .fb_sel_value_score_blocks(y, function(columns) {
+      list(
+        mean = predictive$mu[, columns, drop = FALSE],
+        variance = predictive$sigma^2
+      )
+    })
   }
-  scored <- .fb_sel_value_score(y, mean, variance)
 
   share <- NULL
   share_reason <- NA_character_
