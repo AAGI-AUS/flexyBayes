@@ -46,9 +46,8 @@
 # @param capabilities character vector of capability flags
 #                  populated by `lgm_gate()`. Empty
 #                  at construction.
-# @param source    "asreml" or "brms" -- provenance, used by
-#                  `triangulate()` for clear ingest-path labelling
-#                  in cross-engine reports.
+# @param source    "asreml" or "brms" -- provenance: the grammar the
+#                  model was ingested from.
 # @param offsets   character vector of the offset() calls in the fixed
 #                  formula, as written and in formula order; empty when
 #                  the model carries none. Several offsets add.

@@ -21,9 +21,9 @@
 #       populated by .dispatch_backend() after this emit returns;
 #       the slot's shape mirrors the INLA path.
 #
-#   (3) triangulate() peer status. The new class is the dispatch
+#   (3) Draws dispatch. The new class is the dispatch
 #       key for fb_as_draws_simple.flexybayes_brms (defined in
-#       R/triangulate.R) and canonical_names.flexybayes_brms
+#       R/fb_as_draws_simple.R) and canonical_names.flexybayes_brms
 #       (defined in R/canonical_names.R).
 #
 # Stan compile latency. brms's first call in a session compiles
@@ -396,11 +396,10 @@ emit_brms <- function(
         verbose = verbose
       ),
       run_time = elapsed,
-      # What has to match before this fit can be compared with another
-      # engine's. Built here rather than at comparison time because the
-      # analysis data are what the fit actually saw, and by the time
-      # triangulate() runs the caller may hold a different object of the
-      # same name. See R/model_fingerprint.R.
+      # The record of the question this fit answered. Built here because
+      # the analysis data are what the fit actually saw, and later the
+      # caller may hold a different object of the same name. See
+      # R/model_fingerprint.R.
       fingerprint = .fb_model_fingerprint(
         fb,
         data,
@@ -670,7 +669,7 @@ emit_brms <- function(
     # Cholesky-factors the supplied covariance internally -- the
     # K = L L' decorrelation that turns a structured genetic random
     # effect into one Stan fits cheaply -- so vm() / ped() reach the
-    # brms backend and GBLUP becomes three-engine triangulatable. The
+    # brms backend and GBLUP fits on both active engines. The
     # covariance matrix itself is threaded into brms's data2 by
     # .fb_brms_data2().
     if (ttype %in% c("vm", "ped")) {
@@ -1618,9 +1617,9 @@ emit_brms <- function(
 
   # Divergent transitions are a separate signal from R-hat and ESS: a
   # chain can mix well over a region it never reached. Counted here so the
-  # fit carries it, since triangulate()'s diagnostics gate reads the fit
-  # rather than re-deriving the sampler state. NA when the sampler does
-  # not report NUTS parameters.
+  # fit carries it, since the convergence verdict (R/convergence_contract.R)
+  # reads the fit rather than re-deriving the sampler state. NA when the
+  # sampler does not report NUTS parameters.
   n_div <- tryCatch(
     {
       np <- brms::nuts_params(brmsfit)

@@ -164,6 +164,115 @@
   )
 }
 
+# --- the summary-slot diagnostics on a brms fit ------------------------ #
+
+# Thresholds. R-hat 1.01 and bulk ESS 400 are the rank-normalised
+# workflow defaults (Vehtari et al. 2021); they are heuristics with no
+# error rate.
+.FB_CONV_RHAT_MAX <- 1.01
+.FB_CONV_ESS_MIN <- 400
+
+# Parameters excluded from the sampler diagnostics: Stan's own bookkeeping
+# quantities are not model parameters, and their mixing is not what the
+# verdict is about.
+.FB_CONV_DIAG_EXCLUDE <- c("lp__", "lprior", "lp")
+
+# Drop the bookkeeping quantities from a named diagnostic vector. An
+# unnamed vector is returned whole: subsetting on `names(v) %in% ...`
+# when `names(v)` is NULL empties the vector, which would silently turn
+# a failing fit into one with no diagnostics at all.
+.fb_drop_bookkeeping <- function(v) {
+  if (is.null(v) || is.null(names(v))) {
+    return(v)
+  }
+  v[!(names(v) %in% .FB_CONV_DIAG_EXCLUDE)]
+}
+
+# Name of the element at `idx`, or a generic label when the vector has no
+# names (a fit whose diagnostics arrived without variable labels).
+.fb_diag_label <- function(v, idx) {
+  nms <- names(v)
+  if (is.null(nms) || is.na(nms[[idx]])) "a model parameter" else nms[[idx]]
+}
+
+# max R-hat, bulk ESS and the divergence count from the summary slot
+# .brms_convergence() wrote at fit time, against the thresholds above:
+# ok (TRUE / FALSE / NA when the fit carries none), the reasons a FALSE
+# was reached, and the numbers behind them.
+.fb_brms_diagnostics <- function(fit) {
+  conv <- fit$extras$convergence
+  out <- list(
+    engine = "brms",
+    ok = NA,
+    reasons = character(0),
+    max_rhat = NA_real_,
+    min_ess_bulk = NA_real_,
+    n_divergent = NA_integer_
+  )
+  if (is.null(conv)) {
+    out$reasons <- "this fit records no sampler diagnostics"
+    return(out)
+  }
+
+  rhat <- tryCatch(
+    conv$gelman$psrf[, "Point est.", drop = FALSE],
+    error = function(e) numeric(0)
+  )
+  if (is.matrix(rhat)) {
+    rhat <- stats::setNames(as.numeric(rhat[, 1L]), rownames(rhat))
+  }
+  rhat <- .fb_drop_bookkeeping(rhat)
+  rhat <- rhat[is.finite(rhat)]
+  ess <- .fb_drop_bookkeeping(conv$n_eff)
+  ess <- ess[is.finite(ess)]
+  ndiv <- conv$n_divergent
+
+  reasons <- character(0)
+  ok <- TRUE
+  if (length(rhat) == 0L && length(ess) == 0L) {
+    out$reasons <- "this fit records no sampler diagnostics"
+    return(out)
+  }
+  if (length(rhat) > 0L) {
+    out$max_rhat <- max(rhat)
+    if (out$max_rhat > .FB_CONV_RHAT_MAX) {
+      ok <- FALSE
+      reasons <- c(reasons, sprintf(
+        "max R-hat %.4f on `%s` exceeds %.2f",
+        out$max_rhat,
+        .fb_diag_label(rhat, which.max(rhat)),
+        .FB_CONV_RHAT_MAX
+      ))
+    }
+  }
+  if (length(ess) > 0L) {
+    out$min_ess_bulk <- min(ess)
+    if (out$min_ess_bulk < .FB_CONV_ESS_MIN) {
+      ok <- FALSE
+      reasons <- c(reasons, sprintf(
+        "min bulk ESS %.0f on `%s` is below %d",
+        out$min_ess_bulk,
+        .fb_diag_label(ess, which.min(ess)),
+        as.integer(.FB_CONV_ESS_MIN)
+      ))
+    }
+  }
+  if (!is.null(ndiv) && is.finite(ndiv)) {
+    out$n_divergent <- as.integer(ndiv)
+    if (out$n_divergent > 0L) {
+      ok <- FALSE
+      reasons <- c(reasons, sprintf(
+        "%d divergent transition%s",
+        out$n_divergent,
+        if (out$n_divergent == 1L) "" else "s"
+      ))
+    }
+  }
+  out$ok <- ok
+  out$reasons <- reasons
+  out
+}
+
 # --- the NUTS evidence a summary table does not carry ------------------ #
 #
 # max R-hat, bulk ESS and the divergence count reach the verdict through
@@ -321,11 +430,11 @@
       .FB_CONV_EBFMI_MIN
     ))
   }
-  if (is.finite(s$min_ess_tail) && s$min_ess_tail < .FB_TRIANGULATE_ESS_MIN) {
+  if (is.finite(s$min_ess_tail) && s$min_ess_tail < .FB_CONV_ESS_MIN) {
     fail(sprintf(
       "min tail ESS %.0f is below %d",
       s$min_ess_tail,
-      as.integer(.FB_TRIANGULATE_ESS_MIN)
+      as.integer(.FB_CONV_ESS_MIN)
     ))
   }
   # Missing evidence never becomes TRUE: an NA from the summary layer
@@ -355,10 +464,23 @@
 
 # --- the one function every consumer calls ---------------------------- #
 
+# The engine a fit came from, named for a verdict: "brms" or "inla" by
+# class, otherwise the class vector itself, so an object of no known engine
+# is reported as what it is.
+.fb_conv_engine_label <- function(fit) {
+  if (inherits(fit, "flexybayes_brms")) {
+    return("brms")
+  }
+  if (inherits(fit, "flexybayes_inla")) {
+    return("inla")
+  }
+  paste(class(fit), collapse = "/")
+}
+
 # .fb_convergence_verdict() --- the authoritative tri-state answer.
 #
-# summary(), triangulate(), the ASReml oracle runner, the live-backend tests
-# and fb_select()'s fold gate all read this and nothing else. A second
+# summary(), the ASReml oracle runner, the live-backend tests and
+# fb_select()'s fold gate all read this and nothing else. A second
 # implementation anywhere is how A25 happened.
 .fb_convergence_verdict <- function(fit) {
   if (inherits(fit, "flexybayes_inla")) {
@@ -368,7 +490,10 @@
     return(.fb_conv_verdict_brms(fit))
   }
   list(
-    engine = tryCatch(.triangulate_source(fit), error = function(e) "unknown"),
+    engine = tryCatch(
+      .fb_conv_engine_label(fit),
+      error = function(e) "unknown"
+    ),
     ok = NA,
     reasons = "this fit records no convergence diagnostics",
     evidence = list(

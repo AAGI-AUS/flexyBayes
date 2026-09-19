@@ -492,9 +492,9 @@ test_that("flexybayes_aggregated inherits from flexybayes", {
   expect_s3_class(fit, "flexybayes")
   # Backend identity in the class vector lets S3 generics that have
   # no .flexybayes_aggregated method (e.g., fb_as_draws_simple) fall
-  # through to the correct backend-specific method. Without this,
-  # triangulate() on an aggregated INLA fit paired with another
-  # engine's fit dispatched to the wrong engine's extractor and failed.
+  # through to the correct backend-specific method. Without this, draws
+  # extraction on an aggregated INLA fit dispatched to the wrong engine's
+  # extractor and failed.
   expect_s3_class(fit, "flexybayes_inla")
   expect_identical(
     class(fit),
@@ -593,13 +593,13 @@ test_that("aggregation_meta carries prior_parametrization, surfaced by canonical
   expect_true(any(grepl("per-row-equivalent", out)))
 })
 
-# [removed] "aggregated fit exposes its draws slot for triangulate /
+# [removed] "aggregated fit exposes its draws slot for the draws
 # extractors" -- deleted (not rewritten): this was a regression guard
 # for a v0.4.0 fix specific to the withdrawn native engine's
 # aggregated-path draws slot shape (see NEWS.md, 0.9.3). No successor:
 # that slot never exists on any fit any active engine produces, so
 # the shape this guarded against cannot recur. The equivalent
-# self-triangulation exactness check for the surviving aggregated
+# self-agreement exactness check for the surviving aggregated
 # engine is covered by the INLA per-row-vs-aggregated agreement tests
 # above.
 

@@ -47,8 +47,8 @@
 #              residual and combined MET paths, and the banked ASReml
 #              comparisons predate all of them. Cross-engine agreement is not
 #              an oracle for these rows -- both engines consume the same
-#              parsed representation, so a common parser error triangulates
-#              perfectly.
+#              parsed representation, so a common parser error agrees
+#              perfectly across them.
 #
 # Rendered by tools/generate_translation_registry.R to a Markdown block and to
 # inst/translation/translation_registry.csv, and pinned by

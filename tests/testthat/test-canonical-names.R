@@ -11,9 +11,8 @@
 #   - The INLA mapper translates summary.fixed (identity) +
 #     summary.hyperpar (Precision for ... -> sd_<group> / sigma)
 #     with the precision-to-SD transform attached.
-#   - triangulate(fit_a, fit_b, name_map = NULL) auto-resolves via
-#     the registry; user-supplied name_map / transform_a / transform_b
-#     win over the registry for any keys they carry.
+#   - The draws accessors (posterior::as_draws_df()) resolve both
+#     engines' names through the registry, with no user-supplied map.
 #   - register_canonical_mapper() round-trips a custom mapper.
 #
 # A prior contract clause -- the withdrawn native engine's pin
@@ -46,7 +45,7 @@ mk_canon_data <- function() {
 # -- there is no active engine with that naming convention to map from
 # (see NEWS.md, 0.9.3). The equivalent registry coverage for the two
 # active engines is subtests (b) (INLA) below and the brms mapping
-# exercised throughout (c)/(d)/(g).
+# exercised in (c)/(d).
 
 
 # ---------------------------------------------------------------- #
@@ -85,7 +84,7 @@ test_that("canonical_names() on an INLA fit translates Precision-for and attache
   expect_identical(cn$map[["Precision for geno"]], "sd_geno")
 
   # The transform is keyed by the *native* hyperpar name, not the
-  # canonical target. triangulate() applies transforms to each fit's
+  # canonical target. .fb_canonical_draws() applies transforms to a fit's
   # draws while they still carry native names (before renaming), so a
   # canonical key would silently no-op and leave INLA precision draws
   # un-converted. Guard the native keying explicitly.
@@ -102,18 +101,18 @@ test_that("canonical_names() on an INLA fit translates Precision-for and attache
 
 
 # ---------------------------------------------------------------- #
-# (c) triangulate(fit_a, fit_b) with name_map = NULL                #
+# (c) brms draws resolve to canonical names with no user map        #
 # ---------------------------------------------------------------- #
-# Two brms fits of the same model should auto-resolve common
-# canonical parameters via the registry without a user-supplied
-# name_map. Cross-engine (brms-vs-INLA) resolution lives behind the
-# skip_if_not_installed("INLA") guard in (d).
+# A brms fit's draws should resolve to the canonical parameters via
+# the registry without a user-supplied map. Cross-engine (brms-vs-INLA)
+# resolution lives behind the skip_if_not_installed("INLA") guard in (d).
 
-test_that("triangulate() auto-resolves common parameters via the registry", {
+test_that("as_draws_df() resolves a brms fit's parameters via the registry", {
   # Fits on brms: a Stan compile, so it is out of the
   # devtools::check() path and runs under devtools::test().
   skip_on_cran()
   testthat::skip_if_not_installed("brms")
+  testthat::skip_if_not_installed("posterior")
   d <- mk_canon_data()
   fit_a <- suppressMessages(flexybayes(
     yield ~ env,
@@ -128,42 +127,29 @@ test_that("triangulate() auto-resolves common parameters via the registry", {
     verbose = FALSE,
     mcmc_verbose = FALSE
   ))
-  fit_b <- suppressMessages(flexybayes(
-    yield ~ env,
-    random = ~geno,
-    data = d,
-    backend = "brms",
-    n_samples = 500L,
-    warmup = 500L,
-    chains = 1L,
-    seed = 20260523L,
-    control = list(adapt_delta = 0.97),
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  tri <- triangulate(fit_a, fit_b)
+  vars <- posterior::variables(posterior::as_draws_df(fit_a))
 
-  # Both fits speak canonical names after the rename; intersection
-  # should include the four canonical parameters present on a
-  # Gaussian random-intercept model.
-  expect_true("(Intercept)" %in% tri$common)
-  expect_true("sd_geno" %in% tri$common)
-  expect_true("sigma" %in% tri$common)
+  # The draws speak canonical names after the rename: the four
+  # canonical parameters present on a Gaussian random-intercept model.
+  expect_true("(Intercept)" %in% vars)
+  expect_true("sd_geno" %in% vars)
+  expect_true("sigma" %in% vars)
   # At least one env-level coefficient survives the rename.
-  expect_true(any(grepl("^env", tri$common)))
+  expect_true(any(grepl("^env", vars)))
 })
 
 
 # ---------------------------------------------------------------- #
-# (d) Cross-engine triangulate(brms, inla) via the registry          #
+# (d) Cross-engine brms / INLA draws via the registry                #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate() resolves brms vs INLA on a Gaussian random-intercept model", {
+test_that("as_draws_df() resolves brms and INLA to common names on a Gaussian random-intercept model", {
   # Fits on brms: a Stan compile, so it is out of the
   # devtools::check() path and runs under devtools::test().
   skip_on_cran()
   testthat::skip_if_not_installed("brms")
   testthat::skip_if_not_installed("INLA")
+  testthat::skip_if_not_installed("posterior")
   d <- mk_canon_data()
   fit_b <- suppressMessages(flexybayes(
     yield ~ env,
@@ -186,11 +172,14 @@ test_that("triangulate() resolves brms vs INLA on a Gaussian random-intercept mo
     verbose = FALSE
   ))
 
-  tri <- triangulate(fit_b, fit_i)
+  common <- intersect(
+    posterior::variables(posterior::as_draws_df(fit_b)),
+    posterior::variables(posterior::as_draws_df(fit_i))
+  )
   # Canonical names that survive in both fits' renames.
-  expect_true("(Intercept)" %in% tri$common)
-  expect_true("sd_geno" %in% tri$common)
-  expect_true("sigma" %in% tri$common)
+  expect_true("(Intercept)" %in% common)
+  expect_true("sd_geno" %in% common)
+  expect_true("sigma" %in% common)
 })
 
 
@@ -261,57 +250,3 @@ test_that("register_canonical_mapper() round-trips a custom mapper", {
 # needs) a user-supplied `canonical_names` argument -- that capability
 # was specific to importing a hand-built native model graph, which no
 # longer exists as an ingest path.
-
-
-# ---------------------------------------------------------------- #
-# (g) name_map user-supplied wins over registry                      #
-# ---------------------------------------------------------------- #
-
-test_that("triangulate() name_map overrides the registry for keyed parameters", {
-  # Fits on brms: a Stan compile, so it is out of the
-  # devtools::check() path and runs under devtools::test().
-  skip_on_cran()
-  testthat::skip_if_not_installed("brms")
-  d <- mk_canon_data()
-  fit_a <- suppressMessages(flexybayes(
-    yield ~ env,
-    random = ~geno,
-    data = d,
-    backend = "brms",
-    n_samples = 500L,
-    warmup = 500L,
-    chains = 1L,
-    seed = 20260523L,
-    control = list(adapt_delta = 0.97),
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  fit_b <- suppressMessages(flexybayes(
-    yield ~ env,
-    random = ~geno,
-    data = d,
-    backend = "brms",
-    n_samples = 500L,
-    warmup = 500L,
-    chains = 1L,
-    seed = 20260523L,
-    control = list(adapt_delta = 0.97),
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  ))
-  # Override the registry's (identity) "sigma -> sigma" rename for
-  # fit_b only; the canonical "sigma" stays present on fit_a but
-  # appears as "renamed_sigma" on fit_b -- so they should NOT
-  # intersect on sigma.
-  tri <- triangulate(fit_a, fit_b, name_map = c(sigma = "renamed_sigma"))
-  expect_false(
-    "sigma" %in%
-      intersect(
-        setdiff(tri$common, "renamed_sigma"),
-        "sigma"
-      )
-  )
-  expect_true(
-    "renamed_sigma" %in% tri$only_b || "renamed_sigma" %in% tri$common
-  )
-})

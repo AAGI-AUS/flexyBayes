@@ -3,8 +3,7 @@
 # Returns the dispatch + preflight + representation + memory decision
 # the routing layer would make, without firing the backend. One of the
 # verbs in the v0.3.8 API spine (flexybayes, fb_brms, fb_inla,
-# fb_plan, triangulate); validate_approximation lands at v0.4.0 as
-# another.
+# fb_plan); validate_approximation lands at v0.4.0 as another.
 #
 # Design notes:
 #

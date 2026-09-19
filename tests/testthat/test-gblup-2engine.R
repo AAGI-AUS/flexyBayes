@@ -1,9 +1,9 @@
 # GBLUP across the active engines (G1). The genomic relationship random
 # effect vm(geno, G) reaches both active backends: brms via the dense
 # covariance (brms's native gr(cov = K) = the K = L L' decorrelation),
-# INLA via the precision carrier (generic0). GBLUP is therefore
-# two-engine triangulatable (a third native engine, withdrawn entirely
-# in 0.9.3, once made this a three-engine comparison -- see NEWS.md).
+# INLA via the precision carrier (generic0). GBLUP therefore fits on
+# both engines (a third native engine, withdrawn entirely in 0.9.3,
+# once made this a three-engine comparison -- see NEWS.md).
 # The fast tests pin the emit / gate behaviour; the gated recovery test
 # fits both engines on a simulated known-heritability dataset and checks
 # recovery + agreement.
@@ -143,8 +143,8 @@ test_that("GBLUP recovers heritability and breeding values across both active en
     expect_lte(true_h2, gs$heritability[["q97.5"]])
   }
 
-  # Cross-engine agreement (the triangulation thesis): the two
-  # posterior-mean heritabilities are mutually close.
+  # Cross-engine agreement: the two posterior-mean heritabilities are
+  # mutually close.
   h2_means <- c(
     gs_brms$heritability[["mean"]],
     gs_inla$heritability[["mean"]]

@@ -200,9 +200,8 @@
   .lock_approximation_registry()
 
   # Populate the backend-independence
-  # registry with the pair between the two triangulatable backends
-  # (inla, brms). triangulate() consumes this to label the cross-engine
-  # comparison with its independence axis
+  # registry with the pair between the two active backends
+  # (inla, brms) and its independence axes
   # (algorithmic / implementation / specification).
   .populate_backend_independence_registry_v0400()
 

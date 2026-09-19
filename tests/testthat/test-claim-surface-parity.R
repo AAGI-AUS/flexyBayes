@@ -3,8 +3,8 @@
 #
 # The audit found four numbers and names that had drifted apart: the package
 # help said eight vignettes ship, `cran-comments.md` said eleven, four
-# actually ship; the package help and the startup banner still called
-# `triangulate()` the signature feature after it was unexported at
+# actually ship; the package help and the startup banner still called the
+# cross-engine comparison the signature feature after it was unexported at
 # 0.10.0.9000; and `vpredict()` was exported but absent from both the pkgdown
 # reference index and API_STABILITY.md.
 #
@@ -91,10 +91,11 @@ test_that("the vignette count in cran-comments matches the vignettes that ship",
 })
 
 test_that("the landing surfaces do not offer a verb the user cannot call", {
-  # triangulate() was unexported at 0.10.0.9000 on the R Journal review's
-  # objection. It kept its help page, so a cross-reference to it still
-  # resolves -- but the package-level help went on calling it "the package's
-  # signature feature" and listing it among the entry points, and a reader
+  # The cross-engine comparison was unexported at 0.10.0.9000 on the R
+  # Journal review's objection. It kept its help page, so a cross-reference
+  # to it still resolved -- but the package-level help went on calling it
+  # "the package's signature feature" and listing it among the entry points,
+  # and a reader
   # following that finds a function they cannot call. The defect is a
   # landing surface offering an uncallable verb, not a dangling link.
   #
@@ -137,7 +138,9 @@ test_that("the startup banner does not advertise a withdrawn feature", {
     regexpr("packageStartupMessage\\((?:[^()]|\\([^()]*\\))*\\)", zzz, perl = TRUE)
   )
   expect_length(banner, 1L)
-  expect_false(grepl("triangulation", banner, fixed = TRUE))
+  # The banner once closed by advertising the cross-engine comparison,
+  # which 0.14.0 removes.
+  expect_false(grepl("cross-engine", banner, fixed = TRUE))
 })
 
 

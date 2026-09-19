@@ -406,8 +406,7 @@ passed explicitly it reaches both active engines as the same
 density on the standard-deviation scale: brms as a
 \code{lognormal(0, prior_vc_sd)} prior row, INLA as the expression prior
 that writes that density in INLA's log-precision parameterisation.
-The two engines therefore carry the same variance-component prior,
-which is what \code{\link[=triangulate]{triangulate()}} requires before it compares them.}
+The two engines therefore carry the same variance-component prior.}
 
 \item{verbose}{Logical: print the generated backend code to the console.}
 

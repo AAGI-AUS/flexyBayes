@@ -33,8 +33,9 @@ TARGET_TIER <- "V2"
 # 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
 # Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
 # three of those eleven were wrongly grouped: fb_gblup_cv() is taught and
-# executed in the met-and-genomics vignette, and genomic_summary() and
-# triangulate_genomic() operate on posterior draws. The /rpkg E1 cap of 30
+# executed in the met-and-genomics vignette, and genomic_summary() and the
+# genomic cross-engine comparison (removed in 0.14.0) operated on posterior
+# draws. The /rpkg E1 cap of 30
 # is therefore missed by four, deliberately and on the record.
 # Set to 36 on 2026-09-15 (Max, DEC-LEAN-01 = b): the count 0.11.0 shipped,
 # held as a ceiling that only falls. 0.13.0 reduces the exports to 25 or

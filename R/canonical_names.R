@@ -44,7 +44,7 @@
 #' Returns the backend-native -> canonical parameter-name map for a
 #' fit, plus per-parameter value transforms where applicable (e.g.,
 #' the INLA precision-to-SD `sqrt(1/prec)` transform applied to
-#' hyperparameters before triangulation). The canonical convention
+#' hyperparameter draws before they are renamed). The canonical convention
 #' follows brms (`(Intercept)`, `<term>`, `sd_<group>`, `sigma`,
 #' `r_<group>[<level>]`).
 #'
@@ -79,8 +79,7 @@
 #'       per-row posterior to numerical precision.
 #'       `"package_default"` is the automatic half-normal-on-SD
 #'       prior, which claims no such equivalence on this route.
-#'       `"custom"` is an explicit prior from the caller (see the
-#'       "Matched priors" note on [triangulate()]).}
+#'       `"custom"` is an explicit prior from the caller.}
 #'   }
 #' @examples
 #' # The map is engine-specific, so it needs a fit to read.
@@ -699,12 +698,11 @@ register_canonical_mapper <- function(backend, mapper) {
 
   # Hyperparameters -- precision-side names; rename + sqrt(1/prec). The
   # transform is keyed by the *native* hyperpar name (not the canonical
-  # target), because triangulate() applies transforms to each fit's
-  # draws while they still carry their backend-native names, before any
-  # renaming (see triangulate.R "Apply per-parameter transforms before
-  # any renaming"). Keying by the canonical name silently no-ops, which
-  # would leave INLA precision draws un-converted and make a cross-engine
-  # comparison pit precision against standard deviation.
+  # target), because .fb_canonical_draws() (R/fb_posterior.R) applies
+  # transforms to a fit's draws while they still carry their
+  # backend-native names, before any renaming. Keying by the canonical
+  # name silently no-ops, which would leave INLA precision draws
+  # un-converted and hand out precisions under a standard-deviation name.
   # Hyperpar names do not carry the ":1" suffix.
   prec_to_sd <- function(prec) sqrt(1 / prec)
   # WP16: AR1 / separable AR1xAR1 spatial latent-field hyperparameters. INLA
@@ -1089,10 +1087,9 @@ register_canonical_mapper <- function(backend, mapper) {
 # ---------------------------------------------------------------- #
 # Package-load registration                                         #
 # ---------------------------------------------------------------- #
-# Run at file-source time. R's package-build process sources the R/
-# files in alphabetical order; canonical_names.R sources before
-# triangulate.R (the consumer), so the registry is populated by the
-# time triangulate() runs.
+# Run at file-source time, so the registry is populated when the
+# namespace is built, before any consumer (.fb_canonical_draws() and the
+# draws accessors that read it) runs.
 
 register_canonical_mapper("inla", .mapper_inla)
 register_canonical_mapper("brms", .mapper_brms_via_stan)

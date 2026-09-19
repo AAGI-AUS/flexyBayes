@@ -97,7 +97,7 @@ tests fire. `skip_if_not_installed("brms")` still gates the Stan
 passthrough tests. Expected: **PASS 850+ / FAIL 0** with a small
 handful of SKIPs (brms round-trip, vdiffr).
 
-**Tier 3 -- full triangulation (INLA + brms / Stan).**
+**Tier 3 -- both engines (INLA + brms / Stan).**
 
 ```r
 Sys.setenv(NOT_CRAN = "true")
@@ -106,7 +106,7 @@ devtools::test()           # ~10-20 min; brms first-call Stan
                            # compile is 30-60 s per backend test
 ```
 
-Adds the Stan passthrough round-trips and cross-engine triangulation
+Adds the Stan passthrough round-trips and the cross-engine agreement
 tests on top of Tier 2. The gate is **FAIL 0**; PASS counts grow across
 the 0.8.x line (the 90+-file suite is well above the early-release floors
 quoted above). The residual SKIPs are vdiffr snapshots and

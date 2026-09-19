@@ -78,7 +78,7 @@
       note = "Two independent iid fields on INLA, one for the intercept and
         one for the slope, checked against lme4's REML fit of the same
         model. Reported as `sd_<g>` and `sd_<x>_<g>` on INLA and as `sd_<g>`
-        and `sd_<g>__<x>` on brms; triangulate() maps both to the INLA
+        and `sd_<g>__<x>` on brms; canonical_names() maps both to the INLA
         spelling.",
       anchor = "test-inla-slope-and-interaction-verified.R"
     ),

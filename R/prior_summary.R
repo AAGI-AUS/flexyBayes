@@ -126,8 +126,7 @@ prior_summary.default <- function(object, ...) {
 # before 0.9.0 `prior_summary()` printed the declaration alone, so a
 # combined GxE model reported the shared default on one variance
 # component while the other silently carried brms's student_t(3, 0, 2.5).
-# The fingerprint already records the gap for triangulate()'s
-# matched-prior gate; this reads the same record.
+# The fingerprint already records the gap; this reads that record.
 .prior_summary_engine_default <- function(object) {
   fp <- object$extras$fingerprint
   # An empty record is an answer, not a missing one: it says every

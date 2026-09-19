@@ -1,16 +1,13 @@
 # Backend-independence registry.
 #
-# A small controlled vocabulary plus a per-pair registry that lets
-# triangulate() label *what kind* of convergence claim a cross-engine
-# agreement underwrites, not just the numerical metric. A small
-# Wasserstein distance between two HMC fits ("implementation"
-# independence) underwrites a weaker claim than the same distance
-# between an HMC fit and a Laplace-approximation fit ("algorithmic"
-# independence). The label is what keeps the report calibrated -- the
-# same posture R/approximation_registry.R takes for
-# approximation labels and R/refusal_taxonomy.R takes for
-# refusal codes: a closed vocabulary, an internal registry the backends
-# populate, surfaced on every report, snapshot-gated against silent
+# A small controlled vocabulary plus a per-pair registry that records
+# *what kind* of independence separates two engines: agreement between
+# two HMC fits ("implementation" independence) underwrites a weaker claim
+# than agreement between an HMC fit and a Laplace-approximation fit
+# ("algorithmic" independence). The same posture
+# R/approximation_registry.R takes for approximation labels and
+# R/refusal_taxonomy.R takes for refusal codes: a closed vocabulary, an
+# internal registry the backends populate, snapshot-gated against silent
 # vocabulary drift.
 #
 # Independence is a *pair* property, not a *backend* property -- "brms
@@ -43,13 +40,13 @@
 # `.backend_independence_registry` is allocated at namespace load,
 # filled by .register_pair_independence() during .onLoad(), and locked
 # immediately after by .lock_backend_independence_registry(). Keyed by
-# the canonical sorted-pair string so triangulate(a, b) and
-# triangulate(b, a) resolve to the same record. parent = emptyenv() so
-# a key miss cannot fall through to the package namespace.
+# the canonical sorted-pair string so the pairs (a, b) and (b, a)
+# resolve to the same record. parent = emptyenv() so a key miss cannot
+# fall through to the package namespace.
 .backend_independence_registry <- new.env(parent = emptyenv())
 
 # Canonical registry key for a backend pair: sorted, "||"-joined. The
-# sort enforces the symmetry contract (order of triangulate() arguments
+# sort enforces the symmetry contract (the order of the two backends
 # does not change the lookup).
 .pair_key <- function(pair) {
   if (
@@ -155,9 +152,7 @@
 # .lookup_pair_independence() --- internal accessor returning the full
 # pair-record, or NULL when the pair is not registered (a same-backend
 # pair, or a pair involving a backend whose independence claims have
-# not been registered). triangulate() consumes the NULL gracefully
-# rather than refusing, so a report on an unregistered pair still
-# renders (without the axis label).
+# not been registered).
 .lookup_pair_independence <- function(pair) {
   key <- .pair_key(pair)
   if (!exists(key, envir = .backend_independence_registry, inherits = FALSE)) {
@@ -178,7 +173,7 @@
 # --- v0.4.0 population --------------------------------------------- #
 
 # .populate_backend_independence_registry_v0400() --- registers the pair
-# between the two triangulatable backends (inla = Laplace approximation
+# between the two active backends (inla = Laplace approximation
 # on C; brms = HMC on Stan via the fb_brms() surface). The axis
 # assignment follows the authoritative table: a Laplace-vs-HMC pair
 # differs on BOTH paradigm and code base (algorithmic + implementation).

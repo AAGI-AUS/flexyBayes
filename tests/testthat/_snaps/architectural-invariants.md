@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=217
+      .refusal_registry: locked=TRUE n_keys=216
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -295,7 +295,6 @@
         streamed_rows_not_retained
         tensor_smooth_unsupported
         term_in_fixed_and_random
-        triangulate_incomparable_fits
         unknown_backend
         unsupported_family
         update_call_not_reconstructable

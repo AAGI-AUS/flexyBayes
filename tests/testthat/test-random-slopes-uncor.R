@@ -21,12 +21,12 @@
 #   (g) Canonical name sd_<x>_<g> resolves on a brms fit.
 #   (h) The brms-side raw-name-to-canonical mapper rule, unit-tested
 #       directly (the regex split (g) exercises end to end).
-#   (i) [removed at 0.9.3, see NEWS.md] triangulate() used to compare
+#   (i) [removed at 0.9.3, see NEWS.md] a cross-engine comparison of
 #       fb(backend = "brms") against the since-withdrawn native
 #       engine on the slope-variance posterior; that engine is
 #       withdrawn entirely, so no 2-engine pairing through it remains
 #       for this structure.
-#   (j) Minimum-group guard: triangulation cell uses J >= 10 by
+#   (j) Minimum-group guard: the slope fixtures use J >= 10 by
 #       construction (sleepstudy has J = 18).
 #   (k) prior_summary() lists the slope-variance prior row.
 #   (l) print.flexybayes() lists the slope-variance hyperparameter
@@ -317,28 +317,22 @@ test_that("brms-side mapper translates sd_<g>__<x> to sd_<x>_<g>", {
 
 
 # ---------------------------------------------------------------- #
-# (i) [removed] Triangulation on slope variance -- 0.9.3            #
+# (i) [removed] Cross-engine comparison on slope variance -- 0.9.3  #
 # ---------------------------------------------------------------- #
 #
-# This cell triangulated a since-withdrawn native engine against brms
-# on (x || g) (see NEWS.md, 0.9.3). No 2-engine pairing exists any more
-# for this structure: INLA refuses an uncorrelated random slope outright
-# (see the capability-matrix row for "Uncorrelated random slope"; the
-# INLA-side deferral is exercised at the foot of this file), so brms is
-# now the only active engine that can fit (x || g) at all, and there is
-# nothing left to triangulate it against.
+# This cell compared a since-withdrawn native engine against brms
+# on (x || g) (see NEWS.md, 0.9.3).
 
 
 # ---------------------------------------------------------------- #
-# (j) Minimum-group guard: J >= 10 holds for triangulation cells    #
+# (j) Minimum-group guard: J >= 10 holds for the slope fixtures     #
 # ---------------------------------------------------------------- #
 
-test_that("triangulation fixture honours J >= 10 minimum-group guard", {
-  # The minimum-group guard is a property of the fixture used in the
-  # triangulation cell; the standard sleepstudy / mk_slope_data
-  # fixtures use J = 18 by default which satisfies J >= 10. Verify
-  # the property holds on both fixtures so future fixture edits
-  # cannot silently regress below the guard.
+test_that("slope fixtures honour the J >= 10 minimum-group guard", {
+  # The minimum-group guard is a property of the slope fixtures; the
+  # standard sleepstudy / mk_slope_data fixtures use J = 18 by default
+  # which satisfies J >= 10. Verify the property holds on both fixtures
+  # so future fixture edits cannot silently regress below the guard.
   d_default <- mk_slope_data()
   expect_gte(nlevels(d_default$Subject), 10L)
   if (requireNamespace("lme4", quietly = TRUE)) {
@@ -416,7 +410,7 @@ test_that("fit object exposes the slope-variance hyperparameter via draws + vari
   )))
   # The slope-variance hyperparameter must appear in the brms draws
   # matrix (brms-native name) so downstream tooling -- coef(),
-  # canonical_names(), prior_summary(), triangulate() -- can resolve
+  # canonical_names(), prior_summary() -- can resolve
   # it. print() output is brief by design and lists term-level
   # summaries only.
   draws <- as.matrix(posterior::as_draws_matrix(fit$brms))

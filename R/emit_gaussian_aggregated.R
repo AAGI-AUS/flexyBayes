@@ -557,7 +557,7 @@ emit_gaussian_aggregated <- function(
 # Shared fit-object constructor                                     #
 # ---------------------------------------------------------------- #
 # Builds the `<flexybayes>` fit shape that downstream methods
-# (print/summary/predict/triangulate) consume. Mirrors emit_inla()
+# (print/summary/predict) consume. Mirrors emit_inla()
 # construction so the new aggregated fits are
 # byte-interchangeable for the existing method surface.
 .agg_emit_build_fit <- function(
@@ -647,8 +647,8 @@ emit_gaussian_aggregated <- function(
       prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose. Aggregation is a
       # computational route to the same likelihood, not a different model,
-      # so an aggregated fit and a per-row fit of the same model must read
-      # as comparable to triangulate(). See R/model_fingerprint.R.
+      # so an aggregated fit and a per-row fit of the same model must
+      # record the same data. See R/model_fingerprint.R.
       fingerprint = .fb_model_fingerprint(
         fb,
         data,
@@ -721,9 +721,9 @@ emit_gaussian_aggregated <- function(
         # that path is tagged "per_row_equivalent". An explicit prior
         # object breaks that matched-prior equivalence against a
         # default-prior per-row fit (and on the INLA aggregated path the
-        # residual prior is moreover not plumbed through -- see the
-        # "Matched priors" note on triangulate()), so it is tagged
-        # "custom". The auto-default is a third case: it is an fb_prior
+        # residual prior is moreover not plumbed through -- see the note
+        # above the hyperprior translation earlier in this file), so it is
+        # tagged "custom". The auto-default is a third case: it is an fb_prior
         # object, so the class test alone called it "custom" and the
         # commonest fit in the package announced an explicit prior nobody
         # supplied. It gets its own tag, which claims neither. Surfaced

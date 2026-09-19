@@ -1,11 +1,10 @@
-# model_fingerprint -- what has to match before two fits can be compared.
+# model_fingerprint -- the record of the question a fit answered.
 #
-# triangulate() reports distances between two marginal posteriors. A
-# distance is only informative when the two engines were asked the same
-# question, so each fit carries a fingerprint of the question: the
+# Each fit carries a fingerprint of the question it was asked: the
 # canonical formula triple, the family and link, a content digest of the
 # data, and the prior recorded for every variance component (or the record
-# that no prior was recorded and the engine chose its own).
+# that no prior was recorded and the engine chose its own). prior_summary()
+# reads the prior record.
 #
 # The fingerprint is built at fit time, inside emit_brms() and emit_inla(),
 # from the IR and the analysis data -- not from the user's call, which two
@@ -48,90 +47,6 @@
     prior_sources = priors$sources,
     engine_default_params = priors$engine_default
   )
-}
-
-# The elements compared, in the order they are reported. `priors` is
-# handled separately (per key) so a mismatch names the parameter.
-.FB_FINGERPRINT_ELEMENTS <- c(
-  "response",
-  "fixed",
-  "offset",
-  "random",
-  "residual",
-  "family",
-  "link",
-  "data_dim",
-  "data_columns",
-  "data_digest"
-)
-
-# Human-readable names for the elements above, used in the refusal.
-.FB_FINGERPRINT_LABELS <- c(
-  response = "the response variable",
-  fixed = "the fixed-effect structure",
-  offset = "the offset",
-  random = "the random-effect structure",
-  residual = "the residual structure",
-  family = "the response family",
-  link = "the link function",
-  data_dim = "the data dimensions",
-  data_columns = "the data column names",
-  data_digest = "the data contents"
-)
-
-# Compare two fingerprints. Returns NULL when they agree, otherwise a
-# list(element, label, a, b) describing the FIRST disagreement in the
-# order above -- first because a reader fixes one thing at a time, and
-# the earliest difference is usually the cause of the later ones.
-.fb_fingerprint_first_difference <- function(fp_a, fp_b) {
-  for (el in .FB_FINGERPRINT_ELEMENTS) {
-    # A fingerprint built before offsets were recorded carries no `offset`
-    # element, and it described a model with none.
-    absent <- if (identical(el, "offset")) "<none>" else NA_character_
-    va <- fp_a[[el]] %||% absent
-    vb <- fp_b[[el]] %||% absent
-    if (!identical(va, vb)) {
-      return(list(
-        element = el,
-        label = unname(.FB_FINGERPRINT_LABELS[[el]]),
-        a = .fb_fingerprint_show(va),
-        b = .fb_fingerprint_show(vb)
-      ))
-    }
-  }
-
-  # Priors are keyed by canonical parameter name. Only a parameter both
-  # fits recorded can disagree; a parameter one fit never recorded is not
-  # a mismatch, it is an exclusion, and the matched-prior gate handles it.
-  pa <- fp_a$priors %||% character(0)
-  pb <- fp_b$priors %||% character(0)
-  shared_keys <- intersect(names(pa), names(pb))
-  for (k in sort(shared_keys)) {
-    if (!identical(unname(pa[[k]]), unname(pb[[k]]))) {
-      return(list(
-        element = paste0("prior[", k, "]"),
-        label = paste0("the prior on `", k, "`"),
-        a = .fb_fingerprint_show(pa[[k]]),
-        b = .fb_fingerprint_show(pb[[k]])
-      ))
-    }
-  }
-
-  NULL
-}
-
-# Render one fingerprint element for a message. Long digests are
-# truncated -- the reader needs to see that two strings differ, not to
-# read either of them in full.
-.fb_fingerprint_show <- function(x) {
-  s <- paste(as.character(x), collapse = ", ")
-  if (!nzchar(s)) {
-    return("<empty>")
-  }
-  if (nchar(s) > 60L) {
-    return(paste0(substr(s, 1L, 57L), "..."))
-  }
-  s
 }
 
 # ---------------------------------------------------------------- #
@@ -215,7 +130,7 @@
 
 # The offsets, sorted because they add, or "<none>". Two fits whose models
 # differ only by an offset share every term string, so without this element
-# triangulate() would compare them as one model.
+# their fingerprints would record them as one model.
 .fb_fingerprint_offsets <- function(fb) {
   offsets <- fb$offsets %||% character(0)
   if (!length(offsets)) {
@@ -307,7 +222,7 @@
 # ---------------------------------------------------------------- #
 
 # What prior each variance component actually carries, keyed by the
-# canonical parameter name triangulate() compares on.
+# canonical parameter name (R/canonical_names.R).
 #
 # Three sources, and the difference between them is the whole point:
 #
@@ -319,8 +234,8 @@
 #                     scalar bridge, which reaches brms and not INLA
 #
 # Only the first two are comparable across engines. The third is recorded
-# rather than dropped so that the gate can say *why* a parameter was left
-# out instead of quietly comparing two different questions.
+# rather than dropped so that prior_summary() can say *why* a parameter
+# carries no prior this package chose.
 .fb_prior_record <- function(fb, prior_vc_sd = NA_real_) {
   targets <- .fb_default_prior_targets(fb)
   engine_default <- stats::setNames(
@@ -443,7 +358,7 @@
 
 # fb_prior target -> canonical parameter name. Fixed-effect and smooth
 # targets return NA: they are not variance components, and the fixed part
-# of the model is already compared through the formula strings.
+# of the model is already recorded through the formula strings.
 .fb_prior_spec_parameter <- function(s) {
   ttype <- s$target$type %||% ""
   if (identical(ttype, "sigma")) {
@@ -481,18 +396,4 @@
     character(1)
   )
   paste0(fam, "(", paste(parts, collapse = ", "), ")")
-}
-
-# ---------------------------------------------------------------- #
-# Accessors                                                         #
-# ---------------------------------------------------------------- #
-
-# The fingerprint of a fit, or NULL when the object carries none --
-# a fit imported from another package, an aggregated-likelihood fit, or
-# anything a user built by hand for a triangulate() peer method.
-.fb_fit_fingerprint <- function(fit) {
-  if (!is.list(fit)) {
-    return(NULL)
-  }
-  fit$extras$fingerprint
 }

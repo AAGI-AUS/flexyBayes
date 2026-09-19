@@ -147,8 +147,8 @@ test_that("prior_summary() names the retarget on a distributional fit", {
 
 test_that("prior_summary() lists parameters left to the engine's default", {
   # A term outside the default-prior walker must appear by name with its
-  # reason, not vanish from the summary. The record is the same one
-  # triangulate()'s matched-prior gate reads.
+  # reason, not vanish from the summary. The record is the fit's prior
+  # record (R/model_fingerprint.R).
   d <- mk_orphan_met_data()
   d$t <- as.integer(d$rep)
   fb <- flexyBayes:::.build_ir_polymorphic(

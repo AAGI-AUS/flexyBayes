@@ -212,8 +212,7 @@ cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
 #' returns the fit. A second call returns the cached fit.
 #'
 #' @param x   A `<flexybayes_review>` object holding the deferred fit.
-#' @param ... Reserved for future deferred-execution classes, such as a
-#'   deferred triangulation.
+#' @param ... Reserved for future deferred-execution classes.
 #' @returns The fit object the originating call would have returned, of
 #'   class `flexybayes`. A second call returns the cached fit.
 #' @section Deprecated:
