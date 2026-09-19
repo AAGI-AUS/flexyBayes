@@ -2163,6 +2163,51 @@
 
 # --- the benchmark arms --------------------------------------------------- #
 
+# .fb_select_require_observed_response() --- the benchmark arms have no place
+# for a missing response.
+#
+# The GLS arm and the optimiser read the response of every training row to
+# estimate a fold's REML variance components, and of every assessment row to
+# score it. A missing response stopped inside stats::optim() with the untyped
+# "L-BFGS-B needs finite values of 'fn'"; it now refuses by name before any
+# route runs.
+#
+# @noRd
+# @keywords internal
+.fb_select_require_observed_response <- function(base, workflow, benchmark) {
+  y <- .fb_response_values(base$fb, base$data)
+  miss <- which(is.na(y))
+  if (length(miss) == 0L) {
+    return(invisible(NULL))
+  }
+  named <- c("unpenalized_benchmark", "penalized_optimizer")
+  route <- if (workflow %in% named) {
+    paste0("`workflow = \"", workflow, "\"`")
+  } else {
+    "the comparison `benchmark = TRUE` adds"
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "selection_missing_response_not_carried",
+    message = paste0(
+      "fb_select(): ", length(miss),
+      if (length(miss) == 1L) " row" else " rows",
+      " of the base's data ",
+      if (length(miss) == 1L) "has" else "have",
+      " a missing response (",
+      if (length(miss) == 1L) "row " else "rows ",
+      paste(utils::head(miss, 5L), collapse = ", "),
+      if (length(miss) > 5L) ", ..." else "",
+      "), and ", route, " does not carry missing responses: it reads the ",
+      "response of every training row to estimate a fold's covariance and ",
+      "of every held-out row to score it. Refit the base on the rows with an ",
+      "observed response."
+    ),
+    rows = miss,
+    workflow = workflow,
+    benchmark = isTRUE(benchmark)
+  ))
+}
+
 # .fb_select_benchmark() --- the two comparison arms, on the same folds.
 #
 # Neither is labelled Bayesian and neither can be. The GLS arm fits REML
@@ -2695,6 +2740,16 @@ fb_select <- function(base,
         "benchmark = TRUE."
       )
     ))
+  }
+
+  # Every route that reaches .fb_select_benchmark(): the two workflows below
+  # and `benchmark = TRUE` on the Bayesian one. Checked before any route
+  # branches, so `plan = TRUE` returns the same refusal the run would.
+  if (
+    workflow %in% c("unpenalized_benchmark", "penalized_optimizer") ||
+      isTRUE(benchmark)
+  ) {
+    .fb_select_require_observed_response(base, workflow, benchmark)
   }
 
   # The two routes below have no decision layer at all -- there is no

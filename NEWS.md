@@ -22,6 +22,10 @@
   engines fitted `bf(y ~ x + (1 | g), sigma ~ x)` without `sigma ~ x` and
   fitted the `family` argument in place of a family named inside `bf()`, and
   `nl = TRUE` stopped with an untyped error.
+* `fb_select()` refuses a base whose data have a missing response when the
+  unpenalised benchmark, the penalised optimiser or `benchmark = TRUE` is
+  asked for (`selection_missing_response_not_carried`). It used to stop
+  inside the optimiser with an untyped error.
 
 # flexyBayes 0.13.1
 

@@ -552,9 +552,14 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   #
   # 0.14.0 removes the cross-engine comparison, and its one code, the
   # comparability refusal registered at 0.9.0, goes with it (= 216).
+  #
+  # 0.14.0 adds one: a missing response on an fb_select() route that
+  # estimates a fold's covariance by REML, which stopped untyped inside the
+  # optimiser (selection_missing_response_not_carried) (= 217).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 216L)
+  expect_equal(length(entries), 217L)
+  expect_true("selection_missing_response_not_carried" %in% entries)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
