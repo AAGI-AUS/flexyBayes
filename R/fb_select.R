@@ -1011,6 +1011,9 @@
       "decision", list(), table_metric, unavailable = not_assembled
     )
   bs <- try(.fb_sel_block_structure(base), silent = TRUE)
+  # Read with `[[`: a fold object without the record, as on the Bayesian
+  # route, would otherwise hand back `covariance_estimand` by partial match.
+  cov_record <- cv[["covariance"]]
 
   block_record <- lapply(blocks %||% list(), function(b) {
     list(
@@ -1063,8 +1066,8 @@
         # field says so rather than naming a builder that never ran.
         builder = if (identical(cv$covariance_estimand, "integrated")) {
           "none: covariance integrated by the engine"
-        } else if (identical(cv$covariance$source, "base_model")) {
-          cv$covariance$builder
+        } else if (identical(cov_record$source, "base_model")) {
+          cov_record$builder
         } else if (inherits(bs, "try-error") || !isTRUE(bs$applicable)) {
           "random_term_reduction"
         } else {
@@ -1074,16 +1077,14 @@
         # Where a plugged-in V came from, the rule that turned the source's
         # estimates into it, how each fold was factored, and what the
         # optimiser's path is exact for; NA on a route that integrates V.
-        source = cv$covariance$source %||% NA_character_,
-        point_estimate = cv$covariance$point_estimate %||% NA_character_,
-        engine = cv$covariance$engine %||% NA_character_,
-        engine_version = cv$covariance$engine_version %||% NA_character_,
-        whitening = cv$covariance$whitening,
-        equivalence_level = cv$covariance$equivalence_level %||%
-          NA_character_,
-        equivalence_reason = cv$covariance$equivalence_reason %||%
-          NA_character_,
-        folds = cv$covariance$folds
+        source = cov_record$source %||% NA_character_,
+        point_estimate = cov_record$point_estimate %||% NA_character_,
+        engine = cov_record$engine %||% NA_character_,
+        engine_version = cov_record$engine_version %||% NA_character_,
+        whitening = cov_record$whitening,
+        equivalence_level = cov_record$equivalence_level %||% NA_character_,
+        equivalence_reason = cov_record$equivalence_reason %||% NA_character_,
+        folds = cov_record$folds
       ),
       design = list(
         protected = attr(cv, "protected") %||% character(0),
@@ -2227,7 +2228,7 @@
     fully_bayesian = FALSE,
     scores = gls$aggregated,
     covariance_estimand = gls$covariance_estimand,
-    covariance_source = gls$covariance$source,
+    covariance_source = gls[["covariance"]]$source,
     provider_version = NA_character_,
     provider_lambda_convention = NULL,
     equivalence_level = .fb_sel_equivalence_level(
@@ -2296,7 +2297,7 @@
           support = path$support_by_resolution,
           kkt = path$kkt_by_lambda,
           covariance_estimand = path$covariance_estimand,
-          covariance_source = gls$covariance$source,
+          covariance_source = gls[["covariance"]]$source,
           provider_version = path$provider_version,
           provider_lambda_convention = path$provider_lambda_convention,
           provider_equivalence_level = path$equivalence_level,
