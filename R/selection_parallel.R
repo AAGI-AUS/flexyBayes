@@ -114,10 +114,13 @@
   cores <- .fb_sel_worker_cores()
   n_jobs <- max(1L, as.integer(n_jobs))
   forkable <- identical(.Platform$OS.type, "unix")
+  # Under options(flexyBayes.isolation = "process") every fold runs in a
+  # child R process of its own (R/process_isolation.R), which needs no fork.
+  isolated <- .fb_isolation_active("fb_select()")
 
   workers <- max(1L, min(requested, n_jobs, cores))
   note <- NA_character_
-  if (workers > 1L && !forkable) {
+  if (workers > 1L && !forkable && !isolated) {
     note <- paste0(
       "this platform does not fork, so the ",
       n_jobs,
@@ -141,7 +144,13 @@
   list(
     requested = requested,
     workers = workers,
-    mechanism = if (workers > 1L) "fork" else "serial",
+    mechanism = if (isolated) {
+      "process"
+    } else if (workers > 1L) {
+      "fork"
+    } else {
+      "serial"
+    },
     cores = cores,
     n_jobs = n_jobs,
     # Left NA on the serial path, where nothing is pinned and the engines
@@ -240,6 +249,9 @@
 #' @noRd
 #' @keywords internal
 .fb_sel_fold_lapply <- function(jobs, fn, plan, warm_first = FALSE) {
+  if (identical(plan$mechanism, "process")) {
+    return(.fb_sel_isolated_lapply(jobs, fn, plan, warm_first = warm_first))
+  }
   if (identical(plan$mechanism, "serial") || length(jobs) <= 1L) {
     return(lapply(jobs, fn))
   }

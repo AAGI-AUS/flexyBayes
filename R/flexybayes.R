@@ -482,6 +482,34 @@
 #' character string holding the Stan program on the brms path, or a list of
 #' the formula, family and hyperparameter specification on the INLA path.
 #'
+#' @section Fitting in a separate process:
+#' `options(flexyBayes.isolation = "process")` runs the engine fit in a
+#' separate R process started through callr, which is in Suggests; without
+#' callr the request refuses with
+#' `isolation_requires_callr` before anything is fitted. The option applies
+#' to `flexybayes()`, `fb_brms()`, `fb_inla()`, `proceed()` and each fold of
+#' [fb_select()]. The default, `"none"`, fits in this session.
+#'
+#' If the operating system kills that process, or compiled code crashes
+#' inside it, the call refuses with `isolated_process_died`, naming the engine, the function
+#' called, and the exit status or signal, and this session carries on. A
+#' failure inside the fit, a refusal for instance, arrives exactly as it
+#' would without the option. The call is not retried.
+#'
+#' The separate process loads the flexyBayes code this session loaded and
+#' starts from this session's options, INLA settings, environment variables
+#' and random-number state, so it fits the same model with the same seed,
+#' and the random-number stream moves on as it would have. Messages,
+#' warnings and printed output come back in the order they were raised, and
+#' the fit records the process in `$extras$isolation`. A brms fit with a
+#' `seed` returns the same draws either way. INLA does not return identical
+#' numbers for two identical calls in one session, and an isolated INLA fit
+#' agrees with an in-process one as closely as two in-process fits agree.
+#' The separate process starts with an empty global environment, so the
+#' formula finds its variables in `data`. Starting the process and
+#' moving the data and the fit costs time on every call; see [fb_select()]
+#' for the measured figures.
+#'
 #' @examples
 #' \dontrun{
 #' # live fit -- needs an active backend (INLA or brms/Stan)
@@ -922,32 +950,80 @@ flexybayes <- function(
   # backend = "inla" calls lgm_gate() and raises the refusal on
   # non-LGM; backend = "auto" gate-then-route with silenceable
   # fall-back notes.
-  fit <- .dispatch_backend(
-    fb = fb,
-    data = data,
-    backend = backend,
-    known_matrices = known_matrices,
-    weights = weights,
-    n_samples = n_samples,
-    warmup = warmup,
-    chains = chains,
-    seed = seed,
-    control = control,
-    prior_fixed_sd = prior_fixed_sd,
-    prior_vc_sd = prior_vc_sd,
-    verbose = verbose,
-    mcmc_verbose = mcmc_verbose,
-    return_code = return_code,
-    the_call = the_call,
-    fixed = fixed,
-    random = random,
-    residual = residual,
-    family = family,
-    link = link,
-    data_name = data_name,
-    aggregate = aggregate,
-    na_action = na_policy$y
-  )
+  #
+  # Under options(flexyBayes.isolation = "process") the same call runs in a
+  # separate R process (R/process_isolation.R): a process that dies there is
+  # a typed refusal here rather than the end of this session. The direct
+  # call below is left as it was, so a fit that does not ask for isolation
+  # runs exactly the code it ran before.
+  isolated <- !isTRUE(return_code) && .fb_isolation_active("flexybayes()")
+  if (isolated) {
+    run <- .fb_isolated_call(
+      .dispatch_backend,
+      list(
+        fb = fb,
+        data = data,
+        backend = backend,
+        known_matrices = known_matrices,
+        weights = weights,
+        n_samples = n_samples,
+        warmup = warmup,
+        chains = chains,
+        seed = seed,
+        control = control,
+        prior_fixed_sd = prior_fixed_sd,
+        prior_vc_sd = prior_vc_sd,
+        verbose = verbose,
+        mcmc_verbose = mcmc_verbose,
+        return_code = return_code,
+        the_call = the_call,
+        fixed = fixed,
+        random = random,
+        residual = residual,
+        family = family,
+        link = link,
+        data_name = data_name,
+        aggregate = aggregate,
+        na_action = na_policy$y
+      ),
+      engine = backend,
+      entry_point = "flexybayes()",
+      with_pid = TRUE
+    )
+    fit <- run$value
+    # Where the fit ran is recorded beside it, as a record of the machine
+    # rather than of the model.
+    if (is.list(fit) && !is.null(fit$extras)) {
+      fit$extras$isolation <- list(mode = "process", pid = run$pid)
+    }
+  } else {
+    fit <- .dispatch_backend(
+      fb = fb,
+      data = data,
+      backend = backend,
+      known_matrices = known_matrices,
+      weights = weights,
+      n_samples = n_samples,
+      warmup = warmup,
+      chains = chains,
+      seed = seed,
+      control = control,
+      prior_fixed_sd = prior_fixed_sd,
+      prior_vc_sd = prior_vc_sd,
+      verbose = verbose,
+      mcmc_verbose = mcmc_verbose,
+      return_code = return_code,
+      the_call = the_call,
+      fixed = fixed,
+      random = random,
+      residual = residual,
+      family = family,
+      link = link,
+      data_name = data_name,
+      aggregate = aggregate,
+      na_action = na_policy$y
+    )
+  }
   # Record what the missing-response layer did. Whether a posterior was
   # computed on the design as laid out or on the plots that survived is
   # not recoverable from the fit otherwise, and the two are different

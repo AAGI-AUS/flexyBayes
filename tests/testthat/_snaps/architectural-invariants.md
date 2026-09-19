@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=217
+      .refusal_registry: locked=TRUE n_keys=219
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -169,6 +169,8 @@
         inla_program_failed
         inla_variable_used_twice
         interaction_not_representable
+        isolated_process_died
+        isolation_requires_callr
         known_matrices_data_name_collision
         known_matrix_dim_mismatch
         known_matrix_dimnames_mismatch

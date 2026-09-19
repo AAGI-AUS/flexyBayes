@@ -40,6 +40,12 @@
   inside the optimiser with an untyped error.
 * *Mixed models in brief* and *Bayesian estimation in brief* are rebuilt and
   show the half-normal default prior.
+* `options(flexyBayes.isolation = "process")` runs each engine fit, and each
+  fold of `fb_select()`, in a separate R process started through callr (in
+  Suggests). If that process is killed, the call refuses with
+  `isolated_process_died`, naming the engine, the function called and the
+  signal or exit status, and the session carries on. The default, `"none"`,
+  fits in the session as before.
 
 # flexyBayes 0.13.1
 

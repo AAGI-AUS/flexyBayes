@@ -280,7 +280,25 @@ proceed.flexybayes_review <- function(x, ...) {
       call. = FALSE
     )
   )
-  fit <- do.call(emit_fn, args)
+  # Under options(flexyBayes.isolation = "process") the fit runs in a
+  # separate R process (R/process_isolation.R).
+  if (.fb_isolation_active("proceed()")) {
+    run <- .fb_isolated_call(
+      emit_fn,
+      args,
+      engine = "brms",
+      entry_point = "proceed()",
+      with_pid = TRUE,
+      # As the direct do.call() below: the same argument semantics.
+      quote = FALSE
+    )
+    fit <- run$value
+    if (is.list(fit) && !is.null(fit$extras)) {
+      fit$extras$isolation <- list(mode = "process", pid = run$pid)
+    }
+  } else {
+    fit <- do.call(emit_fn, args)
+  }
 
   x$fit <- fit
   x$proceeded <- TRUE

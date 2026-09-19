@@ -556,10 +556,17 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # 0.14.0 adds one: a missing response on an fb_select() route that
   # estimates a fold's covariance by REML, which stopped untyped inside the
   # optimiser (selection_missing_response_not_carried) (= 217).
+  #
+  # The process-isolation unit adds two: isolation asked for without callr
+  # (isolation_requires_callr), and a separate R process that ended before it
+  # returned (isolated_process_died) (= 219). A condition raised inside the
+  # separate process keeps its own code.
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 217L)
+  expect_equal(length(entries), 219L)
   expect_true("selection_missing_response_not_carried" %in% entries)
+  expect_true("isolation_requires_callr" %in% entries)
+  expect_true("isolated_process_died" %in% entries)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)

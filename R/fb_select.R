@@ -2464,8 +2464,24 @@
 #' bit-reproducible. Set `n` against MEMORY: every concurrent fold holds its
 #' own rows and its own engine process at the same time, so the count a
 #' machine supports follows from its memory, and usually sits well below its
-#' core count. A worker the operating system kills under that pressure
+#' core count. Measured on the package's synthetic selection fixture with
+#' INLA, `penalty = NULL` and four folds, the whole call held at its peak
+#' 1.7 GB with one worker and 3.0, 4.1 and 4.6 GB with two, three and four at
+#' 2,000 rows and 20 candidates; 2.4 GB with one worker and 3.8, 5.3 and
+#' 5.5 GB at 5,000 rows and 40 candidates; and, with three folds, 4.3 GB with
+#' one worker and 7.9 and 11.5 GB with two and three at 10,890 rows and 82
+#' candidates. A worker the operating system kills under that pressure
 #' refuses by name, and the aggregation keeps every fold or none.
+#'
+#' `options(flexyBayes.isolation = "process")` runs each fold in a separate R
+#' process (see [flexybayes()]), one at a time, or `n` at once with the worker
+#' option. A fold whose process ends before it returns refuses with
+#' `isolated_process_died`, naming the fold and the signal, and this session
+#' carries on. Each fold then pays for starting R and reading its inputs:
+#' about 2 seconds a fold on the closed-form route, and 2.3 to 2.4 seconds a
+#' fit for `flexybayes()` at 96 and 5,000 rows. At 2,000 rows and 20
+#' candidates the call held 2.1 GB with one fold at a time and 3.8 GB with
+#' three at once.
 #'
 #' `fallback = "none"` is the default. A Bayesian request whose provider is
 #' absent refuses with `selection_provider_absent`, naming the package and
@@ -2616,6 +2632,9 @@ fb_select <- function(base,
   prediction <- match.arg(prediction)
   decision <- .fb_select_check_decision(decision)
   dots <- .fb_select_absorb_deprecated(list(...))
+  # Read here so that a request for process isolation the session cannot
+  # honour refuses before any fold runs (R/process_isolation.R).
+  .fb_isolation_active("fb_select()")
 
   if (!is.null(engine) && !inherits(engine, "fb_engine")) {
     if (!is.list(engine) || is.null(names(engine)) || any(!nzchar(names(engine)))) {

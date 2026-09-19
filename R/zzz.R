@@ -175,6 +175,10 @@
   # child the operating system killed rather than a fold that failed.
   .populate_refusal_registry_selection_parallel()
 
+  # 2026-09-19: a fit asked to run in a separate R process -- callr absent,
+  # and a process that ended before it returned.
+  .populate_refusal_registry_process_isolation()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
