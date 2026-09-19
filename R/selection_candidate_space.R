@@ -220,7 +220,9 @@
     touched <- unique(declared$term[aliased_candidate])
     partial <- touched[vapply(
       touched,
-      function(t) !all(declared$column[declared$term == t] %in% dropped_columns),
+      function(t) {
+        !all(declared$column[declared$term == t] %in% dropped_columns)
+      },
       logical(1L)
     )]
     if (length(partial) > 0L) {

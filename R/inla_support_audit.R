@@ -211,7 +211,7 @@
     stringsAsFactors = FALSE
   )
   rownames(audit) <- NULL
-  return(audit)
+  audit
 }
 
 #' Refuse an INLA fit whose audit found a value outside a bound

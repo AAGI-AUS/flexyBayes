@@ -66,13 +66,13 @@ all, re-fits on the recorded scalars exactly as it did before.
 a re-fit treats them differently.
 
 \itemize{
-\item \strong{The auto-default} half-normal is the output of a
-policy: one half-normal per variance component the model has,
-with the scale read off the data. A re-fit passes neither \code{prior} nor either
-scalar, so the policy runs again over the \emph{updated} model and
-data. On an identity \code{update()} the same data rebuild the same
-scale, so nothing moves. On \code{update(fit, random = ~ g + h)} the
-added term gets the same half-normal as its siblings.
+\item \strong{The auto-default} half-normal is the output of a policy: one
+half-normal per variance component the model has, with the scale read off
+the data. A re-fit passes neither \code{prior} nor either scalar, so the
+policy runs again over the \emph{updated} model and data. On an identity
+\code{update()} the same data rebuild the same scale, so nothing moves. On
+\code{update(fit, random = ~ g + h)} the added term gets the same half-normal
+as its siblings.
 \item \strong{A user-supplied \code{fb_prior()}} is a statement about the
 terms it names, and is carried verbatim. A term the user did not
 name -- including one an override has just added -- keeps

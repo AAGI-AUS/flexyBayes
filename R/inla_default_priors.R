@@ -214,7 +214,8 @@
   scaled <- list()
   from_default <- inherits(stated, "fb_prior") &&
     !is.null(attr(stated, "fb_prior_default_basis"))
-  slope_sd <- if (from_default) .fb_inla_slope_covariate_sd(fb, data) else numeric(0)
+  slope_sd <- if (from_default) .fb_inla_slope_covariate_sd(fb, data) else
+    numeric(0)
   for (spec in if (from_default) stated$specs else list()) {
     k <- if (identical(spec$target$type, "sd")) spec$target$group else ""
     if (k %in% names(slope_sd) && identical(spec$spec$family, "half_normal")) {

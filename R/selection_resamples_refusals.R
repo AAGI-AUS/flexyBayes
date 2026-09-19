@@ -24,7 +24,10 @@
       "seed. No seed is invented, because an invented seed is an ",
       "unreproducible fold assignment that looks reproducible."
     ),
-    message_template = "fb_select(): `repeats = %d` randomises the fold assignment and no `seed` was given.",
+    message_template = paste0(
+      "fb_select(): `repeats = %d` randomises the fold assignment and no ",
+      "`seed` was given."
+    ),
     registered_in_adr = "SPEC v3 section 3.1",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -37,7 +40,8 @@
       "absent from its training rows, so the level's coefficient is not ",
       "estimable and the fold cannot be scored."
     ),
-    message_template = "fb_select(): fold %s carries level(s) of `%s` absent from training: %s.",
+    message_template =
+      "fb_select(): fold %s carries level(s) of `%s` absent from training: %s.",
     registered_in_adr = "SPEC v3 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -50,7 +54,10 @@
       "scheme. A unit alone is not a specification -- it says what may not ",
       "be split, not how the splitting is done."
     ),
-    message_template = "fb_resamples(): `unit` was given without a scheme; supply `v`, `repeats` or `fold_id`.",
+    message_template = paste0(
+      "fb_resamples(): `unit` was given without a scheme; supply `v`, ",
+      "`repeats` or `fold_id`."
+    ),
     registered_in_adr = "SPEC v3 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -63,7 +70,8 @@
       "partition -- wrong length, missing values, fewer than two folds, or ",
       "a fold boundary drawn through the middle of a grouping unit."
     ),
-    message_template = "fb_resamples(): the explicit `fold_id` is not a usable partition: %s.",
+    message_template =
+      "fb_resamples(): the explicit `fold_id` is not a usable partition: %s.",
     registered_in_adr = "SPEC v3 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -75,7 +83,8 @@
       "fb_select(): a variable named by `unit`, `strata` or the scoring ",
       "cluster is not a column of the data the base model was fitted to."
     ),
-    message_template = "fb_select(): `%s` names column(s) absent from the data: %s.",
+    message_template =
+      "fb_select(): `%s` names column(s) absent from the data: %s.",
     registered_in_adr = "SPEC v3 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -101,7 +110,8 @@
       "fewer training rows than its design can estimate, so nothing can be ",
       "learned on it or nothing can be scored on it."
     ),
-    message_template = "fb_select(): fold %s has %d training and %d assessment rows.",
+    message_template =
+      "fb_select(): fold %s has %d training and %d assessment rows.",
     registered_in_adr = "SPEC v3 section 4.2",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -114,7 +124,10 @@
       "factor. No jitter is applied: a repair here is silent ",
       "misspecification carried into every score the fold contributes."
     ),
-    message_template = "fb_select(): the training covariance of fold %s is not positive definite.",
+    message_template = paste0(
+      "fb_select(): the training covariance of fold %s is not positive ",
+      "definite."
+    ),
     registered_in_adr = "SPEC v3 section 5.4",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -127,7 +140,10 @@
       "training rows moved when only the assessment rows changed, so it was ",
       "not learned on the training rows."
     ),
-    message_template = "fb_select(): fold %s learned these quantities from its assessment rows: %s.",
+    message_template = paste0(
+      "fb_select(): fold %s learned these quantities from its assessment ",
+      "rows: %s."
+    ),
     registered_in_adr = "SPEC v3 section 4.1",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -148,7 +164,8 @@
       "evaluate the formula over the rows they are handed, refuses every ",
       "one. The refusal names the variables before the fold is fitted."
     ),
-    message_template = "fb_select(): on fold %s these formula variables read other rows: %s.",
+    message_template =
+      "fb_select(): on fold %s these formula variables read other rows: %s.",
     registered_in_adr = "SPEC v3 section 4.1",
     plan_field = "selection_plan",
     since_version = "0.13.0"
@@ -165,7 +182,10 @@
       "and the protected part is the base model, which no fold reduces. The ",
       "refusal names the fold and the columns before any fold is fitted."
     ),
-    message_template = "fb_select(): on fold %s the protected design is not identified on the training rows: %s.",
+    message_template = paste0(
+      "fb_select(): on fold %s the protected design is not identified on the ",
+      "training rows: %s."
+    ),
     registered_in_adr = "PLAN green 0.13.0 section 6, P2",
     plan_field = "selection_plan",
     since_version = "0.13.0"
@@ -181,7 +201,10 @@
       "compiles its prior over the declared candidate block. The refusal ",
       "names the fold and the columns before any fold is fitted."
     ),
-    message_template = "fb_select(): on fold %s these candidate columns are unidentified and this route cannot drop them: %s.",
+    message_template = paste0(
+      "fb_select(): on fold %s these candidate columns are unidentified and ",
+      "this route cannot drop them: %s."
+    ),
     registered_in_adr = "PLAN green 0.13.0 section 6, P2",
     plan_field = "selection_plan",
     since_version = "0.13.0"
@@ -195,7 +218,10 @@
       "of them were realised. One-standard-error selection is not defined ",
       "without it."
     ),
-    message_template = "fb_select(): the scoring unit `%s` yields %d independent unit(s); at least two are needed.",
+    message_template = paste0(
+      "fb_select(): the scoring unit `%s` yields %d independent unit(s); at ",
+      "least two are needed."
+    ),
     registered_in_adr = "SPEC v3 section 9",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"

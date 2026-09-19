@@ -156,13 +156,13 @@ prior_summary.default <- function(object, ...) {
 # brms model actually has.
 #
 # On brms a sectioned residual (`dsum(~ units | f)`, `at(f):units`) makes the
-# residual a distributional predictor: the model has no scalar `sigma`,
-# and the declared prior on the SD scale is retargeted onto the
-# log-sigma coefficients. Printing `sigma ~ half_normal(scale = s)` for such a fit
-# names a parameter the model does not contain and a distribution Stan
-# did not use, so the summary carries the retarget explicitly. INLA fits one
-# likelihood per section and applies the declared prior to each section's
-# standard deviation as written, so the note is not given there.
+# residual a distributional predictor: the model has no scalar `sigma`, and the
+# declared prior on the SD scale is retargeted onto the log-sigma coefficients.
+# Printing `sigma ~ half_normal(scale = s)` for such a fit names a parameter the
+# model does not contain and a distribution Stan did not use, so the summary
+# carries the retarget explicitly. INLA fits one likelihood per section and
+# applies the declared prior to each section's standard deviation as written, so
+# the note is not given there.
 .prior_summary_residual_lowering <- function(object) {
   fb_terms <- object$extras$fb_terms
   if (is.null(fb_terms)) {
@@ -471,7 +471,8 @@ prior_summary.default <- function(object, ...) {
     out$slots <- manifest[["slots"]]
     # A Gaussian INLA fit runs on a standardised response, and its slots
     # hold the priors on those coordinates.
-    out$response_scale <- object[["extras"]][["response_standardisation"]][["scale"]]
+    out$response_scale <-
+      object[["extras"]][["response_standardisation"]][["scale"]]
     unused <- out$inputs[out$inputs$n_slots == 0L, , drop = FALSE]
     out$not_consumed <- stats::setNames(unused$reason_code, unused$input_id)
   } else {
@@ -759,7 +760,8 @@ print.prior_summary_flexybayes <- function(x, ...) {
       cat("\n  As each engine slot received it (read back from the fit):\n")
       if (!is.null(x$response_scale)) {
         cat(
-          "    the fit runs on the standardised response, so a bound or scale\n",
+          "    the fit runs on the standardised response, ",
+          "so a bound or scale\n",
           "    on a standard deviation is the stated one divided by the\n",
           "    response scale ", format(signif(x$response_scale, 6)), "\n",
           sep = ""

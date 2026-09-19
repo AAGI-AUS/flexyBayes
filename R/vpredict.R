@@ -203,7 +203,9 @@ vpredict.flexybayes <- function(
         message = paste0(
           "`", label, "` must evaluate to one number per posterior draw. ",
           "It returned ",
-          if (!is.numeric(val)) "a non-numeric value" else {
+          if (!is.numeric(val)) {
+            "a non-numeric value"
+          } else {
             paste0(length(val), " values against ", n, " draws")
           },
           "."

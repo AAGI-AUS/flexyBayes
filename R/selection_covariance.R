@@ -416,7 +416,8 @@ print.fb_sel_whitener <- function(x, ...) {
   cat("  rows     : ", x$n, "\n", sep = "")
   cat(
     "  blocks   : ", x$n_blocks,
-    if (!is.null(x$block_factor)) paste0(" over `", x$block_factor, "`") else "",
+    if (!is.null(x$block_factor)) paste0(" over `", x$block_factor, "`") else
+      "",
     "\n",
     sep = ""
   )

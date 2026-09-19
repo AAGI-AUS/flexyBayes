@@ -714,7 +714,9 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
     row_var = term$row_var,
     col_var = term$col_var,
     trial = trial,
-    title = if (is.null(trial)) "Spatial field" else {
+    title = if (is.null(trial)) {
+      "Spatial field"
+    } else {
       paste0("Spatial field, ", trial)
     },
     spelling = .ar1_term_spelling(term)

@@ -391,7 +391,12 @@
 # site's held-out rows another site's label; and a training level already
 # spelled like a held-out label would score the held-out rows as a known
 # cluster. Either refuses here, before any engine is called.
-.fb_sel_check_heldout_labels <- function(data, engine_data, split, random_vars) {
+.fb_sel_check_heldout_labels <- function(
+  data,
+  engine_data,
+  split,
+  random_vars
+) {
   assess_rows <- split$assess_rows
   for (v in random_vars) {
     original <- as.character(data[[v]])

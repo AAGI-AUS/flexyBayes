@@ -506,11 +506,11 @@
 #' to `flexybayes()`, `fb_brms()`, `fb_inla()`, `proceed()` and each fold of
 #' [fb_select()]. The default, `"none"`, fits in this session.
 #'
-#' If the operating system kills that process, or compiled code crashes
-#' inside it, the call refuses with `isolated_process_died`, naming the engine, the function
-#' called, and the exit status or signal, and this session carries on. A
-#' failure inside the fit, a refusal for instance, arrives exactly as it
-#' would without the option. The call is not retried.
+#' If the operating system kills that process, or compiled code crashes inside
+#' it, the call refuses with `isolated_process_died`, naming the engine, the
+#' function called, and the exit status or signal, and this session carries on.
+#' A failure inside the fit, a refusal for instance, arrives exactly as it would
+#' without the option. The call is not retried.
 #'
 #' The separate process loads the flexyBayes code this session loaded and
 #' starts from this session's options, INLA settings, environment variables

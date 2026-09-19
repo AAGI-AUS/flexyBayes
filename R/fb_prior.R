@@ -259,7 +259,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           message = paste0(
             "`b(", paste(deparse(raw), collapse = ""), ")` does not name one ",
             "coefficient. b() takes a single coefficient name, written as a ",
-            "string -- b(\"treatment\") -- or as a bare symbol -- b(treatment).",
+            "string -- b(\"treatment\") -- or as a bare symbol -- ",
+            "b(treatment).",
             "\nA vector or a tidy-select helper is not yet supported: give ",
             "each coefficient its own row in fb_prior()."
           )
@@ -851,7 +852,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
 # Pick the half-normal scale s of the default per (family, link). Returns
 # (scale, basis):
-# - Gaussian / identity link: s = 5 * sd(y) / d; basis = "identity_sd_half_normal"
+# - Gaussian / identity link: s = 5 * sd(y) / d; basis =
+#   "identity_sd_half_normal"
 # - Log link (Poisson, NegBin, Gamma): s = 3 / d; basis = "log_link_half_normal"
 #   (3 on the log scale is a 20x ratio of group means).
 # - Logit link (Binomial, Beta): s = 5 / d; basis = "logit_half_normal"

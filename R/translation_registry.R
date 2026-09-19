@@ -222,7 +222,8 @@
       engine = "brms",
       class = "covariance-family",
       condition = "",
-      oracle = "Live emission and parameter-count tests; no current ASReml comparison",
+      oracle =
+        "Live emission and parameter-count tests; no current ASReml comparison",
       anchor = "test-unstructured-gxe-inla.R"
     ),
     list(
@@ -296,8 +297,14 @@
       vintage = "ASReml 4",
       engine = "inla, brms",
       class = "exact",
-      condition = "Representation metadata (dense / chol / precision / blocks) must be correct.",
-      oracle = "Dense and sparse carrier tests; no current ASReml fixture for the inverse form",
+      condition = paste0(
+        "Representation metadata (dense / chol / precision / blocks) must be ",
+        "correct."
+      ),
+      oracle = paste0(
+        "Dense and sparse carrier tests; no current ASReml fixture for the ",
+        "inverse form"
+      ),
       anchor = "test-known-covariance-inputs.R"
     ),
     list(
@@ -431,7 +438,8 @@
         "equivalence: the design row is kept as a latent target. The",
         "estimator assumptions are the user's to check."
       ),
-      oracle = "Large missing-plot simulation study and independent dense-V REML",
+      oracle =
+        "Large missing-plot simulation study and independent dense-V REML",
       anchor = "test-na-action-augment.R"
     ),
     list(
@@ -465,7 +473,10 @@
       vintage = "ASReml 4",
       engine = "inla, brms",
       class = "refused",
-      condition = "Reducing it to a per-section variance would drop the structure written.",
+      condition = paste0(
+        "Reducing it to a per-section variance would drop the structure ",
+        "written."
+      ),
       oracle = "Refusal is the claim; asserted by name",
       anchor = "test-grammar-contract.R"
     )
@@ -494,7 +505,11 @@
   reg <- .fb_translation_registry()
   cell <- function(x) .fb_md_escape(.fb_squish(x))
   header <- c(
-    "| Requested structure | flexyBayes spelling | Syntax vintage | Engine | Translation class | Prior cardinality | Condition | Independent oracle |",
+    paste0(
+      "| Requested structure | flexyBayes spelling | Syntax vintage | Engine ",
+      "| Translation class | Prior cardinality | Condition | Independent ",
+      "oracle |"
+    ),
     "|---|---|---|---|---|---|---|---|"
   )
   body <- vapply(

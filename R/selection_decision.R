@@ -112,8 +112,9 @@
   present <- paste0("b_", coef_names) %in% colnames(scaled)
   probability <- vapply(
     coef_names[present],
-    function(nm) mean(abs(as.numeric(scaled[, paste0("b_", nm)])) >
-      effect_size),
+    function(nm) {
+      mean(abs(as.numeric(scaled[, paste0("b_", nm)])) > effect_size)
+    },
     numeric(1L)
   )
   retained <- probability > spec$threshold

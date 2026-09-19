@@ -883,13 +883,13 @@ model.matrix.flexybayes <- function(object, ...) {
 #' a re-fit treats them differently.
 #'
 #' \itemize{
-#'   \item \strong{The auto-default} half-normal is the output of a
-#'     policy: one half-normal per variance component the model has,
-#'     with the scale read off the data. A re-fit passes neither `prior` nor either
-#'     scalar, so the policy runs again over the *updated* model and
-#'     data. On an identity `update()` the same data rebuild the same
-#'     scale, so nothing moves. On `update(fit, random = ~ g + h)` the
-#'     added term gets the same half-normal as its siblings.
+#'   \item \strong{The auto-default} half-normal is the output of a policy: one
+#'     half-normal per variance component the model has, with the scale read off
+#'     the data. A re-fit passes neither `prior` nor either scalar, so the
+#'     policy runs again over the *updated* model and data. On an identity
+#'     `update()` the same data rebuild the same scale, so nothing moves. On
+#'     `update(fit, random = ~ g + h)` the added term gets the same half-normal
+#'     as its siblings.
 #'   \item \strong{A user-supplied `fb_prior()`} is a statement about the
 #'     terms it names, and is carried verbatim. A term the user did not
 #'     name -- including one an override has just added -- keeps
@@ -960,7 +960,10 @@ update.flexybayes <- function(object, ...) {
 
   # A streamed fit read its source in chunks and keeps only its first rows,
   # so re-issuing the call through flexybayes() would fit different data.
-  if (identical(object[["extras"]][["manifest"]][["route"]][["route"]], "streamed_count")) {
+  if (identical(
+    object[["extras"]][["manifest"]][["route"]][["route"]],
+    "streamed_count"
+  )) {
     stop(.fb_refusal_condition(
       reason_code = "update_streamed_fit_not_supported",
       message = paste0(
