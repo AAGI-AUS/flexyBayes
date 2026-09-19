@@ -482,6 +482,7 @@ test_that("with the Bayesian refit, the paired elpd difference equals a hand com
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fba_quiet()
   d <- fba_data(n_site = 12L, per = 6L)
   base <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
