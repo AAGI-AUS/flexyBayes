@@ -677,3 +677,33 @@ test_that("routes that would leave a known variance out refuse by name", {
     class = refused
   )
 })
+
+test_that("the grouped ablation of a known-variance base scores the protected model with sigma^2 + v", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("glmnet")
+  fbkv_quiet()
+  d <- fbkv_select_data()
+  base <- flexybayes(ybar ~ variety, random = ~trial, data = d,
+                     known_variance = d$v, backend = "inla", verbose = FALSE)
+  sel <- fb_select(base, ~ z1 + z2 + z3 + z4, penalty = fbkv_penalty(),
+                   workflow = "penalized_optimizer", covariance = "base_model",
+                   resamples = fb_resamples(unit = ~trial, v = 3L), seed = 1L,
+                   decision = fb_decision(method = "full", metric = "rmse"),
+                   ablation = TRUE)
+  expect_true(sel$certificate$covariance$known_variance)
+  # Dropping the only declared block leaves the protected model, so each
+  # trial's ablated loss is the root mean squared error of the GLS fit with
+  # V = diag(sigma^2 + v) + sigma_t^2 Z Z', written out above.
+  cov <- sel$certificate$covariance
+  labels <- vapply(cov$folds, function(r) r$fold, character(1L))
+  hand <- NULL
+  for (split in sel$folds) {
+    record <- cov$folds[[match(split$label, labels)]]
+    hand <- rbind(hand, fbkv_gls_clusters(d, d$v, split, record, ~variety))
+  }
+  hand_rmse <- stats::setNames(sqrt(hand$mse), hand$cluster)
+  units <- sel$ablation$units
+  expect_setequal(units$unit, names(hand_rmse))
+  expect_lt(fbkv_rel(units$loss_ablated, hand_rmse[units$unit]), 1.5e-8)
+})
