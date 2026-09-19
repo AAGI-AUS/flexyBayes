@@ -22,10 +22,9 @@
     description = paste0(
       "options(flexyBayes.isolation = \"process\") runs each engine fit, ",
       "and each fold of fb_select(), in a separate R process started ",
-      "through the callr package, which is in Suggests and not installed. ",
-      "The request is refused before anything is fitted rather than ",
-      "quietly fitted in the session, which would give up the protection ",
-      "that was asked for."
+      "through callr, which is in Suggests and not installed. The request ",
+      "is refused before anything is fitted, so no fit runs without the ",
+      "protection that was asked for."
     ),
     message_template = paste0(
       "%s: options(flexyBayes.isolation = \"process\") needs the callr ",

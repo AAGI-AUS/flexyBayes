@@ -570,15 +570,14 @@ diagnostics, and extras for secondary analyses.
 \section{Fitting in a separate process}{
 
 \code{options(flexyBayes.isolation = "process")} runs the engine fit in a
-separate R process started through the callr package, which is in
-Suggests; without callr the request refuses with
+separate R process started through callr, which is in Suggests; without
+callr the request refuses with
 \code{isolation_requires_callr} before anything is fitted. The option applies
 to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()}, \code{proceed()} and each fold of
 \code{\link[=fb_select]{fb_select()}}. The default, \code{"none"}, fits in this session.
 
-If the operating system kills that process, which is what running out of
-memory usually looks like, or compiled code crashes inside it, the call
-refuses with \code{isolated_process_died}, naming the engine, the function
+If the operating system kills that process, or compiled code crashes
+inside it, the call refuses with \code{isolated_process_died}, naming the engine, the function
 called, and the exit status or signal, and this session carries on. A
 failure inside the fit, a refusal for instance, arrives exactly as it
 would without the option. The call is not retried.
@@ -592,8 +591,8 @@ the fit records the process in \verb{$extras$isolation}. A brms fit with a
 \code{seed} returns the same draws either way. INLA does not return identical
 numbers for two identical calls in one session, and an isolated INLA fit
 agrees with an in-process one as closely as two in-process fits agree.
-A variable the formula finds in the global environment rather than in
-\code{data} is not there in the separate process. Starting the process and
+The separate process starts with an empty global environment, so the
+formula finds its variables in \code{data}. Starting the process and
 moving the data and the fit costs time on every call; see \code{\link[=fb_select]{fb_select()}}
 for the measured figures.
 }

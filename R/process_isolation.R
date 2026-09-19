@@ -90,7 +90,7 @@
 
 #' Whether callr can be loaded
 #'
-#' A function of its own so that its absence can be simulated in a test.
+#' Tests replace it to simulate a session without callr.
 #'
 #' @return `TRUE` or `FALSE`.
 #' @noRd
@@ -119,8 +119,8 @@
       message = paste0(
         entry_point,
         ": options(flexyBayes.isolation = \"process\") runs each fit in a ",
-        "separate R process through the callr package, and callr is not ",
-        "installed. Install it with install.packages(\"callr\"), or set ",
+        "separate R process through callr, and callr is not installed. ",
+        "Install it with install.packages(\"callr\"), or set ",
         "options(flexyBayes.isolation = \"none\") to fit in this session."
       ),
       entry_point = entry_point
@@ -135,7 +135,7 @@
 #' How the child loads the namespace this session loaded
 #'
 #' @return A list: `dev` (loaded from a source tree by pkgload), `path` (the
-#'   tree, or the installed package directory) and `lib` (its library).
+#'   tree, or the installed directory) and `lib` (its library).
 #' @noRd
 #' @keywords internal
 .fb_isolation_load_spec <- function() {
@@ -251,8 +251,8 @@
 #' callr runs this function in the child with its environment set to the
 #' child's global environment, so it names nothing from this namespace until
 #' it has loaded it: the namespace this session loaded, found through
-#' `load`. Only then are the payload's closures read, so that their
-#' environments attach to that namespace.
+#' `load`. Only then are the payload's closures read; their environments
+#' then attach to that namespace.
 #'
 #' @param payload_path The file holding the call.
 #' @param load A `.fb_isolation_load_spec()` record.
@@ -613,9 +613,8 @@
 
 #' End a child that is still running, with whatever it started
 #'
-#' The processes are found by the marker callr gives this child's tree, so
-#' nothing else is touched, and the child is waited for so that it does not
-#' linger as a finished process nobody has collected.
+#' The processes are found by the marker callr gives this child's tree, and
+#' only they are ended. The child is then waited for and collected.
 #'
 #' @param handle A `.fb_isolation_start()` handle.
 #' @return `NULL`, invisibly.
@@ -637,7 +636,7 @@
 #' @param args Its arguments.
 #' @param engine The engine the call fits with, for a refusal.
 #' @param entry_point The public verb, for a refusal.
-#' @param with_pid `TRUE` returns `list(value, pid)` rather than the value.
+#' @param with_pid `TRUE` returns `list(value, pid)`; `FALSE`, the value.
 #' @inheritParams .fb_isolation_start
 #' @return The value `fn` returned in the child.
 #' @noRd
