@@ -26,6 +26,8 @@
   unpenalised benchmark, the penalised optimiser or `benchmark = TRUE` is
   asked for (`selection_missing_response_not_carried`). It used to stop
   inside the optimiser with an untyped error.
+* *Mixed models in brief* and *Bayesian estimation in brief* are rebuilt and
+  show the half-normal default prior.
 
 # flexyBayes 0.13.1
 
