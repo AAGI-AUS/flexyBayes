@@ -30,6 +30,16 @@
 #                                       .fb_select_require_observed_response()
 #                                       test-fb-select-missing-response.R
 #
+# Two codes land with the Bayesian refit of each fold's frozen support
+# (0.14.0):
+#
+#   selection_refit_support_undefined   R/selection_value.R, the route and
+#                                       the support at the chosen point
+#                                       test-selection-value.R
+#   selection_value_contract_mismatch   R/selection_value.R,
+#                                       .fb_sel_value_pair()
+#                                       test-selection-value.R
+#
 # A registered code with no triggering test is a string, not a refusal.
 
 .populate_refusal_registry_selection_verb <- function() {
@@ -115,6 +125,38 @@
       "does not carry missing responses."
     ),
     registered_in_adr = "0.14.0 release plan",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_refit_support_undefined",
+    description = paste0(
+      "fb_select(): refit = list(method = \"bayes\") refits the support the ",
+      "penalised optimiser froze on each fold, and the request has none to ",
+      "refit: the workflow is not the penalised optimiser, which alone ",
+      "chooses a support on each fold's training rows, or the penalty ",
+      "family shrinks every coefficient without setting one to zero, as ",
+      "ridge() does. The refusal comes before any refit."
+    ),
+    message_template = "fb_select(): refit = list(method = \"bayes\") has no frozen support to refit: %s.",
+    registered_in_adr = "fb_select(refit = ), 0.14.0",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_value_contract_mismatch",
+    description = paste0(
+      "glance() or augment() on an fb_select result was asked to difference ",
+      "its valuation against another, and the two value contracts differ: ",
+      "the rows each fold holds out, the scoring unit, the prediction target ",
+      "or the response values are not the same, or one result carries no ",
+      "valuation. Units that were not held out together do not pair, so no ",
+      "difference is formed. The fields that differ are named."
+    ),
+    message_template = "fb_select(): the two valuations' value contracts differ in: %s.",
+    registered_in_adr = "fb_select(refit = ), 0.14.0",
     plan_field = "selection_plan",
     since_version = "0.14.0"
   )

@@ -56,6 +56,14 @@
   memory bound, `options(flexyBayes.selection_dense_gb = )` (0.5 GiB, 8,192
   rows). Above it, a covariance that would be formed as a dense matrix refuses
   with `selection_dense_covariance_too_large` instead of exhausting memory.
+* `fb_select(refit = list(method = "bayes"))` refits the support the penalised
+  optimiser chose on each fold as a Bayesian model on the base's own engine,
+  scores each held-out row by its log predictive density, and reports the
+  per-unit sums, their total with its standard error across units, and the
+  share of between-trial variance a declared block explains.
+  `glance(x, against = y)` differences two such runs unit by unit.
+* The Bayesian workflow's fold refits now keep a base's `prior_vc_sd` and
+  `prior_fixed_sd`; before, they ran under the package's default priors.
 
 # flexyBayes 0.13.1
 

@@ -19,6 +19,7 @@ fb_select(
   budget = NULL,
   plan = FALSE,
   covariance = c("reml_plugin", "base_model"),
+  refit = NULL,
   ...
 )
 }
@@ -116,6 +117,16 @@ random terms is factored block by block, and any other V refuses with
 \code{selection_dense_covariance_too_large}. The argument's earlier form, an
 estimand string (\code{"plugin_mean_covariance"} and two others), is
 deprecated and runs the default.}
+
+\item{refit}{\code{NULL} (the default), or \code{list(method = "bayes")} to refit
+each fold's frozen support as a Bayesian model and score its held-out
+rows; see "Bayesian refit of the frozen support". Optional fields:
+\code{block}, a one-sided formula over terms of the base's fixed part or of
+\code{candidates}, the block whose share of between-trial variance is
+reported (default: every candidate); \code{group}, the grouping column of the
+random intercept whose variance is the between-trial variance (default:
+the base's only random intercept); \code{n_draws}, the posterior draws per
+fold (default 4000).}
 
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
@@ -243,6 +254,42 @@ Bayesian route drops whole terms and refuses a term aliased only in part, and
 the penalised reference's out-of-fold score refuses any drop, both with
 \code{selection_fold_candidate_drop_not_representable}.
 }
+\section{Bayesian refit of the frozen support}{
+
+With \code{workflow = "penalized_optimizer"} and a penalty that selects,
+\code{refit = list(method = "bayes")} takes the support the optimiser chose on
+each fold at its chosen tuning point, freezes it, and refits the base model
+on that fold's training rows with the base's own engine (INLA or brms),
+random terms and priors, the support columns added to the protected fixed
+part. Nothing is selected again. Each support column enters as a numeric
+design column learned on the fold's training rows, so a fold that keeps one
+column of a factor and drops another is refitted on exactly the columns it
+kept.
+
+Each assessment row is scored by its log predictive density,
+\verb{log((1/D) sum_d p(y_i | theta_d))} over the refit's \code{D} posterior draws.
+Under \code{prediction = "new_cluster"}, where every random term is an
+independent intercept, the unseen levels' effects are integrated in closed
+form: each draw's predictive is Gaussian with the fixed part's mean and the
+residual variance plus the random-intercept variances. Otherwise the
+engine's draws of the linear predictor are used. The per-unit sums, their
+total over held-out units and its standard error \code{sqrt(U) * sd(elpd_u)}
+are reported by \code{\link[=glance.fb_select]{glance.fb_select()}} and \code{\link[=augment.fb_select]{augment.fb_select()}}, with the
+hash of a value contract that identifies the folds, the scoring unit, the
+prediction target and the response values. Two runs on the same contract
+pair unit by unit: \code{glance(x, against = y)}.
+
+The block share follows the Bayesian R-squared of Gelman, Goodrich, Gabry
+and Vehtari (2019, \doi{10.1080/00031305.2018.1549100}). For each
+posterior draw of each fold's refit, with \code{m_t} the mean over the training
+rows of level \code{t} of \code{group} of the block's contribution
+\verb{sum_j x_ij beta_j}, the share is \code{V_t(m_t) / (V_t(m_t) + sigma^2)}: the
+numerator is the sample variance of \code{m_t} over the fold's \code{T} training
+levels (divisor \code{T - 1}) and \code{sigma^2} is the variance of the \code{group}
+random intercept. The draws of every fold are pooled, and the posterior
+median and 95\% interval reported.
+}
+
 \examples{
 \donttest{
 if (requireNamespace("INLA", quietly = TRUE) &&

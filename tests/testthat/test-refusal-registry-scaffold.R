@@ -565,13 +565,21 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # The base-model covariance unit adds one: a fold covariance that would be
   # formed as a dense n x n matrix above the stated memory bound
   # (selection_dense_covariance_too_large) (= 220).
+  #
+  # The refit of each fold's frozen support adds two: a refit asked of a
+  # route or a family that freezes no support
+  # (selection_refit_support_undefined), and two valuations whose value
+  # contracts differ asked to be differenced
+  # (selection_value_contract_mismatch) (= 222).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_missing_response_not_carried" %in% entries)
   expect_true("isolation_requires_callr" %in% entries)
   expect_true("isolated_process_died" %in% entries)
-  expect_equal(length(entries), 220L)
   expect_true("selection_dense_covariance_too_large" %in% entries)
+  expect_true("selection_refit_support_undefined" %in% entries)
+  expect_true("selection_value_contract_mismatch" %in% entries)
+  expect_equal(length(entries), 222L)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)

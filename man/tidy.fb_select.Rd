@@ -12,7 +12,11 @@
 \item{level}{\code{"column"} (the default), one row per design column, or
 \code{"group"}, one row per declared group of penalised columns.}
 
-\item{...}{Ignored.}
+\item{...}{Ignored.
+Where \code{refit = list(method = "bayes")} refitted each fold's frozen
+support, \code{value_folds_in_support} counts the folds whose refit held the
+column, and \code{value_in_block} says whether its term is in the block the
+block share is stated for.}
 }
 \value{
 A \code{data.frame}. At \code{level = "column"}, one row per design column:
@@ -24,7 +28,9 @@ scientific scale. Beside them, the penalised path's \code{folds_available},
 \code{entry_s_median}, \code{entry_s_q25}, \code{entry_s_q75}, \code{entry_s_iqr} and the
 three stability columns, all \code{NA} for a protected column and on a run
 with no penalised path, with the path itself in the attributes
-\code{support_path} and \code{support_path_by_fold}. At \code{level = "group"}, one row
+\code{support_path} and \code{support_path_by_fold}; with a Bayesian refit, also
+\code{value_folds_in_support} and \code{value_in_block}, \code{NA} where no refit ran.
+At \code{level = "group"}, one row
 per group with its \code{rule}, \code{n_columns}, \code{columns} and the same profile
 and stability columns, and the per-fold group record in the attribute
 \code{support_path_by_fold}.

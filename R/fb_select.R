@@ -2545,6 +2545,40 @@
 #' the penalised reference's out-of-fold score refuses any drop, both with
 #' `selection_fold_candidate_drop_not_representable`.
 #'
+#' @section Bayesian refit of the frozen support:
+#' With `workflow = "penalized_optimizer"` and a penalty that selects,
+#' `refit = list(method = "bayes")` takes the support the optimiser chose on
+#' each fold at its chosen tuning point, freezes it, and refits the base model
+#' on that fold's training rows with the base's own engine (INLA or brms),
+#' random terms and priors, the support columns added to the protected fixed
+#' part. Nothing is selected again. Each support column enters as a numeric
+#' design column learned on the fold's training rows, so a fold that keeps one
+#' column of a factor and drops another is refitted on exactly the columns it
+#' kept.
+#'
+#' Each assessment row is scored by its log predictive density,
+#' `log((1/D) sum_d p(y_i | theta_d))` over the refit's `D` posterior draws.
+#' Under `prediction = "new_cluster"`, where every random term is an
+#' independent intercept, the unseen levels' effects are integrated in closed
+#' form: each draw's predictive is Gaussian with the fixed part's mean and the
+#' residual variance plus the random-intercept variances. Otherwise the
+#' engine's draws of the linear predictor are used. The per-unit sums, their
+#' total over held-out units and its standard error `sqrt(U) * sd(elpd_u)`
+#' are reported by [glance.fb_select()] and [augment.fb_select()], with the
+#' hash of a value contract that identifies the folds, the scoring unit, the
+#' prediction target and the response values. Two runs on the same contract
+#' pair unit by unit: `glance(x, against = y)`.
+#'
+#' The block share follows the Bayesian R-squared of Gelman, Goodrich, Gabry
+#' and Vehtari (2019, \doi{10.1080/00031305.2018.1549100}). For each
+#' posterior draw of each fold's refit, with `m_t` the mean over the training
+#' rows of level `t` of `group` of the block's contribution
+#' `sum_j x_ij beta_j`, the share is `V_t(m_t) / (V_t(m_t) + sigma^2)`: the
+#' numerator is the sample variance of `m_t` over the fold's `T` training
+#' levels (divisor `T - 1`) and `sigma^2` is the variance of the `group`
+#' random intercept. The draws of every fold are pooled, and the posterior
+#' median and 95% interval reported.
+#'
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
 #'   block and are never penalised.
 #' @param candidates A one-sided formula over columns of the base fit's data.
@@ -2625,6 +2659,15 @@
 #'   `selection_dense_covariance_too_large`. The argument's earlier form, an
 #'   estimand string (`"plugin_mean_covariance"` and two others), is
 #'   deprecated and runs the default.
+#' @param refit `NULL` (the default), or `list(method = "bayes")` to refit
+#'   each fold's frozen support as a Bayesian model and score its held-out
+#'   rows; see "Bayesian refit of the frozen support". Optional fields:
+#'   `block`, a one-sided formula over terms of the base's fixed part or of
+#'   `candidates`, the block whose share of between-trial variance is
+#'   reported (default: every candidate); `group`, the grouping column of the
+#'   random intercept whose variance is the between-trial variance (default:
+#'   the base's only random intercept); `n_draws`, the posterior draws per
+#'   fold (default 4000).
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
@@ -2677,6 +2720,7 @@ fb_select <- function(base,
                       budget = NULL,
                       plan = FALSE,
                       covariance = c("reml_plugin", "base_model"),
+                      refit = NULL,
                       ...) {
   workflow <- match.arg(workflow)
   fallback <- match.arg(fallback)
@@ -2730,6 +2774,7 @@ fb_select <- function(base,
   .fb_select_gate(base)
   base <- .fb_sel_bayes_normalise_base(base)
   engine_name <- .fb_select_engine_of(base)
+  value_request <- .fb_sel_value_request(refit, base, candidates)
 
   protected_labels <- .fb_sel_protected_labels(base$fb)
   protected <- stats::as.formula(paste0(
@@ -2877,6 +2922,9 @@ fb_select <- function(base,
       )
     ))
   }
+  # A refit freezes the support the penalised optimiser chose on each fold;
+  # no other route chooses one, so the request refuses here, before any fit.
+  .fb_sel_value_require_route(value_request, workflow)
 
   # Every route that reaches .fb_select_benchmark(): the two workflows below
   # and `benchmark = TRUE` on the Bayesian one. Checked before any route
@@ -2971,7 +3019,9 @@ fb_select <- function(base,
       calibration = calibration,
       structure_gate = structure_gate,
       covariance = covariance,
+      value_request = value_request,
       engine = engine,
+      budget = budget,
       decision_resolution = list(
         requested = decision_resolution$requested,
         resolved_from = if (
@@ -3401,9 +3451,10 @@ fb_select <- function(base,
                                  requested_workflow,
                                  calibration = NULL,
                                  structure_gate = NULL,
-                                 decision_resolution = NULL,
                                  covariance = "reml_plugin",
-                                 engine = NULL) {
+                                 value_request = NULL,
+                                 engine = NULL,
+                                 budget = NULL) {
   resolved <- .fb_select_resolve_penalty(
     base,
     candidates,
@@ -3479,6 +3530,25 @@ fb_select <- function(base,
     stop(bench$stability_error)
   }
 
+  # The Bayesian refit of each fold's frozen support, where one was asked
+  # for (R/selection_value.R). It reads the arm's support at the chosen point
+  # and selects nothing again.
+  value <- NULL
+  if (!is.null(value_request)) {
+    value <- .fb_sel_value(
+      base = base,
+      candidates = candidates,
+      resamples = resamples,
+      prediction = prediction,
+      folds = bench$cv$folds,
+      arm = bench$arms$glmnet,
+      request = value_request,
+      engine = engine,
+      seed = seed,
+      budget = budget
+    )
+  }
+
   .fb_select_assemble(
     base = base,
     axes = axes,
@@ -3514,6 +3584,7 @@ fb_select <- function(base,
     requested_workflow = requested_workflow,
     structure_gate = structure_gate,
     decision_resolution = decision_resolution,
+    value = value,
     dots = list()
   )
 }
@@ -3627,6 +3698,7 @@ fb_select <- function(base,
                                 reference_engine = NA_character_,
                                 structure_gate = NULL,
                                 decision_resolution = NULL,
+                                value = NULL,
                                 dots = list()) {
   increment <- NULL
   agg <- cv$aggregated
@@ -3716,7 +3788,8 @@ fb_select <- function(base,
       ),
       benchmark = benchmark$arms,
       folds = cv$folds,
-      certificate = certificate
+      certificate = certificate,
+      value = value
     ),
     class = "fb_select"
   )
@@ -3989,6 +4062,34 @@ print.fb_select <- function(x, digits = 4L, ...) {
         x$increment$se_unit, ")\n", sep = "")
   }
 
+  if (!is.null(x$value)) {
+    v <- x$value
+    cat(
+      "\n  valuation : each fold's frozen support refitted on ", v$engine,
+      ", held-out elpd ", round(v$summary$elpd, digits),
+      " (se ", round(v$summary$se, digits), "; ", v$summary$n_units,
+      " held-out units, scored at ", v$summary$unit, ")\n",
+      sep = ""
+    )
+    for (m in unique(v$folds$method)) {
+      cat("    ", m, ": ", sum(v$folds$method == m), " of ", nrow(v$folds),
+          " folds\n", sep = "")
+    }
+    share <- v$block_share
+    if (isTRUE(share$available)) {
+      cat(
+        "    block share (", share$block, ") of the ", share$group,
+        " variance: median ", round(share$pooled$median, digits), ", 95% [",
+        round(share$pooled$lower, digits), ", ",
+        round(share$pooled$upper, digits), "]\n",
+        sep = ""
+      )
+    } else {
+      cat("    block share: none -- ", .fb_squish(share$reason), "\n",
+          sep = "")
+    }
+  }
+
   if (length(x$benchmark) > 0L) {
     cat("\n  benchmark arms:\n", sep = "")
     for (nm in names(x$benchmark)) {
@@ -4126,6 +4227,11 @@ print.fb_select <- function(x, digits = 4L, ...) {
 #' @param level `"column"` (the default), one row per design column, or
 #'   `"group"`, one row per declared group of penalised columns.
 #' @param ... Ignored.
+#' Where `refit = list(method = "bayes")` refitted each fold's frozen
+#' support, `value_folds_in_support` counts the folds whose refit held the
+#' column, and `value_in_block` says whether its term is in the block the
+#' block share is stated for.
+#'
 #' @returns A `data.frame`. At `level = "column"`, one row per design column:
 #'   the column, the formula term it came from, its role, its block and
 #'   family, whether the decision retained it, and, where a reference
@@ -4135,7 +4241,9 @@ print.fb_select <- function(x, digits = 4L, ...) {
 #'   `entry_s_median`, `entry_s_q25`, `entry_s_q75`, `entry_s_iqr` and the
 #'   three stability columns, all `NA` for a protected column and on a run
 #'   with no penalised path, with the path itself in the attributes
-#'   `support_path` and `support_path_by_fold`. At `level = "group"`, one row
+#'   `support_path` and `support_path_by_fold`; with a Bayesian refit, also
+#'   `value_folds_in_support` and `value_in_block`, `NA` where no refit ran.
+#'   At `level = "group"`, one row
 #'   per group with its `rule`, `n_columns`, `columns` and the same profile
 #'   and stability columns, and the per-fold group record in the attribute
 #'   `support_path_by_fold`.
@@ -4221,6 +4329,22 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
   }
   attr(out, "support_path") <- path$points
   attr(out, "support_path_by_fold") <- by_fold
+
+  # The refit of each fold's frozen support: in how many folds the refit held
+  # the column, and whether its term is in the block the share is stated for.
+  out$value_folds_in_support <- rep(NA_integer_, n)
+  out$value_in_block <- rep(NA, n)
+  if (!is.null(x$value)) {
+    supports <- x$value$supports
+    candidate <- out$role == "candidate"
+    out$value_folds_in_support[candidate] <- vapply(
+      out$term[candidate],
+      function(column) sum(supports$column == column),
+      integer(1L)
+    )
+    out$value_in_block <- out$source_term %in%
+      x$value$block_share$block_terms
+  }
   out
 }
 
@@ -4303,8 +4427,33 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
 }
 
 
+#' Glance at a selection
+#'
+#' One row: the four axes, the out-of-fold increment, the penalised path's
+#' tuning report and, where `refit = list(method = "bayes")` ran, the
+#' valuation of the refitted supports.
+#'
+#' @details
+#' `value_elpd` is the held-out log predictive density summed over the held-out
+#' units, and `value_elpd_se` its standard error across units; `value_formula`
+#' states both. `block_share_median`, `block_share_lower` and
+#' `block_share_upper` are the posterior median and 95% interval of the share
+#' of between-trial variance the declared block explains, pooled over folds.
+#'
+#' With `against`, a second valuation on the same value contract (the same
+#' data, `resamples`, `seed` and `prediction`), `value_difference` is the sum
+#' over units of the paired differences `elpd_u(x) - elpd_u(against)`, and
+#' `value_difference_se` is `sqrt(U)` times their standard deviation over
+#' the `U` units. Valuations on different contracts refuse with
+#' `selection_value_contract_mismatch`.
+#'
+#' @param x An `fb_select` object.
+#' @param against `NULL`, or a second `fb_select` object to difference the
+#'   valuation against.
+#' @param ... Ignored.
+#' @returns A one-row `data.frame`.
 #' @export
-glance.fb_select <- function(x, ...) {
+glance.fb_select <- function(x, against = NULL, ...) {
   arm <- x$benchmark$glmnet
   path <- .fb_select_support_path(x)
   by_lambda <- if (is.null(arm$support$by_lambda)) {
@@ -4327,7 +4476,7 @@ glance.fb_select <- function(x, ...) {
       function(v) any(v > 0L)
     ))
   }
-  data.frame(
+  out <- data.frame(
     workflow = x$workflow,
     provider = x$provider,
     prior = x$prior,
@@ -4374,6 +4523,25 @@ glance.fb_select <- function(x, ...) {
     },
     stringsAsFactors = FALSE
   )
+  # The valuation of the refitted supports, absent where none ran.
+  value <- x$value
+  share <- value$block_share
+  shared <- isTRUE(share$available)
+  out$value_elpd <- value$summary$elpd %||% NA_real_
+  out$value_elpd_se <- value$summary$se %||% NA_real_
+  out$value_n_units <- value$summary$n_units %||% NA_integer_
+  out$value_unit <- value$summary$unit %||% NA_character_
+  out$value_contract_hash <- value$contract$hash %||% NA_character_
+  out$value_formula <- value$summary$formula %||% NA_character_
+  out$block_share_median <- if (shared) share$pooled$median else NA_real_
+  out$block_share_lower <- if (shared) share$pooled$lower else NA_real_
+  out$block_share_upper <- if (shared) share$pooled$upper else NA_real_
+  if (!is.null(against)) {
+    paired <- .fb_sel_value_pair(x, against)
+    out$value_difference <- paired$difference
+    out$value_difference_se <- paired$se
+  }
+  out
 }
 
 
@@ -4382,25 +4550,48 @@ glance.fb_select <- function(x, ...) {
 #' @param x An `fb_select` object.
 #' @param data Ignored; the out-of-fold results are the ones the folds
 #'   computed and cannot be recomputed on other rows.
-#' @param type `"unit_scores"` (the default retained for compatibility) or
-#'   `"assessment_predictions"`. The latter returns the optimiser decision's
+#' @param type `"unit_scores"` (the default retained for compatibility),
+#'   `"assessment_predictions"`, `"value_rows"` or `"value_units"`.
+#'   `"assessment_predictions"` returns the optimiser decision's
 #'   row-level assessment predictions, with original row positions, repeat and
 #'   fold identifiers, scoring units, selected tuning coordinates and the
 #'   verified score-contract hash. Observed and predicted values are on the
 #'   modelled response scale, after any Gaussian offset has been subtracted.
+#'   The last two return the valuation `refit = list(method = "bayes")`
+#'   computed: one row per assessment row, with the refit's predictive mean
+#'   and standard deviation, the log predictive density `lpd`, how the unseen
+#'   cluster was integrated (`method`) and the value-contract hash; or one
+#'   row per repeat and held-out unit, with its fold, row count and summed
+#'   log predictive density `elpd`.
+#' @param against `NULL`, or, with `type = "value_units"`, a second
+#'   `fb_select` object on the same value contract: the table then carries
+#'   `elpd_against` and the paired `difference`.
 #' @param ... Ignored.
-#' @returns A `data.frame` of per-unit out-of-fold scores or row-level
-#'   assessment predictions, according to `type`. A zero-row frame with the
-#'   stable schema is returned where that result did not run. These are stored
-#'   assessment results, not a prediction method for caller-supplied rows.
+#' @returns A `data.frame` of per-unit out-of-fold scores, row-level
+#'   assessment predictions, or the valuation's rows or units, according to
+#'   `type`. A zero-row frame with the stable schema is returned where that
+#'   result did not run. These are stored assessment results, not a
+#'   prediction method for caller-supplied rows.
 #' @export
 augment.fb_select <- function(
   x,
   data = NULL,
-  type = c("unit_scores", "assessment_predictions"),
+  type = c(
+    "unit_scores", "assessment_predictions", "value_rows", "value_units"
+  ),
+  against = NULL,
   ...
 ) {
   type <- match.arg(type)
+  if (identical(type, "value_rows")) {
+    return(as.data.frame(x$value$rows %||% .fb_sel_value_empty_rows()))
+  }
+  if (identical(type, "value_units")) {
+    if (!is.null(against)) {
+      return(.fb_sel_value_pair(x, against)$units)
+    }
+    return(as.data.frame(x$value$units %||% .fb_sel_value_empty_units()))
+  }
   if (identical(type, "assessment_predictions")) {
     out <- x$assessment_predictions
     if (is.null(out)) {
