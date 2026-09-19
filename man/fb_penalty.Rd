@@ -132,8 +132,11 @@ than substituting the nearest prior.\tabular{lll}{
 
 \code{group} declares how the columns are grouped, and it is never inferred
 from the data. \code{"term"} makes each model term one group, so a factor's
-contrast columns move together and a numeric main effect is a group of
-one; \code{"block"} makes the specification's own target set one group, which
+non-reference contrast columns move together and a numeric main effect is
+a group of one. Under ordinary treatment contrasts the reference level has
+no design column and is therefore not inserted into the penalised group;
+its meaning remains in the intercept and the other protected terms.
+\code{"block"} makes the specification's own target set one group, which
 is how a cluster of correlated measurements is declared to be a set of
 competitors. \code{group_lasso()}, \code{sparse_group_lasso()} and
 \code{group_exclusive()} default to \code{"term"}; \code{exclusive_lasso()} defaults to
@@ -142,9 +145,11 @@ certificate. A grouping in which every group has one column refuses, since
 a group lasso would then be a lasso and an exclusive lasso a ridge.
 
 The exclusive penalty adds \verb{sum_g (sum_j |beta_j|)^2 / 2} over groups,
-which encourages competition inside a group. It does not guarantee that
-exactly one member is non-zero, and on a group of one it is exactly
-\code{ridge()} at the same scale.
+which encourages competition inside a group. This is suitable for a
+declared set of correlated alternatives, such as measurements of one soil
+property at several depths. It does not mechanically drop every member
+except the largest, does not guarantee that exactly one member is non-zero,
+and on a group of one it is exactly \code{ridge()} at the same scale.
 
 \code{adaptive()} remains withdrawn and refuses by name. An adaptive penalty
 needs a first-stage estimate and a rule for turning that estimate into

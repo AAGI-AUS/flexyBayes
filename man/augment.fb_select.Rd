@@ -2,25 +2,31 @@
 % Please edit documentation in R/fb_select.R
 \name{augment.fb_select}
 \alias{augment.fb_select}
-\title{Out-of-fold predictions from a selection}
+\title{Out-of-fold results from a selection}
 \usage{
-\method{augment}{fb_select}(x, data = NULL, ...)
+\method{augment}{fb_select}(x, data = NULL, type = c("unit_scores", "assessment_predictions"), ...)
 }
 \arguments{
 \item{x}{An \code{fb_select} object.}
 
-\item{data}{Ignored; the out-of-fold predictions are the ones the folds
+\item{data}{Ignored; the out-of-fold results are the ones the folds
 computed and cannot be recomputed on other rows.}
+
+\item{type}{\code{"unit_scores"} (the default retained for compatibility) or
+\code{"assessment_predictions"}. The latter returns the optimiser decision's
+row-level assessment predictions, with original row positions, repeat and
+fold identifiers, scoring units, selected tuning coordinates and the
+verified score-contract hash. Observed and predicted values are on the
+modelled response scale, after any Gaussian offset has been subtracted.}
 
 \item{...}{Ignored.}
 }
 \value{
-A \code{data.frame} of the per-unit out-of-fold scores, or a zero-row
-frame with the same columns where no out-of-fold path ran. A projection
-assesses inside \code{projpred} and writes no table here on its own; under
-\code{benchmark = TRUE} the reference model is additionally scored out of
-fold and that table is what this returns.
+A \code{data.frame} of per-unit out-of-fold scores or row-level
+assessment predictions, according to \code{type}. A zero-row frame with the
+stable schema is returned where that result did not run. These are stored
+assessment results, not a prediction method for caller-supplied rows.
 }
 \description{
-Out-of-fold predictions from a selection
+Out-of-fold results from a selection
 }

@@ -1,3 +1,23 @@
+# flexyBayes 0.13.0.9000
+
+* `plot(fit, type = "entrance_path")` now displays the common out-of-fold
+  loss along `s = lambda / lambda_max` and labels variables at their median
+  first entry across folds. The display is explicit that the ordinate is the
+  selected score (for example RMSE), not an inclusion probability.
+* Grouped-penalty documentation now states that treatment-coded factors group
+  their non-reference contrast columns; the reference level has no penalised
+  design column. Exclusive lasso is documented as encouraging, not
+  guaranteeing, one representative from a correlated block.
+* `augment(fit, type = "assessment_predictions")` now exposes the optimiser
+  decision's stored row-level out-of-fold predictions, stable row keys,
+  fold/repeat/scoring-unit provenance, tuning coordinates and verified score-
+  contract hash. It does not predict caller-supplied rows.
+* Optimiser paths now apply one explicit `1e-6` KKT acceptance threshold to
+  both glmnet and internal proximal providers. The grouped solver's strict
+  `1e-9` default remains available for oracle work; only the path acceptance
+  policy changed. This removes an undocumented provider asymmetry exposed by
+  large correlated NERT blocks without accepting an unchecked optimiser flag.
+
 # flexyBayes 0.13.0
 
 This release makes the selection and large-MET substrate materially safer and

@@ -557,6 +557,124 @@ test_that("glance() reports the tuning coordinate, the alpha and the size of the
   expect_true(is.na(gb$path_columns_entered))
 })
 
+test_that("entrance-path plot returns scored path and labelled entries", {
+  skip_if_not_installed("glmnet")
+  fbsp_quiet()
+  d <- fbsp_data()
+  sel <- fb_select(
+    fbsp_stub_base(d), ~ z1 + z2 + z3 + z4 + z5,
+    penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.15)),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 4L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 1L
+  )
+  path <- tempfile(fileext = ".pdf")
+  grDevices::pdf(path)
+  on.exit({
+    grDevices::dev.off()
+    unlink(path)
+  }, add = TRUE)
+  plotted <- plot(sel, type = "entrance_path", max_labels = 3L)
+  expect_true(is.list(plotted))
+  expect_true(all(c("scores", "entries") %in% names(plotted)))
+  expect_true(all(c("s", "score") %in% names(plotted$scores)))
+  expect_true(all(c("variable", "entry_s", "score") %in%
+                    names(plotted$entries)))
+  expect_lte(nrow(plotted$entries), 3L)
+  expect_true(all(plotted$entries$variable %in% fbsp_declared))
+})
+
+test_that("assessment predictions expose the selected scored rows and contract", {
+  skip_if_not_installed("glmnet")
+  fbsp_quiet()
+  d <- fbsp_data()
+  sel <- fb_select(
+    fbsp_stub_base(d), ~ z1 + z2 + z3 + z4 + z5,
+    penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.15)),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 4L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 1L
+  )
+  predictions <- augment(sel, type = "assessment_predictions")
+  required <- c(
+    "stage", "workflow", "provider", "model", "fold", "repeat_id",
+    "row", "row_key", "unit", "observed_model_scale",
+    "predicted_model_scale", "residual", "selected_lambda_index",
+    "selected_s", "lambda_canonical", "prediction", "response",
+    "contract_hash"
+  )
+  expect_identical(names(predictions), required)
+  expect_equal(nrow(predictions), nrow(d))
+  expect_equal(length(unique(predictions$row_key)), nrow(predictions))
+  expect_equal(predictions$observed_model_scale, d$y[predictions$row])
+  expect_equal(
+    predictions$observed_model_scale - predictions$predicted_model_scale,
+    predictions$residual
+  )
+  expect_true(all(predictions$row %in% seq_len(nrow(d))))
+  expect_true(all(predictions$unit == as.character(d$site[predictions$row])))
+  expect_identical(unique(predictions$model),
+                   sel$benchmark$glmnet$selection$selected_model)
+  expect_identical(unique(predictions$selected_lambda_index),
+                   sel$benchmark$glmnet$selection$selected_lambda_index)
+  expect_match(unique(predictions$contract_hash), "^[0-9a-f]{32}$")
+  expect_identical(unique(predictions$prediction), "new_cluster")
+  expect_identical(unique(predictions$response), "y")
+})
+
+test_that("assessment-prediction schema is stable where no optimiser ran", {
+  old <- structure(list(clusters = NULL), class = "fb_select")
+  predictions <- augment(old, type = "assessment_predictions")
+  expect_s3_class(predictions, "data.frame")
+  expect_equal(nrow(predictions), 0L)
+  expect_true(all(c("row_key", "predicted_model_scale", "contract_hash") %in%
+                    names(predictions)))
+})
+
+test_that("a fold's predictions do not read that fold's assessment outcomes", {
+  skip_if_not_installed("glmnet")
+  d <- fbsp_data(n_cluster = 8L, per = 4L)
+  cv <- fbsp_cv(d, v = 4L)
+  split <- cv$folds[[1L]]
+  original <- cv$substrates[[split$label]]
+  changed <- d
+  changed$y[split$assess_rows] <- changed$y[split$assess_rows] + 1000
+  perturbed <- .fb_sel_fold_substrate(
+    changed,
+    split,
+    response = "y",
+    protected = ~x,
+    candidates = ~ z1 + z2 + z3 + z4 + z5,
+    random = "site",
+    prediction = "new_cluster",
+    fold_space = original$candidate_space
+  )
+  fit_path <- function(substrate, data) {
+    .fb_sel_glmnet_path(
+      list(substrate),
+      fbsp_blocks(1),
+      folds = list(split),
+      decision = list(rule = "min", metric = "rmse", n_lambda = 6L),
+      seed = 44L,
+      cluster = as.character(data$site)
+    )
+  }
+  path_original <- fit_path(original, d)
+  path_perturbed <- fit_path(perturbed, changed)
+  key <- c("arm", "lambda_index", "fold", "row")
+  first <- as.data.frame(path_original$fitted_values)
+  second <- as.data.frame(path_perturbed$fitted_values)
+  first <- first[do.call(order, first[key]), ]
+  second <- second[do.call(order, second[key]), ]
+  expect_identical(first[key], second[key])
+  expect_equal(first$fitted, second$fitted, tolerance = 1e-12)
+  expect_equal(first$lambda_canonical, second$lambda_canonical,
+               tolerance = 1e-12)
+  expect_true(all(second$observed - first$observed == 1000))
+})
+
 
 # --- (vii) the history is the grid ---------------------------------------- #
 

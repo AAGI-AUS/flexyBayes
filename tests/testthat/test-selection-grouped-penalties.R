@@ -493,6 +493,16 @@ test_that("the grouped mode returns a certified point or refuses", {
 })
 
 
+test_that("optimiser paths use one declared KKT acceptance threshold", {
+  # The provider bridge has always been accepted against 1e-6. Grouped path
+  # points must use the same independently recomputed certificate, while the
+  # lower-level solver remains available at its stricter 1e-9 default.
+  expect_identical(.fb_sel_path_kkt_tolerance(), 1e-6)
+  expect_identical(formals(.fb_sel_prox_mode_grouped)$tol, 1e-9)
+  expect_identical(formals(.fb_sel_prox_mode_lambda)$tol, 1e-10)
+})
+
+
 test_that("a mode that cannot be certified refuses rather than returning", {
   fixture <- fbgp_matrix()
   groups <- .fb_sel_group_index(
@@ -593,6 +603,10 @@ test_that("a group lasso moves a factor's contrast columns together", {
     path$grouping$declared$term == "f"
   ]
   expect_identical(length(grouped_columns), 2L)
+  # `f` has three treatment-coded levels. The reference level is represented
+  # by the intercept and has no candidate column; only the two non-reference
+  # contrasts belong to the penalised group.
+  expect_false(any(grepl("fa$", grouped_columns)))
 
   # The property: at every tuning point of every fold, the two contrast
   # columns of a factor are both held or both out. A coefficient-wise penalty

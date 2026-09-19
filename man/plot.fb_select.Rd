@@ -6,15 +6,18 @@
 \usage{
 \method{plot}{fb_select}(
   x,
-  type = c("elpd_by_size", "rank_stability", "shrinkage", "benchmark"),
+  type = c("elpd_by_size", "rank_stability", "shrinkage", "benchmark", "entrance_path"),
   ...
 )
 }
 \arguments{
 \item{x}{An \code{fb_select} object.}
 
-\item{type}{\code{"elpd_by_size"}, \code{"rank_stability"}, \code{"shrinkage"} or
-\code{"benchmark"}.}
+\item{type}{\code{"elpd_by_size"}, \code{"rank_stability"}, \code{"shrinkage"},
+\code{"benchmark"} or \code{"entrance_path"}. The last plots the common
+out-of-fold loss against \code{s = lambda / lambda_max} and labels the first
+variables entering the penalised path. It is available for optimiser
+workflows and optimiser benchmark arms.}
 
 \item{...}{Passed to the underlying plotting call.}
 }

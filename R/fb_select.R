@@ -2271,6 +2271,7 @@
           # The per-unit tables of the path's models, and the unit they were
           # aggregated at, so a stage table re-aggregates the model it names.
           clusters_by_model = path$clusters_by_model,
+          assessment_predictions = path$fitted_values,
           scoring_unit = if (is.null(cluster_key)) "fold" else resamples$unit,
           equivalence_level = .fb_sel_equivalence_level(
             prior_family = prior_family,
@@ -3289,6 +3290,89 @@ fb_select <- function(base,
 }
 
 
+# .fb_select_assessment_predictions() --- the optimiser decision's scored
+# rows, surfaced without rebuilding or predicting on data supplied later.
+#
+# The optimiser already computed these values inside each fold; earlier
+# versions retained them inside the canonical path and discarded them while
+# assembling the public result. Keeping that table makes the score auditable
+# at row level. It does not create a `predict.fb_select()` method and does not
+# license prediction on new rows: the table is restricted to assessment rows
+# the recorded fold contract identifies.
+.fb_select_empty_assessment_predictions <- function() {
+  data.frame(
+    stage = character(0), workflow = character(0),
+    provider = character(0), model = character(0),
+    fold = character(0), repeat_id = integer(0), row = integer(0),
+    row_key = character(0), unit = character(0),
+    observed_model_scale = numeric(0), predicted_model_scale = numeric(0),
+    residual = numeric(0), selected_lambda_index = integer(0),
+    selected_s = numeric(0), lambda_canonical = numeric(0),
+    prediction = character(0), response = character(0),
+    contract_hash = character(0), stringsAsFactors = FALSE
+  )
+}
+
+.fb_select_assessment_predictions <- function(base,
+                                              axes,
+                                              benchmark,
+                                              resamples,
+                                              metric) {
+  arm <- benchmark$arms$glmnet
+  raw <- arm$assessment_predictions
+  selection <- arm$selection
+  if (is.null(arm) || !isTRUE(selection$ran) ||
+      !is.data.frame(raw) || nrow(raw) == 0L) {
+    return(.fb_select_empty_assessment_predictions())
+  }
+  index <- selection$selected_lambda_index
+  raw <- raw[
+    raw$arm == "benchmark" & raw$lambda_index == index, , drop = FALSE
+  ]
+  if (nrow(raw) == 0L) {
+    return(.fb_select_empty_assessment_predictions())
+  }
+  contract <- .fb_select_score_contract(
+    folds = benchmark$cv$folds,
+    data = base$data,
+    response = base$fb$response,
+    prediction = benchmark$cv$prediction,
+    metric = metric,
+    design = benchmark$cv$design,
+    learned_on = benchmark$cv$preprocessing$learned_on %||% NA_character_,
+    stage = "decision",
+    scoring_unit = arm$scoring_unit,
+    offsets = base$fb$offsets %||% character(0),
+    candidate_space = benchmark$cv$candidate_space
+  )
+  .fb_select_verify_contract(contract, "optimizer assessment predictions")
+  out <- data.frame(
+    stage = "decision",
+    workflow = axes$workflow,
+    provider = arm$provider,
+    model = selection$selected_model,
+    fold = as.character(raw$fold),
+    repeat_id = as.integer(raw$repeat_id),
+    row = as.integer(raw$row),
+    row_key = paste0("repeat:", raw$repeat_id, "/row:", raw$row),
+    unit = as.character(raw$unit),
+    observed_model_scale = as.numeric(raw$observed),
+    predicted_model_scale = as.numeric(raw$fitted),
+    residual = as.numeric(raw$residual),
+    selected_lambda_index = as.integer(index),
+    selected_s = as.numeric(selection$selected_s),
+    lambda_canonical = as.numeric(raw$lambda_canonical),
+    prediction = benchmark$cv$prediction,
+    response = as.character(base$fb$response),
+    contract_hash = contract$hash,
+    stringsAsFactors = FALSE
+  )
+  out <- out[order(out$repeat_id, out$row, method = "radix"), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+
 # --- assembly ------------------------------------------------------------ #
 
 .fb_select_assemble <- function(base,
@@ -3341,6 +3425,14 @@ fb_select <- function(base,
     metric = .fb_select_benchmark_metric(cv$metric %||% metric)
   )
 
+  predictions <- .fb_select_assessment_predictions(
+    base = base,
+    axes = axes,
+    benchmark = benchmark,
+    resamples = resamples,
+    metric = .fb_select_benchmark_metric(cv$metric %||% metric)
+  )
+
   certificate <- .fb_select_certificate(
     base = base,
     axes = axes,
@@ -3386,6 +3478,7 @@ fb_select <- function(base,
       selection = decision_result,
       scores = agg,
       clusters = cv$clusters,
+      assessment_predictions = predictions,
       increment = increment,
       diagnostics = list(
         adequacy = adequacy,
@@ -3913,19 +4006,37 @@ glance.fb_select <- function(x, ...) {
 }
 
 
-#' Out-of-fold predictions from a selection
+#' Out-of-fold results from a selection
 #'
 #' @param x An `fb_select` object.
-#' @param data Ignored; the out-of-fold predictions are the ones the folds
+#' @param data Ignored; the out-of-fold results are the ones the folds
 #'   computed and cannot be recomputed on other rows.
+#' @param type `"unit_scores"` (the default retained for compatibility) or
+#'   `"assessment_predictions"`. The latter returns the optimiser decision's
+#'   row-level assessment predictions, with original row positions, repeat and
+#'   fold identifiers, scoring units, selected tuning coordinates and the
+#'   verified score-contract hash. Observed and predicted values are on the
+#'   modelled response scale, after any Gaussian offset has been subtracted.
 #' @param ... Ignored.
-#' @returns A `data.frame` of the per-unit out-of-fold scores, or a zero-row
-#'   frame with the same columns where no out-of-fold path ran. A projection
-#'   assesses inside `projpred` and writes no table here on its own; under
-#'   `benchmark = TRUE` the reference model is additionally scored out of
-#'   fold and that table is what this returns.
+#' @returns A `data.frame` of per-unit out-of-fold scores or row-level
+#'   assessment predictions, according to `type`. A zero-row frame with the
+#'   stable schema is returned where that result did not run. These are stored
+#'   assessment results, not a prediction method for caller-supplied rows.
 #' @export
-augment.fb_select <- function(x, data = NULL, ...) {
+augment.fb_select <- function(
+  x,
+  data = NULL,
+  type = c("unit_scores", "assessment_predictions"),
+  ...
+) {
+  type <- match.arg(type)
+  if (identical(type, "assessment_predictions")) {
+    out <- x$assessment_predictions
+    if (is.null(out)) {
+      out <- .fb_select_empty_assessment_predictions()
+    }
+    return(as.data.frame(out))
+  }
   out <- x$clusters
   if (is.null(out)) {
     return(data.frame(
@@ -3940,15 +4051,19 @@ augment.fb_select <- function(x, data = NULL, ...) {
 #' Displays for a selection
 #'
 #' @param x An `fb_select` object.
-#' @param type `"elpd_by_size"`, `"rank_stability"`, `"shrinkage"` or
-#'   `"benchmark"`.
+#' @param type `"elpd_by_size"`, `"rank_stability"`, `"shrinkage"`,
+#'   `"benchmark"` or `"entrance_path"`. The last plots the common
+#'   out-of-fold loss against `s = lambda / lambda_max` and labels the first
+#'   variables entering the penalised path. It is available for optimiser
+#'   workflows and optimiser benchmark arms.
 #' @param ... Passed to the underlying plotting call.
 #' @returns Invisibly, the data the display was drawn from. Called for the
 #'   plot it draws.
 #' @export
 plot.fb_select <- function(x,
                            type = c("elpd_by_size", "rank_stability",
-                                    "shrinkage", "benchmark"),
+                                    "shrinkage", "benchmark",
+                                    "entrance_path"),
                            ...) {
   type <- match.arg(type)
   switch(
@@ -3956,7 +4071,8 @@ plot.fb_select <- function(x,
     elpd_by_size = .fb_select_plot_elpd(x, ...),
     rank_stability = .fb_select_plot_stability(x, ...),
     shrinkage = .fb_select_plot_shrinkage(x, ...),
-    benchmark = .fb_select_plot_benchmark(x, ...)
+    benchmark = .fb_select_plot_benchmark(x, ...),
+    entrance_path = .fb_select_plot_entrance(x, ...)
   )
 }
 
@@ -4078,6 +4194,70 @@ plot.fb_select <- function(x,
     ),
     stringsAsFactors = FALSE
   ))
+}
+
+.fb_select_plot_entrance <- function(x, max_labels = 15L,
+                                     label_cex = 0.7, ...) {
+  arm <- x$benchmark$glmnet
+  scores <- arm$selection$scores
+  history <- arm$support$history_by_fold
+  if (!is.data.frame(scores) || nrow(scores) == 0L) {
+    return(.fb_select_plot_unavailable(
+      "the entrance path",
+      "no penalised optimiser path was scored out of fold"
+    ))
+  }
+  if (!is.data.frame(history) || nrow(history) == 0L) {
+    return(.fb_select_plot_unavailable(
+      "the entrance path",
+      "this penalty has no finite coefficient-support path"
+    ))
+  }
+  entered <- history[history$n_in_support > 0L &
+                       is.finite(history$first_entry_s), , drop = FALSE]
+  if (nrow(entered) == 0L) {
+    return(.fb_select_plot_unavailable(
+      "the entrance path",
+      "no candidate entered on any assessment fold"
+    ))
+  }
+  entries <- stats::aggregate(
+    entered$first_entry_s,
+    list(variable = entered$column),
+    stats::median
+  )
+  names(entries)[[2L]] <- "entry_s"
+  entries <- entries[order(entries$entry_s, decreasing = TRUE), , drop = FALSE]
+  max_labels <- as.integer(max_labels)
+  if (!is.finite(max_labels) || max_labels < 0L) {
+    stop("`max_labels` must be a non-negative integer.", call. = FALSE)
+  }
+  entries <- utils::head(entries, max_labels)
+  nearest <- vapply(entries$entry_s, function(s) {
+    which.min(abs(scores$s - s))
+  }, integer(1L))
+  entries$score <- scores$score[nearest]
+  metric <- arm$selection$metric %||% "loss"
+  graphics::plot(
+    scores$s, scores$score,
+    type = "b", pch = 16L,
+    xlim = rev(range(scores$s, finite = TRUE)),
+    xlab = expression("relative penalty " * s == lambda / lambda[max] *
+                        " (strong to weak)"),
+    ylab = paste0("out-of-fold ", metric),
+    main = "Predictive performance along the entrance path",
+    ...
+  )
+  selected_s <- arm$selection$selected_s
+  if (is.finite(selected_s)) {
+    graphics::abline(v = selected_s, lty = 2L, col = "#0072B2")
+  }
+  graphics::points(entries$entry_s, entries$score, pch = 21L, bg = "white")
+  graphics::text(
+    entries$entry_s, entries$score, labels = entries$variable,
+    pos = 3L, cex = label_cex, xpd = NA
+  )
+  invisible(list(scores = as.data.frame(scores), entries = entries))
 }
 
 
