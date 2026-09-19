@@ -68,6 +68,11 @@
   solution there is. Rounding left values of order 1e-16 that counted as
   selected, so a one-standard-error choice of `s = 1` could report columns in
   the chosen support and in `tidy()$retained`.
+* `fb_select(ablation = TRUE)` drops each declared block of the penalised
+  path in turn, walks the path again on the same folds, and reports in
+  `tidy(level = "group")` the change in held-out loss per unit with its
+  standard error, and the change in log predictive density where
+  `refit = list(method = "bayes")` ran. The read-out is not nested.
 
 # flexyBayes 0.13.1
 

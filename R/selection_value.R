@@ -707,11 +707,14 @@
 #' @param resamples The resampling specification.
 #' @param prediction The prediction target.
 #' @param folds The folds the optimiser ran on.
-#' @param arm The optimiser arm.
+#' @param arm The optimiser arm, or `NULL` where `supports` is given.
 #' @param request The validated `refit` request.
 #' @param engine The brms sampler settings, or `NULL`.
 #' @param seed The run's seed.
 #' @param budget Seconds, or `NULL`.
+#' @param supports `NULL` to read each fold's support off `arm` at its chosen
+#'   point, or a named list of design columns per fold label, which the
+#'   grouped ablation passes for a path without one block.
 #' @return The valuation record stored at `fb_select()$value`.
 #' @noRd
 #' @keywords internal
@@ -720,12 +723,13 @@
                           resamples,
                           prediction,
                           folds,
-                          arm,
+                          arm = NULL,
                           request,
                           engine = NULL,
                           seed = NULL,
-                          budget = NULL) {
-  supports <- .fb_sel_value_supports(arm, folds)
+                          budget = NULL,
+                          supports = NULL) {
+  supports <- supports %||% .fb_sel_value_supports(arm, folds)
   provider <- .fb_sel_bayes_provider(base)
   spec <- .fb_sel_bayes_base_spec(base)
   data <- spec$data
@@ -912,12 +916,16 @@
     prediction = prediction,
     n_draws = request$n_draws,
     seed = seed,
-    optimizer = list(
-      provider = arm$provider,
-      family = arm$family,
-      selected_lambda_index = arm$selection$selected_lambda_index,
-      selected_s = arm$selection$selected_s
-    ),
+    optimizer = if (is.null(arm)) {
+      NULL
+    } else {
+      list(
+        provider = arm$provider,
+        family = arm$family,
+        selected_lambda_index = arm$selection$selected_lambda_index,
+        selected_s = arm$selection$selected_s
+      )
+    },
     supports = supports_table,
     folds = data.frame(
       repeat_id = vapply(results, function(r) r$repeat_id, integer(1L)),
@@ -1096,6 +1104,17 @@
       fields = "value"
     ))
   }
+  .fb_sel_value_pair_records(a, b)
+}
+
+
+#' Pair two valuation records on one value contract
+#'
+#' @param a,b Two valuation records (`fb_select()$value`).
+#' @return As `.fb_sel_value_pair()`.
+#' @noRd
+#' @keywords internal
+.fb_sel_value_pair_records <- function(a, b) {
   .fb_select_verify_contract(a$contract, "value")
   .fb_select_verify_contract(b$contract, "value")
   if (!identical(a$contract$hash, b$contract$hash)) {

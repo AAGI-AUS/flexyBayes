@@ -40,6 +40,11 @@
 #                                       .fb_sel_value_pair()
 #                                       test-selection-value.R
 #
+# One code lands with the grouped ablation (0.14.0):
+#
+#   selection_ablation_route_undefined  R/selection_ablation.R, the route
+#                                       test-selection-ablation.R
+#
 # A registered code with no triggering test is a string, not a refusal.
 
 .populate_refusal_registry_selection_verb <- function() {
@@ -157,6 +162,24 @@
     ),
     message_template = "fb_select(): the two valuations' value contracts differ in: %s.",
     registered_in_adr = "fb_select(refit = ), 0.14.0",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_ablation_route_undefined",
+    description = paste0(
+      "fb_select(): ablation = TRUE drops each declared block of the ",
+      "penalised optimiser's path and walks the path again on the same ",
+      "folds, and the workflow is not the penalised optimiser, so no path is ",
+      "walked as the answer. The refusal comes before any fit and before the ",
+      "plan."
+    ),
+    message_template = paste0(
+      "fb_select(): ablation = TRUE needs workflow = ",
+      "\"penalized_optimizer\"; workflow = \"%s\" walks no penalised path."
+    ),
+    registered_in_adr = "fb_select(ablation = ), 0.14.0",
     plan_field = "selection_plan",
     since_version = "0.14.0"
   )

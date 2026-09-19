@@ -2253,10 +2253,12 @@
                                  decision = NULL,
                                  shared_predictive_table = FALSE,
                                  covariance = "reml_plugin",
-                                 engine = NULL) {
+                                 engine = NULL,
+                                 ablation = FALSE) {
   arms <- list()
   refusals <- character(0)
   stability_error <- NULL
+  ablation_record <- NULL
 
   # The fold covariance: the REML plug-in over the terms it builds, or the
   # base model refitted on each fold (R/selection_cov_model.R), which is
@@ -2414,13 +2416,34 @@
             list(reason = conditionMessage(stability_error))
           )
         }
+        # The grouped ablation of the same path, on the same substrates
+        # (R/selection_ablation.R). Asked for by the optimiser workflow only.
+        if (isTRUE(ablation)) {
+          ablation_record <- .fb_sel_ablation(
+            data = base$data,
+            response = base$fb$response,
+            protected = protected,
+            candidates = candidates,
+            random = random,
+            offsets = base$fb$offsets %||% character(0),
+            blocks = blocks,
+            path = path,
+            substrates = gls$substrates,
+            folds = gls$folds,
+            resamples = resamples,
+            prediction = prediction,
+            cluster = cluster_key,
+            scoring_unit = arms$glmnet$scoring_unit,
+            seed = seed
+          )
+        }
       }
     }
   }
 
   list(
     arms = arms, refusals = refusals, folds = gls$folds, cv = gls,
-    stability_error = stability_error
+    stability_error = stability_error, ablation = ablation_record
   )
 }
 
@@ -2578,6 +2601,39 @@
 #' random intercept. The draws of every fold are pooled, and the posterior
 #' median and 95% interval reported.
 #'
+#' @section Grouped ablation:
+#' Under shrinkage a coefficient's size is not a column's importance.
+#' With `workflow = "penalized_optimizer"`, `ablation = TRUE` drops each
+#' declared block of penalised columns in turn -- the groups
+#' `tidy(x, level = "group")` reports: the grouping of a grouped penalty, and
+#' otherwise each penalty specification -- and walks the path again on the
+#' same folds, with the same fold covariance, over the same grid of
+#' `s = lambda / lambda_max`, tuned by the same rule. Each held-out unit's
+#' loss, at the metric the path was tuned on and averaged over repeats, is
+#' paired with its loss under the full path. `tidy(x, level = "group")`
+#' reports the mean over units of the difference, the unit's loss without the
+#' block minus with it, so positive means the block lowers the held-out loss,
+#' and its standard error `sd(d_u) / sqrt(U)` over the `U` units. A block
+#' whose removal leaves no penalised column leaves the protected columns,
+#' fitted by generalised least squares on each fold. A block whose remaining
+#' penalty the path refuses is reported with the refusal and no difference.
+#' With `refit = list(method = "bayes")`, each ablated path's frozen supports
+#' are refitted as well, and the held-out log predictive density difference,
+#' `elpd` with the block minus without it, is reported beside the loss with
+#' the valuation's standard error.
+#'
+#' Every path is scored under one contract, which identifies the fold of
+#' every row, the scoring unit, the target, the response and the metric, and
+#' its hash is on the result. The read-out is not nested: each path's tuning
+#' point is chosen on the out-of-fold scores of all folds, including the fold
+#' whose units are then scored, and the full and ablated paths share that
+#' reuse. On the package's synthetic two-block fixture (eight data seeds, both
+#' rules), choosing the point on inner folds of each training fold instead
+#' moved a signal block's difference by a median of 0.14 standard errors and
+#' changed none of 32 verdicts. A block that carries no signal is not read as
+#' important there, but its difference can be negative beyond one standard
+#' error: without it the path is tuned to less shrinkage.
+#'
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
 #'   block and are never penalised.
 #' @param candidates A one-sided formula over columns of the base fit's data.
@@ -2672,14 +2728,24 @@
 #'   random intercept whose variance is the between-trial variance (default:
 #'   the base's only random intercept); `n_draws`, the posterior draws per
 #'   fold (default 4000).
+#' @param ablation `FALSE` (the default), or `TRUE` to drop each declared
+#'   block of the penalised path in turn and report the change in held-out
+#'   loss; see "Grouped ablation". It needs
+#'   `workflow = "penalized_optimizer"`, and refuses with
+#'   `selection_ablation_route_undefined` elsewhere, before any fit.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
 #' @returns An object of class `fb_select` carrying the four resolved axes,
 #'   the reference fit, the column map, the decision, the out-of-fold scores,
 #'   the increment over the protected model, the diagnostics, any benchmark
-#'   arms, the folds and the certificate. With `plan = TRUE`, an object of
-#'   class `fb_select_plan`.
+#'   arms, the folds and the certificate. With `ablation = TRUE`, its element
+#'   `ablation` holds one row per block (`blocks`), the paired unit table
+#'   (`units`), each ablated path's per-row predictions (`rows`, with the
+#'   log predictive density `lpd` where the refit ran) and chosen supports
+#'   (`supports`), the density's paired unit table (`value_units`) and the
+#'   contract. With `plan = TRUE`, an object of class `fb_select_plan`, whose
+#'   `selection$ablation` counts the ablation's fits.
 #'
 #' @seealso [fb_penalty()] for the prior, [fb_resamples()] for the folds,
 #'   [fb_decision()] for the rule.
@@ -2725,12 +2791,14 @@ fb_select <- function(base,
                       plan = FALSE,
                       covariance = c("reml_plugin", "base_model"),
                       refit = NULL,
+                      ablation = FALSE,
                       ...) {
   workflow <- match.arg(workflow)
   fallback <- match.arg(fallback)
   prediction <- match.arg(prediction)
   covariance <- .fb_select_resolve_covariance(covariance)
   decision <- .fb_select_check_decision(decision)
+  ablation <- .fb_sel_ablation_check(ablation)
   dots <- .fb_select_absorb_deprecated(list(...))
   # Read here so that a request for process isolation the session cannot
   # honour refuses before any fold runs (R/process_isolation.R).
@@ -2929,6 +2997,9 @@ fb_select <- function(base,
   # A refit freezes the support the penalised optimiser chose on each fold;
   # no other route chooses one, so the request refuses here, before any fit.
   .fb_sel_value_require_route(value_request, workflow)
+  # The grouped ablation drops each declared block of the penalised path and
+  # walks it again; no other route walks one as its answer.
+  .fb_sel_ablation_require_route(ablation, workflow)
 
   # Every route that reaches .fb_select_benchmark(): the two workflows below
   # and `benchmark = TRUE` on the Bayesian one. Checked before any route
@@ -3024,6 +3095,7 @@ fb_select <- function(base,
       structure_gate = structure_gate,
       covariance = covariance,
       value_request = value_request,
+      ablation = ablation,
       engine = engine,
       budget = budget,
       decision_resolution = list(
@@ -3458,6 +3530,7 @@ fb_select <- function(base,
                                  decision_resolution = NULL,
                                  covariance = "reml_plugin",
                                  value_request = NULL,
+                                 ablation = FALSE,
                                  engine = NULL,
                                  budget = NULL) {
   resolved <- .fb_select_resolve_penalty(
@@ -3489,6 +3562,14 @@ fb_select <- function(base,
   )
   .fb_sel_require_stability_family(resolved$blocks, decision)
   if (isTRUE(plan)) {
+    ablation_plan <- if (isTRUE(ablation)) {
+      .fb_sel_ablation_plan(
+        resolved, candidates, base$data, resamples,
+        refit = !is.null(value_request)
+      )
+    } else {
+      NULL
+    }
     return(.fb_plan_selection(
       base = base,
       axes = axes,
@@ -3496,14 +3577,22 @@ fb_select <- function(base,
       structure_gate = structure_gate,
       resamples = resamples,
       prediction = prediction,
-      # A base-model covariance refits the base once per fold.
-      fits_per_fold = if (identical(covariance, "base_model")) 1L else 0L,
+      # A base-model covariance refits the base once per fold; the Bayesian
+      # refit refits each fold's support once, and once more for each block
+      # the ablation drops.
+      fits_per_fold = (if (identical(covariance, "base_model")) 1L else 0L) +
+        (if (is.null(value_request)) {
+          0L
+        } else {
+          1L + length(ablation_plan$blocks)
+        }),
       candidates = candidates,
       compiled = resolved$compiled,
       approximations = resolved$approximations,
       decision_resolution = decision_resolution,
       stability = .fb_sel_stability_plan(decision, resamples, base$data),
-      covariance = covariance
+      covariance = covariance,
+      ablation = ablation_plan
     ))
   }
   bench <- .fb_select_benchmark(
@@ -3519,7 +3608,8 @@ fb_select <- function(base,
     decision = decision,
     shared_predictive_table = TRUE,
     covariance = covariance,
-    engine = engine
+    engine = engine,
+    ablation = ablation
   )
   if (is.null(bench$arms$glmnet)) {
     stop(.fb_refusal_condition(
@@ -3540,6 +3630,20 @@ fb_select <- function(base,
   # and selects nothing again.
   value <- NULL
   if (!is.null(value_request)) {
+    # With the ablation, each block costs one more refit per fold; the whole
+    # cost is checked against the budget before the first refit.
+    if (!is.null(bench$ablation)) {
+      .fb_sel_bayes_check_budget(
+        .fb_sel_cost_estimate(
+          base,
+          resamples,
+          n_folds = length(bench$cv$folds),
+          fits_per_fold = 1L + sum(bench$ablation$blocks$ran),
+          probe_seconds = .fb_select_base_seconds(base)
+        ),
+        budget
+      )
+    }
     value <- .fb_sel_value(
       base = base,
       candidates = candidates,
@@ -3551,6 +3655,24 @@ fb_select <- function(base,
       engine = engine,
       seed = seed,
       budget = budget
+    )
+  }
+  # The grouped ablation's loss read-out, and beside it, where the refit ran,
+  # the held-out density of each ablated path's frozen supports
+  # (R/selection_ablation.R).
+  ablation_record <- bench$ablation
+  if (!is.null(ablation_record) && !is.null(value)) {
+    ablation_record <- .fb_sel_ablation_value(
+      ablation_record,
+      value,
+      base = base,
+      candidates = candidates,
+      resamples = resamples,
+      prediction = prediction,
+      folds = bench$cv$folds,
+      request = value_request,
+      engine = engine,
+      seed = seed
     )
   }
 
@@ -3590,6 +3712,7 @@ fb_select <- function(base,
     structure_gate = structure_gate,
     decision_resolution = decision_resolution,
     value = value,
+    ablation = ablation_record,
     dots = list()
   )
 }
@@ -3704,6 +3827,7 @@ fb_select <- function(base,
                                 structure_gate = NULL,
                                 decision_resolution = NULL,
                                 value = NULL,
+                                ablation = NULL,
                                 dots = list()) {
   increment <- NULL
   agg <- cv$aggregated
@@ -3794,7 +3918,8 @@ fb_select <- function(base,
       benchmark = benchmark$arms,
       folds = cv$folds,
       certificate = certificate,
-      value = value
+      value = value,
+      ablation = ablation
     ),
     class = "fb_select"
   )
@@ -4095,6 +4220,14 @@ print.fb_select <- function(x, digits = 4L, ...) {
     }
   }
 
+  if (!is.null(x$ablation)) {
+    lines <- .fb_sel_ablation_lines(x$ablation, digits)
+    cat("\n  ablation  : ", .fb_squish(lines[[1L]]), "\n", sep = "")
+    for (line in lines[-1L]) {
+      cat("    ", line, "\n", sep = "")
+    }
+  }
+
   if (length(x$benchmark) > 0L) {
     cat("\n  benchmark arms:\n", sep = "")
     for (nm in names(x$benchmark)) {
@@ -4222,6 +4355,13 @@ print.fb_select <- function(x, digits = 4L, ...) {
 #' specification that claimed the column, named `block_1`, `block_2`, ... in
 #' the order the specifications were written.
 #'
+#' With `ablation = TRUE`, each group row also carries
+#' `ablation_loss_difference`, the mean over held-out units of the unit's loss
+#' with the group dropped minus its loss under the full path, its standard
+#' error `ablation_loss_se` and `ablation_n_units`; with the Bayesian refit as
+#' well, `ablation_elpd_difference` and `ablation_elpd_se`. They are `NA`
+#' where no ablation ran or the group's ablation was refused.
+#'
 #' Where [fb_decision()] asked for subsample stability, each row also
 #' carries `stability_available`, the subsamples that could estimate it,
 #' `stability_max_frequency`, its largest selection frequency at or above the
@@ -4249,9 +4389,9 @@ print.fb_select <- function(x, digits = 4L, ...) {
 #'   `support_path` and `support_path_by_fold`; with a Bayesian refit, also
 #'   `value_folds_in_support` and `value_in_block`, `NA` where no refit ran.
 #'   At `level = "group"`, one row
-#'   per group with its `rule`, `n_columns`, `columns` and the same profile
-#'   and stability columns, and the per-fold group record in the attribute
-#'   `support_path_by_fold`.
+#'   per group with its `rule`, `n_columns`, `columns`, the same profile
+#'   and stability columns and the five ablation columns, and the per-fold
+#'   group record in the attribute `support_path_by_fold`.
 #' @export
 tidy.fb_select <- function(x, level = c("column", "group"), ...) {
   level <- match.arg(level)
@@ -4427,6 +4567,25 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
   for (field in names(extra)) {
     out[[field]] <- extra[[field]]
   }
+  # The grouped ablation of each group, NA where none ran or the group's
+  # path without it was refused.
+  ablated <- x$ablation$blocks
+  at <- if (is.null(ablated)) {
+    rep(NA_integer_, nrow(out))
+  } else {
+    match(out$group, ablated$block[ablated$ran])
+  }
+  pick <- function(field, na) {
+    if (is.null(ablated)) {
+      return(rep(na, nrow(out)))
+    }
+    ablated[ablated$ran, field][at]
+  }
+  out$ablation_loss_difference <- pick("loss_difference", NA_real_)
+  out$ablation_loss_se <- pick("loss_se", NA_real_)
+  out$ablation_n_units <- pick("n_units", NA_integer_)
+  out$ablation_elpd_difference <- pick("elpd_difference", NA_real_)
+  out$ablation_elpd_se <- pick("elpd_se", NA_real_)
   attr(out, "support_path_by_fold") <- by_fold
   out
 }
@@ -4444,6 +4603,12 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
 #' states both. `block_share_median`, `block_share_lower` and
 #' `block_share_upper` are the posterior median and 95% interval of the share
 #' of between-trial variance the declared block explains, pooled over folds.
+#'
+#' With `ablation = TRUE`, `ablation_blocks` counts the blocks whose ablation
+#' ran, `ablation_metric` is the loss they were scored at,
+#' `ablation_nested` is `FALSE` (see "Grouped ablation" in [fb_select()]) and
+#' `ablation_contract_hash` identifies the contract every path shares; each
+#' block's difference is in `tidy(x, level = "group")`.
 #'
 #' With `against`, a second valuation on the same value contract (the same
 #' data, `resamples`, `seed` and `prediction`), `value_difference` is the sum
@@ -4541,6 +4706,16 @@ glance.fb_select <- function(x, against = NULL, ...) {
   out$block_share_median <- if (shared) share$pooled$median else NA_real_
   out$block_share_lower <- if (shared) share$pooled$lower else NA_real_
   out$block_share_upper <- if (shared) share$pooled$upper else NA_real_
+  # The grouped ablation, absent where none ran.
+  ablation <- x$ablation
+  out$ablation_blocks <- if (is.null(ablation)) {
+    NA_integer_
+  } else {
+    sum(ablation$blocks$ran)
+  }
+  out$ablation_metric <- ablation$metric %||% NA_character_
+  out$ablation_nested <- if (is.null(ablation)) NA else ablation$nested
+  out$ablation_contract_hash <- ablation$contract$hash %||% NA_character_
   if (!is.null(against)) {
     paired <- .fb_sel_value_pair(x, against)
     out$value_difference <- paired$difference
