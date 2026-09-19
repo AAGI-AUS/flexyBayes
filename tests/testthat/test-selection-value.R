@@ -567,11 +567,15 @@ test_that("a fold that leaves part of a factor unidentified is refitted on its s
   )
   expect_match(conditionMessage(err), "fold 1", fixed = TRUE)
 
+  # The minimum-loss rule chooses s = 0.23 on this fixture, where fold 1's
+  # support holds soilB. The one-standard-error rule chooses s = 1, whose
+  # support is empty, so it would not exercise the case.
   sel <- fbv_cached("drop_run", fb_select(
     base, ~ k + soil,
     penalty = fbv_penalty(),
     workflow = "penalized_optimizer",
     resamples = resamples,
+    decision = fb_decision(rule = "min"),
     seed = 1L,
     refit = list(method = "bayes")
   ))
