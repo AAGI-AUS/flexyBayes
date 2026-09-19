@@ -40,6 +40,7 @@ test_that("emmeans(fit, ~ f) recovers the cell means from an INLA fit", {
   skip_if_not_installed("emmeans")
   skip_on_cran() # INLA posterior sampling: heavy + core-limited under --as-cran
   skip_on_ci()
+  skip_if_not_long_tier()
   .emm_silence()
   d <- .emm_data()
   fit <- suppressMessages(flexybayes(

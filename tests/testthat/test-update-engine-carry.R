@@ -239,6 +239,7 @@ test_that("a backend override in ... still wins over the record", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .uec_silence()
   fit <- .uec_inla_fit()
 

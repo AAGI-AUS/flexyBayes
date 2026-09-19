@@ -70,6 +70,7 @@ test_that("the sampled missing responses reach summary(fit)$missing", {
   # which is exactly the gap between the two observation counts.
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian")
   fit <- suppressMessages(suppressWarnings(flexybayes(

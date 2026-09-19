@@ -176,6 +176,7 @@ test_that("a brms print keeps its sampler settings and diagnostics", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pb_silence()
   printed <- paste(
     utils::capture.output(print(.pb_brms_fit())),

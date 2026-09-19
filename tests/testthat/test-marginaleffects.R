@@ -40,6 +40,7 @@ test_that("marginaleffects accessors work on an INLA fit", {
   skip_if_not_installed("marginaleffects")
   skip_on_cran() # INLA posterior sampling: heavy + core-limited under --as-cran
   skip_on_ci()
+  skip_if_not_long_tier()
   .mfx_silence()
   d <- .mfx_data()
   fit <- suppressMessages(flexybayes(

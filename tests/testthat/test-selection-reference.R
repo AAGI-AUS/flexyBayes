@@ -198,6 +198,7 @@ test_that("a candidate absent from the fit's data refuses by name", {
 # --- the adequacy gates -------------------------------------------------- #
 
 test_that("a converged reference model passes both adequacy gates", {
+  skip_if_not_long_tier()
   bits <- fb_sel_ref_bits()
   ref <- fb_sel_reference(bits)
   adequacy <- .fb_sel_reference_adequacy(ref, metric = "elpd", ndraws = 300L, seed = 7L)

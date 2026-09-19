@@ -233,6 +233,7 @@ test_that("backend = 'auto' falls back to brms when INLA refuses, with trace", {
 test_that("ADR 0006 verification: explicit-brms + auto-accept + non-LGM refusal", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
+  skip_if_not_long_tier()
   d <- mk_lgm_data()
 
   # Explicit brms -- the withdrawn engine's role in this verification

@@ -274,6 +274,7 @@ test_that("n_draws is honoured on the INLA path and validated", {
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
   fit <- .adg_inla_fit()
 
@@ -399,6 +400,7 @@ test_that("summary(fit)$converge is present and engine-native on brms", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
   cv <- summary(.adg_brms_fit())$converge
 

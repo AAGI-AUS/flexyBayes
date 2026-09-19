@@ -383,6 +383,7 @@ test_that("scope = \"all_fixed\" is admitted, and names what it costs", {
   # time, before anything is fitted, so the plan carries the same
   # approximation the certificate will -- and this test needs no sampler.
   fbsb_needs_brms()
+  skip_if_not_long_tier()
   plan <- fb_select(
     fbsb_base(), fbsb_candidates,
     penalty = fb_penalty(
@@ -448,6 +449,7 @@ test_that("a laplace penalty with decision = full keeps every candidate", {
 
 test_that("a posterior threshold is labelled a decision, not an inclusion probability", {
   fbsb_needs_brms()
+  skip_if_not_long_tier()
   sel <- fbsb_memo("laplace_threshold", suppressWarnings(fb_select(
     fbsb_base(),
     fbsb_candidates,
@@ -910,6 +912,7 @@ test_that("fallback = \"none\" refuses when the Bayesian provider is absent", {
 test_that("fallback = \"glmnet\" fires only on an absent provider, and certifies", {
   fbsb_needs_brms()
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
 
   # (a) provider absent: the substitution happens, is printed on the first
   #     line, and is on the certificate.
@@ -1091,6 +1094,7 @@ test_that("a projection result prints its clustered-draw counts on the first lin
 
 test_that("plan = TRUE reports the axes, the blocks and the gate without fitting", {
   fbsb_needs_brms()
+  skip_if_not_long_tier()
   plan <- fb_select(
     fbsb_base_intercept(),
     fbsb_candidates,

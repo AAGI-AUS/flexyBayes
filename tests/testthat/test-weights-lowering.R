@@ -140,6 +140,7 @@ test_that("doubling weights on INLA leaves fixed effects unchanged and doubles s
 test_that("doubling weights on brms leaves fixed effects unchanged and doubles sigma^2", {
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wl_dat()
   # This is a quantitative metamorphic ratio (sigma^2 doubling), so a

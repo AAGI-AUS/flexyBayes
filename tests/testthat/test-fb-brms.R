@@ -156,6 +156,7 @@ test_that("fb_brms() corpus 4: binomial RI as single-column Bernoulli", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_binomial_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
@@ -289,6 +290,7 @@ test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fi
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   rev <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),

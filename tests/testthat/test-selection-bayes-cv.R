@@ -380,6 +380,7 @@ test_that("the INLA fold refit reports its own missing fraction", {
 test_that("the increment is the protected-only score less the full score", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fb_bcv_quiet_missingness()
 
   cv <- fb_bcv_cached(
@@ -662,6 +663,7 @@ test_that("the brms arm reproduces its draws under the same seed and chains", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   withr::local_options(brms.backend = "cmdstanr")
 
   d <- fb_bcv_data()

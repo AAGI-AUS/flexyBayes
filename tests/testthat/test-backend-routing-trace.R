@@ -95,6 +95,7 @@ test_that("ADR 0024 (a): backend_decision() carries preflight_summary slot (NULL
 
 test_that("ADR 0024 (b): backend_decision() carries representation_plan slot (NULL on small N)", {
   testthat::skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   fx <- mk_routing_fit()
   bd <- backend_decision(fx$fit)
   expect_true("representation_plan" %in% names(bd))

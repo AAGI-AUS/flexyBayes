@@ -705,6 +705,7 @@ test_that("INLA's record holds the num.threads it ran with, not the option", {
 
 test_that("a brms record holds the cores brm() was given, not the option", {
   .vr_skip_brms()
+  skip_if_not_long_tier()
   .vr_silence()
   base <- .vr_brms_fit(.vr_brms_data(), seed = 7L)
 

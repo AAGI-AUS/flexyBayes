@@ -444,6 +444,7 @@ test_that("the stored per-row log predictive density equals the closed-form Gaus
 test_that("the new-cluster predictive is wider than the known-cluster one by the closed-form amount", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbv_quiet()
   d <- fbv_data()
   new_runs <- fbv_runs("new_cluster")
@@ -606,6 +607,7 @@ test_that("a fold that leaves part of a factor unidentified is refitted on its s
 test_that("glance, tidy and augment carry the valuation", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbv_quiet()
   d <- fbv_share_data()
   sel <- fbv_share_run("signal")

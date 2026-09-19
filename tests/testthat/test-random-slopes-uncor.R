@@ -351,6 +351,7 @@ test_that("slope fixtures honour the J >= 10 minimum-group guard", {
 test_that("prior_summary() lists the slope-variance prior row for (x || g)", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_slope_data()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,

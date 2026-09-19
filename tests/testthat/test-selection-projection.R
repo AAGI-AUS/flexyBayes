@@ -284,6 +284,7 @@ test_that("a validated grouped k-fold search runs on the caller's own folds", {
 
 
 test_that("the protected block is forced into every submodel", {
+  skip_if_not_long_tier()
   bits <- fb_sel_proj_bits()
   projection <- fb_sel_proj_run(bits)
 

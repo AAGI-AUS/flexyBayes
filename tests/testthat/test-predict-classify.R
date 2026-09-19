@@ -312,6 +312,7 @@ test_that("the brms print carries no INLA approximation line", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_brms_fit()
 

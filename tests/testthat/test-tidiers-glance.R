@@ -43,6 +43,7 @@ test_that("glance() returns the one-row shape on a plain INLA fit", {
 test_that("glance() returns the one-row shape on a brms fit (regression guard)", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   set.seed(20260826L)
   d <- data.frame(y = stats::rnorm(60), x = stats::rnorm(60),
                    g = factor(rep(1:6, 10)))

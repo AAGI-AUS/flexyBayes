@@ -212,6 +212,7 @@ test_that("fb_met_summary() abstains with a typed condition on INLA", {
 test_that("fb_met_summary() abstains with a typed condition on brms", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_orphan_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(
