@@ -1094,6 +1094,9 @@
         point_estimate = cov_record$point_estimate %||% NA_character_,
         engine = cov_record$engine %||% NA_character_,
         engine_version = cov_record$engine_version %||% NA_character_,
+        # TRUE where each row's known variance joined the residual on V's
+        # diagonal (R/known_variance.R); NA on a route that integrates V.
+        known_variance = cov_record$known_variance %||% NA,
         whitening = cov_record$whitening,
         equivalence_level = cov_record$equivalence_level %||% NA_character_,
         equivalence_reason = cov_record$equivalence_reason %||% NA_character_,
@@ -3001,6 +3004,11 @@ fb_select <- function(base,
   # The grouped ablation drops each declared block of the penalised path and
   # walks it again; no other route walks one as its answer.
   .fb_sel_ablation_require_route(ablation, workflow)
+  # A base with a known variance per row runs only where the fold covariance
+  # carries it (R/known_variance.R).
+  .fb_select_require_known_variance_route(
+    base, workflow, covariance, value_request
+  )
 
   # Every route that reaches .fb_select_benchmark(): the two workflows below
   # and `benchmark = TRUE` on the Bayesian one. Checked before any route
@@ -4125,6 +4133,11 @@ print.fb_select <- function(x, digits = 4L, ...) {
     } else {
       ""
     },
+    if (isTRUE(cert$covariance$known_variance)) {
+      ", each row's known variance added to the residual"
+    } else {
+      ""
+    },
     "\n",
     sep = ""
   )
@@ -5114,6 +5127,11 @@ print.fb_select_certificate <- function(x, ...) {
       x$covariance$estimand %||% "not recorded",
       if (identical(x$covariance$source, "base_model")) {
         ", from a refit of the base model on each fold's training rows"
+      } else {
+        ""
+      },
+      if (isTRUE(x$covariance$known_variance)) {
+        ", each row's known variance added to the residual"
       } else {
         ""
       },

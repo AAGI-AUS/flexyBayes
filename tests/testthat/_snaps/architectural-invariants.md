@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=226
+      .refusal_registry: locked=TRUE n_keys=228
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -175,6 +175,8 @@
         known_matrix_dim_mismatch
         known_matrix_dimnames_mismatch
         known_matrix_level_mismatch
+        known_variance_invalid
+        known_variance_not_supported
         log_density_producer_unavailable
         loo_requires_sampler_draws
         loss_surface_requires_plotly

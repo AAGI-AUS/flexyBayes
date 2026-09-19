@@ -31,6 +31,7 @@ flexybayes(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 )
 
@@ -60,6 +61,7 @@ fb(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 )
 }
@@ -531,6 +533,23 @@ immediately semantics.  Mutually exclusive with \code{return_code} and
 Selects how \code{fixed} is interpreted. \code{"auto"} detects the grammar
 from the call shape (a bar-grouped formula is read as brms,
 otherwise ASReml); the other values force a grammar.}
+
+\item{known_variance}{Optional numeric vector of length N: a known
+variance for each response, added to the estimated residual variance,
+\code{Var(y_i) = sigma^2 + v_i}. This is the second stage of a two-stage
+analysis, where each response is a first-stage estimate (a variety
+mean in one trial, say) and \code{v_i} is the variance of that estimate.
+\code{weights} is a different model, \code{Var(y_i) = sigma^2 / w_i}; given
+both, the residual variance is \code{sigma^2 / w_i + v_i}. Lowered for
+\code{family = "gaussian"} with the identity link: brms fits
+\code{y | se(sqrt(v), sigma = TRUE)}, and INLA a row effect with known
+variance \code{v_i}. The summaries report \code{sigma} as the estimated part,
+and fitted values on both engines leave the known part out. A vector
+of zeros fits the model without it. Any other family refuses with
+\code{known_variance_not_supported}, and a vector that is not one finite,
+non-negative value per row with \code{known_variance_invalid}.
+\code{\link[=fb_select]{fb_select()}} carries it into the fold covariance under
+\code{covariance = "base_model"}.}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and
