@@ -16,7 +16,8 @@
 # written here: a hard-coded home directory makes this recipe unrunnable by
 # anyone else and leaks a workstation path into the repository.
 #
-#   FLEXYBAYES_ASREML_LIB=/path/to/library R --vanilla -f data-raw/asreml_reference.R
+#   FLEXYBAYES_ASREML_LIB=/path/to/library \
+#     R --vanilla -f data-raw/asreml_reference.R
 #
 # Unset, the default library is used, which is correct where asreml is
 # installed normally.
@@ -39,8 +40,9 @@ stamp <- list(
   r = R.version.string
 )
 
-wald <- function(x) c(lower = x$Estimate - 1.96 * x$SE,
-                      upper = x$Estimate + 1.96 * x$SE)
+wald <- function(x) {
+  c(lower = x$Estimate - 1.96 * x$SE, upper = x$Estimate + 1.96 * x$SE)
+}
 
 # --- 1. john.alpha: an alpha design, whole and degraded ----------------- #
 
