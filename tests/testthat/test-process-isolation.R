@@ -27,8 +27,8 @@
 #      comes from the session's random-number stream in both places.
 #   5. fb_select() under isolation is identical to a serial run on the
 #      closed-form route, and its bookkeeping is identical on the Bayesian
-#      route, where its scores sit inside the bound the concurrency envelope
-#      derived (test-selection-parallel-envelope.R).
+#      route, where its scores sit inside a bound derived from repeated
+#      serial runs of the same call (probe 05).
 #
 # How a process is killed here. A watcher process started by this file looks
 # only at the children of this R session, skips itself, and sends SIGKILL to
@@ -746,8 +746,9 @@ test_that("fb_select() under isolation keeps the Bayesian route's bookkeeping an
   expect_identical(isolated$selection$chosen_terms, serial$selection$chosen_terms)
   expect_identical(as.character(isolated$scores$model), as.character(serial$scores$model))
   expect_identical(isolated$scores$n_units, serial$scores$n_units)
-  # The concurrency envelope's bound for the engine's scores on this route,
-  # derived from repeated serial and concurrent runs (0.0171 largest measured,
-  # 0.05 asserted; test-selection-parallel-envelope.R).
-  expect_lte(max(abs(isolated$scores$score - serial$scores$score)), 0.05)
+  # INLA's posterior sampler is not bit-reproducible, so two serial runs of
+  # this call differ too: six serial runs on this fixture, 15 pairs, differed
+  # by at most 0.039 (probe 05). The bound is three times that, the margin the
+  # concurrency envelope applies to its own measured range.
+  expect_lte(max(abs(isolated$scores$score - serial$scores$score)), 0.12)
 })
