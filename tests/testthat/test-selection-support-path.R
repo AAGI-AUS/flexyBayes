@@ -778,7 +778,9 @@ test_that("a fold's predictions do not read that fold's assessment outcomes", {
   expect_equal(first$fitted, second$fitted, tolerance = 1e-12)
   expect_equal(first$lambda_canonical, second$lambda_canonical,
                tolerance = 1e-12)
-  expect_true(all(second$observed - first$observed == 1000))
+  # Compared row by row, so a table without an `observed` column fails here
+  # rather than passing on an empty comparison.
+  expect_equal(second$observed - first$observed, rep(1000, nrow(second)))
 })
 
 
