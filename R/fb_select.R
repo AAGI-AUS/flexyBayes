@@ -2742,8 +2742,8 @@
 #'   arms, the folds and the certificate. With `ablation = TRUE`, its element
 #'   `ablation` holds one row per block (`blocks`), the paired unit table
 #'   (`units`), each ablated path's per-row predictions (`rows`, with the
-#'   log predictive density `lpd` where the refit ran) and chosen supports
-#'   (`supports`), the density's paired unit table (`value_units`) and the
+#'   log predictive density `lpd` where the refit ran), chosen supports
+#'   (`supports`) and tuning curves (`paths`), the density's paired unit table (`value_units`) and the
 #'   columns each ablated refit held (`value_supports`), and the
 #'   contract. With `plan = TRUE`, an object of class `fb_select_plan`, whose
 #'   `selection$ablation` counts the ablation's fits.

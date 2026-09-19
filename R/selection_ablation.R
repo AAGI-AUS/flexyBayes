@@ -289,6 +289,7 @@
         fitted = protected_fit$fitted,
         selected_s = NA_real_,
         selected_lambda_index = NA_integer_,
+        curve = NULL,
         supports = stats::setNames(
           lapply(ablated, function(s) character(0)),
           vapply(ablated, function(s) s$label, character(1L))
@@ -320,6 +321,10 @@
                             "fitted")],
         selected_s = ablated_path$selection$selected_s,
         selected_lambda_index = chosen,
+        # The ablated path's own tuning curve, which the rule chose on.
+        curve = as.data.frame(ablated_path$selection$scores)[,
+          c("lambda_index", "s", "score", "se", "n_units", "complexity")
+        ],
         # A family that sets no coefficient to zero has no support to
         # report; its loss is read all the same.
         supports = if (isTRUE(ablated_path$support_by_resolution$selects)) {
@@ -354,6 +359,7 @@
   unit_rows <- list()
   row_rows <- list()
   support_rows <- list()
+  curve_rows <- list()
   for (group in names_vec) {
     res <- results[[group]]
     members <- groups$column[groups$group == group]
@@ -427,6 +433,11 @@
         lpd = NA_real_,
         stringsAsFactors = FALSE
       )
+      if (!is.null(res$curve)) {
+        curve_rows[[length(curve_rows) + 1L]] <- cbind(
+          block = group, res$curve, stringsAsFactors = FALSE
+        )
+      }
       labels <- names(res$supports)
       held <- res$supports
       support_rows[[length(support_rows) + 1L]] <- data.frame(
@@ -468,6 +479,11 @@
     supports = bind(support_rows, data.frame(
       block = character(0), fold = character(0), column = character(0),
       stringsAsFactors = FALSE
+    )),
+    paths = bind(curve_rows, data.frame(
+      block = character(0), lambda_index = integer(0), s = numeric(0),
+      score = numeric(0), se = numeric(0), n_units = integer(0),
+      complexity = numeric(0), stringsAsFactors = FALSE
     ))
   )
   out$blocks$elpd_difference <- NA_real_
@@ -488,6 +504,7 @@
   rownames(out$units) <- NULL
   rownames(out$rows) <- NULL
   rownames(out$supports) <- NULL
+  rownames(out$paths) <- NULL
   out
 }
 

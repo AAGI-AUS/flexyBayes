@@ -231,6 +231,16 @@ test_that("the paired loss differences equal a hand computation from the stored 
         stats::sd(difference) / sqrt(length(difference))
       )
       expect_identical(row$ablation_n_units, length(difference))
+      # The ablated path is tuned by the one-standard-error rule on its own
+      # curve, and its loss is read at the point the rule chose.
+      curve <- sel$ablation$paths[sel$ablation$paths$block == block, ]
+      best <- which.min(curve$score)
+      inside <- which(curve$score <= curve$score[[best]] + curve$se[[best]])
+      chosen <- inside[which.min(curve$complexity[inside])]
+      blocks <- sel$ablation$blocks
+      expect_identical(blocks$selected_s[blocks$block == block],
+                       curve$s[[chosen]])
+      expect_identical(mean(ablated), curve$score[[chosen]])
     }
   }
 })
