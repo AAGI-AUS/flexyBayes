@@ -6,7 +6,8 @@
 \usage{
 \method{plot}{fb_select}(
   x,
-  type = c("elpd_by_size", "rank_stability", "shrinkage", "benchmark", "entrance_path"),
+  type = c("elpd_by_size", "rank_stability", "shrinkage", "benchmark", "entrance_path",
+    "entrance_heatmap"),
   ...
 )
 }
@@ -14,18 +15,27 @@
 \item{x}{An \code{fb_select} object.}
 
 \item{type}{\code{"elpd_by_size"}, \code{"rank_stability"}, \code{"shrinkage"},
-\code{"benchmark"} or \code{"entrance_path"}. The last plots the common
-out-of-fold loss against \code{s = lambda / lambda_max} and labels each
-candidate at its median first entry: the point on \code{s} by which at least
-half of the folds that could estimate it had admitted it. A candidate
-admitted on fewer than half of those folds is not labelled, and
-candidates entering at the same point share one label. The ordinate
-is the mean over scoring units of each unit's score, not an inclusion
-probability. It is available for optimiser workflows and optimiser
-benchmark arms whose penalty has a finite null anchor, which excludes
-\code{ridge()} and \code{exclusive_lasso()}.}
+\code{"benchmark"}, \code{"entrance_path"} or \code{"entrance_heatmap"}.
+\code{"entrance_path"} plots the common out-of-fold loss against
+\code{s = lambda / lambda_max} on a logarithmic axis and labels each
+candidate at its median first entry, \code{tidy(x)$entry_s_median}: the
+point on \code{s} by which at least half of the folds that could estimate it
+had admitted it. A candidate admitted on fewer than half of those folds
+is not labelled, candidates entering at the same point share one label,
+and labels on neighbouring points alternate above and below the curve.
+The ordinate is the mean over scoring units of each unit's score, not an
+inclusion probability. \code{"entrance_heatmap"} draws one row per candidate
+(\code{level = "column"}) or declared group (\code{level = "group"}) and one
+column per point of the grid. With \code{source = "folds"} (the default) a
+cell is the share of the folds able to estimate the row whose solution
+holds it there, and a marker sits at the row's median entry; with
+\code{source = "stability"} a cell is the share of the stability subsamples
+that hold it, and a stable row is starred. Both displays are available
+for optimiser workflows and optimiser benchmark arms whose penalty has a
+finite null anchor, which excludes \code{ridge()} and \code{exclusive_lasso()}.}
 
-\item{...}{Passed to the underlying plotting call.}
+\item{...}{Passed to the underlying plotting call. The entrance heat map
+also takes \code{level}, \code{source}, \code{max_rows} (default 40) and \code{label_cex}.}
 }
 \value{
 Invisibly, the data the display was drawn from. Called for the

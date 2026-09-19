@@ -1123,7 +1123,8 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                approximations = character(0),
                                base_engine = NA_character_,
                                reference_engine = NA_character_,
-                               decision_resolution = NULL) {
+                               decision_resolution = NULL,
+                               stability = NULL) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1205,7 +1206,11 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
         "reference model carries a wider fixed part and a shrinkage prior, ",
         "so this is a floor"
       )
-    )
+    ),
+    # Subsample stability of the penalised path, where one runs: the
+    # declared settings and the count of penalised fits they cost beside the
+    # cross-validated path's.
+    stability = stability
   )
 
   structure(list(selection = selection), class = c("fb_select_plan", "list"))
@@ -1290,6 +1295,25 @@ print.fb_select_plan <- function(x, ...) {
       format(round(s$cost$per_fit_seconds, 2), nsmall = 2L),
       "s each\n", sep = "")
   cat("                 ", s$cost$note, "\n", sep = "")
+  st <- s$stability
+  if (!is.null(st)) {
+    if (st$subsamples == 0L) {
+      cat("  Stability:    not requested (B = 0 subsamples)\n", sep = "")
+    } else {
+      cat(
+        "  Stability:    B = ", st$subsamples, " subsamples of ",
+        st$subsample_units, " of ", st$n_units, " ",
+        if (length(st$unit) > 0L) paste(st$unit, collapse = ":") else "row",
+        " units, cutoff ", format(st$cutoff), "\n",
+        "                 ", st$path_fits, " penalised fits and ",
+        st$covariance_fits, " covariance estimates, against ",
+        st$cv_path_fits, " and ", st$n_folds,
+        " for the cross-validated path (",
+        format(round(st$relative_cost, 1), nsmall = 1L), " times)\n",
+        sep = ""
+      )
+    }
+  }
   if (length(s$approximations) > 0L) {
     cat("  Approximations this route commits to:\n", sep = "")
     for (a in s$approximations) {

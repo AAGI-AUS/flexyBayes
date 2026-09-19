@@ -1,3 +1,18 @@
+# flexyBayes (development version)
+
+* Entrance read-outs for penalised selection. `tidy()` adds `entry_s_median`,
+  the point on `s` by which half of the folds able to estimate a column had
+  admitted it, with its quartiles and their spread. It is the point
+  `plot(type = "entrance_path")` labels, and `path_entry_s` keeps its meaning,
+  the earliest entry on any fold. `tidy(level = "group")` gives the same
+  profile for a grouped penalty's groups and for declared penalty blocks.
+  `plot(type = "entrance_heatmap")` shows the share of folds holding each
+  candidate or group along `s`, and the entrance path now uses a logarithmic
+  `s` axis so its labels no longer overprint.
+  `fb_decision(stability_subsamples = )` adds subsample stability selection
+  (Meinshausen and Buhlmann 2010) over half-samples of the resampling unit.
+  It is off by default, and `plan = TRUE` states its cost.
+
 # flexyBayes 0.13.1
 
 A patch release for penalised selection. It adds two read-outs of a penalised

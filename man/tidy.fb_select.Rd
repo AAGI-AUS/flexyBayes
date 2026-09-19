@@ -4,22 +4,30 @@
 \alias{tidy.fb_select}
 \title{Tidy a selection into one row per candidate coefficient}
 \usage{
-\method{tidy}{fb_select}(x, ...)
+\method{tidy}{fb_select}(x, level = c("column", "group"), ...)
 }
 \arguments{
 \item{x}{An \code{fb_select} object.}
 
+\item{level}{\code{"column"} (the default), one row per design column, or
+\code{"group"}, one row per declared group of penalised columns.}
+
 \item{...}{Ignored.}
 }
 \value{
-A \code{data.frame} with one row per design column: the column, the
-formula term it came from, its role, its block and family, whether the
-decision retained it, and, where a reference posterior was fitted, its
-posterior mean and standard deviation on the scientific scale. Beside
-them, the penalised path's \code{folds_available}, \code{folds_entered},
-\code{path_entry_s}, \code{path_exit_s} and \code{path_reentries}, all \code{NA} for a
-protected column and on a run with no penalised path, with the path
-itself in the attributes \code{support_path} and \code{support_path_by_fold}.
+A \code{data.frame}. At \code{level = "column"}, one row per design column:
+the column, the formula term it came from, its role, its block and
+family, whether the decision retained it, and, where a reference
+posterior was fitted, its posterior mean and standard deviation on the
+scientific scale. Beside them, the penalised path's \code{folds_available},
+\code{folds_entered}, \code{path_entry_s}, \code{path_exit_s}, \code{path_reentries},
+\code{entry_s_median}, \code{entry_s_q25}, \code{entry_s_q75}, \code{entry_s_iqr} and the
+three stability columns, all \code{NA} for a protected column and on a run
+with no penalised path, with the path itself in the attributes
+\code{support_path} and \code{support_path_by_fold}. At \code{level = "group"}, one row
+per group with its \code{rule}, \code{n_columns}, \code{columns} and the same profile
+and stability columns, and the per-fold group record in the attribute
+\code{support_path_by_fold}.
 }
 \description{
 Tidy a selection into one row per candidate coefficient
@@ -48,4 +56,27 @@ entry and no exit. \code{path_reentries} is the largest number of returns in
 any one fold. Those summaries are taken from the attribute
 \code{support_path_by_fold}, one row per fold and column, and the membership at
 every point of every fold is the attribute \code{support_path}.
+
+\code{path_entry_s} is the earliest entry on any fold. The typical entry is
+\code{entry_s_median}: the point on \code{s} by which at least half of the folds
+that could estimate the column had admitted it, where a fold that never
+admitted it counts against it, and \code{NA} when fewer than half did. This is
+the point \code{plot(x, type = "entrance_path")} labels and
+\code{plot(x, type = "entrance_heatmap")} marks. \code{entry_s_q25} and
+\code{entry_s_q75} are the same rule at a quarter and at three quarters of the
+folds, so read along the path \code{entry_s_q25} is the larger \code{s}, and
+\code{entry_s_iqr} is their difference.
+
+\code{level = "group"} returns the same profile for each declared group of
+penalised columns, a group entering on a fold where any member does: the
+grouping of a grouped penalty (the model term under \code{group = "term"}, the
+specification under \code{group = "block"}), and otherwise the penalty
+specification that claimed the column, named \code{block_1}, \code{block_2}, ... in
+the order the specifications were written.
+
+Where \code{\link[=fb_decision]{fb_decision()}} asked for subsample stability, each row also
+carries \code{stability_available}, the subsamples that could estimate it,
+\code{stability_max_frequency}, its largest selection frequency at or above the
+chosen tuning point, and \code{stability_selected}, whether that frequency
+reaches the cutoff.
 }

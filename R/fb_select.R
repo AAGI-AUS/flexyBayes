@@ -1154,7 +1154,10 @@
             selected_lambda_canonical = arm$selection$selected_lambda_canonical,
             # Per penalised column: the folds, the folds that estimated it,
             # and the folds whose support held it at the chosen point.
-            candidate_availability = arm$selection$candidate_availability
+            candidate_availability = arm$selection$candidate_availability,
+            # The subsample-stability settings and stable sets, B = 0
+            # included. NULL on an arm with no penalised path.
+            stability = .fb_sel_stability_record(arm$stability)
           )
         })
       },
@@ -2176,13 +2179,15 @@
                                  shared_predictive_table = FALSE) {
   arms <- list()
   refusals <- character(0)
+  stability_error <- NULL
+  random <- .fb_sel_benchmark_random(base$fb)
 
   gls <- .fb_sel_cv(
     data = base$data,
     response = base$fb$response,
     protected = protected,
     candidates = candidates,
-    random = .fb_sel_benchmark_random(base$fb),
+    random = random,
     resamples = resamples,
     seed = seed,
     prediction = prediction,
@@ -2281,11 +2286,52 @@
             shared_predictive_table = shared_predictive_table
           )
         )
+        # Subsample stability of the same path, where it was asked for. A
+        # refusal is carried beside a Bayesian answer as the arm's own is,
+        # and raised by the optimiser workflow, whose answer this is.
+        arms$glmnet$stability <- if (
+          (decision$stability_subsamples %||% 0L) > 0L
+        ) {
+          tryCatch(
+            .fb_sel_stability(
+              data = base$data,
+              response = base$fb$response,
+              protected = protected,
+              candidates = candidates,
+              random = random,
+              prediction = prediction,
+              offsets = base$fb$offsets %||% character(0),
+              blocks = blocks,
+              path = path,
+              decision = decision,
+              resamples = resamples,
+              seed = seed
+            ),
+            error = function(e) e
+          )
+        } else {
+          .fb_sel_stability_not_run(decision, resamples)
+        }
+        if (inherits(arms$glmnet$stability, "condition")) {
+          stability_error <- arms$glmnet$stability
+          refusals <- c(refusals, paste0(
+            (stability_error$reason_code %||% "error"), ": ",
+            conditionMessage(stability_error)
+          ))
+          arms$glmnet$stability <- c(
+            list(ran = FALSE),
+            .fb_sel_stability_settings(decision, resamples),
+            list(reason = conditionMessage(stability_error))
+          )
+        }
       }
     }
   }
 
-  list(arms = arms, refusals = refusals, folds = gls$folds, cv = gls)
+  list(
+    arms = arms, refusals = refusals, folds = gls$folds, cv = gls,
+    stability_error = stability_error
+  )
 }
 
 
@@ -2672,6 +2718,13 @@ fb_select <- function(base,
     }
   }
 
+  # Subsample stability is read off the penalised optimiser's path, so a
+  # request for it on a route that walks none refuses here, before the plan
+  # and before any fit.
+  .fb_sel_require_stability_route(
+    decision, workflow, penalty, benchmark, seed, resamples, base$data
+  )
+
   if (identical(workflow, "penalized_optimizer") && is.null(penalty)) {
     stop(.fb_refusal_condition(
       reason_code = "selection_penalty_spec_malformed",
@@ -2867,6 +2920,7 @@ fb_select <- function(base,
     unique(vapply(resolved$blocks, function(b) b$family, character(1L))),
     collapse = " + "
   )
+  .fb_sel_require_stability_family(resolved$blocks, decision)
 
   # The reference model is fitted by brms whatever fitted the base. That is
   # not a substitution: the parsed model is engine-independent, and the
@@ -2929,7 +2983,12 @@ fb_select <- function(base,
       approximations = approximations,
       base_engine = engine_name,
       reference_engine = reference_engine,
-      decision_resolution = decision_resolution
+      decision_resolution = decision_resolution,
+      stability = if (isTRUE(benchmark)) {
+        .fb_sel_stability_plan(decision, resamples, base$data)
+      } else {
+        NULL
+      }
     ))
   }
 
@@ -3211,6 +3270,7 @@ fb_select <- function(base,
     prior = prior_family,
     decision = "optimizer_support"
   )
+  .fb_sel_require_stability_family(resolved$blocks, decision)
   if (isTRUE(plan)) {
     return(.fb_plan_selection(
       base = base,
@@ -3223,7 +3283,8 @@ fb_select <- function(base,
       candidates = candidates,
       compiled = resolved$compiled,
       approximations = resolved$approximations,
-      decision_resolution = decision_resolution
+      decision_resolution = decision_resolution,
+      stability = .fb_sel_stability_plan(decision, resamples, base$data)
     ))
   }
   bench <- .fb_select_benchmark(
@@ -3248,6 +3309,9 @@ fb_select <- function(base,
         paste(bench$refusals, collapse = " ")
       )
     ))
+  }
+  if (!is.null(bench$stability_error)) {
+    stop(bench$stability_error)
   }
 
   .fb_select_assemble(
@@ -3748,6 +3812,10 @@ print.fb_select <- function(x, digits = 4L, ...) {
         arm$provider, "  [", arm$equivalence_level$level, "]\n",
         sep = ""
       )
+      if (isTRUE(arm$stability$ran)) {
+        cat("             stability: ", .fb_sel_stability_line(arm$stability),
+            "\n", sep = "")
+      }
     }
     for (ps in list(cert$reference_predictive, cert$decision_predictive)) {
       if (isTRUE(ps$available)) {
@@ -3845,18 +3913,52 @@ print.fb_select <- function(x, digits = 4L, ...) {
 #' `support_path_by_fold`, one row per fold and column, and the membership at
 #' every point of every fold is the attribute `support_path`.
 #'
+#' `path_entry_s` is the earliest entry on any fold. The typical entry is
+#' `entry_s_median`: the point on `s` by which at least half of the folds
+#' that could estimate the column had admitted it, where a fold that never
+#' admitted it counts against it, and `NA` when fewer than half did. This is
+#' the point `plot(x, type = "entrance_path")` labels and
+#' `plot(x, type = "entrance_heatmap")` marks. `entry_s_q25` and
+#' `entry_s_q75` are the same rule at a quarter and at three quarters of the
+#' folds, so read along the path `entry_s_q25` is the larger `s`, and
+#' `entry_s_iqr` is their difference.
+#'
+#' `level = "group"` returns the same profile for each declared group of
+#' penalised columns, a group entering on a fold where any member does: the
+#' grouping of a grouped penalty (the model term under `group = "term"`, the
+#' specification under `group = "block"`), and otherwise the penalty
+#' specification that claimed the column, named `block_1`, `block_2`, ... in
+#' the order the specifications were written.
+#'
+#' Where [fb_decision()] asked for subsample stability, each row also
+#' carries `stability_available`, the subsamples that could estimate it,
+#' `stability_max_frequency`, its largest selection frequency at or above the
+#' chosen tuning point, and `stability_selected`, whether that frequency
+#' reaches the cutoff.
+#'
 #' @param x An `fb_select` object.
+#' @param level `"column"` (the default), one row per design column, or
+#'   `"group"`, one row per declared group of penalised columns.
 #' @param ... Ignored.
-#' @returns A `data.frame` with one row per design column: the column, the
-#'   formula term it came from, its role, its block and family, whether the
-#'   decision retained it, and, where a reference posterior was fitted, its
-#'   posterior mean and standard deviation on the scientific scale. Beside
-#'   them, the penalised path's `folds_available`, `folds_entered`,
-#'   `path_entry_s`, `path_exit_s` and `path_reentries`, all `NA` for a
-#'   protected column and on a run with no penalised path, with the path
-#'   itself in the attributes `support_path` and `support_path_by_fold`.
+#' @returns A `data.frame`. At `level = "column"`, one row per design column:
+#'   the column, the formula term it came from, its role, its block and
+#'   family, whether the decision retained it, and, where a reference
+#'   posterior was fitted, its posterior mean and standard deviation on the
+#'   scientific scale. Beside them, the penalised path's `folds_available`,
+#'   `folds_entered`, `path_entry_s`, `path_exit_s`, `path_reentries`,
+#'   `entry_s_median`, `entry_s_q25`, `entry_s_q75`, `entry_s_iqr` and the
+#'   three stability columns, all `NA` for a protected column and on a run
+#'   with no penalised path, with the path itself in the attributes
+#'   `support_path` and `support_path_by_fold`. At `level = "group"`, one row
+#'   per group with its `rule`, `n_columns`, `columns` and the same profile
+#'   and stability columns, and the per-fold group record in the attribute
+#'   `support_path_by_fold`.
 #' @export
-tidy.fb_select <- function(x, ...) {
+tidy.fb_select <- function(x, level = c("column", "group"), ...) {
+  level <- match.arg(level)
+  if (identical(level, "group")) {
+    return(.fb_select_tidy_groups(x))
+  }
   map <- x$column_map
   if (is.null(map)) {
     map <- data.frame(
@@ -3921,28 +4023,95 @@ tidy.fb_select <- function(x, ...) {
   # and the column never entered.
   path <- .fb_select_support_path(x)
   by_fold <- path$by_fold
-  out$folds_available <- rep(NA_integer_, n)
-  out$folds_entered <- rep(NA_integer_, n)
-  out$path_entry_s <- rep(NA_real_, n)
-  out$path_exit_s <- rep(NA_real_, n)
-  out$path_reentries <- rep(NA_integer_, n)
-  for (i in seq_len(n)) {
-    rows <- by_fold[by_fold$column == out$term[[i]], , drop = FALSE]
-    if (nrow(rows) == 0L) {
-      next
-    }
-    entered <- rows[rows$n_in_support > 0L, , drop = FALSE]
-    out$folds_available[[i]] <- sum(rows$available)
-    out$folds_entered[[i]] <- nrow(entered)
-    if (nrow(entered) > 0L) {
-      out$path_entry_s[[i]] <- max(entered$first_entry_s)
-      if (any(!is.na(entered$last_exit_s))) {
-        out$path_exit_s[[i]] <- min(entered$last_exit_s, na.rm = TRUE)
-      }
-      out$path_reentries[[i]] <- max(entered$n_reentries)
-    }
+  profile <- .fb_select_entrance_profile(by_fold, key = "column")
+  extra <- c(
+    .fb_select_profile_columns(profile, out$term),
+    .fb_select_stability_columns(
+      x$benchmark$glmnet$stability, "column", out$term
+    )
+  )
+  for (field in names(extra)) {
+    out[[field]] <- extra[[field]]
   }
   attr(out, "support_path") <- path$points
+  attr(out, "support_path_by_fold") <- by_fold
+  out
+}
+
+
+# .fb_select_profile_columns() --- the entrance-profile columns for a list
+# of names, NA for a name no fold's path carries.
+.fb_select_profile_columns <- function(profile, names_vec) {
+  at <- match(names_vec, profile$name)
+  data.frame(
+    folds_available = profile$folds_available[at],
+    folds_entered = profile$folds_entered[at],
+    path_entry_s = profile$path_entry_s[at],
+    path_exit_s = profile$path_exit_s[at],
+    path_reentries = profile$path_reentries[at],
+    entry_s_median = profile$entry_s_median[at],
+    entry_s_q25 = profile$entry_s_q25[at],
+    entry_s_q75 = profile$entry_s_q75[at],
+    entry_s_iqr = profile$entry_s_iqr[at],
+    stringsAsFactors = FALSE
+  )
+}
+
+
+# .fb_select_stability_columns() --- the stability columns for a list of
+# names, NA where no stability subsample was drawn.
+.fb_select_stability_columns <- function(stability, level, names_vec) {
+  summary <- if (isTRUE(stability$ran)) {
+    stability$summary[stability$summary$level == level, , drop = FALSE]
+  } else {
+    data.frame(
+      name = character(0), n_available = integer(0),
+      max_frequency = numeric(0), selected = logical(0),
+      stringsAsFactors = FALSE
+    )
+  }
+  at <- match(names_vec, summary$name)
+  data.frame(
+    stability_available = summary$n_available[at],
+    stability_max_frequency = summary$max_frequency[at],
+    stability_selected = summary$selected[at],
+    stringsAsFactors = FALSE
+  )
+}
+
+
+# .fb_select_tidy_groups() --- tidy() at the resolution of the declared
+# groups.
+.fb_select_tidy_groups <- function(x) {
+  support <- x$benchmark$glmnet$support
+  groups <- support$groups
+  by_fold <- support$group_history_by_fold
+  if (!is.data.frame(groups) || !is.data.frame(by_fold)) {
+    groups <- data.frame(
+      column = character(0), group = character(0), rule = character(0),
+      stringsAsFactors = FALSE
+    )
+    by_fold <- .fb_sel_group_history_by_fold(NULL, NULL)
+  }
+  names_vec <- unique(groups$group)
+  members <- split(groups$column, factor(groups$group, levels = names_vec))
+  out <- data.frame(
+    group = names_vec,
+    rule = groups$rule[match(names_vec, groups$group)],
+    n_columns = unname(as.integer(lengths(members))),
+    columns = unname(vapply(members, paste, character(1L), collapse = ", ")),
+    stringsAsFactors = FALSE
+  )
+  profile <- .fb_select_entrance_profile(by_fold, key = "group")
+  extra <- c(
+    .fb_select_profile_columns(profile, out$group),
+    .fb_select_stability_columns(
+      x$benchmark$glmnet$stability, "group", out$group
+    )
+  )
+  for (field in names(extra)) {
+    out[[field]] <- extra[[field]]
+  }
   attr(out, "support_path_by_fold") <- by_fold
   out
 }
@@ -4001,6 +4170,22 @@ glance.fb_select <- function(x, ...) {
       length(unique(indices))
     },
     path_columns_entered = entered,
+    # The subsample-stability settings, B = 0 included, and the size of the
+    # stable set where subsamples were drawn.
+    stability_subsamples = arm$stability$subsamples %||% NA_integer_,
+    stability_cutoff = arm$stability$cutoff %||% NA_real_,
+    stability_unit = if (is.null(arm$stability)) {
+      NA_character_
+    } else if (length(arm$stability$unit) > 0L) {
+      paste(arm$stability$unit, collapse = ":")
+    } else {
+      "row"
+    },
+    stability_stable = if (isTRUE(arm$stability$ran)) {
+      length(arm$stability$stable)
+    } else {
+      NA_integer_
+    },
     stringsAsFactors = FALSE
   )
 }
@@ -4052,24 +4237,33 @@ augment.fb_select <- function(
 #'
 #' @param x An `fb_select` object.
 #' @param type `"elpd_by_size"`, `"rank_stability"`, `"shrinkage"`,
-#'   `"benchmark"` or `"entrance_path"`. The last plots the common
-#'   out-of-fold loss against `s = lambda / lambda_max` and labels each
-#'   candidate at its median first entry: the point on `s` by which at least
-#'   half of the folds that could estimate it had admitted it. A candidate
-#'   admitted on fewer than half of those folds is not labelled, and
-#'   candidates entering at the same point share one label. The ordinate
-#'   is the mean over scoring units of each unit's score, not an inclusion
-#'   probability. It is available for optimiser workflows and optimiser
-#'   benchmark arms whose penalty has a finite null anchor, which excludes
-#'   `ridge()` and `exclusive_lasso()`.
-#' @param ... Passed to the underlying plotting call.
+#'   `"benchmark"`, `"entrance_path"` or `"entrance_heatmap"`.
+#'   `"entrance_path"` plots the common out-of-fold loss against
+#'   `s = lambda / lambda_max` on a logarithmic axis and labels each
+#'   candidate at its median first entry, `tidy(x)$entry_s_median`: the
+#'   point on `s` by which at least half of the folds that could estimate it
+#'   had admitted it. A candidate admitted on fewer than half of those folds
+#'   is not labelled, candidates entering at the same point share one label,
+#'   and labels on neighbouring points alternate above and below the curve.
+#'   The ordinate is the mean over scoring units of each unit's score, not an
+#'   inclusion probability. `"entrance_heatmap"` draws one row per candidate
+#'   (`level = "column"`) or declared group (`level = "group"`) and one
+#'   column per point of the grid. With `source = "folds"` (the default) a
+#'   cell is the share of the folds able to estimate the row whose solution
+#'   holds it there, and a marker sits at the row's median entry; with
+#'   `source = "stability"` a cell is the share of the stability subsamples
+#'   that hold it, and a stable row is starred. Both displays are available
+#'   for optimiser workflows and optimiser benchmark arms whose penalty has a
+#'   finite null anchor, which excludes `ridge()` and `exclusive_lasso()`.
+#' @param ... Passed to the underlying plotting call. The entrance heat map
+#'   also takes `level`, `source`, `max_rows` (default 40) and `label_cex`.
 #' @returns Invisibly, the data the display was drawn from. Called for the
 #'   plot it draws.
 #' @export
 plot.fb_select <- function(x,
                            type = c("elpd_by_size", "rank_stability",
                                     "shrinkage", "benchmark",
-                                    "entrance_path"),
+                                    "entrance_path", "entrance_heatmap"),
                            ...) {
   type <- match.arg(type)
   switch(
@@ -4078,7 +4272,8 @@ plot.fb_select <- function(x,
     rank_stability = .fb_select_plot_stability(x, ...),
     shrinkage = .fb_select_plot_shrinkage(x, ...),
     benchmark = .fb_select_plot_benchmark(x, ...),
-    entrance_path = .fb_select_plot_entrance(x, ...)
+    entrance_path = .fb_select_plot_entrance(x, ...),
+    entrance_heatmap = .fb_select_plot_entrance_heatmap(x, ...)
   )
 }
 
@@ -4203,39 +4398,18 @@ plot.fb_select <- function(x,
 }
 
 # .fb_select_median_entry() --- where each candidate typically enters the
-# path, read off the per-fold support history.
-#
-# The folds counted for a column are the ones whose training rows could
-# estimate it. Its median first entry is the point on s by which at least
-# half of those folds had admitted it: the ceiling(k / 2)-th largest first
-# entry over k folds, which is the median for odd k and the earlier of the
-# two middle entries for even k, so the label sits on a grid point. A fold on
-# which the column never entered counts against it rather than dropping out,
-# so a column admitted on one fold in five is not placed as if that fold were
-# typical; a column admitted on fewer than half of its folds is not labelled.
+# path: `entry_s_median` of the entrance profile, the value `tidy()` reports,
+# for the columns that have one. The rule is `.fb_sel_entry_at()` at one
+# half; a column admitted on fewer than half of its folds is not labelled.
 .fb_select_median_entry <- function(history) {
-  available <- history[history$available, , drop = FALSE]
-  rows <- lapply(unique(available$column), function(column) {
-    part <- available[available$column == column, , drop = FALSE]
-    entered <- part$n_in_support > 0L & is.finite(part$first_entry_s)
-    first <- sort(part$first_entry_s[entered], decreasing = TRUE)
-    needed <- ceiling(nrow(part) / 2)
-    data.frame(
-      variable = column,
-      entry_s = if (length(first) >= needed) first[[needed]] else NA_real_,
-      n_folds_available = nrow(part),
-      n_folds_entered = sum(entered),
-      stringsAsFactors = FALSE
-    )
-  })
-  out <- do.call(rbind, rows)
-  if (is.null(out)) {
-    return(data.frame(
-      variable = character(0), entry_s = numeric(0),
-      n_folds_available = integer(0), n_folds_entered = integer(0),
-      stringsAsFactors = FALSE
-    ))
-  }
+  profile <- .fb_select_entrance_profile(history, key = "column")
+  out <- data.frame(
+    variable = profile$name,
+    entry_s = profile$entry_s_median,
+    n_folds_available = profile$folds_available,
+    n_folds_entered = profile$folds_entered,
+    stringsAsFactors = FALSE
+  )
   out[is.finite(out$entry_s), , drop = FALSE]
 }
 
@@ -4290,12 +4464,15 @@ plot.fb_select <- function(x,
   entries$score <- scores$score[nearest]
   rownames(entries) <- NULL
   metric <- arm$selection$metric %||% "loss"
+  # The grid is geometric in s, so a logarithmic axis spaces its points
+  # evenly; on a linear axis the weak-penalty half of the grid falls within a
+  # few hundredths of zero and its labels overprint.
   graphics::plot(
     scores$s, scores$score,
-    type = "b", pch = 16L,
+    type = "b", pch = 16L, log = "x",
     xlim = rev(range(scores$s, finite = TRUE)),
     xlab = expression("relative penalty " * s == lambda / lambda[max] *
-                        " (strong to weak)"),
+                        " (strong to weak, log scale)"),
     # The score is the mean over scoring units of each unit's own value,
     # which is not the pooled value over rows.
     ylab = paste0(
@@ -4313,7 +4490,7 @@ plot.fb_select <- function(x,
   # they would overprint each other.
   labels <- data.frame(
     entry_s = numeric(0), score = numeric(0), label = character(0),
-    stringsAsFactors = FALSE
+    pos = integer(0), stringsAsFactors = FALSE
   )
   if (nrow(entries) > 0L) {
     labels <- stats::aggregate(
@@ -4325,10 +4502,19 @@ plot.fb_select <- function(x,
     names(labels)[[3L]] <- "label"
     labels <- labels[order(labels$entry_s, decreasing = TRUE), , drop = FALSE]
     rownames(labels) <- NULL
+    # A label on the grid point next to the previous label's goes to the
+    # other side of the curve, so neighbouring labels do not overprint.
+    index <- match(labels$entry_s, scores$s)
+    labels$pos <- rep(3L, nrow(labels))
+    for (k in seq_len(nrow(labels))[-1L]) {
+      if (isTRUE(abs(index[[k]] - index[[k - 1L]]) <= 1L)) {
+        labels$pos[[k]] <- if (labels$pos[[k - 1L]] == 3L) 1L else 3L
+      }
+    }
     graphics::points(labels$entry_s, labels$score, pch = 21L, bg = "white")
     graphics::text(
       labels$entry_s, labels$score, labels = labels$label,
-      pos = 3L, cex = label_cex, xpd = NA
+      pos = labels$pos, cex = label_cex, xpd = NA
     )
   }
   invisible(list(
@@ -4428,6 +4614,10 @@ print.fb_select_certificate <- function(x, ...) {
             ""
           },
           "\n", sep = "")
+      if (isTRUE(arm$stability$ran)) {
+        cat("      stability: ", .fb_sel_stability_line(arm$stability), "\n",
+            sep = "")
+      }
     }
   }
   mo <- x$mode_oracle
