@@ -383,10 +383,15 @@ test_that("a single-trial ar1(row):ar1(col) field runs end to end, and V_S|T is 
   base <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
                      backend = "inla", verbose = FALSE)
   for (prediction in c("known_cluster", "new_cluster")) {
-    sel <- fbcm_select(base, covariance = "base_model",
-                       candidates = ~ z1 + z2 + z3 + z4,
-                       resamples = fb_resamples(v = 3L),
-                       prediction = prediction)
+    # The field on this fixture runs to the boundary, and the fit says so.
+    # Known issue 9; the expectation holds the package to saying it.
+    expect_warning(
+      sel <- fbcm_select(base, covariance = "base_model",
+                         candidates = ~ z1 + z2 + z3 + z4,
+                         resamples = fb_resamples(v = 3L),
+                         prediction = prediction),
+      "the autoregressive field in this fit did not identify"
+    )
     expect_identical(sel$certificate$covariance$source, "base_model")
     expect_identical(sel$certificate$resampling$prediction, prediction)
   }
@@ -661,7 +666,7 @@ test_that("covariance defaults to the REML plug-in, and a legacy estimand string
   expect_identical(eval(formals(fb_select)$covariance),
                    c("reml_plugin", "base_model"))
   d <- fbcm_site_data()
-  base <- fbcm_stub_base(d)
+  expect_warning(base <- fbcm_stub_base(d), class = "flexybayes_deprecated")
   default <- fbcm_select(base)
   expect_warning(
     legacy <- fbcm_select(base, covariance = "plugin_mean_covariance"),
