@@ -304,7 +304,9 @@
   word <- c("no", "one", "two", "three", "four", "five")
   lo <- contract$min_pos
   hi <- contract$max_pos
-  nm <- function(k) if (k + 1L <= length(word)) word[[k + 1L]] else as.character(k)
+  nm <- function(k) {
+    if (k + 1L <= length(word)) word[[k + 1L]] else as.character(k)
+  }
   if (lo == hi) {
     paste0("exactly ", nm(lo), if (lo == 1L) " argument" else " arguments")
   } else {

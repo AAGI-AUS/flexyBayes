@@ -552,8 +552,9 @@
 
   scope_all_fixed <- any(vapply(
     blocks,
-    function(b) identical(b$hyperparameters$scope %||% "candidates",
-                          "all_fixed"),
+    function(b) {
+      identical(b$hyperparameters$scope %||% "candidates", "all_fixed")
+    },
     logical(1L)
   ))
 
@@ -2737,8 +2738,12 @@ fb_select <- function(base,
   .fb_isolation_active("fb_select()")
 
   if (!is.null(engine) && !inherits(engine, "fb_engine")) {
-    if (!is.list(engine) || is.null(names(engine)) || any(!nzchar(names(engine)))) {
-      stop("`engine` must be NULL or a named list of brms sampler settings.", call. = FALSE)
+    if (!is.list(engine) || is.null(names(engine)) ||
+        any(!nzchar(names(engine)))) {
+      stop(
+        "`engine` must be NULL or a named list of brms sampler settings.",
+        call. = FALSE
+      )
     }
     unknown_engine_opts <- setdiff(names(engine), .fb_engine_opt_names)
     if (length(unknown_engine_opts)) {
@@ -3576,7 +3581,8 @@ fb_select <- function(base,
       ),
       # Per penalised column: the folds that estimated it, beside the folds
       # whose support held it at the chosen point.
-      candidate_availability = bench$arms$glmnet$selection$candidate_availability,
+      candidate_availability =
+        bench$arms$glmnet$selection$candidate_availability,
       settings = list(method = "optimizer_support")
     ),
     benchmark = bench,

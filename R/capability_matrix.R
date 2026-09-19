@@ -336,7 +336,8 @@
       anchor = "test-weights-lowering.R"
     ),
     list(
-      model_class = "Exact sufficient-statistic aggregation (binomial, Poisson)",
+      model_class =
+        "Exact sufficient-statistic aggregation (binomial, Poisson)",
       spelling = "`aggregate = TRUE`, `flexybayes_stream()`",
       inla = "fits",
       brms = "n/a",
@@ -349,7 +350,8 @@
     ),
     list(
       model_class = "Exact sufficient-statistic aggregation (Gaussian)",
-      spelling = "`aggregate = TRUE`, `flexybayes_stream(family = \"gaussian\")`",
+      spelling =
+        "`aggregate = TRUE`, `flexybayes_stream(family = \"gaussian\")`",
       inla = "refuses",
       brms = "n/a",
       note = "Refused by name. The aggregated Gaussian route combined the

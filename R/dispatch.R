@@ -845,14 +845,19 @@
   # the one the engine has, whichever shape was written.
   separable <- identical(term$type, "ar1_spatial") && isTRUE(term$col_ar1)
   asreml_params <- if (separable) {
-    "three parameters on a field grid (row correlation, column correlation, one variance)"
+    paste0(
+      "three parameters on a field grid (row correlation, column ",
+      "correlation, one variance)"
+    )
   } else if (identical(term$type, "ar1_spatial")) {
     paste0(
       "two parameters (the correlation along ", term$row_var,
       " and one variance, shared by every level of ", term$col_var, ")"
     )
   } else {
-    paste0("two parameters (the correlation along ", term$var, " and one variance)")
+    paste0(
+      "two parameters (the correlation along ", term$var, " and one variance)"
+    )
   }
   field_params <- if (separable) "four parameters" else "three parameters"
   named_as <- if (separable) "three-parameter" else "two-parameter"

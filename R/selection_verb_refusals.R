@@ -54,7 +54,10 @@
       "`fallback = \"glmnet\"` runs the optimiser under its own name, ",
       "relabels the workflow, prints the substitution and certifies it."
     ),
-    message_template = "fb_select(): the Bayesian workflow needs %s, which is not installed, and fallback = \"none\".",
+    message_template = paste0(
+      "fb_select(): the Bayesian workflow needs %s, which is not installed, ",
+      "and fallback = \"none\"."
+    ),
     registered_in_adr = "SPEC v5 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -105,7 +108,8 @@
       "before 0.13.0 carries no version field and a polynomial checksum over ",
       "column names, which cannot tell a rescaled covariate from the original."
     ),
-    message_template = "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
+    message_template =
+      "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
     registered_in_adr = "U-SCORE-1 (DEC-HASH-01)",
     plan_field = "selection_plan",
     since_version = "0.13.0"
@@ -139,7 +143,10 @@
       "family shrinks every coefficient without setting one to zero, as ",
       "ridge() does. The refusal comes before any refit."
     ),
-    message_template = "fb_select(): refit = list(method = \"bayes\") has no frozen support to refit: %s.",
+    message_template = paste0(
+      "fb_select(): refit = list(method = \"bayes\") has no frozen support to ",
+      "refit: %s."
+    ),
     registered_in_adr = "fb_select(refit = ), 0.14.0",
     plan_field = "selection_plan",
     since_version = "0.14.0"
@@ -155,7 +162,8 @@
       "valuation. Units that were not held out together do not pair, so no ",
       "difference is formed. The fields that differ are named."
     ),
-    message_template = "fb_select(): the two valuations' value contracts differ in: %s.",
+    message_template =
+      "fb_select(): the two valuations' value contracts differ in: %s.",
     registered_in_adr = "fb_select(refit = ), 0.14.0",
     plan_field = "selection_plan",
     since_version = "0.14.0"

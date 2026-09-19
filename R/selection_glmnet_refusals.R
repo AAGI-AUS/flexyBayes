@@ -27,7 +27,10 @@
       "here is the residual measured at the returned point, and a point that ",
       "fails it is withheld rather than labelled a mode."
     ),
-    message_template = "fb_select(): the proximal-gradient mode stopped with a KKT residual of %s, above the tolerance %s.",
+    message_template = paste0(
+      "fb_select(): the proximal-gradient mode stopped with a KKT residual of ",
+      "%s, above the tolerance %s."
+    ),
     registered_in_adr = "SPEC v5 section 4.3",
     plan_field = NA_character_,
     since_version = "0.11.0"
@@ -43,7 +46,10 @@
       "the problem the printed lambda names. The Bayesian workflow carries ",
       "block-specific priors exactly; the optimiser benchmark does not."
     ),
-    message_template = "fb_select(): the penalty blocks cannot be expressed as one glmnet problem: %s.",
+    message_template = paste0(
+      "fb_select(): the penalty blocks cannot be expressed as one glmnet ",
+      "problem: %s."
+    ),
     registered_in_adr = "SPEC v3 sections 5.2 and 6",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -62,7 +68,10 @@
       "contrast columns together, `group = \"block\"` makes the ",
       "specification's own targets one set of competitors."
     ),
-    message_template = "fb_select(): the declared grouping names no group of more than one column: %s.",
+    message_template = paste0(
+      "fb_select(): the declared grouping names no group of more than one ",
+      "column: %s."
+    ),
     registered_in_adr = "final specification B9",
     plan_field = "selection_plan",
     since_version = "0.13.0"
@@ -79,7 +88,8 @@
       "prior under the requested family's name would be the substitution ",
       "the equivalence levels exist to prevent."
     ),
-    message_template = "fb_penalty(): %s has an optimiser provider and no Bayesian one.",
+    message_template =
+      "fb_penalty(): %s has an optimiser provider and no Bayesian one.",
     registered_in_adr = "final specification B9",
     plan_field = "selection_plan",
     since_version = "0.13.0"

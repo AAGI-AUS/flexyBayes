@@ -27,7 +27,10 @@
       "answer under the same name, so the refusal names the package and the ",
       "install line instead."
     ),
-    message_template = "fb_select(): the %s workflow needs package `%s`, which is not installed.",
+    message_template = paste0(
+      "fb_select(): the %s workflow needs package `%s`, which is not ",
+      "installed."
+    ),
     registered_in_adr = "SPEC v5 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -42,7 +45,10 @@
       "before the fold loop starts, so nothing is fitted and no partial ",
       "result is returned."
     ),
-    message_template = "fb_select(): the Bayesian route needs %d engine refits, an estimated %ss against a budget of %ss.",
+    message_template = paste0(
+      "fb_select(): the Bayesian route needs %d engine refits, an estimated ",
+      "%ss against a budget of %ss."
+    ),
     registered_in_adr = "SPEC v5 section 10",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -61,7 +67,10 @@
       "training row already carries. The refusal comes before any fold is ",
       "fitted; prediction = \"known_cluster\" keeps the levels."
     ),
-    message_template = "fb_select(): prediction = \"new_cluster\" cannot relabel these random terms: %s.",
+    message_template = paste0(
+      "fb_select(): prediction = \"new_cluster\" cannot relabel these random ",
+      "terms: %s."
+    ),
     registered_in_adr = "SPEC v5 section 7",
     plan_field = "selection_plan",
     since_version = "0.13.0"

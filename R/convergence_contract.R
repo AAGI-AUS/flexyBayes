@@ -69,7 +69,11 @@
   }
   .fb_conv_item("fail", paste0(
     "the numerical confirmation failed",
-    if (length(reasons) > 0L) paste0(": ", paste(reasons, collapse = "; ")) else ""
+    if (length(reasons) > 0L) {
+      paste0(": ", paste(reasons, collapse = "; "))
+    } else {
+      ""
+    }
   ))
 }
 
@@ -100,7 +104,10 @@
   }
 
   if (all(states == "absent")) {
-    return(list(ok = NA, reasons = "this fit records no convergence diagnostics"))
+    return(list(
+      ok = NA,
+      reasons = "this fit records no convergence diagnostics"
+    ))
   }
 
   list(ok = TRUE, reasons = character(0))
@@ -141,7 +148,10 @@
   items <- list(
     mode_status = .fb_conv_check_mode_status(ms),
     mlik = .fb_conv_check_mlik(mlik),
-    numerical_confirm = .fb_conv_check_confirm(nc$pass, nc$reasons %||% character(0))
+    numerical_confirm = .fb_conv_check_confirm(
+      nc$pass,
+      nc$reasons %||% character(0)
+    )
   )
 
   # mode_status is required: without it there is no basis for TRUE. The

@@ -1009,22 +1009,21 @@ print.lgm_refusal <- function(x, ...) {
 # Check 8 -- Random-term type / format allowlist for the INLA
 # emit path.
 #
-# emit_inla()'s random-effect switch() recognises simple / ide /
-# id (mapped to INLA "iid"), spline (mapped to INLA "rw2"), and
-# simple_slope_uncor (two independent iid fields). vm / ped enter the allowlist *conditionally*: the
-# precision and pedigree_sparse_precision formats route through
-# INLA's f(model = "generic0", Cmatrix = Q) interface. The blocks format
-# (v0.3.10) is refused here. The emitter writes K independent
-# f(<var>_id_block_<k>, model = "generic0", Cmatrix = solve(V_k)) calls,
-# each with its own precision, which for two or more blocks is not the one
-# block-diagonal covariance the carrier represents; the one-block fit, which
-# equals the precision carrier of the same matrix, did not meet its brms
-# oracle within the tolerance fixed for it (U-VC-1). The emitter branch
-# stays for a forced override. The dense and chol formats stay refused on INLA (no
-# native interface for a user-supplied dense covariance or
-# Cholesky factor) and the user is pointed to the actionable
-# workaround (re-express as precision via solve(V), or route via
-# backend = "brms").
+# emit_inla()'s random-effect switch() recognises simple / ide / id (mapped to
+# INLA "iid"), spline (mapped to INLA "rw2"), and simple_slope_uncor (two
+# independent iid fields). vm / ped enter the allowlist *conditionally*: the
+# precision and pedigree_sparse_precision formats route through INLA's f(model =
+# "generic0", Cmatrix = Q) interface. The blocks format (v0.3.10) is refused
+# here. The emitter writes K independent f(<var>_id_block_<k>, model =
+# "generic0", Cmatrix = solve(V_k)) calls, each with its own precision, which
+# for two or more blocks is not the one block-diagonal covariance the carrier
+# represents; the one-block fit, which equals the precision carrier of the same
+# matrix, did not meet its brms oracle within the tolerance fixed for it
+# (U-VC-1). The emitter branch stays for a forced override. The dense and chol
+# formats stay refused on INLA (no native interface for a user-supplied dense
+# covariance or Cholesky factor) and the user is pointed to the actionable
+# workaround (re-express as precision via solve(V), or route via backend =
+# "brms").
 .lgm_check_random_term_inla_support <- function(fb) {
   bad_terms <- list()
   for (term in fb$random_terms) {
@@ -1174,14 +1173,14 @@ print.lgm_refusal <- function(x, ...) {
 
 # Check 9 -- Residual-term type allowlist for the INLA emit path.
 #
-# The INLA emit currently produces only `units`, the homogeneous residual.
-# That is a flexyBayes gap rather than an INLA one: INLA carries a residual
-# variance per section through its multiple-likelihood interface (a matrix
-# response with family = rep("gaussian", k)), verified 2026-09-09 against
-# a known truth. Until the emit branch lands, only `units` passes. A heterogeneous residual -- dsum(~ units | f), at(f):units
-# -- is emitted by brms as distributional regression on sigma; a separable
-# autoregressive residual is refused by name before the gate sees it, since
-# the field that would fit it belongs on the random side.
+# The INLA emit currently produces only `units`, the homogeneous residual. That
+# is a flexyBayes gap rather than an INLA one: INLA carries a residual variance
+# per section through its multiple-likelihood interface (a matrix response with
+# family = rep("gaussian", k)), verified 2026-09-09 against a known truth. Until
+# the emit branch lands, only `units` passes. A heterogeneous residual -- dsum(~
+# units | f), at(f):units -- is emitted by brms as distributional regression on
+# sigma; a separable autoregressive residual is refused by name before the gate
+# sees it, since the field that would fit it belongs on the random side.
 .lgm_check_residual_term_inla_support <- function(fb) {
   allowed <- .inla_residual_term_type_allowlist()
   bad <- character(0)

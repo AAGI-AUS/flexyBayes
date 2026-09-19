@@ -15,7 +15,8 @@
 # weighted regression on the ESTIMATED EFFECTS of that term rather than on
 # the observations:
 #
-#   gamma-hat = argmin (u_k - T_k gamma)' Omega_k^-1 (u_k - T_k gamma) + P(gamma)
+#   gamma-hat = argmin (u_k - T_k gamma)' Omega_k^-1 (u_k - T_k gamma)
+#     + P(gamma)
 #
 # with rows dropping from n to the number of levels. For the deposit that is
 # 3,427 instead of 73,341.
@@ -86,9 +87,13 @@
   key <- .fb_sel_term_key(object, term, d)
   d[[".fb_level"]] <- factor(key)
 
-  fixed <- stats::formula(object$fb$source_formula %||% NULL)
+  stats::formula(object$fb$source_formula %||% NULL)
   # Rebuild stage 1 from the base's own fixed part plus the absorbed term.
-  rhs <- vapply(object$fb$fixed_terms, function(t) t$label %||% t$var, character(1L))
+  rhs <- vapply(
+    object$fb$fixed_terms,
+    function(t) t$label %||% t$var,
+    character(1L)
+  )
   rhs <- rhs[nzchar(rhs)]
   other_random <- Filter(
     function(t) !identical(.fb_sel_term_label(t), term),
@@ -317,7 +322,8 @@
       if (balanced) character(0) else "omega_diagonal_approximation",
       # A shrunk stage 1 answers a different question by a scalar. Recorded,
       # so a coefficient from it cannot be paired with builder A's unnoticed.
-      if (identical(absorb, "random")) "shrunk_stage_one_effects" else character(0)
+      if (identical(absorb, "random")) "shrunk_stage_one_effects" else
+        character(0)
     ),
     admissibility = adm
   )
@@ -335,7 +341,9 @@
       identical(t$type, "nested") &&
         identical(paste0(t$outer, ":", t$inner), term)
     ) {
-      return(paste0(as.character(d[[t$outer]]), ":", as.character(d[[t$inner]])))
+      return(
+        paste0(as.character(d[[t$outer]]), ":", as.character(d[[t$inner]]))
+      )
     }
   }
   character(0)
