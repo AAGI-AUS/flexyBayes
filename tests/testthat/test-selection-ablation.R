@@ -288,6 +288,31 @@ test_that("dropping the only declared block leaves the protected model the bench
   expect_identical(nrow(sel$ablation$supports), 0L)
 })
 
+test_that("a column aliased only with the dropped block is estimable on the path without it", {
+  skip_if_not_installed("glmnet")
+  fba_quiet()
+  d <- fba_data()
+  # z7 is exactly the signal of the first block, so every fold's training
+  # rows alias it with z1, z2 and z3, written before it.
+  d$z7 <- d$z1 - 0.8 * d$z2 + 0.6 * d$z3
+  sel <- fba_select(
+    d,
+    penalty = fb_penalty(
+      term(z1, z2, z3) ~ laplace(scale = 0.15),
+      term(z4, z5, z6, z7) ~ laplace(scale = 0.15)
+    ),
+    candidates = ~ z1 + z2 + z3 + z4 + z5 + z6 + z7
+  )
+  labels <- vapply(sel$folds, function(f) f$label, character(1L))
+  dropped <- sel$certificate$design$candidate_space$dropped
+  expect_setequal(dropped$fold[dropped$column == "z7"], labels)
+  # Without the first block, z7 is identified on every fold and carries the
+  # signal, so every fold's chosen support holds it.
+  sup <- sel$ablation$supports
+  expect_setequal(sup$fold[sup$block == "block_1" & sup$column == "z7"],
+                  labels)
+})
+
 # --- (v) accessors, print and plan ----------------------------------------- #
 
 test_that("glance, print and tidy state the ablation and that it is not nested", {
@@ -340,6 +365,46 @@ test_that("plan = TRUE counts the ablation's penalised fits and engine refits", 
 
   none <- fba_select(fba_data(), plan = TRUE, ablation = FALSE)
   expect_null(none$selection$ablation)
+
+  # With the Bayesian refit, one engine refit per fold for the valuation and
+  # one more per fold for each block.
+  refit <- fb_select(
+    fba_stub_base(fba_data()), fba_candidates,
+    penalty = fba_two_blocks(),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~site, v = 6L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 1L, plan = TRUE,
+    refit = list(method = "bayes"), ablation = TRUE
+  )$selection
+  expect_identical(refit$ablation$engine_refits, 12L)
+  expect_identical(refit$cost$n_fits, 6L * 3L + 1L)
+  out <- paste(utils::capture.output(print(structure(
+    list(selection = refit), class = c("fb_select_plan", "list")
+  ))), collapse = "\n")
+  expect_match(out, "12 engine refits", fixed = TRUE)
+})
+
+test_that("with the Bayesian refit, the ablation's refits are held to the budget before the first", {
+  skip_if_not_installed("glmnet")
+  fba_quiet()
+  # The stub base records no run time, so each refit is costed at one
+  # second: 6 folds x (the valuation + 2 blocks) = 18 s, over a budget of
+  # 10 s that the valuation alone (6 s) would meet.
+  err <- tryCatch(
+    fb_select(
+      fba_stub_base(fba_data()), fba_candidates,
+      penalty = fba_two_blocks(),
+      workflow = "penalized_optimizer",
+      resamples = fb_resamples(unit = ~site, v = 6L),
+      decision = fb_decision(method = "full", metric = "rmse"),
+      seed = 1L, budget = 10,
+      refit = list(method = "bayes"), ablation = TRUE
+    ),
+    error = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_refusal_penalty_runtime_budget_exceeded")
+  expect_match(conditionMessage(err), "18 engine refits", fixed = TRUE)
 })
 
 # --- (vi) refusals --------------------------------------------------------- #
@@ -451,6 +516,17 @@ test_that("with the Bayesian refit, the paired elpd difference equals a hand com
     ]
     expect_identical(stored$unit, names(full))
     expect_identical(stored$elpd_difference, unname(difference))
+  }
+  # Each ablated refit held the supports its path chose.
+  for (block in c("block_1", "block_2")) {
+    held <- sel$ablation$value_supports
+    held <- held[held$block == block, ]
+    chosen <- sel$ablation$supports
+    chosen <- chosen[chosen$block == block, ]
+    expect_identical(
+      sort(paste(held$fold, held$column)),
+      sort(paste(chosen$fold, chosen$column))
+    )
   }
   # Each ablated refit ran on the value contract of the full valuation.
   expect_identical(

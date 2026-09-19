@@ -481,6 +481,10 @@
     elpd_ablated = numeric(0), elpd_difference = numeric(0),
     stringsAsFactors = FALSE
   )
+  out$value_supports <- data.frame(
+    block = character(0), fold = character(0), column = character(0),
+    stringsAsFactors = FALSE
+  )
   rownames(out$units) <- NULL
   rownames(out$rows) <- NULL
   rownames(out$supports) <- NULL
@@ -526,6 +530,13 @@
       elpd_full = paired$units$elpd,
       elpd_ablated = paired$units$elpd_against,
       elpd_difference = paired$units$difference,
+      stringsAsFactors = FALSE
+    ))
+    # The columns each fold's refit held, read off the refit itself.
+    ablation$value_supports <- rbind(ablation$value_supports, data.frame(
+      block = rep(group, NROW(ablated$supports)),
+      fold = as.character(ablated$supports$fold),
+      column = as.character(ablated$supports$column),
       stringsAsFactors = FALSE
     ))
     in_rows <- which(ablation$rows$block == group)
