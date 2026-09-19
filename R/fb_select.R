@@ -2257,7 +2257,6 @@
   arms <- list()
   refusals <- character(0)
   stability_error <- NULL
-  random <- .fb_sel_benchmark_random(base$fb)
 
   # The fold covariance: the REML plug-in over the terms it builds, or the
   # base model refitted on each fold (R/selection_cov_model.R), which is
