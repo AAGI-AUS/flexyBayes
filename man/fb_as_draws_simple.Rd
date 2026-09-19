@@ -19,8 +19,7 @@ fb_as_draws_simple(fit, ...)
 \item{fit}{A model fit object carrying a posterior, dispatched on by
 the methods listed above.}
 
-\item{...}{Method-specific arguments, such as \code{n_samples} for the
-INLA method.}
+\item{...}{Method-specific arguments: \code{n_samples} for the INLA method.}
 }
 \value{
 A named list of numeric vectors, one element per parameter,

@@ -17,8 +17,7 @@
 #'
 #' @param fit A model fit object carrying a posterior, dispatched on by
 #'   the methods listed above.
-#' @param ... Method-specific arguments, such as `n_samples` for the
-#'   INLA method.
+#' @param ... Method-specific arguments: `n_samples` for the INLA method.
 #' @returns A named list of numeric vectors, one element per parameter,
 #'   each element holding that parameter's posterior draws.
 #' @examples
