@@ -595,12 +595,15 @@ test_that("the entrance path places a column at its median first entry across it
   #       both, at 0.3 and 0.1                 largest of two: 0.3
   #   z5  enters on two folds in four, at
   #       0.8 and 0.2                          second largest of four: 0.2
+  #   z6  enters at 0.5 on every fold          0.5, tied with z1, so the
+  #                                            two share one label
   first <- list(
     z1 = c(0.8, 0.5, 0.5, 0.2),
     z2 = c(0.8, NA, NA, NA),
     z3 = c(NA, NA, NA, NA),
     z4 = c(0.3, 0.1, NA, NA),
-    z5 = c(0.8, NA, 0.2, NA)
+    z5 = c(0.8, NA, 0.2, NA),
+    z6 = c(0.5, 0.5, 0.5, 0.5)
   )
   history <- do.call(rbind, lapply(names(first), function(column) {
     data.frame(
@@ -631,12 +634,15 @@ test_that("the entrance path places a column at its median first entry across it
     unlink(path)
   }, add = TRUE)
   plotted <- plot(x, type = "entrance_path")
-  expect_identical(plotted$entries$variable, c("z1", "z4", "z5"))
-  expect_identical(plotted$entries$entry_s, c(0.5, 0.3, 0.2))
-  expect_identical(plotted$entries$n_folds_available, c(4L, 2L, 4L))
-  expect_identical(plotted$entries$n_folds_entered, c(4L, 2L, 2L))
+  expect_identical(plotted$entries$variable, c("z1", "z6", "z4", "z5"))
+  expect_identical(plotted$entries$entry_s, c(0.5, 0.5, 0.3, 0.2))
+  expect_identical(plotted$entries$n_folds_available, c(4L, 4L, 2L, 4L))
+  expect_identical(plotted$entries$n_folds_entered, c(4L, 4L, 2L, 2L))
   # Each label sits on a grid point, so its ordinate is that point's score.
-  expect_identical(plotted$entries$score, c(1.6, 1.55, 1.57))
+  expect_identical(plotted$entries$score, c(1.6, 1.6, 1.55, 1.57))
+  # Tied entries are drawn as one label, not printed over each other.
+  expect_identical(plotted$labels$label, c("z1, z6", "z4", "z5"))
+  expect_identical(plotted$labels$entry_s, c(0.5, 0.3, 0.2))
 })
 
 test_that("the entrance path names the missing coordinate of a penalty with no finite anchor", {

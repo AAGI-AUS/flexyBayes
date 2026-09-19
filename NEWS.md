@@ -10,10 +10,11 @@ family, penalty family, engine or exported function is added.
   `s = lambda / lambda_max`, from the strongest penalty to the weakest, and
   labels each candidate at its median first entry: the point by which at least
   half of the folds that could estimate it had admitted it. A candidate
-  admitted on fewer than half of those folds is not labelled. The ordinate is
-  the mean of the per-unit scores, for example RMSE, and is not an inclusion
-  probability. `ridge()` and `exclusive_lasso()` have no finite null anchor and
-  so no `s` coordinate, and the display says so.
+  admitted on fewer than half of those folds is not labelled, and candidates
+  entering at the same point share one label. The ordinate is the mean of the
+  per-unit scores, for example RMSE, and is not an inclusion probability.
+  `ridge()` and `exclusive_lasso()` have no finite null anchor and so no `s`
+  coordinate, and the display says so.
 * `augment(fit, type = "assessment_predictions")` returns the stored
   out-of-fold predictions behind the optimiser's decision: one row per
   assessment row and repeat, with the row's position in the data, its fold,

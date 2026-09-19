@@ -4056,7 +4056,8 @@ augment.fb_select <- function(
 #'   out-of-fold loss against `s = lambda / lambda_max` and labels each
 #'   candidate at its median first entry: the point on `s` by which at least
 #'   half of the folds that could estimate it had admitted it. A candidate
-#'   admitted on fewer than half of those folds is not labelled. The ordinate
+#'   admitted on fewer than half of those folds is not labelled, and
+#'   candidates entering at the same point share one label. The ordinate
 #'   is the mean over scoring units of each unit's score, not an inclusion
 #'   probability. It is available for optimiser workflows and optimiser
 #'   benchmark arms whose penalty has a finite null anchor, which excludes
@@ -4308,12 +4309,31 @@ plot.fb_select <- function(x,
   if (is.finite(selected_s)) {
     graphics::abline(v = selected_s, lty = 2L, col = "#0072B2")
   }
-  graphics::points(entries$entry_s, entries$score, pch = 21L, bg = "white")
-  graphics::text(
-    entries$entry_s, entries$score, labels = entries$variable,
-    pos = 3L, cex = label_cex, xpd = NA
+  # Candidates entering at the same point share one label; drawn one by one
+  # they would overprint each other.
+  labels <- data.frame(
+    entry_s = numeric(0), score = numeric(0), label = character(0),
+    stringsAsFactors = FALSE
   )
-  invisible(list(scores = as.data.frame(scores), entries = entries))
+  if (nrow(entries) > 0L) {
+    labels <- stats::aggregate(
+      entries$variable,
+      list(entry_s = entries$entry_s, score = entries$score),
+      paste,
+      collapse = ", "
+    )
+    names(labels)[[3L]] <- "label"
+    labels <- labels[order(labels$entry_s, decreasing = TRUE), , drop = FALSE]
+    rownames(labels) <- NULL
+    graphics::points(labels$entry_s, labels$score, pch = 21L, bg = "white")
+    graphics::text(
+      labels$entry_s, labels$score, labels = labels$label,
+      pos = 3L, cex = label_cex, xpd = NA
+    )
+  }
+  invisible(list(
+    scores = as.data.frame(scores), entries = entries, labels = labels
+  ))
 }
 
 

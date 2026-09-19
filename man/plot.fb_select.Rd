@@ -18,7 +18,8 @@
 out-of-fold loss against \code{s = lambda / lambda_max} and labels each
 candidate at its median first entry: the point on \code{s} by which at least
 half of the folds that could estimate it had admitted it. A candidate
-admitted on fewer than half of those folds is not labelled. The ordinate
+admitted on fewer than half of those folds is not labelled, and
+candidates entering at the same point share one label. The ordinate
 is the mean over scoring units of each unit's score, not an inclusion
 probability. It is available for optimiser workflows and optimiser
 benchmark arms whose penalty has a finite null anchor, which excludes
