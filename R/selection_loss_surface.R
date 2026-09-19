@@ -268,7 +268,11 @@
       # Strong penalty on the left, alpha rising away from the viewer.
       camera = list(eye = list(x = 0.6, y = -2.0, z = 0.7))
     ),
-    legend = list(x = 0, y = 1)
+    # One row under the subtitle, clear of it and of the axes.
+    legend = list(
+      orientation = "h", x = 0.5, xanchor = "center", y = 0.94,
+      yanchor = "top"
+    )
   )
   attr(widget, "values") <- list(
     surface = surface,
