@@ -217,6 +217,7 @@ test_that("every refusal this builder can throw is registered", {
 test_that("absorbed stage-1 effects agree with the one-stage route; shrunk ones do not", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
 
   # The reduction cites the two-stage proposition, which says the term is
   # "absorbed into X0" -- absorbed means FIXED. Reading ranef() instead reads

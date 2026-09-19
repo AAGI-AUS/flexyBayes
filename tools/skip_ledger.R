@@ -12,6 +12,7 @@
 #   testthat::skip_on_cran()                         skip_on_cran()
 #   testthat::skip_on_ci()                           skip_on_ci()
 #   project-local helpers .skip_if_no_<pkg>()        skip_if_no_<pkg>()
+#   the long tier's skip_if_not_long_tier()
 #
 # Reason taxonomy (five audit classes from
 # feedback_v0.3.7_to_v0.4.0_2026-05-25.md plus two in-portfolio extensions
@@ -72,6 +73,11 @@
   }
   if (grepl("^skip_if_no_", call_name)) {
     return(.classify_install_skip(call_name, reason_text))
+  }
+  # The long tier's helper (tests/testthat/helper-test-tiers.R): skipped for
+  # time unless FLEXYBAYES_RUN_LONG is "true"
+  if (call_name == "skip_if_not_long_tier") {
+    return("cran_ci_time_budget")
   }
 
   # Reason-text keyword routing ----------------------------------------

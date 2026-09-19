@@ -155,6 +155,7 @@ test_that("the sampler-argument note names the engine and is silenceable", {
 test_that("two brms fits under one seed return identical draws", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_passthrough_data()
 
   # Live brms fits are wrapped as the rest of the suite wraps them: brms's

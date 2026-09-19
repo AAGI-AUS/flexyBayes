@@ -996,8 +996,78 @@ LINT_BASELINE <- 0L
   # R CMD check failed on all six platforms for the same reason.
   list(id = "D10", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "suite green with the heavy Suggests absent, as CI runs it",
-       command = "tools/check_suggests_absent.sh")
+       command = "tools/check_suggests_absent.sh"),
+  # Added 2026-09-19 with the 0.14.0 release plan. The long test tier
+  # (tests/testthat/helper-test-tiers.R) keeps a contributor's local
+  # devtools::check() short, and the release suite must still run it. The
+  # record is the one tools/run_test_suite.R writes, named by the
+  # environment variable FLEXYBAYES_SUITE_RECORD; with no record the
+  # criterion fails rather than passing unevidenced.
+  list(id = "D11", cost = "full", owner = "maintainer", blocking = TRUE,
+       what = "every test tier ran in the recorded release suite",
+       command = paste("FLEXYBAYES_RUN_LONG=true Rscript",
+                       "tools/run_test_suite.R <record>, then",
+                       "FLEXYBAYES_SUITE_RECORD=<record>"),
+       check = function() {
+         .dod_tier_check(Sys.getenv("FLEXYBAYES_SUITE_RECORD"))
+       })
 )
+
+# Every top-level test_that() block whose body has skip_if_not_long_tier() as
+# one of its statements, as file and description: the blocks the long tier
+# holds back by default. A call nested deeper, as in the helper's own test,
+# does not tag a block.
+.dod_long_tier_blocks <- function() {
+  files <- list.files("tests/testthat", pattern = "^test-.*\\.R$",
+                      full.names = TRUE)
+  tag <- quote(skip_if_not_long_tier())
+  out <- data.frame(file = character(0), test = character(0))
+  for (f in files) {
+    for (e in parse(f, keep.source = FALSE)) {
+      if (!is.call(e) || length(e) < 3L ||
+            !deparse(e[[1L]]) %in% c("test_that", "testthat::test_that") ||
+            !is.character(e[[2L]])) {
+        next
+      }
+      code <- e[[3L]]
+      stmts <- if (is.call(code) && identical(code[[1L]], as.name("{"))) {
+        as.list(code)[-1L]
+      } else {
+        list()
+      }
+      if (any(vapply(stmts, identical, logical(1), tag))) {
+        out <- rbind(out, data.frame(file = basename(f), test = e[[2L]]))
+      }
+    }
+  }
+  out
+}
+
+# D11's check on a suite record. It fails when a block was skipped by the
+# long-tier gate, which is what a release run with FLEXYBAYES_RUN_LONG unset
+# records, and when a block tagged for the long tier is absent from the
+# record, which is what a partial run or a record of another tree shows.
+.dod_tier_check <- function(record) {
+  if (!nzchar(record) || !file.exists(record)) {
+    return(.dod_ok(FALSE, paste0("no suite record at '", record,
+                                 "'; set FLEXYBAYES_SUITE_RECORD")))
+  }
+  # quote = "": test descriptions carry quotation marks
+  tab <- utils::read.delim(record, quote = "", stringsAsFactors = FALSE)
+  if (!nrow(tab) || !all(c("file", "test", "skip_reason") %in% names(tab))) {
+    return(.dod_ok(FALSE, "record has no blocks or no skip_reason column"))
+  }
+  held <- grepl("FLEXYBAYES_RUN_LONG", tab$skip_reason, fixed = TRUE)
+  tagged <- .dod_long_tier_blocks()
+  key_tagged <- paste(tagged$file, gsub("[\t\r\n]", " ", tagged$test))
+  absent <- key_tagged[!key_tagged %in% paste(tab$file, tab$test)]
+  .dod_ok(
+    !any(held) && length(absent) == 0L,
+    sprintf(paste0("%d of %d blocks skipped by the long-tier gate; ",
+                   "%d of %d long-tier blocks absent from the record"),
+            sum(held), nrow(tab), length(absent), length(key_tagged))
+  )
+}
 
 # ---------------------------------------------------------------------
 # Section E - not the machine's to decide. Reported, never auto-passed.

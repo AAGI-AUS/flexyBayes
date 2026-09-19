@@ -89,6 +89,7 @@
 # ---------------------------------------------------------------- #
 
 test_that("plot.flexybayes(type = 'effects') numerical inputs are stable", {
+  skip_if_not_long_tier()
   .check_brms_plot_prereqs()
   fit <- .cached_fit()
 

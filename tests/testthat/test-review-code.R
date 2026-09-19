@@ -133,6 +133,7 @@ test_that("cat_code(rev) emits and returns the stored code", {
 # ---------------------------------------------------------------- #
 
 test_that("proceed(rev) advances into a fit and caches the result", {
+  skip_if_not_long_tier()
   .check_brms_review_prereqs()
   d <- mk_review_data()
 

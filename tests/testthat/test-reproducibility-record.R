@@ -426,6 +426,7 @@ test_that("an INLA record missing any field fails the accessor", {
 
 test_that("a brms fit records its versions, threads and a repeatable seed", {
   .vr_skip_brms()
+  skip_if_not_long_tier()
   .vr_silence()
   d <- .vr_brms_data()
 
@@ -460,6 +461,7 @@ test_that("a brms fit records its versions, threads and a repeatable seed", {
 test_that("every INLA fit an entry point returns carries the record", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   .vr_silence()
   d <- .vr_inla_data()
 
@@ -570,6 +572,7 @@ test_that("every INLA fit an entry point returns carries the record", {
 
 test_that("every brms fit an entry point returns carries the record", {
   .vr_skip_brms()
+  skip_if_not_long_tier()
   .vr_silence()
   d <- .vr_brms_data()
 

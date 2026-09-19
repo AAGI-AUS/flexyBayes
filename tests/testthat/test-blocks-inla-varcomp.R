@@ -95,6 +95,7 @@ test_that("the precision carrier the refusal names fits the covariance with one 
   skip_if_not_installed("INLA")
   skip_if_not_installed("Matrix")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fx <- .vc1_fixture()
   Q_named <- Matrix::bdiag(lapply(fx$blocks2, solve))

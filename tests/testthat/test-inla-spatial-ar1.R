@@ -259,6 +259,7 @@ test_that("canonical names: rho_row / rho_col / sd_spatial resolve", {
   skip_on_cran()
   skip_on_ci()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(3L)
   d <- .spatial_sim(7L, 6L, 0.7, 0.4, 1, 0.5)

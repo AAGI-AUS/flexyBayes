@@ -139,6 +139,7 @@ test_that("a fit with no field does not claim one", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pb_silence()
   joined <- paste(
     utils::capture.output(summary(.pb_brms_fit())),

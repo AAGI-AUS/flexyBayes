@@ -41,6 +41,7 @@ test_that("a heritability agrees with lme4's REML fit of the same model", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   tab <- .vp_fixture()
@@ -64,6 +65,7 @@ test_that("the interval respects the boundary the delta method does not", {
   # boundary it crosses one.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   # A genotype variance close to zero -- the case that makes a delta-method
@@ -97,6 +99,7 @@ test_that("the functional's draws are continuous, not INLA's integration grid", 
   # joint hyperparameter posterior instead.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture())
   d <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
@@ -112,6 +115,7 @@ test_that("the functional's draws are continuous, not INLA's integration grid", 
 test_that("draws = TRUE returns one column per functional", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture(n_g = 20L, n_rep = 4L))
   d <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2),
@@ -128,6 +132,7 @@ test_that("a component the fit does not carry refuses and lists what it has", {
   # refusing over.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture(n_g = 20L, n_rep = 4L))
 
@@ -143,6 +148,7 @@ test_that("a component the fit does not carry refuses and lists what it has", {
 test_that("vpredict refuses an argument that is not a two-sided formula", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture(n_g = 20L, n_rep = 4L))
   expect_error(vpredict(fit), "at least one functional")
@@ -156,6 +162,7 @@ test_that("vpredict refuses an argument that is not a two-sided formula", {
 test_that("a functional that is not one number per draw refuses", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   fit <- .vp_fit(.vp_fixture(n_g = 20L, n_rep = 4L))
   expect_error(
@@ -170,6 +177,7 @@ test_that("the same functional reads the same on either engine", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_convergence_warning = TRUE

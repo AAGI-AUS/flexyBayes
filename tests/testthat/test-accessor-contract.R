@@ -19,6 +19,7 @@
 test_that("accessor contract: pinned column names/types on an INLA fit", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
 
   set.seed(20260826L)
   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))
@@ -92,6 +93,7 @@ test_that("accessor contract: pinned column names/types on an INLA fit", {
 test_that("accessor contract: pinned column names/types on a brms fit", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
 
   set.seed(20260826L)
   d <- data.frame(y = rnorm(60), x = rnorm(60), g = factor(rep(1:6, 10)))

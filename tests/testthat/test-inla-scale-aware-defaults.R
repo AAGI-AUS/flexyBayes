@@ -88,6 +88,7 @@
 test_that("an unstated block SD takes the bounded default on the per-row route", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   d <- .sad_blocks()
@@ -149,6 +150,7 @@ test_that("a slope SD and its coefficient do not move with the covariate's units
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   reml <- lme4::lmer(
@@ -217,6 +219,7 @@ test_that("a non-Gaussian coefficient does not move when its covariate shrinks",
   # scale is an engine limit, not a prior, and is not asserted here.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   count_design <- function(family) {

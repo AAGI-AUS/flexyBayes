@@ -101,6 +101,7 @@
 test_that("T1: no prior input goes unused without a reason, on every route", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   d <- .man_data()
 
   per_row <- .man_strict(flexybayes(
@@ -197,6 +198,7 @@ test_that("T1: no prior input goes unused without a reason, on every route", {
 test_that("T2: every slot the package emitted names the input it came from", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   d <- .man_data()
   fits <- .man_strict(.man_inla_fits(d))
 
@@ -213,6 +215,7 @@ test_that("T2: every slot the package emitted names the input it came from", {
 test_that("T3: the emitted slots are the ones INLA reports, and nothing else", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   d <- .man_data()
   fits <- .man_strict(.man_inla_fits(d))
 
@@ -484,6 +487,7 @@ test_that("T7: a live brms fit carries a manifest that agrees with brms", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   d <- .man_data()
   fit <- .man_strict(flexybayes(
     fixed = y ~ x, random = ~ g, data = d, backend = "brms",
@@ -505,6 +509,7 @@ test_that("T7: a live brms fit carries a manifest that agrees with brms", {
 test_that("T8: the emitter paths make no partial match of a list name", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   d <- .man_data()
   expect_no_error(.man_strict(flexybayes(
     fixed = y ~ 1, random = ~ a:b:cc, data = d, backend = "inla",

@@ -44,6 +44,7 @@ test_that("as_draws_df() puts INLA variance components on the SD scale, not prec
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   silence_notes()
 
   # True sigma_e = 2.0 and sd_g = 1.5 are both clearly > 1, so the
@@ -187,6 +188,7 @@ test_that("positional and named prior arguments parse to identical specs", {
 test_that("predict() returns one value per row on an INLA fit written in bar grammar", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   silence_notes()
 
   set.seed(404L)

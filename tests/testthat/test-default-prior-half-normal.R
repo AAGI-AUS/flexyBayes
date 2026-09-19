@@ -342,6 +342,7 @@ test_that("the default is a half-normal whose scale is the former bound over the
 test_that("every default slot on INLA carries the closed-form half-normal, by model class", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     # This test reads prior manifests, not posterior field identification.
@@ -471,6 +472,7 @@ test_that("the default reaches INLA and brms with the same scale on every slot",
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   f <- .hn1_data()
 
@@ -539,6 +541,7 @@ test_that("john.alpha rep + rep:block fits on INLA under the default, REML insid
   skip_if_not_installed("INLA")
   skip_if_not_installed("agridat")
   skip_if_not_installed("lme4")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- agridat::john.alpha
 

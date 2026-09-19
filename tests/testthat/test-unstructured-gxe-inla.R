@@ -92,6 +92,7 @@ test_that("us() beyond five levels is refused on INLA and names fa() as well", {
 test_that("brms fits us(f):g with one SD per level and the correlations", {
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   sd_by_env <- c(0.8, 1.2, 0.5)

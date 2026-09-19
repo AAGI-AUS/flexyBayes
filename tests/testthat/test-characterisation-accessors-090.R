@@ -157,6 +157,7 @@ test_that("coef() on an INLA fit is the fixed-effect posterior means", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .char090_silence()
   fit <- .char090_inla_fit()
   beta <- stats::coef(fit)

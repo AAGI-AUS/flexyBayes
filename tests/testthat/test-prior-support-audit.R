@@ -238,6 +238,7 @@ test_that("a standardised fit reports standard deviations in response units", {
 test_that("the N30 design fits inside every bound or refuses by name", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   .psa_silence()
   d <- .psa_n30_data()
 
@@ -278,6 +279,7 @@ test_that("the N30 design fits inside every bound or refuses by name", {
 test_that("every INLA fit an entry point returns has been through the audit", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   .psa_silence()
   d <- .psa_gaussian_data()
 

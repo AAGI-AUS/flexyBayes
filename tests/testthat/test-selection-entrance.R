@@ -757,6 +757,7 @@ test_that("the stability settings are declared, printed, recorded and costed in 
 
 test_that("stability separates the planted columns from noise as the signal grows", {
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fben_quiet()
   # Separation is the smallest stability of a planted column minus the
   # largest of a noise column, counted in subsamples: a frequency is a

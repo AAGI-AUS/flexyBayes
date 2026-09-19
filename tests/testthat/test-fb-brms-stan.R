@@ -246,6 +246,7 @@ test_that("fb(backend='brms'): Gaussian RI fits cleanly", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
 
   d <- mk_brms_stan_gaussian_data()
   fit <- suppressMessages(suppressWarnings(
@@ -283,6 +284,7 @@ test_that("fb(backend='brms'): Bernoulli RI fits cleanly", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
 
   d <- mk_brms_stan_bernoulli_data()
   fit <- suppressMessages(suppressWarnings(

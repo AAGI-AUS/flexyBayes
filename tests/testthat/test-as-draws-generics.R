@@ -98,6 +98,7 @@ test_that("as_draws_df() returns canonical names on an INLA fit", {
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
   fit <- .adg_inla_fit()
 
@@ -119,6 +120,7 @@ test_that("as_draws_df() returns canonical names on a brms fit", {
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
   fit <- .adg_brms_fit()
 
@@ -136,6 +138,7 @@ test_that("both engines answer with the same parameter tokens", {
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
 
   set.seed(4242L)
@@ -197,6 +200,7 @@ test_that("brms draws match the seam exactly, INLA hyperparameters do", {
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
 
   if (requireNamespace("brms", quietly = TRUE)) {
@@ -245,6 +249,7 @@ test_that("as_draws() and as_draws_matrix() derive from the same frame", {
   skip_if_not_installed("posterior")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .adg_silence()
   fit <- .adg_inla_fit()
 

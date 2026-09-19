@@ -147,6 +147,7 @@
 }
 
 test_that("flexybayes fixed effects agree with lme4 on sleepstudy (primary, brms)", {
+  skip_if_not_long_tier()
   # Weakly-informative fixed-effect prior: the default
   # `prior_fixed_sd = 100` (R/flexybayes.R) flows uniformly to the
   # intercept, factor contrasts, continuous slopes, interaction and

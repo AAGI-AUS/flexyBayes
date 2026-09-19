@@ -142,6 +142,7 @@ test_that("every family and link pair is emitted as that link or refused by name
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_auto_fallback_note = TRUE

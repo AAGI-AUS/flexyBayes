@@ -254,6 +254,7 @@ test_that("the base-model and REML plug-in routes agree on the support and withi
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbcm_quiet()
   d <- fbcm_site_data()
   base <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
@@ -282,6 +283,7 @@ test_that("a random slope runs end to end, with V as the model defines it", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbcm_quiet()
   d <- fbcm_site_data()
   base <- flexybayes(y ~ x + (x || site), data = d, backend = "inla",
@@ -320,6 +322,7 @@ test_that("diag(f):g runs end to end, with one variance per level of f", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbcm_quiet()
   d <- .fb_sel_with_seed(32L, {
     out <- expand.grid(
@@ -368,6 +371,7 @@ test_that("a single-trial ar1(row):ar1(col) field runs end to end, and V_S|T is 
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbcm_quiet()
   n_row <- 8L
   n_col <- 6L
@@ -433,6 +437,7 @@ test_that("vm() and ped() precision carriers run end to end, with V = s^2 Z K Z'
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbcm_quiet()
   levs <- sprintf("g%02d", 1:16)
   fixture <- .fb_sel_with_seed(34L, {
@@ -726,6 +731,7 @@ test_that("a brms base is refitted on brms, the training rows only", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbcm_quiet()
   d <- fbcm_site_data()
   base <- suppressWarnings(flexybayes(

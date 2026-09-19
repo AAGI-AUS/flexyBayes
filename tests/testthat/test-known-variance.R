@@ -322,6 +322,7 @@ test_that("INLA and brms recover the variances and agree with each other and wit
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_stage2()
   n <- nrow(d)
@@ -389,6 +390,7 @@ test_that("a vector of zeros reproduces the fit without it on both engines", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_stage2()
   zeros <- rep(0, nrow(d))
@@ -415,6 +417,7 @@ test_that("weights and a known variance compose as sigma^2 / w + v on both engin
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_stage2()
   w <- .fb_sel_with_seed(11L, stats::runif(nrow(d), 0.5, 2))
@@ -451,6 +454,7 @@ test_that("backend = \"auto\", review_code then proceed(), and a separate proces
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_stage2()
   inla <- flexybayes(ybar ~ variety, random = ~trial, data = d,
@@ -552,6 +556,7 @@ test_that("update() re-issues the known variance with the rows it refits", {
 test_that("fb_select() whitens with sigma^2 + v, dense and block by block, and scores equal GLS written out", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_select_data()
   base <- flexybayes(ybar ~ variety, random = ~trial, data = d,
@@ -608,6 +613,7 @@ test_that("each fold refit is handed the known variance of the rows it fits", {
 test_that("a brms base carries its known variance through fb_select() end to end", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_select_data()
   base <- suppressWarnings(flexybayes(
@@ -682,6 +688,7 @@ test_that("the grouped ablation of a known-variance base scores the protected mo
   skip_on_cran()
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   fbkv_quiet()
   d <- fbkv_select_data()
   base <- flexybayes(ybar ~ variety, random = ~trial, data = d,

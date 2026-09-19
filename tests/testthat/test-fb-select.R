@@ -257,6 +257,7 @@ test_that("a brms base carrying the same term stays admitted", {
   # would withdraw a capability the measurement does not touch.
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- fb_sel_slope_data()
   base <- suppressWarnings(suppressMessages(fb_brms(

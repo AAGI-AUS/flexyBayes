@@ -82,6 +82,7 @@ test_that("prior_summary() reports the auto-default on a live INLA fit", {
 test_that("prior_summary() reports what reached Stan on a live brms fit", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_orphan_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(
@@ -112,6 +113,7 @@ test_that("prior_summary() reports what reached Stan on a live brms fit", {
 test_that("prior_summary() names the retarget on a distributional fit", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_orphan_met_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(

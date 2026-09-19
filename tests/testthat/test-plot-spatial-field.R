@@ -146,6 +146,7 @@
 test_that("each drawn cell is the stored field mean at the node the engine indexed that plot to", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   .fbsf_silence()
   .fbsf_null_device()
   fit <- .fbsf_field_fit()
@@ -210,6 +211,7 @@ test_that("the drawn field is the posterior mean on the response scale, read aga
 test_that("one field per trial draws the trial asked for", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   .fbsf_silence()
   .fbsf_null_device()
   fit <- .fbsf_at_fit()

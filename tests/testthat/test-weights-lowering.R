@@ -97,6 +97,7 @@ test_that("INLA weighted fixed effects and sigma match lme4::lmer(weights=)", {
 test_that("brms weighted fixed effects and sigma match lme4::lmer(weights=)", {
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .wl_dat()
   lm4 <- lme4::lmer(y ~ x + (1 | g), data = d, weights = w)

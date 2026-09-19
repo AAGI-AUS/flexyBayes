@@ -221,6 +221,7 @@ test_that("a large-scale response fits on INLA through backend, pin and auto", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d_big <- .ct_sleepstudy(.ct_multiplier)
   d_ref <- d_big

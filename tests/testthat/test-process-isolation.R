@@ -429,6 +429,7 @@ test_that("output, messages and warnings come back in order, and a refusal arriv
 test_that("a child killed by a signal inside an INLA fit refuses by name, and the session goes on", {
   fbiso_skip()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(list(flexyBayes.silence_default_prior_note = TRUE))
   # Large enough that the engine runs long enough to be caught running.
   d <- fbiso_data(n_group = 40L, per = 25L)
@@ -464,6 +465,7 @@ test_that("a child killed by a signal inside an INLA fit refuses by name, and th
 
 test_that("a fold whose process dies is named, a fold's own refusal keeps its code, and folds come back in order", {
   fbiso_skip()
+  skip_if_not_long_tier()
   me <- Sys.getpid()
   for (w in c(1L, 3L)) {
     fbiso_with("process", workers = w, {
@@ -518,6 +520,7 @@ test_that("a fold whose process dies is named, a fold's own refusal keeps its co
 
 test_that("fb_select() names a fold whose process was killed, and the next call returns", {
   fbiso_skip()
+  skip_if_not_long_tier()
   d <- fbiso_data()
   base <- fbiso_stub_base(d)
 
@@ -545,6 +548,7 @@ test_that("fb_select() names a fold whose process was killed, and the next call 
 test_that("an isolated INLA fit matches in-process fits, exactly outside the engine and within its spread inside it", {
   fbiso_skip()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   old_threads <- INLA::inla.getOption("num.threads")
   on.exit(INLA::inla.setOption(num.threads = old_threads), add = TRUE)
   INLA::inla.setOption(num.threads = "1:1")
@@ -607,6 +611,7 @@ test_that("an isolated brms fit returns the in-process draws, with a seed and fr
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   withr::local_options(list(
     brms.backend = "cmdstanr",
     flexyBayes.silence_default_prior_note = TRUE,
@@ -675,6 +680,7 @@ test_that("an isolated brms fit returns the in-process draws, with a seed and fr
 
 test_that("fb_select() under isolation is identical to a serial run on the closed-form route", {
   fbiso_skip()
+  skip_if_not_long_tier()
   d <- fbiso_data()
   base <- fbiso_stub_base(d)
   serial <- fbiso_optimizer_select(base)
@@ -716,6 +722,7 @@ test_that("fb_select() under isolation is identical to a serial run on the close
 test_that("fb_select() under isolation keeps the Bayesian route's bookkeeping and its scores inside the envelope", {
   fbiso_skip()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   old_threads <- INLA::inla.getOption("num.threads")
   on.exit(INLA::inla.setOption(num.threads = old_threads), add = TRUE)
   INLA::inla.setOption(num.threads = "1:1")

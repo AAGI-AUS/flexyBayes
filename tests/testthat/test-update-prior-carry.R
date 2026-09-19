@@ -174,6 +174,7 @@ test_that("an identity update() on an aggregated fit keeps its prior", {
 test_that("an identity update() on a brms fit keeps its prior", {
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   .upc_silence()
   d <- .upc_data()
   d$x <- NULL

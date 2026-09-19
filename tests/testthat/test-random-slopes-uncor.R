@@ -149,6 +149,7 @@ test_that("brms posterior matches lme4 on slope + intercept SD within loosened t
   skip_on_cran()
   skip_if_not_installed("brms")
   testthat::skip_if_not_installed("lme4")
+  skip_if_not_long_tier()
   d <- mk_slope_data()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
@@ -238,6 +239,7 @@ test_that("brms posterior matches lme4 on slope + intercept SD within loosened t
 test_that("canonical_names() on a brms (x || g) fit resolves sd_<x>_<g> AND sd_<g>", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_slope_data()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
