@@ -542,6 +542,31 @@ test_that("above the dense bound a block-diagonal V is factored block by block, 
   }
 })
 
+test_that("a base without random terms is factored row by row above the bound", {
+  skip_if_not_installed("INLA")
+  d <- fbcm_site_data()
+  base <- .fb_sel_bayes_normalise_base(fbcm_stub_base(d, random = NULL))
+  components <- list(residual = 0.4, terms = numeric(0), rho = list())
+  withr::local_options(flexyBayes.selection_dense_gb = 1e-6)
+  model <- .fb_sel_cov_model(base, seed = 1L)
+  expect_identical(model$whitening$mode, "by_block")
+  expect_identical(model$whitening$n_blocks, nrow(d))
+  split <- .fb_sel_folds(fb_resamples(v = 3L), d)[[1L]]
+  blocks <- .fb_sel_fold_blocks_by_group(
+    .fb_sel_cov_fold_spec(model, components),
+    split$train_rows, split$assess_rows, "known_cluster"
+  )
+  y <- matrix(d$y[split$train_rows], ncol = 1L)
+  expect_lt(
+    fbcm_rel(.fb_sel_whiten_train(blocks$factor_tt, y), y / sqrt(0.4)),
+    1.5e-8
+  )
+  expect_identical(
+    .fb_sel_conditional_variance(blocks$v_s_given_t),
+    rep(0.4, length(split$assess_rows))
+  )
+})
+
 test_that("the block-by-block route agrees with the dense route through fb_select()", {
   skip_if_not_installed("glmnet")
   skip_if_not_installed("INLA")

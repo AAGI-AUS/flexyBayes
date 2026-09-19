@@ -702,8 +702,7 @@
                                                         "known_cluster"),
                                          label = "1") {
   prediction <- match.arg(prediction)
-  n <- length(cov_spec$slots[[1L]]$index %||% integer(0))
-  n <- max(n, train_rows, assess_rows)
+  n <- max(train_rows, assess_rows, unlist(cov_spec$blocks, use.names = FALSE))
   train_pos <- integer(n)
   train_pos[train_rows] <- seq_along(train_rows)
   assess_pos <- integer(n)
