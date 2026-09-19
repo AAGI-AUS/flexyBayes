@@ -92,7 +92,7 @@ test_that("default-prior-note re-emits in a back-to-back call pattern", {
         verbose = FALSE,
         return_code = TRUE
       ),
-      regexp = "half_normal\\(scale = s\\)"
+      regexp = "half_normal\\(scale = [0-9.]+\\)"
     )
   })
 
@@ -111,7 +111,7 @@ test_that("default-prior-note re-emits in a back-to-back call pattern", {
         verbose = FALSE,
         return_code = TRUE
       ),
-      regexp = "half_normal\\(scale = s\\)"
+      regexp = "half_normal\\(scale = [0-9.]+\\)"
     )
   })
 })

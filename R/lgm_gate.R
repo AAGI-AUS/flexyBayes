@@ -90,9 +90,7 @@ lgm_gate <- function(
     .lgm_check_fixed_term_inla_support(fb), # check 7
     .lgm_check_random_term_inla_support(fb), # check 8
     .lgm_check_residual_term_inla_support(fb), # check 9
-    # check 9b -- us() order. INLA's iid2d..iid5d carry an unstructured
-    # covariance for k = 2..5; a wider one is both a different INLA model
-    # and k(k+1)/2 parameters, which is the problem fa() exists to solve.
+    # check 9b -- us() order, capped at five levels on INLA (see below).
     .lgm_check_us_gxe_order(fb),
     # check 11 -- INLA-
     # specific memory-feasibility rule. Trivially passes when the
@@ -172,7 +170,10 @@ new_lgm_refusal <- function(failures, warnings = list(), fb = NULL) {
       NA_character_
     },
     fb_source = if (!is.null(fb)) fb$source else NA_character_,
-    fb_response = if (!is.null(fb)) fb$response else NA_character_
+    fb_response = if (!is.null(fb)) fb$response else NA_character_,
+    # Whether flexyBayes fits the same model on brms; NA when no IR was
+    # given. The print method reads it to decide whether to point at brms.
+    brms_fits = if (!is.null(fb)) .fb_brms_fits_model(fb) else NA
   )
   class(obj) <- c("lgm_refusal", "list")
   obj
@@ -182,8 +183,8 @@ is_lgm_refusal <- function(x) inherits(x, "lgm_refusal")
 
 #' Print method for lgm_refusal -- LGM feasibility refusal
 #'
-#' Internal S3 method, registered for dispatch only. Prints why INLA
-#' cannot fit the model and what to do about it, and nothing else.
+#' Internal S3 method, registered for dispatch only. Prints why flexyBayes
+#' cannot fit the model on INLA and what to do about it, and nothing else.
 #'
 #' The refusal used to print sixteen lines: a per-rule diagnostic string,
 #' four lines explaining what `backend = "auto"` already does, an
@@ -204,18 +205,21 @@ is_lgm_refusal <- function(x) inherits(x, "lgm_refusal")
 #' @keywords internal
 #' @export
 print.lgm_refusal <- function(x, ...) {
-  cat("flexyBayes: INLA cannot fit this model.\n")
+  cat("flexyBayes cannot fit this model on INLA.\n")
   for (f in x$failures) {
     cat("  - [", f$rule_id, "] ", f$reason, "\n", sep = "")
   }
   for (w in x$warnings) {
     cat("  ! [", w$rule_id, "] ", w$warning, "\n", sep = "")
   }
-  cat(
-    "Fit it with backend = \"brms\", or see ?lgm_gate for the rule ids ",
-    "and the override.\n",
-    sep = ""
-  )
+  # Point at brms only when flexyBayes fits the model there. The footer used
+  # to say so unconditionally, including for models the brms route refuses.
+  footer <- if (isFALSE(x$brms_fits)) {
+    "See ?lgm_gate"
+  } else {
+    "Fit it with backend = \"brms\", or see ?lgm_gate"
+  }
+  cat(footer, " for the rule ids and the override.\n", sep = "")
   invisible(x)
 }
 
@@ -338,9 +342,10 @@ print.lgm_refusal <- function(x, ...) {
           fam_name,
           "\" with link \"",
           link_name,
-          "\" is fitted on brms only: INLA takes the family's default link, \"",
+          "\" is fitted on brms only: flexyBayes's INLA route passes the ",
+          "family's default link, \"",
           default_link,
-          "\", and the INLA emit carries no other."
+          "\", and no other."
         ),
         diagnostic = paste0(
           "fb$family = \"",
@@ -368,8 +373,8 @@ print.lgm_refusal <- function(x, ...) {
       fam_name,
       "\"",
       spelling_note,
-      " is not in the INLA likelihood ",
-      "allowlist (no built-in Laplace machinery)."
+      " is not among INLA's likelihoods, so flexyBayes cannot fit it on ",
+      "INLA."
     ),
     diagnostic = paste0(
       "fb$family = \"",
@@ -457,8 +462,8 @@ print.lgm_refusal <- function(x, ...) {
       "predictor_linearity",
       paste0(
         "non-linear predictor detected (brms `nl = TRUE` or ",
-        "equivalent). INLA stage-2 requires linearity in the ",
-        "latent field."
+        "equivalent); flexyBayes's INLA route takes a predictor that is ",
+        "linear in its terms."
       ),
       diagnostic = "fixed_terms with type = \"non_linear\""
     ))
@@ -482,12 +487,13 @@ print.lgm_refusal <- function(x, ...) {
     return(.lgm_fail(
       "distributional_regression",
       paste0(
-        "auxiliary parameter has non-intercept RHS (",
+        "an auxiliary parameter has its own regression (",
         paste(
           vapply(dpar_terms, function(t) t$type, character(1)),
           collapse = ", "
         ),
-        "). INLA requires scalar dpars."
+        "); flexyBayes's INLA route takes one value for each auxiliary ",
+        "parameter."
       ),
       diagnostic = "addition_terms with type matching ^dpar_"
     ))
@@ -530,7 +536,7 @@ print.lgm_refusal <- function(x, ...) {
       paste0(
         "non-Gaussian random-effect prior detected (",
         paste(unique(bad), collapse = ", "),
-        "). INLA's latent field is Gaussian by construction."
+        "); flexyBayes fits random effects on INLA as Gaussian fields only."
       ),
       diagnostic = "fb$priors$re entries with non-Gaussian family"
     ))
@@ -573,9 +579,8 @@ print.lgm_refusal <- function(x, ...) {
       paste0(
         "latent-class structure detected (",
         paste(unique(found), collapse = ", "),
-        "). INLA cannot represent finite mixtures or HMM ",
-        "directly without the INLA-within-MCMC escape ",
-        "(Gomez-Rubio & Rue 2018)."
+        "); flexyBayes fits no finite mixture or hidden Markov model on ",
+        "INLA."
       ),
       diagnostic = "fb$family or fb$<slot>_terms"
     ))
@@ -603,10 +608,10 @@ print.lgm_refusal <- function(x, ...) {
       paste0(
         "hyperparameter count = ",
         n_hyp,
-        " exceeds hard limit ",
+        " is above the ",
         hard_limit,
-        " (CCD/grid integration intractable; INLA Laplace ",
-        "approximation deteriorates)."
+        " flexyBayes allows on INLA, which integrates over the ",
+        "hyperparameters numerically."
       ),
       diagnostic = paste0(
         "count = likelihood (",
@@ -849,12 +854,11 @@ print.lgm_refusal <- function(x, ...) {
 
 # Check 9b -- the order of an unstructured GxE covariance on INLA.
 #
-# INLA carries an unstructured k-dimensional covariance as iid2d..iid5d.
-# Beyond k = 5 the model is iidkd, whose parameterisation and hyperparameter
-# naming differ, and a k-level unstructured covariance costs k(k+1)/2
-# parameters -- 210 at k = 20 -- which is exactly the problem the
-# factor-analytic structure exists to solve. Refusing by name and pointing at
-# fa() is the correct answer rather than emitting a model nobody can fit.
+# INLA carries an unstructured k-dimensional covariance as iid2d..iid5d and,
+# beyond k = 5, as iidkd, whose parameterisation and hyperparameter naming
+# differ. A k-level unstructured covariance costs k(k+1)/2 parameters -- 210
+# at k = 20. flexyBayes caps it at five levels on INLA and refuses by name
+# above that. (Check 1b refuses every us() term on INLA in any case.)
 .FB_INLA_US_MAX_ORDER <- 5L
 
 .lgm_check_us_gxe_order <- function(fb) {
@@ -876,14 +880,14 @@ print.lgm_refusal <- function(x, ...) {
           k,
           " levels, which is ",
           k * (k + 1L) / 2L,
-          " parameters. INLA carries an unstructured covariance up to ",
+          " parameters, and flexyBayes caps it at ",
           .FB_INLA_US_MAX_ORDER,
-          " levels (iid2d..iid5d). Use fa(",
+          " levels on INLA. Use backend = \"brms\", which fits the full ",
+          "structure, or diag(",
           term$outer,
-          ", k):",
+          "):",
           term$inner,
-          " for a reduced-rank covariance at this width, or ",
-          "backend = \"brms\", which emits the full structure."
+          " for one variance per level."
         ),
         diagnostic = paste0("n_outer = ", k)
       ))
@@ -902,16 +906,32 @@ print.lgm_refusal <- function(x, ...) {
 # model that `backend = "auto"` fits on the next line. The predicate is the
 # authority on what brms represents, so the sentence asks it.
 .lgm_other_engine_note <- function(fb) {
-  if (isTRUE(.capability_brms(fb))) {
+  if (isTRUE(.fb_brms_fits_model(fb))) {
     return(paste0(
-      "brms does represent this model -- pass backend = \"brms\", or ",
+      "flexyBayes fits this model on brms: pass backend = \"brms\", or ",
       "leave backend = \"auto\", which routes there when INLA refuses."
     ))
   }
-  paste0(
-    "brms cannot represent it either, so no active backend can fit it ",
-    "faithfully."
+  "flexyBayes cannot fit it on brms either."
+}
+
+# Whether flexyBayes fits the model on brms: the brms capability predicate
+# passes and the brms formula reconstruction lowers every term. The
+# predicate alone is not enough -- it passed corh(), an mgcv s() term and a
+# level-conditioned at() while the reconstruction refused each by name, so
+# a gate refusal told the user to fit on brms a model brms would refuse. An
+# error that is not a flexyBayes refusal (brms not installed, say) says
+# nothing about the lowering and leaves the predicate's answer standing.
+.fb_brms_fits_model <- function(fb) {
+  if (!isTRUE(.capability_brms(fb))) {
+    return(FALSE)
+  }
+  lowered <- tryCatch(
+    .fb_to_brms_formula(fb),
+    flexybayes_refusal = function(e) e,
+    error = function(e) NULL
   )
+  !inherits(lowered, "flexybayes_refusal")
 }
 
 # Human-readable label for a structured-covariance random-term
@@ -1026,8 +1046,9 @@ print.lgm_refusal <- function(x, ...) {
       first_type %in% c("vm", "ped") && identical(fmt, "blocks")
     ) {
       paste0(
-        "A blocks carrier is refused on INLA. INLA fits each block as its ",
-        "own field with its own standard deviation, which for two or more ",
+        "A blocks carrier is refused on INLA. flexyBayes's INLA route would ",
+        "fit each block as its own field with its own standard deviation, ",
+        "which for two or more ",
         "blocks is not the one block-diagonal covariance the carrier ",
         "represents, and a carrier of one block is the precision carrier ",
         "of its matrix. The precision carrier states the covariance with ",
@@ -1047,8 +1068,8 @@ print.lgm_refusal <- function(x, ...) {
         fmt %in% c("dense", "chol")
     ) {
       paste0(
-        "INLA accepts vm/ped only with the sparse-precision or ",
-        "pedigree_sparse_precision representation ",
+        "flexyBayes's INLA route takes vm/ped only as a sparse precision ",
+        "or a pedigree sparse precision ",
         "(format = \"precision\" or \"pedigree_sparse_precision\"). ",
         "The supplied format is \"",
         fmt,
@@ -1060,10 +1081,7 @@ print.lgm_refusal <- function(x, ...) {
       )
     } else {
       paste0(
-        "the INLA emit has no branch for this term class yet. This is a ",
-        "flexyBayes gap, not an INLA one: INLA represents a nested or ",
-        "interaction random effect as an ordinary iid field over the ",
-        "interaction index. Until the branch lands, ",
+        "flexyBayes has no INLA lowering for this term. ",
         .lgm_other_engine_note(fb)
       )
     }
@@ -1192,10 +1210,8 @@ print.lgm_refusal <- function(x, ...) {
         "\" (",
         first_label,
         ") is outside the INLA emit ",
-        "allowlist. The INLA emit has no branch for a sectioned residual ",
-        "yet. This is a flexyBayes gap, not an INLA one: INLA carries a ",
-        "residual variance per section through its multiple-likelihood ",
-        "interface. Until the branch lands, ",
+        "allowlist: flexyBayes has no INLA lowering for this residual ",
+        "term. ",
         .lgm_other_engine_note(fb)
       ),
       diagnostic = paste0(
@@ -1406,13 +1422,8 @@ print.lgm_refusal <- function(x, ...) {
     reason = paste0(
       "the joint shrinkage prior(s) ",
       paste(shrinkage, collapse = ", "),
-      " are not fitted on INLA. A Laplace, regularised horseshoe or R2D2 ",
-      "prior is Gaussian given one local scale per coefficient, so the ",
-      "model can be written as a latent Gaussian model, but it then carries ",
-      "a hyperparameter for every coefficient in the block, and INLA's ",
-      "numerical integration is built for models with a few ",
-      "hyperparameters. Ridge and elastic-net blocks have no INLA ",
-      "implementation. Fit the reference model on brms, as fb_select() ",
+      " are fitted on brms only: flexyBayes has no INLA route for a joint ",
+      "shrinkage block. Fit the reference model on brms, as fb_select() ",
       "does, or select with penalty = NULL, which keeps every candidate ",
       "protected."
     ),

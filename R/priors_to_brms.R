@@ -485,11 +485,11 @@
   stop(.fb_refusal_condition(
     reason_code = "prior_not_translatable_for_backend",
     message = paste0(
-      "The Stan-passthrough emit does not translate `",
+      "flexyBayes does not translate `",
       family,
       "` priors on ",
       target_label,
-      ".\n",
+      " for brms.\n",
       .fb_prior_translation_menu("brms"),
       "Two remedies: re-express the prior in a distribution brms ",
       "carries (listed\n  above), or pass a brms `prior` object ",
@@ -502,13 +502,12 @@
   ))
 }
 
-# Refusal for a target the brms models this package emits do not carry.
+# Refusal for a target flexyBayes does not pass to brms.
 #
-# `cor()` and `smooth()` are not deferrals in the sense the pre-0.9.2
-# message implied: a flexyBayes brms model carries classes `b`,
-# `Intercept`, `sd` and `sigma` and nothing else -- correlated random
-# slopes are refused at ingest and smooths route to INLA -- so a row for
-# either would be a prior on a parameter that does not exist.
+# A `cor()` row is not translated for brms: the correlations of a correlated
+# slope or a us() term keep brms's own LKJ(1) prior. A `smooth()` row would
+# be a prior on a parameter that does not exist, since smooths route to
+# INLA.
 .brms_unsupported_target <- function(target) {
   ttype <- target$type %||% "<unknown>"
   label <- switch(
@@ -521,9 +520,9 @@
   why <- switch(
     ttype,
     "cor" = paste0(
-      "No brms model this package emits carries a correlation ",
-      "parameter:\n  correlated random slopes are refused at ingest, so ",
-      "there is no `cor` class\n  for the prior to attach to."
+      "flexyBayes does not translate a prior on a correlation for brms;\n  ",
+      "brms keeps its own LKJ prior with eta = 1 on the correlations of a ",
+      "correlated\n  random slope or a us() term."
     ),
     "smooth" = paste0(
       "No brms model this package emits carries a smooth: `spl()` terms ",
@@ -531,16 +530,16 @@
       "translate."
     ),
     paste0(
-      "The Stan-passthrough emit carries prior targets sigma, ",
-      "sd(group = ...) and\n  b(\"name\") only."
+      "flexyBayes translates the prior targets sigma, sd(group = ...) and\n",
+      "  b(\"name\") only for brms."
     )
   )
   stop(.fb_refusal_condition(
     reason_code = "prior_not_translatable_for_backend",
     message = paste0(
-      "backend = \"brms\" cannot carry the prior target ",
+      "flexyBayes cannot pass the prior target ",
       label,
-      ".\n",
+      " to brms.\n",
       why,
       "\n",
       .fb_prior_translation_menu("brms"),

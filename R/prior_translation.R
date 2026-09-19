@@ -216,24 +216,22 @@
   stop(.fb_refusal_condition(
     reason_code = "prior_not_translatable_for_backend",
     message = paste0(
-      "backend = \"",
-      engine,
-      "\" cannot carry ",
+      "flexyBayes does not translate ",
       length(bad),
       " of the supplied prior specification",
       if (length(bad) == 1L) "" else "s",
-      ":\n",
+      " for backend = \"",
+      engine,
+      "\":\n",
       paste(unlist(bad), collapse = "\n"),
       "\n\n",
       .fb_prior_translation_menu(engine),
       "\n",
-      "Two remedies: re-express the prior in a distribution this ",
-      "engine carries\n  (listed above), or pass backend = \"",
+      "Either re-express the prior in a distribution listed above, or ",
+      "pass backend = \"",
       if (identical(engine, "inla")) "brms" else "inla",
-      "\", which carries a different set.\n",
-      "flexyBayes refuses rather than dropping the specification: ",
-      "before 0.9.2 an\n  untranslatable row was silently discarded and ",
-      "`prior_summary()` still printed it\n  as applied."
+      "\",\n  for which flexyBayes translates a different set. It refuses ",
+      "rather than\n  dropping the specification silently."
     ),
     family_class = "flexybayes_prior_translation_refusal",
     engine = engine
@@ -245,7 +243,9 @@
   tbl <- .fb_prior_translation_table()
   tbl <- tbl[tbl$engine == engine & tbl$verdict == "translate", , drop = FALSE]
   if (!nrow(tbl)) {
-    return(paste0("backend = \"", engine, "\" carries no prior DSL row.\n"))
+    return(paste0(
+      "flexyBayes translates no prior for backend = \"", engine, "\".\n"
+    ))
   }
   label <- c(
     sigma = "sigma",
@@ -268,9 +268,9 @@
     )
   }
   paste0(
-    "backend = \"",
+    "flexyBayes translates these priors for backend = \"",
     engine,
-    "\" carries:\n",
+    "\":\n",
     paste(out, collapse = "\n"),
     "\n"
   )
