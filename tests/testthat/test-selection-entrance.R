@@ -273,6 +273,78 @@ test_that("a column a fold cannot estimate counts as unavailable there, not as a
   fben_expect_profile(td, hand)
 })
 
+test_that("a fold that never admitted a column counts against its median entry", {
+  # Through fb_select() every estimable column enters every fold by
+  # s = 0.001, so a column admitted on fewer than half of its folds is built
+  # here as the per-fold record the accessors read.
+  first <- list(
+    zA = c(0.8, NA, NA, NA, NA),
+    zB = c(0.8, 0.5, NA, NA),
+    zC = c(0.5, 0.3, NA, NA),
+    zD = c(0.9, 0.7, 0.5, 0.3)
+  )
+  available <- list(
+    zA = rep(TRUE, 5L), zB = rep(TRUE, 4L), zC = c(TRUE, TRUE, FALSE, FALSE),
+    zD = rep(TRUE, 4L)
+  )
+  history <- do.call(rbind, lapply(names(first), function(column) {
+    data.frame(
+      alpha = 1, fold = as.character(seq_along(first[[column]])),
+      column = column, available = available[[column]], n_points = 6L,
+      n_in_support = ifelse(is.na(first[[column]]), 0L, 2L),
+      first_entry_s = first[[column]], last_exit_s = NA_real_,
+      n_reentries = 0L, stringsAsFactors = FALSE
+    )
+  }))
+  x <- structure(list(
+    column_map = data.frame(
+      column = names(first), term = names(first), role = "candidate",
+      block = 1L, family = "laplace", centre = 0, scale = 1,
+      stringsAsFactors = FALSE
+    ),
+    selection = list(chosen_terms = character(0)),
+    benchmark = list(glmnet = list(
+      selection = list(
+        scores = data.frame(
+          lambda_index = 1:6, s = c(1, 0.9, 0.8, 0.7, 0.5, 0.3),
+          score = c(2, 1.9, 1.8, 1.7, 1.6, 1.65)
+        ),
+        metric = "rmse", selected_s = 0.5,
+        tuning_scale = "s = lambda / lambda_max"
+      ),
+      support = list(history = data.frame(), history_by_fold = history),
+      scoring_unit = "site"
+    ))
+  ), class = "fb_select")
+  td <- tidy(x)
+  for (column in names(first)) {
+    row <- td[td$term == column, ]
+    on_path <- first[[column]][available[[column]]]
+    expect_identical(row$entry_s_median, fben_entry_at(on_path, 0.5),
+                     label = paste(column, "median"))
+    expect_identical(row$entry_s_q25, fben_entry_at(on_path, 0.25),
+                     label = paste(column, "q25"))
+    expect_identical(row$entry_s_q75, fben_entry_at(on_path, 0.75),
+                     label = paste(column, "q75"))
+  }
+  # Written out: admitted on one fold in five has no median; on two of four
+  # it has one, at the later of the two.
+  expect_identical(td$entry_s_median[td$term == "zA"], NA_real_)
+  expect_identical(td$path_entry_s[td$term == "zA"], 0.8)
+  expect_identical(td$entry_s_median[td$term == "zB"], 0.5)
+  expect_identical(td$entry_s_q75[td$term == "zB"], NA_real_)
+  expect_identical(td$entry_s_q75[td$term == "zC"], 0.3)
+
+  path <- tempfile(fileext = ".pdf")
+  grDevices::pdf(path)
+  on.exit({
+    grDevices::dev.off()
+    unlink(path)
+  }, add = TRUE)
+  plotted <- plot(x, type = "entrance_path")
+  expect_setequal(plotted$entries$variable, c("zB", "zC", "zD"))
+})
+
 # --- (ii) one entry definition for tidy() and plot() ---------------------- #
 
 test_that("the entrance-path labels and the heat-map markers sit at tidy()'s median entry", {
@@ -476,6 +548,16 @@ test_that("stability frequencies, the stable set and the bound equal the hand co
   )
   stable <- columns[max_frequency >= 0.7]
   expect_setequal(st$stable, stable)
+  # The same draws at cutoff 1: the stable set follows the declared cutoff,
+  # and on this fixture a column between one half and one tells the two apart.
+  expect_true(any(max_frequency >= 0.5 & max_frequency < 1))
+  strict <- fben_select(
+    d,
+    fb_penalty(term(everything()) ~ laplace(scale = 0.15)),
+    decision = fben_stability_decision(b = 20L, cutoff = 1)
+  )$benchmark$glmnet$stability
+  expect_identical(strict$coefficients, st$coefficients)
+  expect_setequal(strict$stable, columns[max_frequency >= 1])
 
   # The average number of columns a subsample selects anywhere in the
   # region, and the Meinshausen-Buhlmann bound on the expected number of
