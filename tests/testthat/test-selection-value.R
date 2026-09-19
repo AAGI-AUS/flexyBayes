@@ -194,7 +194,8 @@ fbv_share_data <- function(seed = 202L) {
     n1 <- numeric(n_trial)
     for (g in seq_len(n_group)) {
       idx <- which(group == g)
-      basis <- qr.Q(qr(cbind(1, matrix(stats::rnorm(per_group * 3L), per_group))))
+      raw <- matrix(stats::rnorm(per_group * 3L), per_group)
+      basis <- qr.Q(qr(cbind(1, raw)))
       basis <- basis[, 2:4] * sqrt(per_group - 1)
       s1[idx] <- basis[, 1L]
       u[idx] <- basis[, 2L]
@@ -329,13 +330,14 @@ test_that("a malformed refit request stops with the part it is missing", {
       resamples = fb_resamples(v = 3L), seed = 1L, refit = refit
     )
   }
+  bayes <- function(...) list(method = "bayes", ...)
   expect_error(call_with("bayes"), "named list", fixed = TRUE)
   expect_error(call_with(list(method = "frequentist")), "method", fixed = TRUE)
-  expect_error(call_with(list(method = "bayes", draws = 10L)), "draws", fixed = TRUE)
-  expect_error(call_with(list(method = "bayes", n_draws = 0L)), "n_draws", fixed = TRUE)
-  expect_error(call_with(list(method = "bayes", group = "nope")), "site", fixed = TRUE)
-  expect_error(call_with(list(method = "bayes", block = ~ nope)), "nope", fixed = TRUE)
-  expect_error(call_with(list(method = "bayes", block = "z1")), "one-sided", fixed = TRUE)
+  expect_error(call_with(bayes(draws = 10L)), "draws", fixed = TRUE)
+  expect_error(call_with(bayes(n_draws = 0L)), "n_draws", fixed = TRUE)
+  expect_error(call_with(bayes(group = "nope")), "site", fixed = TRUE)
+  expect_error(call_with(bayes(block = ~nope)), "nope", fixed = TRUE)
+  expect_error(call_with(bayes(block = "z1")), "one-sided", fixed = TRUE)
 })
 
 
@@ -383,7 +385,9 @@ test_that("scoring a block of rows at a time gives the scores of all rows at onc
   whole <- .fb_sel_value_score(y, mean, variance)
   blocks <- .fb_sel_value_score_blocks(
     y,
-    function(columns) list(mean = mean[, columns, drop = FALSE], variance = variance),
+    function(columns) {
+      list(mean = mean[, columns, drop = FALSE], variance = variance)
+    },
     size = 5L
   )
   expect_identical(blocks, whole)

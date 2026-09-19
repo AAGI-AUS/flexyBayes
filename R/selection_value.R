@@ -144,7 +144,11 @@
         "in the base, whose variance is the between-trial variance the ",
         "block share is stated against. The base's random intercepts are ",
         "grouped by: ",
-        if (length(intercepts) > 0L) paste(intercepts, collapse = ", ") else "none",
+        if (length(intercepts) > 0L) {
+          paste(intercepts, collapse = ", ")
+        } else {
+          "none"
+        },
         ".",
         call. = FALSE
       )
@@ -288,7 +292,7 @@
 }
 
 
-# --- the predictive draws ----------------------------------------------------- #
+# --- the predictive draws --------------------------------------------- #
 
 #' Score assessment rows from per-draw Gaussian predictive moments
 #'
@@ -312,7 +316,8 @@
     log = TRUE
   )
   centre <- colMeans(mean)
-  spread <- colMeans((mean - matrix(centre, n_draws, length(y), byrow = TRUE))^2)
+  centred <- mean - matrix(centre, n_draws, length(y), byrow = TRUE)
+  spread <- colMeans(centred^2)
   list(
     lpd = apply(logdens, 2L, .fb_sel_logmeanexp),
     mean = centre,
@@ -385,8 +390,8 @@
     }
     name <- as.character(positional[[1L]])
     index <- data_inla[[name]]
-    if (is.null(index) ||
-          length(index) != length(split$train_rows) + length(split$assess_rows)) {
+    n_engine <- length(split$train_rows) + length(split$assess_rows)
+    if (is.null(index) || length(index) != n_engine) {
       return(list(ok = FALSE, reason = paste0(
         "the index of f(", name, ") is not one value per engine row"
       )))
@@ -556,7 +561,11 @@
 
   list(
     scored = scored,
-    method = if (analytic) "analytic_gaussian" else "posterior_predictive_draws",
+    method = if (analytic) {
+      "analytic_gaussian"
+    } else {
+      "posterior_predictive_draws"
+    },
     reason = reason,
     n_draws = length(draws),
     share = share,
@@ -655,7 +664,10 @@
   } else if (!is.na(group)) {
     # brms names population-level coefficients in design order; the block's
     # columns are found by position among the non-intercept ones.
-    b_names <- setdiff(grep("^b_", colnames(draws), value = TRUE), "b_Intercept")
+    b_names <- setdiff(
+      grep("^b_", colnames(draws), value = TRUE),
+      "b_Intercept"
+    )
     position <- match(block$engine_names$brms, block$design_columns)
     if (length(b_names) != length(block$design_columns)) {
       share_reason <- paste0(
@@ -673,7 +685,11 @@
 
   list(
     scored = scored,
-    method = if (analytic) "analytic_gaussian" else "posterior_predictive_draws",
+    method = if (analytic) {
+      "analytic_gaussian"
+    } else {
+      "posterior_predictive_draws"
+    },
     reason = reason,
     n_draws = length(ids),
     share = share,
@@ -792,7 +808,11 @@
     t_fit <- proc.time()
     fit <- .fb_sel_bayes_refit(
       base,
-      if (identical(provider, "inla")) inputs$engine_data else inputs$train_data,
+      if (identical(provider, "inla")) {
+        inputs$engine_data
+      } else {
+        inputs$train_data
+      },
       fixed,
       provider,
       engine = engine,
@@ -868,7 +888,10 @@
   elapsed <- unname((proc.time() - t_start)["elapsed"])
 
   rows <- do.call(rbind, lapply(results, function(r) r$rows))
-  rows <- rows[order(rows$repeat_id, rows$row, method = "radix"), , drop = FALSE]
+  rows <- rows[
+    order(rows$repeat_id, rows$row, method = "radix"), ,
+    drop = FALSE
+  ]
   rows$contract_hash <- contract$hash
   rownames(rows) <- NULL
   units <- .fb_sel_value_units(rows)
@@ -918,7 +941,7 @@
 }
 
 
-# --- the tables and their summaries ------------------------------------------ #
+# --- the tables and their summaries ----------------------------------- #
 
 #' One row per repeat and held-out unit: its rows' summed log density
 #'
@@ -941,7 +964,10 @@
     numeric(1L)
   ))
   units$contract_hash <- rows$contract_hash[first]
-  units <- units[order(units$repeat_id, units$unit, method = "radix"), , drop = FALSE]
+  units <- units[
+    order(units$repeat_id, units$unit, method = "radix"), ,
+    drop = FALSE
+  ]
   rownames(units) <- NULL
   units
 }
@@ -1043,7 +1069,7 @@
 }
 
 
-# --- two valuations, unit by unit ---------------------------------------------- #
+# --- two valuations, unit by unit ------------------------------------- #
 
 #' Pair two valuations on one value contract
 #'
@@ -1099,7 +1125,7 @@
 }
 
 
-# --- the accessors' empty shapes ------------------------------------------------ #
+# --- the accessors' empty shapes -------------------------------------- #
 
 .fb_sel_value_empty_rows <- function() {
   data.frame(
