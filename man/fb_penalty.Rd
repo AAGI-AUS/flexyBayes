@@ -145,11 +145,10 @@ certificate. A grouping in which every group has one column refuses, since
 a group lasso would then be a lasso and an exclusive lasso a ridge.
 
 The exclusive penalty adds \verb{sum_g (sum_j |beta_j|)^2 / 2} over groups,
-which encourages competition inside a group. This is suitable for a
-declared set of correlated alternatives, such as measurements of one soil
-property at several depths. It does not mechanically drop every member
-except the largest, does not guarantee that exactly one member is non-zero,
-and on a group of one it is exactly \code{ridge()} at the same scale.
+which encourages competition inside a group and suits a declared set of
+correlated alternatives, for example one soil property measured at several
+depths. It does not guarantee that exactly one member is non-zero, and on a
+group of one it is exactly \code{ridge()} at the same scale.
 
 \code{adaptive()} remains withdrawn and refuses by name. An adaptive penalty
 needs a first-stage estimate and a rule for turning that estimate into

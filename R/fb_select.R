@@ -4255,9 +4255,9 @@ plot.fb_select <- function(x,
     return(.fb_select_plot_unavailable(
       "the entrance path",
       paste0(
-        "this penalty has no finite null anchor, so its path was walked on `",
+        "this penalty has no finite null anchor, so its path is indexed by `",
         arm$selection$tuning_scale %||% "the penalty",
-        "` rather than on s = lambda / lambda_max"
+        "` and has no s = lambda / lambda_max coordinate"
       )
     ))
   }
