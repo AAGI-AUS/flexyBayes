@@ -549,9 +549,14 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # fold that failed (selection_parallel_worker_failed) (= 217). A fold that
   # refuses inside a live worker keeps its own code, so no other refusal is
   # duplicated for the concurrent path.
+  #
+  # The base-model covariance unit adds one: a fold covariance that would be
+  # formed as a dense n x n matrix above the stated memory bound
+  # (selection_dense_covariance_too_large) (= 218).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 217L)
+  expect_equal(length(entries), 218L)
+  expect_true("selection_dense_covariance_too_large" %in% entries)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)

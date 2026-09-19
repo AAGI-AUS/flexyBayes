@@ -932,7 +932,7 @@
     stop("`substrate` must be an <fb_sel_substrate>.", call. = FALSE)
   }
   train_rows <- substrate$train_rows
-  factor_lower <- t(substrate$blocks$factor_tt)
+  factor_tt <- substrate$blocks$factor_tt
 
   candidate_names <- colnames(substrate$x_candidate)
   # The fold's candidate space (R/selection_candidate_space.R). A column its
@@ -951,7 +951,14 @@
   )
   x_penalised <- substrate$x_candidate[, penalised_kept, drop = FALSE]
 
-  whiten <- function(m) forwardsolve(factor_lower, m)
+  # Block by block where the fold's covariance was factored that way
+  # (R/selection_cov_model.R).
+  whiten <- if (inherits(factor_tt, "fb_sel_block_factor")) {
+    function(m) .fb_sel_whiten_train(factor_tt, m)
+  } else {
+    factor_lower <- t(factor_tt)
+    function(m) forwardsolve(factor_lower, m)
+  }
   reduction <- .fb_sel_protected_reduction(
     y = drop(whiten(matrix(
       substrate$response[train_rows],

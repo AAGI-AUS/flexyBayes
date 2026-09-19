@@ -45,6 +45,21 @@
   )
 
   .register_refusal(
+    reason_code = "selection_dense_covariance_too_large",
+    description = paste0(
+      "fb_select(): a fold covariance would be formed as a dense n x n ",
+      "matrix above the bound set by ",
+      "options(flexyBayes.selection_dense_gb = ): the REML plug-in forms it ",
+      "densely, and a base-model covariance that is not block-diagonal by ",
+      "any grouping of its random terms cannot be factored block by block."
+    ),
+    message_template = "fb_select(): the fold covariance over these %d rows would be formed as a dense %d x %d matrix of %s GiB, above the bound of %s GiB.",
+    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-COV-MODEL)",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
     reason_code = "selection_reduction_term_not_in_fit",
     description = paste0(
       "fb_select(): the random term the reduction was asked for is not in ",

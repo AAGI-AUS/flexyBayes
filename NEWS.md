@@ -1,3 +1,16 @@
+# flexyBayes (development version)
+
+* `fb_select()` gains `covariance = "base_model"`, which reads the fold
+  covariance of the benchmark and optimiser workflows from a refit of the base
+  model on each fold's training rows. It builds random slopes, `diag(f):g`, a
+  single-trial `ar1(row):ar1(col)` field and `vm()` or `ped()` known
+  covariances, and factors a covariance that is block-diagonal over a grouping
+  one block at a time.
+* The default, `covariance = "reml_plugin"`, is unchanged below a stated
+  memory bound, `options(flexyBayes.selection_dense_gb = )` (0.5 GiB, 8,192
+  rows). Above it, a covariance that would be formed as a dense matrix refuses
+  with `selection_dense_covariance_too_large` instead of exhausting memory.
+
 # flexyBayes 0.13.1
 
 A patch release for penalised selection. It adds two read-outs of a penalised

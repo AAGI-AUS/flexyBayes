@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=217
+      .refusal_registry: locked=TRUE n_keys=218
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -240,6 +240,7 @@
         selection_covariance_not_buildable
         selection_covariance_not_positive_definite
         selection_decision_invalid
+        selection_dense_covariance_too_large
         selection_dense_reference_too_large
         selection_fallback_not_authorised
         selection_family_not_supported

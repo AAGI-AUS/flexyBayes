@@ -1123,7 +1123,8 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                approximations = character(0),
                                base_engine = NA_character_,
                                reference_engine = NA_character_,
-                               decision_resolution = NULL) {
+                               decision_resolution = NULL,
+                               covariance = NA_character_) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1189,6 +1190,9 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
       attr(stats::terms(candidates, data = base$data), "term.labels")
     },
     prediction = prediction,
+    # The source of the fold covariance the benchmark and optimiser
+    # workflows plug in; "base_model" refits the base once per fold.
+    covariance = covariance,
     resampling = list(
       unit = resamples$unit,
       v = resamples$v,
@@ -1285,6 +1289,10 @@ print.fb_select_plan <- function(x, ...) {
       "\n", sep = "")
   cat("  Folds:        ", s$resampling$n_folds,
       ", prediction ", s$prediction %||% "not set", "\n", sep = "")
+  if (identical(s$covariance, "base_model")) {
+    cat("  Covariance:   base_model, one refit of the base model per fold\n",
+        sep = "")
+  }
   cat("  Cost estimate: ", format(round(s$cost$seconds, 1), nsmall = 1L),
       "s over ", s$cost$n_fits, " fit(s) at ",
       format(round(s$cost$per_fit_seconds, 2), nsmall = 2L),

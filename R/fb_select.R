@@ -1063,12 +1063,27 @@
         # field says so rather than naming a builder that never ran.
         builder = if (identical(cv$covariance_estimand, "integrated")) {
           "none: covariance integrated by the engine"
+        } else if (identical(cv$covariance$source, "base_model")) {
+          cv$covariance$builder
         } else if (inherits(bs, "try-error") || !isTRUE(bs$applicable)) {
           "random_term_reduction"
         } else {
           "block_cholesky"
         },
-        integrated = identical(cv$covariance_estimand, "integrated")
+        integrated = identical(cv$covariance_estimand, "integrated"),
+        # Where a plugged-in V came from, the rule that turned the source's
+        # estimates into it, how each fold was factored, and what the
+        # optimiser's path is exact for; NA on a route that integrates V.
+        source = cv$covariance$source %||% NA_character_,
+        point_estimate = cv$covariance$point_estimate %||% NA_character_,
+        engine = cv$covariance$engine %||% NA_character_,
+        engine_version = cv$covariance$engine_version %||% NA_character_,
+        whitening = cv$covariance$whitening,
+        equivalence_level = cv$covariance$equivalence_level %||%
+          NA_character_,
+        equivalence_reason = cv$covariance$equivalence_reason %||%
+          NA_character_,
+        folds = cv$covariance$folds
       ),
       design = list(
         protected = attr(cv, "protected") %||% character(0),
@@ -1144,6 +1159,7 @@
             equivalence_level = arm$equivalence_level$level,
             equivalence_reason = arm$equivalence_level$reason,
             covariance_estimand = arm$covariance_estimand,
+            covariance_source = arm$covariance_source,
             provider_version = arm$provider_version,
             provider_lambda_convention = arm$provider_lambda_convention,
             # The optimiser's tuning report: the coordinate the point was
@@ -2173,23 +2189,37 @@
                                  prior_family,
                                  blocks = NULL,
                                  decision = NULL,
-                                 shared_predictive_table = FALSE) {
+                                 shared_predictive_table = FALSE,
+                                 covariance = "reml_plugin",
+                                 engine = NULL) {
   arms <- list()
   refusals <- character(0)
 
+  # The fold covariance: the REML plug-in over the terms it builds, or the
+  # base model refitted on each fold (R/selection_cov_model.R), which is
+  # built before any fold so that a structure it does not build, and a
+  # covariance above the dense bound with no blocks, refuse first.
+  cov_model <- NULL
+  random <- if (identical(covariance, "base_model")) {
+    cov_model <- .fb_sel_cov_model(base, engine = engine, seed = seed)
+    .fb_sel_grouping_columns(base$fb)$columns
+  } else {
+    .fb_sel_benchmark_random(base$fb)
+  }
   gls <- .fb_sel_cv(
     data = base$data,
     response = base$fb$response,
     protected = protected,
     candidates = candidates,
-    random = .fb_sel_benchmark_random(base$fb),
+    random = random,
     resamples = resamples,
     seed = seed,
     prediction = prediction,
     metric = metric,
     # The base's offset, subtracted from the response in each fold before
     # whitening; the penalised optimiser reads the same substrates.
-    offsets = base$fb$offsets %||% character(0)
+    offsets = base$fb$offsets %||% character(0),
+    cov_model = cov_model
   )
   arms$gls <- list(
     workflow = gls$workflow,
@@ -2197,11 +2227,12 @@
     fully_bayesian = FALSE,
     scores = gls$aggregated,
     covariance_estimand = gls$covariance_estimand,
+    covariance_source = gls$covariance$source,
     provider_version = NA_character_,
     provider_lambda_convention = NULL,
     equivalence_level = .fb_sel_equivalence_level(
       prior_family = prior_family,
-      provider = "gls_reml_plugin",
+      provider = gls$provider,
       covariance_fixed = FALSE,
       sigma_fixed = FALSE,
       shared_predictive_table = shared_predictive_table
@@ -2265,6 +2296,7 @@
           support = path$support_by_resolution,
           kkt = path$kkt_by_lambda,
           covariance_estimand = path$covariance_estimand,
+          covariance_source = gls$covariance$source,
           provider_version = path$provider_version,
           provider_lambda_convention = path$provider_lambda_convention,
           provider_equivalence_level = path$equivalence_level,
@@ -2309,9 +2341,10 @@
 #' \describe{
 #'   \item{`workflow`}{`"bayes"`, `"penalized_optimizer"` or
 #'     `"unpenalized_benchmark"`.}
-#'   \item{`provider`}{`"brms"`, `"inla"`, `"glmnet"`, `"prox"` or
-#'     `"gls_reml_plugin"`; `"prox"` is the package's deterministic
-#'     proximal solver for grouped penalties.}
+#'   \item{`provider`}{`"brms"`, `"inla"`, `"glmnet"`, `"prox"`,
+#'     `"gls_reml_plugin"` or `"gls_base_model"`; `"prox"` is the package's
+#'     deterministic proximal solver for grouped penalties, and the last two
+#'     name the source of the benchmark's fold covariance.}
 #'   \item{`prior`}{the joint prior, or `"none"`.}
 #'   \item{`decision`}{`"full"`, `"projection"`, `"posterior_threshold"` or
 #'     `"optimizer_support"`.}
@@ -2453,10 +2486,26 @@
 #'   estimated cost exceeds it.
 #' @param plan `TRUE` returns the resolved axes, the prior blocks, the
 #'   projection structure gate and a cost estimate without fitting anything.
-#' @param ... Reserved. `metric` and `covariance` are accepted here for one
-#'   release with a deprecation notice; `metric` now lives in
-#'   [fb_decision()], and the covariance summary is a property of the
-#'   benchmark workflow and is read off the folds rather than declared.
+#' @param covariance The source of the fold covariance V that the benchmark
+#'   and optimiser workflows whiten by and plug in. `"reml_plugin"`, the
+#'   default, estimates V by restricted maximum likelihood on each fold's
+#'   training rows, for random intercepts and two-way interactions.
+#'   `"base_model"` refits the base model on each fold's training rows with
+#'   its own formula, random and residual structure, priors and engine, and
+#'   takes each variance at its posterior mean; it also builds uncorrelated
+#'   random slopes, `diag(f):g`, a single-trial `ar1(row):ar1(col)` field and
+#'   `vm()` or `ped()` known covariances, at the cost of one refit per fold.
+#'   The Bayesian workflow integrates the covariance, so the argument applies
+#'   to it only with `benchmark = TRUE`. V is formed as a dense matrix only
+#'   while one n by n matrix over the data fits within
+#'   `options(flexyBayes.selection_dense_gb = )`, 0.5 GiB (8,192 rows) by
+#'   default. Above that, a V that is block-diagonal over a grouping of its
+#'   random terms is factored block by block, and any other V refuses with
+#'   `selection_dense_covariance_too_large`. An estimand string such as
+#'   `"plugin_mean_covariance"`, the argument's earlier form, is deprecated
+#'   and runs the default.
+#' @param ... Reserved. `metric` is accepted here for one release with a
+#'   deprecation notice; it now lives in [fb_decision()].
 #'
 #' @returns An object of class `fb_select` carrying the four resolved axes,
 #'   the reference fit, the column map, the decision, the out-of-fold scores,
@@ -2506,10 +2555,12 @@ fb_select <- function(base,
                       seed = NULL,
                       budget = NULL,
                       plan = FALSE,
+                      covariance = c("reml_plugin", "base_model"),
                       ...) {
   workflow <- match.arg(workflow)
   fallback <- match.arg(fallback)
   prediction <- match.arg(prediction)
+  covariance <- .fb_select_resolve_covariance(covariance)
   decision <- .fb_select_check_decision(decision)
   dots <- .fb_select_absorb_deprecated(list(...))
 
@@ -2672,6 +2723,19 @@ fb_select <- function(base,
     }
   }
 
+  if (identical(covariance, "base_model") &&
+        identical(workflow, "bayes") &&
+        !isTRUE(benchmark)) {
+    stop(
+      "fb_select(): covariance = \"base_model\" sets the fold covariance ",
+      "the benchmark and optimiser workflows plug in, and the Bayesian ",
+      "workflow integrates the covariance instead. Ask for those arms with ",
+      "benchmark = TRUE, or for workflow = \"penalized_optimizer\" or ",
+      "\"unpenalized_benchmark\".",
+      call. = FALSE
+    )
+  }
+
   if (identical(workflow, "penalized_optimizer") && is.null(penalty)) {
     stop(.fb_refusal_condition(
       reason_code = "selection_penalty_spec_malformed",
@@ -2725,7 +2789,9 @@ fb_select <- function(base,
       prior_family = "none",
       blocks = NULL,
       decision = decision,
-      shared_predictive_table = TRUE
+      shared_predictive_table = TRUE,
+      covariance = covariance,
+      engine = engine
     )
     return(.fb_select_assemble(
       base = base,
@@ -2764,6 +2830,8 @@ fb_select <- function(base,
       requested_workflow = requested_workflow,
       calibration = calibration,
       structure_gate = structure_gate,
+      covariance = covariance,
+      engine = engine,
       decision_resolution = list(
         requested = decision_resolution$requested,
         resolved_from = if (
@@ -2800,7 +2868,8 @@ fb_select <- function(base,
         prediction = prediction,
         fits_per_fold = 2L,
         candidates = candidates,
-        decision_resolution = forced_full
+        decision_resolution = forced_full,
+        covariance = covariance
       ))
     }
     cv <- .fb_sel_bayes_cv(
@@ -2829,7 +2898,9 @@ fb_select <- function(base,
         # This route always writes a unit-level out-of-fold table, so the
         # comparison the middle equivalence level names is one that
         # happened.
-        shared_predictive_table = TRUE
+        shared_predictive_table = TRUE,
+        covariance = covariance,
+        engine = engine
       )
     }
     return(.fb_select_assemble(
@@ -2929,7 +3000,8 @@ fb_select <- function(base,
       approximations = approximations,
       base_engine = engine_name,
       reference_engine = reference_engine,
-      decision_resolution = decision_resolution
+      decision_resolution = decision_resolution,
+      covariance = covariance
     ))
   }
 
@@ -3096,7 +3168,9 @@ fb_select <- function(base,
       prior_family = prior_family,
       blocks = resolved$blocks,
       decision = decision,
-      shared_predictive_table = !is.null(reference_cv$aggregated)
+      shared_predictive_table = !is.null(reference_cv$aggregated),
+      covariance = covariance,
+      engine = engine
     )
   }
   # Where the decision stage's submodel terms were searched, read off the
@@ -3183,7 +3257,9 @@ fb_select <- function(base,
                                  requested_workflow,
                                  calibration = NULL,
                                  structure_gate = NULL,
-                                 decision_resolution = NULL) {
+                                 decision_resolution = NULL,
+                                 covariance = "reml_plugin",
+                                 engine = NULL) {
   resolved <- .fb_select_resolve_penalty(
     base,
     candidates,
@@ -3219,11 +3295,13 @@ fb_select <- function(base,
       structure_gate = structure_gate,
       resamples = resamples,
       prediction = prediction,
-      fits_per_fold = 0L,
+      # A base-model covariance refits the base once per fold.
+      fits_per_fold = if (identical(covariance, "base_model")) 1L else 0L,
       candidates = candidates,
       compiled = resolved$compiled,
       approximations = resolved$approximations,
-      decision_resolution = decision_resolution
+      decision_resolution = decision_resolution,
+      covariance = covariance
     ))
   }
   bench <- .fb_select_benchmark(
@@ -3237,7 +3315,9 @@ fb_select <- function(base,
     prior_family = prior_family,
     blocks = resolved$blocks,
     decision = decision,
-    shared_predictive_table = TRUE
+    shared_predictive_table = TRUE,
+    covariance = covariance,
+    engine = engine
   )
   if (is.null(bench$arms$glmnet)) {
     stop(.fb_refusal_condition(
@@ -3504,33 +3584,20 @@ fb_select <- function(base,
 .FB_SEL_PROJECTION_NCLUSTERS <- 20L
 .FB_SEL_PROJECTION_NCLUSTERS_PRED <- 100L
 
-# The two arguments the earlier signature carried. `metric` moved into
-# fb_decision(); the covariance summary is a property of the benchmark
-# workflow and is now read off the folds rather than declared, which is the
-# defect the contract's section 9.2 closes. Both are accepted for one release
-# so a call written against the earlier signature reports what changed
-# instead of failing on an unused argument.
+# The argument the earlier signature carried. `metric` moved into
+# fb_decision(), and is accepted here so a call written against the earlier
+# signature reports what changed instead of failing on an unused argument.
 .fb_select_absorb_deprecated <- function(dots) {
-  for (nm in c("metric", "covariance")) {
-    if (nm %in% names(dots)) {
-      .fb_warn_deprecated(c(
-        paste0(
-          "The `", nm, "` argument of `fb_select()` is deprecated as of ",
-          "flexyBayes 0.11.0."
-        ),
-        if (identical(nm, "metric")) {
-          "Use the `metric` argument of `fb_decision()`."
-        } else {
-          paste0(
-            "The covariance summary is a property of the benchmark ",
-            "workflow and is read from the fold object that used it, so a ",
-            "declared value could disagree with what ran."
-          )
-        }
-      ))
-    }
+  if ("metric" %in% names(dots)) {
+    .fb_warn_deprecated(c(
+      paste0(
+        "The `metric` argument of `fb_select()` is deprecated as of ",
+        "flexyBayes 0.11.0."
+      ),
+      "Use the `metric` argument of `fb_decision()`."
+    ))
   }
-  unknown <- setdiff(names(dots), c("metric", "covariance"))
+  unknown <- setdiff(names(dots), "metric")
   if (length(unknown) > 0L) {
     stop(
       "fb_select(): unused argument(s) ",
@@ -3540,6 +3607,38 @@ fb_select <- function(base,
     )
   }
   dots
+}
+
+# .fb_select_resolve_covariance() --- the source of the plugged-in fold
+# covariance.
+#
+# From 0.11.0 to 0.13.x `covariance` was a deprecated argument taking an
+# estimand string, which warned and was ignored: the REML plug-in ran and the
+# estimand was read off the folds. It now names the source. A call that still
+# passes an estimand string warns as before and runs what it has always run.
+.fb_select_resolve_covariance <- function(covariance) {
+  legacy <- c(
+    "plugin_mean_covariance",
+    "reml_plugin_covariance",
+    "point_estimate_covariance"
+  )
+  if (is.character(covariance) && length(covariance) == 1L &&
+        covariance %in% legacy) {
+    .fb_warn_deprecated(c(
+      paste0(
+        "An estimand string for the `covariance` argument of `fb_select()` ",
+        "is deprecated as of flexyBayes 0.11.0."
+      ),
+      paste0(
+        "`covariance` names the source of the fold covariance: ",
+        "\"reml_plugin\", the default, which this call runs, or ",
+        "\"base_model\". The estimand is read from the fold object that ",
+        "used it."
+      )
+    ))
+    return("reml_plugin")
+  }
+  match.arg(covariance, c("reml_plugin", "base_model"))
 }
 
 .fb_select_check_decision <- function(decision) {
@@ -3668,6 +3767,8 @@ print.fb_select <- function(x, digits = 4L, ...) {
     cert$covariance$estimand %||% "not recorded",
     if (isTRUE(cert$covariance$integrated)) {
       " (integrated by the engine, not plugged in)"
+    } else if (identical(cert$covariance$source, "base_model")) {
+      ", from a refit of the base model on each fold's training rows"
     } else {
       ""
     },
@@ -4343,7 +4444,13 @@ print.fb_select_certificate <- function(x, ...) {
   cat("  axes       : workflow ", x$workflow, " / provider ", x$provider,
       " / prior ", x$prior, " / decision ", x$decision, "\n", sep = "")
   cat("  covariance : ", x$covariance$builder %||% "unknown builder", " / ",
-      x$covariance$estimand %||% "not recorded", "\n", sep = "")
+      x$covariance$estimand %||% "not recorded",
+      if (identical(x$covariance$source, "base_model")) {
+        ", from a refit of the base model on each fold's training rows"
+      } else {
+        ""
+      },
+      "\n", sep = "")
   cat("  prediction : ", x$resampling$prediction, "\n", sep = "")
   cat("  scored at  : ",
       if (is.na(x$resampling$scoring_unit %||% NA_character_)) {
