@@ -48,9 +48,8 @@
 #'   Write `diag(f):g`, which fits on both engines, or `us(f):g` on brms.
 #'   The bare spelling `fa(v, k)`, with no grouping factor for the covariance
 #'   to apply to, keeps its own refusal (`fa_not_representable`).
-#'   `corh(f):g` and `at(f, level):g` are likewise real syntax that
-#'   flexyBayes does not fit rather than unsupported syntax; both are
-#'   described just below.
+#'   `corh(f):g` and `at(f, level):g` are likewise ASReml syntax that
+#'   flexyBayes parses and refuses by name; both are described just below.
 #'
 #'   **Heterogeneous variances.** `diag(f):g`, `idh(f):g` and `at(f):g` all fit
 #'   one variance per level of `f` with no covariance between levels -- the

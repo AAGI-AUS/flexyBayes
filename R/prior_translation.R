@@ -230,8 +230,7 @@
       "Either re-express the prior in a distribution listed above, or ",
       "pass backend = \"",
       if (identical(engine, "inla")) "brms" else "inla",
-      "\",\n  for which flexyBayes translates a different set. It refuses ",
-      "rather than\n  dropping the specification silently."
+      "\",\n  for which flexyBayes translates a different set."
     ),
     family_class = "flexybayes_prior_translation_refusal",
     engine = engine

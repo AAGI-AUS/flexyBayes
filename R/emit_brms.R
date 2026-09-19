@@ -1013,8 +1013,8 @@ emit_brms <- function(
       ") smooth on neither engine; brms fits s() in its own formula, ",
       "outside flexyBayes. Use spl(",
       var_name,
-      ") with backend = \"inla\", a second-order random walk on an ",
-      "ASReml-style basis rather than the mgcv smooth."
+      ") with backend = \"inla\": a second-order random walk on an ",
+      "ASReml-style basis, which is a different smooth from mgcv's."
     ),
     "polynomial" = paste0(
       "Fit pol(",

@@ -762,8 +762,8 @@
           "vm(g, K):f and the crossings a:b and a:b:c. ",
           if (multi_trait) {
             paste0(
-              "flexyBayes has no lowering for a multi-trait covariance ",
-              "such as us(trait):vm(gen); fit it with brms directly, as ",
+              "flexyBayes has no lowering for a multi-trait covariance, ",
+              "us(trait):vm(gen); fit it with brms directly, as ",
               "(0 + trait | gr(gen, cov = K)), or fit each trait separately."
             )
           } else {

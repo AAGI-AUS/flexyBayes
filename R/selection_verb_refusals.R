@@ -53,7 +53,7 @@
       "an internal guard."
     ),
     message_template = paste0(
-      "the joint shrinkage prior(s) %s are fitted on brms only."
+      "joint shrinkage priors are fitted on brms only (%s)."
     ),
     registered_in_adr = "SPEC v5 section 4.5",
     plan_field = "selection_plan",

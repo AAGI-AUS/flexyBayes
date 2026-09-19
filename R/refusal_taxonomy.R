@@ -1023,10 +1023,10 @@
     ),
     message_template = paste0(
       "flexyBayes cannot fit this model on brms: it has no brms lowering ",
-      "for one of its structured-covariance terms, a vm() or ped() term ",
-      "with a blocks or low-rank carrier, or a structured term such as ",
-      "us(f) written without a grouping factor. Give vm() a dense, ",
-      "Cholesky or precision carrier, or write the structure as us(f):g."
+      "for one of its structured-covariance terms: a vm() or ped() term ",
+      "with a blocks or low-rank carrier, or a us() term written without ",
+      "a grouping factor. Give vm() a dense, Cholesky or precision carrier, ",
+      "or write the structure as us(f):g."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1253,9 +1253,9 @@
     reason_code = "at_level_conditioning_unsupported",
     description = paste0(
       "at(f, level):g conditions a random effect on selected levels of f, ",
-      "and flexyBayes has no lowering for it on either engine. It is not ",
-      "the heterogeneous variance structure diag(f):g, and is refused ",
-      "rather than fitted as one."
+      "and flexyBayes has no lowering for it on either engine. It is a ",
+      "different model from the heterogeneous variance structure ",
+      "diag(f):g, and is refused by name."
     ),
     message_template = paste0(
       "at(<factor>, <level>):<term> conditions the random effect on ",
@@ -1476,8 +1476,7 @@
       "A separable AR1 process written on the residual side. flexyBayes ",
       "fits an AR1 process as a latent field plus the Gaussian observation ",
       "error, four parameters, and not as ASReml's three-parameter residual ",
-      "without that error, so the residual spelling is refused rather than ",
-      "fitted under a name it does not have."
+      "without that error, so the residual spelling is refused by name."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 2 D-A",

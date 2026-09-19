@@ -106,9 +106,8 @@ genetic signal, and flexyBayes has no factor-analytic lowering for brms.
 Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms.
 The bare spelling \code{fa(v, k)}, with no grouping factor for the covariance
 to apply to, keeps its own refusal (\code{fa_not_representable}).
-\code{corh(f):g} and \code{at(f, level):g} are likewise real syntax that
-flexyBayes does not fit rather than unsupported syntax; both are
-described just below.
+\code{corh(f):g} and \code{at(f, level):g} are likewise ASReml syntax that
+flexyBayes parses and refuses by name; both are described just below.
 
 \strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
 one variance per level of \code{f} with no covariance between levels -- the
