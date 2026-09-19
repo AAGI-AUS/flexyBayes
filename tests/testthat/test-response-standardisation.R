@@ -245,6 +245,7 @@ test_that("an uncorrelated slope does not move under response or covariate scale
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   cells <- lapply(list(c(1, 1), c(100, 1), c(1, 1000), c(100, 1000)), function(k) {
@@ -269,6 +270,7 @@ test_that("draws are taken on the original scale", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   fit <- suppressWarnings(flexybayes(

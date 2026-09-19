@@ -62,6 +62,7 @@ test_that("fb() corpus 1: fixed-only Gaussian (brms grammar forced)", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   # A bar-free formula is ASReml grammar by default; `syntax = "brms"`
   # forces the brms ingest so this still exercises the brms corpus path.
@@ -93,6 +94,7 @@ test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
@@ -121,6 +123,7 @@ test_that("fb_brms() corpus 3: crossed random intercepts", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1) + (1 | g2),
@@ -181,6 +184,7 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_poisson_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),

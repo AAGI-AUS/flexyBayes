@@ -150,6 +150,7 @@ test_that("as_draws_df() resolves brms and INLA to common names on a Gaussian ra
   testthat::skip_if_not_installed("brms")
   testthat::skip_if_not_installed("INLA")
   testthat::skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   d <- mk_canon_data()
   fit_b <- suppressMessages(flexybayes(
     yield ~ env,

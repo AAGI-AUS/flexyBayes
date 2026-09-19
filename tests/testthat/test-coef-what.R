@@ -105,6 +105,7 @@ test_that("coef() with no `what` is the fixed-effect vector on INLA", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .cw_silence()
   fit <- .cw_inla_fit()
 
@@ -306,6 +307,7 @@ test_that("emmeans still runs through the unchanged coef() default", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .cw_silence()
   fit <- .cw_inla_fit()
 

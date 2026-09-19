@@ -264,6 +264,7 @@ fb_sel_proj_run <- function(bits) {
 
 
 test_that("a validated grouped k-fold search runs on the caller's own folds", {
+  skip_if_not_long_tier()
   bits <- fb_sel_proj_bits()
   projection <- fb_sel_proj_run(bits)
 
@@ -351,6 +352,7 @@ test_that("the rank stability table reports where the folds disagreed", {
 
 
 test_that("the search is deterministic under its seed", {
+  skip_if_not_long_tier()
   # Run with the search unvalidated, which is the cheap mode and is
   # labelled optimistic on the object; determinism is a property of the
   # seed, not of the validation.

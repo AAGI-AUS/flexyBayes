@@ -64,6 +64,7 @@
 test_that("fitted() and residuals() on aggregated count fits match the per-row fit", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   .acc_one_thread()
   d <- .acc_counts(1200L, 314L)
@@ -131,6 +132,7 @@ test_that("a missing response keeps the aggregated count route refused by name",
 test_that("a streamed fit returns row values only when it holds every row", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   .acc_one_thread()
 
@@ -174,6 +176,7 @@ test_that("nobs() and glance() report the integer the summary reports", {
 test_that("every generic reaching an aggregated or streamed fit returns or refuses by name", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   .acc_one_thread()
 

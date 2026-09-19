@@ -99,6 +99,7 @@ test_that("emmeans(fit, ~ f) reaches a brms fit through the bare method", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .emm_silence()
   d <- .emm_data()
   fit <- suppressMessages(flexybayes(

@@ -151,6 +151,7 @@ test_that("the Bayesian route runs on brms over three folds", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   withr::local_options(brms.backend = "cmdstanr")
 
   # A brms fit records its dataset as metadata only, so the data the folds are
@@ -198,6 +199,7 @@ test_that("the brms predictive draws agree with brms's own response sampler", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   withr::local_options(brms.backend = "cmdstanr")
 
   d <- fb_bcv_data()
@@ -262,6 +264,7 @@ test_that("the brms predictive draws agree with brms's own response sampler", {
 test_that("the Bayesian route runs on INLA over three folds", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fb_bcv_quiet_missingness()
 
   cv <- fb_bcv_cached(
@@ -301,6 +304,7 @@ test_that("the INLA arm's held-out sites draw the marginal random effect", {
   # random-effect scale and not the much smaller conditional one.
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
 
   d <- fb_bcv_data(n_cluster = 8L, per = 8L, sd_u = 2.5, sd_e = 0.4)
   split <- .fb_sel_folds(fb_resamples(unit = ~site, v = 4L), d)[[1L]]
@@ -426,6 +430,7 @@ test_that("a null candidate block does not earn the increment a real one does", 
   # always reports an improvement.
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fb_bcv_quiet_missingness()
 
   real <- fb_bcv_cached(
@@ -610,6 +615,7 @@ test_that("known_cluster scores no worse than new_cluster when clusters split", 
   # would be indistinguishable if the relabelling were a no-op.
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fb_bcv_quiet_missingness()
 
   d <- fb_bcv_data(n_cluster = 8L, per = 8L, sd_u = 2.5, sd_e = 0.4)
@@ -727,6 +733,7 @@ test_that("the INLA arm reproduces its score, and its draws do not", {
   # the instrument cannot deliver.
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
 
   d <- fb_bcv_data(n_cluster = 8L, per = 8L, sd_u = 2.5, sd_e = 0.4)
   base <- fb_bcv_cached(

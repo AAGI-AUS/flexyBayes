@@ -184,6 +184,7 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
   skip_if_not_installed("lme4")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sleepstudy()
   fit <- flexybayes(
@@ -457,6 +458,7 @@ test_that("an offset model is invariant to rescaling the response and offset", {
   # identical-call range is 1.9e-4 of their value.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(20260914L)
   n_g <- 30L
@@ -586,6 +588,7 @@ test_that("a Poisson offset reaches the aggregated route as exposure", {
   # intercept is 1.95 against 0.26.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   threads <- INLA::inla.getOption("num.threads")
   INLA::inla.setOption(num.threads = "1:1")
@@ -687,6 +690,7 @@ test_that("predict() on INLA carries the offset where it predicts", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("emmeans")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_pred_data()
   fit <- .off_inla(y ~ f + x + offset(z), random = ~ g, data = d)
@@ -827,6 +831,7 @@ test_that("fb_select()'s benchmark and optimiser read the base's offset", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sel_data()
   bases <- .off_sel_bases(d)
@@ -871,6 +876,7 @@ test_that("projection refuses an offset base, and the other layers carry it", {
   # subtracted refit's by the offset, within 7.3e-5 (2026-09-13).
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sel_data()
   bases <- .off_sel_bases(d)
@@ -942,6 +948,7 @@ test_that("brms and INLA agree on an offset model under one stated prior", {
   skip_if_not_installed("lme4")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sleepstudy()
   prior <- fb_prior(

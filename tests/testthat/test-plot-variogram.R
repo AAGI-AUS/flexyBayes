@@ -258,6 +258,7 @@ test_that("plot(brms_fit) draws its diagnostics (AD-6, live 0.9.0 bug)", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pv_silence()
   .pv_null_device()
 

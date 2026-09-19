@@ -78,6 +78,7 @@ test_that("review_code = TRUE under backend = 'inla' raises a clean refusal nami
 test_that("backend = 'brms' records the explicit-brms trace", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
+  skip_if_not_long_tier()
   d <- mk_lgm_data()
   fit <- suppressMessages(flexybayes(
     yield ~ env,
@@ -193,6 +194,7 @@ test_that("backend = 'auto' keeps the multi-stratum residual on INLA", {
 test_that("backend = 'auto' falls back to brms when INLA refuses, with trace", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
+  skip_if_not_long_tier()
   d <- mk_lgm_data()
   # corh(env):geno -- heterogeneous variances with one shared
   # correlation. No engine has an equicorrelation group structure, and

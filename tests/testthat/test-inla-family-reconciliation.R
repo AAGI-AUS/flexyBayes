@@ -137,6 +137,7 @@ test_that("the control.family block carries the declared keyword", {
 
 test_that("every admitted family spelling fits on INLA", {
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .ifr_data()
   spellings <- list(

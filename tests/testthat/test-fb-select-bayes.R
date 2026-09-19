@@ -110,6 +110,7 @@ fbsb_engine <- function() {
 test_that("a horseshoe with a projection decision records four axes", {
   fbsb_needs_brms()
   skip_if_not_installed("projpred")
+  skip_if_not_long_tier()
   sel <- fbsb_memo("hs_projection", suppressWarnings(fb_select(
     fbsb_base_intercept(),
     fbsb_candidates,
@@ -348,6 +349,7 @@ test_that("tidy retains a factor and an interaction by term, not by contrast col
 
 test_that("a class-wide family over a protected fixed effect refuses, and names both ways forward", {
   fbsb_needs_brms()
+  skip_if_not_long_tier()
   err <- tryCatch(
     fb_select(
       fbsb_base(), fbsb_candidates,
@@ -416,6 +418,7 @@ test_that("scope = \"all_fixed\" is admitted, and names what it costs", {
 
 test_that("a laplace penalty with decision = full keeps every candidate", {
   fbsb_needs_brms()
+  skip_if_not_long_tier()
   sel <- fbsb_memo("laplace_full", suppressWarnings(fb_select(
     fbsb_base(),
     fbsb_candidates,
@@ -482,6 +485,7 @@ test_that("a posterior threshold is labelled a decision, not an inclusion probab
 
 test_that("penalty = NULL on brms is the Bayesian no-penalty reference", {
   fbsb_needs_brms()
+  skip_if_not_long_tier()
   sel <- fbsb_memo("bayes_null_brms", suppressWarnings(fb_select(
     fbsb_base(),
     ~ x1 + x2,
@@ -507,6 +511,7 @@ test_that("penalty = NULL on brms is the Bayesian no-penalty reference", {
 test_that("penalty = NULL on INLA refits the base's own engine per fold", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   d <- fb_sel_bayes_data()
   base <- fbsb_memo("inla_base", flexybayes(
     y ~ p1, random = ~site, data = d, backend = "inla", verbose = FALSE
@@ -533,6 +538,7 @@ test_that("penalty = NULL on INLA refits the base's own engine per fold", {
 test_that("benchmark = TRUE adds two arms, each with its equivalence level", {
   fbsb_needs_brms()
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   sel <- fbsb_memo("en_benchmark", suppressWarnings(fb_select(
     fbsb_base(),
     fbsb_candidates,
@@ -669,6 +675,7 @@ test_that("the stage tables say why they are absent, and substitute nothing", {
 test_that("a ridge benchmark scores both arms on one loss and leaves the mode oracle empty", {
   fbsb_needs_brms()
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   sel <- fbsb_memo("ridge_benchmark", suppressWarnings(fb_select(
     fbsb_base(),
     fbsb_candidates,
@@ -753,6 +760,7 @@ test_that("a ridge benchmark scores both arms on one loss and leaves the mode or
 test_that("a horseshoe benchmark claims no identity against glmnet", {
   fbsb_needs_brms()
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   sel <- fbsb_memo("hs_benchmark", suppressWarnings(fb_select(
     fbsb_base_intercept(),
     fbsb_candidates,
@@ -804,6 +812,7 @@ test_that("a projection benchmark scores the chosen submodel at the decision sta
   fbsb_needs_brms()
   skip_if_not_installed("projpred")
   skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
   sel <- fbsb_memo("laplace_projection_benchmark", suppressWarnings(fb_select(
     fbsb_base(),
     fbsb_candidates,
@@ -992,6 +1001,7 @@ test_that("the plan and the printed result lead with the structure-gate table", 
 test_that("decision = \"auto\" resolves against the gate and records the resolution", {
   fbsb_needs_brms()
   skip_if_not_installed("projpred")
+  skip_if_not_long_tier()
 
   # Green gate: the projection runs, and the object says the method was
   # resolved rather than asked for.
@@ -1422,6 +1432,7 @@ test_that("an INLA base with a joint prior samples on brms", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   d <- fb_sel_bayes_data(J = 15L, m = 6L)
   base <- fbsb_memo("inla_base_wide", flexybayes(
     y ~ p1, random = ~site, data = d, backend = "inla", verbose = FALSE

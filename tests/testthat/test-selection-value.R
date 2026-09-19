@@ -405,6 +405,7 @@ test_that("scoring a block of rows at a time gives the scores of all rows at onc
 test_that("the stored per-row log predictive density equals the closed-form Gaussian predictive", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbv_quiet()
   d <- fbv_data()
   for (target in c("new_cluster", "known_cluster")) {
@@ -468,6 +469,7 @@ test_that("the new-cluster predictive is wider than the known-cluster one by the
 test_that("two valuations on one contract difference unit by unit", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbv_quiet()
   a <- fbv_runs("new_cluster")[[1L]]
   b <- fbv_cached(
@@ -512,6 +514,7 @@ test_that("two valuations on one contract difference unit by unit", {
 test_that("the block share covers a known share by construction, and a noise block gives near zero", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbv_quiet()
   signal <- fbv_share_run("signal")
   noise <- fbv_share_run("noise")
@@ -551,6 +554,7 @@ test_that("the block share covers a known share by construction, and a noise blo
 test_that("a fold that leaves part of a factor unidentified is refitted on its support, never dropped", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbv_quiet()
   d <- fbv_drop_data()
   resamples <- fb_resamples(unit = ~location, fold_id = d$fold)
@@ -691,6 +695,7 @@ test_that("a brms base is refitted on brms and scored the same way", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
+  skip_if_not_long_tier()
   fbv_quiet()
   d <- fbv_data()
   d <- d[as.integer(d$site) <= 6L, , drop = FALSE]

@@ -100,6 +100,7 @@ test_that("the correlated slope on sleepstudy is fitted on brms, near REML", {
   skip_if_not_installed("brms")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   data(sleepstudy, package = "lme4")
 

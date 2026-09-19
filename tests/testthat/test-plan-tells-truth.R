@@ -341,6 +341,7 @@ test_that("parity roster: plan$backend_chosen equals the live fit's backend acro
   skip_if_no_inla()
   skip_if_no_brms()
   skip_on_cran()
+  skip_if_not_long_tier()
 
   for (spec in .plan_parity_roster) {
     d <- spec$data()

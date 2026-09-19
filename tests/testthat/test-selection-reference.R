@@ -59,6 +59,7 @@ fb_sel_reference <- function(bits) {
 # --- the re-emission ---------------------------------------------------- #
 
 test_that("the reference fit is the base re-emitted with the candidate block", {
+  skip_if_not_long_tier()
   bits <- fb_sel_ref_bits()
   ref <- fb_sel_reference(bits)
 
@@ -240,6 +241,7 @@ test_that("the convergence gate is red on a deliberately under-warmed fit", {
 
 
 test_that("the posterior predictive gate is red when the model cannot reproduce the spread", {
+  skip_if_not_long_tier()
   # The injected defect: the residual and group scales are pinned at a
   # twentieth of the truth through the same prior pass-through the joint
   # block uses. The model then cannot generate data as spread out as the

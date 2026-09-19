@@ -109,6 +109,7 @@ test_that("GBLUP recovers heritability and breeding values across both active en
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_convergence_warning = TRUE

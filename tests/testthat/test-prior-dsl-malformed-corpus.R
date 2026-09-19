@@ -429,6 +429,7 @@ test_that("the fit-entry controls reach a completed fit", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   for (case in .corpus_fit_entry_controls) {
     fit <- .corpus_fit_entry(fb_prior(case[[2L]]), case[[3L]])
     expect_false(inherits(fit, "condition"), label = case[[1L]])
