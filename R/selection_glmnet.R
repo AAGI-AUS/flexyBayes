@@ -652,12 +652,7 @@
         in_support = in_support,
         stringsAsFactors = FALSE
       )
-      # The transitions of one membership sequence. The point before the
-      # first is out by construction, so an entry at the first point counts
-      # as an entry and not as a state the path was already in.
-      previous <- c(FALSE, in_support[-n_points])
-      entries <- which(in_support & !previous)
-      exits <- which(!in_support & previous)
+      moves <- .fb_sel_path_transitions(in_support, rows$s)
       by_fold[[length(by_fold) + 1L]] <- data.frame(
         alpha = alpha,
         fold = label,
@@ -665,17 +660,9 @@
         available = available,
         n_points = n_points,
         n_in_support = sum(in_support),
-        first_entry_s = if (length(entries) > 0L) {
-          rows$s[[entries[[1L]]]]
-        } else {
-          NA_real_
-        },
-        last_exit_s = if (length(exits) > 0L) {
-          rows$s[[exits[[length(exits)]]]]
-        } else {
-          NA_real_
-        },
-        n_reentries = max(0L, length(entries) - 1L),
+        first_entry_s = moves$first_entry_s,
+        last_exit_s = moves$last_exit_s,
+        n_reentries = moves$n_reentries,
         stringsAsFactors = FALSE
       )
     }
@@ -1568,6 +1555,7 @@
     alpha = penalty$alpha_composite,
     selects = semantics$selects
   )
+  groups <- .fb_sel_declared_groups(resolved)
 
   structure(
     list(
@@ -1602,7 +1590,14 @@
         group_history = .fb_sel_group_support_history(
           history$points, resolved$grouping
         ),
-        group_membership = computed$group_membership
+        group_membership = computed$group_membership,
+        # The declared group of every penalised column -- the grouped
+        # family's own grouping, or otherwise the specification that claimed
+        # it -- and each group's entry, exit and re-entries per fold.
+        groups = groups,
+        group_history_by_fold = .fb_sel_group_history_by_fold(
+          history$points, groups
+        )
       ),
       canonical_objective = computed$canonical_objective,
       provider_objective = computed$provider_objective,

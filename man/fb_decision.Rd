@@ -13,7 +13,10 @@ fb_decision(
   nterms_max = NULL,
   validate_search = TRUE,
   threshold = 0.5,
-  effect_size = NULL
+  effect_size = NULL,
+  stability_subsamples = 0L,
+  stability_cutoff = 0.75,
+  stability_unit = NULL
 )
 }
 \arguments{
@@ -51,11 +54,22 @@ by, \code{method = "posterior_threshold"}.}
 \item{effect_size}{The practical effect size on the scientific scale, at
 or below which a coefficient is not of interest. Required by, and only
 used by, \code{method = "posterior_threshold"}.}
+
+\item{stability_subsamples}{The number B of stability subsamples, a whole
+number. \code{0} (the default) draws none.}
+
+\item{stability_cutoff}{The frequency at or above which a column is
+stable, in (0.5, 1]. Read only when \code{stability_subsamples} is positive.}
+
+\item{stability_unit}{The units a subsample draws half of, as a one-sided
+formula or a character vector. \code{NULL} (the default) takes the resampling
+unit of \code{\link[=fb_resamples]{fb_resamples()}}, and rows where that has none.}
 }
 \value{
 An object of class \code{fb_decision}: a validated list carrying
 \code{method}, \code{requested_method}, \code{metric}, \code{rule}, \code{tolerance}, \code{search},
-\code{nterms_max}, \code{validate_search}, \code{threshold} and \code{effect_size}.
+\code{nterms_max}, \code{validate_search}, \code{threshold}, \code{effect_size},
+\code{stability_subsamples}, \code{stability_cutoff} and \code{stability_unit}.
 }
 \description{
 The decision layer of \code{\link[=fb_select]{fb_select()}}: which quantity is optimised, how a
@@ -101,11 +115,30 @@ the best size. \code{"one_se"} takes the smallest size whose paired loss
 against the best is within one standard error of that paired difference.
 \code{"tolerance"} takes the smallest size losing less than \code{tolerance} nats
 per unit against the reference model.
+
+The three \code{stability_} settings ask for subsample stability of the
+penalised optimiser's support (Meinshausen and Buhlmann 2010,
+\doi{10.1111/j.1467-9868.2010.00740.x}). Each of \code{stability_subsamples}
+subsamples holds half of the units of \code{stability_unit}, drawn without
+replacement after \code{set.seed(seed)}, and the penalised path is walked on it
+over the same \code{s = lambda / lambda_max} grid as the cross-validated path. A
+column's frequency at a point is the share of the subsamples whose
+solution holds it there, and the column is stable when its largest
+frequency at or above the chosen tuning point reaches \code{stability_cutoff}.
+Under the exchangeability condition of their Theorem 1, the expected
+number of falsely stable columns is at most \verb{q^2 / ((2 cutoff - 1) p)},
+where \code{q} is the average number of columns a subsample selects in that
+region and \code{p} the number of penalised columns; the result reports both.
+The stable set is a read-out beside the optimiser's chosen support and
+does not replace it. It runs wherever the penalised optimiser runs, as the
+workflow or as the benchmark arm of \code{benchmark = TRUE}, and costs
+\code{stability_subsamples} penalised paths, which \code{plan = TRUE} states.
 }
 \examples{
 fb_decision()
 fb_decision(rule = "tolerance", tolerance = 0.1)
 fb_decision(method = "posterior_threshold", effect_size = 0.2)
+fb_decision(stability_subsamples = 100L, stability_unit = ~ site)
 }
 \seealso{
 \code{\link[=fb_select]{fb_select()}}, which takes this object; \code{\link[=fb_resamples]{fb_resamples()}} for the

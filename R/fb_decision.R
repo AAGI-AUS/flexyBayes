@@ -63,6 +63,24 @@
 #' `"tolerance"` takes the smallest size losing less than `tolerance` nats
 #' per unit against the reference model.
 #'
+#' The three `stability_` settings ask for subsample stability of the
+#' penalised optimiser's support (Meinshausen and Buhlmann 2010,
+#' \doi{10.1111/j.1467-9868.2010.00740.x}). Each of `stability_subsamples`
+#' subsamples holds half of the units of `stability_unit`, drawn without
+#' replacement after `set.seed(seed)`, and the penalised path is walked on it
+#' over the same `s = lambda / lambda_max` grid as the cross-validated path. A
+#' column's frequency at a point is the share of the subsamples whose
+#' solution holds it there, and the column is stable when its largest
+#' frequency at or above the chosen tuning point reaches `stability_cutoff`.
+#' Under the exchangeability condition of their Theorem 1, the expected
+#' number of falsely stable columns is at most `q^2 / ((2 cutoff - 1) p)`,
+#' where `q` is the average number of columns a subsample selects in that
+#' region and `p` the number of penalised columns; the result reports both.
+#' The stable set is a read-out beside the optimiser's chosen support and
+#' does not replace it. It runs wherever the penalised optimiser runs, as the
+#' workflow or as the benchmark arm of `benchmark = TRUE`, and costs
+#' `stability_subsamples` penalised paths, which `plan = TRUE` states.
+#'
 #' @param method `"auto"` (default), `"projection"`, `"full"` or
 #'   `"posterior_threshold"`. `"auto"` resolves to `"projection"` where the
 #'   structure gate is green and to `"full"` where it is red.
@@ -89,10 +107,18 @@
 #' @param effect_size The practical effect size on the scientific scale, at
 #'   or below which a coefficient is not of interest. Required by, and only
 #'   used by, `method = "posterior_threshold"`.
+#' @param stability_subsamples The number B of stability subsamples, a whole
+#'   number. `0` (the default) draws none.
+#' @param stability_cutoff The frequency at or above which a column is
+#'   stable, in (0.5, 1]. Read only when `stability_subsamples` is positive.
+#' @param stability_unit The units a subsample draws half of, as a one-sided
+#'   formula or a character vector. `NULL` (the default) takes the resampling
+#'   unit of [fb_resamples()], and rows where that has none.
 #'
 #' @returns An object of class `fb_decision`: a validated list carrying
 #'   `method`, `requested_method`, `metric`, `rule`, `tolerance`, `search`,
-#'   `nterms_max`, `validate_search`, `threshold` and `effect_size`.
+#'   `nterms_max`, `validate_search`, `threshold`, `effect_size`,
+#'   `stability_subsamples`, `stability_cutoff` and `stability_unit`.
 #'
 #' @seealso [fb_select()], which takes this object; [fb_resamples()] for the
 #'   folds the decision is assessed on.
@@ -101,6 +127,7 @@
 #' fb_decision()
 #' fb_decision(rule = "tolerance", tolerance = 0.1)
 #' fb_decision(method = "posterior_threshold", effect_size = 0.2)
+#' fb_decision(stability_subsamples = 100L, stability_unit = ~ site)
 #' @export
 fb_decision <- function(
   method = c("auto", "projection", "full", "posterior_threshold"),
@@ -111,7 +138,10 @@ fb_decision <- function(
   nterms_max = NULL,
   validate_search = TRUE,
   threshold = 0.5,
-  effect_size = NULL
+  effect_size = NULL,
+  stability_subsamples = 0L,
+  stability_cutoff = 0.75,
+  stability_unit = NULL
 ) {
   method <- match.arg(method)
   metric <- match.arg(metric)
@@ -232,6 +262,36 @@ fb_decision <- function(
     nterms_max <- as.integer(nterms_max)
   }
 
+  if (!.fb_dec_is_number(stability_subsamples) || stability_subsamples < 0 ||
+      stability_subsamples != round(stability_subsamples)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_decision_invalid",
+      message = paste0(
+        "fb_decision(): `stability_subsamples` must be a single whole ",
+        "number of subsamples, 0 or more. Got: ",
+        .fb_dec_show(stability_subsamples),
+        "."
+      )
+    ))
+  }
+  stability_subsamples <- as.integer(stability_subsamples)
+  # The bound on falsely stable columns holds for a cutoff above one half,
+  # and a frequency cannot exceed one.
+  if (!.fb_dec_is_number(stability_cutoff) || stability_cutoff <= 0.5 ||
+      stability_cutoff > 1) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_decision_invalid",
+      message = paste0(
+        "fb_decision(): `stability_cutoff` is a selection frequency and must ",
+        "lie in (0.5, 1]; the Meinshausen-Buhlmann bound on falsely stable ",
+        "columns holds only above one half. Got: ",
+        .fb_dec_show(stability_cutoff),
+        "."
+      )
+    ))
+  }
+  stability_unit <- .fb_sel_variables(stability_unit, "stability_unit")
+
   structure(
     list(
       method = method,
@@ -245,7 +305,10 @@ fb_decision <- function(
       nterms_max = nterms_max,
       validate_search = validate_search,
       threshold = threshold,
-      effect_size = effect_size
+      effect_size = effect_size,
+      stability_subsamples = stability_subsamples,
+      stability_cutoff = stability_cutoff,
+      stability_unit = stability_unit
     ),
     class = c("fb_decision", "list")
   )
@@ -308,6 +371,18 @@ print.fb_decision <- function(x, ...) {
     )
   } else {
     cat("  the reference posterior, with no selection.\n", sep = "")
+  }
+  if (isTRUE((x$stability_subsamples %||% 0L) > 0L)) {
+    cat(
+      "  stability: B = ", x$stability_subsamples, " subsamples of half the ",
+      if (length(x$stability_unit) > 0L) {
+        paste0(paste(x$stability_unit, collapse = ":"), " units")
+      } else {
+        "resampling units"
+      },
+      ", cutoff ", format(x$stability_cutoff), "\n",
+      sep = ""
+    )
   }
   invisible(x)
 }
