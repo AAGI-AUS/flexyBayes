@@ -1,3 +1,56 @@
+# flexyBayes 0.13.1
+
+A patch release for penalised selection. It adds two read-outs of a penalised
+path and holds every point on the path to one optimality certificate. No model
+family, penalty family, engine or exported function is added.
+
+## Selection read-outs
+
+* `plot(fit, type = "entrance_path")` draws the out-of-fold score along
+  `s = lambda / lambda_max`, from the strongest penalty to the weakest, and
+  labels each candidate at its median first entry: the point by which at least
+  half of the folds that could estimate it had admitted it. A candidate
+  admitted on fewer than half of those folds is not labelled, and candidates
+  entering at the same point share one label. The ordinate is the mean of the
+  per-unit scores, for example RMSE, and is not an inclusion probability.
+  `ridge()` and `exclusive_lasso()` have no finite null anchor and so no `s`
+  coordinate, and the display says so.
+* `augment(fit, type = "assessment_predictions")` returns the stored
+  out-of-fold predictions behind the optimiser's decision: one row per
+  assessment row and repeat, with the row's position in the data, its fold,
+  repeat and scoring unit, the observed and predicted values on the modelled
+  scale after any Gaussian offset, the selected tuning point and the hash of
+  the decision-stage score contract. It does not predict rows supplied by the
+  caller. The default, `type = "unit_scores"`, returns the per-unit scores as
+  before.
+
+## Optimality certificates
+
+* Every optimiser path point is held to one KKT threshold of `1e-6`, whichever
+  provider computed it. `glmnet` stops on a change in its own objective, and
+  on strongly correlated blocks, or when it runs out of iterations, it returns
+  points above that threshold; 0.13.0 scored those points as if they were the
+  optimum. Such a point is now solved again, on the support `glmnet` found or
+  by the internal proximal solver, and refused by name
+  (`selection_prox_mode_not_converged`) if neither certifies it. On correlated
+  synthetic designs this turned residuals of up to 2.6 into certified points
+  and left the selected supports unchanged.
+* Grouped path points were held to `1e-9` and could be refused on a large
+  correlated block after 200,000 iterations. They now use the same `1e-6`
+  threshold. On exclusive-lasso paths over correlated synthetic blocks, every
+  support accepted at `1e-6` matched the exact optimum from an independent
+  quadratic-programming solver, out-of-fold predictions moved by less than
+  `1e-5` response standard deviations, and the paths ran 3 to 16 times faster.
+  The lower-level solvers keep their stricter defaults.
+
+## Documentation
+
+* `?fb_penalty` states that under treatment contrasts a factor's group holds
+  its non-reference contrast columns, and the reference level has no design
+  column. The exclusive lasso encourages one member of a declared block of
+  correlated alternatives to represent it and does not guarantee a single
+  survivor.
+
 # flexyBayes 0.13.0
 
 This release makes the selection and large-MET substrate materially safer and

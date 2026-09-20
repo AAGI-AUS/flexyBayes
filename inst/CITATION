@@ -4,6 +4,6 @@ bibentry(
   author   = person("Max", "Moldovan",
                     comment = c(ORCID = "0000-0001-9680-8474")),
   year     = "2026",
-  note     = "R package version 0.13.0",
+  note     = "R package version 0.13.1",
   url      = "https://github.com/AAGI-AUS/flexyBayes"
 )
