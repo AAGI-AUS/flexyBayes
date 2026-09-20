@@ -830,6 +830,7 @@ test_that("stability settings refuse at construction when they cannot be read", 
 
 test_that("stability refuses by name where no penalised path would read it", {
   skip_if_not_installed("glmnet")
+  skip_if_not_installed("INLA")
   fben_quiet()
   d <- fben_data()
   decision <- fben_stability_decision(b = 10L)

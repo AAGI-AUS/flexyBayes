@@ -135,7 +135,7 @@ each follows ASReml are in `vignette("flexyBayes-03-syntax")`.
 
 ## Documentation
 
-Five vignettes, meant to be read in order and to be enough to start work:
+Six vignettes, meant to be read in order and to be enough to start work:
 
 | Vignette | What it covers |
 |---|---|
@@ -144,6 +144,7 @@ Five vignettes, meant to be read in order and to be enough to start work:
 | `flexyBayes-03-syntax` | Every ASReml spelling the package covers, what it is for, and what it does not cover |
 | `flexyBayes-04-illustration` | A worked analysis with ASReml and flexyBayes side by side, and what the posterior gives that REML cannot |
 | `flexyBayes-05-selection` | Selecting over a candidate block: the joint shrinkage prior, the projection decision, and what a benchmark against `glmnet` does and does not establish |
+| `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials: a mean per variety per trial, its variance carried into the second stage, and what each block of trial-level covariates buys |
 
 ## Reporting problems
 

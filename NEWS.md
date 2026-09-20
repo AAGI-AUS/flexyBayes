@@ -84,6 +84,11 @@ against the engines.
   unpenalised benchmark, the penalised optimiser or `benchmark = TRUE` is
   asked for (`selection_missing_response_not_carried`). It used to stop
   inside the optimiser with an untyped error.
+* The refusal raised when `refit = list(method = "bayes")` meets a path that
+  froze no support no longer carries the penalty family's name as one of its
+  condition classes. A `ridge` path's refusal was classed
+  `flexybayes_refusal_selection_refit_support_undefined` and `ridge`; the
+  second class is gone, and the family is carried as data on the condition.
 * At `s = 1` the penalised optimiser's support is now empty, as the exact
   solution there is. Rounding left values of order 1e-16 that counted as
   selected, so a one-standard-error choice of `s = 1` could report columns in

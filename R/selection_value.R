@@ -239,7 +239,7 @@
         "it has no support to freeze. Nothing was refitted. Use laplace(), ",
         "elastic_net() or a grouped family, which set coefficients to zero."
       ),
-      family = arm$family
+      penalty_family = arm$family
     ))
   }
   path <- as.data.frame(arm$support$by_lambda)

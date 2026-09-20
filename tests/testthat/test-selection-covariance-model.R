@@ -682,6 +682,7 @@ test_that("covariance defaults to the REML plug-in, and a legacy estimand string
 })
 
 test_that("covariance = \"base_model\" on a route that plugs in no covariance is an error", {
+  skip_if_not_installed("INLA")
   d <- fbcm_site_data()
   expect_error(
     fb_select(fbcm_stub_base(d), ~ z1 + z2, covariance = "base_model",

@@ -421,6 +421,7 @@ test_that("with the Bayesian refit, the ablation's refits are held to the budget
 
 test_that("ablation on a route with no penalised path refuses by name before any fit", {
   skip_if_not_installed("glmnet")
+  skip_if_not_installed("INLA")
   fba_quiet()
   d <- fba_data()
   err <- tryCatch(

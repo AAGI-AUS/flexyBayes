@@ -290,6 +290,7 @@ fbv_stub_base <- function(d) {
 # --- (i) the request is validated before anything is refitted ------------ #
 
 test_that("a refit on a route with no frozen support refuses by name", {
+  skip_if_not_installed("INLA")
   fbv_quiet()
   d <- fbv_data()
   stub <- fbv_stub_base(d)
