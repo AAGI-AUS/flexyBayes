@@ -105,8 +105,14 @@ against the engines.
   example, the table of models at least one engine fits, and where to read
   more. The row notes, and the structures neither engine fits, are in
   `KNOWN_ISSUES.md`.
+* *A two-stage analysis of a series of trials* is a new page. It fits each
+  trial of a simulated series on its own, carries the first stage's variances
+  into the second with `known_variance`, whitens the folds from a refit of
+  that second-stage model, and reports what each declared block of
+  trial-level covariates costs when it is dropped.
 * *Mixed models in brief* and *Bayesian estimation in brief* are rebuilt and
-  show the half-normal default prior.
+  show the half-normal default prior. *Selecting over a candidate block* is
+  rebuilt on this release.
 * The default-prior message printed on a first fit is two sentences.
 
 ## Removals

@@ -165,7 +165,7 @@ fb_select(
 #>   stanvars:     no
 #>   Structure gate: supported
 #>   Folds:        3, prediction new_cluster
-#>   Cost estimate: 26.4s over 4 fit(s) at 6.60s each
+#>   Cost estimate: 26.1s over 4 fit(s) at 6.53s each
 #>                  the per-fit figure is the base model's own recorded wall time; the reference model carries a wider fixed part and a shrinkage prior, so this is a floor
 #>   Approximations this route commits to:
 #>     - calibration_n_at_the_resampling_unit: the prior scales are calibrated against 20 units of site rather than against 200 rows, because rows inside a cluster are not independent pieces of evidence about a coefficient
@@ -2772,7 +2772,7 @@ kappa <- sel$diagnostics$kappa
 kappa$label
 #> [1] "orthogonal_design_kappa_approx"
 round(sort(kappa$kappa), 3)
-#>    x1    x2    x6    x7    x4    x5    x3    x8
+#>    x1    x2    x6    x7    x4    x5    x3    x8 
 #> 0.002 0.004 0.453 0.537 0.537 0.567 0.594 0.596
 kappa$effective_nonzero_at_half
 #> [1] 3
@@ -2804,16 +2804,36 @@ rnd(tidy(sel))
 #> 7    0.040     0.040 scientific              NA            NA           NA
 #> 8   -0.021     0.032 scientific              NA            NA           NA
 #> 9    0.003     0.028 scientific              NA            NA           NA
-#>   path_exit_s path_reentries
-#> 1          NA             NA
-#> 2          NA             NA
-#> 3          NA             NA
-#> 4          NA             NA
-#> 5          NA             NA
-#> 6          NA             NA
-#> 7          NA             NA
-#> 8          NA             NA
-#> 9          NA             NA
+#>   path_exit_s path_reentries entry_s_median entry_s_q25 entry_s_q75 entry_s_iqr
+#> 1          NA             NA             NA          NA          NA          NA
+#> 2          NA             NA             NA          NA          NA          NA
+#> 3          NA             NA             NA          NA          NA          NA
+#> 4          NA             NA             NA          NA          NA          NA
+#> 5          NA             NA             NA          NA          NA          NA
+#> 6          NA             NA             NA          NA          NA          NA
+#> 7          NA             NA             NA          NA          NA          NA
+#> 8          NA             NA             NA          NA          NA          NA
+#> 9          NA             NA             NA          NA          NA          NA
+#>   stability_available stability_max_frequency stability_selected
+#> 1                  NA                      NA                 NA
+#> 2                  NA                      NA                 NA
+#> 3                  NA                      NA                 NA
+#> 4                  NA                      NA                 NA
+#> 5                  NA                      NA                 NA
+#> 6                  NA                      NA                 NA
+#> 7                  NA                      NA                 NA
+#> 8                  NA                      NA                 NA
+#> 9                  NA                      NA                 NA
+#>   value_folds_in_support value_in_block
+#> 1                     NA             NA
+#> 2                     NA             NA
+#> 3                     NA             NA
+#> 4                     NA             NA
+#> 5                     NA             NA
+#> 6                     NA             NA
+#> 7                     NA             NA
+#> 8                     NA             NA
+#> 9                     NA             NA
 ```
 
 The estimates are the reference posterior, not the projected one. The
@@ -3040,9 +3060,9 @@ increment
 #>   resampling: 3 folds, prediction new_cluster, scored at cluster
 #> 
 #>   out-of-fold elpd:
-#>     protected only : 20.2669
-#>     with candidates: 14.028
-#>     improvement    : 6.2389  (20 independent cluster)
+#>     protected only : 20.2666
+#>     with candidates: 14.0278
+#>     improvement    : 6.2387  (20 independent cluster)
 ```
 
 

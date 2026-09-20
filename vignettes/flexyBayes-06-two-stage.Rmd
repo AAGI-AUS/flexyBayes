@@ -1,0 +1,436 @@
+---
+title: "A two-stage analysis of a series of trials"
+output:
+  rmarkdown::html_vignette:
+    includes:
+      in_header: _mathjax-scale.html
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{A two-stage analysis of a series of trials}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+
+A series of trials is often analysed in two stages. The first stage fits each
+trial on its own, with whatever blocking that trial's design calls for, and
+returns a mean per variety. The second stage models those means across
+trials. The reason to do it this way is practical: each trial keeps the
+design it was actually laid out under, and the second stage is small enough
+to carry covariates, priors and a selection over them.
+
+The cost is a well-known one. A first-stage mean is an estimate, and its
+precision differs from trial to trial: one trial had four blocks, another
+had three, a third lost plots. If the second stage treats every mean as
+equally precise, it gives the same weight to a mean from a small trial as to
+a mean from a large one.
+
+This page runs both stages on simulated data. The second stage carries the
+first stage's variances, selects over trial-level covariates under a
+covariance read from the fitted model, and reports what each block of
+covariates buys.
+
+# 1. The trials
+
+Twenty trials, six varieties, three or four blocks each, with a few plots
+lost. Four covariates are measured at the trial: `z1` shifts the trial mean,
+and `z2`, `z3` and `z4` are noise.
+
+
+``` r
+set.seed(20260920)
+
+n_var <- 6L
+n_trial <- 20L
+trials <- sprintf("t%02d", seq_len(n_trial))
+
+alpha <- seq(-1, 1, length.out = n_var)
+z <- matrix(stats::rnorm(n_trial * 4L), n_trial, 4L)
+colnames(z) <- paste0("z", 1:4)
+trial_mean <- 4 + 1.2 * z[, "z1"] + stats::rnorm(n_trial, 0, 0.35)
+
+plots <- do.call(rbind, lapply(seq_len(n_trial), function(i) {
+  n_block <- sample(3:4, 1L)
+  d <- expand.grid(
+    variety = factor(paste0("v", seq_len(n_var))),
+    block = factor(paste0("b", seq_len(n_block)))
+  )
+  d <- d[-sample.int(nrow(d), max(1L, floor(0.08 * nrow(d)))), ]
+  b <- stats::rnorm(n_block, 0, 0.3)
+  d$yield <- trial_mean[i] + alpha[as.integer(d$variety)] +
+    b[as.integer(d$block)] + stats::rnorm(nrow(d), 0, 0.45)
+  d$trial <- trials[i]
+  d
+}))
+
+str(plots)
+#> 'data.frame':	412 obs. of  4 variables:
+#>  $ variety: Factor w/ 6 levels "v1","v2","v3",..: 1 2 3 4 5 6 1 3 4 5 ...
+#>  $ block  : Factor w/ 4 levels "b1","b2","b3",..: 1 1 1 1 1 1 2 2 2 2 ...
+#>  $ yield  : num  4.03 5.21 4.94 5.7 6.14 ...
+#>  $ trial  : chr  "t01" "t01" "t01" "t01" ...
+#>  - attr(*, "out.attrs")=List of 2
+#>   ..$ dim     : Named int [1:2] 6 3
+#>   .. ..- attr(*, "names")= chr [1:2] "variety" "block"
+#>   ..$ dimnames:List of 2
+#>   .. ..$ variety: chr [1:6] "variety=v1" "variety=v2" "variety=v3" "variety=v4" ...
+#>   .. ..$ block  : chr [1:3] "block=b1" "block=b2" "block=b3"
+```
+
+# 2. Stage one: a mean per variety per trial
+
+Each trial is fitted on its own. `yield ~ 0 + variety` drops the intercept so
+that every coefficient is a variety mean with its own standard error, which
+is what the second stage needs; `random = ~block` takes the trial's blocking
+out of those means.
+
+
+``` r
+stage1 <- do.call(rbind, lapply(trials, function(tr) {
+  dt <- plots[plots$trial == tr, ]
+  dt$variety <- droplevels(dt$variety)
+  fit <- flexybayes(
+    yield ~ 0 + variety,
+    random = ~block,
+    data = dt,
+    backend = "inla",
+    verbose = FALSE
+  )
+  est <- tidy(fit)
+  data.frame(
+    trial = tr,
+    variety = sub("^variety", "", est$term),
+    ybar = est$estimate,
+    v = est$std.error^2,
+    stringsAsFactors = FALSE
+  )
+}))
+
+stage1$trial <- factor(stage1$trial)
+stage1$variety <- factor(stage1$variety)
+stage1 <- cbind(stage1, z[match(stage1$trial, trials), ])
+
+rnd(head(stage1, 4))
+#>   trial variety  ybar     v    z1     z2     z3    z4
+#> 1   t01      v1 4.464 0.328 1.946 -0.898 -0.659 0.365
+#> 2   t01      v2 5.353 0.407 1.946 -0.898 -0.659 0.365
+#> 3   t01      v3 5.491 0.328 1.946 -0.898 -0.659 0.365
+#> 4   t01      v4 5.640 0.328 1.946 -0.898 -0.659 0.365
+```
+
+`v` is the squared standard error of each mean: the variance the first stage
+says that mean carries. It is not constant, and the spread is what the second
+stage has to respect.
+
+
+``` r
+round(range(stage1$v), 3)
+#> [1] 0.083 0.902
+```
+
+# 3. Stage two: carrying the first stage's variances
+
+`known_variance` adds a per-row variance to the residual, so row $i$ has
+variance $\sigma^2 + v_i$: one residual variance common to the whole second
+stage, plus the variance the first stage already measured for that row. brms
+fits this as `se(sqrt(v), sigma = TRUE)` and INLA as a row effect of known
+variance; the model is the same either way.
+
+
+``` r
+base <- flexybayes(
+  ybar ~ variety,
+  random = ~trial,
+  data = stage1,
+  known_variance = stage1$v,
+  backend = "inla",
+  verbose = FALSE
+)
+
+rnd(tidy(base))
+#>          term estimate std.error conf.low conf.high
+#> 1 (Intercept)    2.864     0.401    2.072     3.656
+#> 2   varietyv2    0.342     0.149    0.049     0.634
+#> 3   varietyv3    0.775     0.148    0.484     1.066
+#> 4   varietyv4    1.133     0.149    0.841     1.426
+#> 5   varietyv5    1.637     0.149    1.344     1.930
+#> 6   varietyv6    2.079     0.148    1.789     2.369
+```
+
+The variety effects were planted 0.4 apart on a common ladder, so `v6` sits
+2.0 above `v1`; the estimates recover that spacing, and their standard errors
+are the ones the weighting produced.
+
+# 4. Selecting over the trial-level covariates
+
+The four covariates are declared in two blocks of two. A block is the unit
+the read-outs below report on, so it is worth declaring the blocks that mean
+something scientifically: here, one block that might matter and one that
+should not.
+
+
+``` r
+pen <- fb_penalty(
+  term(z1, z2) ~ laplace(scale = 0.3),
+  term(z3, z4) ~ laplace(scale = 0.3)
+)
+pen
+#> <fb_penalty> 2 specification(s), resolution = "term", scaling = "train_fold_standardize"
+#>   1. term(z1, z2) ~ laplace(scale = 0.3)
+#>      route coef_rows, hyperparameters fixed
+#>   2. term(z3, z4) ~ laplace(scale = 0.3)
+#>      route coef_rows, hyperparameters fixed
+#>   columns resolve against the model matrix at fit time.
+```
+
+The folds are cut at the trial, because a trial-level covariate is constant
+within a trial: cutting anywhere else would leave the covariate's own value
+in the training set for every row it is being scored on.
+
+## The default covariance refuses, and says why
+
+`fb_select()` whitens each fold by a covariance. The default builds it from a
+REML plug-in, which estimates one residual variance common to every row --
+and that is exactly what the first stage has just told us is false. The
+package refuses instead of ignoring the known variances.
+
+
+``` r
+refused <- tryCatch(
+  fb_select(
+    base, ~ z1 + z2 + z3 + z4,
+    penalty = pen,
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~trial, v = 5L),
+    seed = 20260920L
+  ),
+  error = function(e) e
+)
+class(refused)[1]
+#> [1] "flexybayes_refusal_known_variance_not_supported"
+cat(conditionMessage(refused))
+#> fb_select(): the base carries a known variance per row, which the REML plug-in (covariance = "reml_plugin"), which estimates one residual variance common to every row, would leave out. The penalised optimiser and the unpenalised benchmark carry it into the fold covariance with covariance = "base_model".
+```
+
+`covariance = "base_model"` is the route the refusal names. It refits the
+base model on each fold's training rows and reads the fold covariance from
+that refit, so the known variances travel into the whitening with everything
+else the base model says about the correlation structure.
+
+## Planning before paying
+
+
+``` r
+fb_select(
+  base, ~ z1 + z2 + z3 + z4,
+  penalty = pen,
+  workflow = "penalized_optimizer",
+  resamples = fb_resamples(unit = ~trial, v = 5L),
+  covariance = "base_model",
+  plan = TRUE,
+  seed = 20260920L
+)
+#> == flexyBayes selection plan ============================
+#>   Projection structure gate:
+#>     response family           supported  Gaussian response with an identity link
+#>     population-level effects  supported  the fixed part is what the search selects over (probe C2)
+#>     (1 | trial)               supported  grouped random intercept: get_refmodel() accepted it and a validated grouped k-fold search ran (probes C1-C3)
+#>     residual: units           supported  an independent homogeneous residual is the family's own error term
+#>   Workflow:     penalized_optimizer
+#>   Provider:     glmnet
+#>   Prior:        laplace  (route coef_rows)
+#>   Decision:     optimizer_support (resolved from "auto")
+#>                 the penalised optimiser reports the support of its own solution at the chosen lambda; there is no posterior for a projection to act on
+#>   Candidates:   z1, z2, z3, z4
+#>   Prior blocks:
+#>     1. term(z1, z2) ~ laplace over 2 coefficient(s), fixed hyperparameters
+#>     2. term(z3, z4) ~ laplace over 2 coefficient(s), fixed hyperparameters
+#>   stanvars:     no
+#>   Structure gate: supported
+#>   Folds:        5, prediction new_cluster
+#>   Covariance:   base_model, one refit of the base model per fold
+#>   Cost estimate: 8.6s over 6 fit(s) at 1.43s each
+#>                  the per-fit figure is the base model's own recorded wall time; the reference model carries a wider fixed part and a shrinkage prior, so this is a floor
+#>   Stability:    not requested (B = 0 subsamples)
+#>   Approximations this route commits to:
+#>     - calibration_n_at_the_resampling_unit: the prior scales are calibrated against 20 units of trial rather than against 120 rows, because rows inside a cluster are not independent pieces of evidence about a coefficient
+#>   Nothing was fitted.
+```
+
+## The selection
+
+
+``` r
+sel <- fb_select(
+  base, ~ z1 + z2 + z3 + z4,
+  penalty = pen,
+  workflow = "penalized_optimizer",
+  resamples = fb_resamples(unit = ~trial, v = 5L),
+  covariance = "base_model",
+  ablation = TRUE,
+  seed = 20260920L
+)
+
+sel
+#> <fb_select> workflow penalized_optimizer / provider glmnet / prior laplace / decision optimizer_support (resolved from "auto")
+#>   Projection structure gate:
+#>     response family           supported  Gaussian response with an identity link
+#>     population-level effects  supported  the fixed part is what the search selects over (probe C2)
+#>     (1 | trial)               supported  grouped random intercept: get_refmodel() accepted it and a validated grouped k-fold search ran (probes C1-C3)
+#>     residual: units           supported  an independent homogeneous residual is the family's own error term
+#>   decision  : the penalised optimiser reports the support of its own solution at the chosen lambda; there is no posterior for a projection to act on
+#>   base      : gaussian/identity, 120 rows, convergence ok
+#>   prior n   : calibrated at 20 trial, not at 120 rows
+#>   covariance: block_cholesky / plugin_mean_covariance, from a refit of the base model on each fold's training rows, each row's known variance added to the residual
+#>   resampling: 5 folds, prediction new_cluster, scored at cluster
+#> 
+#>   decision  : the support of the penalised optimiser at its chosen lambda; a mode, not a posterior
+#>     size    : 1  (z1)
+#> 
+#>   out-of-fold nlpd:
+#>     protected only : 0.8055
+#>     with candidates: 0.7216
+#>     improvement    : 0.084  (20 independent cluster)
+#> 
+#>   ablation  : each declared block dropped in turn and the path walked again on the same folds, tuned by the same rule; held-out nlpd paired by trial (without the block minus with it); not nested, each path's tuning point is chosen on the scores of all folds
+#>     block_1 (z1, z2): loss 0.0439 (se 0.0163)
+#>     block_2 (z3, z4): loss 0 (se 0)
+#> 
+#>   benchmark arms:
+#>     gls      unpenalized_benchmark / gls_base_model  [no_identity_expected]
+#>     glmnet   penalized_optimizer / glmnet  [posterior_predictive_comparable]
+#>     reference stage, out-of-fold nlpd at the resampling unit:
+#>       gls      full               0.7216  (20 trial)
+#>       glmnet   fixed_1            0.7338  (20 trial)
+#>     decision stage: none -- only the glmnet arm carries a score under this contract at the decision stage, so there is nothing to place beside it.
+#>     mode oracle: none -- no arm carries a mode oracle: the identity is defined only with the covariance plugged in and the residual scale held fixed, and the Bayesian route integrates the first and samples the second. The exact-limit bridges test that identity on the fixed-covariance substrate; a posterior is not on it.
+#> 
+#>   approximations:
+#>     - calibration_n_at_the_resampling_unit: the prior scales are calibrated against 20 units of trial rather than against 120 rows, because rows inside a cluster are not independent pieces of evidence about a coefficient
+```
+
+The certificate records which covariance actually ran, and it is the field to
+read when the question is what the fold was whitened by.
+
+
+``` r
+sel$certificate$covariance$source
+#> [1] "base_model"
+```
+
+# 5. Where each candidate entered
+
+A penalised path runs from the strongest penalty to the weakest, indexed by
+`s = lambda / lambda_max`. A candidate that carries signal is admitted early,
+at a high `s`; a candidate that does not waits until the penalty is nearly
+gone. `entry_s_median` is the point by which half the folds able to estimate
+a column had admitted it.
+
+
+``` r
+rnd(tidy(sel)[, c("term", "role", "block", "retained", "entry_s_median")])
+#>           term      role block retained entry_s_median
+#> 1  (Intercept) protected    NA     TRUE             NA
+#> 2    varietyv2 protected    NA     TRUE             NA
+#> 3    varietyv3 protected    NA     TRUE             NA
+#> 4    varietyv4 protected    NA     TRUE             NA
+#> 5    varietyv5 protected    NA     TRUE             NA
+#> 6    varietyv6 protected    NA     TRUE             NA
+#> 7           z1 candidate     1     TRUE          0.695
+#> 8           z2 candidate     1    FALSE          0.113
+#> 9           z3 candidate     2    FALSE          0.038
+#> 10          z4 candidate     2    FALSE          0.026
+```
+
+
+``` r
+plot(sel, type = "entrance_path")
+```
+
+![plot of chunk entrance-plot](flexyBayes-06-two-stage-figs/entrance-plot-1.png)
+
+# 6. What each block buys
+
+`ablation = TRUE` drops each declared block in turn, walks the path again on
+the same folds under the same rule, and pairs each held-out trial's loss with
+its loss under the full path. The difference is what dropping that block
+costs, in the decision metric, with a standard error over trials.
+
+
+``` r
+rnd(tidy(sel, level = "group")[, c(
+  "group", "columns", "entry_s_median",
+  "ablation_loss_difference", "ablation_loss_se", "ablation_n_units"
+)])
+#>     group columns entry_s_median ablation_loss_difference ablation_loss_se
+#> 1 block_1  z1, z2          0.695                    0.044            0.016
+#> 2 block_2  z3, z4          0.055                    0.000            0.000
+#>   ablation_n_units
+#> 1               20
+#> 2               20
+```
+
+The block holding the planted covariate costs a loss increase of more than
+two standard errors when it is dropped. The block of noise costs nothing at
+all, and the zero is exact: its columns are outside the chosen support, so
+the ablated path is the same path.
+
+Two things this read-out is not. It is not nested, so the numbers do not add
+up to the improvement of the full model, and a covariate held in two blocks
+is counted in both. And it is a statement about held-out loss, not about
+whether a coefficient is zero: a shrinkage posterior has no exact zeros in
+it, and "selected" is a decision taken under a stated rule.
+
+
+``` r
+rnd(glance(sel)[, c("metric", "protected_only", "full", "improvement",
+                    "chosen_size", "n_units", "n_folds")])
+#>   metric protected_only  full improvement chosen_size n_units n_folds
+#> 1   nlpd          0.806 0.722       0.084           1      20       5
+```
+
+# 7. What the Bayesian valuation needs
+
+`refit = list(method = "bayes")` refits the chosen support on each fold as a
+Bayesian model and scores each held-out row by its log predictive density.
+That valuation reads posterior draws, and the route that produces them has no
+place to put a per-row known variance, so on a base carrying one it refuses.
+
+
+``` r
+refused_value <- tryCatch(
+  fb_select(
+    base, ~ z1 + z2 + z3 + z4,
+    penalty = pen,
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~trial, v = 5L),
+    covariance = "base_model",
+    refit = list(method = "bayes"),
+    seed = 20260920L
+  ),
+  error = function(e) e
+)
+class(refused_value)[1]
+#> [1] "flexybayes_refusal_known_variance_not_supported"
+```
+
+The valuation is available on a second stage whose rows share one residual
+variance, which is the analysis you have when the first stage returns means
+of equal precision, or when you choose to set the known variances aside and
+say so. *Selecting over a candidate block* works through that case, including
+`glance(x, against = y)` for differencing two valuations unit by unit.
+
+# What to take away
+
+Two stages are two models, and the join between them is the variance the
+first stage measured. Carry it, and the second stage weights each mean by
+what it is worth; leave it out, and a mean from a three-block trial counts
+for as much as a mean from a four-block one.
+
+The package makes that join explicit at both ends. `known_variance` is where
+the first stage's precision enters the model, and `covariance = "base_model"`
+is where it enters the folds. The routes that cannot carry it refuse by name
+and say which route can, so the analysis fails at the call rather than in the
+answer.
