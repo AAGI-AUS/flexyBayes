@@ -2,7 +2,7 @@
 
 #' Plot diagnostics for a flexyBayes model
 #'
-#' Draws one of seven standard displays for a fitted model, chosen by
+#' Draws one of eight standard displays for a fitted model, chosen by
 #' `type`. Every backend reaches the same method, and a display that needs
 #' a slot a given engine does not populate -- posterior draws on the
 #' deterministic INLA path, for instance -- prints a message naming what
@@ -33,15 +33,27 @@
 #'   response, which needs predictive draws and so refuses by name on a
 #'   fit that carries none (see [pp_check.flexybayes()]); and
 #'   `"variogram"`, the empirical semivariance of the residuals over the
-#'   design index. `NULL` (the default) resolves to `"diagnostics"` on a
-#'   sampled fit and `"residuals"` otherwise.
+#'   design index; and `"spatial_field"`, the posterior mean of a separable
+#'   autoregressive field, `random = ~ ar1(row):ar1(col)`, drawn on the
+#'   row-by-column array of the trial on the response scale. `NULL` (the
+#'   default) resolves to `"diagnostics"` on a sampled fit and
+#'   `"residuals"` otherwise.
 #' @param ... Further arguments passed to the underlying plotting call,
 #'   for example `variable` to restrict which parameters a diagnostic
-#'   display covers, or `type` and `ndraws` for `"pp_check"`.
+#'   display covers, or `type` and `ndraws` for `"pp_check"`. The spatial
+#'   field takes `trial`, the identifier printed in its title and the only
+#'   label it adds to the array's own row and column labels; on a fit with
+#'   one field per trial, `random = ~ at(trial):ar1(row):ar1(col)`, it names
+#'   the level whose field is drawn.
 #' @returns Invisibly, the object the underlying plotting call returns --
 #'   a \pkg{ggplot2} object for the displays built with it, the
-#'   semivariance table for `"variogram"`, and `NULL` for those drawn on
-#'   the base graphics device. Called for the plot it draws.
+#'   semivariance table for `"variogram"`, for `"spatial_field"` a list
+#'   holding `values` (the field, one row per row level and one column per
+#'   column level), `row_var`, `col_var`, `trial`, `title` and `spelling`
+#'   (the field's term as written), and `NULL`
+#'   for those drawn on the base graphics device. A fit with no separable
+#'   field refuses `"spatial_field"` with
+#'   `spatial_field_requires_ar1_field`. Called for the plot it draws.
 #' @seealso [pp_check.flexybayes()] for the posterior predictive check
 #'   `type = "pp_check"` draws, and the refusal it raises where a fit has
 #'   no predictive draws.
@@ -61,7 +73,8 @@ plot.flexybayes <- function(x, type = NULL, ...) {
     "variance" = .plot_variance(x, ...),
     "blups" = .plot_blups(x, ...),
     "pp_check" = .plot_pp_check(x, ...),
-    "variogram" = .plot_variogram(x, ...)
+    "variogram" = .plot_variogram(x, ...),
+    "spatial_field" = .plot_spatial_field(x, ...)
   )
 }
 
@@ -73,7 +86,8 @@ plot.flexybayes <- function(x, type = NULL, ...) {
   "variance",
   "blups",
   "pp_check",
-  "variogram"
+  "variogram",
+  "spatial_field"
 )
 
 # .fb_has_sampler_draws() --- did an engine draw samples for this fit?
@@ -607,4 +621,166 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   })
   tab <- .fb_variogram_table(resid_all[keep], positions, index_vars)
   .fb_variogram_draw(tab, index_vars, length(keep), nrow(dat))
+}
+
+
+# ---------------------------------------------------------------- #
+# The posterior mean of a separable spatial field                   #
+# ---------------------------------------------------------------- #
+#
+# A Stage 1 fit of one trial carries its spatial trend as the latent field
+# of random = ~ ar1(row):ar1(col), which INLA writes as
+# f(<row>_id, model = "ar1", group = <col>_id) (R/emit_inla.R). The field's
+# posterior mean is stored node by node in summary.random[["<row>_id"]],
+# mapped back to the response scale when the fit was built; node k holds
+# row index ((k - 1) mod n_row) + 1 and column index
+# floor((k - 1) / n_row) + 1, and with one field per trial,
+# at(trial):ar1(row):ar1(col), each trial's nodes follow the previous
+# trial's. The indices are the positions of the row and column labels in
+# factor(), as the emitter builds them, so the display is labelled with the
+# array's own labels and with nothing read from any other column.
+
+# .fb_spatial_field() --- the field of one trial as a row x column matrix.
+#
+# @noRd
+# @keywords internal
+.fb_spatial_field <- function(x, trial = NULL) {
+  terms <- Filter(
+    function(t) identical(t$type %||% "", "ar1_spatial"),
+    .fb_fit_ir(x)$random_terms %||% list()
+  )
+  if (length(terms) == 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "spatial_field_requires_ar1_field",
+      message = paste0(
+        "plot(type = \"spatial_field\") draws the posterior mean of a ",
+        "separable spatial field, and this fit carries none: its random ",
+        "terms name no row-by-column array. Fit one with random = ~ ",
+        "ar1(row):ar1(col), or use plot(fit, type = \"variogram\") on a ",
+        "fit with a design index."
+      )
+    ))
+  }
+  if (length(terms) > 1L) {
+    stop(
+      "plot(type = \"spatial_field\") draws one field, and this fit carries ",
+      length(terms), " separable fields (",
+      paste(vapply(terms, .ar1_term_spelling, character(1L)), collapse = ", "),
+      ").",
+      call. = FALSE
+    )
+  }
+  term <- terms[[1L]]
+  if (!is.null(trial) &&
+        (!is.character(trial) || length(trial) != 1L || is.na(trial))) {
+    stop("`trial` must be a single string.", call. = FALSE)
+  }
+
+  # The index each label was given, as the emitter gave it -------------------
+  data <- x$data
+  level_of <- function(v) {
+    .inla_restore_level_labels(
+      x$level_labels, v, levels(factor(data[[v]]))
+    )
+  }
+  row_levels <- level_of(term$row_var)
+  col_levels <- level_of(term$col_var)
+  n_row <- length(row_levels)
+  n_col <- length(col_levels)
+  offset <- 0L
+  if (!is.null(term$at_var)) {
+    at_levels <- level_of(term$at_var)
+    if (is.null(trial) || !trial %in% at_levels) {
+      stop(
+        "`trial` must name the level of `", term$at_var, "` whose field ",
+        "is drawn: this fit carries one field for each of ",
+        paste(at_levels, collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+    offset <- n_row * n_col * (match(trial, at_levels) - 1L)
+  }
+
+  # The stored posterior mean, node by node ---------------------------------
+  stored <- x$inla$summary.random[[paste0(term$row_var, "_id")]]
+  values <- matrix(
+    stored$mean[offset + seq_len(n_row * n_col)],
+    nrow = n_row,
+    ncol = n_col,
+    dimnames = list(row_levels, col_levels)
+  )
+  list(
+    values = values,
+    row_var = term$row_var,
+    col_var = term$col_var,
+    trial = trial,
+    title = if (is.null(trial)) {
+      "Spatial field"
+    } else {
+      paste0("Spatial field, ", trial)
+    },
+    spelling = .ar1_term_spelling(term)
+  )
+}
+
+# .plot_spatial_field() --- the type = "spatial_field" entry point.
+#
+# The palette is the viridis sequence the selection heat map uses
+# (.FB_SEL_HEAT_COLOURS, R/selection_entrance.R), written out so the display
+# needs no graphics-device package; it is ordered in lightness, so it reads
+# in grey and to the common colour-vision deficiencies.
+#
+# @noRd
+# @keywords internal
+.plot_spatial_field <- function(x, trial = NULL, ...) {
+  field <- .fb_spatial_field(x, trial)
+  values <- field$values
+  n_row <- nrow(values)
+  n_col <- ncol(values)
+  colours <- .FB_SEL_HEAT_COLOURS
+  span <- range(values)
+  breaks <- seq(span[[1L]], span[[2L]], length.out = length(colours) + 1L)
+
+  old_par <- graphics::par(mar = c(5, 5, 4, 6))
+  on.exit(graphics::par(old_par))
+  graphics::image(
+    x = seq_len(n_col),
+    y = seq_len(n_row),
+    z = t(values),
+    col = colours,
+    breaks = breaks,
+    axes = FALSE,
+    xlab = field$col_var,
+    ylab = field$row_var,
+    main = field$title,
+    ...
+  )
+  graphics::axis(1L, at = seq_len(n_col), labels = colnames(values),
+                 cex.axis = 0.8)
+  graphics::axis(2L, at = seq_len(n_row), labels = rownames(values),
+                 las = 1L, cex.axis = 0.8)
+  graphics::box()
+  graphics::mtext(
+    paste0("posterior mean of ", field$spelling, ", response scale"),
+    side = 3L, line = 0.4, cex = 0.8
+  )
+
+  # The colour key, in the right margin -------------------------------------
+  usr <- graphics::par("usr")
+  key_x <- usr[[2L]] + 0.04 * (usr[[2L]] - usr[[1L]])
+  key_w <- 0.05 * (usr[[2L]] - usr[[1L]])
+  key_y <- usr[[3L]] + (breaks - span[[1L]]) / diff(span) *
+    (usr[[4L]] - usr[[3L]])
+  graphics::rect(key_x, key_y[-length(key_y)], key_x + key_w, key_y[-1L],
+                 col = colours, border = NA, xpd = NA)
+  graphics::rect(key_x, key_y[[1L]], key_x + key_w, key_y[[length(key_y)]],
+                 border = "black", xpd = NA)
+  key_at <- c(span[[1L]], 0, span[[2L]])
+  key_at <- key_at[key_at >= span[[1L]] & key_at <= span[[2L]]]
+  graphics::text(
+    key_x + key_w,
+    usr[[3L]] + (key_at - span[[1L]]) / diff(span) * (usr[[4L]] - usr[[3L]]),
+    labels = format(signif(key_at, 3L)), pos = 4L, cex = 0.7, xpd = NA
+  )
+  invisible(field)
 }

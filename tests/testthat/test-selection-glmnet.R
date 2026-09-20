@@ -561,12 +561,14 @@ test_that("a ridge path reports no support, and the assertion is not vacuous", {
 
   # D6. The same folds under a lasso do return a support, so the ridge
   # assertion above is a property of the family rather than of a path that
-  # happened to select nothing.
+  # happened to select nothing. The one-standard-error rule chooses s = 1
+  # here, where the exact lasso solution is zero, so the lasso is read at the
+  # minimum-score point.
   lasso <- .fb_sel_glmnet_path(
     built$substrates,
     fb_glmnet_block("laplace", list(scale = 0.15)),
     folds = built$folds,
-    decision = list(n_lambda = 8L),
+    decision = list(n_lambda = 8L, rule = "min"),
     seed = 5L
   )
   expect_identical(lasso$support_by_resolution$semantics, "coefficient")

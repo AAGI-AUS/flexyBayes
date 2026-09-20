@@ -218,7 +218,10 @@
   h <- b$hyperparameters
   if (identical(b$family, "regularized_horseshoe")) {
     return(sprintf(
-      "horseshoe(df = %s, df_global = %s, scale_slab = %s, df_slab = %s, par_ratio = %s)",
+      paste0(
+        "horseshoe(df = %s, df_global = %s, scale_slab = %s, df_slab = %s, ",
+        "par_ratio = %s)"
+      ),
       .fb_pen_num(h$df), .fb_pen_num(h$df_global),
       .fb_pen_num(h$slab_scale), .fb_pen_num(h$slab_df),
       .fb_pen_num(h$par_ratio)

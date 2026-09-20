@@ -396,8 +396,8 @@
       }
       # Ahead of the engine-default branch on purpose: a component the
       # legacy bridge priored is listed as an engine default by
-      # .fb_prior_record(), which classifies for triangulate()'s
-      # matched-prior gate rather than for this cell.
+      # .fb_prior_record(), which classifies whether two engines share a
+      # prior rather than for this cell.
       if (cmp %in% names(bridged)) {
         return(unname(bridged[[cmp]]))
       }
@@ -433,7 +433,7 @@
 # `engine default` is the wrong cell for a bridged component on the Stan
 # route, and it is the cell the classification alone produces:
 # .fb_prior_record() marks every variance component `engine_default` under
-# the bridge because it is answering triangulate()'s question -- do two
+# the bridge because it is answering a cross-engine question -- do two
 # engines share a prior -- and under the bridge they do not. Projected
 # into a single-engine table the same word says this package set no
 # prior, which on Stan is false. .brms_legacy_specs() writes
@@ -999,6 +999,9 @@
 # @keywords internal
 .fb_random_inla <- function(object) {
   sr <- object$inla$summary.random
+  # The row effect that carries a known variance per row is part of the
+  # residual, not a random effect of the model (R/known_variance.R).
+  sr <- sr[setdiff(names(sr), .FB_INLA_KNOWN_INDEX)]
   if (!is.list(sr) || length(sr) == 0L) {
     return(list())
   }

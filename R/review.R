@@ -212,8 +212,7 @@ cat_code.flexybayes_review <- function(x, file = stdout(), ...) {
 #' returns the fit. A second call returns the cached fit.
 #'
 #' @param x   A `<flexybayes_review>` object holding the deferred fit.
-#' @param ... Reserved for future deferred-execution classes, such as a
-#'   deferred triangulation.
+#' @param ... Reserved for future deferred-execution classes.
 #' @returns The fit object the originating call would have returned, of
 #'   class `flexybayes`. A second call returns the cached fit.
 #' @section Deprecated:
@@ -281,7 +280,25 @@ proceed.flexybayes_review <- function(x, ...) {
       call. = FALSE
     )
   )
-  fit <- do.call(emit_fn, args)
+  # Under options(flexyBayes.isolation = "process") the fit runs in a
+  # separate R process (R/process_isolation.R).
+  if (.fb_isolation_active("proceed()")) {
+    run <- .fb_isolated_call(
+      emit_fn,
+      args,
+      engine = "brms",
+      entry_point = "proceed()",
+      with_pid = TRUE,
+      # As the direct do.call() below: the same argument semantics.
+      quote = FALSE
+    )
+    fit <- run$value
+    if (is.list(fit) && !is.null(fit$extras)) {
+      fit$extras$isolation <- list(mode = "process", pid = run$pid)
+    }
+  } else {
+    fit <- do.call(emit_fn, args)
+  }
 
   x$fit <- fit
   x$proceeded <- TRUE

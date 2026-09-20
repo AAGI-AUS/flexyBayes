@@ -60,7 +60,7 @@ One variance component per term unless the term says otherwise.
 | `~ gen:env` | An interaction random effect: genotype-by-environment deviations with a single variance. The cheapest multi-environment model. | both |
 | `~ diag(env):gen` | One genotype variance **per environment**, no covariance between them. Use when environments differ in how much genetic variation they express, and you do not need the correlations. `idh()` and `at()` are synonyms. | both |
 | `~ us(env):gen` | The full unstructured covariance across environments: every variance and every correlation. Use when the number of environments is small (up to five here) and the correlations are the question. | brms |
-| `~ fa(env, k):gen` | Factor-analytic: a few common factors plus a variance specific to each environment, the standard multi-environment-trial model. Refused on both engines from 0.13.0 (`factor_analytic_not_repeatable`): INLA represents it, but repeated identical calls did not agree on the covariance where the genetic signal is weak, and brms has no factor-analytic form. Write `diag(env):gen`, or `us(env):gen` on brms. | refused |
+| `~ fa(env, k):gen` | Factor-analytic: a few common factors plus a variance specific to each environment, the standard multi-environment-trial model. Refused on both engines from 0.13.0 (`factor_analytic_not_repeatable`): INLA can represent it, but repeated identical calls did not agree on the covariance where the genetic signal is weak, and flexyBayes has no factor-analytic form for brms. Write `diag(env):gen`, or `us(env):gen` on brms. | refused |
 | `~ vm(gen, K)` | A random effect with a known covariance, from a genomic relationship matrix. Genomic prediction. | both |
 | `~ ped(animal, A)` | The same with a pedigree relationship matrix, the animal model. ASReml 4 removed `ped()` in favour of `vm()`, so this is the ASReml 3 spelling, kept for compatibility; write `vm(animal, A)` for new work. | both |
 | `~ ar1(row):ar1(col)` | A separable autoregressive field over a plot grid, plus independent plot error. Use for field trials where neighbouring plots resemble each other. | INLA |
@@ -97,13 +97,13 @@ write instead, so nothing here fails quietly.
 
 | Spelling | What it would be for | Why not, and what to do |
 |---|---|---|
-| `~ corh(env):gen` | Heterogeneous variances with one correlation shared by every pair of environments. | Neither engine has an equicorrelation group structure. `diag(env):gen` drops the correlation and `us(env):gen` estimates all of them, so the model you want sits between two that fit. |
-| `~ us(trait):vm(gen)` | Multi-trait genomic prediction: a genetic covariance between traits. | No engine represents a trait-by-genotype unstructured covariance here. Fit each trait separately, or use ASReml. |
+| `~ corh(env):gen` | Heterogeneous variances with one correlation shared by every pair of environments. | flexyBayes has no lowering for it on either engine. `diag(env):gen` drops the correlation and `us(env):gen` estimates all of them, so the model you want sits between two that fit. With one variance for every environment and a correlation of zero or more, `~ gen + env:gen` is the same covariance. |
+| `~ us(trait):vm(gen)` | Multi-trait genomic prediction: a genetic covariance between traits. | flexyBayes has no lowering for it. brms writes it directly as `(0 + trait \| gr(gen, cov = K))`, so fit it with brms itself, fit each trait separately, or use ASReml. |
 | `~ ar2(t)`, `~ ar3(t)` | Second- and third-order autoregression. | Not implemented. INLA's general-order `ar` model could carry them. |
 | `~ str(...)` | ASReml's general structure constructor. | Not implemented. Most uses are expressible as one of the terms above. |
 | `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | Tensor-product smooths, for a surface in two covariates. | Not implemented. `spl()` covers one dimension. |
 | `~ cor(env):gen` | A correlation matrix with unit variances. | Refused with the equicorrelation reason. Use `us()`. |
-| `residual = ~ ar1(row):ar1(col)` | ASReml's nugget-free autoregressive residual, three parameters. | INLA's counterpart is a latent field plus an independent nugget, four parameters, which is a different model. Write the field on the random side, where it is supported. |
+| `residual = ~ ar1(row):ar1(col)` | ASReml's nugget-free autoregressive residual, three parameters. | flexyBayes fits a latent field plus an independent nugget, four parameters, which is a different model. Write the field on the random side, where it is supported. |
 
 ASReml's wider vocabulary -- `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`,
 `rr`, `own`, and the two-dimensional metric families `exp`, `gau`, `mtrn` --

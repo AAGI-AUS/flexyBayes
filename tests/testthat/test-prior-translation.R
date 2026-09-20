@@ -33,8 +33,13 @@
   data.frame(y = eta + stats::rnorm(n), x = x, g = g)
 }
 
-.pt_silence <- function() {
-  options(flexyBayes.silence_default_prior_note = TRUE)
+# Set for the caller's frame and restored when it exits, so a later test file
+# in the same process still sees the default-prior note.
+.pt_silence <- function(envir = parent.frame()) {
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    .local_envir = envir
+  )
 }
 
 .pt_brms_args <- list(
@@ -118,6 +123,7 @@ test_that("the rendered menu is derived from the table, not re-listed", {
 
 test_that("every translatable INLA variance-component cell reaches the hyper string", {
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   .pt_silence()
   s_y <- stats::sd(.pt_data()$y)
   cases <- list(
@@ -222,6 +228,7 @@ test_that("the six full-specification INLA cells stay green", {
   # turned these red, because the documented full specification carries a
   # b() row -- which is why the fix is a table and not a refusal.
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   .pt_silence()
   full <- fb_prior(
     sigma ~ half_normal(scale = 2),
@@ -478,6 +485,7 @@ test_that("the same two mistakes refuse typed on INLA, where they were ignored",
 test_that("a legitimate target on either engine is not caught by the check", {
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   p <- fb_prior(
     b("x") ~ normal(mean = 0, sd = 4),
     sd(group = "g") ~ half_normal(scale = 1.5)

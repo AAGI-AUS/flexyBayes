@@ -1,4 +1,5 @@
-# compare.R -- the Layer 1 and Layer 2 comparisons of data-raw/asreml_oracle/SPEC.md.
+# compare.R -- the Layer 1 and Layer 2 comparisons of
+# data-raw/asreml_oracle/SPEC.md.
 #
 # Every tolerance here is quoted from that document, which was written before
 # any comparison ran. Nothing in this file chooses a tolerance; it only applies
@@ -137,8 +138,10 @@ cmp_fixed <- function(asr, fb_summary, terms_map) {
 cmp_blup <- function(blup_asr, blup_fb, label) {
   common <- intersect(names(blup_asr), names(blup_fb))
   if (length(common) < 3L) {
-    return(list(quantity = paste0("BLUP agreement: ", label),
-                pass = NA, note = "not asserted -- fewer than three shared levels"))
+    return(list(
+      quantity = paste0("BLUP agreement: ", label),
+      pass = NA, note = "not asserted -- fewer than three shared levels"
+    ))
   }
   r <- stats::cor(blup_asr[common], blup_fb[common])
   list(
@@ -152,8 +155,10 @@ cmp_blup <- function(blup_asr, blup_fb, label) {
 cmp_sigma_matrix <- function(S_asr, S_fb, label) {
   if (is.null(S_asr) || is.null(S_fb) ||
         !identical(dim(S_asr), dim(S_fb))) {
-    return(list(quantity = paste0("covariance: ", label), pass = NA,
-                note = "not asserted -- matrices not both available at equal dimension"))
+    return(list(
+      quantity = paste0("covariance: ", label), pass = NA,
+      note = "not asserted -- matrices not both available at equal dimension"
+    ))
   }
   rel <- abs(S_fb - S_asr) / pmax(abs(S_asr), .Machine$double.eps)
   list(

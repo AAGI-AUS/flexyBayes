@@ -11,9 +11,8 @@
 #
 # Stan compile latency (typically 30-60 sec for the first call,
 # faster on cmdstanr cache reuse) means the round-trip subtests
-# are not part of the default check loop -- they exercise the
-# eight-pattern triangulation protocol's third-engine gap when
-# the developer runs `NOT_CRAN=true Rscript tools/tally.R` with
+# are not part of the default check loop -- they run when the
+# developer runs `NOT_CRAN=true Rscript tools/tally.R` with
 # brms + a Stan toolchain installed.
 
 # ---------------------------------------------------------------- #
@@ -247,6 +246,7 @@ test_that("fb(backend='brms'): Gaussian RI fits cleanly", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
 
   d <- mk_brms_stan_gaussian_data()
   fit <- suppressMessages(suppressWarnings(
@@ -284,6 +284,7 @@ test_that("fb(backend='brms'): Bernoulli RI fits cleanly", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
 
   d <- mk_brms_stan_bernoulli_data()
   fit <- suppressMessages(suppressWarnings(
@@ -307,46 +308,10 @@ test_that("fb(backend='brms'): Bernoulli RI fits cleanly", {
 
 
 # ---------------------------------------------------------------- #
-# (11) triangulate() across INLA and brms: auto-resolve via registry #
+# (11) [removed] cross-engine name alignment, covered by            #
+#      test-as-draws-generics.R ("both engines answer with the same  #
+#      parameter tokens")                                            #
 # ---------------------------------------------------------------- #
-
-test_that("triangulate(): brms + INLA align via the identity registry", {
-  testthat::skip_if_not_installed("brms")
-  testthat::skip_if_not_installed("INLA")
-  testthat::skip_on_cran()
-  testthat::skip_on_ci()
-
-  d <- mk_brms_stan_gaussian_data()
-  fit_b <- suppressMessages(suppressWarnings(
-    flexybayes(
-      y ~ x + (1 | g),
-      data = d,
-      backend = "brms",
-      n_samples = 200L,
-      warmup = 200L,
-      chains = 1L,
-      verbose = FALSE,
-      mcmc_verbose = FALSE
-    )
-  ))
-  fit_i <- suppressMessages(suppressWarnings(
-    flexybayes(
-      y ~ x + (1 | g),
-      data = d,
-      backend = "inla",
-      verbose = FALSE,
-      mcmc_verbose = FALSE
-    )
-  ))
-
-  tri <- triangulate(fit_b, fit_i)
-  expect_s3_class(tri, "triangulate_result")
-  expect_identical(tri$source_a, "brms")
-  expect_identical(tri$source_b, "inla")
-  # Auto-resolve canonical names: (Intercept) and x must be in the
-  # common set without a user-supplied name_map.
-  expect_true(any(c("(Intercept)", "x") %in% tri$common))
-})
 
 
 # ---------------------------------------------------------------- #
@@ -405,6 +370,7 @@ test_that("predict.flexybayes_brms: in-sample posterior_epred matches summary", 
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
 
   d <- mk_brms_stan_gaussian_data()
   fit <- suppressMessages(suppressWarnings(

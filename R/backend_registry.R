@@ -39,8 +39,8 @@
 # REVERSED (2026-05-31): brms is retained as the engine label so the
 # backend axis stays consistent (inla / brms are both front-ends); the
 # Stan/HMC sampler is recorded as the paradigm attribute
-# (paradigm = "hmc_nuts") so triangulate() / the backend-independence
-# registry grade pairs on what the engines actually share.
+# (paradigm = "hmc_nuts") so the backend-independence registry grades
+# pairs on what the engines actually share.
 # `rename_to` is therefore NA for every backend.
 #
 # Internal -- not exported.
@@ -283,8 +283,8 @@
 # brms / Stan reaches the vm() / ped() relationship random effects via
 # its native known-covariance group term, (1 | gr(var, cov = K)) -- brms
 # Cholesky-factors the supplied covariance internally (the K = L L'
-# decorrelation Stan fits directly), so GBLUP / pedigree BLUP become
-# two-engine triangulatable (against INLA). This holds only for an exact
+# decorrelation Stan fits directly), so GBLUP / pedigree BLUP fit on
+# both engines (brms and INLA). This holds only for an exact
 # dense-able
 # carrier (dense / chol / precision / pedigree sparse precision); the
 # remaining asreml structured-covariance terms (fa / us / ar1), a

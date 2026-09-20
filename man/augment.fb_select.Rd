@@ -4,7 +4,13 @@
 \alias{augment.fb_select}
 \title{Out-of-fold results from a selection}
 \usage{
-\method{augment}{fb_select}(x, data = NULL, type = c("unit_scores", "assessment_predictions"), ...)
+\method{augment}{fb_select}(
+  x,
+  data = NULL,
+  type = c("unit_scores", "assessment_predictions", "value_rows", "value_units"),
+  against = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{An \code{fb_select} object.}
@@ -12,20 +18,32 @@
 \item{data}{Ignored; the out-of-fold results are the ones the folds
 computed and cannot be recomputed on other rows.}
 
-\item{type}{\code{"unit_scores"} (the default retained for compatibility) or
-\code{"assessment_predictions"}. The latter returns the optimiser decision's
+\item{type}{\code{"unit_scores"} (the default retained for compatibility),
+\code{"assessment_predictions"}, \code{"value_rows"} or \code{"value_units"}.
+\code{"assessment_predictions"} returns the optimiser decision's
 row-level assessment predictions, with original row positions, repeat and
 fold identifiers, scoring units, selected tuning coordinates and the
 verified score-contract hash. Observed and predicted values are on the
-modelled response scale, after any Gaussian offset has been subtracted.}
+modelled response scale, after any Gaussian offset has been subtracted.
+The last two return the valuation \code{refit = list(method = "bayes")}
+computed: one row per assessment row, with the refit's predictive mean
+and standard deviation, the log predictive density \code{lpd}, how the unseen
+cluster was integrated (\code{method}) and the value-contract hash; or one
+row per repeat and held-out unit, with its fold, row count and summed
+log predictive density \code{elpd}.}
+
+\item{against}{\code{NULL}, or, with \code{type = "value_units"}, a second
+\code{fb_select} object on the same value contract: the table then carries
+\code{elpd_against} and the paired \code{difference}.}
 
 \item{...}{Ignored.}
 }
 \value{
-A \code{data.frame} of per-unit out-of-fold scores or row-level
-assessment predictions, according to \code{type}. A zero-row frame with the
-stable schema is returned where that result did not run. These are stored
-assessment results, not a prediction method for caller-supplied rows.
+A \code{data.frame} of per-unit out-of-fold scores, row-level
+assessment predictions, or the valuation's rows or units, according to
+\code{type}. A zero-row frame with the stable schema is returned where that
+result did not run. These are stored assessment results, not a
+prediction method for caller-supplied rows.
 }
 \description{
 Out-of-fold results from a selection

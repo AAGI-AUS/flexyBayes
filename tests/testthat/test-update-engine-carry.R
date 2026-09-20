@@ -167,6 +167,7 @@ test_that("an identity update() of a brms fit comes back on brms", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .uec_silence()
   fit <- .uec_brms_fit()
   expect_s3_class(fit, "flexybayes_brms")
@@ -238,6 +239,7 @@ test_that("a backend override in ... still wins over the record", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .uec_silence()
   fit <- .uec_inla_fit()
 
@@ -375,6 +377,7 @@ test_that("an auto fallback hands the emit its arguments unevaluated", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .uec_silence()
   d <- .uec_data()
   d$y <- pmax(d$y, 0)

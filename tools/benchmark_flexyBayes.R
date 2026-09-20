@@ -11,12 +11,11 @@
 #   1. package/runtime environment;
 #   2. parse / IR / gate / prior-translation speed and correctness;
 #   3. backend smoke fits through INLA and brms where available;
-#   4. triangulation behaviour;
-#   5. selected code-generation and review-code surfaces;
-#   6. representation benchmarks (per the design spec):
+#   4. selected code-generation and review-code surfaces;
+#   5. representation benchmarks (per the design spec):
 #      generated_code_size_bytes / pre_fit_object_size_bytes /
 #      code_generation_time_sec per indexed term class;
-#   7. an honest report that records failures, skips, and timeouts.
+#   6. a report that records failures, skips, and timeouts.
 #
 # The filename intentionally carries no version stamp; the harness
 # runs against whichever version is currently installed (read from

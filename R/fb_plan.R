@@ -3,8 +3,7 @@
 # Returns the dispatch + preflight + representation + memory decision
 # the routing layer would make, without firing the backend. One of the
 # verbs in the v0.3.8 API spine (flexybayes, fb_brms, fb_inla,
-# fb_plan, triangulate); validate_approximation lands at v0.4.0 as
-# another.
+# fb_plan); validate_approximation lands at v0.4.0 as another.
 #
 # Design notes:
 #
@@ -1123,7 +1122,10 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                approximations = character(0),
                                base_engine = NA_character_,
                                reference_engine = NA_character_,
-                               decision_resolution = NULL) {
+                               decision_resolution = NULL,
+                               stability = NULL,
+                               covariance = NA_character_,
+                               ablation = NULL) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1189,6 +1191,9 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
       attr(stats::terms(candidates, data = base$data), "term.labels")
     },
     prediction = prediction,
+    # The source of the fold covariance the benchmark and optimiser
+    # workflows plug in; "base_model" refits the base once per fold.
+    covariance = covariance,
     resampling = list(
       unit = resamples$unit,
       v = resamples$v,
@@ -1205,7 +1210,14 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
         "reference model carries a wider fixed part and a shrinkage prior, ",
         "so this is a floor"
       )
-    )
+    ),
+    # Subsample stability of the penalised path, where one runs: the
+    # declared settings and the count of penalised fits they cost beside the
+    # cross-validated path's.
+    stability = stability,
+    # The grouped ablation, where one was asked for: the declared blocks and
+    # the fits they cost beside the cross-validated path's.
+    ablation = ablation
   )
 
   structure(list(selection = selection), class = c("fb_select_plan", "list"))
@@ -1285,11 +1297,52 @@ print.fb_select_plan <- function(x, ...) {
       "\n", sep = "")
   cat("  Folds:        ", s$resampling$n_folds,
       ", prediction ", s$prediction %||% "not set", "\n", sep = "")
+  if (identical(s$covariance, "base_model")) {
+    cat("  Covariance:   base_model, one refit of the base model per fold\n",
+        sep = "")
+  }
   cat("  Cost estimate: ", format(round(s$cost$seconds, 1), nsmall = 1L),
       "s over ", s$cost$n_fits, " fit(s) at ",
       format(round(s$cost$per_fit_seconds, 2), nsmall = 2L),
       "s each\n", sep = "")
   cat("                 ", s$cost$note, "\n", sep = "")
+  st <- s$stability
+  if (!is.null(st)) {
+    if (st$subsamples == 0L) {
+      cat("  Stability:    not requested (B = 0 subsamples)\n", sep = "")
+    } else {
+      cat(
+        "  Stability:    B = ", st$subsamples, " subsamples of ",
+        st$subsample_units, " of ", st$n_units, " ",
+        if (length(st$unit) > 0L) paste(st$unit, collapse = ":") else "row",
+        " units, cutoff ", format(st$cutoff), "\n",
+        "                 ", st$path_fits, " penalised fits and ",
+        st$covariance_fits, " covariance estimates, against ",
+        st$cv_path_fits, " and ", st$n_folds,
+        " for the cross-validated path (",
+        format(round(st$relative_cost, 1), nsmall = 1L), " times)\n",
+        sep = ""
+      )
+    }
+  }
+  ab <- s$ablation
+  if (!is.null(ab)) {
+    cat(
+      "  Ablation:     ", length(ab$blocks), " declared block",
+      if (length(ab$blocks) == 1L) "" else "s", " (",
+      paste(ab$blocks, collapse = ", "), "), each dropped in turn\n",
+      "                 ", ab$path_fits, " penalised fits and ",
+      ab$protected_fits, " protected-model fits, against ", ab$cv_path_fits,
+      " for the cross-validated path; no covariance estimate",
+      if (ab$engine_refits > 0L) {
+        paste0("; ", ab$engine_refits, " engine refits of the ablated supports")
+      } else {
+        ""
+      },
+      "\n",
+      sep = ""
+    )
+  }
   if (length(s$approximations) > 0L) {
     cat("  Approximations this route commits to:\n", sep = "")
     for (a in s$approximations) {

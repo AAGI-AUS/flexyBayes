@@ -16,8 +16,8 @@ gate when a model falls outside the latent Gaussian class.}
 Invisibly, \code{x} unchanged. Called for the refusal it prints.
 }
 \description{
-Internal S3 method, registered for dispatch only. Prints why INLA
-cannot fit the model and what to do about it, and nothing else.
+Internal S3 method, registered for dispatch only. Prints why flexyBayes
+cannot fit the model on INLA and what to do about it, and nothing else.
 }
 \details{
 The refusal used to print sixteen lines: a per-rule diagnostic string,

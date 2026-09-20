@@ -116,6 +116,7 @@ test_that("the emitted formula carries a start for a tight bound and none for a 
 test_that("tight and moderate group-SD bounds bind on a Poisson fit, per row and aggregated", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .bound_pois_data()
 

@@ -430,6 +430,7 @@ test_that("a smooth of a covariate carries no grouping column and passes new_clu
 test_that("an INLA fold refit indexes no assessment row's effect by a training row's level", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   fbfi_quiet()
   d <- fbfi_data()
   unit_split <- fbfi_folds(d)[[1L]]

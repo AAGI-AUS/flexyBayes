@@ -145,6 +145,7 @@ test_that("posterior mean recovers lme4 fit on factor:continuous", {
   skip_if_not_installed("lme4")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   withr::local_options(list(
     flexyBayes.silence_default_prior_note = TRUE,
     flexyBayes.silence_convergence_warning = TRUE

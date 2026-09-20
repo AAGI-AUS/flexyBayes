@@ -274,6 +274,7 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
 test_that("a non-Gaussian coefficient does not move when its covariate is rescaled", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   # Multiplying a covariate by a constant is an exact transformation: the
@@ -327,6 +328,7 @@ test_that("an uncorrelated slope comes back in the covariate's own units", {
 test_that("draws are taken on the original scale", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   d <- .cs_count_data("poisson")
@@ -352,6 +354,7 @@ test_that("draws are taken on the original scale", {
 test_that("vpredict comes back in the covariate's own units", {
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   # vpredict() is the only caller of the joint hyperparameter sampler, so it

@@ -132,9 +132,9 @@ rgev <- function(n, location, scale, shape = 0) {
 #' computed from the fitted parameters and reported on `fit$return_levels`
 #' for the requested return periods.
 #'
-#' A scalable Bayesian GEV belongs on INLA's native `gev` / `bgev` family
-#' and is planned for a future release; no active engine has a turnkey
-#' GEV route today.
+#' flexyBayes has no GEV route on either engine yet. INLA has `gev` and
+#' `bgev` likelihoods and brms a `gen_extreme_value()` family; a route
+#' through one of them is planned for a future release.
 #'
 #' @param y Numeric vector of block-maxima observations. Must contain at
 #'   least four finite values.

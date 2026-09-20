@@ -87,6 +87,7 @@ test_that("predict() without classify is unchanged on INLA", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 
@@ -127,6 +128,7 @@ test_that("classify = 'variety' returns one row per level on INLA", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 
@@ -154,6 +156,7 @@ test_that("classify = 'variety' returns one row per level on brms", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_brms_fit()
 
@@ -169,6 +172,7 @@ test_that("a one-sided formula and the ASReml spelling agree", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 
@@ -214,6 +218,7 @@ test_that("a two-factor classify crosses the levels", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 
@@ -236,6 +241,7 @@ test_that("level widens the interval and is honoured on both engines", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fits <- list()
   if (requireNamespace("INLA", quietly = TRUE)) {
@@ -281,6 +287,7 @@ test_that("the banner names the estimator and denies the SED reading", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 
@@ -305,6 +312,7 @@ test_that("the brms print carries no INLA approximation line", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_brms_fit()
 
@@ -338,6 +346,7 @@ test_that("newdata on the classify path is ignored, not silently", {
   skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 
@@ -480,6 +489,7 @@ test_that("a fixed factor still classifies, and an unknown name is left alone", 
   skip_if_not_installed("INLA")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .pc_silence()
   fit <- .pc_inla_fit()
 

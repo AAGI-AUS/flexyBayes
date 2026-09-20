@@ -50,6 +50,7 @@
 
 test_that("brms samples a missing Gaussian response rather than dropping it", {
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian")
   fit <- suppressMessages(suppressWarnings(flexybayes(
@@ -69,6 +70,7 @@ test_that("the sampled missing responses reach summary(fit)$missing", {
   # which is exactly the gap between the two observation counts.
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian")
   fit <- suppressMessages(suppressWarnings(flexybayes(
@@ -101,6 +103,7 @@ test_that("the sampled missing responses reach summary(fit)$missing", {
 test_that("a complete brms fit reports a typed zero-row missing table", {
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_data("gaussian", n_missing = 0L)
   fit <- suppressMessages(suppressWarnings(flexybayes(
@@ -165,6 +168,7 @@ test_that("a missing lognormal response is sampled and matches deletion", {
   # posterior, so the carried rows are asserted first.
   skip_if_not_installed("brms")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .brms_miss_lognormal_data()
   fit_one <- function(na_action) {

@@ -186,6 +186,7 @@ test_that("a heterogeneous fit returns one variance per level and no correlation
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("rstan")
+  skip_if_not_long_tier()
   d <- .het_data(n_gen = 12L, n_rep = 3L, seed = 4L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
     y ~ site, random = ~ diag(site):gen, data = d,
@@ -205,6 +206,7 @@ test_that("a sectioned residual reports its per-level variances", {
   skip_if_not_installed("brms")
   skip_if_not_installed("rstan")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
     y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
@@ -283,6 +285,7 @@ test_that("the per-level residuals are rows of summary(fit)$varcomp", {
   skip_if_not_installed("brms")
   skip_if_not_installed("rstan")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   d <- .het_data(n_gen = 10L, n_rep = 3L, seed = 6L)
   fit <- suppressWarnings(suppressMessages(flexybayes(
     y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,

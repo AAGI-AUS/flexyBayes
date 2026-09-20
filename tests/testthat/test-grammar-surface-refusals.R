@@ -85,6 +85,7 @@ test_that("the named ASReml surfaces do fit -- the refusal is not a dead end", {
   # Naming an alternative that does not work is worse than naming none, so
   # both surfaces the messages above name are exercised here.
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
   for (rnd in list(~ us(trt):g, ~ diag(trt):g)) {
@@ -119,6 +120,7 @@ test_that("the supported bar forms are untouched by the factor-slope branch", {
   # devtools::check() path and runs under devtools::test().
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
   for (form in list(y ~ x + (1 | g), y ~ x + (x || g), y ~ x + (1 + x || g))) {

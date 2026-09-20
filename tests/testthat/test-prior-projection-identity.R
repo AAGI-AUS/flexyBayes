@@ -266,6 +266,7 @@ test_that("a bridged component names the prior the bridge applied", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .ppi_silence()
   fit <- .ppi_legacy_brms_fit()
 

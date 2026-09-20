@@ -40,6 +40,7 @@ test_that("marginaleffects accessors work on an INLA fit", {
   skip_if_not_installed("marginaleffects")
   skip_on_cran() # INLA posterior sampling: heavy + core-limited under --as-cran
   skip_on_ci()
+  skip_if_not_long_tier()
   .mfx_silence()
   d <- .mfx_data()
   fit <- suppressMessages(flexybayes(
@@ -68,6 +69,7 @@ test_that("predictions() / avg_slopes() on an INLA fit recover the DGP", {
   skip_if_not_installed("marginaleffects")
   skip_on_cran() # INLA posterior sampling: heavy + core-limited under --as-cran
   skip_on_ci()
+  skip_if_not_long_tier()
   .mfx_silence()
   d <- .mfx_data()
   fit <- suppressMessages(flexybayes(
@@ -137,6 +139,7 @@ test_that("INLA and brms avg_comparisons agree on the factor effect", {
   skip_if_not_installed("marginaleffects")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   .mfx_silence()
   d <- .mfx_data()
   fi <- suppressMessages(flexybayes(

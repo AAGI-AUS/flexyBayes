@@ -199,9 +199,14 @@ test_that("the support history reproduces a hand-whitened glmnet path at every t
         at_point <- rows[rows$lambda_index == index, ]
         expect_identical(nrow(at_point), length(fbsp_declared))
         package_support <- sort(at_point$column[at_point$in_support])
-        hand <- fbsp_hand_support(
-          payload, at_point$lambda_canonical[[1L]], alpha
-        )
+        # At s = 1 the canonical lambda is the fold's lambda_max, where the
+        # exact solution is zero; `glmnet` leaves values of order 1e-16 there
+        # on the column attaining it, so the oracle is the closed form.
+        hand <- if (at_point$s[[1L]] >= 1) {
+          character(0)
+        } else {
+          fbsp_hand_support(payload, at_point$lambda_canonical[[1L]], alpha)
+        }
         expect_identical(package_support, hand)
         compared <- compared + 1L
       }

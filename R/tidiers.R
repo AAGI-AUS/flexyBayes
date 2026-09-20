@@ -9,7 +9,7 @@
 # Downstream code that
 # wanted a flat one-row-per-term summary had to reach into backend-specific
 # slots, which is fragile and -- worse -- different across backends, so a
-# triangulation table that compared brms against INLA was hand-built every
+# table that compared brms against INLA was hand-built every
 # time. These methods register against the `tidy()` generic (re-exported by
 # `broom`), so `broom::tidy(fit)` and `generics::tidy(fit)` both return a
 # stable, documented `data.frame` with the canonical `broom` column names
@@ -45,7 +45,7 @@ generics::augment
 #' backend-specific objects -- `flexybayes_brms` (brms) and
 #' `flexybayes_inla` (INLA) -- whose internal layouts differ. Tidying
 #' through this generic yields the same columns across both, so a
-#' brms-versus-INLA triangulation table can be assembled by `rbind`-ing two
+#' brms-versus-INLA comparison table can be assembled by `rbind`-ing two
 #' `tidy()` outputs rather than reaching into each backend's slots by hand.
 #'
 #' The credible intervals are posterior quantile-based intervals, not

@@ -175,6 +175,14 @@
   # child the operating system killed rather than a fold that failed.
   .populate_refusal_registry_selection_parallel()
 
+  # 2026-09-19: a fit asked to run in a separate R process -- callr absent,
+  # and a process that ended before it returned.
+  .populate_refusal_registry_process_isolation()
+
+  # 2026-09-19: a known variance per row that is malformed, or asked of a
+  # model or an fb_select() route that cannot carry it.
+  .populate_refusal_registry_known_variance()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
@@ -200,9 +208,8 @@
   .lock_approximation_registry()
 
   # Populate the backend-independence
-  # registry with the pair between the two triangulatable backends
-  # (inla, brms). triangulate() consumes this to label the cross-engine
-  # comparison with its independence axis
+  # registry with the pair between the two active backends
+  # (inla, brms) and its independence axes
   # (algorithmic / implementation / specification).
   .populate_backend_independence_registry_v0400()
 

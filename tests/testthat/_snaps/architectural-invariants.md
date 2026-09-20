@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=217
+      .refusal_registry: locked=TRUE n_keys=228
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -169,12 +169,17 @@
         inla_program_failed
         inla_variable_used_twice
         interaction_not_representable
+        isolated_process_died
+        isolation_requires_callr
         known_matrices_data_name_collision
         known_matrix_dim_mismatch
         known_matrix_dimnames_mismatch
         known_matrix_level_mismatch
+        known_variance_invalid
+        known_variance_not_supported
         log_density_producer_unavailable
         loo_requires_sampler_draws
+        loss_surface_requires_plotly
         low_rank_rank_exceeds_basis
         low_rank_rank_invalid
         low_rank_scheme_required
@@ -234,12 +239,14 @@
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer
+        selection_ablation_route_undefined
         selection_base_not_allowlisted
         selection_base_shape_unreadable
         selection_candidates_not_constant_within_term
         selection_covariance_not_buildable
         selection_covariance_not_positive_definite
         selection_decision_invalid
+        selection_dense_covariance_too_large
         selection_dense_reference_too_large
         selection_fallback_not_authorised
         selection_family_not_supported
@@ -252,8 +259,10 @@
         selection_fold_variable_not_in_data
         selection_formula_transform_not_fold_local
         selection_leakage_detected
+        selection_loss_surface_undefined
         selection_missing_response_estimand_unnamed
         selection_missing_response_in_objective
+        selection_missing_response_not_carried
         selection_new_cluster_not_representable
         selection_offset_absorbed_twice
         selection_parallel_worker_failed
@@ -274,16 +283,19 @@
         selection_reduction_absorption_unsupported
         selection_reduction_level_mismatch
         selection_reduction_term_not_in_fit
+        selection_refit_support_undefined
         selection_resamples_underspecified
         selection_score_contract_unverifiable
         selection_scoring_unit_mismatch
         selection_scoring_unit_undeclared
         selection_seed_required
         selection_strata_not_constant_within_unit
+        selection_value_contract_mismatch
         selection_weights_absorbed_twice
         selection_weights_loss_route_requires_residual_only
         selection_weights_not_positive
         smooth_variable_not_in_data
+        spatial_field_requires_ar1_field
         stan_cannot_represent_ar1_field
         stan_cannot_represent_ar1_residual
         stan_cannot_represent_structured_cov
@@ -295,7 +307,6 @@
         streamed_rows_not_retained
         tensor_smooth_unsupported
         term_in_fixed_and_random
-        triangulate_incomparable_fits
         unknown_backend
         unsupported_family
         update_call_not_reconstructable

@@ -62,6 +62,7 @@ test_that("fb() corpus 1: fixed-only Gaussian (brms grammar forced)", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   # A bar-free formula is ASReml grammar by default; `syntax = "brms"`
   # forces the brms ingest so this still exercises the brms corpus path.
@@ -93,6 +94,7 @@ test_that("fb_brms() corpus 2: Gaussian + one random intercept", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
@@ -121,6 +123,7 @@ test_that("fb_brms() corpus 3: crossed random intercepts", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g1) + (1 | g2),
@@ -153,6 +156,7 @@ test_that("fb_brms() corpus 4: binomial RI as single-column Bernoulli", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_binomial_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
@@ -181,6 +185,7 @@ test_that("fb_brms() corpus 5: Poisson random-intercept GLMM", {
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_poisson_data()
   fit <- suppressMessages(flexybayes(
     y ~ x + (1 | g),
@@ -285,6 +290,7 @@ test_that("fb(..., review_code = TRUE) returns <flexybayes_review>; proceed() fi
   testthat::skip_if_not_installed("brms")
   testthat::skip_on_cran()
   testthat::skip_on_ci()
+  skip_if_not_long_tier()
   d <- mk_brms_gaussian_data()
   rev <- suppressMessages(flexybayes(
     y ~ x + (1 | g1),
@@ -393,40 +399,10 @@ test_that("fb(review_code = TRUE, backend = 'inla') raises structured refusal", 
 
 
 # ---------------------------------------------------------------- #
-# (13) triangulate(fit_brms, fit_inla) auto-resolves canonical     #
-#      names via the ADR 0005 registry (no name_map supplied)      #
+# (13) [removed] canonical-name alignment across brms and INLA,     #
+#      covered by test-as-draws-generics.R ("both engines answer    #
+#      with the same parameter tokens")                             #
 # ---------------------------------------------------------------- #
-
-test_that("triangulate() on fb_brms() brms + INLA fits resolves canonical names automatically", {
-  testthat::skip_if_not_installed("brms")
-  testthat::skip_if_not_installed("INLA")
-  testthat::skip_on_cran()
-  testthat::skip_on_ci()
-  d <- mk_brms_gaussian_data()
-  fit_b <- suppressMessages(suppressWarnings(flexybayes(
-    y ~ x + (1 | g1),
-    data = d,
-    backend = "brms",
-    n_samples = 500L,
-    warmup = 500L,
-    chains = 1L,
-    seed = 20260523L,
-    control = list(adapt_delta = 0.97),
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )))
-  fit_i <- suppressMessages(flexybayes(
-    y ~ x + (1 | g1),
-    data = d,
-    backend = "inla",
-    verbose = FALSE
-  ))
-  tri <- triangulate(fit_b, fit_i)
-  expect_true(all(
-    c("(Intercept)", "x", "sd_g1", "sigma") %in%
-      tri$common
-  ))
-})
 
 
 # ---------------------------------------------------------------- #

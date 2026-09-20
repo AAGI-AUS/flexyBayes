@@ -310,7 +310,7 @@ test_that("prior_summary() reports the legacy scalars as applied on INLA", {
   expect_match(txt, "prior_fixed_sd:  not supplied", fixed = TRUE)
 
   # The variance components are recorded as carried, not as engine
-  # defaults, so triangulate() can compare them.
+  # defaults.
   expect_setequal(
     names(fit$extras$fingerprint$priors),
     c("sigma", "sd_g")

@@ -63,7 +63,7 @@ test_that(".lgm_check_family() refuses an unsupported family", {
   fb <- mk_fb(family = "weibull5p_hypothetical")
   r <- flexyBayes:::.lgm_check_family(fb)
   expect_false(r$pass)
-  expect_match(r$reason, "INLA likelihood allowlist")
+  expect_match(r$reason, "is not among INLA's likelihoods", fixed = TRUE)
   expect_match(r$diagnostic, "weibull5p_hypothetical")
 })
 
@@ -204,7 +204,8 @@ test_that(".lgm_check_hyperparam_budget() refuses above the hard limit", {
   fb <- mk_fb(random_terms = re)
   r <- flexyBayes:::.lgm_check_hyperparam_budget(fb)
   expect_false(r$pass)
-  expect_match(r$reason, "exceeds hard limit")
+  expect_match(r$reason, "is above the 15 flexyBayes allows on INLA",
+    fixed = TRUE)
 })
 
 test_that(".lgm_count_hyperparams() charges fa_gxe 2k hyperparameters", {
@@ -304,20 +305,18 @@ test_that(".lgm_check_random_term_inla_support() refuses vm (GBLUP / kinship)", 
   # so: it read "no other active backend represents it either" until the
   # 0.9.0 fidelity pass, which was false for every term brms had learned
   # to emit -- vm, us(f):g, and every nested random effect.
-  expect_match(r$reason, "brms does represent this model", fixed = TRUE)
+  expect_match(r$reason, "flexyBayes fits this model on brms", fixed = TRUE)
 })
 
 test_that(".lgm_check_random_term_inla_support() says so when brms cannot", {
-  # 0.9.3: the message no longer names any specific engine as the
-  # reason brms cannot represent this term either (a since-withdrawn
-  # native engine used to be the exception the older wording carved
-  # out) -- it states the fact plainly and engine-free: no active
-  # backend can fit it.
+  # The sentence is about what flexyBayes fits on brms, not about what brms
+  # can represent: it used to read "brms cannot represent it either", a
+  # claim about the engine that nothing checked.
   fb <- mk_fb(random_terms = list(list(type = "fa", var = "env", k = 2L)))
   r <- flexyBayes:::.lgm_check_random_term_inla_support(fb)
   expect_false(r$pass)
-  expect_match(r$reason, "brms cannot represent it either", fixed = TRUE)
-  expect_match(r$reason, "no active backend can fit it faithfully", fixed = TRUE)
+  expect_match(r$reason, "flexyBayes cannot fit it on brms either", fixed = TRUE)
+  expect_false(grepl("brms cannot represent", r$reason, fixed = TRUE))
 })
 
 test_that(".lgm_check_random_term_inla_support() refuses ped (pedigree)", {
@@ -567,7 +566,7 @@ test_that("every shrinkage family refuses at INLA, and the reason names it", {
     r <- flexyBayes:::.lgm_check_prior_family_inla_support(fb)
     expect_false(r$pass, info = family)
     expect_match(r$reason, family, fixed = TRUE)
-    expect_match(r$reason, "not fitted on INLA", fixed = TRUE)
+    expect_match(r$reason, "are fitted on brms only", fixed = TRUE)
     expect_match(r$diagnostic, family, fixed = TRUE)
   }
 })
@@ -617,21 +616,32 @@ test_that("print.lgm_refusal() emits the structured refusal template", {
   )
   out <- flexyBayes:::lgm_gate(fb)
   text <- capture.output(print(out))
-  expect_true(any(grepl("INLA cannot fit this model", text, fixed = TRUE)))
+  expect_true(any(grepl("flexyBayes cannot fit this model on INLA", text,
+    fixed = TRUE)))
   expect_true(any(grepl("\\[family_allowlist\\]", text)))
   expect_true(any(grepl("\\[latent_class\\]", text)))
   # The refusal names one route onward and one place to read the rest.
   # It used to print four lines on what backend = "auto" already does, an
   # unconditional roadmap sentence about mixtures, and a two-argument
   # override incantation -- sixteen lines for a two-rule refusal, which is
-  # what the R Journal review read.
-  expect_true(any(grepl("backend = \"brms\"", text, fixed = TRUE)))
+  # what the R Journal review read. The route onward is brms only when
+  # flexyBayes fits the model there, and a mixture term it does not.
+  expect_false(any(grepl("backend = \"brms\"", text, fixed = TRUE)))
   expect_true(any(grepl("?lgm_gate", text, fixed = TRUE)))
   # The citation still belongs to the latent-class rule's own reason, which
   # this fixture triggers. What is gone is the unconditional advert that
   # printed it on every refusal, mixture or not.
   expect_false(any(grepl("on the roadmap", text, fixed = TRUE)))
   expect_lte(length(text), 8L)
+})
+
+test_that("print.lgm_refusal() points at brms when flexyBayes fits the model there", {
+  fb <- mk_fb(family = "lognormal")
+  out <- flexyBayes:::lgm_gate(fb)
+  expect_true(flexyBayes:::is_lgm_refusal(out))
+  expect_true(isTRUE(out$brms_fits))
+  text <- capture.output(print(out))
+  expect_true(any(grepl("Fit it with backend = \"brms\"", text, fixed = TRUE)))
 })
 
 # ---------------------------------------------------------------- #
@@ -677,7 +687,8 @@ test_that("an explicit inla request refused by the gate raises a typed condition
   expect_s3_class(err, "error")
 
   # Every existing gate message survives verbatim inside the condition.
-  expect_match(conditionMessage(err), "INLA cannot fit this model", fixed = TRUE)
+  expect_match(conditionMessage(err), "flexyBayes cannot fit this model on INLA",
+    fixed = TRUE)
   expect_match(conditionMessage(err), "backend = \"brms\"", fixed = TRUE)
   expect_match(conditionMessage(err), "?lgm_gate", fixed = TRUE)
 

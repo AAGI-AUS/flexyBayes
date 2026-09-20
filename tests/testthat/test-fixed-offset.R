@@ -184,6 +184,7 @@ test_that("a brms fit carries the offset into Stan and matches lme4", {
   skip_if_not_installed("lme4")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sleepstudy()
   fit <- flexybayes(
@@ -457,6 +458,7 @@ test_that("an offset model is invariant to rescaling the response and offset", {
   # identical-call range is 1.9e-4 of their value.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(20260914L)
   n_g <- 30L
@@ -586,6 +588,7 @@ test_that("a Poisson offset reaches the aggregated route as exposure", {
   # intercept is 1.95 against 0.26.
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   threads <- INLA::inla.getOption("num.threads")
   INLA::inla.setOption(num.threads = "1:1")
@@ -687,6 +690,7 @@ test_that("predict() on INLA carries the offset where it predicts", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("emmeans")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_pred_data()
   fit <- .off_inla(y ~ f + x + offset(z), random = ~ g, data = d)
@@ -745,7 +749,7 @@ test_that("predict() on brms refuses new data that lack an offset column", {
   )
 })
 
-test_that("the fingerprint, triangulate() and the printed surfaces record it", {
+test_that("the fingerprint and the printed surfaces record it", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
@@ -755,21 +759,6 @@ test_that("the fingerprint, triangulate() and the printed surfaces record it", {
 
   expect_identical(fit$extras$fingerprint$offset, "offset(z)")
   expect_identical(plain$extras$fingerprint$offset, "<none>")
-  diff <- .fb_fingerprint_first_difference(
-    fit$extras$fingerprint,
-    plain$extras$fingerprint
-  )
-  expect_identical(diff$element, "offset")
-  # A fingerprint recorded before the element existed described a model with
-  # no offset, and still compares clean against one.
-  old <- plain$extras$fingerprint
-  old$offset <- NULL
-  expect_null(.fb_fingerprint_first_difference(old, plain$extras$fingerprint))
-  .off_expect_refusal(
-    triangulate(fit, plain),
-    "triangulate_incomparable_fits",
-    "differ on the offset"
-  )
 
   ps <- prior_summary(fit)
   expect_identical(ps$offsets, "offset(z)")
@@ -842,6 +831,7 @@ test_that("fb_select()'s benchmark and optimiser read the base's offset", {
   skip_if_not_installed("INLA")
   skip_if_not_installed("glmnet")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sel_data()
   bases <- .off_sel_bases(d)
@@ -886,6 +876,7 @@ test_that("projection refuses an offset base, and the other layers carry it", {
   # subtracted refit's by the offset, within 7.3e-5 (2026-09-13).
   skip_if_not_installed("INLA")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sel_data()
   bases <- .off_sel_bases(d)
@@ -957,6 +948,7 @@ test_that("brms and INLA agree on an offset model under one stated prior", {
   skip_if_not_installed("lme4")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .off_sleepstudy()
   prior <- fb_prior(
@@ -993,10 +985,4 @@ test_that("brms and INLA agree on an offset model under one stated prior", {
   expect_lt(gap[[2L]], 0.1)
   expect_lt(gap[[3L]], 1.5)
   expect_lt(gap[[4L]], 0.15)
-  # One model on both engines: the fingerprints agree, so triangulate() does
-  # not refuse the pair.
-  expect_null(.fb_fingerprint_first_difference(
-    brms_fit$extras$fingerprint,
-    inla_fit$extras$fingerprint
-  ))
 })

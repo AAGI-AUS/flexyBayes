@@ -68,6 +68,40 @@ Add tests under `tests/testthat/`. Tests that depend on `INLA` or
 `brms` should `skip_if_not_installed(.)`. The test suite uses testthat
 edition 3.
 
+### Test tiers
+
+The suite has two tiers. `devtools::test()` and `devtools::check()` run the
+short tier by default, which takes about 15 minutes on a ten-core Apple M5
+with `INLA` held to one thread. The blocks that dominate the wall clock are
+held back behind an environment variable:
+
+```sh
+# the short tier, the default
+Rscript -e 'devtools::test()'
+
+# every tier, as a release runs it
+FLEXYBAYES_RUN_LONG=true Rscript -e 'devtools::test()'
+```
+
+A block joins the long tier by calling `skip_if_not_long_tier()` after its
+`skip_on_cran()` and `skip_if_not_installed()` guards and changing nothing
+else, so the long tier is a subset of the suite rather than a variant of it.
+209 blocks across 75 files are held; 2,205 of the suite's 2,426 blocks still
+run by default.
+
+Choose a block for the tier on its measured time, and measure that time on
+the tier as it actually runs. Several files build an expensive fixture in one
+block and reuse it in later ones, so holding the block that builds it moves
+the work to the block that needs it instead of saving it. Tagging from a
+recording of the untiered suite left the short tier at 22 minutes for that
+reason; tagging from a recording of the short tier itself brought it to 15.
+
+Every release runs every tier. `tools/run_test_suite.R` records one row per
+block with the reason it was skipped, and criterion D11 of
+`tools/definition_of_done.R` fails when a block was held back, or when a
+tagged block is missing from the record, so a release cannot be evidenced by
+a short-tier run.
+
 #### Three-tier test discipline
 
 The test suite is organised into three implicit tiers via
@@ -97,7 +131,7 @@ tests fire. `skip_if_not_installed("brms")` still gates the Stan
 passthrough tests. Expected: **PASS 850+ / FAIL 0** with a small
 handful of SKIPs (brms round-trip, vdiffr).
 
-**Tier 3 -- full triangulation (INLA + brms / Stan).**
+**Tier 3 -- both engines (INLA + brms / Stan).**
 
 ```r
 Sys.setenv(NOT_CRAN = "true")
@@ -106,7 +140,7 @@ devtools::test()           # ~10-20 min; brms first-call Stan
                            # compile is 30-60 s per backend test
 ```
 
-Adds the Stan passthrough round-trips and cross-engine triangulation
+Adds the Stan passthrough round-trips and the cross-engine agreement
 tests on top of Tier 2. The gate is **FAIL 0**; PASS counts grow across
 the 0.8.x line (the 90+-file suite is well above the early-release floors
 quoted above). The residual SKIPs are vdiffr snapshots and

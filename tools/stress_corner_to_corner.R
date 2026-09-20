@@ -255,9 +255,9 @@ if (HAS_INLA)
 # than probed here as if a check existed).
 
 # =============================================================================
-# AREA 3 -- CROSS-BACKEND FIT + TRIANGULATE CONSISTENCY
+# AREA 3 -- CROSS-BACKEND FITS
 # =============================================================================
-message("\n==== AREA 3: cross-backend fit + triangulate ====")
+message("\n==== AREA 3: cross-backend fits ====")
 set.seed(101L)
 n <- 80L
 d_lin <- data.frame(x = rnorm(n)); d_lin$y <- 1 + 0.8 * d_lin$x + rnorm(n, 0, 0.7)
@@ -270,17 +270,6 @@ fit_b <- if (RUN_BRMS) probe_ok("fit.brms.gaussian", "fit",
           mcmc_verbose = FALSE),
   check = function(f) inherits(f, "flexybayes_brms")) else
   { .rec("fit.brms.gaussian", "fit", "success", "SKIP", "brms off"); NULL }
-
-# triangulate every available backend pair; coefficients should agree closely
-.tri_check <- function(t) {
-  if (!inherits(t, "triangulate_result")) return("not a triangulate_result")
-  if (t$n_common < 1L) return("no common parameters mapped")
-  md <- max(abs(t$metrics$mean_diff), na.rm = TRUE)
-  if (is.finite(md) && md < 0.5) TRUE else
-    sprintf("max |mean_diff| = %.3f across %d params (expected < 0.5)", md, t$n_common)
-}
-if (!is.null(fit_i) && !is.null(fit_b))
-  probe_ok("tri.brms_inla", "triangulate", triangulate(fit_b, fit_i), check = .tri_check)
 
 # non-Gaussian fits on INLA (fast)
 if (HAS_INLA) {

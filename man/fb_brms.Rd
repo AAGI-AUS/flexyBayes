@@ -31,14 +31,12 @@ brms's own posterior tooling (\code{loo()}, \code{posterior_predict()},
 \code{bayes_factor()}).
 }
 \details{
-The brms / Stan engine cannot represent every ASReml structured-
-covariance term (\code{fa}, \code{us}, \code{ar1}, or a block-diagonal / low-rank
-\code{vm()} / \code{ped()} carrier) or a \code{low_rank} smooth approximation; such a
-model raises a structured refusal naming the offending construct.
-When the model is latent-Gaussian feasible, re-fit with \code{\link[=fb_inla]{fb_inla()}};
-flexyBayes has no active engine for a structured-covariance term
-that is neither brms-representable nor latent-Gaussian feasible
-(see \code{NEWS.md}, 0.9.3).
+flexyBayes has no brms lowering for some ASReml structures: \code{fa()}, the
+autoregressive fields, a blocks or low-rank \code{vm()} / \code{ped()} carrier, and
+a \code{low_rank} smooth approximation. Such a model raises a structured
+refusal naming the term. Several of these fit on INLA through
+\code{\link[=fb_inla]{fb_inla()}}; the capability table in the README lists what each engine
+fits.
 }
 \section{Deprecated}{
 

@@ -43,21 +43,30 @@ fit <- flexybayes(
 )
 #> 
 #> -- flexyBayes: INLA fit ----------------------------------------
-#>   formula: yield ~ 1 + rep + f(rep_block_id, model = "iid", <prior: uniform-SD(0, 3.049)>) + f(gen, model = "iid", <prior: uniform-SD(0, 3.049)>)
+#>   formula: fb_standardised_response ~ 1 + rep + f(rep_block_id, model = "iid", <prior: half-normal-SD(5)>) + f(gen, model = "iid", <prior: half-normal-SD(5)>)
 #>   family:  gaussian
 #> ------------------------------------------------------------
 
 prior_summary(fit)
 #> <prior_summary>  backend = inla
-#>   Source: auto-default bounded uniform on SD (weakly-informative; half-Cauchy advised for small J)
-#>     Upper bound U = 3.049069
-#>     Scale basis    = identity_sd_uniform
-#>     prior_fixed_sd:  not supplied -- the fixed effects carry INLA's own control.fixed defaults -- prec = 0.001 on the slopes (a standard deviation near 32), and prec.intercept = 0, which is flat
+#>   Source: auto-default half-normal on SD (weakly informative, no upper bound)
+#>     Scale s        = 3.049069
+#>     Scale basis    = identity_sd_half_normal
+#>     prior_fixed_sd:  not supplied -- the fixed effects carry INLA's own control.fixed defaults -- prec = 0.001 (a standard deviation near 32, in standard deviations of the response on a Gaussian identity-link fit), and prec.intercept = 0, which is flat
 #> 
 #> <fb_prior> 3 specifications
-#>   sigma ~ uniform(lower = 0, upper = 3.049069)
-#>   sd(group = "rep:block") ~ uniform(lower = 0, upper = 3.049069)
-#>   sd(group = "gen") ~ uniform(lower = 0, upper = 3.049069)
+#>   sigma ~ half_normal(scale = 3.049069)  -> family:INLA.Data1:theta1
+#>   sd(group = "rep:block") ~ half_normal(scale = 3.049069)  -> random:rep_block_id:theta
+#>   sd(group = "gen") ~ half_normal(scale = 3.049069)  -> random:gen:theta
+#> 
+#>   As each engine slot received it (read back from the fit):
+#>     the fit runs on the standardised response, so a bound or scale
+#>     on a standard deviation is the stated one divided by the
+#>     response scale 0.609814
+#>     family:INLA.Data1:theta1  <prior: half-normal-SD(5)>  [sigma:sigma]  read back as sent
+#>     random:rep_block_id:theta  <prior: half-normal-SD(5)>  [sd:rep:block]  read back as sent
+#>     random:gen:theta  <prior: half-normal-SD(5)>  [sd:gen]  read back as sent
+#>     3 further slots carry the engine's own prior (listed in `$slots`)
 ```
 
 Two things about that default are worth stating plainly.
@@ -77,56 +86,10 @@ unstructured covariance on INLA -- is reported that way.
 
 ``` r
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
-#> Bayesian mixed model summary  [flexyBayes / inla]
-#> ============================================================== 
-#>   Fixed    : yield ~ rep 
-#>   Random   : ~rep:block + gen 
-#>   Model    : G: block within rep; gen iid; R: units 
-#>   Family   : gaussian / identity 
-#>   Representation: exact (model, not inference)
-#>   Engine:         INLA Laplace
-#>   N        : 72 design rows, 72 observed responses
-#>   na_action: augment; 0 missing response(s); 0 cell(s) completed
-#>   Runtime  : 1.5 sec
-#> 
-#> -- Fixed effects (posterior mean, 95% credible interval) --------
-#>         term estimate std.error conf.low conf.high
-#>  (Intercept)   4.5182    0.1598   4.2016    4.8349
-#>        repR2   0.2978    0.1936  -0.0887    0.6844
-#>        repR3  -0.4140    0.1936  -0.8006   -0.0275
-#> 
-#> -- Variance components (95% credible interval) ------------------
-#> Estimate = posterior mean (not REML). Prior column is the prior that was used.
-#>     component estimate std.error conf.low conf.high
-#>         sigma   0.2926    0.0364   0.2290    0.3716
-#>  sd_rep:block   0.2880    0.0779   0.1632    0.4677
-#>        sd_gen   0.3974    0.0734   0.2736    0.5610
-#>                          prior note
-#>  uniform(lower=0, upper=3.049)     
-#>  uniform(lower=0, upper=3.049)     
-#>  uniform(lower=0, upper=3.049)     
-#> 
-#> -- Hyperparameters (INLA, precision scale) ---------------------
-#>                                            mean     sd 0.025quant 0.5quant
-#> Precision for the Gaussian observations 12.2230 3.0395     7.2296  11.8925
-#> Precision for rep_block_id              14.9651 8.7757     4.5831  12.8732
-#> Precision for gen                        7.0003 2.6399     3.1726   6.5569
-#>                                         0.975quant    mode
-#> Precision for the Gaussian observations    19.1161 11.2912
-#> Precision for rep_block_id                 37.7820  9.6123
-#> Precision for gen                          13.4059  5.7509
-#> 
-#> -- Convergence -----------------------------------------------
-#>   Engine    : INLA nested Laplace approximation
-#>   Mode status: 0 (0 = converged)
-#>   Marginal log-likelihood: -65.806
-#>   Largest symmetric KLD between the Gaussian approximation and the
-#>   corrected marginal: 3.81e-07
-#>   Numerical confirm: PASS
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2926117 0.2289789 0.3715709
-#> 2 sd_rep:block 0.2880204 0.1631987 0.4677452
-#> 3       sd_gen 0.3973737 0.2736067 0.5610298
+#> 1        sigma 0.2925198 0.2288439 0.3713355
+#> 2 sd_rep:block 0.2878225 0.1630015 0.4669498
+#> 3       sd_gen 0.3970951 0.2733141 0.5602146
 ```
 
 `estimate` is the posterior mean. The interval is a **credible interval**: on
@@ -151,10 +114,10 @@ cannot leave the range the function maps into:
 ``` r
 h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
 range(h2[, "h2"])
-#> [1] 0.2960232 0.8983319
+#> [1] 0.3028938 0.8794289
 quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
 #>      2.5%       50%     97.5% 
-#> 0.4197655 0.6432970 0.8053794
+#> 0.4393498 0.6496197 0.8166653
 ```
 
 Every draw lies in `[0, 1]`, so the interval does. No asymptotics were used.

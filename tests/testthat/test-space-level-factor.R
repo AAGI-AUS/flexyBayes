@@ -235,6 +235,7 @@ test_that("ranef() shows the user's own labels", {
 test_that("predict(classify = ) shows the user's own labels", {
   skip_if_no_inla()
   skip_if_not_installed("emmeans")
+  skip_if_not_long_tier()
   d <- .space_level_data()
   fit <- flexybayes(
     GRAIN_YIELD_THA ~ NAPPLIED2,
@@ -306,6 +307,7 @@ test_that("brms fits the identical space-level model without legalisation, and i
   # devtools::check() path and runs under devtools::test().
   skip_on_cran()
   skip_if_no_brms()
+  skip_if_not_long_tier()
   d <- .space_level_data()
   # A label round-trip control (no numeric assertion below), but the fitted
   # object should still clear R-hat and divergence diagnostics. Keep the ESS

@@ -452,8 +452,8 @@ emit_count_aggregated <- function(
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a
-      # per-row fit of the same model read as comparable to
-      # triangulate(). See R/model_fingerprint.R.
+      # per-row fit of the same model record the same data. See
+      # R/model_fingerprint.R.
       fingerprint = .fb_model_fingerprint(
         fb,
         data,

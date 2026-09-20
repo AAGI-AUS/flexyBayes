@@ -388,6 +388,7 @@ test_that("every fold and model gets its own seed, the same seeds either way", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   fbpe_skip_without_fork()
+  skip_if_not_long_tier()
   d <- fbpe_data()
   base <- flexybayes(
     y ~ p1,
@@ -443,6 +444,7 @@ test_that("the Bayesian route's bookkeeping is identical and its scores sit insi
   skip_on_cran()
   skip_if_not_installed("INLA")
   fbpe_skip_without_fork()
+  skip_if_not_long_tier()
   d <- fbpe_data()
   base <- flexybayes(
     y ~ p1,

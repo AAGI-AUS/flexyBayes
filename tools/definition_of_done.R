@@ -28,18 +28,23 @@
 #
 # Run from the package root. Not shipped (`^tools$` in .Rbuildignore).
 
-TARGET_VERSION <- "0.13.1"
+TARGET_VERSION <- "0.14.0"
 TARGET_TIER <- "V2"
 # 31 was the arithmetic of the originally proposed trim (44 - 11 - 2).
 # Raised to 34 on 2026-08-28, signed off, after the pre-trim sweep found
 # three of those eleven were wrongly grouped: fb_gblup_cv() is taught and
-# executed in the met-and-genomics vignette, and genomic_summary() and
-# triangulate_genomic() operate on posterior draws. The /rpkg E1 cap of 30
+# executed in the met-and-genomics vignette, and genomic_summary() and the
+# genomic cross-engine comparison (removed in 0.14.0) operated on posterior
+# draws. The /rpkg E1 cap of 30
 # is therefore missed by four, deliberately and on the record.
 # Set to 36 on 2026-09-15 (Max, DEC-LEAN-01 = b): the count 0.11.0 shipped,
 # held as a ceiling that only falls. 0.13.0 reduces the exports to 25 or
 # fewer through a deprecation cycle.
 MAX_EXPORTS <- 36L
+# D5 asserts zero lints, measured on 2026-09-19 with lintr 3.4.0 and the
+# development tree loaded (D5's own command). The gate fails on any lint,
+# matching the hard gate in .github/workflows/lint.yaml.
+LINT_BASELINE <- 0L
 
 # ---------------------------------------------------------------------
 # Helpers
@@ -723,8 +728,79 @@ MAX_EXPORTS <- 36L
                        paste(utils::head(absent, 8), collapse = ", "))
               else paste0("all ", length(exps), " exports declared"))
     }
+  ),
+  list(
+    # Added 2026-09-19 with the 0.14.0 release plan. The package's work is
+    # its authors', so no tracked file names a coding assistant or its
+    # vendor. The words are matched whole and in any case, over every text
+    # file git tracks; the exceptions are listed, one line each.
+    id = "B16", cost = "quick", owner = "maintainer", blocking = TRUE,
+    what = "no git-tracked file names a coding assistant or its vendor",
+    check = function() {
+      hits <- .dod_vendor_hits()
+      if (!is.null(hits$error)) {
+        return(.dod_ok(FALSE, hits$error))
+      }
+      .dod_ok(
+        length(hits$lines) == 0L,
+        if (length(hits$lines))
+          paste0(length(hits$lines), " line(s): ",
+                 paste(utils::head(hits$lines, 5), collapse = "; "))
+        else paste0("clean, ", hits$n_excepted, " listed exception(s) matched")
+      )
+    }
   )
 )
+
+# B16's word list. Each word is assembled from two fragments so that this
+# file, which git tracks, does not match its own check.
+.dod_vendor_words <- function() {
+  c(paste0("clau", "de"), paste0("anthro", "pic"), paste0("co", "dex"),
+    paste0("chat", "gpt"), paste0("co", "pilot"), paste0("gr", "ok"))
+}
+
+# B16's exceptions: a file and one exact line in it. Only the editor-settings
+# directory the first word names, kept out of git and out of the build.
+.dod_vendor_exceptions <- function() {
+  settings_dir <- paste0(".", .dod_vendor_words()[[1L]])
+  list(
+    c(".gitignore", paste0(settings_dir, "/")),
+    c(".Rbuildignore", paste0("^\\", settings_dir, "$")),
+    c(".Rbuildignore", paste0("^\\", settings_dir, "/.*$"))
+  )
+}
+
+# Every line of a git-tracked text file that names a word of
+# .dod_vendor_words(), as "file:line:text", less the listed exceptions.
+# git grep reads the working-tree copy of each tracked file and skips binary
+# files (-I). Its exit status is 1 when nothing matched; any other non-zero
+# status is a failed search, reported as an error and never as clean.
+.dod_vendor_hits <- function() {
+  pat <- paste0("(", paste(.dod_vendor_words(), collapse = "|"), ")")
+  out <- suppressWarnings(system2(
+    "git",
+    c("grep", "-n", "-I", "-i", "-w", "-E", "-e", shQuote(pat)),
+    stdout = TRUE, stderr = TRUE
+  ))
+  status <- attr(out, "status") %||% 0L
+  if (identical(as.integer(status), 1L) && length(out) == 0L) {
+    return(list(lines = character(0), n_excepted = 0L, error = NULL))
+  }
+  if (!identical(as.integer(status), 0L)) {
+    return(list(lines = character(0), n_excepted = 0L, error = paste0(
+      "git grep failed (status ", status, "): ",
+      paste(utils::head(out, 2), collapse = " ")
+    )))
+  }
+  file <- sub("^([^:]*):[0-9]+:.*$", "\\1", out)
+  text <- sub("^[^:]*:[0-9]+:", "", out)
+  excepted <- vapply(seq_along(out), function(i) {
+    any(vapply(.dod_vendor_exceptions(), function(ex) {
+      identical(file[[i]], ex[[1L]]) && identical(text[[i]], ex[[2L]])
+    }, logical(1)))
+  }, logical(1))
+  list(lines = out[!excepted], n_excepted = sum(excepted), error = NULL)
+}
 
 # ---------------------------------------------------------------------
 # Section C - consistency invariants (the "functional and consistent"
@@ -884,11 +960,22 @@ MAX_EXPORTS <- 36L
        what = "execution grid: 0 divergent, 0 untyped, 0 crash",
        command = "Rscript tools/execution_grid.R"),
   list(id = "D5", cost = "full", owner = "maintainer", blocking = TRUE,
-       what = "lintr::lint_package() returns 0 lints (lint.yaml hard-gates)",
+       what = paste0("lint count does not rise above the baseline of ",
+                     LINT_BASELINE),
        # with the dev tree loaded, as CI does via local::. -- against a
        # stale installed build object_usage_linter reports phantoms
        command = paste("Rscript -e 'pkgload::load_all(quiet=TRUE);",
-                       "print(length(lintr::lint_package()))'")),
+                       "print(length(lintr::lint_package()))'"),
+       check = function() {
+         if (!requireNamespace("pkgload", quietly = TRUE) ||
+               !requireNamespace("lintr", quietly = TRUE)) {
+           return(.dod_ok(FALSE, "pkgload/lintr absent; cannot count lints"))
+         }
+         suppressMessages(pkgload::load_all(".", quiet = TRUE))
+         n <- length(lintr::lint_package())
+         .dod_ok(n <= LINT_BASELINE,
+                 sprintf("%d lints, baseline %d", n, LINT_BASELINE))
+       }),
   list(id = "D6", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "pkgdown builds clean",
        command = "Rscript -e 'pkgdown::build_site()'"),
@@ -909,8 +996,78 @@ MAX_EXPORTS <- 36L
   # R CMD check failed on all six platforms for the same reason.
   list(id = "D10", cost = "full", owner = "maintainer", blocking = TRUE,
        what = "suite green with the heavy Suggests absent, as CI runs it",
-       command = "tools/check_suggests_absent.sh")
+       command = "tools/check_suggests_absent.sh"),
+  # Added 2026-09-19 with the 0.14.0 release plan. The long test tier
+  # (tests/testthat/helper-test-tiers.R) keeps a contributor's local
+  # devtools::check() short, and the release suite must still run it. The
+  # record is the one tools/run_test_suite.R writes, named by the
+  # environment variable FLEXYBAYES_SUITE_RECORD; with no record the
+  # criterion fails rather than passing unevidenced.
+  list(id = "D11", cost = "full", owner = "maintainer", blocking = TRUE,
+       what = "every test tier ran in the recorded release suite",
+       command = paste("FLEXYBAYES_RUN_LONG=true Rscript",
+                       "tools/run_test_suite.R <record>, then",
+                       "FLEXYBAYES_SUITE_RECORD=<record>"),
+       check = function() {
+         .dod_tier_check(Sys.getenv("FLEXYBAYES_SUITE_RECORD"))
+       })
 )
+
+# Every top-level test_that() block whose body has skip_if_not_long_tier() as
+# one of its statements, as file and description: the blocks the long tier
+# holds back by default. A call nested deeper, as in the helper's own test,
+# does not tag a block.
+.dod_long_tier_blocks <- function() {
+  files <- list.files("tests/testthat", pattern = "^test-.*\\.R$",
+                      full.names = TRUE)
+  tag <- quote(skip_if_not_long_tier())
+  out <- data.frame(file = character(0), test = character(0))
+  for (f in files) {
+    for (e in parse(f, keep.source = FALSE)) {
+      if (!is.call(e) || length(e) < 3L ||
+            !deparse(e[[1L]]) %in% c("test_that", "testthat::test_that") ||
+            !is.character(e[[2L]])) {
+        next
+      }
+      code <- e[[3L]]
+      stmts <- if (is.call(code) && identical(code[[1L]], as.name("{"))) {
+        as.list(code)[-1L]
+      } else {
+        list()
+      }
+      if (any(vapply(stmts, identical, logical(1), tag))) {
+        out <- rbind(out, data.frame(file = basename(f), test = e[[2L]]))
+      }
+    }
+  }
+  out
+}
+
+# D11's check on a suite record. It fails when a block was skipped by the
+# long-tier gate, which is what a release run with FLEXYBAYES_RUN_LONG unset
+# records, and when a block tagged for the long tier is absent from the
+# record, which is what a partial run or a record of another tree shows.
+.dod_tier_check <- function(record) {
+  if (!nzchar(record) || !file.exists(record)) {
+    return(.dod_ok(FALSE, paste0("no suite record at '", record,
+                                 "'; set FLEXYBAYES_SUITE_RECORD")))
+  }
+  # quote = "": test descriptions carry quotation marks
+  tab <- utils::read.delim(record, quote = "", stringsAsFactors = FALSE)
+  if (!nrow(tab) || !all(c("file", "test", "skip_reason") %in% names(tab))) {
+    return(.dod_ok(FALSE, "record has no blocks or no skip_reason column"))
+  }
+  held <- grepl("FLEXYBAYES_RUN_LONG", tab$skip_reason, fixed = TRUE)
+  tagged <- .dod_long_tier_blocks()
+  key_tagged <- paste(tagged$file, gsub("[\t\r\n]", " ", tagged$test))
+  absent <- key_tagged[!key_tagged %in% paste(tab$file, tab$test)]
+  .dod_ok(
+    !any(held) && length(absent) == 0L,
+    sprintf(paste0("%d of %d blocks skipped by the long-tier gate; ",
+                   "%d of %d long-tier blocks absent from the record"),
+            sum(held), nrow(tab), length(absent), length(key_tagged))
+  )
+}
 
 # ---------------------------------------------------------------------
 # Section E - not the machine's to decide. Reported, never auto-passed.

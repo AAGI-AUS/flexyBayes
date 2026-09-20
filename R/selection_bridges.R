@@ -650,7 +650,6 @@
 # coordinates at zero, which is the convention `.fb_sel_gls_fit()` already
 # uses in this module.
 .fb_sel_smooth_mode <- function(gram, aty, lambda_l2) {
-  p <- ncol(gram)
   system <- gram
   diag(system) <- diag(system) + lambda_l2
   factor_system <- tryCatch(chol(system), error = function(e) NULL)
@@ -721,7 +720,8 @@
       "none", "ridge", "laplace", "elastic_net",
       .fb_sel_grouped_families()
     ),
-    gls_reml_plugin = "none"
+    gls_reml_plugin = "none",
+    gls_base_model = "none"
   )
 }
 

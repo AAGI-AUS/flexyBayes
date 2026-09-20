@@ -150,6 +150,7 @@ reference:
       - update.flexybayes
       - as.data.frame.fb_plan
       - tidy.fb_select
+      - glance.fb_select
       - augment.fb_select
       - plot.fb_select
   - title: Genomics
@@ -169,16 +170,17 @@ reference:
 articles:
   - title: Read in order
     desc: >
-      Five pages, enough to start work: what a mixed model is, what
+      Six pages, enough to start work: what a mixed model is, what
       changes when it is estimated as a posterior, every ASReml spelling
-      the package covers, one worked comparison, and how a candidate
-      block is selected over.
+      the package covers, one worked comparison, how a candidate block
+      is selected over, and a series of trials analysed in two stages.
     contents:
       - flexyBayes-01-mixed-models
       - flexyBayes-02-bayesian
       - flexyBayes-03-syntax
       - flexyBayes-04-illustration
       - flexyBayes-05-selection
+      - flexyBayes-06-two-stage
 
 redirects:
   # The eight-page tutorial deck was retired at 0.10.0.9000 and kept under

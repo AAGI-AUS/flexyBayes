@@ -22,6 +22,29 @@
 #                                       .fb_select_verify_contract()
 #                                       test-fb-select-score-contract.R
 #
+# One code lands with 0.14.0, for a missing response on the routes that
+# estimate a fold's covariance by REML:
+#
+#   selection_missing_response_not_carried
+#                                       R/fb_select.R,
+#                                       .fb_select_require_observed_response()
+#                                       test-fb-select-missing-response.R
+#
+# Two codes land with the Bayesian refit of each fold's frozen support
+# (0.14.0):
+#
+#   selection_refit_support_undefined   R/selection_value.R, the route and
+#                                       the support at the chosen point
+#                                       test-selection-value.R
+#   selection_value_contract_mismatch   R/selection_value.R,
+#                                       .fb_sel_value_pair()
+#                                       test-selection-value.R
+#
+# One code lands with the grouped ablation (0.14.0):
+#
+#   selection_ablation_route_undefined  R/selection_ablation.R, the route
+#                                       test-selection-ablation.R
+#
 # A registered code with no triggering test is a string, not a refusal.
 
 .populate_refusal_registry_selection_verb <- function() {
@@ -36,7 +59,10 @@
       "`fallback = \"glmnet\"` runs the optimiser under its own name, ",
       "relabels the workflow, prints the substitution and certifies it."
     ),
-    message_template = "fb_select(): the Bayesian workflow needs %s, which is not installed, and fallback = \"none\".",
+    message_template = paste0(
+      "fb_select(): the Bayesian workflow needs %s, which is not installed, ",
+      "and fallback = \"none\"."
+    ),
     registered_in_adr = "SPEC v5 section 3.3",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -46,17 +72,15 @@
     reason_code = "prior_family_unsupported_inla",
     description = paste0(
       "A joint shrinkage prior over the candidate fixed effects reached ",
-      "lgm_gate() on a model routed at INLA. A Laplace, regularised ",
-      "horseshoe or R2D2 prior is Gaussian given one local scale per ",
-      "coefficient, so the model can be written as a latent Gaussian model, ",
-      "but it then carries a hyperparameter for every coefficient in the ",
-      "block, and INLA's numerical integration is built for models with a ",
-      "few hyperparameters. Ridge and elastic-net blocks have no INLA ",
-      "implementation. No public call reaches this refusal: fb_select() ",
-      "fits its reference model on brms whatever engine fitted the base. ",
-      "The check is kept as an internal guard."
+      "lgm_gate() on a model routed at INLA. flexyBayes fits joint ",
+      "shrinkage priors on brms only and has no INLA route for them. No ",
+      "public call reaches this refusal: fb_select() fits its reference ",
+      "model on brms whatever engine fitted the base. The check is kept as ",
+      "an internal guard."
     ),
-    message_template = "the joint shrinkage prior(s) %s cannot be fitted by INLA.",
+    message_template = paste0(
+      "joint shrinkage priors are fitted on brms only (%s)."
+    ),
     registered_in_adr = "SPEC v5 section 4.5",
     plan_field = "selection_plan",
     since_version = "0.11.0"
@@ -89,10 +113,83 @@
       "before 0.13.0 carries no version field and a polynomial checksum over ",
       "column names, which cannot tell a rescaled covariate from the original."
     ),
-    message_template = "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
+    message_template =
+      "fb_select(): the score contract of the `%s` arm cannot be verified: %s.",
     registered_in_adr = "U-SCORE-1 (DEC-HASH-01)",
     plan_field = "selection_plan",
     since_version = "0.13.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_missing_response_not_carried",
+    description = paste0(
+      "fb_select(): the base's data have a missing response, and the ",
+      "unpenalised benchmark, the penalised optimiser or the comparison ",
+      "`benchmark = TRUE` adds was asked for. Each reads the response of ",
+      "every training row to estimate a fold's covariance and of every ",
+      "held-out row to score it."
+    ),
+    message_template = paste0(
+      "fb_select(): the base's data have a missing response in %s, and %s ",
+      "does not carry missing responses."
+    ),
+    registered_in_adr = "0.14.0 release plan",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_refit_support_undefined",
+    description = paste0(
+      "fb_select(): refit = list(method = \"bayes\") refits the support the ",
+      "penalised optimiser froze on each fold, and the request has none to ",
+      "refit: the workflow is not the penalised optimiser, which alone ",
+      "chooses a support on each fold's training rows, or the penalty ",
+      "family shrinks every coefficient without setting one to zero, as ",
+      "ridge() does. The refusal comes before any refit."
+    ),
+    message_template = paste0(
+      "fb_select(): refit = list(method = \"bayes\") has no frozen support to ",
+      "refit: %s."
+    ),
+    registered_in_adr = "fb_select(refit = ), 0.14.0",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_value_contract_mismatch",
+    description = paste0(
+      "glance() or augment() on an fb_select result was asked to difference ",
+      "its valuation against another, and the two value contracts differ: ",
+      "the rows each fold holds out, the scoring unit, the prediction target ",
+      "or the response values are not the same, or one result carries no ",
+      "valuation. Units that were not held out together do not pair, so no ",
+      "difference is formed. The fields that differ are named."
+    ),
+    message_template =
+      "fb_select(): the two valuations' value contracts differ in: %s.",
+    registered_in_adr = "fb_select(refit = ), 0.14.0",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
+  )
+
+  .register_refusal(
+    reason_code = "selection_ablation_route_undefined",
+    description = paste0(
+      "fb_select(): ablation = TRUE drops each declared block of the ",
+      "penalised optimiser's path and walks the path again on the same ",
+      "folds, and the workflow is not the penalised optimiser, so no path is ",
+      "walked as the answer. The refusal comes before any fit and before the ",
+      "plan."
+    ),
+    message_template = paste0(
+      "fb_select(): ablation = TRUE needs workflow = ",
+      "\"penalized_optimizer\"; workflow = \"%s\" walks no penalised path."
+    ),
+    registered_in_adr = "fb_select(ablation = ), 0.14.0",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
   )
 
   invisible(NULL)

@@ -31,6 +31,7 @@ flexybayes(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 )
 
@@ -60,6 +61,7 @@ fb(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 )
 }
@@ -98,17 +100,16 @@ field described under "Spatial and temporal autoregressive fields"
 below.
 
 \strong{Parsed and refused by name.} \code{fa(f, k):g}, the factor-analytic
-genotype-by-environment covariance, is refused on both engines from
-0.13.0 (\code{factor_analytic_not_repeatable}). INLA does represent it, by
-entering each common factor as scaled copies of a latent field, but
-repeated identical calls did not return the same covariance on a trial
-with weak genetic signal, and brms has no factor-analytic lowering.
-Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms for
-up to five levels. The bare spelling \code{fa(v, k)}, with no grouping factor
-for the covariance to apply to, keeps its own refusal
-(\code{fa_not_representable}). \code{corh(f):g} and \code{at(f, level):g} are likewise
-real syntax with no active emit rather than unsupported syntax; both are
-described in full just below.
+genotype-by-environment covariance, is refused on both engines
+(\code{factor_analytic_not_repeatable}). INLA can represent it, by entering
+each common factor as scaled copies of a latent field, but repeated
+identical calls did not return the same covariance on a trial with weak
+genetic signal, and flexyBayes has no factor-analytic lowering for brms.
+Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms.
+The bare spelling \code{fa(v, k)}, with no grouping factor for the covariance
+to apply to, keeps its own refusal (\code{fa_not_representable}).
+\code{corh(f):g} and \code{at(f, level):g} are likewise ASReml syntax that
+flexyBayes parses and refuses by name; both are described just below.
 
 \strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
 one variance per level of \code{f} with no covariance between levels -- the
@@ -119,14 +120,16 @@ every pairwise correlation instead, at \code{k(k+1)/2} parameters against
 \code{diag()}'s \code{k}.
 
 \code{corh(f):g} -- heterogeneous variances with a single shared correlation --
-is refused: no active backend has an equicorrelation group-level
-structure, and approximating it with either neighbour would change the
-parameter count. \code{at(f, level):g} is also refused, because conditioning
-on selected levels is a different model from varying the variance across
-all of them.
+is refused on both engines: flexyBayes has no lowering for it, and
+approximating it with either neighbour would change the parameter count.
+With one variance for every level and a correlation of zero or more,
+\code{random = ~ g + f:g} is the same covariance and fits on both engines.
+\code{at(f, level):g} is also refused, because conditioning on selected
+levels is a different model from varying the variance across all of
+them.
 
-These structures fit on brms. INLA refuses them structurally, so \code{auto}
-routes such a model to brms.
+\code{diag(f):g} fits on both engines. \code{us(f):g} fits on brms, and INLA
+refuses it, so \code{auto} routes such a model to brms.
 
 \strong{Spatial and temporal autoregressive fields.} \code{ar1(t)} and the
 separable \code{ar1(row):ar1(col)} are written here, on the random side, and
@@ -136,8 +139,8 @@ correlation, the column correlation, the field SD and the nugget SD, all
 four printed by \code{summary()}. The field is faithful only with one
 observation per grid node, so an incomplete or replicated grid refuses
 (keep the unobserved nodes as design cells with the default
-\code{na_action = "augment"}). brms has no lowering for a Kronecker
-autoregressive precision and refuses.
+\code{na_action = "augment"}). flexyBayes has no brms lowering for the
+field, so brms refuses.
 
 That four-parameter model is \strong{not} ASReml's separable residual, which
 is one correlated residual with no independent plot error -- three
@@ -158,9 +161,10 @@ column correlation and field SD are \strong{shared across every level of
 \code{trial}}, not estimated per trial. \code{at(trial, level):ar1(row):ar1(col)}
 (a \code{level} argument) asks for either a single conditioned trial or
 per-trial (unshared) hyperparameters, and both are refused
-(\code{at_field_per_level_hyper_not_representable}): there is no lowering
-for a level-conditioned field or for hyperparameters that vary by
-level. brms has no lowering for this field at all and refuses.
+(\code{at_field_per_level_hyper_not_representable}): flexyBayes has no
+lowering for a level-conditioned field or for hyperparameters that vary
+by level. It has no brms lowering for this field at all, so brms
+refuses.
 
 \strong{Units followed through time.} \code{ar1(t):g}, or the same term written
 \code{g:ar1(t)}, fits one AR1 series along \code{t} within each level of \code{g},
@@ -182,9 +186,9 @@ heterogeneous -- a Poisson's dispersion is a function of its mean, so
 there is nothing there to vary, and the request is refused.
 
 \code{~ ar1(row):ar1(col)} and \code{~ ar1(t)} are \strong{refused} here: they name
-ASReml's nugget-free separable residual, which neither active engine
-fits. The refusal points at the random-side field described under
-\code{random} above, and at ASReml for the residual formulation itself.}
+ASReml's nugget-free separable residual, which flexyBayes does not fit
+on either engine. The refusal points at the random-side field described
+under \code{random} above, and at ASReml for the residual formulation itself.}
 
 \item{data}{A data.frame containing all variables referenced in the formulas.}
 
@@ -406,8 +410,7 @@ passed explicitly it reaches both active engines as the same
 density on the standard-deviation scale: brms as a
 \code{lognormal(0, prior_vc_sd)} prior row, INLA as the expression prior
 that writes that density in INLA's log-precision parameterisation.
-The two engines therefore carry the same variance-component prior,
-which is what \code{\link[=triangulate]{triangulate()}} requires before it compares them.}
+The two engines therefore carry the same variance-component prior.}
 
 \item{verbose}{Logical: print the generated backend code to the console.}
 
@@ -430,7 +433,7 @@ before a long MCMC run. Default \code{FALSE} preserves the existing
 run-immediately semantics. A session-level override is available
 via \code{options(flexyBayes.review_code_default = TRUE)}; the
 argument value at call time always wins. Closest published
-precedent: \code{\link[brms:make_stancode]{brms::make_stancode()}} plus the \code{chains = 0} idiom
+precedent: \code{\link[brms:stancode]{brms::stancode()}} plus the \code{chains = 0} idiom
 for "do everything except sampling". \code{review_code = TRUE} and
 \code{return_code = TRUE} are mutually exclusive. brms is the only engine
 with a code slot, so \code{review_code = TRUE} is available under
@@ -465,7 +468,7 @@ installed).
 
 \strong{What each engine represents.}
 INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
-The per-class table with its notes is in \code{README.md} and
+The per-class table is in \code{README.md}, and with a note on each row in
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 
 \strong{Caution (small-group random effects).} Both engines apply the same
@@ -531,6 +534,23 @@ Selects how \code{fixed} is interpreted. \code{"auto"} detects the grammar
 from the call shape (a bar-grouped formula is read as brms,
 otherwise ASReml); the other values force a grammar.}
 
+\item{known_variance}{Optional numeric vector of length N: a known
+variance for each response, added to the estimated residual variance,
+\code{Var(y_i) = sigma^2 + v_i}. This is the second stage of a two-stage
+analysis, where each response is a first-stage estimate (a variety
+mean in one trial, say) and \code{v_i} is the variance of that estimate.
+\code{weights} is a different model, \code{Var(y_i) = sigma^2 / w_i}; given
+both, the residual variance is \code{sigma^2 / w_i + v_i}. Lowered for
+\code{family = "gaussian"} with the identity link: brms fits
+\code{y | se(sqrt(v), sigma = TRUE)}, and INLA a row effect with known
+variance \code{v_i}. The summaries report \code{sigma} as the estimated part,
+and fitted values on both engines leave the known part out. A vector
+of zeros fits the model without it. Any other family refuses with
+\code{known_variance_not_supported}, and a vector that is not one finite,
+non-negative value per row with \code{known_variance_invalid}.
+\code{\link[=fb_select]{fb_select()}} carries it into the fold covariance under
+\code{covariance = "base_model"}.}
+
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and
 flexyBayes follows the ASReml 4 name. Supplying \code{rcov} now raises an
@@ -567,6 +587,36 @@ GLM-compatible object for use with standard R packages (emmeans,
 marginaleffects, etc.), the native backend object for engine-specific
 diagnostics, and extras for secondary analyses.
 }
+\section{Fitting in a separate process}{
+
+\code{options(flexyBayes.isolation = "process")} runs the engine fit in a
+separate R process started through callr, which is in Suggests; without
+callr the request refuses with
+\code{isolation_requires_callr} before anything is fitted. The option applies
+to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()}, \code{proceed()} and each fold of
+\code{\link[=fb_select]{fb_select()}}. The default, \code{"none"}, fits in this session.
+
+If the operating system kills that process, or compiled code crashes inside
+it, the call refuses with \code{isolated_process_died}, naming the engine, the
+function called, and the exit status or signal, and this session carries on.
+A failure inside the fit, a refusal for instance, arrives exactly as it would
+without the option. The call is not retried.
+
+The separate process loads the flexyBayes code this session loaded and
+starts from this session's options, INLA settings, environment variables
+and random-number state, so it fits the same model with the same seed,
+and the random-number stream moves on as it would have. Messages,
+warnings and printed output come back in the order they were raised, and
+the fit records the process in \verb{$extras$isolation}. A brms fit with a
+\code{seed} returns the same draws either way. INLA does not return identical
+numbers for two identical calls in one session, and an isolated INLA fit
+agrees with an in-process one as closely as two in-process fits agree.
+The separate process starts with an empty global environment, so the
+formula finds its variables in \code{data}. Starting the process and
+moving the data and the fit costs time on every call; see \code{\link[=fb_select]{fb_select()}}
+for the measured figures.
+}
+
 \section{Deprecated}{
 
 \code{fb()} is deprecated in flexyBayes 0.13.0 and will be removed in a later

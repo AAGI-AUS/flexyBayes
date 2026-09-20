@@ -195,9 +195,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # untyped stop becomes a named refusal (brms_cannot_represent_term) (= 78),
   # and a numeric variable inside a random interaction is refused rather than
   # resolved to one of its two readings
-  # (numeric_variable_in_random_interaction) (= 79). triangulate() gains a
-  # comparability gate, and two fits of different models are refused rather
-  # than compared (triangulate_incomparable_fits) (= 80). Aligning the class
+  # (numeric_variable_in_random_interaction) (= 79). The cross-engine
+  # comparison gains a comparability gate, and two fits of different models
+  # are refused rather than compared (= 80). Aligning the class
   # graph so INLA fits inherit `flexybayes` makes five parent methods
   # reachable on them, and the four that cannot answer from an INLA fit's
   # slots refuse by name rather than erroring obscurely or returning an
@@ -549,9 +549,55 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # fold that failed (selection_parallel_worker_failed) (= 217). A fold that
   # refuses inside a live worker keeps its own code, so no other refusal is
   # duplicated for the concurrent path.
+  #
+  # 0.14.0 removes the cross-engine comparison, and its one code, the
+  # comparability refusal registered at 0.9.0, goes with it (= 216).
+  #
+  # 0.14.0 adds one: a missing response on an fb_select() route that
+  # estimates a fold's covariance by REML, which stopped untyped inside the
+  # optimiser (selection_missing_response_not_carried) (= 217).
+  #
+  # The process-isolation unit adds two: isolation asked for without callr
+  # (isolation_requires_callr), and a separate R process that ended before it
+  # returned (isolated_process_died) (= 219). A condition raised inside the
+  # separate process keeps its own code.
+  #
+  # The base-model covariance unit adds one: a fold covariance that would be
+  # formed as a dense n x n matrix above the stated memory bound
+  # (selection_dense_covariance_too_large) (= 220).
+  #
+  # The refit of each fold's frozen support adds two: a refit asked of a
+  # route or a family that freezes no support
+  # (selection_refit_support_undefined), and two valuations whose value
+  # contracts differ asked to be differenced
+  # (selection_value_contract_mismatch) (= 222).
+  #
+  # The package figures add three: a spatial-field display asked of a fit
+  # with no separable field (spatial_field_requires_ar1_field), the loss
+  # surface without plotly (loss_surface_requires_plotly), and optimiser
+  # results that do not span a loss surface on one score contract
+  # (selection_loss_surface_undefined) (= 225).
+  # The grouped ablation adds one: an ablation asked of a workflow that
+  # walks no penalised path (selection_ablation_route_undefined) (= 226).
+  # The known variance per row adds two: a vector that is not one finite,
+  # non-negative variance per row (known_variance_invalid), and a model or an
+  # fb_select() route that cannot carry it (known_variance_not_supported)
+  # (= 228).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
-  expect_equal(length(entries), 217L)
+  expect_true("selection_missing_response_not_carried" %in% entries)
+  expect_true("isolation_requires_callr" %in% entries)
+  expect_true("isolated_process_died" %in% entries)
+  expect_true("selection_dense_covariance_too_large" %in% entries)
+  expect_true("selection_refit_support_undefined" %in% entries)
+  expect_true("selection_value_contract_mismatch" %in% entries)
+  expect_true("spatial_field_requires_ar1_field" %in% entries)
+  expect_true("loss_surface_requires_plotly" %in% entries)
+  expect_true("selection_loss_surface_undefined" %in% entries)
+  expect_true("selection_ablation_route_undefined" %in% entries)
+  expect_true("known_variance_invalid" %in% entries)
+  expect_true("known_variance_not_supported" %in% entries)
+  expect_equal(length(entries), 228L)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
@@ -668,7 +714,6 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("conditional_loglik_not_available" %in% entries)
   expect_true("model_matrix_not_recoverable" %in% entries)
   expect_true("update_call_not_reconstructable" %in% entries)
-  expect_true("triangulate_incomparable_fits" %in% entries)
   expect_true("at_level_conditioning_unsupported" %in% entries)
   expect_true("ar1_residual_not_representable" %in% entries)
   expect_true("stan_cannot_represent_ar1_field" %in% entries)

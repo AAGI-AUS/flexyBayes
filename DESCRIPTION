@@ -1,6 +1,6 @@
 Package: flexyBayes
 Title: Flexible Bayesian Mixed Models with 'ASReml' and 'brms' Syntax
-Version: 0.13.1
+Version: 0.14.0
 Authors@R: c(
     person("Max", "Moldovan", email = "max.moldovan@adelaide.edu.au",
            role = c("aut", "cre"),
@@ -64,7 +64,10 @@ Suggests:
     sommer,
     sn,
     vdiffr,
-    withr
+    withr,
+    callr,
+    ps,
+    plotly
 Additional_repositories:
     https://inla.r-inla-download.org/R/stable
 Encoding: UTF-8

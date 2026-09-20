@@ -26,6 +26,7 @@ test_that("the decision stage searches each fold's submodel terms on that fold's
   skip_if_not_installed("brms")
   skip_if_not_installed("cmdstanr")
   skip_if_not_installed("projpred")
+  skip_if_not_long_tier()
   withr::local_options(
     flexyBayes.silence_default_prior_note = TRUE
   )

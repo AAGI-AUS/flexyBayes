@@ -72,7 +72,7 @@ test_that("fb_inla() preserves missing()-based defaults (default-prior note)", {
       }
     )
   )
-  expect_true(any(grepl("variance-component prior default|uniform", msgs)))
+  expect_true(any(grepl("half_normal(scale = ", msgs, fixed = TRUE)))
 })
 
 test_that(".fb_engine_pin() rewrites the call with the backend pinned", {

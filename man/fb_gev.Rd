@@ -37,9 +37,9 @@ Return levels (the level exceeded once per \code{m} blocks on average) are
 computed from the fitted parameters and reported on \code{fit$return_levels}
 for the requested return periods.
 
-A scalable Bayesian GEV belongs on INLA's native \code{gev} / \code{bgev} family
-and is planned for a future release; no active engine has a turnkey
-GEV route today.
+flexyBayes has no GEV route on either engine yet. INLA has \code{gev} and
+\code{bgev} likelihoods and brms a \code{gen_extreme_value()} family; a route
+through one of them is planned for a future release.
 }
 \examples{
 set.seed(1)

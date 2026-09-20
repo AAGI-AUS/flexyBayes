@@ -89,6 +89,7 @@ test_that("brms recovers a negative correlation and agrees with lme4's REML fit"
   skip_if_not_installed("brms")
   skip_if_not_installed("lme4")
   skip_on_cran()
+  skip_if_not_long_tier()
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
 
   tab <- .cs_fixture(seed = 77L, n_g = 40L, n_i = 8L, rho = -0.7)

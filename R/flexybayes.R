@@ -40,17 +40,16 @@
 #'   below.
 #'
 #'   **Parsed and refused by name.** `fa(f, k):g`, the factor-analytic
-#'   genotype-by-environment covariance, is refused on both engines from
-#'   0.13.0 (`factor_analytic_not_repeatable`). INLA does represent it, by
-#'   entering each common factor as scaled copies of a latent field, but
-#'   repeated identical calls did not return the same covariance on a trial
-#'   with weak genetic signal, and brms has no factor-analytic lowering.
-#'   Write `diag(f):g`, which fits on both engines, or `us(f):g` on brms for
-#'   up to five levels. The bare spelling `fa(v, k)`, with no grouping factor
-#'   for the covariance to apply to, keeps its own refusal
-#'   (`fa_not_representable`). `corh(f):g` and `at(f, level):g` are likewise
-#'   real syntax with no active emit rather than unsupported syntax; both are
-#'   described in full just below.
+#'   genotype-by-environment covariance, is refused on both engines
+#'   (`factor_analytic_not_repeatable`). INLA can represent it, by entering
+#'   each common factor as scaled copies of a latent field, but repeated
+#'   identical calls did not return the same covariance on a trial with weak
+#'   genetic signal, and flexyBayes has no factor-analytic lowering for brms.
+#'   Write `diag(f):g`, which fits on both engines, or `us(f):g` on brms.
+#'   The bare spelling `fa(v, k)`, with no grouping factor for the covariance
+#'   to apply to, keeps its own refusal (`fa_not_representable`).
+#'   `corh(f):g` and `at(f, level):g` are likewise ASReml syntax that
+#'   flexyBayes parses and refuses by name; both are described just below.
 #'
 #'   **Heterogeneous variances.** `diag(f):g`, `idh(f):g` and `at(f):g` all fit
 #'   one variance per level of `f` with no covariance between levels -- the
@@ -61,14 +60,16 @@
 #'   `diag()`'s `k`.
 #'
 #'   `corh(f):g` -- heterogeneous variances with a single shared correlation --
-#'   is refused: no active backend has an equicorrelation group-level
-#'   structure, and approximating it with either neighbour would change the
-#'   parameter count. `at(f, level):g` is also refused, because conditioning
-#'   on selected levels is a different model from varying the variance across
-#'   all of them.
+#'   is refused on both engines: flexyBayes has no lowering for it, and
+#'   approximating it with either neighbour would change the parameter count.
+#'   With one variance for every level and a correlation of zero or more,
+#'   `random = ~ g + f:g` is the same covariance and fits on both engines.
+#'   `at(f, level):g` is also refused, because conditioning on selected
+#'   levels is a different model from varying the variance across all of
+#'   them.
 #'
-#'   These structures fit on brms. INLA refuses them structurally, so `auto`
-#'   routes such a model to brms.
+#'   `diag(f):g` fits on both engines. `us(f):g` fits on brms, and INLA
+#'   refuses it, so `auto` routes such a model to brms.
 #'
 #'   **Spatial and temporal autoregressive fields.** `ar1(t)` and the
 #'   separable `ar1(row):ar1(col)` are written here, on the random side, and
@@ -78,8 +79,8 @@
 #'   four printed by `summary()`. The field is faithful only with one
 #'   observation per grid node, so an incomplete or replicated grid refuses
 #'   (keep the unobserved nodes as design cells with the default
-#'   `na_action = "augment"`). brms has no lowering for a Kronecker
-#'   autoregressive precision and refuses.
+#'   `na_action = "augment"`). flexyBayes has no brms lowering for the
+#'   field, so brms refuses.
 #'
 #'   That four-parameter model is **not** ASReml's separable residual, which
 #'   is one correlated residual with no independent plot error -- three
@@ -100,9 +101,10 @@
 #'   `trial`**, not estimated per trial. `at(trial, level):ar1(row):ar1(col)`
 #'   (a `level` argument) asks for either a single conditioned trial or
 #'   per-trial (unshared) hyperparameters, and both are refused
-#'   (`at_field_per_level_hyper_not_representable`): there is no lowering
-#'   for a level-conditioned field or for hyperparameters that vary by
-#'   level. brms has no lowering for this field at all and refuses.
+#'   (`at_field_per_level_hyper_not_representable`): flexyBayes has no
+#'   lowering for a level-conditioned field or for hyperparameters that vary
+#'   by level. It has no brms lowering for this field at all, so brms
+#'   refuses.
 #'
 #'   **Units followed through time.** `ar1(t):g`, or the same term written
 #'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,
@@ -123,9 +125,9 @@
 #'   there is nothing there to vary, and the request is refused.
 #'
 #'   `~ ar1(row):ar1(col)` and `~ ar1(t)` are **refused** here: they name
-#'   ASReml's nugget-free separable residual, which neither active engine
-#'   fits. The refusal points at the random-side field described under
-#'   `random` above, and at ASReml for the residual formulation itself.
+#'   ASReml's nugget-free separable residual, which flexyBayes does not fit
+#'   on either engine. The refusal points at the random-side field described
+#'   under `random` above, and at ASReml for the residual formulation itself.
 #' @param rcov Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 #'   the residual-structure argument; ASReml 4 renamed it to `residual` and
 #'   flexyBayes follows the ASReml 4 name. Supplying `rcov` now raises an
@@ -338,8 +340,7 @@
 #'   density on the standard-deviation scale: brms as a
 #'   `lognormal(0, prior_vc_sd)` prior row, INLA as the expression prior
 #'   that writes that density in INLA's log-precision parameterisation.
-#'   The two engines therefore carry the same variance-component prior,
-#'   which is what [triangulate()] requires before it compares them.
+#'   The two engines therefore carry the same variance-component prior.
 #' @param verbose Logical: print the generated backend code to the console.
 #' @param mcmc_verbose Logical: show the sampler's progress bar. Has no
 #'   effect on the deterministic INLA path.
@@ -358,7 +359,7 @@
 #'   run-immediately semantics. A session-level override is available
 #'   via `options(flexyBayes.review_code_default = TRUE)`; the
 #'   argument value at call time always wins. Closest published
-#'   precedent: [brms::make_stancode()] plus the `chains = 0` idiom
+#'   precedent: [brms::stancode()] plus the `chains = 0` idiom
 #'   for "do everything except sampling". `review_code = TRUE` and
 #'   `return_code = TRUE` are mutually exclusive. brms is the only engine
 #'   with a code slot, so `review_code = TRUE` is available under
@@ -403,7 +404,7 @@
 #'
 #'   **What each engine represents.**
 #'   `r flexyBayes:::.fb_capability_engine_prose()`
-#'   The per-class table with its notes is in `README.md` and
+#'   The per-class table is in `README.md`, and with a note on each row in
 #'   `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
 #'
 #'   **Caution (small-group random effects).** Both engines apply the same
@@ -457,6 +458,22 @@
 #'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
 #'   from the call shape (a bar-grouped formula is read as brms,
 #'   otherwise ASReml); the other values force a grammar.
+#' @param known_variance Optional numeric vector of length N: a known
+#'   variance for each response, added to the estimated residual variance,
+#'   `Var(y_i) = sigma^2 + v_i`. This is the second stage of a two-stage
+#'   analysis, where each response is a first-stage estimate (a variety
+#'   mean in one trial, say) and `v_i` is the variance of that estimate.
+#'   `weights` is a different model, `Var(y_i) = sigma^2 / w_i`; given
+#'   both, the residual variance is `sigma^2 / w_i + v_i`. Lowered for
+#'   `family = "gaussian"` with the identity link: brms fits
+#'   `y | se(sqrt(v), sigma = TRUE)`, and INLA a row effect with known
+#'   variance `v_i`. The summaries report `sigma` as the estimated part,
+#'   and fitted values on both engines leave the known part out. A vector
+#'   of zeros fits the model without it. Any other family refuses with
+#'   `known_variance_not_supported`, and a vector that is not one finite,
+#'   non-negative value per row with `known_variance_invalid`.
+#'   [fb_select()] carries it into the fold covariance under
+#'   `covariance = "base_model"`.
 #'
 #' @returns An object of class `"flexybayes"`, a list with three
 #'   components.
@@ -480,6 +497,34 @@
 #' If `return_code = TRUE`, returns the generated backend code instead: a
 #' character string holding the Stan program on the brms path, or a list of
 #' the formula, family and hyperparameter specification on the INLA path.
+#'
+#' @section Fitting in a separate process:
+#' `options(flexyBayes.isolation = "process")` runs the engine fit in a
+#' separate R process started through callr, which is in Suggests; without
+#' callr the request refuses with
+#' `isolation_requires_callr` before anything is fitted. The option applies
+#' to `flexybayes()`, `fb_brms()`, `fb_inla()`, `proceed()` and each fold of
+#' [fb_select()]. The default, `"none"`, fits in this session.
+#'
+#' If the operating system kills that process, or compiled code crashes inside
+#' it, the call refuses with `isolated_process_died`, naming the engine, the
+#' function called, and the exit status or signal, and this session carries on.
+#' A failure inside the fit, a refusal for instance, arrives exactly as it would
+#' without the option. The call is not retried.
+#'
+#' The separate process loads the flexyBayes code this session loaded and
+#' starts from this session's options, INLA settings, environment variables
+#' and random-number state, so it fits the same model with the same seed,
+#' and the random-number stream moves on as it would have. Messages,
+#' warnings and printed output come back in the order they were raised, and
+#' the fit records the process in `$extras$isolation`. A brms fit with a
+#' `seed` returns the same draws either way. INLA does not return identical
+#' numbers for two identical calls in one session, and an isolated INLA fit
+#' agrees with an in-process one as closely as two in-process fits agree.
+#' The separate process starts with an empty global environment, so the
+#' formula finds its variables in `data`. Starting the process and
+#' moving the data and the fit costs time on every call; see [fb_select()]
+#' for the measured figures.
 #'
 #' @examples
 #' \dontrun{
@@ -532,6 +577,7 @@ flexybayes <- function(
   aggregate = "auto",
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
+  known_variance = NULL,
   rcov
 ) {
   # `rcov` was the ASReml 3 name for the residual-structure argument;
@@ -695,6 +741,16 @@ flexybayes <- function(
   )
   fb$prior_scalars <- prior_scalars
 
+  # A known variance per row travels as a column of the data, so that the
+  # missing-data layer below drops, keeps and adds it with its rows
+  # (R/known_variance.R).
+  if (!is.null(known_variance)) {
+    .fb_known_variance_check(known_variance, data)
+    attached <- .fb_known_variance_attach(fb, data, known_variance, aggregate)
+    fb <- attached$fb
+    data <- attached$data
+  }
+
   # Missing responses, resolved once the IR exists so the layer can see
   # which variables index a structured covariance. Under the default,
   # a row whose response is missing is retained and carried as a latent
@@ -705,7 +761,11 @@ flexybayes <- function(
   # wrote -- an asreml na.method() value, a bare list, or a string.
   na_policy <- .fb_normalise_na_action(na_action)
   na_meta <- .fb_apply_na_action(fb, data, na_policy)
-  data <- na_meta$data
+  data <- .fb_known_variance_fill(
+    fb,
+    na_meta$data,
+    na_meta$meta$n_cells_completed
+  )
   # The IR caches the row count for the preflight size estimates, so it
   # has to follow the augmented data rather than the data as supplied.
   if (!is.null(fb$data_summary)) {
@@ -733,13 +793,13 @@ flexybayes <- function(
         reason_code = "auto_no_active_route",
         message = paste0(
           "backend = \"auto\" with code inspection resolves to brms (the ",
-          "only active code-producing engine), but ",
-          "brms cannot represent this model (",
+          "only engine that writes code), but flexyBayes cannot fit this ",
+          "model on brms (",
           cap$reason_code,
           "). ",
           "Returning its code would show a different model from the one ",
-          "requested. Pass backend = \"inla\" to fit it, or reformulate ",
-          "for an engine that can express it."
+          "requested. Pass backend = \"inla\" to fit it, or change the ",
+          "term the refusal names."
         ),
         family_class = "flexybayes_auto_no_route_refusal",
         backend = "auto"
@@ -752,9 +812,8 @@ flexybayes <- function(
     # Which terms the default reaches is decided in one place,
     # .fb_default_prior_targets(), because the model fingerprint has to
     # record the same split: a variance component the walker skipped
-    # carries whatever the engine chose, and triangulate() must exclude it
-    # from a cross-engine comparison rather than compare two answers to
-    # two different questions.
+    # carries whatever the engine chose, and prior_summary() must list it
+    # as an engine default rather than as the shared prior.
     prior_targets <- .fb_default_prior_targets(fb)
     hn_default <- .default_half_normal_prior(
       data = data,
@@ -772,8 +831,7 @@ flexybayes <- function(
     fb$priors <- hn_default
     prior <- hn_default
     .default_prior_note_once(
-      scale = attr(hn_default, "fb_prior_default_scale"),
-      basis = attr(hn_default, "fb_prior_default_basis")
+      scale = attr(hn_default, "fb_prior_default_scale")
     )
   }
 
@@ -838,6 +896,16 @@ flexybayes <- function(
     the_call_proceed$data <- data
     if (!is.null(weights)) {
       the_call_proceed$weights <- weights
+    }
+    # A known variance is a column of `data` by now (R/known_variance.R).
+    # The call carries it as the argument, aligned to these rows, and the
+    # data without it, so that evaluating the call attaches it once.
+    known_rows <- data[[.FB_KNOWN_VARIANCE_COL]]
+    if (!is.null(known_rows)) {
+      the_call_proceed$data <- data[
+        setdiff(names(data), .fb_known_variance_columns())
+      ]
+      the_call_proceed$known_variance <- known_rows
     }
     if (length(known_matrices)) {
       the_call_proceed$known_matrices <- known_matrices
@@ -923,32 +991,80 @@ flexybayes <- function(
   # backend = "inla" calls lgm_gate() and raises the refusal on
   # non-LGM; backend = "auto" gate-then-route with silenceable
   # fall-back notes.
-  fit <- .dispatch_backend(
-    fb = fb,
-    data = data,
-    backend = backend,
-    known_matrices = known_matrices,
-    weights = weights,
-    n_samples = n_samples,
-    warmup = warmup,
-    chains = chains,
-    seed = seed,
-    control = control,
-    prior_fixed_sd = prior_fixed_sd,
-    prior_vc_sd = prior_vc_sd,
-    verbose = verbose,
-    mcmc_verbose = mcmc_verbose,
-    return_code = return_code,
-    the_call = the_call,
-    fixed = fixed,
-    random = random,
-    residual = residual,
-    family = family,
-    link = link,
-    data_name = data_name,
-    aggregate = aggregate,
-    na_action = na_policy$y
-  )
+  #
+  # Under options(flexyBayes.isolation = "process") the same call runs in a
+  # separate R process (R/process_isolation.R): a process that dies there is
+  # a typed refusal here rather than the end of this session. The direct
+  # call below is left as it was, so a fit that does not ask for isolation
+  # runs exactly the code it ran before.
+  isolated <- !isTRUE(return_code) && .fb_isolation_active("flexybayes()")
+  if (isolated) {
+    run <- .fb_isolated_call(
+      .dispatch_backend,
+      list(
+        fb = fb,
+        data = data,
+        backend = backend,
+        known_matrices = known_matrices,
+        weights = weights,
+        n_samples = n_samples,
+        warmup = warmup,
+        chains = chains,
+        seed = seed,
+        control = control,
+        prior_fixed_sd = prior_fixed_sd,
+        prior_vc_sd = prior_vc_sd,
+        verbose = verbose,
+        mcmc_verbose = mcmc_verbose,
+        return_code = return_code,
+        the_call = the_call,
+        fixed = fixed,
+        random = random,
+        residual = residual,
+        family = family,
+        link = link,
+        data_name = data_name,
+        aggregate = aggregate,
+        na_action = na_policy$y
+      ),
+      engine = backend,
+      entry_point = "flexybayes()",
+      with_pid = TRUE
+    )
+    fit <- run$value
+    # Where the fit ran is recorded beside it, as a record of the machine
+    # rather than of the model.
+    if (is.list(fit) && !is.null(fit$extras)) {
+      fit$extras$isolation <- list(mode = "process", pid = run$pid)
+    }
+  } else {
+    fit <- .dispatch_backend(
+      fb = fb,
+      data = data,
+      backend = backend,
+      known_matrices = known_matrices,
+      weights = weights,
+      n_samples = n_samples,
+      warmup = warmup,
+      chains = chains,
+      seed = seed,
+      control = control,
+      prior_fixed_sd = prior_fixed_sd,
+      prior_vc_sd = prior_vc_sd,
+      verbose = verbose,
+      mcmc_verbose = mcmc_verbose,
+      return_code = return_code,
+      the_call = the_call,
+      fixed = fixed,
+      random = random,
+      residual = residual,
+      family = family,
+      link = link,
+      data_name = data_name,
+      aggregate = aggregate,
+      na_action = na_policy$y
+    )
+  }
   # Record what the missing-response layer did. Whether a posterior was
   # computed on the design as laid out or on the plots that survived is
   # not recoverable from the fit otherwise, and the two are different
@@ -964,6 +1080,11 @@ flexybayes <- function(
         is.null(fit$extras$call_info$na_action)
     ) {
       fit$extras$call_info$na_action <- na_policy$y
+    }
+    # A known variance is recorded as it was given, only when it was: the
+    # record of a fit without one keeps its fields.
+    if (!is.null(known_variance) && !is.null(fit$extras$call_info)) {
+      fit$extras$call_info$known_variance <- known_variance
     }
   }
   .fb_warn_poor_convergence(fit)

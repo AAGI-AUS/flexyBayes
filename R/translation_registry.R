@@ -47,8 +47,8 @@
 #              residual and combined MET paths, and the banked ASReml
 #              comparisons predate all of them. Cross-engine agreement is not
 #              an oracle for these rows -- both engines consume the same
-#              parsed representation, so a common parser error triangulates
-#              perfectly.
+#              parsed representation, so a common parser error agrees
+#              perfectly across them.
 #
 # Rendered by tools/generate_translation_registry.R to a Markdown block and to
 # inst/translation/translation_registry.csv, and pinned by
@@ -222,7 +222,8 @@
       engine = "brms",
       class = "covariance-family",
       condition = "",
-      oracle = "Live emission and parameter-count tests; no current ASReml comparison",
+      oracle =
+        "Live emission and parameter-count tests; no current ASReml comparison",
       anchor = "test-unstructured-gxe-inla.R"
     ),
     list(
@@ -260,8 +261,9 @@
       class = "refused",
       condition = paste(
         "Refused from 0.13.0 with factor_analytic_not_repeatable, on both",
-        "engines: INLA's representation works but does not repeat, and brms",
-        "has no factor-analytic lowering. Two properties were never",
+        "engines: INLA's representation works but does not repeat, and",
+        "flexyBayes has no factor-analytic lowering for brms. Two properties",
+        "were never",
         "established. Repeated identical calls do not agree on a trial with",
         "weak genetic signal. And the loadings are anchored to one for factor",
         "j at level j, taken from factor-level order, which represents the",
@@ -271,8 +273,9 @@
         "2026-09-11, conditional from then, and refused from 2026-09-16."
       ),
       oracle = paste(
-        "Refusal is the claim; asserted by name. There is no engine oracle --",
-        "brms refuses the structure -- so the reference is the analytic",
+        "Refusal is the claim; asserted by name. There is no second-engine",
+        "oracle -- flexyBayes refuses the structure on brms -- so the",
+        "reference is the analytic",
         "identified covariance G = LL' + diag(psi), which is invariant to the",
         "rotation and sign of the loadings. Measured under the 0.13.0",
         "half-normal default against a tolerance declared before the runs",
@@ -294,8 +297,14 @@
       vintage = "ASReml 4",
       engine = "inla, brms",
       class = "exact",
-      condition = "Representation metadata (dense / chol / precision / blocks) must be correct.",
-      oracle = "Dense and sparse carrier tests; no current ASReml fixture for the inverse form",
+      condition = paste0(
+        "Representation metadata (dense / chol / precision / blocks) must be ",
+        "correct."
+      ),
+      oracle = paste0(
+        "Dense and sparse carrier tests; no current ASReml fixture for the ",
+        "inverse form"
+      ),
       anchor = "test-known-covariance-inputs.R"
     ),
     list(
@@ -429,7 +438,8 @@
         "equivalence: the design row is kept as a latent target. The",
         "estimator assumptions are the user's to check."
       ),
-      oracle = "Large missing-plot simulation study and independent dense-V REML",
+      oracle =
+        "Large missing-plot simulation study and independent dense-V REML",
       anchor = "test-na-action-augment.R"
     ),
     list(
@@ -438,7 +448,12 @@
       vintage = "ASReml 4",
       engine = "inla, brms",
       class = "refused",
-      condition = "Neither active engine represents it; it is not the diagonal or the unstructured form.",
+      condition = paste(
+        "flexyBayes has no lowering for it on either engine; it is not the",
+        "diagonal or the unstructured form. INLA has an exchangeable group",
+        "model, with one variance and one shared correlation, which",
+        "flexyBayes does not use."
+      ),
       oracle = "Refusal is the claim; asserted by name",
       anchor = "test-grammar-surface-refusals.R"
     ),
@@ -458,7 +473,10 @@
       vintage = "ASReml 4",
       engine = "inla, brms",
       class = "refused",
-      condition = "Reducing it to a per-section variance would drop the structure written.",
+      condition = paste0(
+        "Reducing it to a per-section variance would drop the structure ",
+        "written."
+      ),
       oracle = "Refusal is the claim; asserted by name",
       anchor = "test-grammar-contract.R"
     )
@@ -487,7 +505,11 @@
   reg <- .fb_translation_registry()
   cell <- function(x) .fb_md_escape(.fb_squish(x))
   header <- c(
-    "| Requested structure | flexyBayes spelling | Syntax vintage | Engine | Translation class | Prior cardinality | Condition | Independent oracle |",
+    paste0(
+      "| Requested structure | flexyBayes spelling | Syntax vintage | Engine ",
+      "| Translation class | Prior cardinality | Condition | Independent ",
+      "oracle |"
+    ),
     "|---|---|---|---|---|---|---|---|"
   )
   body <- vapply(

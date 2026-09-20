@@ -259,7 +259,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           message = paste0(
             "`b(", paste(deparse(raw), collapse = ""), ")` does not name one ",
             "coefficient. b() takes a single coefficient name, written as a ",
-            "string -- b(\"treatment\") -- or as a bare symbol -- b(treatment).",
+            "string -- b(\"treatment\") -- or as a bare symbol -- ",
+            "b(treatment).",
             "\nA vector or a tidy-select helper is not yet supported: give ",
             "each coefficient its own row in fb_prior()."
           )
@@ -851,7 +852,8 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
 # Pick the half-normal scale s of the default per (family, link). Returns
 # (scale, basis):
-# - Gaussian / identity link: s = 5 * sd(y) / d; basis = "identity_sd_half_normal"
+# - Gaussian / identity link: s = 5 * sd(y) / d; basis =
+#   "identity_sd_half_normal"
 # - Log link (Poisson, NegBin, Gamma): s = 3 / d; basis = "log_link_half_normal"
 #   (3 on the log scale is a 20x ratio of group means).
 # - Logit link (Binomial, Beta): s = 5 / d; basis = "logit_half_normal"
@@ -1035,13 +1037,13 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # model fingerprint (R/model_fingerprint.R) reads `$engine` to record the
 # parameters that carry no prior this package chose. Both consumers must
 # agree about which is which -- a term whose prior is the shared default in
-# one place and an engine default in the other is exactly the silent
-# mismatch triangulate()'s matched-prior gate exists to catch, so the two
-# views are derived here rather than written out twice.
+# one place and an engine default in the other would make the fit's prior
+# record, which prior_summary() prints, disagree with the prior the fit
+# carried, so the two views are derived here rather than written out twice.
 #
 # `$shared` and `$vm_ped` are group names in the key the prior DSL uses
 # (`sd(group = <name>)`); `$engine` is a data.frame of *canonical parameter
-# names* (the brms-shaped names triangulate() compares on) with the reason
+# names* (the brms-shaped names of R/canonical_names.R) with the reason
 # each is left alone.
 #
 # The uncorrelated-slope form contributes two entries, the intercept
@@ -1227,7 +1229,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # The once-flag is held in the package-internal emit-state env (see
 # R/emit_state.R); v0.3.9 migrated the flag out of the options() namespace
 # where unrelated callers could consume it before the intended emission.
-.default_prior_note_once <- function(scale, basis) {
+.default_prior_note_once <- function(scale) {
   if (isTRUE(getOption("flexyBayes.silence_default_prior_note", FALSE))) {
     return(invisible())
   }
@@ -1235,20 +1237,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: variance-component prior default is half_normal(scale = s), ",
-    "s = ",
+    "flexyBayes: by default the residual and every random-effect group ",
+    "have a half_normal(scale = ",
     format(scale, digits = 3),
-    ", on the residual sigma and every named random-effect group, on both ",
-    "engines; the SD of an uncorrelated random slope on a numeric covariate ",
-    "x takes half_normal(scale = s / sd(x)). It is weakly informative and ",
-    "has no upper bound. Other priors, including a half-Cauchy, are stated ",
-    "through ?fb_prior. Scale basis = \"",
-    basis,
-    "\". Pass `prior_vc_sd` explicitly for the legacy ",
-    "lognormal(0, prior_vc_sd) default, `prior = fb_prior(...)` ",
-    "for full control, or ",
-    "options(flexyBayes.silence_default_prior_note = TRUE) to ",
-    "silence this notice."
+    ") prior on their standard deviation, with the scale divided by sd(x) ",
+    "for a random slope on x. See ?fb_prior to set other priors; ",
+    "options(flexyBayes.silence_default_prior_note = TRUE) hides this note."
   )
   .emit_state_set("default_prior_note", TRUE)
 }
@@ -1539,7 +1533,7 @@ priors_to_inla <- function(prior) {
       # mass at sigma = 0 and so shrank a small-group variance component
       # more than brms's flat uniform did, producing a
       # cross-engine prior mismatch that surfaced as spurious
-      # triangulation disagreement on the variance components. The
+      # cross-engine disagreement on the variance components. The
       # expression prior is the faithful representation, so the two
       # engines now carry genuinely the same default prior and there is
       # no approximation to flag.

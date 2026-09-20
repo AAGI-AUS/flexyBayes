@@ -126,6 +126,7 @@ test_that("hurdle_gamma fits end-to-end on brms at a reachability budget", {
   skip_if_not_installed("brms")
   skip_on_cran()
   skip_on_ci()
+  skip_if_not_long_tier()
   options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(20260821L)
   n <- 60L

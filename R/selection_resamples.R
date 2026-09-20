@@ -849,12 +849,15 @@
 # both its training block and its cross-block from the same object;
 # `.fb_sel_Z_from_vars()` builds it from a data frame and
 # `.fb_sel_random_designs()` from a fitted base. `residual` and `terms` are on
-# the VARIANCE scale and `terms` is matched to `Z` by name.
+# the VARIANCE scale and `terms` is matched to `Z` by name. `known_variance`,
+# one value per row of the data, is added to the residual on the diagonal
+# (R/known_variance.R).
 .fb_sel_cov_spec <- function(
   Z,
   residual,
   terms,
-  estimand = "reml_plugin_covariance"
+  estimand = "reml_plugin_covariance",
+  known_variance = NULL
 ) {
   if (length(Z) > 0L && !setequal(names(Z), names(terms))) {
     stop(
@@ -869,10 +872,20 @@
   if (!is.numeric(residual) || length(residual) != 1L || residual <= 0) {
     stop("`residual` must be a single positive variance.", call. = FALSE)
   }
-  structure(
-    list(Z = Z, residual = residual, terms = terms, estimand = estimand),
-    class = "fb_sel_cov_spec"
-  )
+  spec <- list(Z = Z, residual = residual, terms = terms, estimand = estimand)
+  if (!is.null(known_variance)) {
+    spec$known_variance <- known_variance
+  }
+  structure(spec, class = "fb_sel_cov_spec")
+}
+
+# .fb_sel_residual_diagonal() --- the diagonal the residual contributes over
+# some rows: its variance, plus each row's known variance where there is one.
+.fb_sel_residual_diagonal <- function(cov_spec, rows) {
+  if (is.null(cov_spec$known_variance)) {
+    return(cov_spec$residual)
+  }
+  cov_spec$residual + cov_spec$known_variance[rows]
 }
 
 
@@ -906,8 +919,16 @@
   n_train <- length(train_rows)
   n_assess <- length(assess_rows)
 
-  v_tt <- diag(cov_spec$residual, nrow = n_train, ncol = n_train)
-  v_ss <- diag(cov_spec$residual, nrow = n_assess, ncol = n_assess)
+  v_tt <- diag(
+    .fb_sel_residual_diagonal(cov_spec, train_rows),
+    nrow = n_train,
+    ncol = n_train
+  )
+  v_ss <- diag(
+    .fb_sel_residual_diagonal(cov_spec, assess_rows),
+    nrow = n_assess,
+    ncol = n_assess
+  )
   v_st_structural <- matrix(0, nrow = n_assess, ncol = n_train)
 
   for (nm in names(cov_spec$Z)) {
@@ -977,8 +998,16 @@
 # rank-deficient candidate block yields an estimable-space answer instead of
 # an NA that propagates silently into every prediction.
 .fb_sel_gls_fit <- function(factor_tt, X_train, y_train) {
-  x_white <- forwardsolve(t(factor_tt), X_train)
-  y_white <- forwardsolve(t(factor_tt), as.numeric(y_train))
+  if (inherits(factor_tt, "fb_sel_block_factor")) {
+    x_white <- .fb_sel_whiten_train(factor_tt, X_train)
+    y_white <- drop(.fb_sel_whiten_train(
+      factor_tt,
+      matrix(as.numeric(y_train), ncol = 1L)
+    ))
+  } else {
+    x_white <- forwardsolve(t(factor_tt), X_train)
+    y_white <- forwardsolve(t(factor_tt), as.numeric(y_train))
+  }
   if (ncol(X_train) == 0L) {
     return(list(
       beta = numeric(0),
@@ -1011,6 +1040,15 @@
     rep(0, nrow(X_train))
   } else {
     drop(X_train %*% beta)
+  }
+  if (identical(blocks$mode, "by_block")) {
+    # The gain is block-diagonal, and absent under `new_cluster`.
+    residual <- as.numeric(y_train) - fixed_train
+    for (g in blocks$gain$blocks %||% list()) {
+      fixed_assess[g$assess_positions] <- fixed_assess[g$assess_positions] +
+        drop(g$gain %*% residual[g$train_positions])
+    }
+    return(fixed_assess)
   }
   fixed_assess + drop(blocks$gain %*% (as.numeric(y_train) - fixed_train))
 }
@@ -1104,8 +1142,12 @@
   preprocessing <- .fb_sel_preprocessing(x_candidate, split$train_rows)
   x_candidate <- .fb_sel_apply_preprocessing(x_candidate, preprocessing)
 
-  Z <- .fb_sel_Z_from_vars(data, random)
   if (is.null(cov_spec)) {
+    # The REML plug-in estimates a residual variance common to every row.
+    if (.FB_KNOWN_VARIANCE_COL %in% names(data)) {
+      .fb_sel_known_variance_refuse_reml()
+    }
+    Z <- .fb_sel_Z_from_vars(data, random)
     components <- .fb_sel_reml_components(
       y,
       protected_design$X,
@@ -1121,7 +1163,14 @@
     )
   }
 
-  blocks <- .fb_sel_fold_blocks(
+  # A covariance factored block by block never forms V_TT (see
+  # R/selection_cov_model.R); every other one takes the dense route.
+  fold_blocks <- if (identical(cov_spec$whitening, "by_block")) {
+    .fb_sel_fold_blocks_by_group
+  } else {
+    .fb_sel_fold_blocks
+  }
+  blocks <- fold_blocks(
     cov_spec,
     split$train_rows,
     split$assess_rows,
@@ -1318,7 +1367,7 @@
   model = "full"
 ) {
   residual <- as.numeric(y_assess) - as.numeric(mu_assess)
-  marginal_variance <- diag(v_s_given_t)
+  marginal_variance <- .fb_sel_conditional_variance(v_s_given_t)
   rows <- data.table::data.table(
     model = model,
     fold = label,
@@ -1336,7 +1385,7 @@
   )
   clusters <- data.table::rbindlist(lapply(names(groups), function(key) {
     index <- groups[[key]]
-    block <- v_s_given_t[index, index, drop = FALSE]
+    block <- .fb_sel_conditional_rows(v_s_given_t, index)
     factor_block <- chol(block)
     standardised <- forwardsolve(t(factor_block), residual[index])
     data.table::data.table(
@@ -1470,6 +1519,11 @@
 # needs: the protected model alone, and the protected model with every
 # candidate. A longer nested list makes a complexity path, which is what the
 # one-standard-error rule selects along before any penalty code exists.
+#
+# `cov_model` is NULL for the REML plug-in, which estimates each fold's
+# variance components on the dense training covariance, or a
+# `.fb_sel_cov_model()` whose folds read them off a refit of the base model
+# (R/selection_cov_model.R).
 .fb_sel_cv <- function(
   data,
   response,
@@ -1482,10 +1536,21 @@
   candidate_sets = NULL,
   cluster = NULL,
   metric = c("rmse", "mse", "nlpd"),
-  offsets = character(0)
+  offsets = character(0),
+  cov_model = NULL
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
+
+  # The REML plug-in forms each fold's covariance densely, so above the
+  # bound it refuses here, before any fold runs.
+  if (is.null(cov_model)) {
+    .fb_sel_require_dense(nrow(data), paste0(
+      "The REML plug-in estimates the variance components on that matrix ",
+      "itself. covariance = \"base_model\" reads them from a refit of the ",
+      "base model and factors a block-diagonal covariance block by block."
+    ))
+  }
 
   # Step 1 of section 4.2, and it comes first for the reason the contract
   # gives: a rotation mixes observations, so a split of rotated rows is not
@@ -1543,6 +1608,11 @@
   # (R/selection_parallel.R).
   fold_job <- function(f) {
     split <- folds[[f]]
+    fold_cov <- if (is.null(cov_model)) {
+      NULL
+    } else {
+      .fb_sel_cov_fold(cov_model, split, f)
+    }
     substrate <- .fb_sel_fold_substrate(
       data,
       split,
@@ -1551,8 +1621,14 @@
       candidates = candidates,
       random = random,
       prediction = prediction,
+      cov_spec = fold_cov$spec,
       offsets = offsets,
       fold_space = space$folds[[split$label]]
+    )
+    substrate$covariance_record <- fold_cov$record %||% list(
+      fold = split$label,
+      residual = substrate$learned$components_residual,
+      terms = substrate$learned$components_terms
     )
     fold_scored <- list()
 
@@ -1597,11 +1673,13 @@
     list(label = split$label, substrate = substrate, scored = fold_scored)
   }
 
-  # The folds do not read each other, so they may run at the same time. No
-  # engine fits on this route -- the fold is a REML plugin and a closed-form
-  # solve -- so there are no engine threads to divide, and a worker pins the
-  # linear algebra it calls instead (R/selection_parallel.R).
-  plan <- .fb_sel_worker_plan(length(folds), provider = NULL)
+  # The folds do not read each other, so they may run at the same time. With
+  # the REML plug-in no engine fits on this route -- the fold is a plug-in
+  # and a closed-form solve -- so there are no engine threads to divide, and
+  # a worker pins the linear algebra it calls instead; a base-model fold
+  # refits on the base's engine, whose threads are divided
+  # (R/selection_parallel.R).
+  plan <- .fb_sel_worker_plan(length(folds), provider = cov_model$provider)
   results <- .fb_sel_fold_lapply(seq_along(folds), fold_job, plan)
 
   # Assembled in FOLD order, never in the order the workers finished.
@@ -1649,7 +1727,7 @@
     # This is the unpenalised BENCHMARK: a closed-form GLS on a covariance
     # estimated once per fold and plugged in. It is never labelled Bayesian.
     workflow = "unpenalized_benchmark",
-    provider = "gls_reml_plugin",
+    provider = if (is.null(cov_model)) "gls_reml_plugin" else "gls_base_model",
     # Every quantity a fold learns -- the REML components, the candidate
     # standardisation and the pilot fit -- is read off its training rows,
     # which the leakage gate holds each substrate to.
@@ -1669,6 +1747,9 @@
       substrates,
       function(z) z$covariance_estimand,
       character(1L)
-    ))
+    )),
+    # Where the covariance came from, how each fold was factored and each
+    # fold's components, read from the model and the fold objects.
+    covariance = .fb_sel_cv_covariance_record(cov_model, substrates)
   )
 }

@@ -52,6 +52,7 @@ fb_sel_gate_row <- function(gate, feature) {
 # --- green cells --------------------------------------------------------- #
 
 test_that("a Gaussian model with a grouped intercept is projectable, and projpred agrees", {
+  skip_if_not_long_tier()
   d <- fb_sel_gate_data()
   fit <- fb_sel_gate_fit("gate_intercept", fb_brms(
     y ~ p1 + x1 + (1 | site), data = d, chains = 1L, n_samples = 300L,
@@ -72,6 +73,7 @@ test_that("a Gaussian model with a grouped intercept is projectable, and projpre
 
 
 test_that("a correlated grouped slope is projectable, and projpred agrees", {
+  skip_if_not_long_tier()
   d <- fb_sel_gate_data()
   fit <- fb_sel_gate_fit("gate_slope_cor", fb_brms(
     y ~ p1 + x1 + (x1 | site), data = d, chains = 1L, n_samples = 300L,
@@ -86,6 +88,7 @@ test_that("a correlated grouped slope is projectable, and projpred agrees", {
 
 
 test_that("an uncorrelated grouped slope is refused, and the reason names the spelling that works", {
+  skip_if_not_long_tier()
   # This cell came back RED against the contract's own row, which grouped
   # the three grouped-term spellings together. projpred 2.10.0 refuses
   # `(x || g)` on a flexyBayes fit and on a native brms fit alike; the
@@ -121,6 +124,7 @@ test_that("an uncorrelated grouped slope is refused, and the reason names the sp
 # --- red cells ------------------------------------------------------------ #
 
 test_that("a known-covariance carrier is refused, and projpred refuses it too", {
+  skip_if_not_long_tier()
   d <- fb_sel_gate_data()
   sites <- levels(d$site)
   K <- diag(length(sites))
@@ -151,6 +155,7 @@ test_that("a known-covariance carrier is refused, and projpred refuses it too", 
 
 
 test_that("a non-linear parameter partition is refused, and projpred refuses it too", {
+  skip_if_not_long_tier()
   # flexyBayes does not emit this shape, so the cell is executed against a
   # brms fit built directly -- which is also why the gate reads a bare
   # brmsfit.

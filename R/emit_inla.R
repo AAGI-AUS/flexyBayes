@@ -725,6 +725,15 @@ emit_inla <- function(
       (as.numeric(.fb_response_values(fb, data)) - standardisation$centre) /
       standardisation$scale
   }
+  # A known variance per row: the row effect's index, and its scale on the
+  # coordinates the fit runs on, so that it adds v_i to row i's variance on
+  # the original scale (R/known_variance.R).
+  known_variance <- .fb_known_variance_values(fb, data)
+  if (!is.null(known_variance)) {
+    data_inla[[.FB_INLA_KNOWN_INDEX]] <- seq_len(nrow(data))
+    data_inla[[.FB_INLA_KNOWN_SCALE]] <- sqrt(known_variance) /
+      (standardisation$scale %||% 1)
+  }
   # Each standardised covariate, divided in the data list INLA reads. The
   # column keeps its name, so the formula, the design and every coefficient
   # label are the ones the fit would otherwise have carried; only the numbers
@@ -1213,7 +1222,6 @@ emit_inla <- function(
   # `data` is untouched, so every consumer that reads the response as a
   # vector keeps working.
   sectioned <- .fb_inla_sectioned_residual(fb)
-  resid_levels <- NULL
   if (!is.null(sectioned)) {
     # A residual variance per section exists only for a likelihood that has
     # a residual scale. Poisson and binomial have none, so splitting their
@@ -1233,7 +1241,6 @@ emit_inla <- function(
       ))
     }
     sec_f <- factor(data[[sectioned$var]])
-    resid_levels <- levels(sec_f)
     y_vec <- .fb_response_values(fb, data)
     if (is.null(y_vec)) {
       stop(.fb_refusal_condition(
@@ -2228,6 +2235,12 @@ emit_inla <- function(
     }
   }
 
+  # A known variance per row enters as a row effect of fixed unit precision,
+  # scaled by the columns emit_inla() builds (R/known_variance.R).
+  if (!is.null(.fb_known_variance_term(fb))) {
+    rhs_terms <- c(rhs_terms, .fb_inla_known_variance_formula_term())
+  }
+
   rhs <- paste(rhs_terms, collapse = " + ")
   # A sectioned residual replaces the scalar response with the matrix built
   # in emit_inla(); everything to the right of the tilde is unchanged.
@@ -2963,8 +2976,8 @@ emit_inla <- function(
 # The table is written in the five-column shape the brms path writes
 # (component, estimate, sd, q2.5, q97.5) because broom's tidier reads
 # those names (R/tidiers.R). The canonical component names come from the
-# same registry mapper triangulate() and the draws accessors use, so one
-# component answers to one name everywhere.
+# same registry mapper the draws accessors use, so one component answers
+# to one name everywhere.
 .inla_variance_comps <- function(object) {
   empty <- data.frame(
     component = character(0),

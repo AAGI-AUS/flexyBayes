@@ -82,6 +82,7 @@ test_that("prior_summary() reports the auto-default on a live INLA fit", {
 test_that("prior_summary() reports what reached Stan on a live brms fit", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_orphan_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(
@@ -112,6 +113,7 @@ test_that("prior_summary() reports what reached Stan on a live brms fit", {
 test_that("prior_summary() names the retarget on a distributional fit", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_orphan_met_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(
@@ -147,8 +149,8 @@ test_that("prior_summary() names the retarget on a distributional fit", {
 
 test_that("prior_summary() lists parameters left to the engine's default", {
   # A term outside the default-prior walker must appear by name with its
-  # reason, not vanish from the summary. The record is the same one
-  # triangulate()'s matched-prior gate reads.
+  # reason, not vanish from the summary. The record is the fit's prior
+  # record (R/model_fingerprint.R).
   d <- mk_orphan_met_data()
   d$t <- as.integer(d$rep)
   fb <- flexyBayes:::.build_ir_polymorphic(
@@ -210,6 +212,7 @@ test_that("fb_met_summary() abstains with a typed condition on INLA", {
 test_that("fb_met_summary() abstains with a typed condition on brms", {
   skip_on_cran()
   skip_if_not_installed("brms")
+  skip_if_not_long_tier()
   d <- mk_orphan_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(

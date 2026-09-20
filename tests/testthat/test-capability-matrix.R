@@ -22,6 +22,13 @@
 #       typed condition class, the anchor asserts on that class rather than
 #       on the message text.
 #
+#   (c) ENGINE CLAIMS. A `refuses` row whose note says that INLA or brms
+#       cannot do something names, in its basis field, a block of
+#       test-engine-claims.R that calls that engine directly. A refusal that
+#       is flexyBayes's own choice says so, and its note makes no claim
+#       about the engine. The 0.10.0 review found refusals describing engine
+#       limitations nobody had checked, and three of them were false.
+#
 # The staleness gate reads the source tree, so it skips on an installed
 # package (README.md is not installed) in the same way the withdrawn-engine
 # source scan does.
@@ -73,12 +80,18 @@ test_that("every anchor names a test file that exists", {
 })
 
 test_that("the committed capability blocks equal a fresh render", {
-  for (relative in c("README.md", "inst/KNOWN_ISSUES.md")) {
+  targets <- flexyBayes:::.fb_capability_targets()
+  expect_setequal(names(targets), c("README.md", "inst/KNOWN_ISSUES.md"))
+  for (relative in names(targets)) {
     path <- .cap_pkg_file(relative)
     skip_if(is.na(path), paste0(relative, " is not in the installed tree"))
 
     committed <- readLines(path, warn = FALSE)
-    fresh <- flexyBayes:::.fb_capability_splice(path, write = FALSE)
+    fresh <- flexyBayes:::.fb_capability_splice(
+      path,
+      write = FALSE,
+      layout = targets[[relative]]
+    )
     expect_identical(
       committed,
       fresh,
@@ -88,6 +101,24 @@ test_that("the committed capability blocks equal a fresh render", {
       )
     )
   }
+})
+
+test_that("the README block lists only what an engine fits, without notes", {
+  tab <- flexyBayes:::.fb_capability_matrix()
+  block <- flexyBayes:::.fb_capability_markdown(markers = FALSE, layout = "fits")
+  lines <- strsplit(block, "\n", fixed = TRUE)[[1L]]
+  rows <- lines[startsWith(lines, "| ")][-1L]
+  fitted <- tab$inla %in% c("fits", "emits") | tab$brms %in% c("fits", "emits")
+  expect_length(rows, sum(fitted))
+  expect_identical(lines[[1L]], "| Model class | Spelling | INLA | brms |")
+  # A row neither engine fits is absent, and so is every note.
+  for (cls in tab$model_class[!fitted]) {
+    expect_false(any(startsWith(rows, paste0("| ", cls, " |"))), label = cls)
+  }
+  expect_false(any(grepl(substr(tab$note[fitted][[1L]], 1L, 40L), rows,
+    fixed = TRUE)))
+  # The legend names only the verdicts the rows use.
+  expect_false(grepl("`emits`", block, fixed = TRUE))
 })
 
 test_that("the engine prose in ?flexybayes equals a fresh render", {
@@ -139,6 +170,106 @@ test_that("the translation registry and the capability table agree on refusals",
   # The four rows the 2026-09-13 containment changed, plus the corh() and
   # uncorrelated-slope rows, match on spelling today.
   expect_gte(checked, 8L)
+})
+
+# --- (c) engine claims carry a basis --------------------------------------- #
+
+# The sentences of a note that say `engine` lacks something. "No active
+# engine" and "neither engine" speak for both engines. The pattern is broad
+# on purpose: a false positive costs a basis entry, a false negative lets an
+# unchecked claim onto the README.
+.cap_engine_claims <- function(note, engine) {
+  sentences <- trimws(strsplit(note, "(?<=[.;])\\s+", perl = TRUE)[[1L]])
+  lower <- tolower(sentences)
+  negation <- paste0(
+    "(cannot|can not|does not|do not|has no|have no|carries no|offers no|",
+    "lacks|is unable)"
+  )
+  name <- if (identical(engine, "inla")) "inla" else "(brms|stan)"
+  both <- grepl("no (active )?(engine|backend)|neither (active )?(engine|backend)",
+    lower)
+  named <- grepl(paste0("\\b", name, "('s)?( [a-z-]+){0,3} ", negation), lower)
+  sentences[both | named]
+}
+
+# test_that() blocks of test-engine-claims.R, by description, with the
+# deparsed body of each.
+.cap_engine_test_blocks <- function() {
+  exprs <- parse(testthat::test_path("test-engine-claims.R"),
+    keep.source = FALSE)
+  out <- list()
+  for (e in exprs) {
+    if (is.call(e) && identical(e[[1L]], as.name("test_that"))) {
+      out[[as.character(e[[2L]])]] <- paste(deparse(e[[3L]]), collapse = "\n")
+    }
+  }
+  out
+}
+
+.cap_engine_call <- c(inla = "INLA::", brms = "brms::|\\.ec_stancode\\(")
+
+test_that("a refusing row claims an engine limitation only with an engine test behind it", {
+  tab <- flexyBayes:::.fb_capability_matrix()
+  blocks <- .cap_engine_test_blocks()
+  claimed <- 0L
+  for (i in seq_len(nrow(tab))) {
+    for (engine in c("inla", "brms")) {
+      basis <- tab[[paste0(engine, "_basis")]][[i]]
+      label <- paste0(tab$model_class[[i]], " on ", engine)
+      if (!identical(tab[[engine]][[i]], "refuses")) {
+        # A basis on a cell that does not refuse would be left behind when a
+        # verdict changes.
+        expect_identical(basis, "", label = paste(label, "basis"))
+        next
+      }
+      expect_true(nzchar(basis), label = paste(label, "names a basis"))
+      if (!identical(basis, "flexyBayes")) {
+        body <- blocks[[basis]]
+        expect_false(is.null(body), label = paste0(
+          label, ": test-engine-claims.R has a block named '", basis, "'"
+        ))
+        expect_true(
+          !is.null(body) && grepl(.cap_engine_call[[engine]], body),
+          label = paste0(label, ": '", basis, "' calls ", engine, " directly")
+        )
+      }
+      for (claim in .cap_engine_claims(tab$note[[i]], engine)) {
+        claimed <- claimed + 1L
+        expect_false(identical(basis, "flexyBayes"), label = paste0(
+          label, ": the note says \"", claim, "\", and the basis names no ",
+          "engine test"
+        ))
+      }
+    }
+  }
+  # The hurdle-gamma row makes one such claim, on INLA, with its test.
+  expect_gte(claimed, 1L)
+})
+
+test_that("the engine-claim pattern finds the claims it exists to find", {
+  # The detector itself, on the sentences that were on the README before
+  # 0.14.0 and on the ones that replaced them.
+  expect_length(.cap_engine_claims(
+    "No active engine represents a trait-by-genotype unstructured covariance.",
+    "brms"
+  ), 1L)
+  expect_length(.cap_engine_claims(
+    "brms has no factor-analytic lowering, so no engine fits it.", "brms"
+  ), 1L)
+  expect_length(.cap_engine_claims(
+    "INLA has no hurdle-gamma likelihood, so the INLA route refuses it.",
+    "inla"
+  ), 1L)
+  expect_length(.cap_engine_claims(
+    "INLA's likelihood roster carries no counterpart.", "inla"
+  ), 1L)
+  expect_length(.cap_engine_claims(
+    "flexyBayes has no brms lowering for the field.", "brms"
+  ), 0L)
+  expect_length(.cap_engine_claims(
+    "INLA has an exchangeable group model, which flexyBayes does not use.",
+    "inla"
+  ), 0L)
 })
 
 # --- (b) behaviour anchors -------------------------------------------- #
@@ -442,7 +573,8 @@ test_that("corh(f):g refuses on both, typed", {
   .cap_expect(
     .cap_emit("inla", y ~ env, random = ~ corh(env):gen, data = d),
     r$inla,
-    "INLA"
+    "INLA",
+    condition_class = "flexybayes_refusal_corh_no_equicorrelation_representation"
   )
   .cap_expect(
     .cap_emit("brms", y ~ env, random = ~ corh(env):gen, data = d),

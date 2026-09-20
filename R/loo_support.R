@@ -177,8 +177,7 @@
 #'
 #' @seealso [summary.flexybayes()], whose `$converge` slot carries the
 #'   engine's own diagnostics; [as_draws_df.flexybayes()] for the
-#'   posterior itself; [triangulate()] for comparing two engines' fits of
-#'   one model; [fb_refusals()] for the refusal vocabulary.
+#'   posterior itself; [fb_refusals()] for the refusal vocabulary.
 #'
 #' @exportS3Method loo::loo
 loo.flexybayes <- function(x, ...) {

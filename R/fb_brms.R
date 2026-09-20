@@ -37,14 +37,12 @@
 #' brms's own posterior tooling (`loo()`, `posterior_predict()`,
 #' `bayes_factor()`).
 #'
-#' The brms / Stan engine cannot represent every ASReml structured-
-#' covariance term (`fa`, `us`, `ar1`, or a block-diagonal / low-rank
-#' `vm()` / `ped()` carrier) or a `low_rank` smooth approximation; such a
-#' model raises a structured refusal naming the offending construct.
-#' When the model is latent-Gaussian feasible, re-fit with [fb_inla()];
-#' flexyBayes has no active engine for a structured-covariance term
-#' that is neither brms-representable nor latent-Gaussian feasible
-#' (see `NEWS.md`, 0.9.3).
+#' flexyBayes has no brms lowering for some ASReml structures: `fa()`, the
+#' autoregressive fields, a blocks or low-rank `vm()` / `ped()` carrier, and
+#' a `low_rank` smooth approximation. Such a model raises a structured
+#' refusal naming the term. Several of these fit on INLA through
+#' [fb_inla()]; the capability table in the README lists what each engine
+#' fits.
 #'
 #' @param ... Arguments passed to [flexybayes()] (e.g. `formula` / `fixed`,
 #'   `random`, `residual`, `data`, `family`, `prior`, `syntax`). The `backend`

@@ -26,7 +26,8 @@
       "fb_select(): a covariance block has no Cholesky factor. No jitter ",
       "is applied, because a silent repair here is misspecification."
     ),
-    message_template = "fb_select(): block %d of the covariance is not positive definite.",
+    message_template =
+      "fb_select(): block %d of the covariance is not positive definite.",
     registered_in_adr = "SPEC v3 section 4.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -38,10 +39,31 @@
       "fb_select(): the dense covariance reference was asked for above its ",
       "size cap. It is an oracle for small cases, not a production path."
     ),
-    message_template = "fb_select(): the dense covariance reference is %d by %d, above the cap of %d.",
+    message_template = paste0(
+      "fb_select(): the dense covariance reference is %d by %d, above the cap ",
+      "of %d."
+    ),
     registered_in_adr = "SPEC v3 section 4.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
+  )
+
+  .register_refusal(
+    reason_code = "selection_dense_covariance_too_large",
+    description = paste0(
+      "fb_select(): a fold covariance would be formed as a dense n x n ",
+      "matrix above the bound set by ",
+      "options(flexyBayes.selection_dense_gb = ): the REML plug-in forms it ",
+      "densely, and a base-model covariance that is not block-diagonal by ",
+      "any grouping of its random terms cannot be factored block by block."
+    ),
+    message_template = paste0(
+      "fb_select(): the fold covariance over these %d rows would be formed as ",
+      "a dense %d x %d matrix of %s GiB, above the bound of %s GiB."
+    ),
+    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-COV-MODEL)",
+    plan_field = "selection_plan",
+    since_version = "0.14.0"
   )
 
   .register_refusal(
@@ -62,7 +84,10 @@
       "fb_select(): a random term reports a level that is absent from the ",
       "data, so effects and covariates cannot be matched by name."
     ),
-    message_template = "fb_select(): random term `%s` reports level(s) absent from the data: %s.",
+    message_template = paste0(
+      "fb_select(): random term `%s` reports level(s) absent from the data: ",
+      "%s."
+    ),
     registered_in_adr = "SPEC v3 section 4.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -75,7 +100,8 @@
       "it is not constant within the term's levels, or it does not vary ",
       "across them."
     ),
-    message_template = "fb_select(): these candidates cannot enter the reduction for `%s`: %s.",
+    message_template =
+      "fb_select(): these candidates cannot enter the reduction for `%s`: %s.",
     registered_in_adr = "SPEC v3 section 4.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -87,7 +113,10 @@
       "fb_select(): the base fit does not carry the parsed model and data ",
       "the selection builders read, as on the aggregated route."
     ),
-    message_template = "fb_select(): this base fit does not carry the parsed model and data the reduction reads.",
+    message_template = paste0(
+      "fb_select(): this base fit does not carry the parsed model and data ",
+      "the reduction reads."
+    ),
     registered_in_adr = "SPEC v3 section 4.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -99,7 +128,10 @@
       "fb_select(): absorbing the reduction term as fixed leaves further ",
       "random terms, which needs a mixed refit this release does not do."
     ),
-    message_template = "fb_select(): absorbing `%s` as a fixed term leaves %d further random term(s).",
+    message_template = paste0(
+      "fb_select(): absorbing `%s` as a fixed term leaves %d further random ",
+      "term(s)."
+    ),
     registered_in_adr = "SPEC v3 section 4.3",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -117,7 +149,10 @@
       "fb_select(): the base model's structure is not on the selection ",
       "allowlist, or the object is not a fitted flexyBayes model."
     ),
-    message_template = "fb_select(): the base carries %s, which is not on the selection allowlist.",
+    message_template = paste0(
+      "fb_select(): the base carries %s, which is not on the selection ",
+      "allowlist."
+    ),
     registered_in_adr = "SPEC v3 section 10.1",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"
@@ -129,7 +164,10 @@
       "fb_select(): the whitening identity is exact only for a Gaussian ",
       "response with an identity link; every other family refuses."
     ),
-    message_template = "fb_select(): the whitening identity is exact only for a Gaussian response with an identity link, and this fit is %s/%s.",
+    message_template = paste0(
+      "fb_select(): the whitening identity is exact only for a Gaussian ",
+      "response with an identity link, and this fit is %s/%s."
+    ),
     registered_in_adr = "SPEC v3 section 5.1",
     plan_field = "selection_plan",
     since_version = "0.10.0.9000"

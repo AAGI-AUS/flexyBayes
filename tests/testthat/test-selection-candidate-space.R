@@ -267,6 +267,7 @@ test_that("the glmnet path indexes every coefficient by the declared columns and
 test_that("an INLA fold refit is handed the fold's kept terms, and the certificate names what it left out", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   p2_quiet()
   d <- p2_data()
   base <- p2_inla_base()

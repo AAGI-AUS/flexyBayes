@@ -18,6 +18,9 @@ fb_select(
   seed = NULL,
   budget = NULL,
   plan = FALSE,
+  covariance = c("reml_plugin", "base_model"),
+  refit = NULL,
+  ablation = FALSE,
   ...
 )
 }
@@ -66,7 +69,12 @@ that fold's analysis rows. A projection's submodel is scored with terms
 searched again on each fold's reference fit, at the size the
 whole-sample decision chose. The optimiser arm's tuning point is reported
 as \code{s = lambda / lambda_max}, each fold's \code{lambda_max} read on its
-training rows, beside the lambda that point is on each fold.}
+training rows, beside the lambda that point is on each fold. Its support
+at a point is the set of non-zero penalised coefficients after one rule:
+at \code{s >= 1} every one is zero, the exact solution there; elsewhere a
+coefficient is set to zero when removing it moves its own gradient
+coordinate by at most the path's KKT threshold of \code{1e-6}, and the point
+without it still meets that threshold.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 
@@ -97,25 +105,65 @@ estimated cost exceeds it.}
 \item{plan}{\code{TRUE} returns the resolved axes, the prior blocks, the
 projection structure gate and a cost estimate without fitting anything.}
 
-\item{...}{Reserved. \code{metric} and \code{covariance} are accepted here for one
-release with a deprecation notice; \code{metric} now lives in
-\code{\link[=fb_decision]{fb_decision()}}, and the covariance summary is a property of the
-benchmark workflow and is read off the folds rather than declared.}
+\item{covariance}{The source of the fold covariance V that the benchmark
+and optimiser workflows whiten by and plug in. \code{"reml_plugin"}, the
+default, estimates V by restricted maximum likelihood on each fold's
+training rows, for random intercepts and two-way interactions.
+\code{"base_model"} refits the base model on each fold's training rows with
+its own formula, random and residual structure, priors and engine, and
+takes each variance at its posterior mean; it also builds uncorrelated
+random slopes, \code{diag(f):g}, a single-trial \code{ar1(row):ar1(col)} field and
+\code{vm()} or \code{ped()} known covariances, at the cost of one refit per fold.
+The Bayesian workflow integrates the covariance, so the argument applies
+to it only with \code{benchmark = TRUE}. V is formed as a dense matrix only
+while one n by n matrix over the data fits within
+\code{options(flexyBayes.selection_dense_gb = )}, 0.5 GiB (8,192 rows) by
+default. Above that, a V that is block-diagonal over a grouping of its
+random terms is factored block by block, and any other V refuses with
+\code{selection_dense_covariance_too_large}. The argument's earlier form, an
+estimand string (\code{"plugin_mean_covariance"} and two others), is
+deprecated and runs the default.}
+
+\item{refit}{\code{NULL} (the default), or \code{list(method = "bayes")} to refit
+each fold's frozen support as a Bayesian model and score its held-out
+rows; see "Bayesian refit of the frozen support". Optional fields:
+\code{block}, a one-sided formula over terms of the base's fixed part or of
+\code{candidates}, the block whose share of between-trial variance is
+reported (default: every candidate); \code{group}, the grouping column of the
+random intercept whose variance is the between-trial variance (default:
+the base's only random intercept); \code{n_draws}, the posterior draws per
+fold (default 4000).}
+
+\item{ablation}{\code{FALSE} (the default), or \code{TRUE} to drop each declared
+block of the penalised path in turn and report the change in held-out
+loss; see "Grouped ablation". It needs
+\code{workflow = "penalized_optimizer"}, and refuses with
+\code{selection_ablation_route_undefined} elsewhere, before any fit.}
+
+\item{...}{Reserved. \code{metric} is accepted here for one release with a
+deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
 }
 \value{
 An object of class \code{fb_select} carrying the four resolved axes,
 the reference fit, the column map, the decision, the out-of-fold scores,
 the increment over the protected model, the diagnostics, any benchmark
-arms, the folds and the certificate. With \code{plan = TRUE}, an object of
-class \code{fb_select_plan}.
+arms, the folds and the certificate. With \code{ablation = TRUE}, its element
+\code{ablation} holds one row per block (\code{blocks}), the paired unit table
+(\code{units}), each ablated path's per-row predictions (\code{rows}, with the
+log predictive density \code{lpd} where the refit ran), chosen supports
+(\code{supports}) and tuning curves (\code{paths}), the density's paired unit
+table (\code{value_units}) and the columns each ablated refit held
+(\code{value_supports}), and the contract. With \code{plan = TRUE}, an object of
+class \code{fb_select_plan}, whose
+\code{selection$ablation} counts the ablation's fits.
 }
 \description{
 Fits a Bayesian reference model in which a declared block of candidate
 fixed effects carries a joint shrinkage prior and the covariance structure
 is integrated over rather than plugged in; selects a parsimonious submodel
 by projection predictive inference where the structure permits it, and
-refuses by name where it does not; and, on request, triangulates the
-result against an external penalised optimiser on the same folds.
+refuses by name where it does not; and, on request, compares the
+result with an external penalised optimiser on the same folds.
 }
 \details{
 Every result records four independent fields rather than one \code{engine}
@@ -126,9 +174,10 @@ a Bayesian label:
 \describe{
 \item{\code{workflow}}{\code{"bayes"}, \code{"penalized_optimizer"} or
 \code{"unpenalized_benchmark"}.}
-\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"}, \code{"prox"} or
-\code{"gls_reml_plugin"}; \code{"prox"} is the package's deterministic
-proximal solver for grouped penalties.}
+\item{\code{provider}}{\code{"brms"}, \code{"inla"}, \code{"glmnet"}, \code{"prox"},
+\code{"gls_reml_plugin"} or \code{"gls_base_model"}; \code{"prox"} is the package's
+deterministic proximal solver for grouped penalties, and the last two
+name the source of the benchmark's fold covariance.}
 \item{\code{prior}}{the joint prior, or \code{"none"}.}
 \item{\code{decision}}{\code{"full"}, \code{"projection"}, \code{"posterior_threshold"} or
 \code{"optimizer_support"}.}
@@ -177,8 +226,24 @@ two repeated runs on an engine whose posterior sampler is not
 bit-reproducible. Set \code{n} against MEMORY: every concurrent fold holds its
 own rows and its own engine process at the same time, so the count a
 machine supports follows from its memory, and usually sits well below its
-core count. A worker the operating system kills under that pressure
+core count. Measured on the package's synthetic selection fixture with
+INLA, \code{penalty = NULL} and four folds, the whole call held at its peak
+1.7 GB with one worker and 3.0, 4.1 and 4.6 GB with two, three and four at
+2,000 rows and 20 candidates; 2.4 GB with one worker and 3.8, 5.3 and
+5.5 GB at 5,000 rows and 40 candidates; and, with three folds, 4.3 GB with
+one worker and 7.9 and 11.5 GB with two and three at 10,890 rows and 82
+candidates. A worker the operating system kills under that pressure
 refuses by name, and the aggregation keeps every fold or none.
+
+\code{options(flexyBayes.isolation = "process")} runs each fold in a separate R
+process (see \code{\link[=flexybayes]{flexybayes()}}), one at a time, or \code{n} at once with the worker
+option. A fold whose process ends before it returns refuses with
+\code{isolated_process_died}, naming the fold and the signal, and this session
+carries on. Each fold then pays for starting R and reading its inputs:
+about 2 seconds a fold on the closed-form route, and 2.3 to 2.4 seconds a
+fit for \code{flexybayes()} at 96 and 5,000 rows. At 2,000 rows and 20
+candidates the call held 2.1 GB with one fold at a time and 3.8 GB with
+three at once.
 
 \code{fallback = "none"} is the default. A Bayesian request whose provider is
 absent refuses with \code{selection_provider_absent}, naming the package and
@@ -208,6 +273,77 @@ Bayesian route drops whole terms and refuses a term aliased only in part, and
 the penalised reference's out-of-fold score refuses any drop, both with
 \code{selection_fold_candidate_drop_not_representable}.
 }
+\section{Bayesian refit of the frozen support}{
+
+With \code{workflow = "penalized_optimizer"} and a penalty that selects,
+\code{refit = list(method = "bayes")} takes the support the optimiser chose on
+each fold at its chosen tuning point, freezes it, and refits the base model
+on that fold's training rows with the base's own engine (INLA or brms),
+random terms and priors, the support columns added to the protected fixed
+part. Nothing is selected again. Each support column enters as a numeric
+design column learned on the fold's training rows, so a fold that keeps one
+column of a factor and drops another is refitted on exactly the columns it
+kept.
+
+Each assessment row is scored by its log predictive density,
+\verb{log((1/D) sum_d p(y_i | theta_d))} over the refit's \code{D} posterior draws.
+Under \code{prediction = "new_cluster"}, where every random term is an
+independent intercept, the unseen levels' effects are integrated in closed
+form: each draw's predictive is Gaussian with the fixed part's mean and the
+residual variance plus the random-intercept variances. Otherwise the
+engine's draws of the linear predictor are used. The per-unit sums, their
+total over held-out units and its standard error \code{sqrt(U) * sd(elpd_u)}
+are reported by \code{\link[=glance.fb_select]{glance.fb_select()}} and \code{\link[=augment.fb_select]{augment.fb_select()}}, with the
+hash of a value contract that identifies the folds, the scoring unit, the
+prediction target and the response values. Two runs on the same contract
+pair unit by unit: \code{glance(x, against = y)}.
+
+The block share follows the Bayesian R-squared of Gelman, Goodrich, Gabry
+and Vehtari (2019, \doi{10.1080/00031305.2018.1549100}). For each
+posterior draw of each fold's refit, with \code{m_t} the mean over the training
+rows of level \code{t} of \code{group} of the block's contribution
+\verb{sum_j x_ij beta_j}, the share is \code{V_t(m_t) / (V_t(m_t) + sigma^2)}: the
+numerator is the sample variance of \code{m_t} over the fold's \code{T} training
+levels (divisor \code{T - 1}) and \code{sigma^2} is the variance of the \code{group}
+random intercept. The draws of every fold are pooled, and the posterior
+median and 95\% interval reported.
+}
+
+\section{Grouped ablation}{
+
+Under shrinkage a coefficient's size is not a column's importance.
+With \code{workflow = "penalized_optimizer"}, \code{ablation = TRUE} drops each
+declared block of penalised columns in turn -- the groups
+\code{tidy(x, level = "group")} reports: the grouping of a grouped penalty, and
+otherwise each penalty specification -- and walks the path again on the
+same folds, with the same fold covariance, over the same grid of
+\code{s = lambda / lambda_max}, tuned by the same rule. Each held-out unit's
+loss, at the metric the path was tuned on and averaged over repeats, is
+paired with its loss under the full path. \code{tidy(x, level = "group")}
+reports the mean over units of the difference, the unit's loss without the
+block minus with it, so positive means the block lowers the held-out loss,
+and its standard error \code{sd(d_u) / sqrt(U)} over the \code{U} units. A block
+whose removal leaves no penalised column leaves the protected columns,
+fitted by generalised least squares on each fold. A block whose remaining
+penalty the path refuses is reported with the refusal and no difference.
+With \code{refit = list(method = "bayes")}, each ablated path's frozen supports
+are refitted as well, and the held-out log predictive density difference,
+\code{elpd} with the block minus without it, is reported beside the loss with
+the valuation's standard error.
+
+Every path is scored under one contract, which identifies the fold of
+every row, the scoring unit, the target, the response and the metric, and
+its hash is on the result. The read-out is not nested: each path's tuning
+point is chosen on the out-of-fold scores of all folds, including the fold
+whose units are then scored, and the full and ablated paths share that
+reuse. On the package's synthetic two-block fixture (eight data seeds, both
+rules), choosing the point on inner folds of each training fold instead
+moved a signal block's difference by a median of 0.14 standard errors and
+changed none of 32 verdicts. A block that carries no signal is not read as
+important there, but its difference can be negative beyond one standard
+error: without it the path is tuned to less shrinkage.
+}
+
 \examples{
 \donttest{
 if (requireNamespace("INLA", quietly = TRUE) &&

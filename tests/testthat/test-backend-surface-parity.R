@@ -2,7 +2,7 @@
 # bug that the audit found and fixed, so a future change that
 # re-introduces it fails here rather than shipping silently.
 #
-#   1. triangulate() must compare variance components on a common (SD)
+#   1. The canonical draws must put variance components on a common (SD)
 #      scale across brms and INLA -- the INLA precision -> SD transform
 #      must fire (was silently no-op: precision compared against SD).
 #   2. plot() must dispatch on every backend fit class -- "effects"
@@ -39,10 +39,12 @@ silence_notes <- function() {
 # 1. Cross-engine variance-component commensurability               #
 # ---------------------------------------------------------------- #
 
-test_that("triangulate() puts INLA variance components on the SD scale, not precision", {
+test_that("as_draws_df() puts INLA variance components on the SD scale, not precision", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_installed("INLA")
+  skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   silence_notes()
 
   # True sigma_e = 2.0 and sd_g = 1.5 are both clearly > 1, so the
@@ -83,23 +85,26 @@ test_that("triangulate() puts INLA variance components on the SD scale, not prec
     mcmc_verbose = FALSE
   ))
 
-  tri <- triangulate(fb_fit, fi, n_samples = 1000L)
+  draws_a <- posterior::as_draws_df(fb_fit)
+  draws_b <- posterior::as_draws_df(fi, n_draws = 1000L)
 
-  expect_true(all(c("sigma", "sd_g") %in% tri$common))
-  m <- tri$metrics
+  expect_true(all(c("sigma", "sd_g") %in% posterior::variables(draws_a)))
+  expect_true(all(c("sigma", "sd_g") %in% posterior::variables(draws_b)))
 
-  sig <- m[m$param == "sigma", ]
-  sdg <- m[m$param == "sd_g", ]
+  sig_a <- mean(as.numeric(draws_a[["sigma"]]))
+  sig_b <- mean(as.numeric(draws_b[["sigma"]]))
+  sdg_a <- mean(as.numeric(draws_a[["sd_g"]]))
+  sdg_b <- mean(as.numeric(draws_b[["sd_g"]]))
 
-  # INLA side (mean_b) must be on the SD scale: residual SD near 2,
+  # INLA side (b) must be on the SD scale: residual SD near 2,
   # group SD near 1.5 -- well above the precision-scale values they
   # would collapse to if the transform failed.
-  expect_gt(sig$mean_b, 1.0)
-  expect_gt(sdg$mean_b, 0.8)
+  expect_gt(sig_b, 1.0)
+  expect_gt(sdg_b, 0.8)
 
   # And the two engines must agree to a sane tolerance on the SD scale.
-  expect_lt(abs(sig$mean_a - sig$mean_b) / sig$mean_a, 0.5)
-  expect_lt(abs(sdg$mean_a - sdg$mean_b) / max(sdg$mean_a, 0.1), 0.8)
+  expect_lt(abs(sig_a - sig_b) / sig_a, 0.5)
+  expect_lt(abs(sdg_a - sdg_b) / max(sdg_a, 0.1), 0.8)
 })
 
 
@@ -183,6 +188,7 @@ test_that("positional and named prior arguments parse to identical specs", {
 test_that("predict() returns one value per row on an INLA fit written in bar grammar", {
   skip_on_cran()
   skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
   silence_notes()
 
   set.seed(404L)

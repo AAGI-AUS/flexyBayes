@@ -101,6 +101,7 @@ test_that("the combined model samples with acceptable diagnostics", {
   skip_if_not_installed("brms")
   skip_if_not_installed("rstan")
   skip_if_not_installed("posterior")
+  skip_if_not_long_tier()
   d <- .met_combined_data()
 
   fit <- suppressWarnings(suppressMessages(flexybayes(

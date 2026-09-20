@@ -8,7 +8,7 @@
 # value transforms. A fit on either engine therefore yields the same
 # parameter tokens -- (Intercept), the fixed-effect terms, sigma,
 # sd_<group> -- with the variance components on the standard-deviation
-# scale, which is the same view triangulate() compares.
+# scale.
 #
 # as_draws_df() is the constructor; the other two derive from its result,
 # so there is one place where a draws object is built.
@@ -118,9 +118,7 @@
 #' standard deviation of each random-effect group. Variance components
 #' are on the **standard-deviation scale** whatever the engine stored:
 #' INLA's precision hyperparameters are transformed on the way out, so
-#' `sd_g` is a draw of a standard deviation and not of a precision. This
-#' is the same view [triangulate()] compares, and it is built by the same
-#' internal seam, so a name in one is a name in the other.
+#' `sd_g` is a draw of a standard deviation and not of a precision.
 #'
 #' @section Where the draws come from:
 #'
@@ -168,8 +166,7 @@
 #'   list, with no \pkg{posterior} dependency; [canonical_names()] for
 #'   the name map itself; [prior_summary()] for the priors those draws
 #'   were taken under; [summary.flexybayes()], whose `$converge` slot
-#'   carries the engine's own convergence diagnostics; [triangulate()]
-#'   for a two-engine comparison over the same canonical view.
+#'   carries the engine's own convergence diagnostics.
 #'
 #' @exportS3Method posterior::as_draws_df
 as_draws_df.flexybayes <- function(x, n_draws = 1000L, ...) {

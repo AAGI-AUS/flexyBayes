@@ -21,7 +21,7 @@
 #
 # It is engine-agnostic: it consumes draws (numeric vectors / matrices),
 # never a backend object, so the INLA / brms emit paths both feed
-# the same constructor and the result is triangulatable. The fit-level
+# the same constructor and return the same object. The fit-level
 # accessor that extracts the draws from a fitted model and populates
 # `fit$extras$genomic` lands with the GBLUP emit route (G1); this file
 # ships the pure constructor + schema + display the recovery cells and
@@ -200,8 +200,8 @@ print.fb_genomic_summary <- function(x, ...) {
 #' posterior reliability, and the genetic / residual variances -- from a
 #' fitted `vm()` (genomic / GBLUP) or `ped()` (pedigree) model. The
 #' quantities are read from the posterior draws engine-agnostically: an
-#' INLA or brms GBLUP fit returns the same summary object, so a
-#' multi-backend genomic analysis is directly triangulatable.
+#' INLA or brms GBLUP fit returns the same summary object, so the two
+#' engines' genomic summaries can be read side by side.
 #'
 #' The heritability is computed per draw as
 #' \eqn{h^2 = \sigma_g^2 / (\sigma_g^2 + \sigma_e^2)} on the
@@ -292,7 +292,7 @@ genomic_summary <- function(fit, term = NULL) {
   # Canonical genotype labels = the relationship-matrix dimnames, which the
   # known-matrix alignment contract guarantees equal levels(<group>) in
   # order. Using them makes GEBV labels identical across INLA / brms, so
-  # triangulate_genomic() can match breeding values by genotype.
+  # breeding values from the two engines match by genotype.
   lv <- .fb_genomic_levels(fit, var)
 
   collect <- function(cols) {
