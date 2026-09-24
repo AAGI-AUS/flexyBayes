@@ -579,11 +579,12 @@
 #' @param data The base fit's data.
 #' @param resamples The `fb_resamples`.
 #' @param refit Whether the Bayesian refit was asked for.
+#' @param n_lambda The number of path points, from [fb_decision()].
 #' @return A list of the blocks and the fit counts.
 #' @noRd
 #' @keywords internal
 .fb_sel_ablation_plan <- function(resolved, candidates, data, resamples,
-                                  refit) {
+                                  refit, n_lambda) {
   design <- .fb_sel_design(candidates, data)
   keep <- colnames(design$X) != "(Intercept)"
   candidate_names <- colnames(design$X)[keep]
@@ -605,7 +606,7 @@
   } else {
     as.integer(resamples$v) * as.integer(resamples$repeats)
   }
-  fits_per_path <- as.integer(.fb_sel_glmnet_decision(NULL)$n_lambda + 1L)
+  fits_per_path <- as.integer(n_lambda + 1L)
   list(
     blocks = names_vec,
     n_folds = as.integer(n_folds),

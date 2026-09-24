@@ -1,3 +1,11 @@
+# flexyBayes (development version)
+
+* `fb_decision()` gains `n_lambda` and `lambda_min_ratio`, which set the
+  penalised optimiser's path grid. The defaults, 20 points down to 1e-3 of
+  each fold's `lambda_max`, are the grid 0.14.0 used. The grid is printed by
+  `fb_select()` and its plan, and recorded on the certificate as
+  `benchmark$glmnet$path_grid`.
+
 # flexyBayes 0.14.0
 
 The release for a two-stage analysis of a designed multi-environment trial.

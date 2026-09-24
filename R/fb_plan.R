@@ -1125,7 +1125,8 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
                                decision_resolution = NULL,
                                stability = NULL,
                                covariance = NA_character_,
-                               ablation = NULL) {
+                               ablation = NULL,
+                               path_grid = NULL) {
   n_folds <- if (is.null(resamples)) {
     NA_integer_
   } else if (identical(resamples$scheme, "explicit")) {
@@ -1217,7 +1218,10 @@ as.data.frame.fb_plan <- function(x, row.names = NULL, optional = FALSE, ...) {
     stability = stability,
     # The grouped ablation, where one was asked for: the declared blocks and
     # the fits they cost beside the cross-validated path's.
-    ablation = ablation
+    ablation = ablation,
+    # The penalised path's `n_lambda` and `lambda_min_ratio`, where a path
+    # runs.
+    path_grid = path_grid
   )
 
   structure(list(selection = selection), class = c("fb_select_plan", "list"))
@@ -1306,6 +1310,12 @@ print.fb_select_plan <- function(x, ...) {
       format(round(s$cost$per_fit_seconds, 2), nsmall = 2L),
       "s each\n", sep = "")
   cat("                 ", s$cost$note, "\n", sep = "")
+  if (!is.null(s$path_grid)) {
+    cat("  Path grid:    ", s$path_grid$n_lambda, " points, s from 1 down to ",
+        format(s$path_grid$lambda_min_ratio), " of each fold's lambda_max\n",
+        "                 (ridge and the exclusive lasso: two decades either ",
+        "side of the declared penalty)\n", sep = "")
+  }
   st <- s$stability
   if (!is.null(st)) {
     if (st$subsamples == 0L) {

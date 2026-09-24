@@ -94,6 +94,15 @@ mean of a Laplace prior is not a lasso estimate, for exactly the reason
 stays refused; that corner is \code{ridge()}, which already has its own name
 and its own row above.
 
+The \code{lambda} of \code{elastic_net()} is used as the prior's rate on the
+Bayesian route (\code{workflow = "bayes"}). It does not set the chosen point
+on the penalised optimiser (\code{workflow = "penalized_optimizer"}, and the
+\code{glmnet} arm of \code{benchmark = TRUE}). That point is tuned on the path that
+\code{\link[=fb_decision]{fb_decision()}} sets with \code{n_lambda} and \code{lambda_min_ratio}. There,
+\code{lambda} sets only the one declared point the optimiser also fits for
+comparison, and the top of a fold's path when that fold's \code{lambda_max} is
+zero.
+
 A \code{ridge} or \code{laplace} prior has a mode identity with the corresponding
 penalised objective \strong{only with the covariance plugged in and the
 residual scale held fixed}. The Bayesian route does neither: it

@@ -83,6 +83,15 @@
 #' stays refused; that corner is `ridge()`, which already has its own name
 #' and its own row above.
 #'
+#' The `lambda` of `elastic_net()` is used as the prior's rate on the
+#' Bayesian route (`workflow = "bayes"`). It does not set the chosen point
+#' on the penalised optimiser (`workflow = "penalized_optimizer"`, and the
+#' `glmnet` arm of `benchmark = TRUE`). That point is tuned on the path that
+#' [fb_decision()] sets with `n_lambda` and `lambda_min_ratio`. There,
+#' `lambda` sets only the one declared point the optimiser also fits for
+#' comparison, and the top of a fold's path when that fold's `lambda_max` is
+#' zero.
+#'
 #' A `ridge` or `laplace` prior has a mode identity with the corresponding
 #' penalised objective **only with the covariance plugged in and the
 #' residual scale held fixed**. The Bayesian route does neither: it
