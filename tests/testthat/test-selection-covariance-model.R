@@ -23,7 +23,7 @@
 #   covariance of the assessment rows is the Schur complement under
 #   `known_cluster` and V_SS under `new_cluster`.
 #
-#   One field per trial. `at(trial):ar1(row):ar1(col)` is factored one
+#   One field per trial. `id(trial):ar1(row):ar1(col)` is factored one
 #   trial at a time at any size. Each block of V equals V written out from
 #   the model's definition. The whitening and conditional covariance match
 #   the dense route, whose V and Cholesky factor are exactly zero across
@@ -797,7 +797,7 @@ fbcm_trial_field_data <- function(n_trial = 4L, n_row = 5L, seed = 41L) {
   })
 }
 
-fbcm_trial_field_random <- ~ trial + at(trial):ar1(range):ar1(row)
+fbcm_trial_field_random <- ~ trial + id(trial):ar1(range):ar1(row)
 
 fbcm_trial_field_components <- function() {
   list(

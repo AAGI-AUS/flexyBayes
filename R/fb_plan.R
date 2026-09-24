@@ -411,11 +411,19 @@ fb_plan <- function(
   # carries which dead end it was, and the printed line says so instead
   # of blaming the preflight for every refusal.
   route_resolved <- !is.na(chosen_backend)
-  will_fit_final <- !preflight_refused && route_resolved
+  # The same capability check the brms fit refuses on.
+  brms_cap <- if (identical(chosen_backend, "brms")) {
+    .backend_can_fit("brms", fb)
+  } else {
+    list(ok = TRUE)
+  }
+  will_fit_final <- !preflight_refused && route_resolved && isTRUE(brms_cap$ok)
   will_fit_reason <- if (will_fit_final) {
     NA_character_
   } else if (preflight_refused) {
     "preflight refused"
+  } else if (!isTRUE(brms_cap$ok)) {
+    paste0("brms refuses: ", brms_cap$reason_code)
   } else {
     paste0("no active route: ", chosen_reason)
   }

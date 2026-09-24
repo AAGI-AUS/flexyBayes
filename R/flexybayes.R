@@ -93,18 +93,18 @@
 #'   different models, and writing the field on the random side is what
 #'   keeps them distinguishable by name.
 #'
-#'   **Per-trial nested field.** `at(trial):ar1(row):ar1(col)`, with no
-#'   `level` argument on `at()`, fits one separable AR1 field per level of
-#'   `trial` on INLA, via the `replicate =` mechanism -- one complete grid
-#'   per trial, each with its own realised field, but the row correlation,
-#'   column correlation and field SD are **shared across every level of
-#'   `trial`**, not estimated per trial. `at(trial, level):ar1(row):ar1(col)`
-#'   (a `level` argument) asks for either a single conditioned trial or
-#'   per-trial (unshared) hyperparameters, and both are refused
-#'   (`at_field_per_level_hyper_not_representable`): flexyBayes has no
-#'   lowering for a level-conditioned field or for hyperparameters that vary
-#'   by level. It has no brms lowering for this field at all, so brms
-#'   refuses.
+#'   **Per-trial nested field.** `id(trial):ar1(row):ar1(col)` fits one
+#'   separable AR1 field per level of `trial` on INLA, via the `replicate =`
+#'   mechanism -- one complete grid per trial, each with its own realised
+#'   field, but the row correlation, column correlation and field SD are
+#'   **shared across every level of `trial`**, not estimated per trial. This
+#'   is the model ASReml fits under the same spelling. ASReml reads
+#'   `at(trial):ar1(row):ar1(col)` as a separate variance and correlations
+#'   for each trial; flexyBayes does not fit per-trial parameters and refuses
+#'   that spelling (`at_field_per_level_parameters_not_fitted`), as it
+#'   refuses `at(trial, level):ar1(row):ar1(col)`, a field on one trial
+#'   (`at_field_per_level_hyper_not_representable`). It has no brms lowering
+#'   for this field at all, so brms refuses.
 #'
 #'   **Units followed through time.** `ar1(t):g`, or the same term written
 #'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,

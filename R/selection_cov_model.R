@@ -199,7 +199,7 @@
         "fb_select(): covariance = \"base_model\" builds the fold ",
         "covariance from random intercepts, two-way interactions, ",
         "uncorrelated random slopes, diag(f):g, an ar1(row):ar1(col) field ",
-        "on one trial or at(trial):ar1(row):ar1(col) on each trial, and vm() ",
+        "on one trial or id(trial):ar1(row):ar1(col) on each trial, and vm() ",
         "or ped() known covariances, over ",
         "an independent residual, and this base also carries: ",
         paste(unique(refused), collapse = ", "),
@@ -300,7 +300,7 @@
     n_at <- length(at$levels)
     key <- as.character(data[[at_var]])
     columns <- at_var
-    label <- paste0("at(", at_var, "):", label)
+    label <- paste0("id(", at_var, "):", label)
   }
   list(.fb_sel_cov_slot(
     name = "spatial",

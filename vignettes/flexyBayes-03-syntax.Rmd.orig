@@ -54,7 +54,7 @@ Each term has one variance unless stated otherwise.
 | `~ ar1(row):ar1(col)` | A separable autoregressive field over a plot grid, plus independent plot error | INLA |
 | `~ ar1(t)` | An autoregressive field in one dimension | INLA |
 | `~ ar1(t):g` | An autoregressive field within each level of `g`, independent between levels | INLA |
-| `~ at(trial):ar1(row):ar1(col)` | One field per trial, with the correlations shared across trials | INLA |
+| `~ id(trial):ar1(row):ar1(col)` | One field per trial, with the correlations shared across trials | INLA |
 | `~ spl(x)` | A penalised spline, fitted as a second-order random walk. It is similar to, but not the same as, ASReml's spline | INLA |
 | `(x \| g)` | Correlated random intercept and slope | brms |
 | `(x \|\| g)` | Uncorrelated random intercept and slope | both |
@@ -84,6 +84,7 @@ both engines. `hurdle_gamma` on brms only.
 | `~ str(...)` | Write the structure on the term that carries it |
 | `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | `spl(x)` for one covariate |
 | `residual = ~ ar1(row):ar1(col)` | The same field on the random side, which adds an independent plot error |
+| `~ at(trial):ar1(row):ar1(col)`, which ASReml fits with correlations per trial | `id(trial):ar1(row):ar1(col)`, with the correlations shared across trials |
 
 ASReml's `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`, `rr`, `own`, `exp`,
 `gau` and `mtrn` are not recognised. The error message suggests the nearest

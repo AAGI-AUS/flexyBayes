@@ -282,15 +282,16 @@
     ),
     list(
       model_class = "Per-trial separable AR1 field",
-      spelling = "`random = ~ at(trial):ar1(row):ar1(col)`",
+      spelling = "`random = ~ id(trial):ar1(row):ar1(col)`",
       inla = "fits",
       brms = "refuses",
       note = "One field realisation per level of `trial`, through INLA's
         `replicate =` mechanism. The row correlation, column correlation and
         field SD are shared by every level, not estimated per trial.
-        `at(trial, level):ar1(row):ar1(col)`, which asks for one trial or
-        for per-trial hyperparameters, refuses by name. flexyBayes has no
-        brms lowering for either spelling.",
+        `at(trial):ar1(row):ar1(col)`, which ASReml fits with per-trial
+        parameters, and `at(trial, level):ar1(row):ar1(col)`, one trial's
+        field, refuse by name on both engines. flexyBayes has no brms
+        lowering for the field.",
       anchor = "test-nested-ar1-field.R",
       brms_basis = "flexyBayes"
     ),

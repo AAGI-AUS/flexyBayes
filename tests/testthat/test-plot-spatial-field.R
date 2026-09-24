@@ -94,7 +94,7 @@
     g$trial <- factor(g$trial)
     .fbsf_cache$at <- suppressMessages(flexybayes(
       y ~ trial,
-      random = ~ at(trial):ar1(row):ar1(range),
+      random = ~ id(trial):ar1(row):ar1(range),
       data = g,
       backend = "inla",
       na_action = "augment",

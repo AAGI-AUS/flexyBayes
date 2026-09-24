@@ -92,7 +92,7 @@ the models neither engine fits, are in
 | Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses |
-| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses |
+| Per-trial separable AR1 field | `random = ~ id(trial):ar1(row):ar1(col)` | fits | refuses |
 | Grouped temporal AR1 field | `random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)` | fits | refuses |
 | Univariate P-spline | `~ spl(x)` | fits | refuses |
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits |

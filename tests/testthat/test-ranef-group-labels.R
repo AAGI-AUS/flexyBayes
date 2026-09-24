@@ -369,12 +369,12 @@ test_that("one AR1 field per trial reports its plots as trial:row:col", {
   # order cannot be read off the data's.
   d <- d[sample(nrow(d)), ]
   fit <- suppressMessages(flexybayes(
-    y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = d,
+    y ~ 1, random = ~ id(trial):ar1(row):ar1(col), data = d,
     backend = "inla", verbose = FALSE
   ))
   r <- ranef(fit)
 
-  group <- "at(trial):ar1(row):ar1(col)"
+  group <- "id(trial):ar1(row):ar1(col)"
   expect_named(r, group)
   plot_id <- paste(d$trial, d$row, d$col, sep = ":")
   expect_setequal(r[[group]]$level, plot_id)

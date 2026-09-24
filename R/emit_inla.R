@@ -2539,12 +2539,8 @@ emit_inla <- function(
     term$col_var
   }
   base <- paste0("ar1(", term$row_var, "):", inner)
-  # C5/FS-27: the per-trial spelling wraps the single-field form in
-  # at(<at_var>): -- quoting it back is what makes a refusal on the
-  # per-trial shape name the formula the user actually wrote rather
-  # than the single-field one.
   if (!is.null(term$at_var)) {
-    return(paste0("at(", term$at_var, "):", base))
+    return(paste0("id(", term$at_var, "):", base))
   }
   base
 }
@@ -2559,7 +2555,7 @@ emit_inla <- function(
 # oracle (rebuild/wp16_inla_spatial_oracle.R). The <..>_id integer index
 # columns are pre-built in emit_inla()'s data_inla setup.
 #
-# C5/FS-27: at(trial):ar1(row):ar1(col) -- one separable field per
+# C5/FS-27: id(trial):ar1(row):ar1(col) -- one separable field per
 # level of `trial` -- adds `replicate = <at_var>_id` to the same f().
 # INLA's replicate mechanism fits K independent realisations of the
 # identical model (same node count, same hyperparameters shared across

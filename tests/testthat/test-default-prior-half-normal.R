@@ -209,7 +209,7 @@
     ),
     "Per-trial separable AR1 field" = list(
       fit = function() {
-        fb_inla(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
+        fb_inla(y ~ 1, random = ~ id(trial):ar1(row):ar1(col),
                 data = f$d_ar1_at_trial)
       },
       link = "identity", y = f$d_ar1_at_trial$y, slots = "sigma:sigma"

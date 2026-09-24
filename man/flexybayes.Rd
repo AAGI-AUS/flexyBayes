@@ -155,18 +155,18 @@ the correlations a reader acts on. Neither model is wrong. They are
 different models, and writing the field on the random side is what
 keeps them distinguishable by name.
 
-\strong{Per-trial nested field.} \code{at(trial):ar1(row):ar1(col)}, with no
-\code{level} argument on \code{at()}, fits one separable AR1 field per level of
-\code{trial} on INLA, via the \verb{replicate =} mechanism -- one complete grid
-per trial, each with its own realised field, but the row correlation,
-column correlation and field SD are \strong{shared across every level of
-\code{trial}}, not estimated per trial. \code{at(trial, level):ar1(row):ar1(col)}
-(a \code{level} argument) asks for either a single conditioned trial or
-per-trial (unshared) hyperparameters, and both are refused
-(\code{at_field_per_level_hyper_not_representable}): flexyBayes has no
-lowering for a level-conditioned field or for hyperparameters that vary
-by level. It has no brms lowering for this field at all, so brms
-refuses.
+\strong{Per-trial nested field.} \code{id(trial):ar1(row):ar1(col)} fits one
+separable AR1 field per level of \code{trial} on INLA, via the \verb{replicate =}
+mechanism -- one complete grid per trial, each with its own realised
+field, but the row correlation, column correlation and field SD are
+\strong{shared across every level of \code{trial}}, not estimated per trial. This
+is the model ASReml fits under the same spelling. ASReml reads
+\code{at(trial):ar1(row):ar1(col)} as a separate variance and correlations
+for each trial; flexyBayes does not fit per-trial parameters and refuses
+that spelling (\code{at_field_per_level_parameters_not_fitted}), as it
+refuses \code{at(trial, level):ar1(row):ar1(col)}, a field on one trial
+(\code{at_field_per_level_hyper_not_representable}). It has no brms lowering
+for this field at all, so brms refuses.
 
 \strong{Units followed through time.} \code{ar1(t):g}, or the same term written
 \code{g:ar1(t)}, fits one AR1 series along \code{t} within each level of \code{g},
