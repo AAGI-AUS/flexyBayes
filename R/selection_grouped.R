@@ -440,12 +440,12 @@
 # because FISTA's momentum is not monotone, and a polish because first-order
 # methods identify a support long before they resolve its values.
 #
-# The polish differs. With a group norm and an exclusive term the restricted
-# problem is not linear in the active coefficients --- the threshold and the
-# block factor both depend on the answer --- so the polish is a short fixed
-# point on the restricted stationarity condition rather than one Cholesky
-# solve. It is accepted only when the recomputed KKT residual improves, which
-# is a measurement and not an assertion about the iteration.
+# The polish differs. With a group norm the restricted problem is not linear
+# in the active coefficients --- the block factor depends on the answer --- so
+# the polish is a short fixed point on the restricted stationarity condition
+# rather than one Cholesky solve. It is accepted only when the recomputed KKT
+# residual improves, which is a measurement and not an assertion about the
+# iteration.
 #
 # A point whose residual is still above `tol` when the budget runs out is
 # refused with `selection_prox_mode_not_converged`, exactly as the ungrouped
@@ -626,17 +626,20 @@
 # .fb_sel_polish_grouped() --- a short fixed point on the restricted
 # stationarity condition.
 #
-# On the current support, and holding the signs and the group scalars from the
+# On the current support, holding the signs s and the group norms r_g from the
 # incumbent, the condition is linear:
 #
-#   (A_S'A_S + l2 I + diag(lg w_g / r_g)) beta_S = A_S'z - tau_g sign(beta_S)
+#   (A_S'A_S + l2 I + diag(lg w_g / r_g) + le E) beta_S = A_S'z - l1 s
 #
-# Re-deriving r_g and tau_g from each solve and repeating a few times is the
-# fixed point. It returns NULL when there is nothing to polish, when the
-# restricted system has no Cholesky factor, or when a sign flips --- a flipped
-# sign means the support assumption the solve rested on was wrong, so the
-# point is not a candidate at all. The caller recomputes the residual and
-# keeps whichever point wins.
+# where E[j, k] = s_j s_k when j and k share a group and 0 otherwise, which is
+# the exclusive term le ||beta_g||_1 s_j written in beta_S. Carrying that term
+# from the previous solve instead diverges when block members are strongly
+# correlated. Re-deriving r_g from each solve and repeating a few times is the
+# fixed point; with lg = 0 the first solve is exact. It returns NULL when there
+# is nothing to polish, when the restricted system has no Cholesky factor, or
+# when a sign flips --- a flipped sign means the support assumption the solve
+# rested on was wrong, so the point is not a candidate at all. The caller
+# recomputes the residual and keeps whichever point wins.
 .fb_sel_polish_grouped <- function(gram, aty, beta, parts, group_parts) {
   support <- which(abs(beta) > 0)
   if (length(support) == 0L) {
@@ -646,19 +649,21 @@
   index <- group_parts$index[support]
   current <- beta[support]
   system_base <- gram[support, support, drop = FALSE]
+  if (parts$le > 0) {
+    system_base <- system_base +
+      parts$le * outer(signs, signs) * outer(index, index, "==")
+  }
+  rhs <- aty[support] - parts$l1 * signs
 
   for (round in seq_len(8L)) {
     scale_vector <- numeric(length(support))
-    shift <- numeric(length(support))
     for (k in unique(index)) {
       in_group <- which(index == k)
-      block <- current[in_group]
-      radius <- sqrt(sum(block^2))
+      radius <- sqrt(sum(current[in_group]^2))
       if (radius <= 0) {
         return(NULL)
       }
       scale_vector[in_group] <- parts$lg * group_parts$weights[[k]] / radius
-      shift[in_group] <- parts$l1 + parts$le * sum(abs(block))
     }
     system <- system_base
     diag(system) <- diag(system) + parts$l2 + scale_vector
@@ -666,7 +671,6 @@
     if (is.null(factor_system)) {
       return(NULL)
     }
-    rhs <- aty[support] - shift * signs
     solved <- drop(backsolve(
       factor_system,
       forwardsolve(t(factor_system), rhs)
