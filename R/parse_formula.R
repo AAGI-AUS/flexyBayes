@@ -982,9 +982,8 @@
       family_class = "flexybayes_ar1_spatial_refusal"
     ))
   }
-  # id(trial):ar1(row):ar1(col): one field per level of `trial`, the
-  # variance and correlations shared across levels. The left node is
-  # trial:ar1(row) or ar1(row):trial from the folds above.
+  # id(trial):ar1(row):ar1(col); the left node is trial:ar1(row) or
+  # ar1(row):trial, with `trial` as its col_var.
   if (
     identical(lt, "ar1_spatial") &&
       !isTRUE(l$col_ar1) &&
