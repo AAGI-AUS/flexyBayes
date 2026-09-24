@@ -130,7 +130,8 @@
   candidate_design$assign <- candidate_design$assign[keep]
   space <- .fb_sel_fold_candidate_space(
     protected_design, candidate_design, data, split,
-    groupings = groupings, resolution = "column"
+    groupings = groupings, resolution = "column",
+    protected_alias = substrate$candidate_space$protected_alias %||% "refuse"
   )
   columns <- setdiff(colnames(substrate$x_candidate), drop)
   substrate$x_candidate <- substrate$x_candidate[, columns, drop = FALSE]

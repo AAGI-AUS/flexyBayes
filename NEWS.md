@@ -11,6 +11,13 @@
   correlations and the variance shared across trials. The covariance is
   factored one trial at a time at any size.
 
+* `fb_select(protected_alias = "drop")` fits a protected term whose columns
+  are not all identified on a fold's training rows, as an unbalanced
+  `VARIETY * NAPPLIED * SEEDRATE` is, the way ASReml 4.2 does: each fold drops
+  the columns asreml reports as aliased, a held-out row whose cell the
+  training rows do not estimate is not scored, and the certificate lists both
+  per fold. The default, `"refuse"`, is unchanged.
+
 # flexyBayes 0.14.0
 
 The release for a two-stage analysis of a designed multi-environment trial.

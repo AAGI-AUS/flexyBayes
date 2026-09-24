@@ -509,7 +509,9 @@
   spec <- .fb_sel_bayes_base_spec(base)
   fold_data <- spec$data
   if (identical(provider, "inla")) {
-    fold_data[[spec$response]][split$assess_rows] <- NA
+    fold_data[[spec$response]][
+      c(split$assess_rows, split$not_estimable_rows)
+    ] <- NA
   } else {
     fold_data <- fold_data[split$train_rows, , drop = FALSE]
   }
