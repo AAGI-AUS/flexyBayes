@@ -100,6 +100,28 @@
 }
 
 
+# .fb_sel_base_weights() --- the observation weights the base was fitted
+# with, or NULL.
+.fb_sel_base_weights <- function(base) {
+  base$extras$call_info$weights
+}
+
+
+# .fb_sel_refuse_weights_not_carried() --- a weighted base on a route that
+# does not carry the weights refuses by name.
+.fb_sel_refuse_weights_not_carried <- function(route) {
+  stop(.fb_refusal_condition(
+    reason_code = "selection_weights_not_carried",
+    message = paste0(
+      "fb_select(): the base carries observation weights, and ", route,
+      " does not carry them into its fold fits and scores. Refit the base ",
+      "without `weights` to select on the unweighted model."
+    ),
+    route = route
+  ))
+}
+
+
 # --- learned transformations ----------------------------------------- #
 
 # .fb_sel_learn_scaling() --- the one transformation this layer learns

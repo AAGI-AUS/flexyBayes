@@ -3106,6 +3106,15 @@ fb_select <- function(base,
     base, workflow, covariance, value_request
   )
 
+  # No route carries the base's observation weights yet, and each one would
+  # otherwise select on the unweighted model without saying so.
+  if (!is.null(.fb_sel_base_weights(base))) {
+    .fb_sel_refuse_weights_not_carried(paste0(
+      "`workflow = \"", workflow, "\"` with `covariance = \"", covariance,
+      "\"`"
+    ))
+  }
+
   # Every route that reaches .fb_select_benchmark(): the two workflows below
   # and `benchmark = TRUE` on the Bayesian one. Checked before any route
   # branches, so `plan = TRUE` returns the same refusal the run would.

@@ -630,12 +630,7 @@
 ) {
   info <- base$extras$call_info %||% list()
   if (!is.null(info$weights)) {
-    stop(
-      "the Bayesian selection route does not carry observation weights ",
-      "through a per-fold refit. Refit the base without `weights`, or use ",
-      "the benchmark workflow.",
-      call. = FALSE
-    )
+    .fb_sel_refuse_weights_not_carried("the per-fold Bayesian refit")
   }
   # A known variance per row (R/known_variance.R) travels in its column of
   # the fold's data. The fold covariance carries it into the refit; every
