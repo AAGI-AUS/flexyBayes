@@ -228,12 +228,13 @@ increment <- fb_select(
 )
 
 rnd(glance(increment)[, c(
-  "metric", "protected_only", "full", "improvement", "n_units"
+  "loss", "loss_protected_only", "loss_full", "loss_reduction", "n_units"
 )])
 ```
 
-The two scores are held-out losses, so lower is better, and `improvement` is
-the loss without the candidates minus the loss with them.
+The scores are held-out losses, so lower is better. `neg_elpd` is minus the
+log predictive density of a held-out site, and `loss_reduction` is the loss
+without the candidates minus the loss with them.
 
 A shrinkage prior on an INLA base is fitted with brms, since INLA does not
 fit these priors.

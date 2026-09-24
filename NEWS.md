@@ -5,6 +5,19 @@
   each fold's `lambda_max`, are the grid 0.14.0 used. The grid is printed by
   `fb_select()` and its plan, and recorded on the certificate as
   `benchmark$glmnet$path_grid`.
+* `glance()` on an `fb_select()` result names its out-of-fold scores as
+  losses. `metric`, `protected_only`, `full` and `improvement` are now `loss`,
+  `loss_protected_only`, `loss_full` and `loss_reduction`. Lower is better,
+  and `loss_reduction` is positive when the candidates improve prediction. On
+  the Bayesian workflow the loss is `neg_elpd`, minus the log predictive
+  density of a held-out unit, where the old `metric` column said `elpd`.
+  `print()` labels the same block "out-of-fold loss".
+* The default-prior note, the printed INLA formula and `prior_summary()` say
+  which scale the default prior is on. A Gaussian INLA fit runs on the
+  standardised response, and its priors are shown on that scale and on the
+  response, for example `half-normal-SD(5)` beside `half-normal-SD(3.235)`.
+  A lognormal prior on the standardised response was shown as a half-normal;
+  it is now shown as the lognormal it is.
 
 * `fb_select(covariance = "base_model")` builds the fold covariance of
   `at(trial):ar1(row):ar1(col)`, one AR1 x AR1 field per trial with the two
