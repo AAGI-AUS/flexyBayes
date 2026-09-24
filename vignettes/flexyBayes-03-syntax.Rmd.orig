@@ -84,7 +84,7 @@ both engines. `hurdle_gamma` on brms only.
 | `~ str(...)` | Write the structure on the term that carries it |
 | `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | `spl(x)` for one covariate |
 | `residual = ~ ar1(row):ar1(col)` | The same field on the random side, which adds an independent plot error |
-| `~ at(trial):ar1(row):ar1(col)` | `id(trial):ar1(row):ar1(col)`, with the correlations shared across trials (ASReml fits them per trial) |
+| `~ at(trial):ar1(row):ar1(col)`, which ASReml fits with correlations per trial | `id(trial):ar1(row):ar1(col)`, with the correlations shared across trials |
 
 ASReml's `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`, `rr`, `own`, `exp`,
 `gau` and `mtrn` are not recognised. The error message suggests the nearest

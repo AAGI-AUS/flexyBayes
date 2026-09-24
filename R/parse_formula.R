@@ -945,7 +945,7 @@
           "does not fit. For one field per level of `", l$var, "` with ",
           "the variance and correlations shared across levels, write ",
           "id(", l$var, "):ar1(", r$var, "):ar1(...). For one level ",
-          "alone, fit ar1(", r$var, "):ar1(...) on that level's rows."
+          "alone, fit ar1(", r$var, "):ar1(...) on that level's data."
         ),
         family_class = "flexybayes_ar1_spatial_refusal"
       ))

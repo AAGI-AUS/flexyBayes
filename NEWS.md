@@ -22,9 +22,9 @@
 * `id(trial):ar1(row):ar1(col)` fits one AR1 x AR1 field per trial on INLA,
   with the variance and both correlations shared across trials, as in ASReml.
   `at(trial):ar1(row):ar1(col)`, which ASReml fits with separate parameters
-  for each trial, now refuses (`at_field_per_level_parameters_not_fitted`)
-  where 0.14.0 fitted the shared field. A brms plan for a model the brms fit
-  refuses reports `will_fit = FALSE`.
+  for each trial, now refuses (`at_field_per_level_parameters_not_fitted`);
+  0.14.0 fitted the shared field under that spelling. A brms plan reports
+  `will_fit = FALSE` when the brms fit would refuse the model.
 
 * `fb_select(covariance = "base_model")` builds the fold covariance of
   `id(trial):ar1(row):ar1(col)`, one AR1 x AR1 field per trial with the two

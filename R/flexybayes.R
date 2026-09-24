@@ -98,7 +98,7 @@
 #'   mechanism -- one complete grid per trial, each with its own realised
 #'   field, but the row correlation, column correlation and field SD are
 #'   **shared across every level of `trial`**, not estimated per trial. This
-#'   is the model ASReml writes the same way. ASReml reads
+#'   is the model ASReml fits under the same spelling. ASReml reads
 #'   `at(trial):ar1(row):ar1(col)` as a separate variance and correlations
 #'   for each trial; flexyBayes does not fit per-trial parameters and refuses
 #'   that spelling (`at_field_per_level_parameters_not_fitted`), as it
