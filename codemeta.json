@@ -38,6 +38,12 @@
       "familyName": "Moldovan",
       "email": "max.moldovan@adelaide.edu.au",
       "@id": "https://orcid.org/0000-0001-9680-8474"
+    },
+    {
+      "@type": "Person",
+      "givenName": "Anabel",
+      "familyName": "Forte Deltell",
+      "@id": "https://orcid.org/0000-0001-9534-1817"
     }
   ],
   "maintainer": [
@@ -61,12 +67,6 @@
       "givenName": "Francis K.C.",
       "familyName": "Hui",
       "@id": "https://orcid.org/0000-0003-0765-3533"
-    },
-    {
-      "@type": "Person",
-      "givenName": "Anabel",
-      "familyName": "Forte Deltell",
-      "@id": "https://orcid.org/0000-0001-9534-1817"
     }
   ]
 }

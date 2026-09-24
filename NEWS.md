@@ -64,6 +64,8 @@
   out of the log predictive density. With `covariance = "base_model"`, each
   fold's refit fixes its aliased protected columns at zero instead of
   fitting them at their prior.
+* Anabel Forte Deltell is listed as an author again, in `DESCRIPTION`,
+  `inst/CITATION`, `CITATION.cff` and `codemeta.json`.
 
 # flexyBayes 0.14.0
 
