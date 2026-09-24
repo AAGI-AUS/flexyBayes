@@ -14,149 +14,89 @@ vignette: >
 
 
 
-This page is a reference. It lists every ASReml spelling the package reads,
-says what each one is for in an analysis, and then says what it does not
-read. If you already know ASReml, this is the only page you need before
-fitting.
-
-Two things to know before the tables.
-
-A term is *covered* only if an engine emits it and a test exercises the fit.
-A spelling the parser recognises but no engine can represent is refused by
-name at the point of use, never approximated by something adjacent. That is
-the difference between this table and a wish list.
-
-Where the two engines differ, the table says which one carries the term.
-Under the default `backend = "auto"` the package chooses for you, and tells
-you what it chose.
+This is a pilot vignette, to be revised and extended. It lists the ASReml
+spellings flexyBayes reads, what each is for, and which engine fits it. A
+spelling the chosen engine cannot fit stops with a message that names it and
+says what to write instead. Under the default `backend = "auto"`, flexyBayes
+chooses the engine and reports its choice.
 
 # Fixed effects
 
-The fixed part is an ordinary R formula and needs no special vocabulary.
+The fixed part is an ordinary R formula.
 
-| Spelling | What it is for |
+| Spelling | Use |
 |---|---|
-| `yield ~ env` | A treatment factor. The default treatment contrasts, as in `lm()`. |
-| `yield ~ 0 + env` | A means model. Use when you want each level's mean rather than differences from a reference level. |
-| `yield ~ env + moisture` | A factor and a covariate together, the usual analysis of covariance. |
-| `yield ~ env * moisture` | A slope per level of `env`. Use when the covariate's effect is expected to differ between environments. |
-| `log(yield) ~ env` | A transformed response. The expression is evaluated, and the label stays as written. |
-| `yield ~ env + I(moisture^2)` | A quadratic term. Use when the response is expected to peak rather than to rise. |
-| `yield ~ lin(day)` | ASReml's spelling for a covariate entered linearly. |
-| `yield ~ pol(day, 2)` | An orthogonal polynomial. |
+| `yield ~ env` | A treatment factor, with treatment contrasts as in `lm()` |
+| `yield ~ 0 + env` | One mean per level instead of differences from a reference level |
+| `yield ~ env + moisture` | A factor and a covariate (analysis of covariance) |
+| `yield ~ env * moisture` | A separate slope for each level of `env` |
+| `log(yield) ~ env` | A transformed response |
+| `yield ~ env + I(moisture^2)` | A quadratic term |
+| `yield ~ lin(day)` | ASReml's spelling for a linear covariate |
+| `yield ~ pol(day, 2)` | An orthogonal polynomial |
 
 # Random effects
 
-One variance component per term unless the term says otherwise.
+Each term has one variance unless stated otherwise.
 
-| Spelling | What it is for | Engine |
+| Spelling | Use | Engine |
 |---|---|---|
-| `~ gen` | A simple random effect: genotypes drawn from a population, shrunk toward the mean. Use when the levels are a sample and you want to predict them. | both |
-| `~ id(gen)`, `~ ide(gen)` | The same thing, ASReml's explicit spellings. | both |
-| `~ rep:block` | A nested stratum. Use when blocks are nested in replicates and each stratum has its own error. This is the alpha-design case. | both |
-| `~ gen:env` | An interaction random effect: genotype-by-environment deviations with a single variance. The cheapest multi-environment model. | both |
-| `~ diag(env):gen` | One genotype variance **per environment**, no covariance between them. Use when environments differ in how much genetic variation they express, and you do not need the correlations. `idh()` and `at()` are synonyms. | both |
-| `~ us(env):gen` | The full unstructured covariance across environments: every variance and every correlation. Use when the number of environments is small (up to five here) and the correlations are the question. | brms |
-| `~ fa(env, k):gen` | Factor-analytic: a few common factors plus a variance specific to each environment, the standard multi-environment-trial model. Refused on both engines from 0.13.0 (`factor_analytic_not_repeatable`): INLA can represent it, but repeated identical calls did not agree on the covariance where the genetic signal is weak, and flexyBayes has no factor-analytic form for brms. Write `diag(env):gen`, or `us(env):gen` on brms. | refused |
-| `~ vm(gen, K)` | A random effect with a known covariance, from a genomic relationship matrix. Genomic prediction. | both |
-| `~ ped(animal, A)` | The same with a pedigree relationship matrix, the animal model. ASReml 4 removed `ped()` in favour of `vm()`, so this is the ASReml 3 spelling, kept for compatibility; write `vm(animal, A)` for new work. | both |
-| `~ ar1(row):ar1(col)` | A separable autoregressive field over a plot grid, plus independent plot error. Use for field trials where neighbouring plots resemble each other. | INLA |
-| `~ ar1(t)` | An autoregressive field along one dimension, for repeated measures on a common schedule. | INLA |
-| `~ ar1(t):g` | The same within each level of `g` and independent across levels: repeated measures on many units. | INLA |
-| `~ at(trial):ar1(row):ar1(col)` | One field realisation per trial, with the correlations shared across trials. | INLA |
-| `~ spl(x)` | A penalised spline, emitted as INLA's second-order random walk. Use when a covariate's effect is smooth but not a known shape. This is an analogue of ASReml's spline rather than a translation of it: the basis, the scaling and the prediction rule differ, and no equivalence has been established. | INLA |
-| `(x \| g)` | A random slope correlated with the random intercept. Use when units differ both in level and in response to `x`, and the relationship between the two matters. | brms |
-| `(x \|\| g)` | The same with the correlation fixed at zero. Use when the correlation is not of interest. | both |
+| `~ gen`, `~ id(gen)`, `~ ide(gen)` | Levels treated as a sample, each shrunk toward the mean | both |
+| `~ rep:block` | Blocks nested within replicates, as in an alpha design | both |
+| `~ gen:env` | Genotype-by-environment effects with one variance | both |
+| `~ diag(env):gen` | A separate genotype variance in each environment, with no covariance. `idh()` and `at()` are synonyms | both |
+| `~ us(env):gen` | All genotype variances and covariances between environments | brms |
+| `~ vm(gen, K)` | A known relationship matrix, as in genomic prediction | both |
+| `~ ped(animal, A)` | The same with a pedigree matrix, in the ASReml 3 spelling (ASReml 4 uses `vm()`) | both |
+| `~ ar1(row):ar1(col)` | A separable autoregressive field over a plot grid, plus independent plot error | INLA |
+| `~ ar1(t)` | An autoregressive field in one dimension | INLA |
+| `~ ar1(t):g` | An autoregressive field within each level of `g`, independent between levels | INLA |
+| `~ at(trial):ar1(row):ar1(col)` | One field per trial, with the correlations shared across trials | INLA |
+| `~ spl(x)` | A penalised spline, fitted as a second-order random walk. It is similar to, but not the same as, ASReml's spline | INLA |
+| `(x \| g)` | Correlated random intercept and slope | brms |
+| `(x \|\| g)` | Uncorrelated random intercept and slope | both |
 
-Not every spelling in the table below is a translation of the same kind. Some
-are exact structural translations, some share a covariance family but not the
-identification or the priors, and one -- `spl()` -- is an analogue built from a
-different basis. Which is which, and what independently grounds each, is
-recorded in `system.file("TRANSLATION.md", package = "flexyBayes")`.
+# Residual
 
-# Residual structure
-
-| Spelling | What it is for | Engine |
+| Spelling | Use | Engine |
 |---|---|---|
-| `~ units` | Independent residuals with one variance. The default. | both |
-| `~ dsum(~ units \| env)` | One residual variance per environment. Use when trials differ in measurement precision, which is the normal case in a multi-environment trial. | both |
-| `~ at(env):units` | The same structure in ASReml 3's spelling. ASReml 4 removed `at()` on the residual side in favour of `dsum()`, and current ASReml may reject this form. Accepted here for compatibility; `dsum(~ units | env)` is canonical. | both |
+| `~ units` | Independent residuals with one variance (the default) | both |
+| `~ dsum(~ units \| env)` | One residual variance per environment | both |
+| `~ at(env):units` | The same, in ASReml 3's spelling | both |
 
 # Families
 
-`gaussian`, `binomial`, `poisson`, `negative_binomial`, `gamma`, `beta` on
+`gaussian`, `binomial`, `poisson`, `negative_binomial`, `gamma` and `beta` on
 both engines. `hurdle_gamma` on brms only.
 
-# What is not covered
+# Not supported
 
-These are refused by name. The refusal says which of them it is and what to
-write instead, so nothing here fails quietly.
+| Spelling | Alternative |
+|---|---|
+| `~ fa(env, k):gen` | `diag(env):gen` on either engine, or `us(env):gen` on brms (repeated INLA fits gave different covariances when the genetic signal was weak) |
+| `~ corh(env):gen` | `~ gen + env:gen`, if one genetic variance for all environments and a correlation of zero or more are acceptable |
+| `~ us(trait):vm(gen)` | Fit it in brms directly as `(0 + trait \| gr(gen, cov = K))`, or fit each trait separately |
+| `~ cor(env):gen` | `us(env):gen` on brms, or `diag(env):gen` without correlations |
+| `~ ar2(t)`, `~ ar3(t)` | `ar1(t)` |
+| `~ str(...)` | Write the structure on the term that carries it |
+| `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | `spl(x)` for one covariate |
+| `residual = ~ ar1(row):ar1(col)` | The same field on the random side, which adds an independent plot error |
 
-| Spelling | What it would be for | Why not, and what to do |
-|---|---|---|
-| `~ corh(env):gen` | Heterogeneous variances with one correlation shared by every pair of environments. | flexyBayes has no lowering for it on either engine. `diag(env):gen` drops the correlation and `us(env):gen` estimates all of them, so the model you want sits between two that fit. With one variance for every environment and a correlation of zero or more, `~ gen + env:gen` is the same covariance. |
-| `~ us(trait):vm(gen)` | Multi-trait genomic prediction: a genetic covariance between traits. | flexyBayes has no lowering for it. brms writes it directly as `(0 + trait \| gr(gen, cov = K))`, so fit it with brms itself, fit each trait separately, or use ASReml. |
-| `~ ar2(t)`, `~ ar3(t)` | Second- and third-order autoregression. | Not implemented. INLA's general-order `ar` model could carry them. |
-| `~ str(...)` | ASReml's general structure constructor. | Not implemented. Most uses are expressible as one of the terms above. |
-| `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | Tensor-product smooths, for a surface in two covariates. | Not implemented. `spl()` covers one dimension. |
-| `~ cor(env):gen` | A correlation matrix with unit variances. | Refused with the equicorrelation reason. Use `us()`. |
-| `residual = ~ ar1(row):ar1(col)` | ASReml's nugget-free autoregressive residual, three parameters. | flexyBayes fits a latent field plus an independent nugget, four parameters, which is a different model. Write the field on the random side, where it is supported. |
+ASReml's `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`, `rr`, `own`, `exp`,
+`gau` and `mtrn` are not recognised. The error message suggests the nearest
+spelling that is.
 
-ASReml's wider vocabulary -- `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`,
-`rr`, `own`, and the two-dimensional metric families `exp`, `gau`, `mtrn` --
-is not read at all. A call the parser does not recognise is refused with the
-nearest spelling it does recognise, rather than being read as a variable of
-that name.
-
-# Seeing the answer for yourself
-
-The capability table in the README is generated from one object inside the
-package and re-derived from the gate and emit code on every test run, so it
-cannot drift from what the code does. You can read it directly:
-
-
-``` r
-head(flexyBayes:::.fb_capability_matrix()[, c("model_class", "inla", "brms")], 8)
-#>                                                                      model_class
-#> 1                                          Gaussian LMM, simple random intercept
-#> 2 GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect
-#> 3                            Hurdle gamma (zero mass plus a positive gamma part)
-#> 4                                                      Uncorrelated random slope
-#> 5                                            Factor-by-numeric fixed interaction
-#> 6                                                        Correlated random slope
-#> 7                             Nested / interaction random effects, multi-stratum
-#> 8                                         Heterogeneous variance by factor level
-#>      inla brms
-#> 1    fits fits
-#> 2    fits fits
-#> 3 refuses fits
-#> 4    fits fits
-#> 5    fits fits
-#> 6    fits fits
-#> 7    fits fits
-#> 8    fits fits
-```
-
-And every refusal the package can raise is enumerated, with its reason:
+Every message flexyBayes can stop with is listed by `fb_refusals()`:
 
 
 ``` r
 nrow(fb_refusals())
-#> [1] 123
-head(fb_refusals()[, c("reason_code", "since_version")], 5)
-#> flexyBayes refusal registry: 5 reasons
-#> 
-#>   [since 0.9.2] aggregation_response_incomplete
-#> 
-#> 
-#>   [since 0.9.2] aggregation_route_unavailable
-#> 
-#> 
-#>   [since 0.3.10] approximate_route_not_yet_registered
-#> 
-#> 
-#>   [since 0.4.0] approximation_absent
-#> 
-#> 
-#>   [since 0.4.0] approximation_no_smooth_path
+#> [1] 228
+head(fb_refusals()$reason_code)
+#> [1] "aggregated_evidence_unavailable"        
+#> [2] "aggregation_residual_prior_not_composed"
+#> [3] "aggregation_response_incomplete"        
+#> [4] "aggregation_route_unavailable"          
+#> [5] "approximate_route_not_yet_registered"   
+#> [6] "approximation_absent"
 ```

@@ -17,96 +17,78 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(flexyBayes)
 ```
 
-If you already fit mixed models in ASReml, skip to
-`vignette("flexyBayes-03-syntax")`. This page is the short version for
-everyone else.
+This is a pilot vignette, to be revised and extended. Readers who already
+use ASReml can go straight to `vignette("flexyBayes-03-syntax")`.
 
 # The idea
 
-A designed experiment produces variation from several sources at once. A
-field trial has differences between treatments, between replicates, between
-blocks inside replicates, and between plots. Only some of those are the
-question. The rest are structure you have to account for, because ignoring
-them attributes their variation to the treatment.
+A field trial varies for several reasons at once: between treatments,
+between replicates, between blocks within replicates and between plots. Usually
+only the treatment differences are of interest. If the other sources are left out of the
+model, their variation is attributed to the treatments.
 
-A mixed model splits the two. **Fixed effects** are the levels you care
-about individually -- these three varieties, these two nitrogen rates.
-**Random effects** are levels drawn from a population you want to describe
-rather than enumerate: this year's blocks, this trial's genotypes. For a
-fixed effect you estimate each level. For a random effect you estimate the
-*variance* of the levels, and the levels themselves come back shrunk toward
-the mean by an amount the data decides.
+A mixed model separates the two. **Fixed effects** are levels of direct
+interest, such as three varieties or two nitrogen rates, and each level is
+estimated. **Random effects** are levels treated as a sample from a
+population, such as this year's blocks or this trial's genotypes. For a
+random effect the model estimates the *variance* of the levels, and the
+predicted levels are shrunk toward the mean. A genotype seen in one block is
+shrunk more than one seen in twenty.
 
-That shrinkage is the practical payoff. A genotype seen in one block gets
-pulled toward the overall mean more than one seen in twenty, automatically,
-without you choosing a rule.
+# Example
 
-# A worked example
-
-`john.alpha` is an alpha-design: 24 genotypes, three replicates, blocks
-nested inside replicates.
+`john.alpha` is an alpha design: 24 genotypes, three replicates, and blocks
+nested within replicates.
 
 ```{r data}
 data(john.alpha, package = "agridat")
 str(john.alpha)
 ```
 
-Replicate is a fixed effect here -- three specific replicates, and the
-difference between them is a nuisance you want removed rather than a
-population you want to describe. Blocks within replicates and genotypes are
-random.
+Replicate is fixed, because there are only three and they are not a sample of
+interest. Blocks within replicates and genotypes are random. The `fixed` and
+`random` arguments, and the `rep:block` nesting, are written as in ASReml.
 
 ```{r fit}
 fit <- flexybayes(
   fixed   = yield ~ rep,
   random  = ~ rep:block + gen,
   data    = john.alpha,
-  backend = "inla"
+  backend = "inla",
+  verbose = FALSE
 )
-```
 
-The `fixed` and `random` arguments are ASReml's, and `rep:block` is the
-nesting written the same way.
-
-```{r varcomp}
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 ```
 
-Three variances, one per stratum. Read them as standard deviations on the
-scale of the response.
+Each row is a standard deviation on the scale of the response:
 
-- `sd_gen` is the genetic standard deviation, the spread of true genotype
-  means. It is what a breeder is trying to exploit.
-- `sd_rep:block` is the block-to-block variation inside a replicate. Blocking
-  worked if this is appreciable, because that variation has been removed from
-  the genotype comparison.
-- `sigma` is what is left, plot to plot.
+- `sd_gen`: the spread of true genotype means, the variation a breeder
+  selects on.
+- `sd_rep:block`: the variation between blocks within a replicate, which the
+  blocking removes from the genotype comparison.
+- `sigma`: the remaining plot-to-plot variation.
 
-# Why the split matters
+# Heritability
 
-The ratio of genetic variance to total variance is heritability, the
-proportion of what you observe that reflects the genotype rather than the
-field.
+Heritability is the share of the observed variance that is genetic.
 
 ```{r h2}
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
 ```
 
-Around two thirds here. That number is the reason for the model: it is not
-readable from the raw plot means, because those confound genotype with
-whichever block a plot happened to sit in.
+It is about two thirds here. Raw plot means cannot give this figure, because
+they mix genotype effects with block effects.
 
-# Predictions of the random levels
+# Predicted genotype effects
 
-The shrunken genotype means -- BLUPs in the REML vocabulary -- come back with
-`ranef()`.
+`ranef()` returns the predicted genotype effects (BLUPs in REML terms).
 
 ```{r ranef}
 head(ranef(fit)$gen, 4)
 ```
 
-# What to read next
+# Next
 
-`vignette("flexyBayes-02-bayesian")` says what changes when these quantities
-are estimated as posteriors rather than as point estimates, and why the
-interval on the heritability above is worth having.
+`vignette("flexyBayes-02-bayesian")` explains what changes when these
+quantities are estimated as posterior distributions.

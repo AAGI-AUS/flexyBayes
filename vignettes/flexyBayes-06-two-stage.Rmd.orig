@@ -30,29 +30,21 @@ rnd <- function(d, k = 3) {
 }
 ```
 
-A series of trials is often analysed in two stages. The first stage fits each
-trial on its own, with whatever blocking that trial's design calls for, and
-returns a mean per variety. The second stage models those means across
-trials. The reason to do it this way is practical: each trial keeps the
-design it was actually laid out under, and the second stage is small enough
-to carry covariates, priors and a selection over them.
+This is a pilot vignette, to be revised and extended. It analyses a
+simulated series of trials in two stages and selects trial-level covariates
+in the second stage.
 
-The cost is a well-known one. A first-stage mean is an estimate, and its
-precision differs from trial to trial: one trial had four blocks, another
-had three, a third lost plots. If the second stage treats every mean as
-equally precise, it gives the same weight to a mean from a small trial as to
-a mean from a large one.
+In the first stage each trial is fitted on its own and returns a mean for
+each variety. The second stage models those means across trials. The means
+are not equally precise: trials differ in their number of blocks and lost
+plots. The second stage should therefore carry each mean's variance from the
+first stage.
 
-This page runs both stages on simulated data. The second stage carries the
-first stage's variances, selects over trial-level covariates under a
-covariance read from the fitted model, and reports what each block of
-covariates buys.
+# The trials
 
-# 1. The trials
-
-Twenty trials, six varieties, three or four blocks each, with a few plots
-lost. Four covariates are measured at the trial: `z1` shifts the trial mean,
-and `z2`, `z3` and `z4` are noise.
+Twenty trials, six varieties, three or four blocks per trial, and a few lost
+plots. Four covariates are measured on each trial. `z1` shifts the trial
+mean, and `z2`, `z3` and `z4` have no effect.
 
 ```{r simulate}
 set.seed(20260920)
@@ -80,15 +72,13 @@ plots <- do.call(rbind, lapply(seq_len(n_trial), function(i) {
   d
 }))
 
-str(plots)
+head(plots)
 ```
 
-# 2. Stage one: a mean per variety per trial
+# Stage one: variety means per trial
 
-Each trial is fitted on its own. `yield ~ 0 + variety` drops the intercept so
-that every coefficient is a variety mean with its own standard error, which
-is what the second stage needs; `random = ~block` takes the trial's blocking
-out of those means.
+`yield ~ 0 + variety` gives one mean per variety, and `random = ~block`
+accounts for the blocks.
 
 ```{r stage1}
 stage1 <- do.call(rbind, lapply(trials, function(tr) {
@@ -116,23 +106,15 @@ stage1$variety <- factor(stage1$variety)
 stage1 <- cbind(stage1, z[match(stage1$trial, trials), ])
 
 rnd(head(stage1, 4))
-```
-
-`v` is the squared standard error of each mean: the variance the first stage
-says that mean carries. It is not constant, and the spread is what the second
-stage has to respect.
-
-```{r stage1-spread}
 round(range(stage1$v), 3)
 ```
 
-# 3. Stage two: carrying the first stage's variances
+`v` is the squared standard error of each mean, and it varies between trials.
 
-`known_variance` adds a per-row variance to the residual, so row $i$ has
-variance $\sigma^2 + v_i$: one residual variance common to the whole second
-stage, plus the variance the first stage already measured for that row. brms
-fits this as `se(sqrt(v), sigma = TRUE)` and INLA as a row effect of known
-variance; the model is the same either way.
+# Stage two: carrying the variances
+
+With `known_variance`, row $i$ has variance $\sigma^2 + v_i$: one residual
+variance shared by all rows, plus the variance from the first stage.
 
 ```{r stage2}
 base <- flexybayes(
@@ -147,35 +129,24 @@ base <- flexybayes(
 rnd(tidy(base))
 ```
 
-The variety effects were planted 0.4 apart on a common ladder, so `v6` sits
-2.0 above `v1`; the estimates recover that spacing, and their standard errors
-are the ones the weighting produced.
+The simulated variety effects are 0.4 apart, so `v6` is 2.0 above `v1`.
 
-# 4. Selecting over the trial-level covariates
+# Selecting trial-level covariates
 
-The four covariates are declared in two blocks of two. A block is the unit
-the read-outs below report on, so it is worth declaring the blocks that mean
-something scientifically: here, one block that might matter and one that
-should not.
+The four covariates are declared in two blocks, each with a Laplace prior.
+The folds hold out whole trials, because the covariates are constant within
+a trial.
 
 ```{r penalty}
 pen <- fb_penalty(
   term(z1, z2) ~ laplace(scale = 0.3),
   term(z3, z4) ~ laplace(scale = 0.3)
 )
-pen
 ```
 
-The folds are cut at the trial, because a trial-level covariate is constant
-within a trial: cutting anywhere else would leave the covariate's own value
-in the training set for every row it is being scored on.
-
-## The default covariance refuses, and says why
-
-`fb_select()` whitens each fold by a covariance. The default builds it from a
-REML plug-in, which estimates one residual variance common to every row --
-and that is exactly what the first stage has just told us is false. The
-package refuses instead of ignoring the known variances.
+`fb_select()` needs the covariance of each fold. The default estimates it
+with one residual variance for all rows, which ignores the known variances,
+so it stops:
 
 ```{r plugin-refusal}
 refused <- tryCatch(
@@ -188,30 +159,12 @@ refused <- tryCatch(
   ),
   error = function(e) e
 )
-class(refused)[1]
 cat(conditionMessage(refused))
 ```
 
-`covariance = "base_model"` is the route the refusal names. It refits the
-base model on each fold's training rows and reads the fold covariance from
-that refit, so the known variances travel into the whitening with everything
-else the base model says about the correlation structure.
-
-## Planning before paying
-
-```{r plan}
-fb_select(
-  base, ~ z1 + z2 + z3 + z4,
-  penalty = pen,
-  workflow = "penalized_optimizer",
-  resamples = fb_resamples(unit = ~trial, v = 5L),
-  covariance = "base_model",
-  plan = TRUE,
-  seed = 20260920L
-)
-```
-
-## The selection
+`covariance = "base_model"` refits the base model on each fold's training
+trials, known variances included, and uses that covariance.
+`ablation = TRUE` also measures what each block adds.
 
 ```{r select}
 sel <- fb_select(
@@ -224,68 +177,51 @@ sel <- fb_select(
   seed = 20260920L
 )
 
-sel
+rnd(glance(sel)[, c("metric", "protected_only", "full", "improvement",
+                    "chosen_size", "n_units", "n_folds")])
 ```
 
-The certificate records which covariance actually ran, and it is the field to
-read when the question is what the fold was whitened by.
+# When each covariate entered
 
-```{r certificate}
-sel$certificate$covariance$source
-```
-
-# 5. Where each candidate entered
-
-A penalised path runs from the strongest penalty to the weakest, indexed by
-`s = lambda / lambda_max`. A candidate that carries signal is admitted early,
-at a high `s`; a candidate that does not waits until the penalty is nearly
-gone. `entry_s_median` is the point by which half the folds able to estimate
-a column had admitted it.
+The penalised path runs from the strongest penalty to the weakest, indexed
+by `s = lambda / lambda_max`. A covariate with an effect enters early, at a
+high `s`. `entry_s_median` is the value of `s` by which half of the folds had
+included it.
 
 ```{r entrance}
-rnd(tidy(sel)[, c("term", "role", "block", "retained", "entry_s_median")])
+tab <- tidy(sel)
+rnd(tab[tab$role == "candidate", c("term", "block", "retained",
+                                  "entry_s_median")])
 ```
 
 ```{r entrance-plot, fig.width = 6.5, fig.height = 4.5}
 plot(sel, type = "entrance_path")
 ```
 
-# 6. What each block buys
+# What each block adds
 
-`ablation = TRUE` drops each declared block in turn, walks the path again on
-the same folds under the same rule, and pairs each held-out trial's loss with
-its loss under the full path. The difference is what dropping that block
-costs, in the decision metric, with a standard error over trials.
+With `ablation = TRUE`, each block is dropped in turn and the path is
+refitted on the same folds. `ablation_loss_difference` is the increase in
+held-out loss per trial when the block is dropped, with its standard error
+over trials.
 
 ```{r ablation}
-rnd(tidy(sel, level = "group")[, c(
-  "group", "columns", "entry_s_median",
-  "ablation_loss_difference", "ablation_loss_se", "ablation_n_units"
-)])
+ab <- tidy(sel, level = "group")
+rnd(ab[, c("group", "columns", "ablation_loss_difference",
+           "ablation_loss_se")])
 ```
 
-The block holding the planted covariate costs a loss increase of more than
-two standard errors when it is dropped. The block of noise costs nothing at
-all, and the zero is exact: its columns are outside the chosen support, so
-the ablated path is the same path.
+Dropping `z1` and `z2` increases the loss by
+`r round(ab$ablation_loss_difference[1], 3)` (standard error
+`r round(ab$ablation_loss_se[1], 3)`). Dropping `z3` and `z4` changes it by
+`r round(ab$ablation_loss_difference[2], 3)`. The differences do not add up
+to the improvement of the full model.
 
-Two things this read-out is not. It is not nested, so the numbers do not add
-up to the improvement of the full model, and a covariate held in two blocks
-is counted in both. And it is a statement about held-out loss, not about
-whether a coefficient is zero: a shrinkage posterior has no exact zeros in
-it, and "selected" is a decision taken under a stated rule.
+# Bayesian comparison of the chosen covariates
 
-```{r improvement}
-rnd(glance(sel)[, c("metric", "protected_only", "full", "improvement",
-                    "chosen_size", "n_units", "n_folds")])
-```
-
-# 7. What the Bayesian valuation needs
-
-`refit = list(method = "bayes")` refits the chosen support on each fold as a
-Bayesian model and scores each held-out row by its log predictive density.
-That valuation reads posterior draws, and the route that produces them has no
-place to put a per-row known variance, so on a base carrying one it refuses.
+`refit = list(method = "bayes")` refits the chosen covariates as a Bayesian
+model in each fold. It does not take known variances, so on this base it
+stops:
 
 ```{r value-refusal}
 refused_value <- tryCatch(
@@ -303,21 +239,4 @@ refused_value <- tryCatch(
 class(refused_value)[1]
 ```
 
-The valuation is available on a second stage whose rows share one residual
-variance, which is the analysis you have when the first stage returns means
-of equal precision, or when you choose to set the known variances aside and
-say so. *Selecting over a candidate block* works through that case, including
-`glance(x, against = y)` for differencing two valuations unit by unit.
-
-# What to take away
-
-Two stages are two models, and the join between them is the variance the
-first stage measured. Carry it, and the second stage weights each mean by
-what it is worth; leave it out, and a mean from a three-block trial counts
-for as much as a mean from a four-block one.
-
-The package makes that join explicit at both ends. `known_variance` is where
-the first stage's precision enters the model, and `covariance = "base_model"`
-is where it enters the folds. The routes that cannot carry it refuse by name
-and say which route can, so the analysis fails at the call rather than in the
-answer.
+It runs on a second stage without known variances.
