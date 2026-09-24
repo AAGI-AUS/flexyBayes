@@ -633,7 +633,7 @@
   fixed_alias = NULL
 ) {
   info <- base$extras$call_info %||% list()
-  if (!is.null(info$weights)) {
+  if (!is.null(.fb_sel_base_weights(base))) {
     .fb_sel_refuse_weights_not_carried("the per-fold Bayesian refit")
   }
   # A known variance per row (R/known_variance.R) travels in its column of

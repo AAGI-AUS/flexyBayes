@@ -1098,6 +1098,9 @@
         # TRUE where each row's known variance joined the residual on V's
         # diagonal (R/known_variance.R); NA on a route that integrates V.
         known_variance = cov_record$known_variance %||% NA,
+        # TRUE where each row's residual was divided by its observation
+        # weight; NA on a route that integrates V.
+        weights = cov_record$weights %||% NA,
         whitening = cov_record$whitening,
         equivalence_level = cov_record$equivalence_level %||% NA_character_,
         equivalence_reason = cov_record$equivalence_reason %||% NA_character_,
@@ -2314,7 +2317,8 @@
     # whitening; the penalised optimiser reads the same substrates.
     offsets = base$fb$offsets %||% character(0),
     cov_model = cov_model,
-    protected_alias = protected_alias
+    protected_alias = protected_alias,
+    weights = .fb_sel_base_weights(base)
   )
   arms$gls <- list(
     workflow = gls$workflow,
@@ -2431,7 +2435,8 @@
               decision = decision,
               resamples = resamples,
               seed = seed,
-              protected_alias = protected_alias
+              protected_alias = protected_alias,
+              weights = .fb_sel_base_weights(base)
             ),
             error = function(e) e
           )
@@ -2703,7 +2708,12 @@
 #' error: without it the path is tuned to less shrinkage.
 #'
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
-#'   block and are never penalised.
+#'   block and are never penalised. A base fitted with `weights` is selected
+#'   with residual variance `sigma^2 / w` on each training row and `sigma^2`
+#'   on each held-out row, whose weight the training rows do not give. This
+#'   holds on the benchmark and optimiser workflows with
+#'   `covariance = "reml_plugin"`; the other routes, and `refit`, refuse a
+#'   weighted base with `selection_weights_not_carried`.
 #' @param candidates A one-sided formula over columns of the base fit's data.
 #'   A transform whose value on a row depends on other rows, in the
 #'   candidates or in the base's fixed part, is learned inside each fold or
@@ -3106,13 +3116,19 @@ fb_select <- function(base,
     base, workflow, covariance, value_request
   )
 
-  # No route carries the base's observation weights yet, and each one would
-  # otherwise select on the unweighted model without saying so.
+  # The REML plug-in divides each training row's residual by its weight.
+  # Every route that refits the base on a fold does not carry the weights
+  # yet, and would otherwise select on the unweighted model without saying so.
   if (!is.null(.fb_sel_base_weights(base))) {
-    .fb_sel_refuse_weights_not_carried(paste0(
-      "`workflow = \"", workflow, "\"` with `covariance = \"", covariance,
-      "\"`"
-    ))
+    if (!identical(covariance, "reml_plugin") || identical(workflow, "bayes")) {
+      .fb_sel_refuse_weights_not_carried(paste0(
+        "`workflow = \"", workflow, "\"` with `covariance = \"", covariance,
+        "\"`"
+      ))
+    }
+    if (!is.null(value_request)) {
+      .fb_sel_refuse_weights_not_carried("the per-fold refit (`refit`)")
+    }
   }
 
   # Every route that reaches .fb_select_benchmark(): the two workflows below
@@ -4265,6 +4281,11 @@ print.fb_select <- function(x, digits = 4L, ...) {
     } else {
       ""
     },
+    if (isTRUE(cert$covariance$weights)) {
+      ", the residual divided by each training row's weight"
+    } else {
+      ""
+    },
     "\n",
     sep = ""
   )
@@ -5290,6 +5311,11 @@ print.fb_select_certificate <- function(x, ...) {
       },
       if (isTRUE(x$covariance$known_variance)) {
         ", each row's known variance added to the residual"
+      } else {
+        ""
+      },
+      if (isTRUE(x$covariance$weights)) {
+        ", the residual divided by each training row's weight"
       } else {
         ""
       },

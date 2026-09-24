@@ -101,9 +101,11 @@
 
 
 # .fb_sel_base_weights() --- the observation weights the base was fitted
-# with, or NULL.
+# with, one per row of `base$data`, or NULL. A constant vector is the
+# unweighted model.
 .fb_sel_base_weights <- function(base) {
-  base$extras$call_info$weights
+  w <- .fb_ir_weights(base$fb %||% list()) %||% base$extras$call_info$weights
+  if (.fb_weights_nonconstant(w)) as.numeric(w) else NULL
 }
 
 

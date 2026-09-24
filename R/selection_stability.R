@@ -229,7 +229,8 @@
                               decision,
                               resamples,
                               seed,
-                              protected_alias = "refuse") {
+                              protected_alias = "refuse",
+                              weights = NULL) {
   settings <- .fb_sel_stability_settings(decision, resamples)
   b_count <- settings$subsamples
   units <- .fb_sel_stability_units(data, settings$unit)
@@ -280,7 +281,8 @@
       random = random,
       prediction = prediction,
       offsets = offsets,
-      fold_space = space$folds[[split$label]]
+      fold_space = space$folds[[split$label]],
+      weights = weights
     )
     # The cross-validated path's settings, so the subsample walks its grid.
     # The subsample's own tuning decision is scored on the undrawn units and

@@ -743,7 +743,14 @@
 # It is deterministic --- no random starts, no jitter --- so two calls on the
 # same training rows agree bit for bit, which is what lets the leakage gate
 # compare with `identical()` and need no tolerance at all.
-.fb_sel_reml_components <- function(y, X, Z, train_rows, label = "1") {
+.fb_sel_reml_components <- function(
+  y,
+  X,
+  Z,
+  train_rows,
+  label = "1",
+  weights = NULL
+) {
   y_t <- as.numeric(y)[train_rows]
   x_t <- X[train_rows, , drop = FALSE]
 
@@ -777,8 +784,11 @@
   })
   n_components <- length(z_t)
 
+  # Var(y_i) = sigma^2 / w_i, so the residual part of H is diag(1 / w).
+  h_residual <- if (is.null(weights)) 1 else 1 / weights[train_rows]
+
   profile <- function(phi) {
-    h <- diag(1, nrow = n_t)
+    h <- diag(h_residual, nrow = n_t)
     for (k in seq_len(n_components)) {
       h <- h + phi[[k]] * tcrossprod(z_t[[k]])
     }
@@ -851,13 +861,15 @@
 # `.fb_sel_random_designs()` from a fitted base. `residual` and `terms` are on
 # the VARIANCE scale and `terms` is matched to `Z` by name. `known_variance`,
 # one value per row of the data, is added to the residual on the diagonal
-# (R/known_variance.R).
+# (R/known_variance.R). `weights`, one per row, divide the residual on the
+# diagonal: Var(y_i) = sigma^2 / w_i.
 .fb_sel_cov_spec <- function(
   Z,
   residual,
   terms,
   estimand = "reml_plugin_covariance",
-  known_variance = NULL
+  known_variance = NULL,
+  weights = NULL
 ) {
   if (length(Z) > 0L && !setequal(names(Z), names(terms))) {
     stop(
@@ -876,16 +888,24 @@
   if (!is.null(known_variance)) {
     spec$known_variance <- known_variance
   }
+  if (!is.null(weights)) {
+    spec$weights <- weights
+  }
   structure(spec, class = "fb_sel_cov_spec")
 }
 
 # .fb_sel_residual_diagonal() --- the diagonal the residual contributes over
-# some rows: its variance, plus each row's known variance where there is one.
+# some rows: its variance over each row's weight, plus each row's known
+# variance where there is one.
 .fb_sel_residual_diagonal <- function(cov_spec, rows) {
-  if (is.null(cov_spec$known_variance)) {
-    return(cov_spec$residual)
+  out <- cov_spec$residual
+  if (!is.null(cov_spec$weights)) {
+    out <- out / cov_spec$weights[rows]
   }
-  cov_spec$residual + cov_spec$known_variance[rows]
+  if (!is.null(cov_spec$known_variance)) {
+    out <- out + cov_spec$known_variance[rows]
+  }
+  out
 }
 
 
@@ -1076,7 +1096,8 @@
   cov_spec = NULL,
   offsets = character(0),
   fold_space = NULL,
-  protected_alias = "refuse"
+  protected_alias = "refuse",
+  weights = NULL
 ) {
   prediction <- match.arg(prediction)
   # The response through the resolver the fit itself uses, so a transformed
@@ -1157,18 +1178,25 @@
       .fb_sel_known_variance_refuse_reml()
     }
     Z <- .fb_sel_Z_from_vars(data, random)
+    # A held-out row is scored at w = 1: its own weight is not known from
+    # the training rows.
+    if (!is.null(weights)) {
+      weights[split$assess_rows] <- 1
+    }
     components <- .fb_sel_reml_components(
       y,
       protected_design$X,
       Z,
       split$train_rows,
-      label = split$label
+      label = split$label,
+      weights = weights
     )
     cov_spec <- .fb_sel_cov_spec(
       Z,
       components$residual,
       components$terms,
-      components$estimand
+      components$estimand,
+      weights = weights
     )
   }
 
@@ -1547,7 +1575,8 @@
   metric = c("rmse", "mse", "nlpd"),
   offsets = character(0),
   cov_model = NULL,
-  protected_alias = "refuse"
+  protected_alias = "refuse",
+  weights = NULL
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -1635,7 +1664,8 @@
       prediction = prediction,
       cov_spec = fold_cov$spec,
       offsets = offsets,
-      fold_space = space$folds[[split$label]]
+      fold_space = space$folds[[split$label]],
+      weights = weights
     )
     substrate$covariance_record <- fold_cov$record %||% list(
       fold = split$label,
@@ -1762,6 +1792,10 @@
     )),
     # Where the covariance came from, how each fold was factored and each
     # fold's components, read from the model and the fold objects.
-    covariance = .fb_sel_cv_covariance_record(cov_model, substrates)
+    covariance = .fb_sel_cv_covariance_record(
+      cov_model,
+      substrates,
+      weighted = !is.null(weights)
+    )
   )
 }
