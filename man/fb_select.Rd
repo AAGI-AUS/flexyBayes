@@ -74,11 +74,12 @@ at a point is the set of non-zero penalised coefficients after one rule:
 at \code{s >= 1} every one is zero, the exact solution there; elsewhere a
 coefficient is set to zero when removing it moves its own gradient
 coordinate by at most the path's KKT threshold, and the point without it
-still meets that threshold. The threshold is \code{1e-6} times the largest
+still meets that threshold. The threshold is \code{1e-6} for ridge, Laplace
+and elastic net. For the grouped families it is \code{1e-6} times the largest
 absolute entry of \verb{A'z}, the gradient of the least-squares part at zero
-on the fold's whitened, protected-residualised payload \verb{(A, z)}; every
-path point is solved to it. Group lasso and group elastic net points are
-solved by block coordinate descent.}
+on the fold's whitened, protected-residualised payload \verb{(A, z)}. Every
+path point is solved to its threshold, and group lasso and group elastic
+net points are solved by block coordinate descent.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 

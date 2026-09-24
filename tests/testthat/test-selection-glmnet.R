@@ -207,7 +207,7 @@ test_that("a glmnet point above the path threshold is solved again, not accepted
         penalty$lambda_l1,
         0
       ),
-      .fb_sel_path_kkt_tolerance(fixture$A, fixture$z)
+      1e-6
     )
     testthat::local_mocked_bindings(
       .fb_sel_glmnet_fit = function(...) case$beta
@@ -221,10 +221,7 @@ test_that("a glmnet point above the path threshold is solved again, not accepted
     )
     expect_identical(provider$route, case$route)
     expect_lte(provider$kkt, provider$kkt_tolerance)
-    expect_identical(
-      provider$kkt_tolerance,
-      .fb_sel_path_kkt_tolerance(fixture$A, fixture$z)
-    )
+    expect_identical(provider$kkt_tolerance, 1e-6)
     expect_equal(unname(provider$beta), unname(exact), tolerance = 1e-6)
     expect_identical(names(provider$beta), colnames(fixture$A))
   }

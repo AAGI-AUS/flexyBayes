@@ -27,13 +27,15 @@
 .fb_sel_glmnet_state <- new.env(parent = emptyenv())
 
 
-# .fb_sel_path_kkt_tolerance() --- the certificate threshold of every path
-# point, whichever provider computed it.
+# .fb_sel_path_kkt_tolerance() --- the certificate threshold of a path point.
 #
-# The KKT residual must be at most 1e-6 times max|A'z|, the largest gradient
-# coordinate of the least-squares part at beta = 0 (lambda_max of the lasso
-# on the same payload). It is zero when A'z is zero, where beta = 0 is exact.
-.fb_sel_path_kkt_tolerance <- function(A, z) {
+# Grouped families: the KKT residual must be at most 1e-6 times max|A'z|, the
+# largest gradient coordinate of the least-squares part at beta = 0, and zero
+# when A'z is zero. Ridge, laplace and elastic net: an absolute 1e-6.
+.fb_sel_path_kkt_tolerance <- function(A, z, grouped = TRUE) {
+  if (!isTRUE(grouped)) {
+    return(1e-6)
+  }
   if (ncol(A) == 0L) {
     return(0)
   }
@@ -421,7 +423,7 @@
     ))
   }
 
-  tol <- .fb_sel_path_kkt_tolerance(A, z)
+  tol <- .fb_sel_path_kkt_tolerance(A, z, grouped = isTRUE(penalty$grouped))
 
   # A grouped penalty is not a `glmnet` problem at any lambda: its `alpha` is
   # a scalar over coordinates and has no group norm, so there is no map to

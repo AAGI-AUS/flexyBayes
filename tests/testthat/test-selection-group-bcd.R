@@ -109,6 +109,11 @@ test_that("the path KKT threshold is 1e-6 of max|A'z| and scales with the payloa
     .fb_sel_path_kkt_tolerance(design$A[, 0L, drop = FALSE], design$z),
     0
   )
+  # Ridge, laplace and elastic net keep the absolute threshold at any scale.
+  expect_identical(
+    .fb_sel_path_kkt_tolerance(design$A, 1000 * design$z, grouped = FALSE),
+    1e-6
+  )
 })
 
 
@@ -388,4 +393,26 @@ test_that("group lasso path points use block coordinate descent unless the optio
   expect_identical(call_count, 0L)
   expect_gt(nrow(sparse$benchmark$glmnet$kkt), 0L)
   expect_true(all(sparse$benchmark$glmnet$kkt$route == "internal_prox"))
+})
+
+
+test_that("an elastic-net path keeps the absolute 1e-6 at every point", {
+  skip_if_not_installed("glmnet")
+  d <- fbgb_small_study()
+  d$y <- 1000 * d$y
+  fit <- fb_select(
+    fbgs_base(d),
+    candidates = fbgs_candidates(d),
+    penalty = fb_penalty(
+      term(everything()) ~ elastic_net(lambda = 0.1, alpha = 0.5)
+    ),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~trial, v = 3L),
+    decision = fb_decision(method = "full", metric = "rmse"),
+    seed = 5L
+  )
+  kkt <- fit$benchmark$glmnet$kkt
+  expect_gt(nrow(kkt), 0L)
+  expect_true(all(kkt$kkt_tolerance == 1e-6))
+  expect_false(any(kkt$route == "internal_bcd"))
 })
