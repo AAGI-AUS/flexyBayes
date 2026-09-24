@@ -680,6 +680,11 @@ emit_inla <- function(
     )
   }
   control_family <- .build_inla_control_family(hyper_ctrl, family = inla_family)
+  # fixed_alias = "drop": each aliased column fixed at zero (R/fixed_alias.R).
+  control_fixed <- .fb_inla_pin_aliased(
+    control_fixed,
+    .fb_inla_aliased_names(fb, data)
+  )
 
   if (return_code) {
     return(invisible(list(

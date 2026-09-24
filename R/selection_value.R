@@ -390,7 +390,8 @@
     }
     name <- as.character(positional[[1L]])
     index <- data_inla[[name]]
-    n_engine <- length(split$train_rows) + length(split$assess_rows)
+    n_engine <- length(split$train_rows) + length(split$assess_rows) +
+      length(split$not_estimable_rows)
     if (is.null(index) || length(index) != n_engine) {
       return(list(ok = FALSE, reason = paste0(
         "the index of f(", name, ") is not one value per engine row"
@@ -715,6 +716,9 @@
 #' @param supports `NULL` to read each fold's support off `arm` at its chosen
 #'   point, or a named list of design columns per fold label, which the
 #'   grouped ablation passes for a path without one block.
+#' @param candidate_space The optimiser's candidate space. Under
+#'   `protected_alias = "drop"` each fold's refit holds the protected
+#'   columns that fold kept.
 #' @return The valuation record stored at `fb_select()$value`.
 #' @noRd
 #' @keywords internal
@@ -728,8 +732,10 @@
                           engine = NULL,
                           seed = NULL,
                           budget = NULL,
-                          supports = NULL) {
+                          supports = NULL,
+                          candidate_space = NULL) {
   supports <- supports %||% .fb_sel_value_supports(arm, folds)
+  drop_protected <- identical(candidate_space$protected_alias, "drop")
   provider <- .fb_sel_bayes_provider(base)
   spec <- .fb_sel_bayes_base_spec(base)
   data <- spec$data
@@ -792,21 +798,53 @@
         candidate_design$X[, held[[j]]]
       )
     }
+    protected_labels <- spec$protected_labels
+    protected_formula <- spec$protected
+    protected_names <- stats::setNames(protected_block, protected_block)
+    if (drop_protected) {
+      # The protected columns this fold kept, written as numeric columns the
+      # way the support is, so the refit leaves out the dropped ones.
+      dropped <- candidate_space$folds[[label]]$protected_dropped$column
+      kept <- setdiff(colnames(protected_design$X), c("(Intercept)", dropped))
+      kept_names <- utils::tail(
+        make.unique(c(
+          names(fold_data),
+          paste0("fb_protected_", make.names(kept))
+        )),
+        length(kept)
+      )
+      for (j in seq_along(kept)) {
+        fold_data[[kept_names[[j]]]] <- as.numeric(
+          protected_design$X[, kept[[j]]]
+        )
+      }
+      protected_labels <- kept_names
+      protected_formula <- stats::as.formula(paste0(
+        "~ ", paste(c("1", kept_names), collapse = " + ")
+      ))
+      protected_names <- stats::setNames(
+        kept_names[match(protected_block, kept)],
+        protected_block
+      )
+      protected_names <- protected_names[!is.na(protected_names)]
+      # Held out with the scored rows, so the refit does not train on them.
+      fold_data[[spec$response]][split$not_estimable_rows] <- NA
+    }
     inputs <- .fb_sel_bayes_fold_inputs(
       fold_data,
       split,
       response = spec$response,
-      protected = spec$protected,
+      protected = protected_formula,
       candidates = NULL,
       random = spec$random_vars,
       prediction = prediction
     )
     fixed <- .fb_sel_bayes_fixed(
-      spec$response, spec$protected_labels, column_names, spec$offsets
+      spec$response, protected_labels, column_names, spec$offsets
     )
     rhs <- stats::as.formula(paste0(
       "~ ",
-      paste(c("1", spec$protected_labels, column_names), collapse = " + ")
+      paste(c("1", protected_labels, column_names), collapse = " + ")
     ))
     fit_seed <- base_seed + 1000L * f + 1L
     t_fit <- proc.time()
@@ -831,13 +869,15 @@
     design_columns <- design_columns[design_columns != "(Intercept)"]
     block <- list(
       design = cbind(
-        protected_design$X[split$train_rows, protected_block, drop = FALSE],
+        protected_design$X[
+          split$train_rows, names(protected_names), drop = FALSE
+        ],
         candidate_design$X[split$train_rows, held[in_block], drop = FALSE]
       ),
       key = if (is.na(group)) NULL else data[[group]][split$train_rows],
       engine_names = list(
-        inla = c(protected_block, column_names[in_block]),
-        brms = c(protected_block, column_names[in_block])
+        inla = c(unname(protected_names), column_names[in_block]),
+        brms = c(unname(protected_names), column_names[in_block])
       ),
       design_columns = design_columns
     )
@@ -937,6 +977,21 @@
     ),
     rows = rows,
     units = units,
+    # Under protected_alias = "drop", the held-out rows of each fold with no
+    # estimable prediction, which are not scored.
+    not_estimable = if (drop_protected) {
+      data.frame(
+        fold = vapply(folds, function(f) as.character(f$label), character(1L)),
+        n_not_estimable = vapply(
+          folds,
+          function(f) length(f$not_estimable_rows),
+          integer(1L)
+        ),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      NULL
+    },
     summary = .fb_sel_value_summary(units, contract),
     block_share = .fb_sel_value_block_share(results, request),
     contract = contract,

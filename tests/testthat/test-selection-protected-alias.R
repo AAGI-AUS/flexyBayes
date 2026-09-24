@@ -267,7 +267,8 @@ pa_base <- function() {
         random = ~ TRIAL + TRIAL:REP,
         data = alias_design("small"),
         backend = "inla",
-        verbose = FALSE
+        verbose = FALSE,
+        fixed_alias = "drop"
       ),
       envir = pa_cache
     )
@@ -363,7 +364,7 @@ test_that("the penalised optimiser with protected_alias = \"drop\" predicts only
   )
 })
 
-test_that("protected_alias = \"drop\" refuses on the routes that write each fold as formula text", {
+test_that("protected_alias = \"drop\" refuses on the Bayesian workflow, which writes each fold as formula text", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   d <- alias_design("small")
@@ -376,20 +377,6 @@ test_that("protected_alias = \"drop\" refuses on the routes that write each fold
       protected_alias = "drop"
     ),
     "the Bayesian workflow writes each fold's model as formula text",
-    fixed = TRUE
-  )
-  expect_error(
-    fb_select(
-      pa_base(),
-      ~ x1 + x2,
-      penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.4)),
-      workflow = "penalized_optimizer",
-      refit = list(method = "bayes"),
-      resamples = pa_resamples(d),
-      seed = 1L,
-      protected_alias = "drop"
-    ),
-    "refit = list(method = \"bayes\") writes each fold's model",
     fixed = TRUE
   )
   expect_error(
@@ -429,4 +416,137 @@ test_that("a base-model fold refit holds out the not-estimable rows with the sco
   held <- setdiff(seq_len(nrow(d)), split$train_rows)
   expect_true(all(is.na(handed$YIELD[held])))
   expect_false(anyNA(handed$YIELD[split$train_rows]))
+})
+
+
+# --- the Bayesian refit ------------------------------------------------ #
+
+test_that("with refit = list(method = \"bayes\"), each fold's refit leaves out its dropped columns and scores only the estimable rows", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("glmnet")
+  d <- alias_design("small")
+  sel <- fb_select(
+    pa_base(),
+    ~ x1 + x2 + x3 + x4,
+    penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.4)),
+    workflow = "penalized_optimizer",
+    refit = list(method = "bayes", n_draws = 500L),
+    resamples = pa_resamples(d),
+    seed = 1L,
+    protected_alias = "drop"
+  )
+  v <- sel$value
+  scored <- sort(unlist(lapply(sel$folds, function(s) s$assess_rows)))
+  expect_identical(sort(v$rows$row), scored)
+  expect_identical(nrow(v$rows), nrow(d) - 30L)
+  expect_true(all(is.finite(v$rows$lpd)))
+  expect_identical(sum(v$not_estimable$n_not_estimable), 30L)
+  expect_identical(
+    v$not_estimable$n_not_estimable,
+    vapply(sel$folds, function(s) length(s$not_estimable_rows), integer(1L))
+  )
+  expect_true(all(v$folds$method == "analytic_gaussian"))
+})
+
+test_that("each fold's refit predicts the estimable held-out cells as asreml's fit on that fold does", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  d <- alias_design("small")
+  oracle <- pa_oracle("small")
+  cv <- .fb_sel_cv(
+    d, "YIELD", pa_protected, ~x1,
+    random = pa_random,
+    resamples = pa_resamples(d),
+    seed = 1L,
+    protected_alias = "drop"
+  )
+  labels <- vapply(cv$folds, function(s) as.character(s$label), character(1L))
+  n_draws <- 4000L
+  value <- .fb_sel_value(
+    pa_base(), ~x1, pa_resamples(d), "new_cluster", cv$folds,
+    request = .fb_sel_value_request(
+      list(method = "bayes", n_draws = n_draws), pa_base(), ~x1
+    ),
+    seed = 1L,
+    supports = stats::setNames(rep(list(character(0)), length(labels)), labels),
+    candidate_space = cv$candidate_space
+  )
+  for (split in cv$folds) {
+    a <- oracle$subsets[[pa_held(d, split)]]
+    rows <- value$rows[value$rows$fold == split$label, ]
+    expect_identical(rows$row, split$assess_rows)
+    predicted <- a$predictions$predicted[
+      match(pa_cells(d, rows$row), a$predictions$cell)
+    ]
+    expect_false(anyNA(predicted))
+    # The refit's mean over 4000 posterior draws of a cell mean whose
+    # posterior sd is below 0.6 carries a Monte Carlo error below 0.0095;
+    # the bound is five times that. Measured largest gap: 0.015.
+    expect_true(all(abs(rows$predictive_mean - predicted) <= 5 * 0.6 / sqrt(n_draws)))
+  }
+})
+
+test_that("a fold's Bayesian refit holds the kept protected columns and does not train on the not-estimable rows", {
+  d <- alias_design("small")
+  cv <- .fb_sel_cv(
+    d, "YIELD", pa_protected, ~x1,
+    random = pa_random,
+    resamples = pa_resamples(d),
+    seed = 1L,
+    protected_alias = "drop"
+  )
+  split <- cv$folds[[which(vapply(
+    cv$folds,
+    function(s) length(s$not_estimable_rows) > 0L,
+    logical(1L)
+  ))[[1L]]]]
+  base <- structure(
+    list(fb = list(fixed_terms = list(), random_terms = list()), data = d),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+  handed <- NULL
+  local_mocked_bindings(
+    .fb_sel_bayes_base_spec = function(base) {
+      list(
+        data = d,
+        response = "YIELD",
+        protected = pa_protected,
+        protected_labels = c("VARIETY", "NAPPLIED", "SEEDRATE",
+                             "VARIETY:NAPPLIED", "VARIETY:SEEDRATE",
+                             "NAPPLIED:SEEDRATE", "VARIETY:NAPPLIED:SEEDRATE"),
+        random_vars = c("TRIAL", "REP"),
+        offsets = character(0)
+      )
+    },
+    .fb_sel_bayes_provider = function(base) "inla",
+    .fb_sel_require_relabelable = function(...) invisible(NULL),
+    .fb_sel_cost_estimate = function(...) list(seconds = 0),
+    .fb_select_base_seconds = function(base) 0,
+    .fb_sel_fold_lapply = function(x, f, plan, ...) lapply(x, f),
+    .fb_sel_bayes_refit = function(base, data, fixed, ...) {
+      handed <<- list(data = data, fixed = fixed)
+      stop("the refit was reached", call. = FALSE)
+    }
+  )
+  request <- list(method = "bayes", n_draws = 10L, block_terms = "x1",
+                  block_label = "x1", group = NA_character_)
+  expect_error(
+    .fb_sel_value(
+      base, ~x1, pa_resamples(d), "new_cluster", list(split),
+      request = request, seed = 1L,
+      supports = stats::setNames(list(character(0)), split$label),
+      candidate_space = cv$candidate_space
+    ),
+    "the refit was reached",
+    fixed = TRUE
+  )
+  dropped <- cv$candidate_space$folds[[split$label]]$protected_dropped$column
+  n_kept <- ncol(stats::model.matrix(pa_protected, d)) - 1L - length(dropped)
+  right <- attr(stats::terms(handed$fixed), "term.labels")
+  expect_length(right, n_kept)
+  expect_true(all(startsWith(right, "fb_protected_")))
+  expect_false(any(make.names(dropped) %in% sub("^fb_protected_", "", right)))
+  expect_true(all(is.na(handed$data$YIELD[split$not_estimable_rows])))
+  expect_false(anyNA(handed$data$YIELD[split$train_rows]))
 })

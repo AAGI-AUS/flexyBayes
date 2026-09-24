@@ -340,8 +340,12 @@ test_that("update() with only named arguments is unaffected by the D16 guard", {
   fit <- suppressMessages(flexybayes(
     y ~ f, data = .uc_data(), backend = "inla", verbose = FALSE
   ))
-  refit <- suppressMessages(stats::update(fit, fixed = y ~ f + h))
+  # In this fixture `hB + hD` equals `fb`, so `f + h` needs fixed_alias.
+  refit <- suppressMessages(
+    stats::update(fit, fixed = y ~ f + h, fixed_alias = "drop")
+  )
   expect_s3_class(refit, "flexybayes")
+  expect_identical(refit$extras$fixed_alias$dropped$column, "hB")
   expect_identical(refit$extras$call_info$fixed, y ~ f + h)
   expect_true(any(grepl("^h", summary(refit)$fixed$term)))
 })

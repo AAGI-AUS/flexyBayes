@@ -18,6 +18,23 @@
   training rows do not estimate is not scored, and the certificate lists both
   per fold. The default, `"refuse"`, is unchanged.
 
+* `flexybayes()` now refuses a model whose fixed-effect columns are not all
+  estimated by the rows with a response, as in a factorial with empty cells,
+  and names the columns (`fixed_effects_aliased`). Before, INLA and brms
+  fitted such a model without a message and reported those columns at their
+  prior. This is a change in behaviour: a model that fitted in 0.14.0 can now
+  refuse. `fixed_alias = "drop"` fits it on INLA as asreml 4.2 does, with the
+  aliased columns fixed at zero and listed in `fit$extras$fixed_alias`, and
+  `predict()` returns `NA` with status `"Aliased"` for a cell the fitting
+  rows do not estimate.
+
+* `fb_select(protected_alias = "drop")` now works with
+  `refit = list(method = "bayes")`: each fold's refit leaves out that fold's
+  dropped columns, and `value$not_estimable` counts the held-out rows left
+  out of the log predictive density. With `covariance = "base_model"`, each
+  fold's refit fixes its aliased protected columns at zero instead of
+  fitting them at their prior.
+
 # flexyBayes 0.14.0
 
 The release for a two-stage analysis of a designed multi-environment trial.

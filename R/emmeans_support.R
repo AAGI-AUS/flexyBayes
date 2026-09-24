@@ -58,10 +58,17 @@
   X <- .fb_fixef_model_matrix(trms, grid, names(bhat), data)
   bhat <- bhat[colnames(X)]
   V <- V[colnames(X), colnames(X), drop = FALSE]
+  # With fixed_alias = "drop", the directions the fitting rows do not
+  # estimate (R/fixed_alias.R).
+  aliased <- object$extras$fixed_alias$nbasis
   list(
     X = X,
     bhat = bhat,
-    nbasis = estimability::nonest.basis(X),
+    nbasis = if (is.null(aliased)) {
+      estimability::nonest.basis(X)
+    } else {
+      aliased[colnames(X), , drop = FALSE]
+    },
     V = V,
     dffun = function(k, dfargs) Inf,
     dfargs = list()
