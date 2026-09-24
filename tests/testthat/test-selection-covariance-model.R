@@ -807,9 +807,7 @@ fbcm_trial_field_components <- function() {
   )
 }
 
-# V written out from the model's definition: the residual, the trial
-# variance, and the field's variance times rho_range^|dr| rho_row^|dc| within
-# a trial.
+# V written out from the model's definition.
 fbcm_trial_field_v <- function(d, components) {
   rho <- components$rho$spatial
   same <- outer(as.integer(d$trial), as.integer(d$trial), "==")
