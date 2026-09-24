@@ -454,8 +454,8 @@ test_that("the default-prior notice is two sentences with the scale and the off 
   note <- msgs[grepl("half_normal(scale = ", msgs, fixed = TRUE)]
   expect_length(note, 1L)
   # The scale is 5 sd(y) on an identity link.
-  expect_match(note, paste0("half_normal(scale = ", format(5 * stats::sd(d$y),
-    digits = 3), ")"), fixed = TRUE)
+  expect_match(note, paste0("half_normal(scale = ",
+    flexyBayes:::.fb_signif_string(5 * stats::sd(d$y)), ")"), fixed = TRUE)
   expect_match(note, "?fb_prior", fixed = TRUE)
   expect_match(note, "options(flexyBayes.silence_default_prior_note = TRUE)",
     fixed = TRUE)

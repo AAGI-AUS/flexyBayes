@@ -1240,13 +1240,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: by default the residual and every random-effect group ",
-    "have a half_normal(scale = ",
+    "flexyBayes: by default the residual and each random-effect standard ",
+    "deviation have a half_normal(scale = ",
     .fb_signif_string(scale),
-    ") prior on their standard deviation, ",
+    ") prior, ",
     .fb_default_scale_units(basis),
-    ", with the scale divided by sd(x) for a random slope on x. A Gaussian ",
-    "INLA fit shows the same prior on the standardised response. ",
+    ", with the scale divided by sd(x) for a random slope on x. ",
     "See ?fb_prior to set other priors; ",
     "options(flexyBayes.silence_default_prior_note = TRUE) hides this note."
   )
