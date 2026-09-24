@@ -2782,7 +2782,7 @@
 #'   its own formula, random and residual structure, priors and engine, and
 #'   takes each variance at its posterior mean; it also builds uncorrelated
 #'   random slopes, `diag(f):g`, an `ar1(row):ar1(col)` field on one trial,
-#'   `at(trial):ar1(row):ar1(col)` (one field per trial with shared
+#'   `id(trial):ar1(row):ar1(col)` (one field per trial with shared
 #'   parameters) and `vm()` or `ped()` known covariances, at the cost of one
 #'   refit per fold.
 #'   The Bayesian workflow integrates the covariance, so the argument applies

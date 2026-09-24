@@ -147,7 +147,7 @@
     ar1 = asr(~ ar1(t), series[series$plot == "P1", ]),
     ar1_grouped = asr(~ ar1(t):plot, series),
     ar1_spatial = asr(~ ar1(row):ar1(col), grid[grid$trial == "TA", ]),
-    ar1_replicated = asr(~ at(trial):ar1(row):ar1(col), grid)
+    ar1_replicated = asr(~ id(trial):ar1(row):ar1(col), grid)
   )
 }
 
@@ -260,7 +260,7 @@ test_that("the levels a specification reports are the data's, in index order", {
     row = levels(grid$row), col = levels(grid$col), trial = levels(grid$trial),
     stringsAsFactors = FALSE
   )
-  expect_identical(s$row_id$label, "at(trial):ar1(row):ar1(col)")
+  expect_identical(s$row_id$label, "id(trial):ar1(row):ar1(col)")
   expect_identical(
     s$row_id$levels,
     paste(cells$trial, cells$row, cells$col, sep = ":")

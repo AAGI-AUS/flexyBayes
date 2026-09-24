@@ -43,7 +43,7 @@
 #'   display covers, or `type` and `ndraws` for `"pp_check"`. The spatial
 #'   field takes `trial`, the identifier printed in its title and the only
 #'   label it adds to the array's own row and column labels; on a fit with
-#'   one field per trial, `random = ~ at(trial):ar1(row):ar1(col)`, it names
+#'   one field per trial, `random = ~ id(trial):ar1(row):ar1(col)`, it names
 #'   the level whose field is drawn.
 #' @returns Invisibly, the object the underlying plotting call returns --
 #'   a \pkg{ggplot2} object for the displays built with it, the
@@ -635,7 +635,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
 # mapped back to the response scale when the fit was built; node k holds
 # row index ((k - 1) mod n_row) + 1 and column index
 # floor((k - 1) / n_row) + 1, and with one field per trial,
-# at(trial):ar1(row):ar1(col), each trial's nodes follow the previous
+# id(trial):ar1(row):ar1(col), each trial's nodes follow the previous
 # trial's. The indices are the positions of the row and column labels in
 # factor(), as the emitter builds them, so the display is labelled with the
 # array's own labels and with nothing read from any other column.

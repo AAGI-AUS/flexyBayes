@@ -47,7 +47,7 @@ for example \code{variable} to restrict which parameters a diagnostic
 display covers, or \code{type} and \code{ndraws} for \code{"pp_check"}. The spatial
 field takes \code{trial}, the identifier printed in its title and the only
 label it adds to the array's own row and column labels; on a fit with
-one field per trial, \code{random = ~ at(trial):ar1(row):ar1(col)}, it names
+one field per trial, \code{random = ~ id(trial):ar1(row):ar1(col)}, it names
 the level whose field is drawn.}
 }
 \value{
