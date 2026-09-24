@@ -283,10 +283,9 @@ the penalised reference's out-of-fold score refuses any drop, both with
 }
 \section{Aliased protected columns}{
 
-In an unbalanced multi-trial design some cells of a protected interaction,
-such as \code{VARIETY:NAPPLIED:SEEDRATE}, are never sown, so some of its columns
-are linear combinations of others, on all rows or on a fold's training
-rows. With \code{protected_alias = "refuse"} a fold like that refuses with
+In an unbalanced multi-trial design some cells of a protected interaction
+\code{VARIETY:NAPPLIED:SEEDRATE} are never sown, so some of its columns are
+linear combinations of others, on all rows or on a fold's training rows. With \code{protected_alias = "refuse"} a fold like that refuses with
 \code{selection_fold_protected_unidentified}. With \code{protected_alias = "drop"}
 each fold drops them as ASReml 4.2 does: the protected columns are taken
 term by term, and within a term in descending order of their factor
@@ -296,9 +295,9 @@ dropped. These are the columns asreml reports as aliased, less the
 first-level columns that the treatment contrasts leave out.
 
 A held-out row whose protected row is not a linear combination of the
-training rows' protected rows, such as a cell the training rows never
-sowed, has no estimable prediction; \code{predict()} on the asreml fit
-returns \code{NA} for its cell. Such a row is not scored. The certificate's
+training rows' protected rows has no estimable prediction: its cell was
+never sown on the training rows, and \code{predict()} on the asreml fit
+returns \code{NA} for it. Such a row is not scored. The certificate's
 \code{design$candidate_space} lists each fold's dropped protected columns in
 \code{protected_dropped} and, in \code{not_estimable}, each fold's held-out rows and
 how many of them were not estimable, and the printed certificate gives
