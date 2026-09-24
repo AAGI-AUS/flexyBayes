@@ -1,15 +1,6 @@
-# =============================================================================
-# The default variance-component prior is reported with the scale it is
-# written on.
-#
-# A Gaussian INLA fit runs on the standardised response y / sd(y) (after
-# centring). The note announcing the default gives half_normal(scale = 5 sd(y))
-# on the response, while the fit banner and print() show the prior INLA
-# received, half-normal-SD(5) on the standardised response. Both are one
-# prior: if sigma ~ half-normal(a k), then sigma / k ~ half-normal(a). Each
-# report now says which scale it is on, and the test below converts one to
-# the other by hand.
-# =============================================================================
+# The default variance-component prior is reported with its scale. A
+# Gaussian INLA fit runs on y / sd(y), and sigma ~ half-normal(a k) is
+# sigma / k ~ half-normal(a); the tests convert one to the other by hand.
 
 .ps_data <- function() {
   set.seed(20260924L)

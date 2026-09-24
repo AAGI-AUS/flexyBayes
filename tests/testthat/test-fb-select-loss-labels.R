@@ -1,13 +1,6 @@
-# =============================================================================
-# fb_select(): glance() and print() say that the out-of-fold scores are
-# losses, which loss, and which way is better.
-#
-# Every out-of-fold score is stored as a loss. On the Bayesian workflow the
-# default metric, elpd, is stored negated, so glance() once printed
-# `metric = "elpd"` beside a positive number that fell as prediction
-# improved. The oracle below is the loss and the ELPD computed by hand from
-# the per-unit values the result stores.
-# =============================================================================
+# fb_select(): glance() and print() name the out-of-fold loss and its
+# direction. Oracle: the loss and the ELPD computed by hand from the per-unit
+# values stored on the result.
 
 .ll_cache <- new.env(parent = emptyenv())
 
