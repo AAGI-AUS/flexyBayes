@@ -163,8 +163,8 @@
 # so that no structure passes through `new_cluster` with its levels
 # untouched: a known-covariance term (`vm()`, `ped()`) indexes its matrix by
 # level, and a new level is a row the matrix does not have; an
-# autoregressive field indexes a lattice; and a type this function does not
-# list is named in the refusal too.
+# autoregressive field with no id() factor indexes one lattice across all
+# rows; and a type this function does not list is named in the refusal too.
 .fb_sel_grouping_columns <- function(fb) {
   columns <- character(0)
   unrelabelled <- character(0)
@@ -186,6 +186,10 @@
       us_gxe = ,
       fa_gxe = ,
       corh_gxe = t$inner,
+      # A field written id(g):ar1(r):ar1(c) is one realisation per level of
+      # g with shared parameters, so a held-out level is a new, independent
+      # realisation. Without id(g) the field has no column to relabel.
+      ar1_spatial = t$at_var,
       spline = ,
       smooth_mgcv = ,
       smoother = ,
