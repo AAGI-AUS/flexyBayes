@@ -2738,8 +2738,13 @@
 #'   at a point is the set of non-zero penalised coefficients after one rule:
 #'   at `s >= 1` every one is zero, the exact solution there; elsewhere a
 #'   coefficient is set to zero when removing it moves its own gradient
-#'   coordinate by at most the path's KKT threshold of `1e-6`, and the point
-#'   without it still meets that threshold.
+#'   coordinate by at most the path's KKT threshold, and the point without it
+#'   still meets that threshold. The threshold is `1e-6` for ridge, Laplace
+#'   and elastic net. For the grouped families it is `1e-6` times the largest
+#'   absolute entry of `A'z`, the gradient of the least-squares part at zero
+#'   on the fold's whitened, protected-residualised payload `(A, z)`. Every
+#'   path point is solved to its threshold, and group lasso and group elastic
+#'   net points are solved by block coordinate descent.
 #' @param resamples An [fb_resamples()] specification.
 #' @param prediction `"new_cluster"` (default) or `"known_cluster"`. A
 #'   held-out cluster's own effect is not estimable from the training rows,

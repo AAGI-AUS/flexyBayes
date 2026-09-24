@@ -31,6 +31,19 @@
   training rows do not estimate is not scored, and the certificate lists both
   per fold. The default, `"refuse"`, is unchanged.
 
+* `group_lasso()` gains `alpha` (default 1). Below one it is a group elastic
+  net: `(alpha / scale) sum_g sqrt(p_g) ||beta_g||` plus
+  `((1 - alpha) / (2 scale)) ||beta||^2`, and a group still enters or leaves
+  whole.
+* Group lasso and group elastic net path points are solved by block
+  coordinate descent with an exact update for each group; the other grouped
+  families keep the proximal-gradient solver.
+* A grouped-family path point is accepted when its KKT residual is at most
+  `1e-6` times the largest entry of `|A'z|` on the fold's whitened payload, in
+  place of an absolute `1e-6`, so the threshold follows the response's units.
+  Ridge, Laplace and elastic net keep the absolute `1e-6`. The threshold and
+  the solver of each point are recorded in the optimiser arm's `kkt` table.
+
 # flexyBayes 0.14.0
 
 The release for a two-stage analysis of a designed multi-environment trial.
