@@ -21,6 +21,7 @@ fb_select(
   covariance = c("reml_plugin", "base_model"),
   refit = NULL,
   ablation = FALSE,
+  protected_alias = c("refuse", "drop"),
   ...
 )
 }
@@ -140,6 +141,12 @@ loss; see "Grouped ablation". It needs
 \code{workflow = "penalized_optimizer"}, and refuses with
 \code{selection_ablation_route_undefined} elsewhere, before any fit.}
 
+\item{protected_alias}{\code{"refuse"} (the default) or \code{"drop"}: what a fold
+does with a protected column its training rows do not identify. See
+"Aliased protected columns". \code{"drop"} needs
+\code{workflow = "penalized_optimizer"} or \code{"unpenalized_benchmark"}, and no
+\code{refit}.}
+
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
 }
@@ -258,7 +265,8 @@ rows before any fold is fitted. The protected columns, then the candidate
 columns in the order \code{candidates} writes them, are factorised by
 \code{qr()} with tolerance \code{1e-7}, every column but the intercept centred on
 the training rows. A protected column aliased there refuses with
-\code{selection_fold_protected_unidentified}, and a factor level present only in
+\code{selection_fold_protected_unidentified}, unless \code{protected_alias = "drop"}
+(see "Aliased protected columns"), and a factor level present only in
 a fold's assessment rows refuses with \code{selection_fold_level_absent}, both
 before any engine runs. A candidate column aliased there is dropped for that
 fold, as when a fold's training trials leave fewer degrees of freedom than
@@ -273,6 +281,35 @@ Bayesian route drops whole terms and refuses a term aliased only in part, and
 the penalised reference's out-of-fold score refuses any drop, both with
 \code{selection_fold_candidate_drop_not_representable}.
 }
+\section{Aliased protected columns}{
+
+In an unbalanced multi-trial design some cells of a protected interaction,
+such as \code{VARIETY:NAPPLIED:SEEDRATE}, are never sown, so some of its columns
+are linear combinations of others, on all rows or on a fold's training
+rows. With \code{protected_alias = "refuse"} a fold like that refuses with
+\code{selection_fold_protected_unidentified}. With \code{protected_alias = "drop"}
+each fold drops them as ASReml 4.2 does: the protected columns are taken
+term by term, and within a term in descending order of their factor
+levels, the term's first factor varying slowest, and a column that is a
+linear combination of the columns before it on the training rows is
+dropped. These are the columns asreml reports as aliased, less the
+first-level columns that the treatment contrasts leave out.
+
+A held-out row whose protected row is not a linear combination of the
+training rows' protected rows, such as a cell the training rows never
+sowed, has no estimable prediction; \code{predict()} on the asreml fit
+returns \code{NA} for its cell. Such a row is not scored. The certificate's
+\code{design$candidate_space} lists each fold's dropped protected columns in
+\code{protected_dropped} and, in \code{not_estimable}, each fold's held-out rows and
+how many of them were not estimable, and the printed certificate gives
+the totals. A fold with no estimable held-out row refuses. The Bayesian
+workflow and \code{refit = list(method = "bayes")} write the protected part as
+formula text, which cannot leave out one column of a term, and both
+refuse \code{"drop"}. With
+\code{covariance = "base_model"} the fold's variance components come from a
+refit of the base model with every protected column, under its prior.
+}
+
 \section{Bayesian refit of the frozen support}{
 
 With \code{workflow = "penalized_optimizer"} and a penalty that selects,

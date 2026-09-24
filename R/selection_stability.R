@@ -228,7 +228,8 @@
                               path,
                               decision,
                               resamples,
-                              seed) {
+                              seed,
+                              protected_alias = "refuse") {
   settings <- .fb_sel_stability_settings(decision, resamples)
   b_count <- settings$subsamples
   units <- .fb_sel_stability_units(data, settings$unit)
@@ -267,7 +268,8 @@
     )
     space <- .fb_sel_candidate_space(
       protected, candidates, data, list(split),
-      groupings = groupings, route = "benchmark"
+      groupings = groupings, route = "benchmark",
+      protected_alias = protected_alias
     )
     substrate <- .fb_sel_fold_substrate(
       data,

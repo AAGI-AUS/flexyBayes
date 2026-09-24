@@ -1623,7 +1623,7 @@
   # Canonical fold numbers, by the sorted units -----
   scored <- rowSums(!is.na(row_fold)) > 0L
   units <- sort(unique(unit_key[scored]), method = "radix")
-  first_row <- match(units, unit_key)
+  first_row <- which(scored)[match(units, unit_key[scored])]
   canonical_rows <- row_fold
   seen_by_repeat <- list()
   unit_to_fold <- do.call(rbind, lapply(seq_along(repeats), function(r) {
@@ -2258,7 +2258,8 @@
                                  shared_predictive_table = FALSE,
                                  covariance = "reml_plugin",
                                  engine = NULL,
-                                 ablation = FALSE) {
+                                 ablation = FALSE,
+                                 protected_alias = "refuse") {
   arms <- list()
   refusals <- character(0)
   stability_error <- NULL
@@ -2288,7 +2289,8 @@
     # The base's offset, subtracted from the response in each fold before
     # whitening; the penalised optimiser reads the same substrates.
     offsets = base$fb$offsets %||% character(0),
-    cov_model = cov_model
+    cov_model = cov_model,
+    protected_alias = protected_alias
   )
   arms$gls <- list(
     workflow = gls$workflow,
@@ -2401,7 +2403,8 @@
               path = path,
               decision = decision,
               resamples = resamples,
-              seed = seed
+              seed = seed,
+              protected_alias = protected_alias
             ),
             error = function(e) e
           )
@@ -2556,7 +2559,8 @@
 #' columns in the order `candidates` writes them, are factorised by
 #' `qr()` with tolerance `1e-7`, every column but the intercept centred on
 #' the training rows. A protected column aliased there refuses with
-#' `selection_fold_protected_unidentified`, and a factor level present only in
+#' `selection_fold_protected_unidentified`, unless `protected_alias = "drop"`
+#' (see "Aliased protected columns"), and a factor level present only in
 #' a fold's assessment rows refuses with `selection_fold_level_absent`, both
 #' before any engine runs. A candidate column aliased there is dropped for that
 #' fold, as when a fold's training trials leave fewer degrees of freedom than
@@ -2570,6 +2574,33 @@
 #' Bayesian route drops whole terms and refuses a term aliased only in part, and
 #' the penalised reference's out-of-fold score refuses any drop, both with
 #' `selection_fold_candidate_drop_not_representable`.
+#'
+#' @section Aliased protected columns:
+#' In an unbalanced multi-trial design some cells of a protected interaction,
+#' such as `VARIETY:NAPPLIED:SEEDRATE`, are never sown, so some of its columns
+#' are linear combinations of others, on all rows or on a fold's training
+#' rows. With `protected_alias = "refuse"` a fold like that refuses with
+#' `selection_fold_protected_unidentified`. With `protected_alias = "drop"`
+#' each fold drops them as ASReml 4.2 does: the protected columns are taken
+#' term by term, and within a term in descending order of their factor
+#' levels, the term's first factor varying slowest, and a column that is a
+#' linear combination of the columns before it on the training rows is
+#' dropped. These are the columns asreml reports as aliased, less the
+#' first-level columns that the treatment contrasts leave out.
+#'
+#' A held-out row whose protected row is not a linear combination of the
+#' training rows' protected rows, such as a cell the training rows never
+#' sowed, has no estimable prediction; `predict()` on the asreml fit
+#' returns `NA` for its cell. Such a row is not scored. The certificate's
+#' `design$candidate_space` lists each fold's dropped protected columns in
+#' `protected_dropped` and, in `not_estimable`, each fold's held-out rows and
+#' how many of them were not estimable, and the printed certificate gives
+#' the totals. A fold with no estimable held-out row refuses. The Bayesian
+#' workflow and `refit = list(method = "bayes")` write the protected part as
+#' formula text, which cannot leave out one column of a term, and both
+#' refuse `"drop"`. With
+#' `covariance = "base_model"` the fold's variance components come from a
+#' refit of the base model with every protected column, under its prior.
 #'
 #' @section Bayesian refit of the frozen support:
 #' With `workflow = "penalized_optimizer"` and a penalty that selects,
@@ -2737,6 +2768,11 @@
 #'   loss; see "Grouped ablation". It needs
 #'   `workflow = "penalized_optimizer"`, and refuses with
 #'   `selection_ablation_route_undefined` elsewhere, before any fit.
+#' @param protected_alias `"refuse"` (the default) or `"drop"`: what a fold
+#'   does with a protected column its training rows do not identify. See
+#'   "Aliased protected columns". `"drop"` needs
+#'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`, and no
+#'   `refit`.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
@@ -2798,9 +2834,11 @@ fb_select <- function(base,
                       covariance = c("reml_plugin", "base_model"),
                       refit = NULL,
                       ablation = FALSE,
+                      protected_alias = c("refuse", "drop"),
                       ...) {
   workflow <- match.arg(workflow)
   fallback <- match.arg(fallback)
+  protected_alias <- match.arg(protected_alias)
   prediction <- match.arg(prediction)
   covariance <- .fb_select_resolve_covariance(covariance)
   decision <- .fb_select_check_decision(decision)
@@ -2993,6 +3031,23 @@ fb_select <- function(base,
     )
   }
 
+  if (identical(protected_alias, "drop") &&
+        (identical(workflow, "bayes") || !is.null(value_request))) {
+    stop(
+      "fb_select(): protected_alias = \"drop\" fits each fold on the ",
+      "protected columns its training rows identify, and ",
+      if (identical(workflow, "bayes")) {
+        "the Bayesian workflow"
+      } else {
+        "refit = list(method = \"bayes\")"
+      },
+      " writes each fold's model as formula text, which cannot leave out one ",
+      "column of a term. Ask for workflow = \"penalized_optimizer\" or ",
+      "\"unpenalized_benchmark\", without `refit`.",
+      call. = FALSE
+    )
+  }
+
   if (identical(workflow, "penalized_optimizer") && is.null(penalty)) {
     stop(.fb_refusal_condition(
       reason_code = "selection_penalty_spec_malformed",
@@ -3069,7 +3124,8 @@ fb_select <- function(base,
       decision = decision,
       shared_predictive_table = TRUE,
       covariance = covariance,
-      engine = engine
+      engine = engine,
+      protected_alias = protected_alias
     )
     return(.fb_select_assemble(
       base = base,
@@ -3113,6 +3169,7 @@ fb_select <- function(base,
       ablation = ablation,
       engine = engine,
       budget = budget,
+      protected_alias = protected_alias,
       decision_resolution = list(
         requested = decision_resolution$requested,
         resolved_from = if (
@@ -3547,7 +3604,8 @@ fb_select <- function(base,
                                  value_request = NULL,
                                  ablation = FALSE,
                                  engine = NULL,
-                                 budget = NULL) {
+                                 budget = NULL,
+                                 protected_alias = "refuse") {
   resolved <- .fb_select_resolve_penalty(
     base,
     candidates,
@@ -3624,7 +3682,8 @@ fb_select <- function(base,
     shared_predictive_table = TRUE,
     covariance = covariance,
     engine = engine,
-    ablation = ablation
+    ablation = ablation,
+    protected_alias = protected_alias
   )
   if (is.null(bench$arms$glmnet)) {
     stop(.fb_refusal_condition(
@@ -5284,6 +5343,21 @@ print.fb_select_certificate <- function(x, ...) {
           )
         },
         "\n", sep = "")
+    if (identical(cs$protected_alias, "drop")) {
+      cat("  protected  : aliased columns dropped the ASReml way; ",
+          if (nrow(cs$protected_dropped) == 0L) {
+            "none on any fold"
+          } else {
+            paste0(
+              length(unique(cs$protected_dropped$column)), " columns on ",
+              length(unique(cs$protected_dropped$fold)), " of ", cs$n_folds,
+              " folds"
+            )
+          },
+          "; ", sum(cs$not_estimable$n_not_estimable), " of ",
+          sum(cs$not_estimable$n_assess),
+          " held-out rows not estimable and not scored\n", sep = "")
+    }
   }
   cat("  approximations: ",
       if (length(x$approximations) == 0L) "none declared"
