@@ -26,7 +26,7 @@
       "returned. Probe B4 found an optimiser reporting convergence 0.16 ",
       "away from a lasso optimum; the certificate here is the residual ",
       "measured at the returned point, and a point that fails it is ",
-      "withheld rather than labelled a mode."
+      "withheld."
     ),
     message_template = paste0(
       "fb_select(): the proximal-gradient mode stopped with a KKT residual of ",

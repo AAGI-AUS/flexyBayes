@@ -735,16 +735,10 @@
 
 
 # .fb_sel_bcd_grouped() --- the group lasso and group elastic net mode by
-# block coordinate descent, with the same KKT certificate and refusal as
-# `.fb_sel_prox_mode_grouped()`.
-#
-# Each sweep minimises the objective exactly over one group at a time on the
-# design as it is, so the penalty stays sum_g w_g ||beta_g||_2 on these
-# columns; nothing is orthonormalised. It applies where the penalty has no
-# L1 and no exclusive part (lambda_l1 = lambda_exclusive = 0). The residual
-# is recomputed from `A` and `z` after every sweep, and a sweep that leaves
-# it above `tol` is followed by the restricted polish, kept only when it
-# lowers the residual.
+# block coordinate descent, for penalties with lambda_l1 = lambda_exclusive =
+# 0. Groups are not orthonormalised, so the penalty is on beta_g as the
+# columns stand. After each sweep the KKT residual is recomputed from `A` and
+# `z`; above `tol`, the restricted polish is tried and kept if it lowers it.
 .fb_sel_bcd_grouped <- function(
   A,
   z,
