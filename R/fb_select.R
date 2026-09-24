@@ -3978,6 +3978,14 @@ fb_select <- function(base,
 
 # --- small helpers -------------------------------------------------------- #
 
+# The name of the loss an out-of-fold score holds. `elpd` is stored negated.
+.fb_select_loss_name <- function(metric) {
+  if (is.null(metric) || length(metric) == 0L) {
+    return(NA_character_)
+  }
+  if (identical(metric, "elpd")) "neg_elpd" else metric
+}
+
 # The clustered-draw settings the projection search runs at. They are
 # constants rather than arguments in this release: they trade a small amount
 # of Monte-Carlo error in the elpd column for a search that finishes, and a
@@ -4237,12 +4245,13 @@ print.fb_select <- function(x, digits = 4L, ...) {
   }
 
   if (!is.null(x$increment)) {
-    cat("\n  out-of-fold ", x$increment$metric, ":\n", sep = "")
+    cat("\n  out-of-fold loss (", .fb_select_loss_name(x$increment$metric),
+        ", lower is better):\n", sep = "")
     cat("    protected only : ", round(x$increment$protected_only, digits),
         "\n", sep = "")
     cat("    with candidates: ", round(x$increment$full, digits), "\n",
         sep = "")
-    cat("    improvement    : ", round(x$increment$improvement, digits),
+    cat("    reduction      : ", round(x$increment$improvement, digits),
         "  (", x$increment$n_units, " independent ",
         x$increment$se_unit, ")\n", sep = "")
   }
@@ -4673,6 +4682,15 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
 #' valuation of the refitted supports.
 #'
 #' @details
+#' The out-of-fold scores are losses, so lower is better. `loss` names the
+#' loss: `neg_elpd`, minus the log predictive density summed over a held-out
+#' unit's rows (the Bayesian workflow's default), or `nlpd` (per row),
+#' `rmse` or `mse`. `loss_protected_only` and `loss_full` are that loss
+#' averaged over the `n_units` held-out units, for the protected model alone
+#' and with the candidates added, and `loss_reduction` is
+#' `loss_protected_only - loss_full`, positive when the candidates improve
+#' prediction.
+#'
 #' `value_elpd` is the held-out log predictive density summed over the held-out
 #' units, and `value_elpd_se` its standard error across units; `value_formula`
 #' states both. `block_share_median`, `block_share_lower` and
@@ -4726,11 +4744,12 @@ glance.fb_select <- function(x, against = NULL, ...) {
     provider = x$provider,
     prior = x$prior,
     decision = x$decision,
-    metric = x$increment$metric %||% x$certificate$resampling$metric %||%
-      NA_character_,
-    protected_only = x$increment$protected_only %||% NA_real_,
-    full = x$increment$full %||% NA_real_,
-    improvement = x$increment$improvement %||% NA_real_,
+    loss = .fb_select_loss_name(
+      x$increment$metric %||% x$certificate$resampling$metric
+    ),
+    loss_protected_only = x$increment$protected_only %||% NA_real_,
+    loss_full = x$increment$full %||% NA_real_,
+    loss_reduction = x$increment$improvement %||% NA_real_,
     chosen_size = x$selection$chosen_size %||% NA_integer_,
     n_units = x$increment$n_units %||% NA_integer_,
     se_unit = x$increment$se_unit %||% NA_character_,
