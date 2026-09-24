@@ -26,29 +26,22 @@ rnd <- function(d, k = 3) {
 }
 ```
 
-Two public trials, fitted both ways. The ASReml numbers on this page were
-computed once with a licensed ASReml `r asreml_ref$stamp$asreml` under
-`r asreml_ref$stamp$r` on `r asreml_ref$stamp$date`, by
-`data-raw/asreml_reference.R`, and stored with the package so this page
-builds without a licence. Nothing here is quoted from memory or from a
-manual.
+This is a pilot vignette, to be revised and extended. It compares ASReml and
+flexyBayes on one public trial, first as laid out and then reduced in size.
+The ASReml results were computed with ASReml `r asreml_ref$stamp$asreml`
+under `r asreml_ref$stamp$r` on `r asreml_ref$stamp$date` by
+`data-raw/asreml_reference.R`, and are stored in the package, so this page
+builds without an ASReml licence.
 
-The order is deliberate. First a case where the two agree, because a
-comparison is worth nothing until you have seen that. Then the cases where
-they do not, and why.
+# The whole trial
 
-# 1. A whole alpha design: the two agree
-
-`john.alpha` is the trial from the previous pages. Twenty-four genotypes,
-three replicates, blocks nested in replicates.
+`john.alpha` has 24 genotypes, three replicates, and blocks nested within
+replicates. The two calls are written the same way:
 
 | | ASReml | flexyBayes |
 |---|---|---|
-| call | `asreml(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` | `flexybayes(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` |
+| model | `asreml(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` | `flexybayes(yield ~ rep, random = ~ rep:block + gen, data = john.alpha)` |
 | heritability | `vpredict(m, h2 ~ V2/(V2 + V3))` | `vpredict(fit, h2 ~ sd_gen^2/(sd_gen^2 + sigma^2))` |
-
-The `fixed` and `random` arguments are the same text. The heritability is
-asked for the same way, and the name is the same, because it is ASReml's verb.
 
 ```{r alpha-fit}
 data(john.alpha, package = "agridat")
@@ -57,44 +50,37 @@ fit <- flexybayes(
   fixed   = yield ~ rep,
   random  = ~ rep:block + gen,
   data    = john.alpha,
-  backend = "inla"
+  backend = "inla",
+  verbose = FALSE
 )
 
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), n_draws = 4000)
 ```
 
+ASReml:
+
 ```{r alpha-ref}
 rnd(asreml_ref$alpha[1, ])
 ```
 
-Heritability 0.64 either way, and the two intervals overlap almost exactly.
-The variance components agree with `lme4::lmer()`'s REML fit of the same
-model as well. On a trial of this size there is nothing to choose between
-them, and any claim that there is should be treated with suspicion.
+Both give a heritability of about 0.64, with similar intervals.
 
-# 2. Shrink the trial, and one of them stops making sense
+# Smaller trials
 
-Now degrade the same trial: fewer genotypes, then plots dropped at random.
-The whole-trial value of 0.64 is the target -- it is what the full design
-says, and a method that recovers it from less data is doing well.
-
-ASReml, from the stored run:
+The same trial is now reduced, first by keeping fewer genotypes and then by
+dropping plots at random. ASReml:
 
 ```{r alpha-degraded-asreml}
 rnd(asreml_ref$alpha)
 ```
 
-Read the `lower` column. At twelve genotypes -- half the trial, and still a
-real trial -- the interval runs from **-0.53**. At six it runs from -1.26 to
-1.26, wider than the parameter space. Two of the random-deletion rows put the
-upper bound above 1. A heritability is a proportion of variance and cannot be
-negative or exceed one, so these intervals are not describing a heritability.
-They are the delta method extrapolating a normal approximation off the end of
-the parameter space, which is what it does when a variance component
-approaches its boundary. ASReml is not doing anything wrong here. It is
-reporting a standard error, and a standard error is a local quantity.
+With 12 genotypes the lower limit is `r round(asreml_ref$alpha$lower[2], 2)`.
+With 6 genotypes the interval runs from `r round(asreml_ref$alpha$lower[4], 2)`
+to `r round(asreml_ref$alpha$upper[4], 2)`. A heritability lies between 0 and
+1, so these limits are outside its range. They come from the delta method,
+whose normal approximation fails when a variance component is near zero.
 
-The same designs through flexyBayes:
+flexyBayes on the same designs:
 
 ```{r alpha-degraded-fb}
 degrade <- function(n_gen = NULL, drop_frac = NULL) {
@@ -127,117 +113,17 @@ out <- do.call(rbind, lapply(names(designs), function(nm) {
 rnd(out)
 ```
 
-Every interval lies inside `[0, 1]`, because every draw does. They widen as
-the design shrinks, which is the correct response to having less
-information, and they keep containing the whole-trial value.
+Every interval lies between 0 and 1, because every posterior draw does. The
+intervals for the reduced designs are wider than for the whole trial.
 
-Two things must be said about this plainly.
+With 6 genotypes the data say little about the genetic variance. ASReml
+estimates it as zero, while the posterior stays away from zero because of
+the prior. If the true genetic variance were near zero, the prior would hold
+the estimate too high. The posterior interval is not guaranteed to be right,
+but it contains only possible values.
 
-The prior is doing work here, and it should be. With six genotypes the data
-barely identifies a genetic variance, ASReml's REML estimate goes to the
-boundary and reports zero, and the posterior sits well above it. If the truth
-really were near zero the prior would be holding the estimate up wrongly. What
-the posterior gives you is not a guarantee of being right -- it is an interval
-you can act on, where the alternative is an interval that includes impossible
-values.
+# Summary
 
-And the point estimates are not the story. At 65 per cent deletion flexyBayes
-returns a heritability some distance from the whole-trial figure. Its interval
-still contains it, and still means what it says.
-
-# 3. A multi-environment trial: what the package will and will not report
-
-`dasilva.maize` is nine environments, fifty-five genotypes, three replicates,
-complete. The standard model for it is factor-analytic: one common factor
-across environments, one variance specific to each, one residual variance per
-environment.
-
-flexyBayes fitted that model on INLA from 0.10.0.9000. From 0.13.0 it refuses
-it, on both engines, and on a page about trusting numbers the reason belongs
-in the open.
-
-INLA does represent the structure. Each common factor is one latent field
-entered per environment as a scaled copy, and the copy's scaling is the
-loading, so the loadings arrive with a posterior rather than a point estimate.
-The question never asked was whether a second identical call returns the same
-covariance. On this trial it does: eight identical fits agreed to about one
-part in ten thousand. On `agridat::besag.met`, where the genetic signal is
-weak, the same eight calls moved a genotype-by-environment variance by a
-factor of 1.23 and a genetic correlation by 0.12, and every one of them
-reported a converged mode and a passing numerical check. A structure that
-returns a different covariance each time it is asked is reporting where the
-optimiser started, and this package does not publish that as an estimate.
-
-What it does report for a multi-environment trial is `diag(env):gen`, one
-genetic variance per environment with no covariance between them, on either
-engine; and `us(env):gen` on brms for up to five environments, which estimates
-the correlations directly.
-
-The point the factor-analytic fit was making here still stands, because it is
-a property of the delta method rather than of the structure. ASReml returns
-these three derived quantities on this trial:
-
-```{r met-ref}
-rnd(asreml_ref$met_derived)
-```
-
-Two of them are genetic correlations, and their delta-method intervals reach
-**1.03** and **1.34**. A correlation cannot exceed one. Both sit close enough
-to the boundary that a symmetric interval around a point estimate leaves the
-parameter space -- the failure a posterior does not have, because a
-correlation computed on every draw is a correlation on every draw.
-
-The same thing shows in the variance components. Environment 8's specific
-variance:
-
-```{r met-e8}
-rnd(asreml_ref$met_varcomp[
-  asreml_ref$met_varcomp$term == "fa(env, 1):gen!E8!var", ], 4)
-```
-
-An estimate of 0.017 with a standard error of 0.137: a variance whose standard
-error is eight times its own size. That is the case for reporting an interval
-that stays inside the parameter space, and it is a large part of why this
-package exists. It is also why the factor-analytic route is refused outright
-rather than shipped with a caveat. An interval is worth more than a standard
-error only when the fit behind it is the same fit twice.
-
-# 4. What missing cells do, and do not, change
-
-flexyBayes can keep a plot whose response was lost as a design row and treat
-the response as a latent quantity (`na_action = "augment"`, the default),
-rather than deleting the row. It is worth saying what that does.
-
-On both trials on this page, and under deletion at random, it changes the
-variance components hardly at all. That is not a disappointment, it is the
-ignorability result: when the reason a value is missing is unrelated to the
-value, the parameter posterior is the same whether the cell is carried or
-dropped only if both representations put the same prior on the same model
-parameters. A backend default prior can depend on the realised design matrix,
-so an explicit common prior is required before treating the two fits as this
-identity check. This posterior identity is not a promise about what an
-optimiser returns from two finite numerical runs. Factor-analytic GxE is not
-an admitted route in this release:
-both engines refuse it because repeated identical fits did not meet the
-repeatability contract.
-
-What carrying the cell does buy is the cell itself: a posterior for the
-response that was not observed, on the same footing as the ones that were.
-Where it would change the parameters is when the reason for the missingness
-is related to the response -- the plot lost because it lodged, the trial
-abandoned because it failed. That case is not demonstrated here, and it is
-not claimed.
-
-# What to take away
-
-On a whole, well-sized trial the two approaches agree, and if you only ever
-analyse whole trials the case for changing is weak.
-
-The case is in three places. A quantity near a boundary -- a small variance
-component, a high genetic correlation -- gets an interval that stays in the
-parameter space instead of one that leaves it. A small or damaged trial gets
-an interval that widens with the loss of information instead of a standard
-error whose
-approximation has stopped holding. And any function of the variance
-components is available exactly, from one line, instead of through a
-linearisation.
+On the whole trial the two methods agree. On smaller trials, and for
+quantities near a boundary such as a small variance, the posterior interval
+stays within the parameter's range and the delta-method interval may not.
