@@ -105,6 +105,9 @@ the default reaches, on both engines. \code{s} is \code{5 * sd(y)} on an identit
 link, \code{3} on a log link and \code{5} on a logit link; on an uncorrelated
 random slope on a numeric covariate \code{x} it is \code{s / sd(x)}. The default
 has no upper bound. \code{\link[=prior_summary]{prior_summary()}} prints the scale a fit ran under.
+A Gaussian identity-link fit on INLA runs on the response divided by
+\code{sd(y)}, where the same prior is \code{half_normal(scale = 5)}; the printed
+formula and \code{prior_summary()} show it on both scales.
 }
 
 \examples{

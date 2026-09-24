@@ -831,7 +831,8 @@ flexybayes <- function(
     fb$priors <- hn_default
     prior <- hn_default
     .default_prior_note_once(
-      scale = attr(hn_default, "fb_prior_default_scale")
+      scale = attr(hn_default, "fb_prior_default_scale"),
+      basis = attr(hn_default, "fb_prior_default_basis")
     )
   }
 
