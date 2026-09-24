@@ -308,7 +308,7 @@ test_that("glance reports the increment and how it was scored", {
   g <- glance(sel)
   expect_identical(nrow(g), 1L)
   expect_true(all(c(
-    "metric", "protected_only", "full", "improvement", "n_units",
+    "loss", "loss_protected_only", "loss_full", "loss_reduction", "n_units",
     "se_unit", "prediction", "covariance", "builder"
   ) %in% names(g)))
   expect_identical(g$n_units, 24L)

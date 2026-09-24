@@ -620,9 +620,9 @@ prior_summary.default <- function(object, ...) {
 }
 
 # A prior as sent to the engine, with an INLA expression prior shown by name.
-.prior_summary_show_prior <- function(text) {
+.prior_summary_show_prior <- function(text, response_scale = NULL) {
   if (!is.na(text) && startsWith(text, "expression:")) {
-    return(.fb_hyper_prior_tag(text))
+    return(.fb_hyper_prior_tag(text, response_scale))
   }
   text
 }
@@ -666,7 +666,8 @@ print.prior_summary_flexybayes <- function(x, ...) {
           sep = ""
         )
         if (!is.null(x$default_scale)) {
-          cat("    Scale s        = ", format(x$default_scale), "\n", sep = "")
+          cat("    Scale s        = ", format(x$default_scale), " (",
+              .fb_default_scale_units(x$default_basis), ")\n", sep = "")
         }
         if (!is.null(x$default_basis)) {
           cat("    Scale basis    = ", x$default_basis, "\n", sep = "")
@@ -770,7 +771,7 @@ print.prior_summary_flexybayes <- function(x, ...) {
       for (i in seq_len(nrow(sent))) {
         cat(
           "    ", sent$slot_id[[i]], "  ",
-          .prior_summary_show_prior(sent$emitted[[i]]),
+          .prior_summary_show_prior(sent$emitted[[i]], x$response_scale),
           "  [", sent$input_id[[i]], "]  ",
           if (isTRUE(sent$readback_agrees[[i]])) {
             "read back as sent"

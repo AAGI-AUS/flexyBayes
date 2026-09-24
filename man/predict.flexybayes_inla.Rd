@@ -36,7 +36,13 @@ behaviour.}
 \item{level}{Credible level for the classify table's interval, as a
 proportion. Default \code{0.95}.}
 
-\item{...}{Ignored. Present for compatibility with the generic.}
+\item{...}{Ignored. Present for compatibility with the generic.
+On a fit with \code{fixed_alias = "drop"}, a row that is not a linear
+combination of the rows the model was fitted to has no estimable
+prediction: it is returned as \code{NA}, and the \code{status} attribute (a
+\code{status} element with \code{se.fit = TRUE}, a \code{status} column with
+\code{classify}) reads \code{"Aliased"} there and \code{"Estimable"} elsewhere, as in
+asreml's \code{predict()}.}
 }
 \value{
 With \code{classify}, a data frame of class \code{fb_predict_classify}.

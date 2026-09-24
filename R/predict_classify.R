@@ -124,6 +124,10 @@
   out$std.error <- .fb_classify_column(tab, c("SE", "std.error"))
   out$conf.low <- .fb_classify_column(tab, c("asymp.LCL", "lower.CL"))
   out$conf.high <- .fb_classify_column(tab, c("asymp.UCL", "upper.CL"))
+  # emmeans returns NA for a mean the fitting rows do not estimate.
+  if (!is.null(object$extras$fixed_alias)) {
+    out$status <- ifelse(is.na(out$estimate), "Aliased", "Estimable")
+  }
   rownames(out) <- NULL
 
   structure(

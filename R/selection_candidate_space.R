@@ -22,8 +22,9 @@
 #           training rows first, so a column is compared with its own
 #           variation there and its location cannot create or hide an alias.
 #   refuse  a protected column aliased on the training rows
-#           (`selection_fold_protected_unidentified`), and a factor level
-#           present only in the assessment rows (`selection_fold_level_absent`).
+#           (`selection_fold_protected_unidentified`), unless
+#           `protected_alias = "drop"`, and a factor level present only in
+#           the assessment rows (`selection_fold_level_absent`).
 #   drop    a candidate column aliased on the training rows. The fold fits and
 #           scores the columns it keeps; a coefficient it reports is indexed
 #           by the declared space, with `NA` for a dropped column; and the
@@ -32,6 +33,18 @@
 # The rule reads the formulas, the covariates, the fold allocation and the
 # grouping columns, and no response value, so every structural alias is
 # declared before anything is fitted.
+#
+# `protected_alias = "drop"` fits an aliased protected column the way ASReml
+# 4.2 does. The protected columns enter the factorisation term by term, and
+# within a term in descending order of their factor levels, the first factor
+# of the term varying slowest; a column that is a linear combination of the
+# columns before it is dropped. Measured against asreml 4.2 on an unbalanced
+# three-factor design and each of its leave-one-locality-out folds
+# (review/units/U-ALIAS_2026-09-24), this drops the columns ASReml reports as
+# aliased, less those it aliases for a first factor level, which the
+# treatment contrasts never create. An assessment row whose protected row is
+# not a combination of the training rows' protected rows has no estimable
+# prediction; it is marked not estimable and is not scored.
 
 # The rank tolerance, relative to each centred column's own norm on the
 # training rows. It is the `qr()` and `lm()` default, the value
@@ -59,8 +72,10 @@
                                     folds,
                                     groupings = character(0),
                                     route = c("benchmark", "bayes"),
-                                    tol = .FB_SEL_RANK_TOL) {
+                                    tol = .FB_SEL_RANK_TOL,
+                                    protected_alias = c("refuse", "drop")) {
   route <- match.arg(route)
+  protected_alias <- match.arg(protected_alias)
   by_fold <- list()
   for (split in folds) {
     train_rows <- if (identical(route, "benchmark")) split$train_rows else NULL
@@ -84,7 +99,8 @@
       split,
       groupings = groupings,
       resolution = if (identical(route, "benchmark")) "column" else "term",
-      tol = tol
+      tol = tol,
+      protected_alias = protected_alias
     )
   }
 
@@ -97,6 +113,23 @@
     lapply(by_fold, function(f) f$dropped)
   ))
   rownames(dropped) <- NULL
+  protected_dropped <- do.call(rbind, c(
+    list(data.frame(
+      fold = character(0), column = character(0), term = character(0),
+      reason = character(0), stringsAsFactors = FALSE
+    )),
+    lapply(by_fold, function(f) f$protected_dropped)
+  ))
+  rownames(protected_dropped) <- NULL
+  not_estimable <- data.frame(
+    fold = names(by_fold),
+    n_assess = vapply(by_fold, function(f) f$n_assess, integer(1L)),
+    n_not_estimable = vapply(
+      by_fold, function(f) length(f$not_estimable_rows), integer(1L)
+    ),
+    stringsAsFactors = FALSE
+  )
+  rownames(not_estimable) <- NULL
   availability <- data.frame(
     column = declared$column,
     term = declared$term,
@@ -131,7 +164,10 @@
       declared = declared,
       folds = by_fold,
       dropped = dropped,
-      availability = availability
+      availability = availability,
+      protected_alias = protected_alias,
+      protected_dropped = protected_dropped,
+      not_estimable = not_estimable
     ),
     class = "fb_sel_candidate_space"
   )
@@ -145,8 +181,10 @@
                                          split,
                                          groupings = character(0),
                                          resolution = c("column", "term"),
-                                         tol = .FB_SEL_RANK_TOL) {
+                                         tol = .FB_SEL_RANK_TOL,
+                                         protected_alias = c("refuse", "drop")) {
   resolution <- match.arg(resolution)
+  protected_alias <- match.arg(protected_alias)
   .fb_sel_check_fold_levels(protected_design, split)
   if (!is.null(candidate_design)) {
     .fb_sel_check_fold_levels(candidate_design, split)
@@ -177,20 +215,56 @@
     )
   }
   n_protected <- ncol(x_protected)
-  decomposition <- qr(m, tol = tol)
+  # The order the columns enter the factorisation; `m` keeps the design's.
+  entry <- seq_len(ncol(m))
+  if (identical(protected_alias, "drop")) {
+    entry[seq_len(n_protected)] <- .fb_sel_asreml_order(protected_design)
+  }
+  m_entry <- m[, entry, drop = FALSE]
+  decomposition <- qr(m_entry, tol = tol)
   rank <- decomposition$rank
-  aliased <- if (rank < ncol(m)) {
+  aliased_entry <- if (rank < ncol(m)) {
     sort(decomposition$pivot[-seq_len(rank)])
   } else {
     integer(0)
   }
-  kept_index <- setdiff(seq_len(ncol(m)), aliased)
-
+  kept_entry <- setdiff(seq_len(ncol(m)), aliased_entry)
   reasons <- .fb_sel_alias_reasons(
-    m, aliased, kept_index, data, train_rows, groupings, tol
+    m_entry, aliased_entry, kept_entry, data, train_rows, groupings, tol
   )
+  aliased <- entry[aliased_entry]
+  reasons <- reasons[order(aliased)]
+  aliased <- sort(aliased)
 
   aliased_protected <- aliased[aliased <= n_protected]
+  protected_dropped <- data.frame(
+    fold = rep(split$label, length(aliased_protected)),
+    column = colnames(m)[aliased_protected],
+    term = .fb_sel_column_terms(protected_design)[aliased_protected],
+    reason = reasons[seq_along(aliased_protected)],
+    stringsAsFactors = FALSE
+  )
+  not_estimable_rows <- integer(0)
+  if (identical(protected_alias, "drop")) {
+    not_estimable_rows <- .fb_sel_not_estimable_rows(
+      protected_design$X, aliased_protected, split, tol
+    )
+    if (length(not_estimable_rows) == length(split$assess_rows)) {
+      stop(.fb_refusal_condition(
+        reason_code = "selection_fold_protected_unidentified",
+        message = paste0(
+          "fb_select(): on fold ", split$label, " no assessment row has an ",
+          "estimable prediction: the protected columns of all ",
+          length(split$assess_rows), " of them are outside what the ",
+          "training rows estimate. Cut the folds on a unit whose training ",
+          "rows hold the cells it assesses."
+        ),
+        fold_label = split$label,
+        columns = protected_dropped$column
+      ))
+    }
+    aliased_protected <- integer(0)
+  }
   if (length(aliased_protected) > 0L) {
     stop(.fb_refusal_condition(
       reason_code = "selection_fold_protected_unidentified",
@@ -214,7 +288,7 @@
     ))
   }
 
-  aliased_candidate <- aliased - n_protected
+  aliased_candidate <- aliased[aliased > n_protected] - n_protected
   dropped_columns <- declared$column[aliased_candidate]
   if (identical(resolution, "term") && length(dropped_columns) > 0L) {
     touched <- unique(declared$term[aliased_candidate])
@@ -273,24 +347,33 @@
   # The margin the tolerance decided on: the smallest ratio of a kept
   # column's residual to its own norm, against the columns before it, and
   # the largest ratio of a dropped column's residual against every kept one.
-  norms <- sqrt(colSums(m^2))
+  norms <- sqrt(colSums(m_entry^2))
   diag_r <- abs(diag(qr.R(decomposition))[seq_len(rank)])
   kept_ratio <- diag_r / norms[decomposition$pivot[seq_len(rank)]]
-  dropped_ratio <- if (length(aliased) == 0L) {
+  dropped_ratio <- if (length(aliased_entry) == 0L) {
     numeric(0)
   } else {
     residual <- qr.resid(
-      qr(m[, kept_index, drop = FALSE], tol = tol),
-      m[, aliased, drop = FALSE]
+      qr(m_entry[, kept_entry, drop = FALSE], tol = tol),
+      m_entry[, aliased_entry, drop = FALSE]
     )
-    ifelse(norms[aliased] > 0, sqrt(colSums(residual^2)) / norms[aliased], 0)
+    ifelse(
+      norms[aliased_entry] > 0,
+      sqrt(colSums(residual^2)) / norms[aliased_entry],
+      0
+    )
   }
 
   list(
     fold = split$label,
     n_train = length(train_rows),
+    n_assess = length(split$assess_rows),
     rank = rank,
     n_protected = n_protected,
+    protected_alias = protected_alias,
+    protected_kept = setdiff(colnames(x_protected), protected_dropped$column),
+    protected_dropped = protected_dropped,
+    not_estimable_rows = not_estimable_rows,
     declared = declared,
     kept_columns = kept_columns,
     kept_terms = unique(declared$term[declared$column %in% kept_columns]),
@@ -309,6 +392,93 @@
       }
     )
   )
+}
+
+
+# .fb_sel_asreml_order() --- the protected columns in the order ASReml 4.2
+# enters them: term by term, and within a term by descending factor levels,
+# the term's first factor varying slowest. A term whose column names do not
+# parse into factor levels keeps the design's order.
+.fb_sel_asreml_order <- function(design) {
+  X <- design$X
+  labels <- attr(design$terms, "term.labels")
+  out <- integer(0)
+  for (a in sort(unique(design$assign))) {
+    columns <- which(design$assign == a)
+    if (a == 0L || length(columns) < 2L) {
+      out <- c(out, columns)
+      next
+    }
+    vars <- strsplit(labels[[a]], ":", fixed = TRUE)[[1L]]
+    parts <- strsplit(colnames(X)[columns], ":", fixed = TRUE)
+    key <- vapply(seq_along(vars), function(k) {
+      levels <- design$xlev[[vars[[k]]]]
+      vapply(parts, function(p) {
+        if (length(p) != length(vars)) {
+          return(NA_integer_)
+        }
+        if (is.null(levels)) {
+          return(if (identical(p[[k]], vars[[k]])) 0L else NA_integer_)
+        }
+        match(p[[k]], paste0(vars[[k]], levels))
+      }, integer(1L))
+    }, integer(length(columns)))
+    key <- matrix(key, nrow = length(columns))
+    if (anyNA(key)) {
+      out <- c(out, columns)
+      next
+    }
+    out <- c(out, columns[do.call(order, lapply(seq_len(ncol(key)),
+                                              function(k) -key[, k]))])
+  }
+  out
+}
+
+
+# .fb_sel_column_terms() --- the term label of each design column.
+.fb_sel_column_terms <- function(design) {
+  labels <- c("(Intercept)", attr(design$terms, "term.labels"))
+  labels[design$assign + 1L]
+}
+
+
+# .fb_sel_not_estimable_rows() --- the assessment rows whose protected row is
+# not a linear combination of the training rows' protected rows.
+#
+# Each dropped column is, on the training rows, a combination `A` of the kept
+# ones; a row is estimable exactly when its dropped entries equal its kept
+# entries times `A`.
+.fb_sel_not_estimable_rows <- function(X, dropped, split, tol) {
+  if (length(dropped) == 0L) {
+    return(integer(0))
+  }
+  kept <- setdiff(seq_len(ncol(X)), dropped)
+  x_train <- X[split$train_rows, , drop = FALSE]
+  a <- qr.coef(
+    qr(x_train[, kept, drop = FALSE], tol = tol),
+    x_train[, dropped, drop = FALSE]
+  )
+  x_assess <- X[split$assess_rows, , drop = FALSE]
+  residual <- x_assess[, dropped, drop = FALSE] -
+    x_assess[, kept, drop = FALSE] %*% a
+  scale <- 1 + abs(x_assess[, dropped, drop = FALSE]) +
+    abs(x_assess[, kept, drop = FALSE]) %*% abs(a)
+  split$assess_rows[rowSums(abs(residual) > tol * scale) > 0L]
+}
+
+
+# .fb_sel_estimable_folds() --- the folds with their not-estimable assessment
+# rows moved out of `assess_rows` into `not_estimable_rows`, which a fold
+# refit still holds out.
+.fb_sel_estimable_folds <- function(folds, space) {
+  for (i in seq_along(folds)) {
+    rows <- space$folds[[folds[[i]]$label]]$not_estimable_rows
+    if (length(rows) > 0L) {
+      folds[[i]]$assess_rows <- setdiff(folds[[i]]$assess_rows, rows)
+      folds[[i]]$not_estimable_rows <- rows
+    }
+  }
+  folds
 }
 
 
@@ -406,7 +576,7 @@
   if (is.null(space)) {
     return(NULL)
   }
-  list(
+  record <- list(
     resolution = space$resolution,
     tol = space$tol,
     rule = space$rule,
@@ -416,4 +586,15 @@
     dropped = space$dropped,
     availability = space$availability
   )
+  if (identical(space$protected_alias, "drop")) {
+    record$protected_alias <- "drop"
+    record$protected_rule <- paste0(
+      "ASReml 4.2: protected columns term by term, within a term by ",
+      "descending factor levels; a column that is a linear combination of ",
+      "the columns before it on the fold's training rows is dropped"
+    )
+    record$protected_dropped <- space$protected_dropped
+    record$not_estimable <- space$not_estimable
+  }
+  record
 }

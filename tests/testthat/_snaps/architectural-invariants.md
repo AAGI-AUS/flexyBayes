@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=228
+      .refusal_registry: locked=TRUE n_keys=230
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -107,6 +107,7 @@
         ar2_not_representable
         asreml_function_not_recognised
         at_field_per_level_hyper_not_representable
+        at_field_per_level_parameters_not_fitted
         at_level_conditioning_unsupported
         augment_cell_not_determinable
         augment_not_available_inla
@@ -151,6 +152,7 @@
         fb_cov_missing_matrix
         fb_cov_type_unknown
         fit_lacks_posterior_draws
+        fixed_effects_aliased
         fixed_offset_invalid
         fixed_offset_unsupported
         fixed_smoother_not_supported

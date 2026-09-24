@@ -21,6 +21,7 @@ fb_select(
   covariance = c("reml_plugin", "base_model"),
   refit = NULL,
   ablation = FALSE,
+  protected_alias = c("refuse", "drop"),
   ...
 )
 }
@@ -73,8 +74,13 @@ training rows, beside the lambda that point is on each fold. Its support
 at a point is the set of non-zero penalised coefficients after one rule:
 at \code{s >= 1} every one is zero, the exact solution there; elsewhere a
 coefficient is set to zero when removing it moves its own gradient
-coordinate by at most the path's KKT threshold of \code{1e-6}, and the point
-without it still meets that threshold.}
+coordinate by at most the path's KKT threshold, and the point without it
+still meets that threshold. The threshold is \code{1e-6} for ridge, Laplace
+and elastic net. For the grouped families it is \code{1e-6} times the largest
+absolute entry of \verb{A'z}, the gradient of the least-squares part at zero
+on the fold's whitened, protected-residualised payload \verb{(A, z)}. Every
+path point is solved to its threshold, and group lasso and group elastic
+net points are solved by block coordinate descent.}
 
 \item{resamples}{An \code{\link[=fb_resamples]{fb_resamples()}} specification.}
 
@@ -112,15 +118,18 @@ training rows, for random intercepts and two-way interactions.
 \code{"base_model"} refits the base model on each fold's training rows with
 its own formula, random and residual structure, priors and engine, and
 takes each variance at its posterior mean; it also builds uncorrelated
-random slopes, \code{diag(f):g}, a single-trial \code{ar1(row):ar1(col)} field and
-\code{vm()} or \code{ped()} known covariances, at the cost of one refit per fold.
+random slopes, \code{diag(f):g}, an \code{ar1(row):ar1(col)} field on one trial,
+\code{id(trial):ar1(row):ar1(col)} (one field per trial with shared
+parameters) and \code{vm()} or \code{ped()} known covariances, at the cost of one
+refit per fold.
 The Bayesian workflow integrates the covariance, so the argument applies
 to it only with \code{benchmark = TRUE}. V is formed as a dense matrix only
 while one n by n matrix over the data fits within
 \code{options(flexyBayes.selection_dense_gb = )}, 0.5 GiB (8,192 rows) by
 default. Above that, a V that is block-diagonal over a grouping of its
 random terms is factored block by block, and any other V refuses with
-\code{selection_dense_covariance_too_large}. The argument's earlier form, an
+\code{selection_dense_covariance_too_large}. A V with one field per trial is
+factored by trial at any size. The argument's earlier form, an
 estimand string (\code{"plugin_mean_covariance"} and two others), is
 deprecated and runs the default.}
 
@@ -139,6 +148,11 @@ block of the penalised path in turn and report the change in held-out
 loss; see "Grouped ablation". It needs
 \code{workflow = "penalized_optimizer"}, and refuses with
 \code{selection_ablation_route_undefined} elsewhere, before any fit.}
+
+\item{protected_alias}{\code{"refuse"} (the default) or \code{"drop"}: what a fold
+does with a protected column its training rows do not identify. See
+"Aliased protected columns". \code{"drop"} needs
+\code{workflow = "penalized_optimizer"} or \code{"unpenalized_benchmark"}.}
 
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
@@ -258,7 +272,8 @@ rows before any fold is fitted. The protected columns, then the candidate
 columns in the order \code{candidates} writes them, are factorised by
 \code{qr()} with tolerance \code{1e-7}, every column but the intercept centred on
 the training rows. A protected column aliased there refuses with
-\code{selection_fold_protected_unidentified}, and a factor level present only in
+\code{selection_fold_protected_unidentified}, unless \code{protected_alias = "drop"}
+(see "Aliased protected columns"), and a factor level present only in
 a fold's assessment rows refuses with \code{selection_fold_level_absent}, both
 before any engine runs. A candidate column aliased there is dropped for that
 fold, as when a fold's training trials leave fewer degrees of freedom than
@@ -273,6 +288,40 @@ Bayesian route drops whole terms and refuses a term aliased only in part, and
 the penalised reference's out-of-fold score refuses any drop, both with
 \code{selection_fold_candidate_drop_not_representable}.
 }
+\section{Aliased protected columns}{
+
+In an unbalanced multi-trial design some cells of a protected interaction
+\code{VARIETY:NAPPLIED:SEEDRATE} are never sown, so some of its columns are
+linear combinations of others, on all rows or on a fold's training rows. With \code{protected_alias = "refuse"} a fold like that refuses with
+\code{selection_fold_protected_unidentified}. With \code{protected_alias = "drop"}
+each fold drops them as ASReml 4.2 does: the protected columns are taken
+term by term, and within a term in descending order of their factor
+levels, the term's first factor varying slowest, and a column that is a
+linear combination of the columns before it on the training rows is
+dropped. These are the columns asreml reports as aliased, less the
+first-level columns that the treatment contrasts leave out.
+
+A held-out row whose protected row is not a linear combination of the
+training rows' protected rows has no estimable prediction: its cell was
+never sown on the training rows, and \code{predict()} on the asreml fit
+returns \code{NA} for it. Such a row is not scored. The certificate's
+\code{design$candidate_space} lists each fold's dropped protected columns in
+\code{protected_dropped} and, in \code{not_estimable}, each fold's held-out rows and
+how many of them were not estimable, and the printed certificate gives
+the totals. A fold with no estimable held-out row refuses. The Bayesian
+workflow writes the protected part as formula text, which cannot leave
+out one column of a term, and refuses \code{"drop"}. With
+\code{refit = list(method = "bayes")}, each fold's refit holds the protected
+columns that fold kept, entered as numeric columns as the support is, and
+\code{value$not_estimable} counts each fold's held-out rows left out of the
+log predictive density. With \code{covariance = "base_model"} the fold's
+variance components come from a refit of the base model with the fold's
+aliased protected columns fixed at zero (\code{flexybayes(fixed_alias = "drop")}).
+
+A whole-data base with aliased fixed-effect columns is fitted with
+\code{flexybayes(fixed_alias = "drop")}; by default \code{flexybayes()} refuses it.
+}
+
 \section{Bayesian refit of the frozen support}{
 
 With \code{workflow = "penalized_optimizer"} and a penalty that selects,

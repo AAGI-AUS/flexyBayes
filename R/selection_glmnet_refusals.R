@@ -21,11 +21,12 @@
   .register_refusal(
     reason_code = "selection_prox_mode_not_converged",
     description = paste0(
-      "fb_select(): the internal proximal-gradient mode finished above its ",
-      "KKT tolerance, so no point is returned. Probe B4 found an optimiser ",
-      "reporting convergence 0.16 away from a lasso optimum; the certificate ",
-      "here is the residual measured at the returned point, and a point that ",
-      "fails it is withheld rather than labelled a mode."
+      "fb_select(): the internal proximal-gradient or block coordinate ",
+      "descent mode finished above its KKT tolerance, so no point is ",
+      "returned. Probe B4 found an optimiser reporting convergence 0.16 ",
+      "away from a lasso optimum; the certificate here is the residual ",
+      "measured at the returned point, and a point that fails it is ",
+      "withheld."
     ),
     message_template = paste0(
       "fb_select(): the proximal-gradient mode stopped with a KKT residual of ",

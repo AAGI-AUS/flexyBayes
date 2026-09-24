@@ -440,12 +440,12 @@
 # because FISTA's momentum is not monotone, and a polish because first-order
 # methods identify a support long before they resolve its values.
 #
-# The polish differs. With a group norm and an exclusive term the restricted
-# problem is not linear in the active coefficients --- the threshold and the
-# block factor both depend on the answer --- so the polish is a short fixed
-# point on the restricted stationarity condition rather than one Cholesky
-# solve. It is accepted only when the recomputed KKT residual improves, which
-# is a measurement and not an assertion about the iteration.
+# The polish differs. With a group norm the restricted problem is not linear
+# in the active coefficients --- the block factor depends on the answer --- so
+# the polish is a short fixed point on the restricted stationarity condition
+# rather than one Cholesky solve. It is accepted only when the recomputed KKT
+# residual improves, which is a measurement and not an assertion about the
+# iteration.
 #
 # A point whose residual is still above `tol` when the budget runs out is
 # refused with `selection_prox_mode_not_converged`, exactly as the ungrouped
@@ -626,17 +626,20 @@
 # .fb_sel_polish_grouped() --- a short fixed point on the restricted
 # stationarity condition.
 #
-# On the current support, and holding the signs and the group scalars from the
+# On the current support, holding the signs s and the group norms r_g from the
 # incumbent, the condition is linear:
 #
-#   (A_S'A_S + l2 I + diag(lg w_g / r_g)) beta_S = A_S'z - tau_g sign(beta_S)
+#   (A_S'A_S + l2 I + diag(lg w_g / r_g) + le E) beta_S = A_S'z - l1 s
 #
-# Re-deriving r_g and tau_g from each solve and repeating a few times is the
-# fixed point. It returns NULL when there is nothing to polish, when the
-# restricted system has no Cholesky factor, or when a sign flips --- a flipped
-# sign means the support assumption the solve rested on was wrong, so the
-# point is not a candidate at all. The caller recomputes the residual and
-# keeps whichever point wins.
+# where E[j, k] = s_j s_k when j and k share a group and 0 otherwise, which is
+# the exclusive term le ||beta_g||_1 s_j written in beta_S. Carrying that term
+# from the previous solve instead diverges when block members are strongly
+# correlated. Re-deriving r_g from each solve and repeating a few times is the
+# fixed point; with lg = 0 the first solve is exact. It returns NULL when there
+# is nothing to polish, when the restricted system has no Cholesky factor, or
+# when a sign flips --- a flipped sign means the support assumption the solve
+# rested on was wrong, so the point is not a candidate at all. The caller
+# recomputes the residual and keeps whichever point wins.
 .fb_sel_polish_grouped <- function(gram, aty, beta, parts, group_parts) {
   support <- which(abs(beta) > 0)
   if (length(support) == 0L) {
@@ -646,19 +649,21 @@
   index <- group_parts$index[support]
   current <- beta[support]
   system_base <- gram[support, support, drop = FALSE]
+  if (parts$le > 0) {
+    system_base <- system_base +
+      parts$le * outer(signs, signs) * outer(index, index, "==")
+  }
+  rhs <- aty[support] - parts$l1 * signs
 
   for (round in seq_len(8L)) {
     scale_vector <- numeric(length(support))
-    shift <- numeric(length(support))
     for (k in unique(index)) {
       in_group <- which(index == k)
-      block <- current[in_group]
-      radius <- sqrt(sum(block^2))
+      radius <- sqrt(sum(current[in_group]^2))
       if (radius <= 0) {
         return(NULL)
       }
       scale_vector[in_group] <- parts$lg * group_parts$weights[[k]] / radius
-      shift[in_group] <- parts$l1 + parts$le * sum(abs(block))
     }
     system <- system_base
     diag(system) <- diag(system) + parts$l2 + scale_vector
@@ -666,7 +671,6 @@
     if (is.null(factor_system)) {
       return(NULL)
     }
-    rhs <- aty[support] - shift * signs
     solved <- drop(backsolve(
       factor_system,
       forwardsolve(t(factor_system), rhs)
@@ -684,6 +688,193 @@
   out <- numeric(length(beta))
   out[support] <- current
   out
+}
+
+
+# --- block coordinate descent --------------------------------------------- #
+
+# .fb_sel_group_block_update() --- the exact minimiser of one group's
+# subproblem
+#
+#   0.5 b'H b - r'b + t ||b||_2,   H = Q diag(values) Q' positive definite,
+#
+# where r is the block's partial correlation with the other groups held and t
+# the group's threshold lg w_g. The minimiser is zero when ||r|| <= t, and
+# otherwise b = (H + mu I)^{-1} r with mu = t / ||b||. With d = Q'r, mu solves
+#
+#   1 / phi(mu) - mu / t = 0,   phi(mu)^2 = sum d_i^2 / (values_i + mu)^2,
+#
+# whose left side is concave in mu (Moré and Sorensen, 1983), so Newton's
+# method started to the right of the root decreases to it monotonically. The
+# start `upper` is right of the root because phi(mu) >= ||d|| / (max(values)
+# + mu).
+.fb_sel_group_block_update <- function(r, values, vectors, threshold) {
+  norm_r <- sqrt(sum(r^2))
+  if (norm_r <= threshold) {
+    return(numeric(length(r)))
+  }
+  d <- drop(crossprod(vectors, r))
+  if (threshold == 0) {
+    return(drop(vectors %*% (d / values)))
+  }
+  mu <- threshold * max(values) / (norm_r - threshold)
+  for (iteration in seq_len(100L)) {
+    denominator <- values + mu
+    phi <- sqrt(sum(d^2 / denominator^2))
+    value <- 1 / phi - mu / threshold
+    slope <- sum(d^2 / denominator^3) / phi^3 - 1 / threshold
+    step <- value / slope
+    mu_next <- mu - step
+    if (!is.finite(mu_next) || mu_next <= 0) {
+      break
+    }
+    if (abs(mu_next - mu) <= 4 * .Machine$double.eps * mu) {
+      mu <- mu_next
+      break
+    }
+    mu <- mu_next
+  }
+  drop(vectors %*% (d / (values + mu)))
+}
+
+
+# .fb_sel_bcd_grouped() --- the group lasso and group elastic net mode by
+# block coordinate descent, for penalties with lambda_l1 = lambda_exclusive =
+# 0. Groups are not orthonormalised, so the penalty is on beta_g as the
+# columns stand. After each sweep the KKT residual is recomputed from `A` and
+# `z`; above `tol`, the restricted polish is tried and kept if it lowers it.
+.fb_sel_bcd_grouped <- function(
+  A,
+  z,
+  penalty,
+  groups,
+  tol = 1e-9,
+  max_sweeps = 1e4
+) {
+  A <- as.matrix(A)
+  z <- as.numeric(z)
+  if (nrow(A) != length(z)) {
+    stop(
+      "`A` and `z` must agree on the number of rows: ",
+      nrow(A),
+      " and ",
+      length(z),
+      ".",
+      call. = FALSE
+    )
+  }
+  parts <- .fb_sel_penalty_parts(penalty)
+  if (parts$l1 > 0 || parts$le > 0) {
+    stop(
+      "internal contract violation: block coordinate descent solves the ",
+      "group lasso and group elastic net only; this penalty has an L1 or an ",
+      "exclusive part.",
+      call. = FALSE
+    )
+  }
+  max_sweeps <- as.integer(max_sweeps)
+  p <- ncol(A)
+  group_parts <- .fb_sel_group_parts(groups, p)
+  family <- penalty$family %||% "canonical"
+
+  if (p == 0L) {
+    return(list(
+      beta = numeric(0),
+      kkt = 0,
+      iterations = 0L,
+      converged = TRUE,
+      family = family,
+      objective = 0.5 * sum(z^2),
+      polished = FALSE
+    ))
+  }
+
+  gram <- crossprod(A)
+  aty <- drop(crossprod(A, z))
+  members <- lapply(seq_len(group_parts$n_groups), function(k) {
+    which(group_parts$index == k)
+  })
+  blocks <- lapply(members, function(idx) {
+    hessian <- gram[idx, idx, drop = FALSE]
+    diag(hessian) <- diag(hessian) + parts$l2
+    eigen(hessian, symmetric = TRUE)
+  })
+
+  beta <- numeric(p)
+  gram_beta <- numeric(p)
+  best <- .fb_sel_kkt_residual_grouped(A, z, beta, penalty, groups)
+  polished <- FALSE
+  sweeps <- 0L
+  while (best > tol && sweeps < max_sweeps) {
+    sweeps <- sweeps + 1L
+    for (k in seq_len(group_parts$n_groups)) {
+      idx <- members[[k]]
+      current <- beta[idx]
+      r <- aty[idx] -
+        gram_beta[idx] +
+        drop(gram[idx, idx, drop = FALSE] %*% current)
+      updated <- .fb_sel_group_block_update(
+        r,
+        blocks[[k]]$values,
+        blocks[[k]]$vectors,
+        parts$lg * group_parts$weights[[k]]
+      )
+      change <- updated - current
+      if (any(change != 0)) {
+        gram_beta <- gram_beta + drop(gram[, idx, drop = FALSE] %*% change)
+        beta[idx] <- updated
+      }
+    }
+    best <- .fb_sel_kkt_residual_grouped(A, z, beta, penalty, groups)
+    if (best > tol) {
+      candidate <- .fb_sel_polish_grouped(gram, aty, beta, parts, group_parts)
+      if (!is.null(candidate)) {
+        candidate_kkt <- .fb_sel_kkt_residual_grouped(
+          A,
+          z,
+          candidate,
+          penalty,
+          groups
+        )
+        if (candidate_kkt < best) {
+          beta <- candidate
+          gram_beta <- drop(gram %*% beta)
+          best <- candidate_kkt
+          polished <- TRUE
+        }
+      }
+    }
+  }
+
+  if (best > tol) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_prox_mode_not_converged",
+      message = paste0(
+        "fb_select(): block coordinate descent for family `",
+        family,
+        "` stopped after ",
+        sweeps,
+        " sweeps with a KKT residual of ",
+        format(best, digits = 3),
+        ", above the tolerance ",
+        format(tol, digits = 3),
+        ". No point is returned."
+      ),
+      kkt = best,
+      tol = tol,
+      iterations = sweeps
+    ))
+  }
+
+  list(
+    beta = stats::setNames(beta, colnames(A)),
+    kkt = best,
+    iterations = sweeps,
+    converged = TRUE,
+    family = family,
+    objective = .fb_sel_objective_grouped(A, z, beta, parts, group_parts),
+    polished = polished
+  )
 }
 
 

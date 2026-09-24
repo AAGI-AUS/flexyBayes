@@ -23,6 +23,12 @@
 #   covariance of the assessment rows is the Schur complement under
 #   `known_cluster` and V_SS under `new_cluster`.
 #
+#   One field per trial. `id(trial):ar1(row):ar1(col)` is factored one
+#   trial at a time at any size. Each block of V equals V written out from
+#   the model's definition. The whitening and conditional covariance match
+#   the dense route, whose V and Cholesky factor are exactly zero across
+#   trials.
+#
 #   Blocking. Above the dense bound a block-diagonal V is factored block by
 #   block. Each block of V equals the dense V's block exactly, for nested
 #   intercepts and for a random slope, and the path agrees with the dense
@@ -130,6 +136,11 @@ fbcm_reml_injection <- function(d, protected, random) {
     )
   }
   list(fn = fn, calls = calls)
+}
+
+# Forces the dense route on a base that would be factored by a grouping.
+fbcm_no_blocks <- function(...) {
+  list(applicable = FALSE, reason = "forced dense for comparison")
 }
 
 # Fixed components, for comparisons that must not depend on any estimator.
@@ -751,4 +762,189 @@ test_that("a brms base is refitted on brms, the training rows only", {
     vapply(cov$folds, function(f) f$rows_passed, integer(1L)),
     vapply(sel$folds, function(s) length(s$train_rows), integer(1L))
   )
+})
+
+
+# --- (x) one AR1 x AR1 field per trial ------------------------------------ #
+
+# Trials of 3 ranges by `n_row` rows, one field per trial with shared
+# parameters, rows shuffled so no trial's rows are contiguous.
+fbcm_trial_field_data <- function(n_trial = 4L, n_row = 5L, seed = 41L) {
+  .fb_sel_with_seed(seed, {
+    lower <- t(chol(kronecker(fbcm_ar1(3L, 0.5), fbcm_ar1(n_row, 0.7))))
+    grid <- expand.grid(row = seq_len(n_row), range = seq_len(3L))
+    d <- do.call(rbind, lapply(seq_len(n_trial), function(i) {
+      data.frame(
+        trial = sprintf("t%d", i),
+        range = grid$range,
+        row = grid$row,
+        field = as.numeric(lower %*% stats::rnorm(nrow(grid))) +
+          stats::rnorm(1L)
+      )
+    }))
+    d <- d[sample.int(nrow(d)), ]
+    d$trial <- factor(d$trial)
+    d$range <- factor(d$range)
+    d$row <- factor(d$row)
+    d$x <- stats::rnorm(nrow(d))
+    for (j in seq_len(5L)) {
+      d[[paste0("z", j)]] <- stats::rnorm(nrow(d))
+    }
+    d$y <- 5 + 0.5 * d$x + 0.5 * d$z1 + d$field + stats::rnorm(nrow(d), sd = 0.3)
+    d$field <- NULL
+    rownames(d) <- NULL
+    d
+  })
+}
+
+fbcm_trial_field_random <- ~ trial + id(trial):ar1(range):ar1(row)
+
+fbcm_trial_field_components <- function() {
+  list(
+    residual = 0.4,
+    terms = c(trial = 1.3, spatial = 0.9),
+    rho = list(spatial = c(row = 0.2, col = 0.35))
+  )
+}
+
+# V written out from the model's definition.
+fbcm_trial_field_v <- function(d, components) {
+  rho <- components$rho$spatial
+  same <- outer(as.integer(d$trial), as.integer(d$trial), "==")
+  diag(components$residual, nrow(d)) +
+    components$terms[["trial"]] * same +
+    components$terms[["spatial"]] * same *
+      rho[["row"]]^abs(outer(as.integer(d$range), as.integer(d$range), "-")) *
+      rho[["col"]]^abs(outer(as.integer(d$row), as.integer(d$row), "-"))
+}
+
+test_that("one field per trial is factored by trial, each block V's own, zero across trials", {
+  skip_if_not_installed("INLA")
+  d <- fbcm_trial_field_data()
+  base <- .fb_sel_bayes_normalise_base(
+    fbcm_stub_base(d, random = fbcm_trial_field_random)
+  )
+  components <- fbcm_trial_field_components()
+  v <- fbcm_trial_field_v(d, components)
+  split <- .fb_sel_folds(fb_resamples(v = 3L), d)[[1L]]
+  tr <- split$train_rows
+  as_ <- split$assess_rows
+  across <- outer(as.integer(d$trial[tr]), as.integer(d$trial[tr]), "!=")
+
+  # The default bound admits these 60 rows densely.
+  block_model <- .fb_sel_cov_model(base, seed = 1L)
+  expect_identical(block_model$whitening$mode, "by_block")
+  expect_identical(block_model$whitening$group, "trial")
+  expect_identical(block_model$whitening$n_blocks, 4L)
+  block_spec <- .fb_sel_cov_fold_spec(block_model, components)
+  all_rows <- seq_len(nrow(d))
+  expect_lt(
+    fbcm_rel(.fb_sel_block_covariance(block_spec, all_rows, all_rows), v),
+    1e-10
+  )
+  local_mocked_bindings(.fb_sel_cov_block_structure = fbcm_no_blocks)
+  dense_model <- .fb_sel_cov_model(base, seed = 1L)
+  expect_identical(dense_model$whitening$mode, "dense")
+  dense_spec <- .fb_sel_cov_fold_spec(dense_model, components)
+
+  for (prediction in c("known_cluster", "new_cluster")) {
+    dense <- .fb_sel_fold_blocks(dense_spec, tr, as_, prediction)
+    expect_lt(fbcm_rel(dense$v_tt, v[tr, tr]), 1e-10)
+    expect_true(all(dense$v_tt[across] == 0))
+    # The whitening factor has no entry linking two trials.
+    expect_true(all(t(dense$factor_tt)[across] == 0))
+    by_block <- .fb_sel_fold_blocks_by_group(block_spec, tr, as_, prediction)
+    for (b in by_block$factor_tt$blocks) {
+      rows <- tr[b$positions]
+      expect_lt(
+        fbcm_rel(.fb_sel_block_covariance(block_spec, rows, rows),
+                 v[rows, rows]),
+        1e-10
+      )
+    }
+    y <- matrix(d$y[tr], ncol = 1L)
+    expect_lt(
+      fbcm_rel(.fb_sel_whiten_train(by_block$factor_tt, y),
+               forwardsolve(t(dense$factor_tt), y)),
+      1.5e-8
+    )
+    expect_lt(
+      fbcm_rel(.fb_sel_conditional_variance(by_block$v_s_given_t),
+               diag(dense$v_s_given_t)),
+      1.5e-8
+    )
+  }
+  schur <- v[as_, as_] - v[as_, tr] %*% solve(v[tr, tr], v[tr, as_])
+  known <- .fb_sel_fold_blocks(dense_spec, tr, as_, "known_cluster")
+  expect_lt(fbcm_rel(known$v_s_given_t, schur), 1e-10)
+})
+
+test_that("one field per trial runs through fb_select(), by trial as the dense route does", {
+  skip_if_not_installed("glmnet")
+  skip_if_not_installed("INLA")
+  fbcm_quiet()
+  d <- fbcm_trial_field_data()
+  base <- fbcm_stub_base(d, random = fbcm_trial_field_random)
+  components <- fbcm_trial_field_components()
+  local_mocked_bindings(.fb_sel_cov_fold_refit = function(...) components)
+  resamples <- fb_resamples(unit = ~trial, v = 4L)
+  by_block <- fbcm_select(base, covariance = "base_model",
+                          prediction = "new_cluster", resamples = resamples)
+  local_mocked_bindings(.fb_sel_cov_block_structure = fbcm_no_blocks)
+  dense <- fbcm_select(base, covariance = "base_model",
+                       prediction = "new_cluster", resamples = resamples)
+  expect_identical(dense$certificate$covariance$whitening$mode, "dense")
+  whitening <- by_block$certificate$covariance$whitening
+  expect_identical(whitening$mode, "by_block")
+  expect_identical(whitening$group, "trial")
+  expect_identical(whitening$n_blocks, 4L)
+  expect_identical(by_block$certificate$covariance$folds[[1L]]$rho,
+                   components$rho)
+  expect_identical(by_block$selection$chosen_terms, dense$selection$chosen_terms)
+  expect_lt(fbcm_rel(by_block$scores$score, dense$scores$score), 1.5e-8)
+})
+
+test_that("one field per trial: the recorded components are the fold refit's", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
+  fbcm_quiet()
+  d <- fbcm_trial_field_data(n_trial = 16L)
+  base <- flexybayes(y ~ x, random = fbcm_trial_field_random, data = d,
+                     backend = "inla", verbose = FALSE)
+  refit <- .fb_sel_bayes_refit
+  fits <- list()
+  local_mocked_bindings(.fb_sel_bayes_refit = function(base, data, ...) {
+    fit <- refit(base, data, ...)
+    fits[[length(fits) + 1L]] <<- list(missing = which(is.na(data$y)), fit = fit)
+    fit
+  })
+  sel <- fbcm_select(base, covariance = "base_model",
+                     prediction = "new_cluster",
+                     resamples = fb_resamples(unit = ~trial, v = 4L))
+  expect_length(fits, 4L)
+  for (f in seq_along(sel$folds)) {
+    split <- sel$folds[[f]]
+    record <- sel$certificate$covariance$folds[[f]]
+    hit <- Filter(function(x) setequal(x$missing, split$assess_rows), fits)
+    expect_length(hit, 1L)
+    fit <- hit[[1L]]$fit
+    expect_identical(nrow(fit$data), nrow(d))
+    term <- fit$fb$random_terms[[2L]]
+    expect_identical(c(term$type, term$at_var), c("ar1_spatial", "trial"))
+    moments <- fbcm_second_moments(fit)
+    vc <- summary(fit)$varcomp
+    expect_equal(record$residual, moments[["sigma"]], tolerance = 1e-12)
+    expect_equal(record$terms[["spatial"]], moments[["sd_spatial"]],
+                 tolerance = 1e-12)
+    expect_equal(record$terms[["trial"]], moments[["sd_trial"]],
+                 tolerance = 1e-12)
+    expect_equal(
+      record$rho$spatial,
+      c(row = vc$estimate[vc$component == "rho_row"],
+        col = vc$estimate[vc$component == "rho_col"]),
+      tolerance = 1e-12
+    )
+  }
 })

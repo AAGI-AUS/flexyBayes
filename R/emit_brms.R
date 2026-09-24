@@ -105,6 +105,14 @@ emit_brms <- function(
   ...
 ) {
   .check_fb_terms(fb, "`fb` must be an fb_terms object.")
+  if (length(fb$fixed_alias$columns) > 0L) {
+    stop(
+      "flexybayes(): fixed_alias = \"drop\" fixes the aliased fixed-effect ",
+      "columns at zero on INLA, and this model was routed to brms. Use ",
+      "backend = \"inla\".",
+      call. = FALSE
+    )
+  }
 
   .check_installed(
     "brms",

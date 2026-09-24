@@ -549,7 +549,7 @@ register_canonical_mapper <- function(backend, mapper) {
 }
 
 # ar1(t) -- one AR1 field over the levels of t. ar1(row):ar1(col), ar1(t):g
-# and at(trial):ar1(row):ar1(col) -- one f() term indexed by the row
+# and id(trial):ar1(row):ar1(col) -- one f() term indexed by the row
 # variable, reading the column variable as `group =` and the trial as
 # `replicate =`. INLA lays that table out row fastest, then column, then
 # trial: position row + (col - 1) * n_row + (trial - 1) * n_row * n_col. A

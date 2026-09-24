@@ -1,9 +1,11 @@
 bibentry(
   bibtype  = "Manual",
   title    = "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax",
-  author   = person("Max", "Moldovan",
-                    comment = c(ORCID = "0000-0001-9680-8474")),
+  author   = c(person("Max", "Moldovan",
+                      comment = c(ORCID = "0000-0001-9680-8474")),
+               person("Anabel", "Forte Deltell",
+                      comment = c(ORCID = "0000-0001-9534-1817"))),
   year     = "2026",
-  note     = "R package version 0.14.0",
+  note     = "R package version 0.14.1",
   url      = "https://github.com/AAGI-AUS/flexyBayes"
 )

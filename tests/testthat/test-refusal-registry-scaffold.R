@@ -583,6 +583,11 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # non-negative variance per row (known_variance_invalid), and a model or an
   # fb_select() route that cannot carry it (known_variance_not_supported)
   # (= 228).
+  # The aliased fixed part adds one: fixed-effect columns the rows with a
+  # response do not estimate, refused by flexybayes() unless
+  # fixed_alias = "drop" (fixed_effects_aliased) (= 229).
+  # at(trial):ar1(row):ar1(col), which ASReml fits with per-trial field
+  # parameters, adds one (at_field_per_level_parameters_not_fitted) (= 230).
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
   expect_true("selection_missing_response_not_carried" %in% entries)
@@ -597,7 +602,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("selection_ablation_route_undefined" %in% entries)
   expect_true("known_variance_invalid" %in% entries)
   expect_true("known_variance_not_supported" %in% entries)
-  expect_equal(length(entries), 228L)
+  expect_true("fixed_effects_aliased" %in% entries)
+  expect_true("at_field_per_level_parameters_not_fitted" %in% entries)
+  expect_equal(length(entries), 230L)
   expect_true("selection_parallel_worker_failed" %in% entries)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)

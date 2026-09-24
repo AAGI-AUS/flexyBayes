@@ -494,10 +494,13 @@ test_that("the grouped mode returns a certified point or refuses", {
 
 
 test_that("optimiser paths use one declared KKT acceptance threshold", {
-  # The provider bridge has always been accepted against 1e-6. Grouped path
-  # points must use the same independently recomputed certificate, while the
-  # lower-level solver remains available at its stricter 1e-9 default.
-  expect_identical(.fb_sel_path_kkt_tolerance(), 1e-6)
+  # Every path point is held to 1e-6 of max|A'z| on its own payload, while
+  # the lower-level solvers keep their stricter defaults.
+  fixture <- fbgp_matrix()
+  expect_identical(
+    .fb_sel_path_kkt_tolerance(fixture$A, fixture$z),
+    1e-6 * max(abs(crossprod(fixture$A, fixture$z)))
+  )
   expect_identical(formals(.fb_sel_prox_mode_grouped)$tol, 1e-9)
   expect_identical(formals(.fb_sel_prox_mode_lambda)$tol, 1e-10)
 })
@@ -1195,7 +1198,8 @@ test_that("several exclusive blocks compose into one certified objective", {
   expect_identical(arm$provider, "prox")
   expect_identical(arm$family, "exclusive_lasso")
   expect_setequal(unique(arm$support$group_history$group), paste0("block_", 1:3))
-  expect_true(all(arm$kkt$kkt <= .fb_sel_path_kkt_tolerance()))
+  expect_true(all(arm$kkt$kkt_tolerance > 0))
+  expect_true(all(arm$kkt$kkt <= arm$kkt$kkt_tolerance))
   expect_identical(nrow(augment(fit, type = "assessment_predictions")), nrow(d))
 })
 

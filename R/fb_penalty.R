@@ -83,6 +83,15 @@
 #' stays refused; that corner is `ridge()`, which already has its own name
 #' and its own row above.
 #'
+#' The `lambda` of `elastic_net()` is used as the prior's rate on the
+#' Bayesian route (`workflow = "bayes"`). It does not set the chosen point
+#' on the penalised optimiser (`workflow = "penalized_optimizer"`, and the
+#' `glmnet` arm of `benchmark = TRUE`). That point is tuned on the path that
+#' [fb_decision()] sets with `n_lambda` and `lambda_min_ratio`. There,
+#' `lambda` sets only the one declared point the optimiser also fits for
+#' comparison, and the top of a fold's path when that fold's `lambda_max` is
+#' zero.
+#'
 #' A `ridge` or `laplace` prior has a mode identity with the corresponding
 #' penalised objective **only with the covariance plugged in and the
 #' residual scale held fixed**. The Bayesian route does neither: it
@@ -112,7 +121,7 @@
 #'
 #' | Family | Arguments | What it does |
 #' |---|---|---|
-#' | `group_lasso(scale, group)` | `scale` > 0 | a group enters or leaves as a whole |
+#' | `group_lasso(scale, group, alpha)` | `scale` > 0, `alpha` in (0, 1\] | a group enters or leaves as a whole |
 #' | `sparse_group_lasso(scale, alpha, group)` | `alpha` in (0, 1) | a group enters as a whole, and thins inside |
 #' | `exclusive_lasso(scale, group)` | `scale` > 0 | members of a group compete |
 #' | `group_exclusive(group_scale, exclusive_scale, group)` | both > 0 | both at once |
@@ -130,6 +139,12 @@
 #' `"block"`. The rule and the resolved groups are recorded on the
 #' certificate. A grouping in which every group has one column refuses, since
 #' a group lasso would then be a lasso and an exclusive lasso a ridge.
+#'
+#' `group_lasso()` charges `(alpha / scale) * sum_g sqrt(p_g) ||beta_g||_2`,
+#' where `p_g` is the number of columns in group `g`. With `alpha` below one
+#' (default 1) it is a group elastic net and also charges
+#' `((1 - alpha) / (2 * scale)) * ||beta||_2^2`; a group still enters or
+#' leaves as a whole.
 #'
 #' The exclusive penalty adds `sum_g (sum_j |beta_j|)^2 / 2` over groups,
 #' which encourages competition inside a group and suits a declared set of

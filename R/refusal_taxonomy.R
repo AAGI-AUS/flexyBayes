@@ -2282,21 +2282,29 @@
   .register_refusal(
     reason_code = "at_field_per_level_hyper_not_representable",
     description = paste0(
-      "at(trial, level):ar1(row):ar1(col) names a single conditioned ",
-      "level of the grouping factor for a per-trial separable AR1 ",
-      "field, or (the same lowering gap read the other way) asks for ",
-      "field hyperparameters that vary by level rather than being ",
-      "shared. The supported spelling, at(trial):ar1(row):ar1(col) ",
-      "with no level argument, fits one field per level of `trial` on ",
-      "INLA via the replicate = mechanism, sharing rho_row, rho_col ",
-      "and the field variance across every level; there is no ",
-      "lowering for a level-conditioned field or for per-level ",
-      "(unshared) hyperparameters."
+      "at(trial, level):ar1(row):ar1(col) asks for an AR1 x AR1 field on ",
+      "one level of `trial`, which flexyBayes does not fit. ",
+      "id(trial):ar1(row):ar1(col) fits one field per level on INLA, with ",
+      "the variance and both correlations shared across levels."
     ),
     message_template = "%s",
     registered_in_adr = "FS-27 / C5",
     plan_field = NA_character_,
     since_version = "0.9.3"
+  )
+  .register_refusal(
+    reason_code = "at_field_per_level_parameters_not_fitted",
+    description = paste0(
+      "at(trial):ar1(row):ar1(col) asks for a separate field variance and ",
+      "correlations for each level of `trial`, as ASReml fits it. ",
+      "flexyBayes does not fit per-level field parameters on either ",
+      "engine. id(trial):ar1(row):ar1(col) fits one field per level on ",
+      "INLA, with the variance and both correlations shared across levels."
+    ),
+    message_template = "%s",
+    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.1_2026-09-24 (U-AR-SPELL)",
+    plan_field = NA_character_,
+    since_version = "0.14.1"
   )
   .register_refusal(
     reason_code = "binomial_response_not_binary",

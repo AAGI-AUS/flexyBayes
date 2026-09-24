@@ -124,10 +124,13 @@
     # being inferred from the design -- a group is a statement about the
     # model, and the certificate prints which rule was used.
     group_lasso = list(
-      params = c("scale", "group"),
+      # `alpha` below one adds the ridge part of a group elastic net.
+      params = c("scale", "group", "alpha"),
       required = "scale",
-      domain = c(scale = "positive", group = "group_rule"),
-      defaults = list(group = "term"),
+      domain = c(
+        scale = "positive", group = "group_rule", alpha = "unit_half_open"
+      ),
+      defaults = list(group = "term", alpha = 1),
       hyperparameter_mode = "fixed",
       route = "optimizer_only",
       # A group L2 norm cannot tell one column of a block from another:

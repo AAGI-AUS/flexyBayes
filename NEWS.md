@@ -1,3 +1,91 @@
+# flexyBayes 0.14.1
+
+A patch release that fits the ASReml spellings of a shared AR1 x AR1 field and
+of aliased fixed effects the way ASReml 4.2 does, and makes penalised selection
+converge on grouped candidates. Two changes can stop a model that fitted in
+0.14.0: `at(trial):ar1(row):ar1(col)` now refuses, and `id(trial)` is the
+spelling of the shared field. `flexybayes()` refuses fixed-effect columns the
+data do not estimate unless `fixed_alias = "drop"` is given.
+
+## Models written as in ASReml
+
+* `id(trial):ar1(row):ar1(col)` fits one AR1 x AR1 field per trial on INLA,
+  with the variance and both correlations shared across trials, as in ASReml.
+  `at(trial):ar1(row):ar1(col)`, which ASReml fits with separate parameters
+  for each trial, now refuses (`at_field_per_level_parameters_not_fitted`);
+  0.14.0 fitted the shared field under that spelling. A brms plan reports
+  `will_fit = FALSE` when the brms fit would refuse the model.
+* `fb_select(covariance = "base_model")` builds the fold covariance of
+  `id(trial):ar1(row):ar1(col)`, one AR1 x AR1 field per trial with the two
+  correlations and the variance shared across trials. The covariance is
+  factored one trial at a time at any size.
+* `flexybayes()` now refuses a model whose fixed-effect columns are not all
+  estimated by the rows with a response, as in a factorial with empty cells,
+  and names the columns (`fixed_effects_aliased`). Before, INLA and brms
+  fitted such a model without a message and reported those columns at their
+  prior. This is a change in behaviour: a model that fitted in 0.14.0 can now
+  refuse. `fixed_alias = "drop"` fits it on INLA as asreml 4.2 does, with the
+  aliased columns fixed at zero and listed in `fit$extras$fixed_alias`, and
+  `predict()` returns `NA` with status `"Aliased"` for a cell the fitting
+  rows do not estimate.
+* `fb_select(protected_alias = "drop")` fits a protected term whose columns
+  are not all identified on a fold's training rows, as an unbalanced
+  `VARIETY * NAPPLIED * SEEDRATE` is, the way ASReml 4.2 does: each fold drops
+  the columns asreml reports as aliased, a held-out row whose cell the
+  training rows do not estimate is not scored, and the certificate lists both
+  per fold. The default, `"refuse"`, is unchanged.
+* `fb_select(protected_alias = "drop")` now works with
+  `refit = list(method = "bayes")`: each fold's refit leaves out that fold's
+  dropped columns, and `value$not_estimable` counts the held-out rows left
+  out of the log predictive density. With `covariance = "base_model"`, each
+  fold's refit fixes its aliased protected columns at zero instead of
+  fitting them at their prior.
+
+## Penalised selection
+
+* `fb_decision()` gains `n_lambda` and `lambda_min_ratio`, which set the
+  penalised optimiser's path grid. The defaults, 20 points down to 1e-3 of
+  each fold's `lambda_max`, are the grid 0.14.0 used. The grid is printed by
+  `fb_select()` and its plan, and recorded on the certificate as
+  `benchmark$glmnet$path_grid`.
+* `group_lasso()` gains `alpha` (default 1). Below one it is a group elastic
+  net: `(alpha / scale) sum_g sqrt(p_g) ||beta_g||` plus
+  `((1 - alpha) / (2 scale)) ||beta||^2`, and a group still enters or leaves
+  whole.
+* Group lasso and group elastic net path points are solved by block
+  coordinate descent with an exact update for each group; the other grouped
+  families keep the proximal-gradient solver.
+* A grouped-family path point is accepted when its KKT residual is at most
+  `1e-6` times the largest entry of `|A'z|` on the fold's whitened payload, in
+  place of an absolute `1e-6`, so the threshold follows the response's units.
+  Ridge, Laplace and elastic net keep the absolute `1e-6`. The threshold and
+  the solver of each point are recorded in the optimiser arm's `kkt` table.
+* Exclusive lasso and group-exclusive path points on blocks of strongly
+  correlated candidates now reach their exact optimum. In 0.14.0 such a point
+  could stop after 200,000 iterations and refuse with
+  `selection_prox_mode_not_converged`.
+
+## Reporting
+
+* `glance()` on an `fb_select()` result names its out-of-fold scores as
+  losses. `metric`, `protected_only`, `full` and `improvement` are now `loss`,
+  `loss_protected_only`, `loss_full` and `loss_reduction`. Lower is better,
+  and `loss_reduction` is positive when the candidates improve prediction. On
+  the Bayesian workflow the loss is `neg_elpd`, minus the log predictive
+  density of a held-out unit, where the old `metric` column said `elpd`.
+  `print()` labels the same block "out-of-fold loss".
+* The default-prior note, the printed INLA formula and `prior_summary()` say
+  which scale the default prior is on. A Gaussian INLA fit runs on the
+  standardised response, and its priors are shown on that scale and on the
+  response, for example `half-normal-SD(5)` beside `half-normal-SD(3.235)`.
+  A lognormal prior on the standardised response was shown as a half-normal;
+  it is now shown as the lognormal it is.
+
+## Authors
+
+* Anabel Forte Deltell is listed as an author again, in `DESCRIPTION`,
+  `inst/CITATION`, `CITATION.cff` and `codemeta.json`.
+
 # flexyBayes 0.14.0
 
 The release for a two-stage analysis of a designed multi-environment trial.

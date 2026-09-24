@@ -680,6 +680,11 @@ emit_inla <- function(
     )
   }
   control_family <- .build_inla_control_family(hyper_ctrl, family = inla_family)
+  # fixed_alias = "drop": each aliased column fixed at zero (R/fixed_alias.R).
+  control_fixed <- .fb_inla_pin_aliased(
+    control_fixed,
+    .fb_inla_aliased_names(fb, data)
+  )
 
   if (return_code) {
     return(invisible(list(
@@ -1296,7 +1301,12 @@ emit_inla <- function(
       "\n",
       sep = ""
     )
-    cat("  formula: ", .fb_display_inla_formula(inla_form), "\n", sep = "")
+    cat(
+      "  formula: ",
+      .fb_display_inla_formula(inla_form, standardisation$scale),
+      "\n",
+      sep = ""
+    )
     if (length(fb$offsets)) {
       cat("  offset:  ", paste(fb$offsets, collapse = " + "), "\n", sep = "")
     }
@@ -2363,51 +2373,73 @@ emit_inla <- function(
 # .fb_hyper_prior_tag() --- name the prior a hyper block encodes.
 #
 # Read off the block itself, which is the resolved prior rendered for the
-# engine: the uniform-on-SD and half-normal-on-SD expressions carry their
-# own bounds and scale, and a named INLA prior carries its name and
-# parameters. An encoding this does not recognise is tagged as an
-# expression rather than guessed at.
+# engine: the uniform-on-SD, half-normal-on-SD and lognormal-on-SD
+# expressions carry their own bounds, scale and location, and a named INLA
+# prior carries its name and parameters. An encoding this does not recognise
+# is tagged as an expression rather than guessed at. With `response_scale`,
+# the fit ran on the response divided by it, and an SD-scale prior is shown
+# on both scales.
 #
 # @noRd
 # @keywords internal
-.fb_hyper_prior_tag <- function(body) {
+.fb_hyper_prior_tag <- function(body, response_scale = NULL) {
   num <- "([-+0-9.eE]+)"
+  sd_tag <- function(family, args, on_response) {
+    tag <- sprintf(
+      "%s-SD(%s)", family,
+      paste(vapply(args, .fb_signif_string, character(1L)), collapse = ", ")
+    )
+    if (is.null(response_scale)) {
+      return(sprintf("<prior: %s>", tag))
+    }
+    back <- vapply(
+      on_response, function(v) .fb_signif_string(round(v, 12L)), character(1L)
+    )
+    sprintf(
+      "<prior: %s on the standardised response = %s-SD(%s) on the response>",
+      tag, family, paste(back, collapse = ", ")
+    )
+  }
+  k <- response_scale %||% 1
   m <- regmatches(
     body,
     regexec(paste0("expression: *L=", num, "; *U=", num), body)
   )[[1L]]
   if (length(m) == 3L) {
-    return(sprintf(
-      "<prior: uniform-SD(%s, %s)>",
-      .fb_signif_string(m[[2L]]),
-      .fb_signif_string(m[[3L]])
-    ))
+    bounds <- as.numeric(m[2:3])
+    return(sd_tag("uniform", bounds, bounds * k))
   }
   m <- regmatches(
     body,
     regexec(paste0("expression: *U=", num), body)
   )[[1L]]
   if (length(m) == 2L) {
-    return(sprintf("<prior: uniform-SD(0, %s)>", .fb_signif_string(m[[2L]])))
+    upper <- as.numeric(m[[2L]])
+    return(sd_tag("uniform", c(0, upper), c(0, upper * k)))
+  }
+  # A lognormal with a location carries `mu=`; the location moves by log(k).
+  m <- regmatches(
+    body,
+    regexec(paste0("expression: *s=", num, "; *mu=", num), body)
+  )[[1L]]
+  if (length(m) == 3L) {
+    s_log <- as.numeric(m[[2L]])
+    mu <- as.numeric(m[[3L]])
+    return(sd_tag("lognormal", c(mu, s_log), c(mu + log(k), s_log)))
   }
   m <- regmatches(
     body,
     regexec(paste0("expression: *s=", num), body)
   )[[1L]]
   if (length(m) == 2L) {
+    s_val <- as.numeric(m[[2L]])
     # Both SD-scale expression priors open with the same `s=` scale, so
     # they are told apart on the term only one of them carries: the
     # lognormal is quadratic in theta, the half-normal is not.
     if (grepl("theta*theta", body, fixed = TRUE)) {
-      return(sprintf(
-        "<prior: lognormal-SD(0, %s)>",
-        .fb_signif_string(m[[2L]])
-      ))
+      return(sd_tag("lognormal", c(0, s_val), c(log(k), s_val)))
     }
-    return(sprintf(
-      "<prior: half-normal-SD(%s)>",
-      .fb_signif_string(m[[2L]])
-    ))
+    return(sd_tag("half-normal", s_val, s_val * k))
   }
 
   nm <- regmatches(body, regexec("prior *= *\"([^\"]+)\"", body))[[1L]]
@@ -2435,7 +2467,7 @@ emit_inla <- function(
 #
 # @noRd
 # @keywords internal
-.fb_compress_hyper_blobs <- function(txt) {
+.fb_compress_hyper_blobs <- function(txt, response_scale = NULL) {
   marker <- "hyper = list("
   repeat {
     start <- regexpr(marker, txt, fixed = TRUE)
@@ -2473,7 +2505,7 @@ emit_inla <- function(
     body <- paste(chars[seq(open_at, end_at)], collapse = "")
     txt <- paste0(
       paste(chars[seq_len(start - 1L)], collapse = ""),
-      .fb_hyper_prior_tag(body),
+      .fb_hyper_prior_tag(body, response_scale),
       paste(chars[seq(end_at + 1L, length(chars))], collapse = "")
     )
   }
@@ -2483,13 +2515,13 @@ emit_inla <- function(
 #
 # @noRd
 # @keywords internal
-.fb_display_inla_formula <- function(form) {
+.fb_display_inla_formula <- function(form, response_scale = NULL) {
   if (is.null(form)) {
     return("(none recorded)")
   }
   txt <- paste(deparse(form), collapse = " ")
   txt <- gsub("[[:space:]]+", " ", txt)
-  .fb_compress_hyper_blobs(txt)
+  .fb_compress_hyper_blobs(txt, response_scale)
 }
 
 # The spelling a user wrote for an AR1 field term, rebuilt from the IR so a
@@ -2507,12 +2539,8 @@ emit_inla <- function(
     term$col_var
   }
   base <- paste0("ar1(", term$row_var, "):", inner)
-  # C5/FS-27: the per-trial spelling wraps the single-field form in
-  # at(<at_var>): -- quoting it back is what makes a refusal on the
-  # per-trial shape name the formula the user actually wrote rather
-  # than the single-field one.
   if (!is.null(term$at_var)) {
-    return(paste0("at(", term$at_var, "):", base))
+    return(paste0("id(", term$at_var, "):", base))
   }
   base
 }
@@ -2527,7 +2555,7 @@ emit_inla <- function(
 # oracle (rebuild/wp16_inla_spatial_oracle.R). The <..>_id integer index
 # columns are pre-built in emit_inla()'s data_inla setup.
 #
-# C5/FS-27: at(trial):ar1(row):ar1(col) -- one separable field per
+# C5/FS-27: id(trial):ar1(row):ar1(col) -- one separable field per
 # level of `trial` -- adds `replicate = <at_var>_id` to the same f().
 # INLA's replicate mechanism fits K independent realisations of the
 # identical model (same node count, same hyperparameters shared across
@@ -3477,7 +3505,10 @@ print.flexybayes_inla <- function(x, ...) {
   # block named rather than spelled out.
   cat(
     "  INLA formula: ",
-    .fb_display_inla_formula(x$extras$formula),
+    .fb_display_inla_formula(
+      x$extras$formula,
+      x$extras$response_standardisation$scale
+    ),
     "\n",
     sep = ""
   )

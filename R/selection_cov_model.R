@@ -40,6 +40,8 @@
 #                          the rows at level l, zero elsewhere
 #   ar1(row):ar1(col)      Z the indicator of the lattice node, one trial,
 #                          G = R_row(rho_row) (x) R_col(rho_col)
+#   at(t):ar1(r):ar1(c)    Z the indicator of the trial's lattice node,
+#                          G = I_trial (x) R_row(rho_row) (x) R_col(rho_col)
 #   vm(g, K), ped(g, A)    Z the indicator of g, G the known covariance; a
 #                          precision carrier is inverted
 #
@@ -52,7 +54,8 @@
 # with the cube of the rows. Above the bound V is factored block by block
 # over the grouping every slot nests within, choosing the one with the most
 # blocks, and no n x n matrix is formed; a V with no such grouping refuses
-# with `selection_dense_covariance_too_large`. Below the bound both sources
+# with `selection_dense_covariance_too_large`. A base with one field per trial
+# is factored by trial at any size. Below the bound both sources
 # take the dense route, so one set of components gives one answer, bit for
 # bit, whichever source supplied it.
 
@@ -170,8 +173,8 @@
       at_simple = if (is.null(t$level)) {
         .fb_sel_slots_diag(t$outer, t$inner, data)
       },
-      ar1_spatial = if (isTRUE(t$col_ar1) && is.null(t$at_var)) {
-        .fb_sel_slots_ar1(t$row_var, t$col_var, data)
+      ar1_spatial = if (isTRUE(t$col_ar1)) {
+        .fb_sel_slots_ar1(t$row_var, t$col_var, data, t$at_var)
       },
       vm = ,
       ped = .fb_sel_slots_known(t, data, known_matrices),
@@ -195,8 +198,9 @@
       message = paste0(
         "fb_select(): covariance = \"base_model\" builds the fold ",
         "covariance from random intercepts, two-way interactions, ",
-        "uncorrelated random slopes, diag(f):g, a single-trial ",
-        "ar1(row):ar1(col) field and vm() or ped() known covariances, over ",
+        "uncorrelated random slopes, diag(f):g, an ar1(row):ar1(col) field ",
+        "on one trial or id(trial):ar1(row):ar1(col) on each trial, and vm() ",
+        "or ped() known covariances, over ",
         "an independent residual, and this base also carries: ",
         paste(unique(refused), collapse = ", "),
         "."
@@ -280,24 +284,38 @@
   })
 }
 
-.fb_sel_slots_ar1 <- function(row_var, col_var, data) {
+.fb_sel_slots_ar1 <- function(row_var, col_var, data, at_var = NULL) {
   row <- .fb_sel_level_index(data[[row_var]])
   col <- .fb_sel_level_index(data[[col_var]])
   n_row <- length(row$levels)
   n_col <- length(col$levels)
+  label <- paste0("ar1(", row_var, "):ar1(", col_var, ")")
+  trial <- 1L
+  n_at <- 1L
+  key <- NULL
+  columns <- c(row_var, col_var)
+  if (!is.null(at_var)) {
+    at <- .fb_sel_level_index(data[[at_var]])
+    trial <- at$index
+    n_at <- length(at$levels)
+    key <- as.character(data[[at_var]])
+    columns <- at_var
+    label <- paste0("id(", at_var, "):", label)
+  }
   list(.fb_sel_cov_slot(
     name = "spatial",
-    label = paste0("ar1(", row_var, "):ar1(", col_var, ")"),
+    label = label,
     components = "sd_spatial",
-    # Row is the outer index and column the inner one, as in
-    # kronecker(R_row, R_col).
-    index = (row$index - 1L) * n_col + col$index,
-    n_levels = n_row * n_col,
-    columns = c(row_var, col_var),
+    # Trial, then row, then column, as in kronecker(I, R_row, R_col).
+    index = ((trial - 1L) * n_row + row$index - 1L) * n_col + col$index,
+    n_levels = n_at * n_row * n_col,
+    key = key,
+    columns = columns,
     structure = list(
       type = "ar1xar1",
       n_row = n_row,
       n_col = n_col,
+      n_at = n_at,
       rho = c(row = "rho_row", col = "rho_col")
     )
   ))
@@ -351,8 +369,8 @@
 
 # .fb_sel_cov_block_structure() --- the grouping column every slot nests
 # within, with the most blocks among those that qualify, or the reason there
-# is none. A slot with a structure matrix links rows across every level of its
-# index, so it admits no grouping.
+# is none. A slot with a structure matrix and no key links rows across every
+# level of its index, so it admits no grouping.
 .fb_sel_cov_block_structure <- function(slots, data) {
   n <- nrow(data)
   if (length(slots) == 0L) {
@@ -363,7 +381,7 @@
       reason = "no random terms, so V is diagonal"
     ))
   }
-  linking <- Filter(function(s) !is.null(s$structure), slots)
+  linking <- Filter(function(s) !is.null(s$structure) && is.null(s$key), slots)
   if (length(linking) > 0L) {
     return(list(
       applicable = FALSE,
@@ -421,7 +439,14 @@
   slots <- .fb_sel_cov_slots(base$fb, data, info$known_matrices %||% list())
   blocking <- .fb_sel_cov_block_structure(slots, data)
 
-  whitening <- if (.fb_sel_dense_admitted(n)) {
+  # At 48 trials of 72 plots the dense route's peak was 2.1 GB against 0.9 GB
+  # by trial (review/units/U-AR_2026-09-24).
+  field_per_trial <- isTRUE(blocking$applicable) && any(vapply(
+    slots,
+    function(s) !is.null(s$structure) && !is.null(s$key),
+    logical(1L)
+  ))
+  whitening <- if (.fb_sel_dense_admitted(n) && !field_per_trial) {
     list(
       mode = "dense",
       group = NA_character_,
@@ -484,7 +509,9 @@
   spec <- .fb_sel_bayes_base_spec(base)
   fold_data <- spec$data
   if (identical(provider, "inla")) {
-    fold_data[[spec$response]][split$assess_rows] <- NA
+    fold_data[[spec$response]][
+      c(split$assess_rows, split$not_estimable_rows)
+    ] <- NA
   } else {
     fold_data <- fold_data[split$train_rows, , drop = FALSE]
   }
@@ -501,7 +528,10 @@
     engine = engine,
     seed = seed,
     na_action = if (identical(provider, "inla")) "augment" else NULL,
-    carry_known_variance = TRUE
+    carry_known_variance = TRUE,
+    # The candidate space has already refused, or dropped, every protected
+    # column aliased on this fold's training rows.
+    fixed_alias = "drop"
   )
   out <- .fb_sel_cov_components(fit, slots)
   out$rows_passed <- nrow(fold_data)
@@ -615,6 +645,7 @@
       known_variance = model$known_variance
     )
     spec$slots <- model$slots
+    spec$rho <- components$rho
     spec$blocks <- model$whitening$blocks
   }
   spec$whitening <- mode
@@ -654,7 +685,15 @@
       )
     ))
   }
-  z[keep, ] <- t(factor_g)[slot$index[keep], , drop = FALSE]
+  # With one field per trial, G = I (x) g and its factor is I (x) chol(g).
+  n_nodes <- nrow(g)
+  node <- (slot$index[keep] - 1L) %% n_nodes + 1L
+  trial <- (slot$index[keep] - 1L) %/% n_nodes
+  for (a in unique(trial)) {
+    at <- which(trial == a)
+    z[keep[at], a * n_nodes + seq_len(n_nodes)] <-
+      t(factor_g)[node[at], , drop = FALSE]
+  }
   z
 }
 
@@ -671,9 +710,9 @@
 # one block, from the slots.
 #
 # The same sums as the dense route, in the same order: the residual on the
-# diagonal, then each slot's variance times its loadings' products. A slot on
-# this route is an indicator times a loading, so each product has one nonzero
-# term, and every entry equals the dense V's entry exactly.
+# diagonal, then each slot's variance times its loadings' products. An
+# indicator slot's entries equal the dense V's exactly, a per-trial field's
+# to rounding.
 .fb_sel_block_covariance <- function(cov_spec, rows_a, rows_b) {
   out <- if (identical(rows_a, rows_b)) {
     diag(.fb_sel_residual_diagonal(cov_spec, rows_a), nrow = length(rows_a))
@@ -681,6 +720,11 @@
     matrix(0, nrow = length(rows_a), ncol = length(rows_b))
   }
   for (s in cov_spec$slots) {
+    if (identical(s$structure$type, "ar1xar1")) {
+      out <- out + cov_spec$terms[[s$name]] *
+        .fb_sel_ar1_field_correlation(s, cov_spec$rho[[s$name]], rows_a, rows_b)
+      next
+    }
     same <- outer(s$index[rows_a], s$index[rows_b], "==")
     same[is.na(same)] <- FALSE
     loading <- if (is.null(s$value)) {
@@ -692,6 +736,26 @@
   }
   dimnames(out) <- NULL
   out
+}
+
+# .fb_sel_ar1_field_correlation() --- the correlation of a per-trial
+# AR1 x AR1 field between two sets of rows: zero across trials.
+.fb_sel_ar1_field_correlation <- function(slot, rho, rows_a, rows_b) {
+  n_row <- slot$structure$n_row
+  n_col <- slot$structure$n_col
+  position <- function(rows) {
+    i <- slot$index[rows] - 1L
+    list(
+      trial = i %/% (n_row * n_col),
+      row = (i %/% n_col) %% n_row,
+      col = i %% n_col
+    )
+  }
+  a <- position(rows_a)
+  b <- position(rows_b)
+  outer(a$trial, b$trial, "==") *
+    rho[["row"]]^abs(outer(a$row, b$row, "-")) *
+    rho[["col"]]^abs(outer(a$col, b$col, "-"))
 }
 
 # .fb_sel_fold_blocks_by_group() --- `.fb_sel_fold_blocks()` block by block.

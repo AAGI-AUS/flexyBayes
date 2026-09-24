@@ -23,6 +23,15 @@ tuning report and, where \code{refit = list(method = "bayes")} ran, the
 valuation of the refitted supports.
 }
 \details{
+The out-of-fold scores are losses, so lower is better. \code{loss} names the
+loss: \code{neg_elpd}, minus the log predictive density summed over a held-out
+unit's rows (the Bayesian workflow's default), or \code{nlpd} (per row),
+\code{rmse} or \code{mse}. \code{loss_protected_only} and \code{loss_full} are that loss
+averaged over the \code{n_units} held-out units, for the protected model alone
+and with the candidates added, and \code{loss_reduction} is
+\code{loss_protected_only - loss_full}, positive when the candidates improve
+prediction.
+
 \code{value_elpd} is the held-out log predictive density summed over the held-out
 units, and \code{value_elpd_se} its standard error across units; \code{value_formula}
 states both. \code{block_share_median}, \code{block_share_lower} and

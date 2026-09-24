@@ -18,8 +18,11 @@ authors:
     family-names: "Moldovan"
     email: "max.moldovan@adelaide.edu.au"
     orcid: "https://orcid.org/0000-0001-9680-8474"
-version: 0.14.0
-date-released: "2026-09-20"
+  - given-names: "Anabel"
+    family-names: "Forte Deltell"
+    orcid: "https://orcid.org/0000-0001-9534-1817"
+version: 0.14.1
+date-released: "2026-09-24"
 license: MIT
 repository-code: "https://github.com/AAGI-AUS/flexyBayes"
 url: "https://github.com/AAGI-AUS/flexyBayes"

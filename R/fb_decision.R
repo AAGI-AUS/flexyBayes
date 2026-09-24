@@ -114,11 +114,20 @@
 #' @param stability_unit The units a subsample draws half of, as a one-sided
 #'   formula or a character vector. `NULL` (the default) takes the resampling
 #'   unit of [fb_resamples()], and rows where that has none.
+#' @param n_lambda The number of points on the penalised optimiser's path, a
+#'   whole number of at least 2. Read by the penalised optimiser workflow, the
+#'   `benchmark = TRUE` arm, their stability subsamples and the ablation.
+#' @param lambda_min_ratio The smallest point of that path as a fraction of
+#'   each fold's `lambda_max`, in (0, 1). The path runs from `s = 1` down to
+#'   this value on a log scale. Ridge and the exclusive lasso have no finite
+#'   `lambda_max`; their path spans two decades either side of the declared
+#'   penalty, and this setting is not read.
 #'
 #' @returns An object of class `fb_decision`: a validated list carrying
 #'   `method`, `requested_method`, `metric`, `rule`, `tolerance`, `search`,
 #'   `nterms_max`, `validate_search`, `threshold`, `effect_size`,
-#'   `stability_subsamples`, `stability_cutoff` and `stability_unit`.
+#'   `stability_subsamples`, `stability_cutoff`, `stability_unit`,
+#'   `n_lambda` and `lambda_min_ratio`.
 #'
 #' @seealso [fb_select()], which takes this object; [fb_resamples()] for the
 #'   folds the decision is assessed on.
@@ -128,6 +137,7 @@
 #' fb_decision(rule = "tolerance", tolerance = 0.1)
 #' fb_decision(method = "posterior_threshold", effect_size = 0.2)
 #' fb_decision(stability_subsamples = 100L, stability_unit = ~ site)
+#' fb_decision(n_lambda = 50L, lambda_min_ratio = 1e-4)
 #' @export
 fb_decision <- function(
   method = c("auto", "projection", "full", "posterior_threshold"),
@@ -141,7 +151,9 @@ fb_decision <- function(
   effect_size = NULL,
   stability_subsamples = 0L,
   stability_cutoff = 0.75,
-  stability_unit = NULL
+  stability_unit = NULL,
+  n_lambda = 20L,
+  lambda_min_ratio = 1e-3
 ) {
   method <- match.arg(method)
   metric <- match.arg(metric)
@@ -292,6 +304,32 @@ fb_decision <- function(
   }
   stability_unit <- .fb_sel_variables(stability_unit, "stability_unit")
 
+  if (!.fb_dec_is_number(n_lambda) || n_lambda < 2 ||
+      n_lambda != round(n_lambda)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_decision_invalid",
+      message = paste0(
+        "fb_decision(): `n_lambda` must be a single whole number of path ",
+        "points, at least 2. Got: ",
+        .fb_dec_show(n_lambda),
+        "."
+      )
+    ))
+  }
+  n_lambda <- as.integer(n_lambda)
+  if (!.fb_dec_is_number(lambda_min_ratio) || lambda_min_ratio <= 0 ||
+      lambda_min_ratio >= 1) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_decision_invalid",
+      message = paste0(
+        "fb_decision(): `lambda_min_ratio` is the path's smallest point as a ",
+        "fraction of lambda_max and must lie strictly inside (0, 1). Got: ",
+        .fb_dec_show(lambda_min_ratio),
+        "."
+      )
+    ))
+  }
+
   structure(
     list(
       method = method,
@@ -308,7 +346,9 @@ fb_decision <- function(
       effect_size = effect_size,
       stability_subsamples = stability_subsamples,
       stability_cutoff = stability_cutoff,
-      stability_unit = stability_unit
+      stability_unit = stability_unit,
+      n_lambda = n_lambda,
+      lambda_min_ratio = lambda_min_ratio
     ),
     class = c("fb_decision", "list")
   )
@@ -384,6 +424,11 @@ print.fb_decision <- function(x, ...) {
       sep = ""
     )
   }
+  cat(
+    "  path    : ", x$n_lambda %||% 20L, " points, s from 1 down to ",
+    format(x$lambda_min_ratio %||% 1e-3), " of lambda_max\n",
+    sep = ""
+  )
   invisible(x)
 }
 

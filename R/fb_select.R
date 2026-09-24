@@ -1186,6 +1186,7 @@
             tuning_scale = arm$selection$tuning_scale,
             selected_s = arm$selection$selected_s,
             selected_lambda_canonical = arm$selection$selected_lambda_canonical,
+            path_grid = arm$path_grid,
             # Per penalised column: the folds, the folds that estimated it,
             # and the folds whose support held it at the chosen point.
             candidate_availability = arm$selection$candidate_availability,
@@ -1623,7 +1624,7 @@
   # Canonical fold numbers, by the sorted units -----
   scored <- rowSums(!is.na(row_fold)) > 0L
   units <- sort(unique(unit_key[scored]), method = "radix")
-  first_row <- match(units, unit_key)
+  first_row <- which(scored)[match(units, unit_key[scored])]
   canonical_rows <- row_fold
   seen_by_repeat <- list()
   unit_to_fold <- do.call(rbind, lapply(seq_along(repeats), function(r) {
@@ -2232,6 +2233,29 @@
   ))
 }
 
+# .fb_select_path_grid() --- the grid the optimiser's path walked, as the
+# certificate records it. `s` is NA on every point for ridge and the
+# exclusive lasso, whose path is not a fraction of a lambda_max.
+.fb_select_path_grid <- function(path) {
+  scores <- path$selection$scores
+  list(
+    n_lambda = path$decision$n_lambda,
+    lambda_min_ratio = path$decision$lambda_min_ratio,
+    tuning_scale = path$selection$tuning_scale,
+    s = scores$s[order(scores$lambda_index)],
+    lambda_max = path$selection$lambda_max
+  )
+}
+
+
+.fb_select_plan_path_grid <- function(decision) {
+  list(
+    n_lambda = decision$n_lambda %||% 20L,
+    lambda_min_ratio = decision$lambda_min_ratio %||% 1e-3
+  )
+}
+
+
 # .fb_select_benchmark() --- the two comparison arms, on the same folds.
 #
 # Neither is labelled Bayesian and neither can be. The GLS arm fits REML
@@ -2258,7 +2282,8 @@
                                  shared_predictive_table = FALSE,
                                  covariance = "reml_plugin",
                                  engine = NULL,
-                                 ablation = FALSE) {
+                                 ablation = FALSE,
+                                 protected_alias = "refuse") {
   arms <- list()
   refusals <- character(0)
   stability_error <- NULL
@@ -2288,7 +2313,8 @@
     # The base's offset, subtracted from the response in each fold before
     # whitening; the penalised optimiser reads the same substrates.
     offsets = base$fb$offsets %||% character(0),
-    cov_model = cov_model
+    cov_model = cov_model,
+    protected_alias = protected_alias
   )
   arms$gls <- list(
     workflow = gls$workflow,
@@ -2338,7 +2364,9 @@
             rule = decision$rule %||% "one_se",
             metric = if (identical(metric, "mse")) "mse" else metric,
             tolerance = decision$tolerance,
-            benchmark = TRUE
+            benchmark = TRUE,
+            n_lambda = decision$n_lambda %||% 20L,
+            lambda_min_ratio = decision$lambda_min_ratio %||% 1e-3
           ),
           seed = seed,
           cluster = cluster_key
@@ -2361,6 +2389,7 @@
           fully_bayesian = path$fully_bayesian,
           family = path$family,
           selection = path$selection,
+          path_grid = .fb_select_path_grid(path),
           coefficients = path$coefficients_original_scale,
           support = path$support_by_resolution,
           kkt = path$kkt_by_lambda,
@@ -2401,7 +2430,8 @@
               path = path,
               decision = decision,
               resamples = resamples,
-              seed = seed
+              seed = seed,
+              protected_alias = protected_alias
             ),
             error = function(e) e
           )
@@ -2556,7 +2586,8 @@
 #' columns in the order `candidates` writes them, are factorised by
 #' `qr()` with tolerance `1e-7`, every column but the intercept centred on
 #' the training rows. A protected column aliased there refuses with
-#' `selection_fold_protected_unidentified`, and a factor level present only in
+#' `selection_fold_protected_unidentified`, unless `protected_alias = "drop"`
+#' (see "Aliased protected columns"), and a factor level present only in
 #' a fold's assessment rows refuses with `selection_fold_level_absent`, both
 #' before any engine runs. A candidate column aliased there is dropped for that
 #' fold, as when a fold's training trials leave fewer degrees of freedom than
@@ -2570,6 +2601,39 @@
 #' Bayesian route drops whole terms and refuses a term aliased only in part, and
 #' the penalised reference's out-of-fold score refuses any drop, both with
 #' `selection_fold_candidate_drop_not_representable`.
+#'
+#' @section Aliased protected columns:
+#' In an unbalanced multi-trial design some cells of a protected interaction
+#' `VARIETY:NAPPLIED:SEEDRATE` are never sown, so some of its columns are
+#' linear combinations of others, on all rows or on a fold's training rows. With `protected_alias = "refuse"` a fold like that refuses with
+#' `selection_fold_protected_unidentified`. With `protected_alias = "drop"`
+#' each fold drops them as ASReml 4.2 does: the protected columns are taken
+#' term by term, and within a term in descending order of their factor
+#' levels, the term's first factor varying slowest, and a column that is a
+#' linear combination of the columns before it on the training rows is
+#' dropped. These are the columns asreml reports as aliased, less the
+#' first-level columns that the treatment contrasts leave out.
+#'
+#' A held-out row whose protected row is not a linear combination of the
+#' training rows' protected rows has no estimable prediction: its cell was
+#' never sown on the training rows, and `predict()` on the asreml fit
+#' returns `NA` for it. Such a row is not scored. The certificate's
+#' `design$candidate_space` lists each fold's dropped protected columns in
+#' `protected_dropped` and, in `not_estimable`, each fold's held-out rows and
+#' how many of them were not estimable, and the printed certificate gives
+#' the totals. A fold with no estimable held-out row refuses. The Bayesian
+#' workflow writes the protected part as formula text, which cannot leave
+#' out one column of a term, and refuses `"drop"`. With
+#' `refit = list(method = "bayes")`, each fold's refit holds the protected
+#' columns that fold kept, entered as numeric columns as the support is, and
+#' `value$not_estimable` counts each fold's held-out rows left out of the
+#' log predictive density. With `covariance = "base_model"` the fold's
+#' variance components come from a refit of the base model with the fold's
+#' aliased protected columns fixed at zero (`flexybayes(fixed_alias =
+#' "drop")`).
+#'
+#' A whole-data base with aliased fixed-effect columns is fitted with
+#' `flexybayes(fixed_alias = "drop")`; by default `flexybayes()` refuses it.
 #'
 #' @section Bayesian refit of the frozen support:
 #' With `workflow = "penalized_optimizer"` and a penalty that selects,
@@ -2681,8 +2745,13 @@
 #'   at a point is the set of non-zero penalised coefficients after one rule:
 #'   at `s >= 1` every one is zero, the exact solution there; elsewhere a
 #'   coefficient is set to zero when removing it moves its own gradient
-#'   coordinate by at most the path's KKT threshold of `1e-6`, and the point
-#'   without it still meets that threshold.
+#'   coordinate by at most the path's KKT threshold, and the point without it
+#'   still meets that threshold. The threshold is `1e-6` for ridge, Laplace
+#'   and elastic net. For the grouped families it is `1e-6` times the largest
+#'   absolute entry of `A'z`, the gradient of the least-squares part at zero
+#'   on the fold's whitened, protected-residualised payload `(A, z)`. Every
+#'   path point is solved to its threshold, and group lasso and group elastic
+#'   net points are solved by block coordinate descent.
 #' @param resamples An [fb_resamples()] specification.
 #' @param prediction `"new_cluster"` (default) or `"known_cluster"`. A
 #'   held-out cluster's own effect is not estimable from the training rows,
@@ -2712,15 +2781,18 @@
 #'   `"base_model"` refits the base model on each fold's training rows with
 #'   its own formula, random and residual structure, priors and engine, and
 #'   takes each variance at its posterior mean; it also builds uncorrelated
-#'   random slopes, `diag(f):g`, a single-trial `ar1(row):ar1(col)` field and
-#'   `vm()` or `ped()` known covariances, at the cost of one refit per fold.
+#'   random slopes, `diag(f):g`, an `ar1(row):ar1(col)` field on one trial,
+#'   `id(trial):ar1(row):ar1(col)` (one field per trial with shared
+#'   parameters) and `vm()` or `ped()` known covariances, at the cost of one
+#'   refit per fold.
 #'   The Bayesian workflow integrates the covariance, so the argument applies
 #'   to it only with `benchmark = TRUE`. V is formed as a dense matrix only
 #'   while one n by n matrix over the data fits within
 #'   `options(flexyBayes.selection_dense_gb = )`, 0.5 GiB (8,192 rows) by
 #'   default. Above that, a V that is block-diagonal over a grouping of its
 #'   random terms is factored block by block, and any other V refuses with
-#'   `selection_dense_covariance_too_large`. The argument's earlier form, an
+#'   `selection_dense_covariance_too_large`. A V with one field per trial is
+#'   factored by trial at any size. The argument's earlier form, an
 #'   estimand string (`"plugin_mean_covariance"` and two others), is
 #'   deprecated and runs the default.
 #' @param refit `NULL` (the default), or `list(method = "bayes")` to refit
@@ -2737,6 +2809,10 @@
 #'   loss; see "Grouped ablation". It needs
 #'   `workflow = "penalized_optimizer"`, and refuses with
 #'   `selection_ablation_route_undefined` elsewhere, before any fit.
+#' @param protected_alias `"refuse"` (the default) or `"drop"`: what a fold
+#'   does with a protected column its training rows do not identify. See
+#'   "Aliased protected columns". `"drop"` needs
+#'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
@@ -2798,9 +2874,11 @@ fb_select <- function(base,
                       covariance = c("reml_plugin", "base_model"),
                       refit = NULL,
                       ablation = FALSE,
+                      protected_alias = c("refuse", "drop"),
                       ...) {
   workflow <- match.arg(workflow)
   fallback <- match.arg(fallback)
+  protected_alias <- match.arg(protected_alias)
   prediction <- match.arg(prediction)
   covariance <- .fb_select_resolve_covariance(covariance)
   decision <- .fb_select_check_decision(decision)
@@ -2993,6 +3071,18 @@ fb_select <- function(base,
     )
   }
 
+  if (identical(protected_alias, "drop") && identical(workflow, "bayes")) {
+    stop(
+      "fb_select(): protected_alias = \"drop\" fits each fold on the ",
+      "protected columns its training rows identify, and the Bayesian ",
+      "workflow writes each fold's model as formula text, which cannot leave ",
+      "out one column of a term. Ask for workflow = \"penalized_optimizer\", ",
+      "with refit = list(method = \"bayes\") for a Bayesian refit, or ",
+      "\"unpenalized_benchmark\".",
+      call. = FALSE
+    )
+  }
+
   if (identical(workflow, "penalized_optimizer") && is.null(penalty)) {
     stop(.fb_refusal_condition(
       reason_code = "selection_penalty_spec_malformed",
@@ -3069,7 +3159,8 @@ fb_select <- function(base,
       decision = decision,
       shared_predictive_table = TRUE,
       covariance = covariance,
-      engine = engine
+      engine = engine,
+      protected_alias = protected_alias
     )
     return(.fb_select_assemble(
       base = base,
@@ -3113,6 +3204,7 @@ fb_select <- function(base,
       ablation = ablation,
       engine = engine,
       budget = budget,
+      protected_alias = protected_alias,
       decision_resolution = list(
         requested = decision_resolution$requested,
         resolved_from = if (
@@ -3286,7 +3378,12 @@ fb_select <- function(base,
       } else {
         NULL
       },
-      covariance = covariance
+      covariance = covariance,
+      path_grid = if (isTRUE(benchmark)) {
+        .fb_select_plan_path_grid(decision)
+      } else {
+        NULL
+      }
     ))
   }
 
@@ -3547,7 +3644,8 @@ fb_select <- function(base,
                                  value_request = NULL,
                                  ablation = FALSE,
                                  engine = NULL,
-                                 budget = NULL) {
+                                 budget = NULL,
+                                 protected_alias = "refuse") {
   resolved <- .fb_select_resolve_penalty(
     base,
     candidates,
@@ -3580,7 +3678,8 @@ fb_select <- function(base,
     ablation_plan <- if (isTRUE(ablation)) {
       .fb_sel_ablation_plan(
         resolved, candidates, base$data, resamples,
-        refit = !is.null(value_request)
+        refit = !is.null(value_request),
+        n_lambda = decision$n_lambda %||% 20L
       )
     } else {
       NULL
@@ -3607,7 +3706,8 @@ fb_select <- function(base,
       decision_resolution = decision_resolution,
       stability = .fb_sel_stability_plan(decision, resamples, base$data),
       covariance = covariance,
-      ablation = ablation_plan
+      ablation = ablation_plan,
+      path_grid = .fb_select_plan_path_grid(decision)
     ))
   }
   bench <- .fb_select_benchmark(
@@ -3624,7 +3724,8 @@ fb_select <- function(base,
     shared_predictive_table = TRUE,
     covariance = covariance,
     engine = engine,
-    ablation = ablation
+    ablation = ablation,
+    protected_alias = protected_alias
   )
   if (is.null(bench$arms$glmnet)) {
     stop(.fb_refusal_condition(
@@ -3669,7 +3770,8 @@ fb_select <- function(base,
       request = value_request,
       engine = engine,
       seed = seed,
-      budget = budget
+      budget = budget,
+      candidate_space = bench$cv$candidate_space
     )
   }
   # The grouped ablation's loss read-out, and beside it, where the refit ran,
@@ -3687,7 +3789,8 @@ fb_select <- function(base,
       folds = bench$cv$folds,
       request = value_request,
       engine = engine,
-      seed = seed
+      seed = seed,
+      candidate_space = bench$cv$candidate_space
     )
   }
 
@@ -3943,6 +4046,14 @@ fb_select <- function(base,
 
 
 # --- small helpers -------------------------------------------------------- #
+
+# The name of the loss an out-of-fold score holds. `elpd` is stored negated.
+.fb_select_loss_name <- function(metric) {
+  if (is.null(metric) || length(metric) == 0L) {
+    return(NA_character_)
+  }
+  if (identical(metric, "elpd")) "neg_elpd" else metric
+}
 
 # The clustered-draw settings the projection search runs at. They are
 # constants rather than arguments in this release: they trade a small amount
@@ -4203,12 +4314,13 @@ print.fb_select <- function(x, digits = 4L, ...) {
   }
 
   if (!is.null(x$increment)) {
-    cat("\n  out-of-fold ", x$increment$metric, ":\n", sep = "")
+    cat("\n  out-of-fold loss (", .fb_select_loss_name(x$increment$metric),
+        ", lower is better):\n", sep = "")
     cat("    protected only : ", round(x$increment$protected_only, digits),
         "\n", sep = "")
     cat("    with candidates: ", round(x$increment$full, digits), "\n",
         sep = "")
-    cat("    improvement    : ", round(x$increment$improvement, digits),
+    cat("    reduction      : ", round(x$increment$improvement, digits),
         "  (", x$increment$n_units, " independent ",
         x$increment$se_unit, ")\n", sep = "")
   }
@@ -4258,6 +4370,10 @@ print.fb_select <- function(x, digits = 4L, ...) {
         arm$provider, "  [", arm$equivalence_level$level, "]\n",
         sep = ""
       )
+      if (!is.null(arm$path_grid)) {
+        cat("             path grid: ", .fb_select_path_grid_line(arm$path_grid),
+            "\n", sep = "")
+      }
       if (isTRUE(arm$stability$ran)) {
         cat("             stability: ", .fb_sel_stability_line(arm$stability),
             "\n", sep = "")
@@ -4302,6 +4418,22 @@ print.fb_select <- function(x, digits = 4L, ...) {
     }
   }
   invisible(x)
+}
+
+
+# One line for the path grid, shared by the fit's print and the plan's.
+.fb_select_path_grid_line <- function(grid) {
+  if (length(grid$s) > 0L && all(is.na(grid$s))) {
+    return(paste0(
+      grid$n_lambda, " points over two decades either side of the declared ",
+      "penalty; lambda_min_ratio is not read, as this family has no finite ",
+      "lambda_max"
+    ))
+  }
+  paste0(
+    grid$n_lambda, " points, s from 1 down to ", format(grid$lambda_min_ratio),
+    " of each fold's lambda_max"
+  )
 }
 
 
@@ -4619,6 +4751,15 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
 #' valuation of the refitted supports.
 #'
 #' @details
+#' The out-of-fold scores are losses, so lower is better. `loss` names the
+#' loss: `neg_elpd`, minus the log predictive density summed over a held-out
+#' unit's rows (the Bayesian workflow's default), or `nlpd` (per row),
+#' `rmse` or `mse`. `loss_protected_only` and `loss_full` are that loss
+#' averaged over the `n_units` held-out units, for the protected model alone
+#' and with the candidates added, and `loss_reduction` is
+#' `loss_protected_only - loss_full`, positive when the candidates improve
+#' prediction.
+#'
 #' `value_elpd` is the held-out log predictive density summed over the held-out
 #' units, and `value_elpd_se` its standard error across units; `value_formula`
 #' states both. `block_share_median`, `block_share_lower` and
@@ -4672,11 +4813,12 @@ glance.fb_select <- function(x, against = NULL, ...) {
     provider = x$provider,
     prior = x$prior,
     decision = x$decision,
-    metric = x$increment$metric %||% x$certificate$resampling$metric %||%
-      NA_character_,
-    protected_only = x$increment$protected_only %||% NA_real_,
-    full = x$increment$full %||% NA_real_,
-    improvement = x$increment$improvement %||% NA_real_,
+    loss = .fb_select_loss_name(
+      x$increment$metric %||% x$certificate$resampling$metric
+    ),
+    loss_protected_only = x$increment$protected_only %||% NA_real_,
+    loss_full = x$increment$full %||% NA_real_,
+    loss_reduction = x$increment$improvement %||% NA_real_,
     chosen_size = x$selection$chosen_size %||% NA_integer_,
     n_units = x$increment$n_units %||% NA_integer_,
     se_unit = x$increment$se_unit %||% NA_character_,
@@ -5284,6 +5426,21 @@ print.fb_select_certificate <- function(x, ...) {
           )
         },
         "\n", sep = "")
+    if (identical(cs$protected_alias, "drop")) {
+      cat("  protected  : aliased columns dropped the ASReml way; ",
+          if (nrow(cs$protected_dropped) == 0L) {
+            "none on any fold"
+          } else {
+            paste0(
+              length(unique(cs$protected_dropped$column)), " columns on ",
+              length(unique(cs$protected_dropped$fold)), " of ", cs$n_folds,
+              " folds"
+            )
+          },
+          "; ", sum(cs$not_estimable$n_not_estimable), " of ",
+          sum(cs$not_estimable$n_assess),
+          " held-out rows not estimable and not scored\n", sep = "")
+    }
   }
   cat("  approximations: ",
       if (length(x$approximations) == 0L) "none declared"

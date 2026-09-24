@@ -93,18 +93,18 @@
 #'   different models, and writing the field on the random side is what
 #'   keeps them distinguishable by name.
 #'
-#'   **Per-trial nested field.** `at(trial):ar1(row):ar1(col)`, with no
-#'   `level` argument on `at()`, fits one separable AR1 field per level of
-#'   `trial` on INLA, via the `replicate =` mechanism -- one complete grid
-#'   per trial, each with its own realised field, but the row correlation,
-#'   column correlation and field SD are **shared across every level of
-#'   `trial`**, not estimated per trial. `at(trial, level):ar1(row):ar1(col)`
-#'   (a `level` argument) asks for either a single conditioned trial or
-#'   per-trial (unshared) hyperparameters, and both are refused
-#'   (`at_field_per_level_hyper_not_representable`): flexyBayes has no
-#'   lowering for a level-conditioned field or for hyperparameters that vary
-#'   by level. It has no brms lowering for this field at all, so brms
-#'   refuses.
+#'   **Per-trial nested field.** `id(trial):ar1(row):ar1(col)` fits one
+#'   separable AR1 field per level of `trial` on INLA, via the `replicate =`
+#'   mechanism -- one complete grid per trial, each with its own realised
+#'   field, but the row correlation, column correlation and field SD are
+#'   **shared across every level of `trial`**, not estimated per trial. This
+#'   is the model ASReml fits under the same spelling. ASReml reads
+#'   `at(trial):ar1(row):ar1(col)` as a separate variance and correlations
+#'   for each trial; flexyBayes does not fit per-trial parameters and refuses
+#'   that spelling (`at_field_per_level_parameters_not_fitted`), as it
+#'   refuses `at(trial, level):ar1(row):ar1(col)`, a field on one trial
+#'   (`at_field_per_level_hyper_not_representable`). It has no brms lowering
+#'   for this field at all, so brms refuses.
 #'
 #'   **Units followed through time.** `ar1(t):g`, or the same term written
 #'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,
@@ -474,6 +474,21 @@
 #'   non-negative value per row with `known_variance_invalid`.
 #'   [fb_select()] carries it into the fold covariance under
 #'   `covariance = "base_model"`.
+#' @param fixed_alias `"refuse"` (the default) or `"drop"`: what to do with
+#'   a fixed-effect column that is a linear combination of the columns
+#'   before it on the rows with a response, as in a factorial with empty
+#'   cells. INLA and brms would report such a column at its prior, so by
+#'   default the fit refuses with `fixed_effects_aliased` and names the
+#'   columns. `"drop"` drops them as asreml 4.2 does, on INLA: terms are
+#'   taken in model order, and within a term by descending factor levels,
+#'   the term's first factor varying slowest; a column that is a linear
+#'   combination of the columns before it is fixed at zero. `summary()`
+#'   reports it with estimate 0 and no standard error, the columns are
+#'   listed in `fit$extras$fixed_alias$dropped`, and a prediction whose row
+#'   is not a combination of the fitting rows is `NA` with status
+#'   `"Aliased"` (see [predict.flexybayes_inla()]). [fb_select()]'s
+#'   `protected_alias` takes the same values and applies the same rule on
+#'   each fold.
 #'
 #' @returns An object of class `"flexybayes"`, a list with three
 #'   components.
@@ -578,6 +593,7 @@ flexybayes <- function(
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
   known_variance = NULL,
+  fixed_alias = c("refuse", "drop"),
   rcov
 ) {
   # `rcov` was the ASReml 3 name for the residual-structure argument;
@@ -625,6 +641,7 @@ flexybayes <- function(
   }
   aggregate <- .normalise_aggregate(aggregate)
   syntax <- match.arg(syntax)
+  fixed_alias <- match.arg(fixed_alias)
 
   # Resolve session-level review-mode default BEFORE the unsupported-
   # backend guard, otherwise options(flexyBayes.review_code_default =
@@ -831,7 +848,8 @@ flexybayes <- function(
     fb$priors <- hn_default
     prior <- hn_default
     .default_prior_note_once(
-      scale = attr(hn_default, "fb_prior_default_scale")
+      scale = attr(hn_default, "fb_prior_default_scale"),
+      basis = attr(hn_default, "fb_prior_default_basis")
     )
   }
 
@@ -852,6 +870,13 @@ flexybayes <- function(
       the_call = the_call,
       data_name = data_name
     ))
+  }
+
+  # A fixed-effect column the rows with a response do not estimate refuses
+  # here, or is recorded for the INLA emit to drop (R/fixed_alias.R).
+  fb <- .fb_fixed_alias_resolve(fb, data, fixed_alias, backend, aggregate)
+  if (!is.null(fb$fixed_alias)) {
+    aggregate <- FALSE
   }
 
   # Review-mode branch. Build the deferred-execution token instead
@@ -1086,6 +1111,9 @@ flexybayes <- function(
     if (!is.null(known_variance) && !is.null(fit$extras$call_info)) {
       fit$extras$call_info$known_variance <- known_variance
     }
+  }
+  if (!isTRUE(return_code)) {
+    fit <- .fb_fixed_alias_attach(fit, fb)
   }
   .fb_warn_poor_convergence(fit)
   fit

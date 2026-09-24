@@ -1,18 +1,14 @@
-# test-nested-ar1-field.R -- C5 / FS-27: a per-trial separable field.
+# test-nested-ar1-field.R -- a per-trial separable field.
 #
-# No spelling existed for one AR1 field per trial: `ar1(row):ar1(col)`
-# fits on a single complete lattice, and every multi-environment spelling
-# (three trials sharing one lattice; TRIAL:ar1(row):ar1(col)) refused
-# untyped-by-shape (a generic interaction node no engine lowers). This
-# file exercises the new spelling, `at(trial):ar1(row):ar1(col)`: one
-# separable field per level of `trial`, on INLA, lowered with SHARED
-# hyperparameters (rho_row, rho_col, field variance) via INLA's
-# `replicate =` mechanism on the existing ar1 + group `f()`.
+# `id(trial):ar1(row):ar1(col)` fits one separable AR1 x AR1 field per
+# level of `trial` on INLA, with the two correlations and the field
+# variance shared across trials (INLA's `replicate =` on the ar1 + group
+# `f()`), the model ASReml fits under the same spelling. ASReml reads
+# `at(trial):ar1(row):ar1(col)` as separate parameters for each trial,
+# which flexyBayes does not fit, so that spelling refuses by name.
 #
-# Reuses the "ar1_spatial" IR term type throughout (the pre-existing
-# single-field type gains an optional `at_var` field, NULL for that
-# case) -- see R/parse_formula.R's classify_interaction() folding rules
-# and R/emit_inla.R's .inla_ar1_field_term() / complete-lattice check.
+# The term is an "ar1_spatial" node whose `at_var` names the trial factor;
+# `at_var` is NULL for a single field.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
 skip_if_no_brms <- function() skip_if_not_installed("brms")
@@ -47,21 +43,74 @@ skip_if_no_brms <- function() skip_if_not_installed("brms")
 
 
 # ---------------------------------------------------------------- #
-# Parse: at(trial):ar1(row):ar1(col) -> ar1_spatial + at_var          #
+# Parse: id(trial):ar1(row):ar1(col) -> ar1_spatial + at_var          #
 # ---------------------------------------------------------------- #
 
-test_that("at(trial):ar1(row):ar1(col) parses to ar1_spatial with at_var set", {
-  d <- data.frame(
+.one_trial_grid <- function() {
+  data.frame(
     y = rnorm(6), row = factor(1:6), col = factor(rep(1, 6)),
     trial = factor(rep("T1", 6))
   )
-  fb <- fb_from_asreml(fixed = y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = d)
+}
+
+test_that("id(trial):ar1(row):ar1(col) parses to ar1_spatial with at_var set", {
+  d <- .one_trial_grid()
+  for (random in list(
+    ~ id(trial):ar1(row):ar1(col),
+    ~ trial:ar1(row):ar1(col),
+    ~ ar1(row):id(trial):ar1(col)
+  )) {
+    fb <- fb_from_asreml(fixed = y ~ 1, random = random, data = d)
+    term <- fb$random_terms[[1]]
+    expect_identical(
+      term[c("type", "row_var", "col_var", "at_var")],
+      list(type = "ar1_spatial", row_var = "row", col_var = "col", at_var = "trial")
+    )
+    expect_true(isTRUE(term$col_ar1))
+  }
+  fb <- fb_from_asreml(fixed = y ~ 1, random = ~ id(trial):ar1(row):id(col), data = d)
   term <- fb$random_terms[[1]]
-  expect_identical(term$type, "ar1_spatial")
   expect_identical(term$at_var, "trial")
-  expect_identical(term$row_var, "row")
-  expect_identical(term$col_var, "col")
-  expect_true(isTRUE(term$col_ar1))
+  expect_false(isTRUE(term$col_ar1))
+})
+
+test_that("other AR1 fields of three or more factors still refuse", {
+  d <- .one_trial_grid()
+  d$x <- factor(rep(1, 6))
+  for (random in list(
+    ~ ar1(row):units:ar1(col),
+    ~ ar1(row):ar1(col):ar1(x),
+    ~ id(trial):ar1(row):id(col):ar1(x)
+  )) {
+    expect_error(
+      flexybayes(y ~ 1, random = random, data = d, backend = "inla", verbose = FALSE),
+      class = "flexybayes_refusal_interaction_not_representable"
+    )
+  }
+})
+
+test_that("at(trial):ar1(row):ar1(col) refuses by name on both engines and in the plan", {
+  sim <- .three_trial_data()
+  calls <- list(
+    function() flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
+                          data = sim$data, backend = "inla", verbose = FALSE),
+    function() flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
+                          data = sim$data, backend = "brms", verbose = FALSE),
+    function() fb_plan(y ~ 1, data = sim$data,
+                       random = ~ at(trial):ar1(row):ar1(col), backend = "brms")
+  )
+  for (call in calls) {
+    err <- tryCatch(call(), error = function(e) e)
+    expect_s3_class(err, "flexybayes_refusal_at_field_per_level_parameters_not_fitted")
+    expect_match(conditionMessage(err), "write id(trial):ar1(row):ar1(col).", fixed = TRUE)
+    expect_match(conditionMessage(err), "does not fit per-level field parameters", fixed = TRUE)
+  }
+  err <- tryCatch(
+    fb_from_asreml(fixed = y ~ 1, random = ~ at(trial):ar1(row):id(col), data = sim$data),
+    error = function(e) e
+  )
+  expect_s3_class(err, "flexybayes_refusal_at_field_per_level_parameters_not_fitted")
+  expect_match(conditionMessage(err), "write id(trial):ar1(row):id(col).", fixed = TRUE)
 })
 
 test_that("ar1(row):ar1(col) alone still parses with at_var = NULL (no regression)", {
@@ -87,7 +136,7 @@ test_that("at(trial, level):ar1(row):ar1(col) refuses at_field_per_level_hyper_n
   )
   expect_s3_class(err, "flexybayes_refusal_at_field_per_level_hyper_not_representable")
   expect_match(conditionMessage(err), "single level", fixed = TRUE)
-  expect_match(conditionMessage(err), "SHARED across every level", fixed = TRUE)
+  expect_match(conditionMessage(err), "write id(trial):ar1(row):ar1(...)", fixed = TRUE)
 })
 
 
@@ -104,7 +153,7 @@ test_that("a hole in one trial's lattice refuses by name, naming only that trial
   err <- tryCatch(
     flexybayes(
       y ~ 1,
-      random = ~ at(trial):ar1(row):ar1(col),
+      random = ~ id(trial):ar1(row):ar1(col),
       data = d2,
       backend = "inla",
       verbose = FALSE
@@ -122,7 +171,7 @@ test_that("a complete lattice on every trial fits cleanly", {
   sim <- .three_trial_data()
   fit <- flexybayes(
     y ~ 1,
-    random = ~ at(trial):ar1(row):ar1(col),
+    random = ~ id(trial):ar1(row):ar1(col),
     data = sim$data,
     backend = "inla",
     verbose = FALSE
@@ -156,7 +205,7 @@ test_that(".inla_ar1_field_term() adds replicate = <at_var>_id only when at_var 
   )
 })
 
-test_that(".ar1_term_spelling() quotes the at() wrapper only when at_var is set", {
+test_that(".ar1_term_spelling() quotes the id() wrapper only when at_var is set", {
   term_single <- list(
     type = "ar1_spatial", row_var = "row", col_var = "col", col_ar1 = TRUE
   )
@@ -167,7 +216,7 @@ test_that(".ar1_term_spelling() quotes the at() wrapper only when at_var is set"
   )
   expect_identical(
     flexyBayes:::.ar1_term_spelling(term_nested),
-    "at(trial):ar1(row):ar1(col)"
+    "id(trial):ar1(row):ar1(col)"
   )
 })
 
@@ -176,7 +225,7 @@ test_that("the fitted formula carries the replicate clause", {
   sim <- .three_trial_data()
   fit <- flexybayes(
     y ~ 1,
-    random = ~ at(trial):ar1(row):ar1(col),
+    random = ~ id(trial):ar1(row):ar1(col),
     data = sim$data,
     backend = "inla",
     verbose = FALSE
@@ -200,7 +249,7 @@ test_that("brms refuses the per-trial field the same way it refuses the single f
   err <- tryCatch(
     flexybayes(
       y ~ 1,
-      random = ~ at(trial):ar1(row):ar1(col),
+      random = ~ id(trial):ar1(row):ar1(col),
       data = sim$data,
       backend = "brms",
       verbose = FALSE
@@ -210,12 +259,28 @@ test_that("brms refuses the per-trial field the same way it refuses the single f
   expect_s3_class(err, "flexybayes_refusal_stan_cannot_represent_ar1_field")
 })
 
+test_that("the brms plan says the field will not fit", {
+  sim <- .three_trial_data()
+  single <- sim$data[sim$data$trial == "T1", ]
+  plans <- list(
+    fb_plan(y ~ 1, data = sim$data, random = ~ id(trial):ar1(row):ar1(col),
+            backend = "brms"),
+    flexybayes(y ~ 1, random = ~ id(trial):ar1(row):ar1(col),
+               data = sim$data, backend = "brms", plan = TRUE),
+    fb_plan(y ~ 1, data = single, random = ~ ar1(row):ar1(col), backend = "brms")
+  )
+  for (p in plans) {
+    expect_false(p$will_fit)
+    expect_identical(p$will_fit_reason, "brms refuses: stan_cannot_represent_ar1_field")
+  }
+})
+
 test_that("backend = 'auto' routes the per-trial field to INLA", {
   skip_if_no_inla()
   sim <- .three_trial_data()
   p <- flexybayes(
     y ~ 1,
-    random = ~ at(trial):ar1(row):ar1(col),
+    random = ~ id(trial):ar1(row):ar1(col),
     data = sim$data,
     backend = "auto",
     plan = TRUE
@@ -336,7 +401,7 @@ test_that("oracle: the nested fit recovers both rhos inside their 95% credible i
 
   fit <- flexybayes(
     y ~ 1,
-    random = ~ at(trial):ar1(row):ar1(col),
+    random = ~ id(trial):ar1(row):ar1(col),
     data = sim$data,
     backend = "inla",
     verbose = FALSE

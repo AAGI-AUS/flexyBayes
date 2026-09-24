@@ -1075,7 +1075,8 @@
   prediction = c("new_cluster", "known_cluster"),
   cov_spec = NULL,
   offsets = character(0),
-  fold_space = NULL
+  fold_space = NULL,
+  protected_alias = "refuse"
 ) {
   prediction <- match.arg(prediction)
   # The response through the resolver the fit itself uses, so a transformed
@@ -1127,8 +1128,16 @@
       if (is.null(candidates)) NULL else candidate_design,
       data,
       split,
-      groupings = unique(unlist(strsplit(random, ":", fixed = TRUE)))
+      groupings = unique(unlist(strsplit(random, ":", fixed = TRUE))),
+      protected_alias = protected_alias
     )
+  }
+  # Every later step fits the protected columns the fold keeps.
+  if (nrow(fold_space$protected_dropped %||% data.frame()) > 0L) {
+    protected_design$X <- protected_design$X[,
+      fold_space$protected_kept,
+      drop = FALSE
+    ]
   }
 
   # Drop the candidate block's intercept: the protected block owns it, and
@@ -1537,7 +1546,8 @@
   cluster = NULL,
   metric = c("rmse", "mse", "nlpd"),
   offsets = character(0),
-  cov_model = NULL
+  cov_model = NULL,
+  protected_alias = "refuse"
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -1598,8 +1608,10 @@
       unlist(strsplit(random, ":", fixed = TRUE)),
       resamples$unit
     )),
-    route = "benchmark"
+    route = "benchmark",
+    protected_alias = protected_alias
   )
+  folds <- .fb_sel_estimable_folds(folds, space)
 
   # One fold's whole share of the work, as a function of its position: the
   # substrate its training rows define, and every model solved on it. It

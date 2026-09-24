@@ -124,6 +124,9 @@
 #' link, `3` on a log link and `5` on a logit link; on an uncorrelated
 #' random slope on a numeric covariate `x` it is `s / sd(x)`. The default
 #' has no upper bound. [prior_summary()] prints the scale a fit ran under.
+#' A Gaussian identity-link fit on INLA runs on the response divided by
+#' `sd(y)`, where the same prior is `half_normal(scale = 5)`; the printed
+#' formula and `prior_summary()` show it on both scales.
 #'
 #' @returns An `fb_prior` object, an S3 class inheriting from list,
 #'   whose `$specs` element carries the parsed `target` and `spec`
@@ -1229,7 +1232,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 # The once-flag is held in the package-internal emit-state env (see
 # R/emit_state.R); v0.3.9 migrated the flag out of the options() namespace
 # where unrelated callers could consume it before the intended emission.
-.default_prior_note_once <- function(scale) {
+.default_prior_note_once <- function(scale, basis = NULL) {
   if (isTRUE(getOption("flexyBayes.silence_default_prior_note", FALSE))) {
     return(invisible())
   }
@@ -1237,14 +1240,27 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     return(invisible())
   }
   message(
-    "flexyBayes: by default the residual and every random-effect group ",
-    "have a half_normal(scale = ",
-    format(scale, digits = 3),
-    ") prior on their standard deviation, with the scale divided by sd(x) ",
-    "for a random slope on x. See ?fb_prior to set other priors; ",
+    "flexyBayes: by default the residual and each random-effect standard ",
+    "deviation have a half_normal(scale = ",
+    .fb_signif_string(scale),
+    ") prior, ",
+    .fb_default_scale_units(basis),
+    ", with the scale divided by sd(x) for a random slope on x. ",
+    "See ?fb_prior to set other priors; ",
     "options(flexyBayes.silence_default_prior_note = TRUE) hides this note."
   )
   .emit_state_set("default_prior_note", TRUE)
+}
+
+# The scale a default prior's `s` is written on, from its basis
+# (.default_half_normal_scale()).
+.fb_default_scale_units <- function(basis) {
+  switch(
+    basis %||% "",
+    log_link_half_normal = "on the log scale of the mean",
+    logit_half_normal = "on the logit scale",
+    "in the units of the response"
+  )
 }
 
 # Faithful INLA expression prior for a uniform(lower, upper) prior on a

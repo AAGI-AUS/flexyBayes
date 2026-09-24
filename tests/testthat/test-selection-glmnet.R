@@ -220,7 +220,8 @@ test_that("a glmnet point above the path threshold is solved again, not accepted
       convention
     )
     expect_identical(provider$route, case$route)
-    expect_lte(provider$kkt, .fb_sel_path_kkt_tolerance())
+    expect_lte(provider$kkt, provider$kkt_tolerance)
+    expect_identical(provider$kkt_tolerance, 1e-6)
     expect_equal(unname(provider$beta), unname(exact), tolerance = 1e-6)
     expect_identical(names(provider$beta), colnames(fixture$A))
   }

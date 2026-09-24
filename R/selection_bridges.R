@@ -145,9 +145,12 @@
     # homogeneous of degree two like a ridge scale (le = 1 / scale^2). That
     # second choice is what makes a singleton exclusive group EXACTLY a
     # ridge, which is the identity the solver tests pin.
+    # With alpha below one this is the group elastic net
+    # (1 / scale) [alpha sum_g w_g ||beta_g|| + (1 - alpha) / 2 ||beta||^2].
     group_lasso = {
       scale <- positive(hyper$scale, "scale")
-      c(l1 = 0, l2 = 0, lg = 1 / scale, le = 0)
+      alpha <- unit_half_open(hyper$alpha %||% 1, "alpha")
+      c(l1 = 0, l2 = (1 - alpha) / scale, lg = alpha / scale, le = 0)
     },
     sparse_group_lasso = {
       scale <- positive(hyper$scale, "scale")
