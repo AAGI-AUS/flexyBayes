@@ -16,7 +16,9 @@ fb_decision(
   effect_size = NULL,
   stability_subsamples = 0L,
   stability_cutoff = 0.75,
-  stability_unit = NULL
+  stability_unit = NULL,
+  n_lambda = 20L,
+  lambda_min_ratio = 0.001
 )
 }
 \arguments{
@@ -64,12 +66,23 @@ stable, in (0.5, 1]. Read only when \code{stability_subsamples} is positive.}
 \item{stability_unit}{The units a subsample draws half of, as a one-sided
 formula or a character vector. \code{NULL} (the default) takes the resampling
 unit of \code{\link[=fb_resamples]{fb_resamples()}}, and rows where that has none.}
+
+\item{n_lambda}{The number of points on the penalised optimiser's path, a
+whole number of at least 2. Read by the penalised optimiser workflow, the
+\code{benchmark = TRUE} arm, their stability subsamples and the ablation.}
+
+\item{lambda_min_ratio}{The smallest point of that path as a fraction of
+each fold's \code{lambda_max}, in (0, 1). The path runs from \code{s = 1} down to
+this value on a log scale. Ridge and the exclusive lasso have no finite
+\code{lambda_max}; their path spans two decades either side of the declared
+penalty, and this setting is not read.}
 }
 \value{
 An object of class \code{fb_decision}: a validated list carrying
 \code{method}, \code{requested_method}, \code{metric}, \code{rule}, \code{tolerance}, \code{search},
 \code{nterms_max}, \code{validate_search}, \code{threshold}, \code{effect_size},
-\code{stability_subsamples}, \code{stability_cutoff} and \code{stability_unit}.
+\code{stability_subsamples}, \code{stability_cutoff}, \code{stability_unit},
+\code{n_lambda} and \code{lambda_min_ratio}.
 }
 \description{
 The decision layer of \code{\link[=fb_select]{fb_select()}}: which quantity is optimised, how a
@@ -139,6 +152,7 @@ fb_decision()
 fb_decision(rule = "tolerance", tolerance = 0.1)
 fb_decision(method = "posterior_threshold", effect_size = 0.2)
 fb_decision(stability_subsamples = 100L, stability_unit = ~ site)
+fb_decision(n_lambda = 50L, lambda_min_ratio = 1e-4)
 }
 \seealso{
 \code{\link[=fb_select]{fb_select()}}, which takes this object; \code{\link[=fb_resamples]{fb_resamples()}} for the

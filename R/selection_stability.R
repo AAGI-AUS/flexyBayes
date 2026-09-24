@@ -170,7 +170,7 @@
   } else {
     as.integer(resamples$v) * as.integer(resamples$repeats)
   }
-  fits_per_path <- .fb_sel_glmnet_decision(NULL)$n_lambda + 1L
+  fits_per_path <- (decision$n_lambda %||% 20L) + 1L
   out <- c(settings, list(
     n_units = NA_integer_,
     subsample_units = NA_integer_,

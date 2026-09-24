@@ -1186,6 +1186,7 @@
             tuning_scale = arm$selection$tuning_scale,
             selected_s = arm$selection$selected_s,
             selected_lambda_canonical = arm$selection$selected_lambda_canonical,
+            path_grid = arm$path_grid,
             # Per penalised column: the folds, the folds that estimated it,
             # and the folds whose support held it at the chosen point.
             candidate_availability = arm$selection$candidate_availability,
@@ -2232,6 +2233,29 @@
   ))
 }
 
+# .fb_select_path_grid() --- the grid the optimiser's path walked, as the
+# certificate records it. `s` is NA on every point for ridge and the
+# exclusive lasso, whose path is not a fraction of a lambda_max.
+.fb_select_path_grid <- function(path) {
+  scores <- path$selection$scores
+  list(
+    n_lambda = path$decision$n_lambda,
+    lambda_min_ratio = path$decision$lambda_min_ratio,
+    tuning_scale = path$selection$tuning_scale,
+    s = scores$s[order(scores$lambda_index)],
+    lambda_max = path$selection$lambda_max
+  )
+}
+
+
+.fb_select_plan_path_grid <- function(decision) {
+  list(
+    n_lambda = decision$n_lambda %||% 20L,
+    lambda_min_ratio = decision$lambda_min_ratio %||% 1e-3
+  )
+}
+
+
 # .fb_select_benchmark() --- the two comparison arms, on the same folds.
 #
 # Neither is labelled Bayesian and neither can be. The GLS arm fits REML
@@ -2338,7 +2362,9 @@
             rule = decision$rule %||% "one_se",
             metric = if (identical(metric, "mse")) "mse" else metric,
             tolerance = decision$tolerance,
-            benchmark = TRUE
+            benchmark = TRUE,
+            n_lambda = decision$n_lambda %||% 20L,
+            lambda_min_ratio = decision$lambda_min_ratio %||% 1e-3
           ),
           seed = seed,
           cluster = cluster_key
@@ -2361,6 +2387,7 @@
           fully_bayesian = path$fully_bayesian,
           family = path$family,
           selection = path$selection,
+          path_grid = .fb_select_path_grid(path),
           coefficients = path$coefficients_original_scale,
           support = path$support_by_resolution,
           kkt = path$kkt_by_lambda,
@@ -3286,7 +3313,12 @@ fb_select <- function(base,
       } else {
         NULL
       },
-      covariance = covariance
+      covariance = covariance,
+      path_grid = if (isTRUE(benchmark)) {
+        .fb_select_plan_path_grid(decision)
+      } else {
+        NULL
+      }
     ))
   }
 
@@ -3580,7 +3612,8 @@ fb_select <- function(base,
     ablation_plan <- if (isTRUE(ablation)) {
       .fb_sel_ablation_plan(
         resolved, candidates, base$data, resamples,
-        refit = !is.null(value_request)
+        refit = !is.null(value_request),
+        n_lambda = decision$n_lambda %||% 20L
       )
     } else {
       NULL
@@ -3607,7 +3640,8 @@ fb_select <- function(base,
       decision_resolution = decision_resolution,
       stability = .fb_sel_stability_plan(decision, resamples, base$data),
       covariance = covariance,
-      ablation = ablation_plan
+      ablation = ablation_plan,
+      path_grid = .fb_select_plan_path_grid(decision)
     ))
   }
   bench <- .fb_select_benchmark(
@@ -4258,6 +4292,10 @@ print.fb_select <- function(x, digits = 4L, ...) {
         arm$provider, "  [", arm$equivalence_level$level, "]\n",
         sep = ""
       )
+      if (!is.null(arm$path_grid)) {
+        cat("             path grid: ", .fb_select_path_grid_line(arm$path_grid),
+            "\n", sep = "")
+      }
       if (isTRUE(arm$stability$ran)) {
         cat("             stability: ", .fb_sel_stability_line(arm$stability),
             "\n", sep = "")
@@ -4302,6 +4340,22 @@ print.fb_select <- function(x, digits = 4L, ...) {
     }
   }
   invisible(x)
+}
+
+
+# One line for the path grid, shared by the fit's print and the plan's.
+.fb_select_path_grid_line <- function(grid) {
+  if (length(grid$s) > 0L && all(is.na(grid$s))) {
+    return(paste0(
+      grid$n_lambda, " points over two decades either side of the declared ",
+      "penalty; lambda_min_ratio is not read, as this family has no finite ",
+      "lambda_max"
+    ))
+  }
+  paste0(
+    grid$n_lambda, " points, s from 1 down to ", format(grid$lambda_min_ratio),
+    " of each fold's lambda_max"
+  )
 }
 
 
