@@ -43,6 +43,10 @@
   place of an absolute `1e-6`, so the threshold follows the response's units.
   Ridge, Laplace and elastic net keep the absolute `1e-6`. The threshold and
   the solver of each point are recorded in the optimiser arm's `kkt` table.
+* Exclusive lasso and group-exclusive path points on blocks of strongly
+  correlated candidates now reach their exact optimum. In 0.14.0 such a point
+  could stop after 200,000 iterations and refuse with
+  `selection_prox_mode_not_converged`.
 
 # flexyBayes 0.14.0
 
