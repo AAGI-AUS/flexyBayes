@@ -2622,11 +2622,18 @@
 #' `protected_dropped` and, in `not_estimable`, each fold's held-out rows and
 #' how many of them were not estimable, and the printed certificate gives
 #' the totals. A fold with no estimable held-out row refuses. The Bayesian
-#' workflow and `refit = list(method = "bayes")` write the protected part as
-#' formula text, which cannot leave out one column of a term, and both
-#' refuse `"drop"`. With
-#' `covariance = "base_model"` the fold's variance components come from a
-#' refit of the base model with every protected column, under its prior.
+#' workflow writes the protected part as formula text, which cannot leave
+#' out one column of a term, and refuses `"drop"`. With
+#' `refit = list(method = "bayes")`, each fold's refit holds the protected
+#' columns that fold kept, entered as numeric columns as the support is, and
+#' `value$not_estimable` counts each fold's held-out rows left out of the
+#' log predictive density. With `covariance = "base_model"` the fold's
+#' variance components come from a refit of the base model with the fold's
+#' aliased protected columns fixed at zero (`flexybayes(fixed_alias =
+#' "drop")`).
+#'
+#' A whole-data base with aliased fixed-effect columns is fitted with
+#' `flexybayes(fixed_alias = "drop")`; by default `flexybayes()` refuses it.
 #'
 #' @section Bayesian refit of the frozen support:
 #' With `workflow = "penalized_optimizer"` and a penalty that selects,
@@ -2805,8 +2812,7 @@
 #' @param protected_alias `"refuse"` (the default) or `"drop"`: what a fold
 #'   does with a protected column its training rows do not identify. See
 #'   "Aliased protected columns". `"drop"` needs
-#'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`, and no
-#'   `refit`.
+#'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
@@ -3065,19 +3071,14 @@ fb_select <- function(base,
     )
   }
 
-  if (identical(protected_alias, "drop") &&
-        (identical(workflow, "bayes") || !is.null(value_request))) {
+  if (identical(protected_alias, "drop") && identical(workflow, "bayes")) {
     stop(
       "fb_select(): protected_alias = \"drop\" fits each fold on the ",
-      "protected columns its training rows identify, and ",
-      if (identical(workflow, "bayes")) {
-        "the Bayesian workflow"
-      } else {
-        "refit = list(method = \"bayes\")"
-      },
-      " writes each fold's model as formula text, which cannot leave out one ",
-      "column of a term. Ask for workflow = \"penalized_optimizer\" or ",
-      "\"unpenalized_benchmark\", without `refit`.",
+      "protected columns its training rows identify, and the Bayesian ",
+      "workflow writes each fold's model as formula text, which cannot leave ",
+      "out one column of a term. Ask for workflow = \"penalized_optimizer\", ",
+      "with refit = list(method = \"bayes\") for a Bayesian refit, or ",
+      "\"unpenalized_benchmark\".",
       call. = FALSE
     )
   }
@@ -3769,7 +3770,8 @@ fb_select <- function(base,
       request = value_request,
       engine = engine,
       seed = seed,
-      budget = budget
+      budget = budget,
+      candidate_space = bench$cv$candidate_space
     )
   }
   # The grouped ablation's loss read-out, and beside it, where the refit ran,
@@ -3787,7 +3789,8 @@ fb_select <- function(base,
       folds = bench$cv$folds,
       request = value_request,
       engine = engine,
-      seed = seed
+      seed = seed,
+      candidate_space = bench$cv$candidate_space
     )
   }
 

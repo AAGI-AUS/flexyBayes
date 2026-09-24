@@ -625,7 +625,8 @@
   engine = NULL,
   seed = NULL,
   na_action = NULL,
-  carry_known_variance = FALSE
+  carry_known_variance = FALSE,
+  fixed_alias = NULL
 ) {
   info <- base$extras$call_info %||% list()
   if (!is.null(info$weights)) {
@@ -711,6 +712,10 @@
   }
   if (!is.null(known_variance)) {
     args$known_variance <- known_variance
+  }
+  fixed_alias <- fixed_alias %||% info$fixed_alias
+  if (!is.null(fixed_alias)) {
+    args$fixed_alias <- fixed_alias
   }
   # The sampler settings are absent on the INLA path, where the nested
   # Laplace approximation has no chains to run; a NULL is dropped rather

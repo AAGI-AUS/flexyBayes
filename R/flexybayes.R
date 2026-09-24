@@ -474,6 +474,21 @@
 #'   non-negative value per row with `known_variance_invalid`.
 #'   [fb_select()] carries it into the fold covariance under
 #'   `covariance = "base_model"`.
+#' @param fixed_alias `"refuse"` (the default) or `"drop"`: what to do with
+#'   a fixed-effect column that is a linear combination of the columns
+#'   before it on the rows with a response, as in a factorial with empty
+#'   cells. INLA and brms would report such a column at its prior, so by
+#'   default the fit refuses with `fixed_effects_aliased` and names the
+#'   columns. `"drop"` drops them as asreml 4.2 does, on INLA: terms are
+#'   taken in model order, and within a term by descending factor levels,
+#'   the term's first factor varying slowest; a column that is a linear
+#'   combination of the columns before it is fixed at zero. `summary()`
+#'   reports it with estimate 0 and no standard error, the columns are
+#'   listed in `fit$extras$fixed_alias$dropped`, and a prediction whose row
+#'   is not a combination of the fitting rows is `NA` with status
+#'   `"Aliased"` (see [predict.flexybayes_inla()]). [fb_select()]'s
+#'   `protected_alias` takes the same values and applies the same rule on
+#'   each fold.
 #'
 #' @returns An object of class `"flexybayes"`, a list with three
 #'   components.
@@ -578,6 +593,7 @@ flexybayes <- function(
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
   known_variance = NULL,
+  fixed_alias = c("refuse", "drop"),
   rcov
 ) {
   # `rcov` was the ASReml 3 name for the residual-structure argument;
@@ -625,6 +641,7 @@ flexybayes <- function(
   }
   aggregate <- .normalise_aggregate(aggregate)
   syntax <- match.arg(syntax)
+  fixed_alias <- match.arg(fixed_alias)
 
   # Resolve session-level review-mode default BEFORE the unsupported-
   # backend guard, otherwise options(flexyBayes.review_code_default =
@@ -853,6 +870,13 @@ flexybayes <- function(
       the_call = the_call,
       data_name = data_name
     ))
+  }
+
+  # A fixed-effect column the rows with a response do not estimate refuses
+  # here, or is recorded for the INLA emit to drop (R/fixed_alias.R).
+  fb <- .fb_fixed_alias_resolve(fb, data, fixed_alias, backend, aggregate)
+  if (!is.null(fb$fixed_alias)) {
+    aggregate <- FALSE
   }
 
   # Review-mode branch. Build the deferred-execution token instead
@@ -1087,6 +1111,9 @@ flexybayes <- function(
     if (!is.null(known_variance) && !is.null(fit$extras$call_info)) {
       fit$extras$call_info$known_variance <- known_variance
     }
+  }
+  if (!isTRUE(return_code)) {
+    fit <- .fb_fixed_alias_attach(fit, fb)
   }
   .fb_warn_poor_convergence(fit)
   fit

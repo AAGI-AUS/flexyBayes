@@ -183,6 +183,10 @@
   # model or an fb_select() route that cannot carry it.
   .populate_refusal_registry_known_variance()
 
+  # 2026-09-24: fixed-effect columns the rows with a response do not
+  # estimate.
+  .populate_refusal_registry_fixed_alias()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

@@ -32,6 +32,7 @@ flexybayes(
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
   known_variance = NULL,
+  fixed_alias = c("refuse", "drop"),
   rcov
 )
 
@@ -62,6 +63,7 @@ fb(
   plan = FALSE,
   syntax = c("auto", "asreml", "brms"),
   known_variance = NULL,
+  fixed_alias = c("refuse", "drop"),
   rcov
 )
 }
@@ -550,6 +552,22 @@ of zeros fits the model without it. Any other family refuses with
 non-negative value per row with \code{known_variance_invalid}.
 \code{\link[=fb_select]{fb_select()}} carries it into the fold covariance under
 \code{covariance = "base_model"}.}
+
+\item{fixed_alias}{\code{"refuse"} (the default) or \code{"drop"}: what to do with
+a fixed-effect column that is a linear combination of the columns
+before it on the rows with a response, as in a factorial with empty
+cells. INLA and brms would report such a column at its prior, so by
+default the fit refuses with \code{fixed_effects_aliased} and names the
+columns. \code{"drop"} drops them as asreml 4.2 does, on INLA: terms are
+taken in model order, and within a term by descending factor levels,
+the term's first factor varying slowest; a column that is a linear
+combination of the columns before it is fixed at zero. \code{summary()}
+reports it with estimate 0 and no standard error, the columns are
+listed in \code{fit$extras$fixed_alias$dropped}, and a prediction whose row
+is not a combination of the fitting rows is \code{NA} with status
+\code{"Aliased"} (see \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}). \code{\link[=fb_select]{fb_select()}}'s
+\code{protected_alias} takes the same values and applies the same rule on
+each fold.}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and

@@ -152,8 +152,7 @@ loss; see "Grouped ablation". It needs
 \item{protected_alias}{\code{"refuse"} (the default) or \code{"drop"}: what a fold
 does with a protected column its training rows do not identify. See
 "Aliased protected columns". \code{"drop"} needs
-\code{workflow = "penalized_optimizer"} or \code{"unpenalized_benchmark"}, and no
-\code{refit}.}
+\code{workflow = "penalized_optimizer"} or \code{"unpenalized_benchmark"}.}
 
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
@@ -310,11 +309,17 @@ returns \code{NA} for it. Such a row is not scored. The certificate's
 \code{protected_dropped} and, in \code{not_estimable}, each fold's held-out rows and
 how many of them were not estimable, and the printed certificate gives
 the totals. A fold with no estimable held-out row refuses. The Bayesian
-workflow and \code{refit = list(method = "bayes")} write the protected part as
-formula text, which cannot leave out one column of a term, and both
-refuse \code{"drop"}. With
-\code{covariance = "base_model"} the fold's variance components come from a
-refit of the base model with every protected column, under its prior.
+workflow writes the protected part as formula text, which cannot leave
+out one column of a term, and refuses \code{"drop"}. With
+\code{refit = list(method = "bayes")}, each fold's refit holds the protected
+columns that fold kept, entered as numeric columns as the support is, and
+\code{value$not_estimable} counts each fold's held-out rows left out of the
+log predictive density. With \code{covariance = "base_model"} the fold's
+variance components come from a refit of the base model with the fold's
+aliased protected columns fixed at zero (\code{flexybayes(fixed_alias = "drop")}).
+
+A whole-data base with aliased fixed-effect columns is fitted with
+\code{flexybayes(fixed_alias = "drop")}; by default \code{flexybayes()} refuses it.
 }
 
 \section{Bayesian refit of the frozen support}{

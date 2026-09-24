@@ -1984,6 +1984,14 @@ print.summary.flexybayes <- function(x, digits = 4L, ...) {
   } else {
     cat("  (none)\n")
   }
+  aliased <- fit$extras$fixed_alias$dropped$column
+  if (length(aliased) > 0L) {
+    cat(
+      length(aliased), " aliased columns fixed at zero (fixed_alias = ",
+      "\"drop\"); their std.error is NA.\n",
+      sep = ""
+    )
+  }
 
   cat(
     "\n-- Variance components (95% credible interval) ",

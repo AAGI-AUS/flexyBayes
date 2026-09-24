@@ -94,6 +94,9 @@
   # indexed against each other (e.g. `V[colnames(X), colnames(X)]` in
   # the emmeans / marginaleffects seam) and must speak the same labels.
   colnames(mat) <- .inla_restore_term_labels(object$level_labels, fixed_names)
+  # A column fixed_alias = "drop" fixed at zero draws within 1e-5 of it.
+  aliased <- object$extras$fixed_alias$dropped$column
+  mat[, colnames(mat) %in% aliased] <- 0
   mat
 }
 
@@ -227,6 +230,8 @@ confint.flexybayes_inla <- function(
     .inla_restore_term_labels(object$level_labels, names(marg)),
     paste0(round(probs * 100, 1), "%")
   )
+  aliased <- rownames(bounds) %in% object$extras$fixed_alias$dropped$column
+  bounds[aliased, ] <- NA_real_
 
   if (!is.null(parm)) {
     bounds <- bounds[parm, , drop = FALSE]
@@ -403,6 +408,13 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' @param level Credible level for the classify table's interval, as a
 #'   proportion. Default `0.95`.
 #' @param ... Ignored. Present for compatibility with the generic.
+#' On a fit with `fixed_alias = "drop"`, a row that is not a linear
+#' combination of the rows the model was fitted to has no estimable
+#' prediction: it is returned as `NA`, and the `status` attribute (a
+#' `status` element with `se.fit = TRUE`, a `status` column with
+#' `classify`) reads `"Aliased"` there and `"Estimable"` elsewhere, as in
+#' asreml's `predict()`.
+#'
 #' @return With `classify`, a data frame of class `fb_predict_classify`.
 #'   Otherwise a numeric vector of predictions, or a list `fit` /
 #'   `se.fit` when `se.fit = TRUE`.
@@ -457,11 +469,20 @@ predict.flexybayes_inla <- function(
   if (!is.null(off)) {
     eta <- eta + off
   }
+  status <- .fb_fixed_alias_status(object, X)
+  if (!is.null(status)) {
+    eta[status == "Aliased"] <- NA_real_
+    attr(eta, "status") <- status
+  }
 
   if (!se.fit) {
     return(eta)
   }
   V <- vcov(object)
   se <- sqrt(rowSums((X %*% V) * X))
-  list(fit = eta, se.fit = se)
+  if (is.null(status)) {
+    return(list(fit = eta, se.fit = se))
+  }
+  se[status == "Aliased"] <- NA_real_
+  list(fit = eta, se.fit = se, status = status)
 }
