@@ -112,15 +112,18 @@ training rows, for random intercepts and two-way interactions.
 \code{"base_model"} refits the base model on each fold's training rows with
 its own formula, random and residual structure, priors and engine, and
 takes each variance at its posterior mean; it also builds uncorrelated
-random slopes, \code{diag(f):g}, a single-trial \code{ar1(row):ar1(col)} field and
-\code{vm()} or \code{ped()} known covariances, at the cost of one refit per fold.
+random slopes, \code{diag(f):g}, an \code{ar1(row):ar1(col)} field on one trial,
+\code{at(trial):ar1(row):ar1(col)} (one field per trial with shared
+parameters) and \code{vm()} or \code{ped()} known covariances, at the cost of one
+refit per fold.
 The Bayesian workflow integrates the covariance, so the argument applies
 to it only with \code{benchmark = TRUE}. V is formed as a dense matrix only
 while one n by n matrix over the data fits within
 \code{options(flexyBayes.selection_dense_gb = )}, 0.5 GiB (8,192 rows) by
 default. Above that, a V that is block-diagonal over a grouping of its
 random terms is factored block by block, and any other V refuses with
-\code{selection_dense_covariance_too_large}. The argument's earlier form, an
+\code{selection_dense_covariance_too_large}. A V with one field per trial is
+factored by trial at any size. The argument's earlier form, an
 estimand string (\code{"plugin_mean_covariance"} and two others), is
 deprecated and runs the default.}
 

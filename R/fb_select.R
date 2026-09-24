@@ -2739,15 +2739,18 @@
 #'   `"base_model"` refits the base model on each fold's training rows with
 #'   its own formula, random and residual structure, priors and engine, and
 #'   takes each variance at its posterior mean; it also builds uncorrelated
-#'   random slopes, `diag(f):g`, a single-trial `ar1(row):ar1(col)` field and
-#'   `vm()` or `ped()` known covariances, at the cost of one refit per fold.
+#'   random slopes, `diag(f):g`, an `ar1(row):ar1(col)` field on one trial,
+#'   `at(trial):ar1(row):ar1(col)` (one field per trial with shared
+#'   parameters) and `vm()` or `ped()` known covariances, at the cost of one
+#'   refit per fold.
 #'   The Bayesian workflow integrates the covariance, so the argument applies
 #'   to it only with `benchmark = TRUE`. V is formed as a dense matrix only
 #'   while one n by n matrix over the data fits within
 #'   `options(flexyBayes.selection_dense_gb = )`, 0.5 GiB (8,192 rows) by
 #'   default. Above that, a V that is block-diagonal over a grouping of its
 #'   random terms is factored block by block, and any other V refuses with
-#'   `selection_dense_covariance_too_large`. The argument's earlier form, an
+#'   `selection_dense_covariance_too_large`. A V with one field per trial is
+#'   factored by trial at any size. The argument's earlier form, an
 #'   estimand string (`"plugin_mean_covariance"` and two others), is
 #'   deprecated and runs the default.
 #' @param refit `NULL` (the default), or `list(method = "bayes")` to refit
