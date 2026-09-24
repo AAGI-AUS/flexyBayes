@@ -1,3 +1,10 @@
+# flexyBayes (development version)
+
+* `fb_select(covariance = "base_model")` builds the fold covariance of
+  `at(trial):ar1(row):ar1(col)`, one AR1 x AR1 field per trial with the two
+  correlations and the variance shared across trials. The covariance is
+  factored one trial at a time at any size.
+
 # flexyBayes 0.14.0
 
 The release for a two-stage analysis of a designed multi-environment trial.
