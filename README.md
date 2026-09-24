@@ -1,102 +1,78 @@
+<!-- README.md is generated from README.Rmd with knitr::knit(). Edit this file. -->
+
+
+
 # flexyBayes
 
-Fit linear and generalised linear mixed models from ASReml-style or
-brms-style formulas, on two engines: INLA directly, and Stan through brms.
-The table under "What it fits" lists the models each engine fits. A model the
-chosen engine cannot fit is refused with a message saying why and what to use
-instead.
+flexyBayes fits linear and generalised linear mixed models written in ASReml
+or brms syntax. It fits them with INLA, or with Stan through brms. If the
+chosen engine cannot fit a model, flexyBayes stops and says why.
 
-> **Version 0.14.0.** Not on CRAN. Every export is at the
-> experimental `lifecycle` stage and the API may change within the 0.x
-> series.
+Version 0.14.0. Not on CRAN, and the functions may still change.
 
 ## Installation
 
 ``` r
-# INLA (approximate-inference engine) -- not on CRAN
-install.packages("INLA",
-  repos = c(getOption("repos"),
-            INLA = "https://inla.r-inla-download.org/R/stable"))
-
-# brms (Stan) -- on CRAN
-install.packages("brms")
-
-# flexyBayes -- not yet on CRAN
-# install.packages("remotes")
 remotes::install_github("AAGI-AUS/flexyBayes", build_vignettes = TRUE)
 ```
 
-`build_vignettes = TRUE` matters: `remotes::install_github()` does not build
-them by default, and without it `vignette(package = "flexyBayes")` comes back
-empty.
+Keep `build_vignettes = TRUE`. Without it, `vignette(package = "flexyBayes")`
+lists nothing.
 
-Either engine is optional. A model sent to an engine that is not installed is
-refused with a message naming what to install.
+You need at least one engine. brms is on CRAN. INLA is not:
 
-## A worked example
+``` r
+install.packages("brms")
+install.packages("INLA",
+  repos = c(getOption("repos"),
+            INLA = "https://inla.r-inla-download.org/R/stable"))
+```
 
-An alpha-design field trial: 24 genotypes in three replicates, blocked within
-replicate. The `fixed` / `random` split and the `rep:block` nesting are
-written as they are in ASReml.
+## Example
+
+An alpha design from agridat: 24 genotypes in three replicates, with blocks
+nested in replicates. The call is written as it would be in ASReml.
+
 
 ``` r
 library(flexyBayes)
 data(john.alpha, package = "agridat")
 
 fit <- flexybayes(
-  fixed  = yield ~ rep,
-  random = ~ rep:block + gen,
-  data   = john.alpha,
-  backend = "inla"
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla",
+  verbose = FALSE
 )
 
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
-#>     component  estimate  conf.low conf.high
-#>         sigma 0.2926140 0.2289825 0.3715715
-#>  sd_rep:block 0.2880199 0.1632093 0.4677316
-#>        sd_gen 0.3973759 0.2736240 0.5610492
+#>      component estimate conf.low conf.high
+#> 1        sigma    0.293    0.229     0.371
+#> 2 sd_rep:block    0.288    0.163     0.467
+#> 3       sd_gen    0.397    0.274     0.561
 ```
 
-The three standard deviations are close to `lme4::lmer()`'s REML estimates
-for the same model (0.2857, 0.2650, 0.3780), and each comes with an interval
-rather than a standard error.
 
-Because the variance components are draws, any function of them has an exact
-posterior -- ASReml's `vpredict()` question, answered without the delta
-method:
+
+The estimates are posterior means of the three standard deviations, with 95%
+credible intervals. REML estimates from `lme4::lmer()` for the same model are
+0.286, 0.265 and 0.378.
+
+Heritability is computed on each posterior draw, so its interval stays
+between 0 and 1:
+
 
 ``` r
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
-#>  functional  estimate    median std.error  conf.low conf.high
-#>          h2 0.6328936 0.6462664 0.1020417 0.4596090 0.8002571
-```
-
-That interval cannot leave `[0, 1]`, because no draw of it can. A
-delta-method interval on the same quantity has no such guarantee.
-
-## Selecting over a candidate block
-
-`fb_select()` takes a fitted model, `base` below, and asks which candidate
-fixed effects add to its predictions. The candidates share a joint shrinkage
-prior and are compared on folds that hold out whole clusters.
-`vignette("flexyBayes-05-selection")` explains the choices, and what a
-comparison with `glmnet` does and does not show.
-
-``` r
-sel <- fb_select(
-  base,
-  candidates = ~ rain + clay + elevation + ph,
-  penalty    = fb_penalty(term(everything()) ~ regularized_horseshoe(p0 = 2)),
-  resamples  = fb_resamples(unit = ~ site, v = 10L),
-  decision   = fb_decision(rule = "one_se"),
-  seed       = 20260912L
-)
+#>   functional estimate median std.error conf.low conf.high
+#> 1         h2    0.636  0.639       0.1    0.429     0.821
 ```
 
 ## What it fits
 
-The table lists the model classes at least one engine fits. The notes on each
-row, and the structures neither engine fits, are in
+The table lists the models at least one engine fits. Notes on each row, and
+the models neither engine fits, are in
 `system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
 
 <!-- capability-matrix:begin -->
@@ -130,31 +106,29 @@ row, and the structures neither engine fits, are in
 `fits`: the engine fits it, and a test checks the fit. `refuses`: flexyBayes stops with a message saying why and what to use instead. `n/a`: the request does not apply to that engine.
 <!-- capability-matrix:end -->
 
-Every ASReml spelling the package accepts, what each is for, and how closely
-each follows ASReml are in `vignette("flexyBayes-03-syntax")`.
+Candidate selection with `fb_select()`, and the Bayesian comparison of the
+chosen covariates (`refit = list(method = "bayes")`), are recent additions.
+Expect their arguments and output to change.
 
 ## Documentation
 
-Six vignettes, meant to be read in order and to be enough to start work:
-
-| Vignette | What it covers |
+| Vignette | Content |
 |---|---|
-| `flexyBayes-01-mixed-models` | Mixed models in brief: strata, variance components, what is random and why |
-| `flexyBayes-02-bayesian` | Bayesian estimation in brief: priors, posteriors, and what changes in the output |
-| `flexyBayes-03-syntax` | Every ASReml spelling the package covers, what it is for, and what it does not cover |
-| `flexyBayes-04-illustration` | A worked analysis with ASReml and flexyBayes side by side, and what the posterior gives that REML cannot |
-| `flexyBayes-05-selection` | Selecting over a candidate block: the joint shrinkage prior, the projection decision, and what a benchmark against `glmnet` does and does not establish |
-| `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials: a mean per variety per trial, its variance carried into the second stage, and what each block of trial-level covariates buys |
+| `flexyBayes-01-mixed-models` | Mixed models in brief |
+| `flexyBayes-02-bayesian` | Bayesian estimation in brief |
+| `flexyBayes-03-syntax` | The ASReml syntax flexyBayes covers |
+| `flexyBayes-04-illustration` | ASReml and flexyBayes on the same trials |
+| `flexyBayes-05-selection` | Selecting over a candidate block |
+| `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials |
 
 ## Reporting problems
 
-Bugs and feature requests: <https://github.com/AAGI-AUS/flexyBayes/issues>.
-A reproducible example and `sessionInfo()` help most. `CONTRIBUTING.md`
-covers the development workflow.
+Please report bugs at <https://github.com/AAGI-AUS/flexyBayes/issues>, with a
+reproducible example and the output of `sessionInfo()`.
 
 ## Citation
 
-``` 
+```
 @software{flexyBayes,
   title  = {flexyBayes: Flexible Bayesian Mixed Models with ASReml
             and brms-Style Syntax},

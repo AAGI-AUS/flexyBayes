@@ -1,0 +1,115 @@
+<!-- README.md is generated from README.Rmd with knitr::knit(). Edit this file. -->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE)
+options(flexyBayes.silence_default_prior_note = TRUE, width = 80, digits = 3)
+```
+
+# flexyBayes
+
+flexyBayes fits linear and generalised linear mixed models written in ASReml
+or brms syntax. It fits them with INLA, or with Stan through brms. If the
+chosen engine cannot fit a model, flexyBayes stops and says why.
+
+Version 0.14.0. Not on CRAN, and the functions may still change.
+
+## Installation
+
+``` r
+remotes::install_github("AAGI-AUS/flexyBayes", build_vignettes = TRUE)
+```
+
+Keep `build_vignettes = TRUE`. Without it, `vignette(package = "flexyBayes")`
+lists nothing.
+
+You need at least one engine. brms is on CRAN. INLA is not:
+
+``` r
+install.packages("brms")
+install.packages("INLA",
+  repos = c(getOption("repos"),
+            INLA = "https://inla.r-inla-download.org/R/stable"))
+```
+
+## Example
+
+An alpha design from agridat: 24 genotypes in three replicates, with blocks
+nested in replicates. The call is written as it would be in ASReml.
+
+```{r example}
+library(flexyBayes)
+data(john.alpha, package = "agridat")
+
+fit <- flexybayes(
+  fixed   = yield ~ rep,
+  random  = ~ rep:block + gen,
+  data    = john.alpha,
+  backend = "inla",
+  verbose = FALSE
+)
+
+summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
+```
+
+```{r lme4, include = FALSE}
+ref <- as.data.frame(lme4::VarCorr(lme4::lmer(
+  yield ~ rep + (1 | rep:block) + (1 | gen), data = john.alpha
+)))
+ref_sd <- stats::setNames(round(ref$sdcor, 3), ref$grp)
+```
+
+The estimates are posterior means of the three standard deviations, with 95%
+credible intervals. REML estimates from `lme4::lmer()` for the same model are
+`r ref_sd[["Residual"]]`, `r ref_sd[["rep:block"]]` and `r ref_sd[["gen"]]`.
+
+Heritability is computed on each posterior draw, so its interval stays
+between 0 and 1:
+
+```{r h2}
+vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
+```
+
+## What it fits
+
+The table lists the models at least one engine fits. Notes on each row, and
+the models neither engine fits, are in
+`system.file("KNOWN_ISSUES.md", package = "flexyBayes")`.
+
+```{r capability, echo = FALSE, results = "asis"}
+cat(flexyBayes:::.fb_capability_markdown(markers = TRUE, layout = "fits"),
+    sep = "\n")
+```
+
+Candidate selection with `fb_select()`, and the Bayesian comparison of the
+chosen covariates (`refit = list(method = "bayes")`), are recent additions.
+Expect their arguments and output to change.
+
+## Documentation
+
+| Vignette | Content |
+|---|---|
+| `flexyBayes-01-mixed-models` | Mixed models in brief |
+| `flexyBayes-02-bayesian` | Bayesian estimation in brief |
+| `flexyBayes-03-syntax` | The ASReml syntax flexyBayes covers |
+| `flexyBayes-04-illustration` | ASReml and flexyBayes on the same trials |
+| `flexyBayes-05-selection` | Selecting over a candidate block |
+| `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials |
+
+## Reporting problems
+
+Please report bugs at <https://github.com/AAGI-AUS/flexyBayes/issues>, with a
+reproducible example and the output of `sessionInfo()`.
+
+## Citation
+
+```
+@software{flexyBayes,
+  title  = {flexyBayes: Flexible Bayesian Mixed Models with ASReml
+            and brms-Style Syntax},
+  author = {Moldovan, Max},
+  year   = {2026},
+  url    = {https://github.com/AAGI-AUS/flexyBayes}
+}
+```
+
+Licence: MIT.
