@@ -19,8 +19,15 @@
   A lognormal prior on the standardised response was shown as a half-normal;
   it is now shown as the lognormal it is.
 
+* `id(trial):ar1(row):ar1(col)` fits one AR1 x AR1 field per trial on INLA,
+  with the variance and both correlations shared across trials, as in ASReml.
+  `at(trial):ar1(row):ar1(col)`, which ASReml fits with separate parameters
+  for each trial, now refuses (`at_field_per_level_parameters_not_fitted`)
+  where 0.14.0 fitted the shared field. A brms plan for a model the brms fit
+  refuses reports `will_fit = FALSE`.
+
 * `fb_select(covariance = "base_model")` builds the fold covariance of
-  `at(trial):ar1(row):ar1(col)`, one AR1 x AR1 field per trial with the two
+  `id(trial):ar1(row):ar1(col)`, one AR1 x AR1 field per trial with the two
   correlations and the variance shared across trials. The covariance is
   factored one trial at a time at any size.
 

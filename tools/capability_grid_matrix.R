@@ -174,9 +174,9 @@
     ),
     list(
       model_class = "Per-trial separable AR1 field",
-      inla = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
+      inla = paste0('flexybayes(y ~ 1, random = ~ id(trial):ar1(row):ar1(col), ',
                     'data = d_ar1_at_trial)'),
-      brms = paste0('flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col), ',
+      brms = paste0('flexybayes(y ~ 1, random = ~ id(trial):ar1(row):ar1(col), ',
                     'data = d_ar1_at_trial)')
     ),
     list(

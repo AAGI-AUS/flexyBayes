@@ -47,7 +47,7 @@ least one engine fits, without the notes.
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. brms writes it directly, as `(0 + trait \| gr(gen, cov = K))` on data with one row per trait or with `mvbind()` on data with one column per trait. INLA can build it from a known-covariance field for each trait joined by a scaled `copy`. flexyBayes emits neither. Fit it with brms directly, or fit each trait separately. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | On INLA flexyBayes takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or blocks carrier by name; on brms it takes dense, Cholesky and precision carriers and refuses a blocks carrier. In `fb_select()` a joint shrinkage prior over candidate fixed effects fits on a base with one of these terms, but the projection decision does not: the term is written `(1 \| gr(g, cov = K))`, and projpred refuses a function call on the right of a group term's `\|`. The default `decision = "auto"` resolves to `full` there, and naming `"projection"` refuses before the reference model is sampled. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget: four hyperparameters, one observation per grid node. This is not ASReml's three-parameter residual without a nugget, so the residual spelling refuses and points to this one. flexyBayes has no brms lowering for the field. |
-| Per-trial separable AR1 field | `random = ~ at(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, through INLA's `replicate =` mechanism. The row correlation, column correlation and field SD are shared by every level, not estimated per trial. `at(trial, level):ar1(row):ar1(col)`, which asks for one trial or for per-trial hyperparameters, refuses by name. flexyBayes has no brms lowering for either spelling. |
+| Per-trial separable AR1 field | `random = ~ id(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, through INLA's `replicate =` mechanism. The row correlation, column correlation and field SD are shared by every level, not estimated per trial. `at(trial):ar1(row):ar1(col)`, which ASReml fits with per-trial parameters, and `at(trial, level):ar1(row):ar1(col)`, one trial's field, refuse by name on both engines. flexyBayes has no brms lowering for the field. |
 | Grouped temporal AR1 field | `random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)` | fits | refuses | AR1 along `t` within each level of `g`, independent across levels: one correlation, one field SD and the Gaussian nugget, shared by every level. This is the units-by-occasions repeated-measures covariance of Verbyla and Cullis (1992), written on the random side; an occasion a unit missed stays as a row with the response `NA` under `na_action = "augment"`. Either factor order is accepted. flexyBayes has no brms lowering for it. |
 | Univariate P-spline | `~ spl(x)` | fits | refuses | Fitted on INLA as a second-order random walk. It is an analogue of ASReml's spline, not a translation: the basis, scaling and prediction rule differ, and no equivalence has been established (see TRANSLATION.md). flexyBayes has no brms lowering for it. |
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weights, Var(y_i) = sigma^2 / w_i, as in ASReml, lme4 and `glm(weights = )`: INLA's `scale = w`, and on brms a known offset on sigma rather than brms's own `weights()` term, which multiplies each observation's log-likelihood instead. Both engines match `lme4::lmer(weights = )` closely on a shared simulated fixture. Any other family, or a non-identity link on the Gaussian, refuses by name, and so does `aggregate = TRUE` with weights. |
@@ -507,16 +507,16 @@ know it went away. Each was re-checked live against this tree.
   and the `cor` family each refuse under their own code.
 - **Per-trial separable AR1 field.** The single-lattice AR1 field
   (`random = ~ ar1(row):ar1(col)`, one trial, one grid) had no
-  multi-environment spelling. `random = ~ at(trial):ar1(row):ar1(col)`,
-  with no `level` argument on `at()`, now fits on INLA via the
-  `replicate =` mechanism: one field realisation per level of `trial`,
-  but the field's row correlation, column correlation and SD are
-  **shared across every level** -- not estimated per trial. The
-  boundary is where it was: `at(trial, level):ar1(row):ar1(col)` (a
-  `level` argument, asking for a single conditioned trial or for
-  per-trial hyperparameters) refuses
-  (`at_field_per_level_hyper_not_representable`), and brms has no
-  lowering for either spelling.
+  multi-environment spelling. `random = ~ id(trial):ar1(row):ar1(col)`
+  now fits on INLA via the `replicate =` mechanism: one field
+  realisation per level of `trial`, but the field's row correlation,
+  column correlation and SD are **shared across every level** -- not
+  estimated per trial. ASReml reads `at(trial):ar1(row):ar1(col)` as
+  per-trial parameters, so that spelling refuses
+  (`at_field_per_level_parameters_not_fitted`), as does
+  `at(trial, level):ar1(row):ar1(col)`, a field on one trial
+  (`at_field_per_level_hyper_not_representable`). brms has no lowering
+  for the field.
 - **Units followed through time.** `random = ~ ar1(t):g`, in either
   factor order, fits one AR1 series per level of `g` on INLA,
   independent across levels, with the correlation and field SD shared
