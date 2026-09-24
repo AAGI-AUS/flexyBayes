@@ -44,7 +44,7 @@ fit <- flexybayes(
 prior_summary(fit)
 #> <prior_summary>  backend = inla
 #>   Source: auto-default half-normal on SD (weakly informative, no upper bound)
-#>     Scale s        = 3.049069
+#>     Scale s        = 3.049069 (in the units of the response)
 #>     Scale basis    = identity_sd_half_normal
 #>     prior_fixed_sd:  not supplied -- the fixed effects carry INLA's own control.fixed defaults -- prec = 0.001 (a standard deviation near 32, in standard deviations of the response on a Gaussian identity-link fit), and prec.intercept = 0, which is flat
 #> 
@@ -57,9 +57,9 @@ prior_summary(fit)
 #>     the fit runs on the standardised response, so a bound or scale
 #>     on a standard deviation is the stated one divided by the
 #>     response scale 0.609814
-#>     family:INLA.Data1:theta1  <prior: half-normal-SD(5)>  [sigma:sigma]  read back as sent
-#>     random:rep_block_id:theta  <prior: half-normal-SD(5)>  [sd:rep:block]  read back as sent
-#>     random:gen:theta  <prior: half-normal-SD(5)>  [sd:gen]  read back as sent
+#>     family:INLA.Data1:theta1  <prior: half-normal-SD(5) on the standardised response = half-normal-SD(3.049) on the response>  [sigma:sigma]  read back as sent
+#>     random:rep_block_id:theta  <prior: half-normal-SD(5) on the standardised response = half-normal-SD(3.049) on the response>  [sd:rep:block]  read back as sent
+#>     random:gen:theta  <prior: half-normal-SD(5) on the standardised response = half-normal-SD(3.049) on the response>  [sd:gen]  read back as sent
 #>     3 further slots carry the engine's own prior (listed in `$slots`)
 ```
 
@@ -73,9 +73,9 @@ prior should then be chosen with care (see `?fb_prior`).
 ``` r
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2925806 0.2289123 0.3714604
-#> 2 sd_rep:block 0.2878093 0.1630471 0.4669917
-#> 3       sd_gen 0.3971535 0.2736174 0.5607962
+#> 1        sigma 0.2925200 0.2288441 0.3713359
+#> 2 sd_rep:block 0.2878226 0.1630016 0.4669522
+#> 3       sd_gen 0.3970952 0.2733145 0.5602157
 ```
 
 `estimate` is the posterior mean. `conf.low` and `conf.high` bound a 95%
@@ -95,10 +95,10 @@ therefore the interval, lies between 0 and 1:
 ``` r
 h2 <- vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2), draws = TRUE)
 range(h2[, "h2"])
-#> [1] 0.2967120 0.8900672
+#> [1] 0.2473929 0.8876038
 quantile(h2[, "h2"], c(0.025, 0.5, 0.975))
 #>      2.5%       50%     97.5% 
-#> 0.4238711 0.6407397 0.8306523
+#> 0.4319658 0.6424342 0.8208294
 ```
 
 # Variances near zero

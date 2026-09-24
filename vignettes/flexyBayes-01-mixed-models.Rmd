@@ -64,13 +64,13 @@ fit <- flexybayes(
   backend = "inla",
   verbose = FALSE
 )
-#> flexyBayes: by default the residual and every random-effect group have a half_normal(scale = 3.05) prior on their standard deviation, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
+#> flexyBayes: by default the residual and each random-effect standard deviation have a half_normal(scale = 3.049) prior, in the units of the response, with the scale divided by sd(x) for a random slope on x. See ?fb_prior to set other priors; options(flexyBayes.silence_default_prior_note = TRUE) hides this note.
 
 summary(fit)$varcomp[, c("component", "estimate", "conf.low", "conf.high")]
 #>      component  estimate  conf.low conf.high
-#> 1        sigma 0.2925805 0.2289122 0.3714602
-#> 2 sd_rep:block 0.2878093 0.1630472 0.4669915
-#> 3       sd_gen 0.3971535 0.2736170 0.5607958
+#> 1        sigma 0.2925199 0.2288439 0.3713356
+#> 2 sd_rep:block 0.2878225 0.1630014 0.4669505
+#> 3       sd_gen 0.3970951 0.2733142 0.5602151
 ```
 
 Each row is a standard deviation on the scale of the response:
@@ -89,7 +89,7 @@ Heritability is the share of the observed variance that is genetic.
 ``` r
 vpredict(fit, h2 ~ sd_gen^2 / (sd_gen^2 + sigma^2))
 #>   functional  estimate    median std.error  conf.low conf.high
-#> 1         h2 0.6328953 0.6383795  0.102925 0.4189268 0.8175436
+#> 1         h2 0.6344958 0.6390776 0.1045838 0.4113224 0.8173643
 ```
 
 It is about two thirds here. Raw plot means cannot give this figure, because
@@ -103,10 +103,10 @@ they mix genotype effects with block effects.
 ``` r
 head(ranef(fit)$gen, 4)
 #>   group level     estimate std.error   conf.low  conf.high
-#> 1   gen   G01  0.496935318 0.1904235  0.1242123  0.8734323
-#> 2   gen   G02  0.005315913 0.1853725 -0.3594095  0.3702468
-#> 3   gen   G03 -0.777192648 0.1973151 -1.1682057 -0.3923626
-#> 4   gen   G04  0.005909692 0.1857996 -0.3606104  0.3707195
+#> 1   gen   G01  0.497093161 0.1904809  0.1242596  0.8736975
+#> 2   gen   G02  0.005308447 0.1854307 -0.3595319  0.3703541
+#> 3   gen   G03 -0.777421251 0.1973738 -1.1685272 -0.3924689
+#> 4   gen   G04  0.005926315 0.1858581 -0.3607092  0.3708516
 ```
 
 # Next

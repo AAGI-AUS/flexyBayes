@@ -118,7 +118,7 @@ fb_select(
 #>   stanvars:     no
 #>   Structure gate: supported
 #>   Folds:        3, prediction new_cluster
-#>   Cost estimate: 25.8s over 4 fit(s) at 6.45s each
+#>   Cost estimate: 25.5s over 4 fit(s) at 6.37s each
 #>                  the per-fit figure is the base model's own recorded wall time; the reference model carries a wider fixed part and a shrinkage prior, so this is a floor
 #>   Approximations this route commits to:
 #>     - calibration_n_at_the_resampling_unit: the prior scales are calibrated against 20 units of site rather than against 200 rows, because rows inside a cluster are not independent pieces of evidence about a coefficient
@@ -321,14 +321,15 @@ increment <- fb_select(
 )
 
 rnd(glance(increment)[, c(
-  "metric", "protected_only", "full", "improvement", "n_units"
+  "loss", "loss_protected_only", "loss_full", "loss_reduction", "n_units"
 )])
-#>   metric protected_only   full improvement n_units
-#> 1   elpd         20.087 14.012       6.076      20
+#>       loss loss_protected_only loss_full loss_reduction n_units
+#> 1 neg_elpd              20.088    14.012          6.075      20
 ```
 
-The two scores are held-out losses, so lower is better, and `improvement` is
-the loss without the candidates minus the loss with them.
+The scores are held-out losses, so lower is better. `neg_elpd` is minus the
+log predictive density of a held-out site, and `loss_reduction` is the loss
+without the candidates minus the loss with them.
 
 A shrinkage prior on an INLA base is fitted with brms, since INLA does not
 fit these priors.

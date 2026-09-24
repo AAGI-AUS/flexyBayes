@@ -188,10 +188,10 @@ sel <- fb_select(
   seed = 20260920L
 )
 
-rnd(glance(sel)[, c("metric", "protected_only", "full", "improvement",
-                    "chosen_size", "n_units", "n_folds")])
-#>   metric protected_only  full improvement chosen_size n_units n_folds
-#> 1   nlpd          0.806 0.722       0.084           1      20       5
+rnd(glance(sel)[, c("loss", "loss_protected_only", "loss_full",
+                    "loss_reduction", "chosen_size", "n_units", "n_folds")])
+#>   loss loss_protected_only loss_full loss_reduction chosen_size n_units n_folds
+#> 1 nlpd               0.806     0.722          0.084           1      20       5
 ```
 
 # When each covariate entered
@@ -241,7 +241,7 @@ Dropping `z1` and `z2` increases the loss by
 0.044 (standard error
 0.016). Dropping `z3` and `z4` changes it by
 0. The differences do not add up
-to the improvement of the full model.
+to the loss reduction of the full model.
 
 # Bayesian comparison of the chosen covariates
 
