@@ -705,9 +705,9 @@
 # one block, from the slots.
 #
 # The same sums as the dense route, in the same order: the residual on the
-# diagonal, then each slot's variance times its loadings' products. For an
-# indicator slot each product has one nonzero term, so every entry equals the
-# dense V's entry exactly; a per-trial field's entries agree to rounding.
+# diagonal, then each slot's variance times its loadings' products. An
+# indicator slot's entries equal the dense V's exactly, a per-trial field's
+# to rounding.
 .fb_sel_block_covariance <- function(cov_spec, rows_a, rows_b) {
   out <- if (identical(rows_a, rows_b)) {
     diag(.fb_sel_residual_diagonal(cov_spec, rows_a), nrow = length(rows_a))

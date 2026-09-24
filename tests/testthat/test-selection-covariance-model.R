@@ -25,9 +25,9 @@
 #
 #   One field per trial. `at(trial):ar1(row):ar1(col)` is factored one
 #   trial at a time at any size. Each block of V equals V written out from
-#   the model's definition, and the whitening and conditional covariance
-#   agree with the dense route's, whose V and Cholesky factor are exactly
-#   zero across trials.
+#   the model's definition. The whitening and conditional covariance match
+#   the dense route, whose V and Cholesky factor are exactly zero across
+#   trials.
 #
 #   Blocking. Above the dense bound a block-diagonal V is factored block by
 #   block. Each block of V equals the dense V's block exactly, for nested
