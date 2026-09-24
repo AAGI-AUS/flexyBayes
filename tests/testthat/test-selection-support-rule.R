@@ -357,7 +357,7 @@ test_that("a grouped penalty solved by the proximal provider holds nothing at s 
 # --- (v) the rule itself ------------------------------------------------- #
 
 test_that("the rule zeroes the anchor and removes a coefficient only while the point stays certified", {
-  tol <- .fb_sel_path_kkt_tolerance()
+  tol <- 1e-6
   basis <- .fb_sel_with_seed(3L, qr.Q(qr(matrix(stats::rnorm(100L), 50L))))
   kkt <- function(A, z, l1) {
     function(b) .fb_sel_kkt_residual_lambda(A, z, b, l1, 0)
@@ -366,7 +366,7 @@ test_that("the rule zeroes the anchor and removes a coefficient only while the p
   # At the null anchor every coefficient is zero, and the names are kept.
   beta <- c(a = -7.6e-17, b = 0.3)
   expect_identical(
-    .fb_sel_path_support(beta, basis, 0, kkt(basis, numeric(50L), 0.1),
+    .fb_sel_path_support(beta, basis, 0, kkt(basis, numeric(50L), 0.1), tol,
                          at_null_anchor = TRUE),
     c(a = 0, b = 0)
   )
@@ -378,14 +378,14 @@ test_that("the rule zeroes the anchor and removes a coefficient only while the p
   z <- drop(basis %*% c(0.5 + l1, l1))
   beta <- c(a = 0.5, b = 3e-7)
   expect_lte(kkt(basis, z, l1)(beta), tol)
-  out <- .fb_sel_path_support(beta, basis, 0, kkt(basis, z, l1))
+  out <- .fb_sel_path_support(beta, basis, 0, kkt(basis, z, l1), tol)
   expect_identical(out[["b"]], 0)
   expect_identical(out[["a"]], beta[["a"]])
   expect_lte(kkt(basis, z, l1)(out), tol)
   # Above the threshold the coefficient is kept.
   beta_large <- c(a = 0.5, b = 2e-6)
   expect_identical(
-    .fb_sel_path_support(beta_large, basis, 0, kkt(basis, z, l1)),
+    .fb_sel_path_support(beta_large, basis, 0, kkt(basis, z, l1), tol),
     beta_large
   )
   # The threshold is on the gradient's scale: on a column of squared norm
@@ -396,7 +396,7 @@ test_that("the rule zeroes the anchor and removes a coefficient only while the p
   beta_narrow <- c(a = 0.5, b = 3e-3)
   expect_lte(kkt(narrow, z_narrow, l1)(beta_narrow), tol)
   expect_identical(
-    .fb_sel_path_support(beta_narrow, narrow, 0, kkt(narrow, z_narrow, l1)),
+    .fb_sel_path_support(beta_narrow, narrow, 0, kkt(narrow, z_narrow, l1), tol),
     c(a = 0.5, b = 0)
   )
 
@@ -412,7 +412,7 @@ test_that("the rule zeroes the anchor and removes a coefficient only while the p
   removed <- beta
   removed[["b"]] <- 0
   expect_gt(kkt(A, z, l1)(removed), tol)
-  expect_identical(.fb_sel_path_support(beta, A, 0, kkt(A, z, l1)), beta)
+  expect_identical(.fb_sel_path_support(beta, A, 0, kkt(A, z, l1), tol), beta)
 })
 
 
@@ -441,7 +441,7 @@ test_that("every point of a selecting path passes through the rule, flagged as t
   )
   flags <- logical(0)
   local_mocked_bindings(
-    .fb_sel_path_support = function(beta, A, lambda_l2, residual,
+    .fb_sel_path_support = function(beta, A, lambda_l2, residual, tol,
                                     at_null_anchor = FALSE) {
       flags <<- c(flags, at_null_anchor)
       beta

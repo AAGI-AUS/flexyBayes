@@ -123,7 +123,7 @@ the penalised optimiser (\code{workflow = "penalized_optimizer"}) and have no
 brms form, so asking for one on the Bayesian route refuses by name rather
 than substituting the nearest prior.\tabular{lll}{
    Family \tab Arguments \tab What it does \cr
-   \code{group_lasso(scale, group)} \tab \code{scale} > 0 \tab a group enters or leaves as a whole \cr
+   \code{group_lasso(scale, group, alpha)} \tab \code{scale} > 0, \code{alpha} in (0, 1] \tab a group enters or leaves as a whole \cr
    \code{sparse_group_lasso(scale, alpha, group)} \tab \code{alpha} in (0, 1) \tab a group enters as a whole, and thins inside \cr
    \code{exclusive_lasso(scale, group)} \tab \code{scale} > 0 \tab members of a group compete \cr
    \code{group_exclusive(group_scale, exclusive_scale, group)} \tab both > 0 \tab both at once \cr
@@ -143,6 +143,12 @@ competitors. \code{group_lasso()}, \code{sparse_group_lasso()} and
 \code{"block"}. The rule and the resolved groups are recorded on the
 certificate. A grouping in which every group has one column refuses, since
 a group lasso would then be a lasso and an exclusive lasso a ridge.
+
+\code{group_lasso()} charges \verb{(alpha / scale) * sum_g sqrt(p_g) ||beta_g||_2},
+where \code{p_g} is the number of columns in group \code{g}. With \code{alpha} below one
+(default 1) it is a group elastic net and also charges
+\verb{((1 - alpha) / (2 * scale)) * ||beta||_2^2}; a group still enters or
+leaves as a whole.
 
 The exclusive penalty adds \verb{sum_g (sum_j |beta_j|)^2 / 2} over groups,
 which encourages competition inside a group and suits a declared set of

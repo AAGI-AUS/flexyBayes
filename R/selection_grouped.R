@@ -687,6 +687,199 @@
 }
 
 
+# --- block coordinate descent --------------------------------------------- #
+
+# .fb_sel_group_block_update() --- the exact minimiser of one group's
+# subproblem
+#
+#   0.5 b'H b - r'b + t ||b||_2,   H = Q diag(values) Q' positive definite,
+#
+# where r is the block's partial correlation with the other groups held and t
+# the group's threshold lg w_g. The minimiser is zero when ||r|| <= t, and
+# otherwise b = (H + mu I)^{-1} r with mu = t / ||b||. With d = Q'r, mu solves
+#
+#   1 / phi(mu) - mu / t = 0,   phi(mu)^2 = sum d_i^2 / (values_i + mu)^2,
+#
+# whose left side is concave in mu (Moré and Sorensen, 1983), so Newton's
+# method started to the right of the root decreases to it monotonically. The
+# start `upper` is right of the root because phi(mu) >= ||d|| / (max(values)
+# + mu).
+.fb_sel_group_block_update <- function(r, values, vectors, threshold) {
+  norm_r <- sqrt(sum(r^2))
+  if (norm_r <= threshold) {
+    return(numeric(length(r)))
+  }
+  d <- drop(crossprod(vectors, r))
+  if (threshold == 0) {
+    return(drop(vectors %*% (d / values)))
+  }
+  mu <- threshold * max(values) / (norm_r - threshold)
+  for (iteration in seq_len(100L)) {
+    denominator <- values + mu
+    phi <- sqrt(sum(d^2 / denominator^2))
+    value <- 1 / phi - mu / threshold
+    slope <- sum(d^2 / denominator^3) / phi^3 - 1 / threshold
+    step <- value / slope
+    mu_next <- mu - step
+    if (!is.finite(mu_next) || mu_next <= 0) {
+      break
+    }
+    if (abs(mu_next - mu) <= 4 * .Machine$double.eps * mu) {
+      mu <- mu_next
+      break
+    }
+    mu <- mu_next
+  }
+  drop(vectors %*% (d / (values + mu)))
+}
+
+
+# .fb_sel_bcd_grouped() --- the group lasso and group elastic net mode by
+# block coordinate descent, with the same KKT certificate and refusal as
+# `.fb_sel_prox_mode_grouped()`.
+#
+# Each sweep minimises the objective exactly over one group at a time on the
+# design as it is, so the penalty stays sum_g w_g ||beta_g||_2 on these
+# columns; nothing is orthonormalised. It applies where the penalty has no
+# L1 and no exclusive part (lambda_l1 = lambda_exclusive = 0). The residual
+# is recomputed from `A` and `z` after every sweep, and a sweep that leaves
+# it above `tol` is followed by the restricted polish, kept only when it
+# lowers the residual.
+.fb_sel_bcd_grouped <- function(
+  A,
+  z,
+  penalty,
+  groups,
+  tol = 1e-9,
+  max_sweeps = 1e4
+) {
+  A <- as.matrix(A)
+  z <- as.numeric(z)
+  if (nrow(A) != length(z)) {
+    stop(
+      "`A` and `z` must agree on the number of rows: ",
+      nrow(A),
+      " and ",
+      length(z),
+      ".",
+      call. = FALSE
+    )
+  }
+  parts <- .fb_sel_penalty_parts(penalty)
+  if (parts$l1 > 0 || parts$le > 0) {
+    stop(
+      "internal contract violation: block coordinate descent solves the ",
+      "group lasso and group elastic net only; this penalty has an L1 or an ",
+      "exclusive part.",
+      call. = FALSE
+    )
+  }
+  max_sweeps <- as.integer(max_sweeps)
+  p <- ncol(A)
+  group_parts <- .fb_sel_group_parts(groups, p)
+  family <- penalty$family %||% "canonical"
+
+  if (p == 0L) {
+    return(list(
+      beta = numeric(0),
+      kkt = 0,
+      iterations = 0L,
+      converged = TRUE,
+      family = family,
+      objective = 0.5 * sum(z^2),
+      polished = FALSE
+    ))
+  }
+
+  gram <- crossprod(A)
+  aty <- drop(crossprod(A, z))
+  members <- lapply(seq_len(group_parts$n_groups), function(k) {
+    which(group_parts$index == k)
+  })
+  blocks <- lapply(members, function(idx) {
+    hessian <- gram[idx, idx, drop = FALSE]
+    diag(hessian) <- diag(hessian) + parts$l2
+    eigen(hessian, symmetric = TRUE)
+  })
+
+  beta <- numeric(p)
+  gram_beta <- numeric(p)
+  best <- .fb_sel_kkt_residual_grouped(A, z, beta, penalty, groups)
+  polished <- FALSE
+  sweeps <- 0L
+  while (best > tol && sweeps < max_sweeps) {
+    sweeps <- sweeps + 1L
+    for (k in seq_len(group_parts$n_groups)) {
+      idx <- members[[k]]
+      current <- beta[idx]
+      r <- aty[idx] -
+        gram_beta[idx] +
+        drop(gram[idx, idx, drop = FALSE] %*% current)
+      updated <- .fb_sel_group_block_update(
+        r,
+        blocks[[k]]$values,
+        blocks[[k]]$vectors,
+        parts$lg * group_parts$weights[[k]]
+      )
+      change <- updated - current
+      if (any(change != 0)) {
+        gram_beta <- gram_beta + drop(gram[, idx, drop = FALSE] %*% change)
+        beta[idx] <- updated
+      }
+    }
+    best <- .fb_sel_kkt_residual_grouped(A, z, beta, penalty, groups)
+    if (best > tol) {
+      candidate <- .fb_sel_polish_grouped(gram, aty, beta, parts, group_parts)
+      if (!is.null(candidate)) {
+        candidate_kkt <- .fb_sel_kkt_residual_grouped(
+          A,
+          z,
+          candidate,
+          penalty,
+          groups
+        )
+        if (candidate_kkt < best) {
+          beta <- candidate
+          gram_beta <- drop(gram %*% beta)
+          best <- candidate_kkt
+          polished <- TRUE
+        }
+      }
+    }
+  }
+
+  if (best > tol) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_prox_mode_not_converged",
+      message = paste0(
+        "fb_select(): block coordinate descent for family `",
+        family,
+        "` stopped after ",
+        sweeps,
+        " sweeps with a KKT residual of ",
+        format(best, digits = 3),
+        ", above the tolerance ",
+        format(tol, digits = 3),
+        ". No point is returned."
+      ),
+      kkt = best,
+      tol = tol,
+      iterations = sweeps
+    ))
+  }
+
+  list(
+    beta = stats::setNames(beta, colnames(A)),
+    kkt = best,
+    iterations = sweeps,
+    converged = TRUE,
+    family = family,
+    objective = .fb_sel_objective_grouped(A, z, beta, parts, group_parts),
+    polished = polished
+  )
+}
+
+
 # --- the path anchor ------------------------------------------------------ #
 
 # .fb_sel_group_fold_index() --- one fold's grouping, from the declared one.

@@ -27,20 +27,18 @@
 .fb_sel_glmnet_state <- new.env(parent = emptyenv())
 
 
-# .fb_sel_path_kkt_tolerance() --- one declared certificate threshold for
-# every provider used by the optimiser path.
+# .fb_sel_path_kkt_tolerance() --- the certificate threshold of every path
+# point, whichever provider computed it.
 #
-# The canonical objective is unnormalised, so this remains an absolute KKT
-# residual on the whitened, response-scaled substrate. 1e-6 is the threshold
-# against which the glmnet bridge has been validated throughout this module.
-# Keeping a stricter 1e-9 only for grouped path points created a provider-
-# dependent acceptance rule and rejected numerically immaterial residuals on
-# a large correlated block after 200,000 iterations. Every path point is held
-# to it, whichever provider computed the point: `.fb_sel_glmnet_at()` checks
-# a `glmnet` answer against it as well. The lower-level solvers keep their
-# stricter defaults (1e-9 grouped, 1e-10 ungrouped) for oracle tests and
-# callers that request them.
-.fb_sel_path_kkt_tolerance <- function() 1e-6
+# The KKT residual must be at most 1e-6 times max|A'z|, the largest gradient
+# coordinate of the least-squares part at beta = 0 (lambda_max of the lasso
+# on the same payload). It is zero when A'z is zero, where beta = 0 is exact.
+.fb_sel_path_kkt_tolerance <- function(A, z) {
+  if (ncol(A) == 0L) {
+    return(0)
+  }
+  1e-6 * max(abs(crossprod(A, as.numeric(z))))
+}
 
 
 # .fb_sel_path_support() --- the one rule for which penalised coefficients a
@@ -63,9 +61,9 @@
 #   exact solution there.
 # - Elsewhere a coefficient is set to zero when removing it moves its own
 #   coordinate of the smooth part's gradient, |beta_j| (||a_j||^2 + l2), by
-#   no more than the path's KKT threshold, provided the point without such
-#   coefficients still meets that threshold (`residual`). Otherwise the point
-#   is kept as solved.
+#   no more than the path's KKT threshold `tol`, provided the point without
+#   such coefficients still meets that threshold (`residual`). Otherwise the
+#   point is kept as solved.
 #
 # A coefficient the exact optimum holds at a size below what the certificate
 # resolves is therefore reported as zero.
@@ -73,6 +71,7 @@
                                  A,
                                  lambda_l2,
                                  residual,
+                                 tol,
                                  at_null_anchor = FALSE) {
   if (length(beta) == 0L) {
     return(beta)
@@ -81,7 +80,6 @@
     beta[] <- 0
     return(beta)
   }
-  tol <- .fb_sel_path_kkt_tolerance()
   below <- beta != 0 & abs(beta) * (colSums(A^2) + lambda_l2) <= tol
   if (!any(below)) {
     return(beta)
@@ -417,10 +415,13 @@
       lambda_glmnet = NA_real_,
       alpha_glmnet = NA_real_,
       kkt = 0,
+      kkt_tolerance = 0,
       canonical_objective = 0.5 * sum(z^2),
       provider_objective = NA_real_
     ))
   }
+
+  tol <- .fb_sel_path_kkt_tolerance(A, z)
 
   # A grouped penalty is not a `glmnet` problem at any lambda: its `alpha` is
   # a scalar over coordinates and has no group norm, so there is no map to
@@ -435,14 +436,16 @@
       lambda_exclusive = penalty$lambda_exclusive * lambda_canonical,
       family = penalty$family
     )
-    solved <- .fb_sel_prox_mode_grouped(
-      A,
-      z,
-      scaled,
-      groups,
-      tol = .fb_sel_path_kkt_tolerance(),
-      max_iter = 2e5
-    )
+    # Option `flexyBayes.selection_grouped_solver = "prox"` sends a group
+    # lasso or group elastic net point to the proximal-gradient solver.
+    use_bcd <- scaled$lambda_l1 == 0 &&
+      scaled$lambda_exclusive == 0 &&
+      !identical(getOption("flexyBayes.selection_grouped_solver"), "prox")
+    solved <- if (use_bcd) {
+      .fb_sel_bcd_grouped(A, z, scaled, groups, tol = tol)
+    } else {
+      .fb_sel_prox_mode_grouped(A, z, scaled, groups, tol = tol, max_iter = 2e5)
+    }
     residual <- function(beta) {
       .fb_sel_kkt_residual_grouped(A, z, beta, scaled, groups)
     }
@@ -453,15 +456,17 @@
         A,
         scaled$lambda_l2,
         residual,
+        tol,
         at_null_anchor = at_null_anchor
       )
     }
     return(list(
       beta = beta,
-      route = "internal_prox",
+      route = if (use_bcd) "internal_bcd" else "internal_prox",
       lambda_glmnet = NA_real_,
       alpha_glmnet = NA_real_,
       kkt = residual(beta),
+      kkt_tolerance = tol,
       canonical_objective = .fb_sel_objective_grouped(
         A,
         z,
@@ -489,7 +494,7 @@
       z,
       lambda_l1,
       lambda_l2,
-      tol = .fb_sel_path_kkt_tolerance(),
+      tol = tol,
       max_iter = 2e5
     )
     beta <- solved$beta
@@ -511,7 +516,6 @@
     # optimum. It is now solved again: first by the exact restricted solve on
     # the support `glmnet` found, then, where that support was wrong, by the
     # internal proximal solver, which certifies the point or refuses by name.
-    tol <- .fb_sel_path_kkt_tolerance()
     if (.fb_sel_kkt_residual_lambda(A, z, beta, lambda_l1, lambda_l2) > tol) {
       polished <- .fb_sel_polish(
         A,
@@ -548,6 +552,7 @@
       A,
       lambda_l2,
       function(b) .fb_sel_kkt_residual_lambda(A, z, b, lambda_l1, lambda_l2),
+      tol,
       at_null_anchor = at_null_anchor
     )
   }
@@ -558,6 +563,7 @@
     lambda_glmnet = map$lambda,
     alpha_glmnet = map$alpha,
     kkt = .fb_sel_kkt_residual_lambda(A, z, beta, lambda_l1, lambda_l2),
+    kkt_tolerance = tol,
     canonical_objective = .fb_sel_canonical_objective(
       A,
       z,
@@ -1130,6 +1136,7 @@
     mu_assess = mu,
     route = solved$route,
     kkt = solved$kkt,
+    kkt_tolerance = solved$kkt_tolerance,
     lambda_glmnet = solved$lambda_glmnet,
     alpha_glmnet = solved$alpha_glmnet,
     canonical_objective = solved$canonical_objective,
@@ -1501,7 +1508,9 @@
             lambda_index = index,
             lambda_canonical = lambda_canonical,
             fold = label,
-            kkt = solution$kkt
+            kkt = solution$kkt,
+            kkt_tolerance = solution$kkt_tolerance,
+            route = solution$route
           )
           coordinates[[length(coordinates) + 1L]] <-
             data.table::data.table(
