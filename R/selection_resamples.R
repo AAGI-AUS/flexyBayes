@@ -246,6 +246,42 @@
 }
 
 
+# .fb_sel_observed_folds() --- the folds with the rows that have no response
+# left out of `train_rows` and `assess_rows`.
+#
+# For a Gaussian response, leaving a row out of y, X and V is the exact
+# marginal over it. The rows stay in the data, so a structured covariance is
+# still indexed over the whole padded lattice (fb_complete_grid()). The
+# held-out units' rows with no response are kept as `unobserved_rows`, which a
+# fold refit relabels with the rows it scores.
+.fb_sel_observed_folds <- function(folds, y) {
+  unobserved <- which(is.na(y))
+  if (length(unobserved) == 0L) {
+    return(folds)
+  }
+  for (i in seq_along(folds)) {
+    split <- folds[[i]]
+    split$unobserved_rows <- intersect(split$assess_rows, unobserved)
+    split$train_rows <- setdiff(split$train_rows, unobserved)
+    split$assess_rows <- setdiff(split$assess_rows, unobserved)
+    if (length(split$train_rows) == 0L || length(split$assess_rows) == 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "selection_fold_not_usable",
+        message = paste0(
+          "fb_select(): fold ", split$label, " has ",
+          length(split$train_rows), " training and ",
+          length(split$assess_rows), " assessment rows with an observed ",
+          "response. A fold with nothing to learn on, or nothing to score ",
+          "on, is not a fold."
+        )
+      ))
+    }
+    folds[[i]] <- split
+  }
+  folds
+}
+
+
 # .fb_sel_require_columns() --- the named columns exist, or the refusal names
 # the ones that do not.
 .fb_sel_require_columns <- function(data, vars, arg) {
@@ -1594,7 +1630,10 @@
   # Step 1 of section 4.2, and it comes first for the reason the contract
   # gives: a rotation mixes observations, so a split of rotated rows is not
   # a holdout of anything.
-  folds <- .fb_sel_folds(resamples, data, seed = seed)
+  folds <- .fb_sel_observed_folds(
+    .fb_sel_folds(resamples, data, seed = seed),
+    .fb_response_values(list(response = response), data)
+  )
 
   cluster_vars <- if (is.null(cluster)) resamples$unit else cluster
   .fb_sel_require_columns(data, cluster_vars, "cluster")

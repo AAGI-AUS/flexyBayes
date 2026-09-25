@@ -401,7 +401,7 @@
   split,
   random_vars
 ) {
-  assess_rows <- split$assess_rows
+  assess_rows <- c(split$assess_rows, split$unobserved_rows)
   for (v in random_vars) {
     original <- as.character(data[[v]])
     intended <- original
@@ -526,7 +526,11 @@
   ]
 
   engine_data <- if (identical(prediction, "new_cluster")) {
-    relabelled <- .fb_sel_bayes_heldout_labels(data, split$assess_rows, random)
+    relabelled <- .fb_sel_bayes_heldout_labels(
+      data,
+      c(split$assess_rows, split$unobserved_rows),
+      random
+    )
     .fb_sel_check_heldout_labels(data, relabelled, split, random)
     relabelled
   } else {

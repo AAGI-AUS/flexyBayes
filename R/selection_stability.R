@@ -260,13 +260,16 @@
   points <- vector("list", b_count)
   for (b in seq_len(b_count)) {
     held <- units$key %in% draws[[b]]
-    split <- list(
-      fold_id = b,
-      repeat_id = 1L,
-      label = paste0("subsample_", b),
-      train_rows = which(held),
-      assess_rows = which(!held)
-    )
+    split <- .fb_sel_observed_folds(
+      list(list(
+        fold_id = b,
+        repeat_id = 1L,
+        label = paste0("subsample_", b),
+        train_rows = which(held),
+        assess_rows = which(!held)
+      )),
+      .fb_response_values(list(response = response), data)
+    )[[1L]]
     space <- .fb_sel_candidate_space(
       protected, candidates, data, list(split),
       groupings = groupings, route = "benchmark",

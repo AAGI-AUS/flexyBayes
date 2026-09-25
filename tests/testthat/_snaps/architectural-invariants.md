@@ -264,7 +264,6 @@
         selection_loss_surface_undefined
         selection_missing_response_estimand_unnamed
         selection_missing_response_in_objective
-        selection_missing_response_not_carried
         selection_new_cluster_not_representable
         selection_offset_absorbed_twice
         selection_parallel_worker_failed
@@ -295,6 +294,7 @@
         selection_value_contract_mismatch
         selection_weights_absorbed_twice
         selection_weights_loss_route_requires_residual_only
+        selection_weights_not_carried
         selection_weights_not_positive
         smooth_variable_not_in_data
         spatial_field_requires_ar1_field
