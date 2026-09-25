@@ -140,7 +140,7 @@
     ))
   }
   base$fb <- fb
-  base$data <- as.data.frame(resolved)
+  base$data <- .fb_sel_with_weights_column(base, as.data.frame(resolved))
   base
 }
 
@@ -633,9 +633,18 @@
   fixed_alias = NULL
 ) {
   info <- base$extras$call_info %||% list()
+  # Each row's weight travels in its column of the fold's data
+  # (`.fb_sel_with_weights_column()`), so it follows every subset of rows.
+  weights <- NULL
   if (!is.null(.fb_sel_base_weights(base))) {
-    .fb_sel_refuse_weights_not_carried("the per-fold Bayesian refit")
+    weights <- data[[.FB_SEL_WEIGHTS_COL]]
+    if (is.null(weights)) {
+      .fb_sel_refuse_weights_not_carried(
+        "a per-fold Bayesian refit handed data without the weights column"
+      )
+    }
   }
+  data <- data[setdiff(names(data), .FB_SEL_WEIGHTS_COL)]
   # A known variance per row (R/known_variance.R) travels in its column of
   # the fold's data. The fold covariance carries it into the refit; every
   # other refit here feeds a posterior predictive score that leaves it out,
@@ -711,6 +720,9 @@
   }
   if (!is.null(known_variance)) {
     args$known_variance <- known_variance
+  }
+  if (!is.null(weights)) {
+    args$weights <- weights
   }
   fixed_alias <- fixed_alias %||% info$fixed_alias
   if (!is.null(fixed_alias)) {

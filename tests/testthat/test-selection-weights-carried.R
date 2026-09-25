@@ -84,37 +84,63 @@ weights_gls_by_hand <- function(d, split, record, formula) {
   )
 }
 
-test_that("a weighted base refuses on every route that does not carry weights", {
+test_that("a weighted base refuses the projection decision by name", {
   skip_if_not_installed("INLA")
   d <- weights_fixture()
   base <- weights_base(d)
-  penalty <- fb_penalty(term(everything()) ~ elastic_net(lambda = 1, alpha = 1))
-  decision <- fb_decision(
-    method = "full", metric = "rmse", rule = "one_se",
-    stability_subsamples = 0L
+  expect_error(
+    weights_select(base, d, workflow = "bayes"),
+    class = "flexybayes_refusal_selection_weights_not_carried"
   )
-  routes <- list(
-    list(workflow = "penalized_optimizer", covariance = "base_model",
-         penalty = penalty, decision = decision),
-    list(workflow = "penalized_optimizer", covariance = "reml_plugin",
-         penalty = penalty, decision = decision,
-         refit = list(method = "bayes")),
-    list(workflow = "bayes", covariance = "reml_plugin")
+})
+
+# A weighted base that carries its parsed model and data and was never fitted.
+weights_stub_base <- function(d, class) {
+  fb <- fb_from_asreml(y ~ 1, random = ~ site, data = d)
+  fb$family <- "gaussian"
+  fb$link <- "identity"
+  structure(
+    list(
+      fb = fb,
+      data = d,
+      extras = list(call_info = list(
+        fixed = y ~ 1, random = ~ site, family = "gaussian", weights = d$w
+      ))
+    ),
+    class = c(class, "flexybayes", "list")
   )
-  for (r in routes) {
-    expect_error(
-      do.call(weights_select, c(list(base = base, d = d), r)),
-      class = "flexybayes_refusal_selection_weights_not_carried"
+}
+
+test_that("each fold refit is handed the weights of the rows it fits", {
+  d <- weights_unbalanced()
+  split <- list(label = "1", train_rows = which(!d$site %in% c("2", "9")),
+                assess_rows = which(d$site %in% c("2", "9")))
+  for (provider in c("inla", "brms")) {
+    base <- flexyBayes:::.fb_sel_bayes_normalise_base(
+      weights_stub_base(d, paste0("flexybayes_", provider))
     )
+    seen <- NULL
+    local_mocked_bindings(flexybayes = function(...) {
+      seen <<- list(...)
+      stop("captured")
+    })
+    expect_error(
+      flexyBayes:::.fb_sel_cov_fold_refit(
+        base, split, provider = provider, slots = list()
+      ),
+      "captured"
+    )
+    rows <- if (provider == "inla") seq_len(nrow(d)) else split$train_rows
+    expect_identical(seen$weights, d$w[rows])
+    expect_false(".fb_sel_weight" %in% names(seen$data))
   }
 })
 
-test_that("the per-fold Bayesian refit refuses weights by name", {
-  base <- list(extras = list(call_info = list(weights = c(1, 2, 1, 2))))
+test_that("a fold refit of a weighted base refuses data without the weights", {
+  d <- weights_unbalanced()
+  base <- weights_stub_base(d, "flexybayes_inla")
   expect_error(
-    flexyBayes:::.fb_sel_bayes_refit(
-      base, data.frame(y = 1:4), y ~ 1, "inla"
-    ),
+    flexyBayes:::.fb_sel_bayes_refit(base, d, y ~ 1, "inla"),
     class = "flexybayes_refusal_selection_weights_not_carried"
   )
 })
@@ -239,4 +265,92 @@ test_that("every fold and every stability subsample of the optimiser is weighted
   expect_true(sel$certificate$covariance$weights)
   expect_length(seen, 4L + 3L)
   expect_true(all(seen))
+})
+
+test_that("covariance = \"base_model\" on a weighted base scores each fold as the weighted GLS written out", {
+  skip_if_not_installed("INLA")
+  # A held-out locality leaves a third of a fold's rows without a response.
+  withr::local_options(flexyBayes.silence_high_missingness_warning = TRUE)
+  d <- weights_unbalanced()
+  base <- weights_base(d)
+  run <- function(b) {
+    fb_select(
+      b, ~ x1 + x2 + x3,
+      workflow = "unpenalized_benchmark",
+      covariance = "base_model",
+      resamples = fb_resamples(unit = ~ site, v = 4L),
+      seed = 1L
+    )
+  }
+  sel <- run(base)
+  cov <- sel$certificate$covariance
+  expect_true(cov$weights)
+  clusters <- as.data.frame(sel$clusters)
+  labels <- vapply(cov$folds, function(r) r$fold, character(1L))
+  formulas <- list(protected_only = ~ 1, full = ~ x1 + x2 + x3)
+  for (split in sel$folds) {
+    record <- cov$folds[[match(split$label, labels)]]
+    for (model in names(formulas)) {
+      hand <- weights_gls_by_hand(d, split, record, formulas[[model]])
+      got <- clusters[clusters$model == model &
+                        clusters$fold == split$label, , drop = FALSE]
+      got <- got[match(hand$cluster, got$cluster), , drop = FALSE]
+      expect_lt(max(abs(got$mse / hand$mse - 1)), 1e-6)
+      expect_lt(max(abs(got$nlpd / hand$nlpd - 1)), 1e-6)
+    }
+  }
+
+  # Unweighted, the same folds read other components off their refits.
+  plain <- run(suppressMessages(flexybayes(
+    y ~ 1, random = ~ site, data = d, backend = "inla", verbose = FALSE
+  )))
+  expect_false(plain$certificate$covariance$weights)
+  residual_of <- function(s) {
+    vapply(s$certificate$covariance$folds, function(r) r$residual, 1)
+  }
+  expect_gt(max(abs(residual_of(sel) / residual_of(plain) - 1)), 0.05)
+})
+
+test_that("every Bayesian fold refit of a weighted base is fitted with its weights", {
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_high_missingness_warning = TRUE)
+  d <- weights_unbalanced()
+  base <- weights_base(d)
+  original <- flexybayes
+  seen <- list()
+  local_mocked_bindings(flexybayes = function(...) {
+    args <- list(...)
+    seen[[length(seen) + 1L]] <<- args$weights
+    original(...)
+  })
+  sel <- fb_select(
+    base, ~ x1 + x2 + x3,
+    workflow = "bayes",
+    decision = fb_decision(method = "full", metric = "rmse"),
+    resamples = fb_resamples(unit = ~ site, v = 4L),
+    seed = 1L
+  )
+  expect_s3_class(sel, "fb_select")
+  # The timed cost probe, then the protected baseline and the full model on
+  # each of 4 folds.
+  expect_length(seen, 1L + 8L)
+  expect_true(all(vapply(seen, identical, logical(1L), d$w)))
+
+  seen <- list()
+  opt <- fb_select(
+    base, ~ x1 + x2 + x3,
+    penalty = fb_penalty(
+      term(everything()) ~ elastic_net(lambda = 1, alpha = 1)
+    ),
+    workflow = "penalized_optimizer",
+    decision = fb_decision(
+      method = "full", metric = "rmse", rule = "one_se",
+      stability_subsamples = 0L
+    ),
+    refit = list(method = "bayes"),
+    resamples = fb_resamples(unit = ~ site, v = 4L),
+    seed = 1L
+  )
+  expect_gt(length(seen), 0L)
+  expect_true(all(vapply(seen, identical, logical(1L), d$w)))
 })

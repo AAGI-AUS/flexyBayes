@@ -481,6 +481,9 @@
       # Each row's known variance, added to the residual on V's diagonal in
       # every fold, or NULL (R/known_variance.R).
       known_variance = .fb_sel_known_variance(base),
+      # Each row's observation weight, dividing the residual on V's diagonal,
+      # or NULL.
+      weights = .fb_sel_base_weights(base),
       builder = if (isTRUE(blocking$applicable)) {
         "block_cholesky"
       } else {
@@ -600,6 +603,11 @@
     slots = model$slots
   )
   seconds <- unname((proc.time() - started)[["elapsed"]])
+  # A held-out row is scored at w = 1: its own weight is not known from the
+  # training rows.
+  if (!is.null(model$weights)) {
+    model$weights[split$assess_rows] <- 1
+  }
   list(
     spec = .fb_sel_cov_fold_spec(model, components),
     record = list(
@@ -633,7 +641,8 @@
       components$residual,
       components$terms[names(z)],
       estimand,
-      known_variance = model$known_variance
+      known_variance = model$known_variance,
+      weights = model$weights
     )
   } else {
     names_slots <- vapply(model$slots, function(s) s$name, character(1L))
@@ -642,7 +651,8 @@
       components$residual,
       components$terms[names_slots],
       estimand,
-      known_variance = model$known_variance
+      known_variance = model$known_variance,
+      weights = model$weights
     )
     spec$slots <- model$slots
     spec$rho <- components$rho

@@ -29,10 +29,9 @@ fb_select(
 \item{base}{A fitted flexyBayes model. Its fixed effects are the protected
 block and are never penalised. A base fitted with \code{weights} is selected
 with residual variance \code{sigma^2 / w} on each training row and \code{sigma^2}
-on each held-out row, whose weight the training rows do not give. This
-holds on the benchmark and optimiser workflows with
-\code{covariance = "reml_plugin"}; the other routes, and \code{refit}, refuse a
-weighted base with \code{selection_weights_not_carried}.}
+on each held-out row, whose weight the training rows do not give. Each
+fold refit is fitted with the weights of its rows. The projection
+decision refuses a weighted base with \code{selection_weights_not_carried}.}
 
 \item{candidates}{A one-sided formula over columns of the base fit's data.
 A transform whose value on a row depends on other rows, in the

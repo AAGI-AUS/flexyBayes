@@ -109,6 +109,28 @@
 }
 
 
+# The column of a weighted base's data that carries each row's weight into
+# the fold refits.
+.FB_SEL_WEIGHTS_COL <- ".fb_sel_weight"
+
+# .fb_sel_with_weights_column() --- `data` with the base's weights as a
+# column, or unchanged for an unweighted base.
+.fb_sel_with_weights_column <- function(base, data) {
+  w <- .fb_sel_base_weights(base)
+  if (is.null(w)) {
+    return(data)
+  }
+  if (length(w) != nrow(data)) {
+    .fb_sel_refuse_weights_not_carried(paste0(
+      "a base whose ", length(w), " weights do not match the ", nrow(data),
+      " rows of its data"
+    ))
+  }
+  data[[.FB_SEL_WEIGHTS_COL]] <- w
+  data
+}
+
+
 # .fb_sel_refuse_weights_not_carried() --- a weighted base on a route that
 # does not carry the weights refuses by name.
 .fb_sel_refuse_weights_not_carried <- function(route) {

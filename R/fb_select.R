@@ -2710,10 +2710,9 @@
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
 #'   block and are never penalised. A base fitted with `weights` is selected
 #'   with residual variance `sigma^2 / w` on each training row and `sigma^2`
-#'   on each held-out row, whose weight the training rows do not give. This
-#'   holds on the benchmark and optimiser workflows with
-#'   `covariance = "reml_plugin"`; the other routes, and `refit`, refuse a
-#'   weighted base with `selection_weights_not_carried`.
+#'   on each held-out row, whose weight the training rows do not give. Each
+#'   fold refit is fitted with the weights of its rows. The projection
+#'   decision refuses a weighted base with `selection_weights_not_carried`.
 #' @param candidates A one-sided formula over columns of the base fit's data.
 #'   A transform whose value on a row depends on other rows, in the
 #'   candidates or in the base's fixed part, is learned inside each fold or
@@ -3116,19 +3115,15 @@ fb_select <- function(base,
     base, workflow, covariance, value_request
   )
 
-  # The REML plug-in divides each training row's residual by its weight.
-  # Every route that refits the base on a fold does not carry the weights
-  # yet, and would otherwise select on the unweighted model without saying so.
-  if (!is.null(.fb_sel_base_weights(base))) {
-    if (!identical(covariance, "reml_plugin") || identical(workflow, "bayes")) {
-      .fb_sel_refuse_weights_not_carried(paste0(
-        "`workflow = \"", workflow, "\"` with `covariance = \"", covariance,
-        "\"`"
-      ))
-    }
-    if (!is.null(value_request)) {
-      .fb_sel_refuse_weights_not_carried("the per-fold refit (`refit`)")
-    }
+  # Every fold covariance and fold refit carries the base's observation
+  # weights. The projection decision reads the reference fit through
+  # projpred, whose handling of them is not checked here.
+  if (
+    !is.null(.fb_sel_base_weights(base)) &&
+      identical(workflow, "bayes") &&
+      identical(decision$method, "projection")
+  ) {
+    .fb_sel_refuse_weights_not_carried("the projection decision")
   }
 
   # Every route that reaches .fb_select_benchmark(): the two workflows below
