@@ -146,6 +146,113 @@
 }
 
 
+# .fb_sel_require_weights_by_route() --- `fb_resamples(weights_by = )` runs
+# on a weighted base, on the benchmark and optimiser folds and the Bayesian
+# refit of their supports, and refuses by name everywhere else.
+.fb_sel_require_weights_by_route <- function(base, resamples, workflow,
+                                             decision) {
+  by <- resamples$weights_by
+  .fb_sel_require_columns(base$data, by, "weights_by")
+  if (is.null(.fb_sel_base_weights(base))) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_weights_by_unweighted_base",
+      message = paste0(
+        "fb_select(): `weights_by` re-estimates the base's observation ",
+        "weights in each fold, and the base was fitted without `weights`. ",
+        "Fit the base with the weights of the whole data first."
+      )
+    ))
+  }
+  route <- if (identical(workflow, "bayes")) {
+    "the Bayesian workflow"
+  } else if ((decision$stability_subsamples %||% 0L) > 0L) {
+    "the stability subsamples"
+  } else {
+    NULL
+  }
+  if (!is.null(route)) {
+    stop(.fb_refusal_condition(
+      reason_code = "selection_weights_not_carried",
+      message = paste0(
+        "fb_select(): ", route, " does not re-estimate the weights in each ",
+        "fold, so `weights_by = ~ ", paste(by, collapse = " + "),
+        "` would not be applied. Ask for workflow = \"penalized_optimizer\" ",
+        "or \"unpenalized_benchmark\" with stability_subsamples = 0, or ",
+        "drop `weights_by` to keep the base's weights in every fold."
+      ),
+      route = route
+    ))
+  }
+  invisible(NULL)
+}
+
+
+# .fb_sel_fold_weights() --- one fold's observation weights, re-estimated by
+# group from its training rows (`fb_resamples(weights_by = )`).
+#
+# s2_g is the mean squared residual of group g's training rows in an
+# unweighted refit of the base, random effects included, and
+# w_g = median(s2) / s2_g over the groups with training rows. Held-out rows,
+# and rows of a group with no training rows, get w = 1.
+.fb_sel_fold_weights <- function(base,
+                                 split,
+                                 by,
+                                 provider,
+                                 engine = NULL,
+                                 seed = NULL) {
+  spec <- .fb_sel_bayes_base_spec(base)
+  fold_data <- spec$data
+  # A constant weight is the unweighted model.
+  fold_data[[.FB_SEL_WEIGHTS_COL]] <- 1
+  if (identical(provider, "inla")) {
+    fold_data[[spec$response]][
+      c(split$assess_rows, split$not_estimable_rows)
+    ] <- NA
+    fitted_rows <- seq_len(nrow(fold_data))
+  } else {
+    fold_data <- fold_data[split$train_rows, , drop = FALSE]
+    fitted_rows <- split$train_rows
+  }
+  fit <- .fb_sel_bayes_refit(
+    base,
+    fold_data,
+    .fb_sel_bayes_fixed(
+      spec$response,
+      spec$protected_labels,
+      character(0),
+      spec$offsets
+    ),
+    provider,
+    engine = engine,
+    seed = seed,
+    na_action = if (identical(provider, "inla")) "augment" else NULL,
+    carry_known_variance = TRUE,
+    fixed_alias = "drop"
+  )
+  y <- as.numeric(.fb_response_values(list(response = spec$response),
+                                      spec$data))
+  mu <- rep(NA_real_, nrow(spec$data))
+  mu[fitted_rows] <- stats::fitted(fit)
+  train <- split$train_rows
+  key <- .fb_sel_key(spec$data, by)
+  s2 <- vapply(
+    split((y[train] - mu[train])^2, key[train]),
+    mean,
+    numeric(1L)
+  )
+  w_group <- stats::median(s2) / s2
+  weights <- rep(1, nrow(spec$data))
+  hit <- key %in% names(w_group)
+  weights[hit] <- w_group[key[hit]]
+  weights[split$assess_rows] <- 1
+  .fb_sel_check_weights(weights, nrow(spec$data))
+  list(
+    weights = weights,
+    record = list(by = by, s2 = s2, weights = w_group)
+  )
+}
+
+
 # --- learned transformations ----------------------------------------- #
 
 # .fb_sel_learn_scaling() --- the one transformation this layer learns

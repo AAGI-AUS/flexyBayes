@@ -1612,7 +1612,8 @@
   offsets = character(0),
   cov_model = NULL,
   protected_alias = "refuse",
-  weights = NULL
+  weights = NULL,
+  fold_weights = NULL
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -1688,6 +1689,13 @@
   # (R/selection_parallel.R).
   fold_job <- function(f) {
     split <- folds[[f]]
+    # Weights re-estimated from this fold's training rows (`weights_by`).
+    weights_record <- NULL
+    if (!is.null(fold_weights)) {
+      estimated <- fold_weights(split, f)
+      split$weights <- estimated$weights
+      weights_record <- estimated$record
+    }
     fold_cov <- if (is.null(cov_model)) {
       NULL
     } else {
@@ -1704,13 +1712,14 @@
       cov_spec = fold_cov$spec,
       offsets = offsets,
       fold_space = space$folds[[split$label]],
-      weights = weights
+      weights = split$weights %||% weights
     )
     substrate$covariance_record <- fold_cov$record %||% list(
       fold = split$label,
       residual = substrate$learned$components_residual,
       terms = substrate$learned$components_terms
     )
+    substrate$covariance_record$weights_by <- weights_record
     fold_scored <- list()
 
     for (name in names(sets)) {
@@ -1751,7 +1760,12 @@
       )
     }
 
-    list(label = split$label, substrate = substrate, scored = fold_scored)
+    list(
+      label = split$label,
+      substrate = substrate,
+      scored = fold_scored,
+      weights = split$weights
+    )
   }
 
   # The folds do not read each other, so they may run at the same time. With
@@ -1762,6 +1776,11 @@
   # (R/selection_parallel.R).
   plan <- .fb_sel_worker_plan(length(folds), provider = cov_model$provider)
   results <- .fb_sel_fold_lapply(seq_along(folds), fold_job, plan)
+
+  # The Bayesian refit of each fold's support reads the fold's own weights.
+  for (f in seq_along(results)) {
+    folds[[f]]$weights <- results[[f]]$weights
+  }
 
   # Assembled in FOLD order, never in the order the workers finished.
   for (res in results) {
@@ -1834,7 +1853,8 @@
     covariance = .fb_sel_cv_covariance_record(
       cov_model,
       substrates,
-      weighted = !is.null(weights)
+      weighted = !is.null(weights),
+      weights_by = if (!is.null(fold_weights)) resamples$weights_by
     )
   )
 }

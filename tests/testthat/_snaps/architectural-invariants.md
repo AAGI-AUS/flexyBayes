@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=230
+      .refusal_registry: locked=TRUE n_keys=231
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -293,6 +293,7 @@
         selection_strata_not_constant_within_unit
         selection_value_contract_mismatch
         selection_weights_absorbed_twice
+        selection_weights_by_unweighted_base
         selection_weights_loss_route_requires_residual_only
         selection_weights_not_carried
         selection_weights_not_positive

@@ -1101,6 +1101,8 @@
         # TRUE where each row's residual was divided by its observation
         # weight; NA on a route that integrates V.
         weights = cov_record$weights %||% NA,
+        # The groups whose weights each fold re-estimated, or NULL.
+        weights_by = cov_record$weights_by,
         whitening = cov_record$whitening,
         equivalence_level = cov_record$equivalence_level %||% NA_character_,
         equivalence_reason = cov_record$equivalence_reason %||% NA_character_,
@@ -2258,6 +2260,20 @@
   } else {
     .fb_sel_benchmark_random(base$fb)
   }
+  fold_weights <- NULL
+  if (length(resamples$weights_by) > 0L) {
+    weights_provider <- .fb_sel_bayes_provider(base)
+    fold_weights <- function(split, f) {
+      .fb_sel_fold_weights(
+        base,
+        split,
+        resamples$weights_by,
+        provider = weights_provider,
+        engine = engine,
+        seed = as.integer(seed %||% 0L) + 1000L * as.integer(f) + 2L
+      )
+    }
+  }
   gls <- .fb_sel_cv(
     data = base$data,
     response = base$fb$response,
@@ -2273,7 +2289,8 @@
     offsets = base$fb$offsets %||% character(0),
     cov_model = cov_model,
     protected_alias = protected_alias,
-    weights = .fb_sel_base_weights(base)
+    weights = .fb_sel_base_weights(base),
+    fold_weights = fold_weights
   )
   arms$gls <- list(
     workflow = gls$workflow,
@@ -3082,6 +3099,9 @@ fb_select <- function(base,
       identical(decision$method, "projection")
   ) {
     .fb_sel_refuse_weights_not_carried("the projection decision")
+  }
+  if (length(resamples$weights_by) > 0L) {
+    .fb_sel_require_weights_by_route(base, resamples, workflow, decision)
   }
 
   # The two routes below have no decision layer at all -- there is no
@@ -4229,6 +4249,14 @@ print.fb_select <- function(x, digits = 4L, ...) {
     } else {
       ""
     },
+    if (length(cert$covariance$weights_by) > 0L) {
+      paste0(
+        ", weights re-estimated in each fold by ",
+        paste(cert$covariance$weights_by, collapse = ", ")
+      )
+    } else {
+      ""
+    },
     "\n",
     sep = ""
   )
@@ -5259,6 +5287,14 @@ print.fb_select_certificate <- function(x, ...) {
       },
       if (isTRUE(x$covariance$weights)) {
         ", the residual divided by each training row's weight"
+      } else {
+        ""
+      },
+      if (length(x$covariance$weights_by) > 0L) {
+        paste0(
+          ", weights re-estimated in each fold by ",
+          paste(x$covariance$weights_by, collapse = ", ")
+        )
       } else {
         ""
       },
