@@ -201,6 +201,7 @@ emit_count_aggregated <- function(
   if (length(control_fixed)) {
     inla_args$control.fixed <- control_fixed
   }
+  inla_args$num.threads <- .fb_inla_thread_plan(inla_args$num.threads)
 
   inla_fit <- .inla_call(inla_args)
 

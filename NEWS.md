@@ -1,3 +1,20 @@
+# flexyBayes (development version)
+
+## INLA threads
+
+* Every INLA fit now runs on one thread, `num.threads = "1:1"`, on the
+  per-row, aggregated and streamed routes and in every fold of `fb_select()`.
+  At INLA's own default, `"10:1"` on a 10-core machine, identical calls
+  returned different variance components where a variance is weakly
+  informed: on a 48-trial barley model with 22 localities, eight identical
+  fits at `"4:1"` gave the locality variance from 0.58 to 42.3, and at
+  `"1:1"` from 0.75 to 0.79, with the fixed effects unchanged. This is a
+  change in behaviour: `INLA::inla.setOption(num.threads = )` no longer sets
+  the plan of a flexyBayes fit; `options(flexyBayes.inla_threads = "4:1")`
+  does, and `"inla"` returns the choice to INLA.
+* A fold worker of `fb_select()` no longer sets INLA's threads to
+  `cores %/% workers`, which replaced the plan the caller had chosen.
+
 # flexyBayes 0.14.2
 
 A patch release for selection on a weighted base. `fb_select()` carries the

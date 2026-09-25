@@ -605,6 +605,20 @@ GLM-compatible object for use with standard R packages (emmeans,
 marginaleffects, etc.), the native backend object for engine-specific
 diagnostics, and extras for secondary analyses.
 }
+\section{INLA threads}{
+
+An INLA fit runs on one thread, \code{num.threads = "1:1"}, whatever
+\code{INLA::inla.setOption()} holds. With more threads, identical calls can
+return different variance components where the data inform a variance only
+weakly. On a 48-trial barley model with 22 localities, eight identical fits
+at \code{"4:1"} gave the locality variance from 0.58 to 42.3, and at \code{"1:1"}
+from 0.75 to 0.79, with the fixed effects unchanged. Set
+\code{options(flexyBayes.inla_threads = "4:1")} for another plan, or \code{"inla"}
+for INLA's own default; the plan a fit ran with is in
+\verb{$extras$reproducibility}. Several fits at once, as \code{\link[=fb_select]{fb_select()}} runs its
+folds, use the cores without this cost.
+}
+
 \section{Fitting in a separate process}{
 
 \code{options(flexyBayes.isolation = "process")} runs the engine fit in a

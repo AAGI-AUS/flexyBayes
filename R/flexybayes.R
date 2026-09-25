@@ -513,6 +513,18 @@
 #' character string holding the Stan program on the brms path, or a list of
 #' the formula, family and hyperparameter specification on the INLA path.
 #'
+#' @section INLA threads:
+#' An INLA fit runs on one thread, `num.threads = "1:1"`, whatever
+#' `INLA::inla.setOption()` holds. With more threads, identical calls can
+#' return different variance components where the data inform a variance only
+#' weakly. On a 48-trial barley model with 22 localities, eight identical fits
+#' at `"4:1"` gave the locality variance from 0.58 to 42.3, and at `"1:1"`
+#' from 0.75 to 0.79, with the fixed effects unchanged. Set
+#' `options(flexyBayes.inla_threads = "4:1")` for another plan, or `"inla"`
+#' for INLA's own default; the plan a fit ran with is in
+#' `$extras$reproducibility`. Several fits at once, as [fb_select()] runs its
+#' folds, use the cores without this cost.
+#'
 #' @section Fitting in a separate process:
 #' `options(flexyBayes.isolation = "process")` runs the engine fit in a
 #' separate R process started through callr, which is in Suggests; without
