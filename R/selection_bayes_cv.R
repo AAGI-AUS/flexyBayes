@@ -168,6 +168,16 @@
 .fb_sel_grouping_columns <- function(fb) {
   columns <- character(0)
   unrelabelled <- character(0)
+  # RANGE and ROW of id(TRIAL):ar1(RANGE):ar1(ROW) are plot positions. In
+  # TRIAL:RANGE, relabelling TRIAL already gives the held-out rows new levels.
+  field_group <- character(0)
+  field_index <- character(0)
+  for (t in fb$random_terms %||% list()) {
+    if (identical(t$type, "ar1_spatial") && length(t$at_var) > 0L) {
+      field_group <- c(field_group, t$at_var)
+      field_index <- c(field_index, t$row_var, t$col_var)
+    }
+  }
   for (t in fb$random_terms %||% list()) {
     type <- t$type %||% "unknown"
     if (!nzchar(type)) {
@@ -181,7 +191,10 @@
       simple_slope_uncor = ,
       simple_slope_cor = t$var,
       nested = ,
-      combo = .fb_nested_vars(t),
+      combo = {
+        vars <- .fb_nested_vars(t)
+        if (any(vars %in% field_group)) setdiff(vars, field_index) else vars
+      },
       at_simple = ,
       us_gxe = ,
       fa_gxe = ,
@@ -401,7 +414,9 @@
   split,
   random_vars
 ) {
-  assess_rows <- c(split$assess_rows, split$unobserved_rows)
+  assess_rows <- c(
+    split$assess_rows, split$unobserved_rows, split$not_estimable_rows
+  )
   for (v in random_vars) {
     original <- as.character(data[[v]])
     intended <- original
@@ -528,7 +543,7 @@
   engine_data <- if (identical(prediction, "new_cluster")) {
     relabelled <- .fb_sel_bayes_heldout_labels(
       data,
-      c(split$assess_rows, split$unobserved_rows),
+      c(split$assess_rows, split$unobserved_rows, split$not_estimable_rows),
       random
     )
     .fb_sel_check_heldout_labels(data, relabelled, split, random)

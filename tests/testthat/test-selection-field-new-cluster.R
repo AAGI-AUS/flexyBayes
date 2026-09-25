@@ -88,3 +88,95 @@ test_that("the study route runs under new_cluster on a base with the shared fiel
   expect_identical(sel$certificate$covariance$builder, "block_cholesky")
   expect_identical(nrow(sel$scores), 2L)
 })
+
+test_that("a trial-by-position term beside the field relabels the trial, not the positions", {
+  terms <- field_term()
+  terms$random_terms <- c(terms$random_terms, list(
+    list(type = "nested", outer = "TRIAL", inner = "RANGE"),
+    list(type = "nested", outer = "TRIAL", inner = "ROW")
+  ))
+  expect_identical(flexyBayes:::.fb_sel_grouping_columns(terms)$columns, "TRIAL")
+
+  no_field <- list(random_terms = terms$random_terms[2:3])
+  expect_identical(
+    flexyBayes:::.fb_sel_grouping_columns(no_field)$columns,
+    c("TRIAL", "RANGE", "ROW")
+  )
+})
+
+test_that("the Bayesian refit runs with trial-by-position terms and missing responses", {
+  skip_if_not_installed("INLA")
+  set.seed(6L)
+  d <- expand.grid(ROW = factor(1:6), RANGE = factor(1:4), TRIAL = factor(1:5))
+  d$x1 <- stats::rnorm(nrow(d))
+  d$x2 <- stats::rnorm(nrow(d))
+  d$y <- 0.5 * d$x1 + stats::rnorm(5L)[as.integer(d$TRIAL)] +
+    stats::rnorm(nrow(d))
+  d$y[c(3L, 30L, 57L, 88L)] <- NA
+  base <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ 1,
+    random = ~ TRIAL + TRIAL:RANGE + TRIAL:ROW + id(TRIAL):ar1(RANGE):ar1(ROW),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )))
+  sel <- suppressWarnings(fb_select(
+    base = base,
+    candidates = ~ x1 + x2,
+    penalty = fb_penalty(term(everything()) ~ elastic_net(lambda = 1, alpha = 1)),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~ TRIAL, v = 5L),
+    prediction = "new_cluster",
+    decision = fb_decision(
+      method = "full", metric = "rmse", rule = "one_se",
+      stability_subsamples = 0L
+    ),
+    covariance = "base_model",
+    refit = list(method = "bayes"),
+    seed = 1L
+  ))
+  expect_s3_class(sel, "fb_select")
+  expect_length(sel$folds, 5L)
+  expect_identical(nrow(sel$scores), 2L)
+})
+
+test_that("a held-out trial's not-estimable rows are relabelled with the rest of the trial", {
+  skip_if_not_installed("INLA")
+  set.seed(7L)
+  d <- expand.grid(ROW = factor(1:6), RANGE = factor(1:4), TRIAL = factor(1:5))
+  d$A <- factor(ifelse(as.integer(d$RANGE) %% 2L == 0L, "a2", "a1"))
+  d$B <- factor(ifelse(as.integer(d$ROW) %% 2L == 0L, "b2", "b1"))
+  # The a2:b2 cell is sown in trial 5 only, so it is not estimable when trial 5 is held out.
+  d$B[d$A == "a2" & d$B == "b2" & d$TRIAL != "5"] <- "b1"
+  d$x1 <- stats::rnorm(nrow(d))
+  d$x2 <- stats::rnorm(nrow(d))
+  d$y <- 0.5 * d$x1 + stats::rnorm(5L)[as.integer(d$TRIAL)] +
+    stats::rnorm(nrow(d))
+  base <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ A * B,
+    random = ~ TRIAL + id(TRIAL):ar1(RANGE):ar1(ROW),
+    data = d,
+    backend = "inla",
+    verbose = FALSE
+  )))
+  sel <- suppressWarnings(fb_select(
+    base = base,
+    candidates = ~ x1 + x2,
+    penalty = fb_penalty(term(everything()) ~ elastic_net(lambda = 1, alpha = 1)),
+    workflow = "penalized_optimizer",
+    resamples = fb_resamples(unit = ~ TRIAL, v = 5L),
+    prediction = "new_cluster",
+    protected_alias = "drop",
+    decision = fb_decision(
+      method = "full", metric = "rmse", rule = "one_se",
+      stability_subsamples = 0L
+    ),
+    covariance = "base_model",
+    refit = list(method = "bayes"),
+    seed = 1L
+  ))
+  expect_s3_class(sel, "fb_select")
+  # The six a2:b2 plots of trial 5, in whichever fold holds it out.
+  expect_identical(sum(sel$value$not_estimable$n_not_estimable), 6L)
+  expect_identical(nrow(sel$scores), 2L)
+})
