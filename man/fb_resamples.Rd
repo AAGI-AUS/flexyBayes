@@ -4,7 +4,14 @@
 \alias{fb_resamples}
 \title{Declare the resampling scheme for a selection}
 \usage{
-fb_resamples(unit = NULL, v = 10L, repeats = 1L, fold_id = NULL, strata = NULL)
+fb_resamples(
+  unit = NULL,
+  v = 10L,
+  repeats = 1L,
+  fold_id = NULL,
+  strata = NULL,
+  weights_by = NULL
+)
 }
 \arguments{
 \item{unit}{Columns whose rows must stay together in a fold, as a
@@ -25,10 +32,19 @@ question.}
 \item{strata}{Columns to stratify the fold assignment on, as a one-sided
 formula or a character vector. A stratifier that varies inside a unit
 refuses.}
+
+\item{weights_by}{Columns naming the groups whose observation weights are
+re-estimated in each fold, as a one-sided formula (\code{~ trial}) or a
+character vector. In each fold the base is refitted without weights on
+the training rows; \code{s2} of a group is the mean squared residual of its
+training rows, random effects included; and the group's weight is
+\code{median(s2) / s2}. Held-out rows get weight 1. The base must have been
+fitted with \code{weights}. \code{NULL} (the default) keeps the base's weights in
+every fold.}
 }
 \value{
 An object of class \code{fb_resamples}: a list carrying \code{unit}, \code{v},
-\code{repeats}, \code{fold_id}, \code{strata} and the resolved \code{scheme}
+\code{repeats}, \code{fold_id}, \code{strata}, \code{weights_by} and the resolved \code{scheme}
 (\code{"v_fold"} or \code{"explicit"}).
 }
 \description{

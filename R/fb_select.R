@@ -1098,6 +1098,11 @@
         # TRUE where each row's known variance joined the residual on V's
         # diagonal (R/known_variance.R); NA on a route that integrates V.
         known_variance = cov_record$known_variance %||% NA,
+        # TRUE where each row's residual was divided by its observation
+        # weight; NA on a route that integrates V.
+        weights = cov_record$weights %||% NA,
+        # The groups whose weights each fold re-estimated, or NULL.
+        weights_by = cov_record$weights_by,
         whitening = cov_record$whitening,
         equivalence_level = cov_record$equivalence_level %||% NA_character_,
         equivalence_reason = cov_record$equivalence_reason %||% NA_character_,
@@ -2188,51 +2193,6 @@
 
 # --- the benchmark arms --------------------------------------------------- #
 
-# .fb_select_require_observed_response() --- the benchmark arms have no place
-# for a missing response.
-#
-# The GLS arm and the optimiser read the response of every training row to
-# estimate a fold's REML variance components, and of every assessment row to
-# score it. A missing response stopped inside stats::optim() with the untyped
-# "L-BFGS-B needs finite values of 'fn'"; it now refuses by name before any
-# route runs.
-#
-# @noRd
-# @keywords internal
-.fb_select_require_observed_response <- function(base, workflow, benchmark) {
-  y <- .fb_response_values(base$fb, base$data)
-  miss <- which(is.na(y))
-  if (length(miss) == 0L) {
-    return(invisible(NULL))
-  }
-  named <- c("unpenalized_benchmark", "penalized_optimizer")
-  route <- if (workflow %in% named) {
-    paste0("`workflow = \"", workflow, "\"`")
-  } else {
-    "the comparison `benchmark = TRUE` adds"
-  }
-  stop(.fb_refusal_condition(
-    reason_code = "selection_missing_response_not_carried",
-    message = paste0(
-      "fb_select(): ", length(miss),
-      if (length(miss) == 1L) " row" else " rows",
-      " of the base's data ",
-      if (length(miss) == 1L) "has" else "have",
-      " a missing response (",
-      if (length(miss) == 1L) "row " else "rows ",
-      paste(utils::head(miss, 5L), collapse = ", "),
-      if (length(miss) > 5L) ", ..." else "",
-      "), and ", route, " does not carry missing responses: it reads the ",
-      "response of every training row to estimate a fold's covariance and ",
-      "of every held-out row to score it. Refit the base on the rows with an ",
-      "observed response."
-    ),
-    rows = miss,
-    workflow = workflow,
-    benchmark = isTRUE(benchmark)
-  ))
-}
-
 # .fb_select_path_grid() --- the grid the optimiser's path walked, as the
 # certificate records it. `s` is NA on every point for ridge and the
 # exclusive lasso, whose path is not a fraction of a lambda_max.
@@ -2300,6 +2260,20 @@
   } else {
     .fb_sel_benchmark_random(base$fb)
   }
+  fold_weights <- NULL
+  if (length(resamples$weights_by) > 0L) {
+    weights_provider <- .fb_sel_bayes_provider(base)
+    fold_weights <- function(split, f) {
+      .fb_sel_fold_weights(
+        base,
+        split,
+        resamples$weights_by,
+        provider = weights_provider,
+        engine = engine,
+        seed = as.integer(seed %||% 0L) + 1000L * as.integer(f) + 2L
+      )
+    }
+  }
   gls <- .fb_sel_cv(
     data = base$data,
     response = base$fb$response,
@@ -2314,7 +2288,9 @@
     # whitening; the penalised optimiser reads the same substrates.
     offsets = base$fb$offsets %||% character(0),
     cov_model = cov_model,
-    protected_alias = protected_alias
+    protected_alias = protected_alias,
+    weights = .fb_sel_base_weights(base),
+    fold_weights = fold_weights
   )
   arms$gls <- list(
     workflow = gls$workflow,
@@ -2431,7 +2407,8 @@
               decision = decision,
               resamples = resamples,
               seed = seed,
-              protected_alias = protected_alias
+              protected_alias = protected_alias,
+              weights = .fb_sel_base_weights(base)
             ),
             error = function(e) e
           )
@@ -2703,7 +2680,14 @@
 #' error: without it the path is tuned to less shrinkage.
 #'
 #' @param base A fitted flexyBayes model. Its fixed effects are the protected
-#'   block and are never penalised.
+#'   block and are never penalised. A base fitted with `weights` is selected
+#'   with residual variance `sigma^2 / w` on each training row and `sigma^2`
+#'   on each held-out row, whose weight the training rows do not give. Each
+#'   fold refit is fitted with the weights of its rows. The projection
+#'   decision refuses a weighted base with `selection_weights_not_carried`.
+#'   On the benchmark and optimiser workflows, rows with a missing response,
+#'   such as the cells [fb_complete_grid()] adds, are not fitted or scored in
+#'   any fold, and an AR1 x AR1 field keeps its full grid.
 #' @param candidates A one-sided formula over columns of the base fit's data.
 #'   A transform whose value on a row depends on other rows, in the
 #'   candidates or in the base's fixed part, is learned inside each fold or
@@ -3106,14 +3090,18 @@ fb_select <- function(base,
     base, workflow, covariance, value_request
   )
 
-  # Every route that reaches .fb_select_benchmark(): the two workflows below
-  # and `benchmark = TRUE` on the Bayesian one. Checked before any route
-  # branches, so `plan = TRUE` returns the same refusal the run would.
+  # Every fold covariance and fold refit carries the base's observation
+  # weights. The projection decision reads the reference fit through
+  # projpred, whose handling of them is not checked here.
   if (
-    workflow %in% c("unpenalized_benchmark", "penalized_optimizer") ||
-      isTRUE(benchmark)
+    !is.null(.fb_sel_base_weights(base)) &&
+      identical(workflow, "bayes") &&
+      identical(decision$method, "projection")
   ) {
-    .fb_select_require_observed_response(base, workflow, benchmark)
+    .fb_sel_refuse_weights_not_carried("the projection decision")
+  }
+  if (length(resamples$weights_by) > 0L) {
+    .fb_sel_require_weights_by_route(base, resamples, workflow, decision)
   }
 
   # The two routes below have no decision layer at all -- there is no
@@ -4256,6 +4244,19 @@ print.fb_select <- function(x, digits = 4L, ...) {
     } else {
       ""
     },
+    if (isTRUE(cert$covariance$weights)) {
+      ", the residual divided by each training row's weight"
+    } else {
+      ""
+    },
+    if (length(cert$covariance$weights_by) > 0L) {
+      paste0(
+        ", weights re-estimated in each fold by ",
+        paste(cert$covariance$weights_by, collapse = ", ")
+      )
+    } else {
+      ""
+    },
     "\n",
     sep = ""
   )
@@ -5281,6 +5282,19 @@ print.fb_select_certificate <- function(x, ...) {
       },
       if (isTRUE(x$covariance$known_variance)) {
         ", each row's known variance added to the residual"
+      } else {
+        ""
+      },
+      if (isTRUE(x$covariance$weights)) {
+        ", the residual divided by each training row's weight"
+      } else {
+        ""
+      },
+      if (length(x$covariance$weights_by) > 0L) {
+        paste0(
+          ", weights re-estimated in each fold by ",
+          paste(x$covariance$weights_by, collapse = ", ")
+        )
       } else {
         ""
       },

@@ -51,9 +51,17 @@
 #' @param strata Columns to stratify the fold assignment on, as a one-sided
 #'   formula or a character vector. A stratifier that varies inside a unit
 #'   refuses.
+#' @param weights_by Columns naming the groups whose observation weights are
+#'   re-estimated in each fold, as a one-sided formula (`~ trial`) or a
+#'   character vector. In each fold the base is refitted without weights on
+#'   the training rows; `s2` of a group is the mean squared residual of its
+#'   training rows, random effects included; and the group's weight is
+#'   `median(s2) / s2`. Held-out rows get weight 1. The base must have been
+#'   fitted with `weights`. `NULL` (the default) keeps the base's weights in
+#'   every fold.
 #'
 #' @returns An object of class `fb_resamples`: a list carrying `unit`, `v`,
-#'   `repeats`, `fold_id`, `strata` and the resolved `scheme`
+#'   `repeats`, `fold_id`, `strata`, `weights_by` and the resolved `scheme`
 #'   (`"v_fold"` or `"explicit"`).
 #'
 #' @seealso [fb_select()], which takes this object; [fb_decision()] for the
@@ -68,7 +76,8 @@ fb_resamples <- function(
   v = 10L,
   repeats = 1L,
   fold_id = NULL,
-  strata = NULL
+  strata = NULL,
+  weights_by = NULL
 ) {
   # Captured before anything is assigned to `v`: a later missing(v) reads
   # FALSE once the argument has been overwritten, which would turn the
@@ -78,6 +87,7 @@ fb_resamples <- function(
 
   unit_vars <- .fb_sel_variables(unit, "unit")
   strata_vars <- .fb_sel_variables(strata, "strata")
+  weights_by_vars <- .fb_sel_variables(weights_by, "weights_by")
 
   if (length(unit_vars) > 0L && !scheme_named) {
     stop(.fb_refusal_condition(
@@ -136,6 +146,7 @@ fb_resamples <- function(
       repeats = repeats,
       fold_id = fold_id,
       strata = strata_vars,
+      weights_by = if (length(weights_by_vars) > 0L) weights_by_vars,
       scheme = if (is.null(fold_id)) "v_fold" else "explicit"
     ),
     class = "fb_resamples"
@@ -166,6 +177,14 @@ print.fb_resamples <- function(x, ...) {
   }
   if (length(x$strata) > 0L) {
     cat("  strata  : ", paste(x$strata, collapse = ", "), "\n", sep = "")
+  }
+  if (length(x$weights_by) > 0L) {
+    cat(
+      "  weights : re-estimated in each fold by ",
+      paste(x$weights_by, collapse = ", "),
+      "\n",
+      sep = ""
+    )
   }
   invisible(x)
 }

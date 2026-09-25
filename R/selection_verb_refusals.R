@@ -22,14 +22,6 @@
 #                                       .fb_select_verify_contract()
 #                                       test-fb-select-score-contract.R
 #
-# One code lands with 0.14.0, for a missing response on the routes that
-# estimate a fold's covariance by REML:
-#
-#   selection_missing_response_not_carried
-#                                       R/fb_select.R,
-#                                       .fb_select_require_observed_response()
-#                                       test-fb-select-missing-response.R
-#
 # Two codes land with the Bayesian refit of each fold's frozen support
 # (0.14.0):
 #
@@ -118,24 +110,6 @@
     registered_in_adr = "U-SCORE-1 (DEC-HASH-01)",
     plan_field = "selection_plan",
     since_version = "0.13.0"
-  )
-
-  .register_refusal(
-    reason_code = "selection_missing_response_not_carried",
-    description = paste0(
-      "fb_select(): the base's data have a missing response, and the ",
-      "unpenalised benchmark, the penalised optimiser or the comparison ",
-      "`benchmark = TRUE` adds was asked for. Each reads the response of ",
-      "every training row to estimate a fold's covariance and of every ",
-      "held-out row to score it."
-    ),
-    message_template = paste0(
-      "fb_select(): the base's data have a missing response in %s, and %s ",
-      "does not carry missing responses."
-    ),
-    registered_in_adr = "0.14.0 release plan",
-    plan_field = "selection_plan",
-    since_version = "0.14.0"
   )
 
   .register_refusal(

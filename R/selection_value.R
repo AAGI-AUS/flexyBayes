@@ -793,6 +793,9 @@
       length(held)
     )
     fold_data <- data
+    if (!is.null(split$weights)) {
+      fold_data[[.FB_SEL_WEIGHTS_COL]] <- split$weights
+    }
     for (j in seq_along(held)) {
       fold_data[[column_names[[j]]]] <- as.numeric(
         candidate_design$X[, held[[j]]]

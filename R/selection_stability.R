@@ -229,7 +229,8 @@
                               decision,
                               resamples,
                               seed,
-                              protected_alias = "refuse") {
+                              protected_alias = "refuse",
+                              weights = NULL) {
   settings <- .fb_sel_stability_settings(decision, resamples)
   b_count <- settings$subsamples
   units <- .fb_sel_stability_units(data, settings$unit)
@@ -259,13 +260,16 @@
   points <- vector("list", b_count)
   for (b in seq_len(b_count)) {
     held <- units$key %in% draws[[b]]
-    split <- list(
-      fold_id = b,
-      repeat_id = 1L,
-      label = paste0("subsample_", b),
-      train_rows = which(held),
-      assess_rows = which(!held)
-    )
+    split <- .fb_sel_observed_folds(
+      list(list(
+        fold_id = b,
+        repeat_id = 1L,
+        label = paste0("subsample_", b),
+        train_rows = which(held),
+        assess_rows = which(!held)
+      )),
+      .fb_response_values(list(response = response), data)
+    )[[1L]]
     space <- .fb_sel_candidate_space(
       protected, candidates, data, list(split),
       groupings = groupings, route = "benchmark",
@@ -280,7 +284,8 @@
       random = random,
       prediction = prediction,
       offsets = offsets,
-      fold_space = space$folds[[split$label]]
+      fold_space = space$folds[[split$label]],
+      weights = weights
     )
     # The cross-validated path's settings, so the subsample walks its grid.
     # The subsample's own tuning decision is scored on the undrawn units and

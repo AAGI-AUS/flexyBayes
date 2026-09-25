@@ -68,6 +68,38 @@
   )
 
   .register_refusal(
+    reason_code = "selection_weights_not_carried",
+    description = paste0(
+      "fb_select(): the base model was fitted with observation weights, and ",
+      "the requested route does not carry them into its fold fits and ",
+      "scores. Running it would select on an unweighted model under the ",
+      "weighted base's name."
+    ),
+    message_template = paste0(
+      "fb_select(): the base carries observation weights, and %s does not ",
+      "carry them."
+    ),
+    registered_in_adr = "PLAN 0.14.2 unit W0",
+    plan_field = "selection_plan",
+    since_version = "0.14.2"
+  )
+
+  .register_refusal(
+    reason_code = "selection_weights_by_unweighted_base",
+    description = paste0(
+      "fb_select(): `fb_resamples(weights_by = )` re-estimates the base's ",
+      "observation weights in each fold, and the base was fitted without ",
+      "weights."
+    ),
+    message_template = paste0(
+      "fb_select(): `weights_by` needs a base fitted with `weights`."
+    ),
+    registered_in_adr = "PLAN 0.14.2 unit W3",
+    plan_field = "selection_plan",
+    since_version = "0.14.2"
+  )
+
+  .register_refusal(
     reason_code = "selection_offset_absorbed_twice",
     description = paste0(
       "fb_select(): the Gaussian offset does not round-trip. It is ",

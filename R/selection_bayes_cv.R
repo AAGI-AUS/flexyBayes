@@ -140,7 +140,7 @@
     ))
   }
   base$fb <- fb
-  base$data <- as.data.frame(resolved)
+  base$data <- .fb_sel_with_weights_column(base, as.data.frame(resolved))
   base
 }
 
@@ -163,11 +163,21 @@
 # so that no structure passes through `new_cluster` with its levels
 # untouched: a known-covariance term (`vm()`, `ped()`) indexes its matrix by
 # level, and a new level is a row the matrix does not have; an
-# autoregressive field indexes a lattice; and a type this function does not
-# list is named in the refusal too.
+# autoregressive field with no id() factor indexes one lattice across all
+# rows; and a type this function does not list is named in the refusal too.
 .fb_sel_grouping_columns <- function(fb) {
   columns <- character(0)
   unrelabelled <- character(0)
+  # RANGE and ROW of id(TRIAL):ar1(RANGE):ar1(ROW) are plot positions. In
+  # TRIAL:RANGE, relabelling TRIAL already gives the held-out rows new levels.
+  field_group <- character(0)
+  field_index <- character(0)
+  for (t in fb$random_terms %||% list()) {
+    if (identical(t$type, "ar1_spatial") && length(t$at_var) > 0L) {
+      field_group <- c(field_group, t$at_var)
+      field_index <- c(field_index, t$row_var, t$col_var)
+    }
+  }
   for (t in fb$random_terms %||% list()) {
     type <- t$type %||% "unknown"
     if (!nzchar(type)) {
@@ -181,11 +191,18 @@
       simple_slope_uncor = ,
       simple_slope_cor = t$var,
       nested = ,
-      combo = .fb_nested_vars(t),
+      combo = {
+        vars <- .fb_nested_vars(t)
+        if (any(vars %in% field_group)) setdiff(vars, field_index) else vars
+      },
       at_simple = ,
       us_gxe = ,
       fa_gxe = ,
       corh_gxe = t$inner,
+      # A field written id(g):ar1(r):ar1(c) is one realisation per level of
+      # g with shared parameters, so a held-out level is a new, independent
+      # realisation. Without id(g) the field has no column to relabel.
+      ar1_spatial = t$at_var,
       spline = ,
       smooth_mgcv = ,
       smoother = ,
@@ -397,7 +414,9 @@
   split,
   random_vars
 ) {
-  assess_rows <- split$assess_rows
+  assess_rows <- c(
+    split$assess_rows, split$unobserved_rows, split$not_estimable_rows
+  )
   for (v in random_vars) {
     original <- as.character(data[[v]])
     intended <- original
@@ -522,7 +541,11 @@
   ]
 
   engine_data <- if (identical(prediction, "new_cluster")) {
-    relabelled <- .fb_sel_bayes_heldout_labels(data, split$assess_rows, random)
+    relabelled <- .fb_sel_bayes_heldout_labels(
+      data,
+      c(split$assess_rows, split$unobserved_rows, split$not_estimable_rows),
+      random
+    )
     .fb_sel_check_heldout_labels(data, relabelled, split, random)
     relabelled
   } else {
@@ -629,14 +652,18 @@
   fixed_alias = NULL
 ) {
   info <- base$extras$call_info %||% list()
-  if (!is.null(info$weights)) {
-    stop(
-      "the Bayesian selection route does not carry observation weights ",
-      "through a per-fold refit. Refit the base without `weights`, or use ",
-      "the benchmark workflow.",
-      call. = FALSE
-    )
+  # Each row's weight travels in its column of the fold's data
+  # (`.fb_sel_with_weights_column()`), so it follows every subset of rows.
+  weights <- NULL
+  if (!is.null(.fb_sel_base_weights(base))) {
+    weights <- data[[.FB_SEL_WEIGHTS_COL]]
+    if (is.null(weights)) {
+      .fb_sel_refuse_weights_not_carried(
+        "a per-fold Bayesian refit handed data without the weights column"
+      )
+    }
   }
+  data <- data[setdiff(names(data), .FB_SEL_WEIGHTS_COL)]
   # A known variance per row (R/known_variance.R) travels in its column of
   # the fold's data. The fold covariance carries it into the refit; every
   # other refit here feeds a posterior predictive score that leaves it out,
@@ -712,6 +739,9 @@
   }
   if (!is.null(known_variance)) {
     args$known_variance <- known_variance
+  }
+  if (!is.null(weights)) {
+    args$weights <- weights
   }
   fixed_alias <- fixed_alias %||% info$fixed_alias
   if (!is.null(fixed_alias)) {

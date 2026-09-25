@@ -481,6 +481,9 @@
       # Each row's known variance, added to the residual on V's diagonal in
       # every fold, or NULL (R/known_variance.R).
       known_variance = .fb_sel_known_variance(base),
+      # Each row's observation weight, dividing the residual on V's diagonal,
+      # or NULL.
+      weights = .fb_sel_base_weights(base),
       builder = if (isTRUE(blocking$applicable)) {
         "block_cholesky"
       } else {
@@ -508,6 +511,9 @@
                                    slots = list()) {
   spec <- .fb_sel_bayes_base_spec(base)
   fold_data <- spec$data
+  if (!is.null(split$weights)) {
+    fold_data[[.FB_SEL_WEIGHTS_COL]] <- split$weights
+  }
   if (identical(provider, "inla")) {
     fold_data[[spec$response]][
       c(split$assess_rows, split$not_estimable_rows)
@@ -600,6 +606,14 @@
     slots = model$slots
   )
   seconds <- unname((proc.time() - started)[["elapsed"]])
+  if (!is.null(split$weights)) {
+    model$weights <- split$weights
+  }
+  # A held-out row is scored at w = 1: its own weight is not known from the
+  # training rows.
+  if (!is.null(model$weights)) {
+    model$weights[split$assess_rows] <- 1
+  }
   list(
     spec = .fb_sel_cov_fold_spec(model, components),
     record = list(
@@ -633,7 +647,8 @@
       components$residual,
       components$terms[names(z)],
       estimand,
-      known_variance = model$known_variance
+      known_variance = model$known_variance,
+      weights = model$weights
     )
   } else {
     names_slots <- vapply(model$slots, function(s) s$name, character(1L))
@@ -642,7 +657,8 @@
       components$residual,
       components$terms[names_slots],
       estimand,
-      known_variance = model$known_variance
+      known_variance = model$known_variance,
+      weights = model$weights
     )
     spec$slots <- model$slots
     spec$rho <- components$rho
@@ -910,7 +926,12 @@
 
 # .fb_sel_cv_covariance_record() --- the fold covariance as the certificate
 # states it, read from the model and the fold objects.
-.fb_sel_cv_covariance_record <- function(cov_model, substrates) {
+.fb_sel_cv_covariance_record <- function(
+  cov_model,
+  substrates,
+  weighted = FALSE,
+  weights_by = NULL
+) {
   folds <- unname(lapply(substrates, function(s) s$covariance_record))
   equivalence_reason <- paste0(
     "V is held fixed at each fold's plug-in, so every point on the path is ",
@@ -928,6 +949,10 @@
       engine = NA_character_,
       engine_version = NA_character_,
       known_variance = FALSE,
+      # Whether each row's residual was divided by its observation weight.
+      weights = weighted,
+      # The groups whose weights each fold re-estimated, or NULL.
+      weights_by = weights_by,
       builder = NA_character_,
       whitening = list(mode = "dense", bound_gb = .fb_sel_dense_gb()),
       equivalence_level = "map_exact_fixed_covariance",
@@ -948,6 +973,8 @@
     # Whether each row's known variance was added to the residual on V's
     # diagonal (R/known_variance.R).
     known_variance = !is.null(cov_model$known_variance),
+    weights = weighted,
+    weights_by = weights_by,
     builder = cov_model$builder,
     whitening = cov_model$whitening[
       c("mode", "group", "n_blocks", "largest_block", "bound_gb")

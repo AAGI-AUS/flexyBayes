@@ -27,7 +27,14 @@ fb_select(
 }
 \arguments{
 \item{base}{A fitted flexyBayes model. Its fixed effects are the protected
-block and are never penalised.}
+block and are never penalised. A base fitted with \code{weights} is selected
+with residual variance \code{sigma^2 / w} on each training row and \code{sigma^2}
+on each held-out row, whose weight the training rows do not give. Each
+fold refit is fitted with the weights of its rows. The projection
+decision refuses a weighted base with \code{selection_weights_not_carried}.
+On the benchmark and optimiser workflows, rows with a missing response,
+such as the cells \code{\link[=fb_complete_grid]{fb_complete_grid()}} adds, are not fitted or scored in
+any fold, and an AR1 x AR1 field keeps its full grid.}
 
 \item{candidates}{A one-sided formula over columns of the base fit's data.
 A transform whose value on a row depends on other rows, in the

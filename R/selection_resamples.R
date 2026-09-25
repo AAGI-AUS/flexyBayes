@@ -246,6 +246,42 @@
 }
 
 
+# .fb_sel_observed_folds() --- the folds with the rows that have no response
+# left out of `train_rows` and `assess_rows`.
+#
+# For a Gaussian response, leaving a row out of y, X and V is the exact
+# marginal over it. The rows stay in the data, so a structured covariance is
+# still indexed over the whole padded lattice (fb_complete_grid()). The
+# held-out units' rows with no response are kept as `unobserved_rows`, which a
+# fold refit relabels with the rows it scores.
+.fb_sel_observed_folds <- function(folds, y) {
+  unobserved <- which(is.na(y))
+  if (length(unobserved) == 0L) {
+    return(folds)
+  }
+  for (i in seq_along(folds)) {
+    split <- folds[[i]]
+    split$unobserved_rows <- intersect(split$assess_rows, unobserved)
+    split$train_rows <- setdiff(split$train_rows, unobserved)
+    split$assess_rows <- setdiff(split$assess_rows, unobserved)
+    if (length(split$train_rows) == 0L || length(split$assess_rows) == 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "selection_fold_not_usable",
+        message = paste0(
+          "fb_select(): fold ", split$label, " has ",
+          length(split$train_rows), " training and ",
+          length(split$assess_rows), " assessment rows with an observed ",
+          "response. A fold with nothing to learn on, or nothing to score ",
+          "on, is not a fold."
+        )
+      ))
+    }
+    folds[[i]] <- split
+  }
+  folds
+}
+
+
 # .fb_sel_require_columns() --- the named columns exist, or the refusal names
 # the ones that do not.
 .fb_sel_require_columns <- function(data, vars, arg) {
@@ -743,7 +779,14 @@
 # It is deterministic --- no random starts, no jitter --- so two calls on the
 # same training rows agree bit for bit, which is what lets the leakage gate
 # compare with `identical()` and need no tolerance at all.
-.fb_sel_reml_components <- function(y, X, Z, train_rows, label = "1") {
+.fb_sel_reml_components <- function(
+  y,
+  X,
+  Z,
+  train_rows,
+  label = "1",
+  weights = NULL
+) {
   y_t <- as.numeric(y)[train_rows]
   x_t <- X[train_rows, , drop = FALSE]
 
@@ -777,8 +820,11 @@
   })
   n_components <- length(z_t)
 
+  # Var(y_i) = sigma^2 / w_i, so the residual part of H is diag(1 / w).
+  h_residual <- if (is.null(weights)) 1 else 1 / weights[train_rows]
+
   profile <- function(phi) {
-    h <- diag(1, nrow = n_t)
+    h <- diag(h_residual, nrow = n_t)
     for (k in seq_len(n_components)) {
       h <- h + phi[[k]] * tcrossprod(z_t[[k]])
     }
@@ -851,13 +897,15 @@
 # `.fb_sel_random_designs()` from a fitted base. `residual` and `terms` are on
 # the VARIANCE scale and `terms` is matched to `Z` by name. `known_variance`,
 # one value per row of the data, is added to the residual on the diagonal
-# (R/known_variance.R).
+# (R/known_variance.R). `weights`, one per row, divide the residual on the
+# diagonal: Var(y_i) = sigma^2 / w_i.
 .fb_sel_cov_spec <- function(
   Z,
   residual,
   terms,
   estimand = "reml_plugin_covariance",
-  known_variance = NULL
+  known_variance = NULL,
+  weights = NULL
 ) {
   if (length(Z) > 0L && !setequal(names(Z), names(terms))) {
     stop(
@@ -876,16 +924,24 @@
   if (!is.null(known_variance)) {
     spec$known_variance <- known_variance
   }
+  if (!is.null(weights)) {
+    spec$weights <- weights
+  }
   structure(spec, class = "fb_sel_cov_spec")
 }
 
 # .fb_sel_residual_diagonal() --- the diagonal the residual contributes over
-# some rows: its variance, plus each row's known variance where there is one.
+# some rows: its variance over each row's weight, plus each row's known
+# variance where there is one.
 .fb_sel_residual_diagonal <- function(cov_spec, rows) {
-  if (is.null(cov_spec$known_variance)) {
-    return(cov_spec$residual)
+  out <- cov_spec$residual
+  if (!is.null(cov_spec$weights)) {
+    out <- out / cov_spec$weights[rows]
   }
-  cov_spec$residual + cov_spec$known_variance[rows]
+  if (!is.null(cov_spec$known_variance)) {
+    out <- out + cov_spec$known_variance[rows]
+  }
+  out
 }
 
 
@@ -1076,7 +1132,8 @@
   cov_spec = NULL,
   offsets = character(0),
   fold_space = NULL,
-  protected_alias = "refuse"
+  protected_alias = "refuse",
+  weights = NULL
 ) {
   prediction <- match.arg(prediction)
   # The response through the resolver the fit itself uses, so a transformed
@@ -1157,18 +1214,25 @@
       .fb_sel_known_variance_refuse_reml()
     }
     Z <- .fb_sel_Z_from_vars(data, random)
+    # A held-out row is scored at w = 1: its own weight is not known from
+    # the training rows.
+    if (!is.null(weights)) {
+      weights[split$assess_rows] <- 1
+    }
     components <- .fb_sel_reml_components(
       y,
       protected_design$X,
       Z,
       split$train_rows,
-      label = split$label
+      label = split$label,
+      weights = weights
     )
     cov_spec <- .fb_sel_cov_spec(
       Z,
       components$residual,
       components$terms,
-      components$estimand
+      components$estimand,
+      weights = weights
     )
   }
 
@@ -1547,7 +1611,9 @@
   metric = c("rmse", "mse", "nlpd"),
   offsets = character(0),
   cov_model = NULL,
-  protected_alias = "refuse"
+  protected_alias = "refuse",
+  weights = NULL,
+  fold_weights = NULL
 ) {
   prediction <- match.arg(prediction)
   metric <- match.arg(metric)
@@ -1565,7 +1631,10 @@
   # Step 1 of section 4.2, and it comes first for the reason the contract
   # gives: a rotation mixes observations, so a split of rotated rows is not
   # a holdout of anything.
-  folds <- .fb_sel_folds(resamples, data, seed = seed)
+  folds <- .fb_sel_observed_folds(
+    .fb_sel_folds(resamples, data, seed = seed),
+    .fb_response_values(list(response = response), data)
+  )
 
   cluster_vars <- if (is.null(cluster)) resamples$unit else cluster
   .fb_sel_require_columns(data, cluster_vars, "cluster")
@@ -1620,6 +1689,13 @@
   # (R/selection_parallel.R).
   fold_job <- function(f) {
     split <- folds[[f]]
+    # Weights re-estimated from this fold's training rows (`weights_by`).
+    weights_record <- NULL
+    if (!is.null(fold_weights)) {
+      estimated <- fold_weights(split, f)
+      split$weights <- estimated$weights
+      weights_record <- estimated$record
+    }
     fold_cov <- if (is.null(cov_model)) {
       NULL
     } else {
@@ -1635,13 +1711,15 @@
       prediction = prediction,
       cov_spec = fold_cov$spec,
       offsets = offsets,
-      fold_space = space$folds[[split$label]]
+      fold_space = space$folds[[split$label]],
+      weights = split$weights %||% weights
     )
     substrate$covariance_record <- fold_cov$record %||% list(
       fold = split$label,
       residual = substrate$learned$components_residual,
       terms = substrate$learned$components_terms
     )
+    substrate$covariance_record$weights_by <- weights_record
     fold_scored <- list()
 
     for (name in names(sets)) {
@@ -1682,7 +1760,12 @@
       )
     }
 
-    list(label = split$label, substrate = substrate, scored = fold_scored)
+    list(
+      label = split$label,
+      substrate = substrate,
+      scored = fold_scored,
+      weights = split$weights
+    )
   }
 
   # The folds do not read each other, so they may run at the same time. With
@@ -1693,6 +1776,11 @@
   # (R/selection_parallel.R).
   plan <- .fb_sel_worker_plan(length(folds), provider = cov_model$provider)
   results <- .fb_sel_fold_lapply(seq_along(folds), fold_job, plan)
+
+  # The Bayesian refit of each fold's support reads the fold's own weights.
+  for (f in seq_along(results)) {
+    folds[[f]]$weights <- results[[f]]$weights
+  }
 
   # Assembled in FOLD order, never in the order the workers finished.
   for (res in results) {
@@ -1762,6 +1850,11 @@
     )),
     # Where the covariance came from, how each fold was factored and each
     # fold's components, read from the model and the fold objects.
-    covariance = .fb_sel_cv_covariance_record(cov_model, substrates)
+    covariance = .fb_sel_cv_covariance_record(
+      cov_model,
+      substrates,
+      weighted = !is.null(weights),
+      weights_by = if (!is.null(fold_weights)) resamples$weights_by
+    )
   )
 }
