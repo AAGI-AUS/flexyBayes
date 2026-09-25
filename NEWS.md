@@ -1,3 +1,62 @@
+# flexyBayes 0.14.2
+
+A patch release for selection on a weighted base. `fb_select()` carries the
+base model's observation weights on every route, re-estimates them in each
+fold on request, selects on a padded field whose added cells have no
+response, and runs a shared AR1 x AR1 field under
+`prediction = "new_cluster"`. No model family, penalty family, engine or
+exported function is added. One change in behaviour: a weighted base on the
+projection decision now refuses, where 0.14.1 selected on the unweighted
+model without a message.
+
+## Observation weights in selection
+
+* A base fitted with `weights` is selected with residual variance
+  `sigma^2 / w` on each training row and `sigma^2` on each held-out row, on
+  the REML plug-in, on `covariance = "base_model"`, on the penalised
+  optimiser and its stability subsamples, and in every Bayesian fold refit,
+  which is fitted with the weights of its rows. 0.14.1 selected a weighted
+  base on the REML plug-in route as if it had no weights, and said nothing;
+  the fold covariance read no weights, and `R/selection_weights.R` was
+  called from no selection route. The certificate records where the weights
+  were absorbed.
+* The projection decision refuses a weighted base
+  (`selection_weights_not_carried`) instead of selecting unweighted. This is
+  a change in behaviour.
+* `fb_resamples(weights_by = ~ group)` re-estimates the weights in each fold
+  from the training rows alone. The base is refitted without weights on the
+  training rows, `s2` of a group is the mean squared residual of its rows
+  with the random effects included, the group's weight is
+  `median(s2) / s2`, and held-out rows get weight 1. Each fold's weights are
+  recorded on the certificate. The base must have been fitted with
+  `weights` (`selection_weights_by_unweighted_base`).
+
+## Missing responses and the shared field
+
+* On the benchmark and optimiser workflows, a row with a missing response,
+  such as a cell `fb_complete_grid()` adds to pad a field, is neither fitted
+  nor scored in any fold. The fold covariance is built on the full lattice
+  and restricted to the rows with a response, which is the exact marginal
+  for a Gaussian response. `selection_missing_response_not_carried` is
+  withdrawn from the registry. A fold whose held-out units have no response
+  still refuses by name.
+* `id(g):ar1(row):ar1(col)` runs under `prediction = "new_cluster"`. A
+  held-out level of `g` gets a field independent of the training levels,
+  with the shared variance and correlations, so its cross-covariance with
+  the training rows is zero. A field with no replicating factor, and `vm()`
+  and `ped()` terms, keep the refusal.
+* Under `new_cluster`, the Bayesian refit keeps each held-out trial on one
+  field label: the position factors of `TRIAL:RANGE` and `TRIAL:ROW` are
+  relabelled with the trial, and the rows the fold cannot estimate are
+  relabelled the same way. Before, the refit refused on some folds of a
+  weighted field base and not on others.
+
+## Refusal registry
+
+* 231 typed codes: `selection_weights_not_carried` and
+  `selection_weights_by_unweighted_base` added,
+  `selection_missing_response_not_carried` withdrawn.
+
 # flexyBayes 0.14.1
 
 A patch release that fits the ASReml spellings of a shared AR1 x AR1 field and
