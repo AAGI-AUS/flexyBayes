@@ -522,8 +522,7 @@
 #' from 0.75 to 0.79, with the fixed effects unchanged. Set
 #' `options(flexyBayes.inla_threads = "4:1")` for another plan, or `"inla"`
 #' for INLA's own default; the plan a fit ran with is in
-#' `$extras$reproducibility`. Several fits at once, as [fb_select()] runs its
-#' folds, use the cores without this cost.
+#' `$extras$reproducibility`.
 #'
 #' @section Fitting in a separate process:
 #' `options(flexyBayes.isolation = "process")` runs the engine fit in a
