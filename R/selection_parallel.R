@@ -30,12 +30,11 @@
 #   serial and a parallel run, which is the comparison this file exists to
 #   survive.
 #
-# Nested parallelism. A fold refit is itself threaded: INLA runs at
-# `num.threads = "10:1"` by default and a brms fold would run its chains on
-# `mc.cores`, so f workers times t engine threads is f * t busy processes on
-# a machine with c cores. Each worker is therefore pinned to `cores %/%
-# workers` engine threads and one chain process before it fits anything, and
-# the plan records what was set.
+# Nested parallelism. A brms fold would run its chains on `mc.cores`, so f
+# workers times t engine threads is f * t busy processes on a machine with c
+# cores. Each worker is therefore pinned to `cores %/% workers` OpenMP threads
+# and one chain process before it fits anything, and the plan records what was
+# set. INLA folds run at option flexyBayes.inla_threads, "1:1" by default.
 #
 # Memory, and why the worker count is not read from the core count. On the
 # same fixture, aggregate memory is driven by the rows rather than by the
@@ -185,11 +184,9 @@
   # One chain process per worker: brms reads `cores` from this option, and a
   # worker fanning out its chains would multiply the workers again.
   options(mc.cores = 1L)
-  if (
-    identical(plan$provider, "inla") && .fb_sel_provider_installed("INLA")
-  ) {
-    INLA::inla.setOption(num.threads = paste0(threads, ":1"))
-  }
+  # INLA's threads are not divided here: every fit takes option
+  # flexyBayes.inla_threads ("1:1" by default), which the worker inherits,
+  # because any other plan makes a fold's variance components depend on the run.
   invisible(NULL)
 }
 

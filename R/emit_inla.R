@@ -63,6 +63,39 @@
   NULL
 }
 
+# The thread plan every INLA fit runs with. INLA's own default on a 10-core
+# host is "10:1", and at any plan other than "1:1" identical calls return
+# different variance components where the likelihood is flat: on the barley
+# base B1 (22 localities) eight identical fits at "4:1" gave a LOCATION
+# variance from 0.58 to 42.3, and at "1:1" from 0.75 to 0.79; "2:1" and "1:4"
+# moved it as well (review/release_0.14.3/). So the package default is
+# "1:1", set by option flexyBayes.inla_threads; "inla" hands the choice back
+# to INLA, and a `num.threads` the caller passes to the fit always wins.
+.fb_inla_thread_plan <- function(explicit = NULL) {
+  if (!is.null(explicit)) {
+    return(explicit)
+  }
+  value <- getOption("flexyBayes.inla_threads", "1:1")
+  if (
+    !is.character(value) ||
+      length(value) != 1L ||
+      is.na(value) ||
+      !(identical(value, "inla") || grepl("^[1-9][0-9]*:[1-9][0-9]*$", value))
+  ) {
+    stop(
+      "option flexyBayes.inla_threads must be \"inla\" or an INLA thread ",
+      "plan such as \"1:1\". It is: ",
+      .fb_prior_deparse(value),
+      ".",
+      call. = FALSE
+    )
+  }
+  if (identical(value, "inla")) {
+    return(.fb_inla_threads_if_cores_unknown())
+  }
+  value
+}
+
 # .inla_is_program_death_message() --- TRUE when an error message
 # names the INLA program dying, rather than a flexyBayes-side argument
 # or formula error. Deliberately narrow: FS-25's observed failure text
@@ -1338,12 +1371,7 @@ emit_inla <- function(
   if (length(control_fixed)) {
     inla_args$control.fixed <- control_fixed
   }
-  if (is.null(inla_args$num.threads)) {
-    fallback_threads <- .fb_inla_threads_if_cores_unknown()
-    if (!is.null(fallback_threads)) {
-      inla_args$num.threads <- fallback_threads
-    }
-  }
+  inla_args$num.threads <- .fb_inla_thread_plan(inla_args$num.threads)
   # The offset reaches INLA through inla()'s `offset` argument, evaluated
   # here from the model description, rather than as `offset()` in the
   # formula. INLA 26.8.7 honours the two identically -- in the fixed

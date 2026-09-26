@@ -2520,8 +2520,10 @@
 #'
 #' Fold refits run one at a time by default.
 #' `options(flexyBayes.selection_workers = n)` runs `n` of them at once on a
-#' platform that forks, and divides the engine threads between the workers so
-#' that workers times threads does not exceed the machine. Nothing the run
+#' platform that forks, and divides the OpenMP threads between the workers so
+#' that workers times threads does not exceed the machine; an INLA fold runs
+#' at option `flexyBayes.inla_threads`, one thread by default (see
+#' [flexybayes()]). Nothing the run
 #' records changes: the fold allocation, each fold's candidate space, the
 #' score contract, the certificate and the selected support are identical to
 #' the serial run's, and the worker count is deliberately absent from the

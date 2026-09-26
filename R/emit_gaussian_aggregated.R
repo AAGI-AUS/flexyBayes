@@ -459,6 +459,7 @@ emit_gaussian_aggregated <- function(
   if (length(control_fixed)) {
     inla_call$control.fixed <- control_fixed
   }
+  inla_call$num.threads <- .fb_inla_thread_plan(inla_call$num.threads)
 
   inla_fit <- .inla_call(inla_call)
 
