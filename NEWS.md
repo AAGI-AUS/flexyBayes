@@ -1,4 +1,8 @@
-# flexyBayes (development version)
+# flexyBayes 0.14.3
+
+A patch release for repeatable INLA fits. Identical calls now agree closely
+on the variance components. No model family, penalty family, engine or
+exported function is added.
 
 ## INLA threads
 
