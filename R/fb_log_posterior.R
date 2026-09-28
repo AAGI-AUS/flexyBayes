@@ -47,10 +47,10 @@
 #'     length fixes the proxy's ambient dimension. Vector-valued targets
 #'     are flattened in column-major order with index suffixes (e.g.
 #'     `beta[1,1]`, `beta[2,1]`).}
-#'   \item{`log_normalizer`}{The additive correction that would normalise
-#'     the density, i.e. `-log Z`. For a posterior the marginal likelihood
-#'     is generally unknown, so this is `NA_real_` and the consumer
-#'     reports a shifted (not absolute) divergence.}
+#'   \item{`log_normalizer`}{The log normalising constant `log Z`, the log
+#'     of the integral of the unnormalised density. For a posterior this is
+#'     the log marginal likelihood, generally unknown, so this is `NA_real_`
+#'     and the consumer reports a shifted (not absolute) divergence.}
 #'   \item{`support_lower`, `support_upper`}{Length-`n_dim` numeric support
 #'     bounds taken from the model's parameter constraints (`NA` for an
 #'     unbounded coordinate). A variance / scale parameter is bounded below

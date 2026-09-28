@@ -51,10 +51,10 @@ consumer probes it at construction). It carries, as attributes:
 length fixes the proxy's ambient dimension. Vector-valued targets
 are flattened in column-major order with index suffixes (e.g.
 \code{beta[1,1]}, \code{beta[2,1]}).}
-\item{\code{log_normalizer}}{The additive correction that would normalise
-the density, i.e. \verb{-log Z}. For a posterior the marginal likelihood
-is generally unknown, so this is \code{NA_real_} and the consumer
-reports a shifted (not absolute) divergence.}
+\item{\code{log_normalizer}}{The log normalising constant \verb{log Z}, the log
+of the integral of the unnormalised density. For a posterior this is
+the log marginal likelihood, generally unknown, so this is \code{NA_real_}
+and the consumer reports a shifted (not absolute) divergence.}
 \item{\code{support_lower}, \code{support_upper}}{Length-\code{n_dim} numeric support
 bounds taken from the model's parameter constraints (\code{NA} for an
 unbounded coordinate). A variance / scale parameter is bounded below
