@@ -46,6 +46,18 @@
       "@id": "https://orcid.org/0000-0001-9534-1817"
     }
   ],
+  "copyrightHolder": [
+    {
+      "@type": "Organization",
+      "name": "Grains Research and Development Corporation"
+    }
+  ],
+  "funder": [
+    {
+      "@type": "Organization",
+      "name": "Grains Research and Development Corporation"
+    }
+  ],
   "maintainer": [
     {
       "@type": "Person",
