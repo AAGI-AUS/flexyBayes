@@ -5,7 +5,7 @@
 #     silently returned NULL (the object carries no $glm slot). They now
 #     read INLA's posterior-mean fitted values.
 #   * logLik() had no flexybayes_inla method, so it (and glance()) errored
-#     with "no applicable method". It now returns an honest NA logLik
+#     with "no applicable method". It now returns an NA logLik
 #     rather than fabricating INLA's marginal likelihood as a conditional one.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
@@ -51,7 +51,7 @@ test_that("fitted() on a non-identity (Poisson) INLA fit is on the response scal
   expect_true(all(fv > 0))   # response-scale rates, strictly positive
 })
 
-test_that("logLik() on an INLA fit returns an honest NA, not a fabricated value", {
+test_that("logLik() on an INLA fit returns NA, not a fabricated value", {
   skip_if_no_inla()
   set.seed(407L)
   d <- data.frame(x = rnorm(40))

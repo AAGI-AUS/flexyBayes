@@ -629,7 +629,7 @@
 # dispersion and no quantiles. On the INLA route that is not a loss,
 # because the raw fit carries the hyperparameter marginals and
 # .inla_variance_comps() reads a full row off them. On a route that kept
-# nothing but the means there is no honest interval to report, so the
+# nothing but the means there is no interval to report, so the
 # three interval columns are NA rather than a spread invented from a
 # point estimate, and the caller's `note` column says which rows they
 # are.

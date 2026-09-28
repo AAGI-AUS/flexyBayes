@@ -9,7 +9,7 @@
 # no way to establish that, which is the entire purpose of storing it.
 #
 # `run_tranche.sh` now refuses a dirty tree and builds from
-# `git archive <sha>`. This file is the assertion that keeps it honest, and it
+# `git archive <sha>`. This file is the assertion that checks it, and it
 # is two-sided by construction:
 #
 #   * every banked fixture carries the provenance fields, and its

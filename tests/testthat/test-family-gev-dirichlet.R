@@ -4,7 +4,7 @@
 # parameter-recovery test: simulate from known parameters, fit, and  #
 # confirm the estimates land inside their reported credible /        #
 # confidence interval. Recovery against a known data-generating      #
-# process is the honest oracle for an estimator (the suite does not   #
+# process is the right oracle for an estimator (the suite does not    #
 # share the estimate's source with the code under test).             #
 # ---------------------------------------------------------------- #
 

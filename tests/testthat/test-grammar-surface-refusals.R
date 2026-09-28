@@ -106,7 +106,7 @@ test_that("the named ASReml surfaces do fit -- the refusal is not a dead end", {
 })
 
 test_that("a numeric multi-slope refuses typed and claims no ASReml sibling", {
-  # The honest half of the contract: this form has no surface that fits, so
+  # The other half of the contract: this form has no surface that fits, so
   # the message must not invent one.
   d <- .gs_data()
   err <- .gs_refuse(y ~ x + z + (x + z || g), data = d, family = "gaussian")

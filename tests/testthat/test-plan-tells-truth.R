@@ -166,7 +166,7 @@ test_that("FS-22 reproduction: the plan and the gate agree under backend = 'auto
   # FS-22's headline was that the plan announced an INLA route while the
   # gate refused the model, and the live call went to brms. The five
   # strata and the sectioned residual all reach INLA from 0.10.0.9000, so
-  # the gate accepts and INLA is the honest answer -- the plan and the
+  # the gate accepts and INLA is the correct answer -- the plan and the
   # gate agree, which is what FS-22 was about. What must still hold is
   # that the plan does not name the AGGREGATED route: a sectioned
   # residual is not aggregatable whatever the gate says.
