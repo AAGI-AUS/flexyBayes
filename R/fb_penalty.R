@@ -119,12 +119,14 @@
 #' brms form, so asking for one on the Bayesian route refuses by name rather
 #' than substituting the nearest prior.
 #'
-#' | Family | Arguments | What it does |
-#' |---|---|---|
-#' | `group_lasso(scale, group, alpha)` | `scale` > 0, `alpha` in (0, 1\] | a group enters or leaves as a whole |
-#' | `sparse_group_lasso(scale, alpha, group)` | `alpha` in (0, 1) | a group enters as a whole, and thins inside |
-#' | `exclusive_lasso(scale, group)` | `scale` > 0 | members of a group compete |
-#' | `group_exclusive(group_scale, exclusive_scale, group)` | both > 0 | both at once |
+#' * `group_lasso(scale, group, alpha)`, with `scale` > 0 and `alpha` in
+#'   (0, 1\]: a group enters or leaves as a whole.
+#' * `sparse_group_lasso(scale, alpha, group)`, with `alpha` in (0, 1): a
+#'   group enters as a whole, and thins inside.
+#' * `exclusive_lasso(scale, group)`, with `scale` > 0: members of a group
+#'   compete.
+#' * `group_exclusive(group_scale, exclusive_scale, group)`, with both
+#'   scales > 0: both at once.
 #'
 #' `group` declares how the columns are grouped, and it is never inferred
 #' from the data. `"term"` makes each model term one group, so a factor's

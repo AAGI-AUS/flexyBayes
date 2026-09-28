@@ -182,7 +182,10 @@
                                          groupings = character(0),
                                          resolution = c("column", "term"),
                                          tol = .FB_SEL_RANK_TOL,
-                                         protected_alias = c("refuse", "drop")) {
+                                         protected_alias = c(
+                                           "refuse",
+                                           "drop"
+                                         )) {
   resolution <- match.arg(resolution)
   protected_alias <- match.arg(protected_alias)
   .fb_sel_check_fold_levels(protected_design, split)

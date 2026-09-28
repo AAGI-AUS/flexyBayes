@@ -2584,7 +2584,8 @@
 #' @section Aliased protected columns:
 #' In an unbalanced multi-trial design some cells of a protected interaction
 #' `VARIETY:NAPPLIED:SEEDRATE` are never sown, so some of its columns are
-#' linear combinations of others, on all rows or on a fold's training rows. With `protected_alias = "refuse"` a fold like that refuses with
+#' linear combinations of others, on all rows or on a fold's training rows.
+#' With `protected_alias = "refuse"` a fold like that refuses with
 #' `selection_fold_protected_unidentified`. With `protected_alias = "drop"`
 #' each fold drops them as ASReml 4.2 does: the protected columns are taken
 #' term by term, and within a term in descending order of their factor
@@ -4374,8 +4375,12 @@ print.fb_select <- function(x, digits = 4L, ...) {
         sep = ""
       )
       if (!is.null(arm$path_grid)) {
-        cat("             path grid: ", .fb_select_path_grid_line(arm$path_grid),
-            "\n", sep = "")
+        cat(
+          "             path grid: ",
+          .fb_select_path_grid_line(arm$path_grid),
+          "\n",
+          sep = ""
+        )
       }
       if (isTRUE(arm$stability$ran)) {
         cat("             stability: ", .fb_sel_stability_line(arm$stability),
