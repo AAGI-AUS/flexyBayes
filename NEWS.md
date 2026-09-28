@@ -1,3 +1,16 @@
+# flexyBayes 0.14.4
+
+A maintenance release. No model family, penalty family, engine or exported
+function is added, and no fit changes.
+
+* The help page of `fb_log_posterior()` now defines the `log_normalizer`
+  attribute as `log Z`, the log of the integral of the unnormalised density.
+  It said `-log Z`, the opposite of what proxymix 0.16.0 reads. No backend
+  returns a finite value yet, so no result changes.
+* The grouped penalty families in `?fb_penalty` are now a bulleted list, and
+  seven source lines longer than 80 characters are wrapped, so `lintr`
+  reports no lints.
+
 # flexyBayes 0.14.3
 
 A patch release for repeatable INLA fits. Identical calls now agree closely

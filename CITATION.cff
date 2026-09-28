@@ -21,8 +21,8 @@ authors:
   - given-names: "Anabel"
     family-names: "Forte Deltell"
     orcid: "https://orcid.org/0000-0001-9534-1817"
-version: 0.14.3
-date-released: "2026-09-26"
+version: 0.14.4
+date-released: "2026-09-28"
 license: MIT
 repository-code: "https://github.com/AAGI-AUS/flexyBayes"
 url: "https://github.com/AAGI-AUS/flexyBayes"
