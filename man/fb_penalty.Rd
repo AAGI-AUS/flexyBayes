@@ -130,14 +130,17 @@ prior and the certificate records the approximation.
 Four families read a grouping of the candidate columns. They are fitted by
 the penalised optimiser (\code{workflow = "penalized_optimizer"}) and have no
 brms form, so asking for one on the Bayesian route refuses by name rather
-than substituting the nearest prior.\tabular{lll}{
-   Family \tab Arguments \tab What it does \cr
-   \code{group_lasso(scale, group, alpha)} \tab \code{scale} > 0, \code{alpha} in (0, 1] \tab a group enters or leaves as a whole \cr
-   \code{sparse_group_lasso(scale, alpha, group)} \tab \code{alpha} in (0, 1) \tab a group enters as a whole, and thins inside \cr
-   \code{exclusive_lasso(scale, group)} \tab \code{scale} > 0 \tab members of a group compete \cr
-   \code{group_exclusive(group_scale, exclusive_scale, group)} \tab both > 0 \tab both at once \cr
+than substituting the nearest prior.
+\itemize{
+\item \code{group_lasso(scale, group, alpha)}, with \code{scale} > 0 and \code{alpha} in
+(0, 1]: a group enters or leaves as a whole.
+\item \code{sparse_group_lasso(scale, alpha, group)}, with \code{alpha} in (0, 1): a
+group enters as a whole, and thins inside.
+\item \code{exclusive_lasso(scale, group)}, with \code{scale} > 0: members of a group
+compete.
+\item \code{group_exclusive(group_scale, exclusive_scale, group)}, with both
+scales > 0: both at once.
 }
-
 
 \code{group} declares how the columns are grouped, and it is never inferred
 from the data. \code{"term"} makes each model term one group, so a factor's

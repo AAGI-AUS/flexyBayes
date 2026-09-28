@@ -13,7 +13,7 @@
 #             conditional covariance match dense multivariate-normal algebra;
 #             a genuinely new cluster has V_ST = 0; and new_cluster and
 #             known_cluster differ in the direction that makes new_cluster
-#             the honest default.
+#             the right default.
 #   Oracle 9  the scoring unit. Aggregation happens at the declared
 #             independent cluster, a row-level standard error understates it
 #             on correlated data, and one-standard-error selection reproduces

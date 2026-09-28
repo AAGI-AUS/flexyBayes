@@ -3,7 +3,7 @@
   "description": "<p>An R package for specifying mixed models in ASReml-style or brms-style formula syntax and estimating admitted structures via INLA or brms (Stan). Variance components use a weakly informative half-normal prior on the standard-deviation scale by default, with penalised-complexity (Simpson et al. 2017), bounded-uniform, half-Cauchy and other priors available. The supported surface includes common Gaussian and generalised-response families, baseline genotype-by-environment terms, per-level residual variances, separable AR1 spatial fields on INLA, genomic and pedigree precision models, and univariate P-splines. Factor-analytic genotype-by-environment covariance is deliberately refused in this release; other unsupported structures raise typed refusals naming the nearest alternative.</p>",
   "upload_type": "software",
   "license": "MIT",
-  "version": "0.14.3",
+  "version": "0.14.4",
   "creators": [
     {
       "name": "Moldovan, Max",

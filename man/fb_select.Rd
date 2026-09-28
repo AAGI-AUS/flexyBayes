@@ -301,7 +301,8 @@ the penalised reference's out-of-fold score refuses any drop, both with
 
 In an unbalanced multi-trial design some cells of a protected interaction
 \code{VARIETY:NAPPLIED:SEEDRATE} are never sown, so some of its columns are
-linear combinations of others, on all rows or on a fold's training rows. With \code{protected_alias = "refuse"} a fold like that refuses with
+linear combinations of others, on all rows or on a fold's training rows.
+With \code{protected_alias = "refuse"} a fold like that refuses with
 \code{selection_fold_protected_unidentified}. With \code{protected_alias = "drop"}
 each fold drops them as ASReml 4.2 does: the protected columns are taken
 term by term, and within a term in descending order of their factor

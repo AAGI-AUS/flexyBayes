@@ -1576,7 +1576,7 @@ emit_inla <- function(
         # `n_samples`, `warmup` and `chains` are recorded as what INLA
         # actually used, which is nothing: the nested Laplace
         # approximation has no chains to run and no warmup to discard, so
-        # the honest record is NULL rather than the sampler settings the
+        # the record is NULL rather than the sampler settings the
         # call happened to carry. update() passes each recorded field
         # straight back to flexybayes(), where a NULL sampler setting is
         # a no-op on this engine.
@@ -3071,7 +3071,7 @@ emit_inla <- function(
     if (is_precision) {
       m <- marginals[[nm]]
       if (is.null(m)) {
-        # No marginal, no honest SD-scale summary. Transforming the
+        # No marginal, no valid SD-scale summary. Transforming the
         # tabulated point estimate would produce a number that looks
         # computed and is not, so the row is dropped and named below.
         unavailable <- c(unavailable, nm)
@@ -3174,7 +3174,7 @@ emit_inla <- function(
 # hole patterns over one 12 x 10 grid at 10 per cent missingness, five
 # lost the field.
 #
-# The intervals are the only honest tell and they are easy to read past,
+# The intervals are the only sign and they are easy to read past,
 # so the fit says it out loud instead.
 #
 # Scope is the FIELD, on purpose. A grouping factor whose variance

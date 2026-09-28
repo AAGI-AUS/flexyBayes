@@ -133,7 +133,7 @@ test_that("emmeans(fit, ~ f) reaches a brms fit through the bare method", {
 
 
 # ---------------------------------------------------------------- #
-# Honest scope boundary                                             #
+# Scope boundary                                                    #
 # ---------------------------------------------------------------- #
 
 test_that("emmeans refuses informatively when the design cannot be reconciled", {

@@ -11,7 +11,7 @@
 # every one of them, and the augmentation record reported that it had
 # completed the design.
 #
-# The intervals were the only honest tell and they are easy to read past.
+# The intervals were the only sign and they are easy to read past.
 # The fit now says it.
 #
 # The warning is scoped to the FIELD. A grouping factor whose variance
