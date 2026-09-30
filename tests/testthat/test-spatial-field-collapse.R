@@ -1,24 +1,14 @@
 # =============================================================================
-# The autoregressive field that vanished while the fit said it converged.
+# An AR1 field the data do not support is reported absent.
 #
-# On a holed grid the latent field can lose its signal entirely: the field
-# standard deviation runs to a floor around 0.01, both correlations sit at
-# approximately zero with credible intervals spanning almost the whole of
-# [-1, 1], and the variance the field should have carried is absorbed into
-# the nugget. Measured over ten hole patterns on one 12 x 10 grid at 10 per
-# cent missing responses, five lost the field -- while the convergence block
-# read "Mode status: 0 (0 = converged)" and "Numerical confirm: PASS" on
-# every one of them, and the augmentation record reported that it had
-# completed the design.
-#
-# The intervals were the only sign and they are easy to read past.
-# The fit now says it.
+# At correlations near zero the field is the same model as the nugget, and
+# under the half-normal default its SD stays well away from zero with no
+# signal in the data. The fit is compared with the same model without the
+# field; a log Bayes factor below -log(100) reports the field absent, with
+# a warning at fit time and `collapsed` in summary(fit)$varcomp.
 #
 # The warning is scoped to the FIELD. A grouping factor whose variance
-# component collapses is a different fact about a different structure --
-# frequently the thing a hierarchical model exists to show -- and it keeps
-# the quieter `collapsed` cell in the variance-component table with no
-# warning attached. Pinned below.
+# component collapses keeps the quieter `collapsed` cell with no warning.
 # =============================================================================
 
 .sfc_ar1_mat <- function(n, rho) {
@@ -80,9 +70,8 @@ test_that("a field with no spatial signal warns at fit time", {
   expect_match(msg, "independent-errors model", fixed = TRUE)
   # Why it converged anyway.
   expect_match(msg, "converged mode regardless", fixed = TRUE)
-  # The measured trigger.
-  expect_match(msg, "incomplete grid raises the risk", fixed = TRUE)
-  # All three remedies.
+  # All four remedies.
+  expect_match(msg, "fit the model without the field", fixed = TRUE)
   expect_match(msg, "fb_complete_grid()", fixed = TRUE)
   expect_match(msg, "brms engine", fixed = TRUE)
   expect_match(msg, "fb_prior()", fixed = TRUE)
@@ -105,13 +94,11 @@ test_that("the collapsed field is flagged in the varcomp table too", {
   expect_identical(nrow(field), 1L)
   expect_identical(field$note, "collapsed")
 
-  # The warning and the cell are two readings of one table, so a fit that
-  # warns must also flag, and the reasons must name every parameter that
-  # lost its identification: the field SD and both correlations.
+  # The warning and the cell read one comparison, so a fit that warns
+  # must also flag, and the reason states the comparison.
   reasons <- flexyBayes:::.fb_spatial_collapse_reasons(fit)
-  expect_gte(length(reasons), 2L)
-  expect_true(any(grepl("field standard deviation", reasons, fixed = TRUE)))
-  expect_true(any(grepl("rho_row is unidentified", reasons, fixed = TRUE)))
+  expect_gte(length(reasons), 1L)
+  expect_true(any(grepl("log Bayes factor", reasons, fixed = TRUE)))
 })
 
 # ---------------------------------------------------------------- #
@@ -133,6 +120,121 @@ test_that("a field that carries real signal draws no warning", {
 
   vc <- summary(fit)$varcomp
   expect_identical(vc$note[vc$component == "sd_spatial"], "")
+})
+
+test_that("a field with no spatial signal is flagged on every seed", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
+  for (seed in c(20260819L, 11L, 12L)) {
+    d <- .sfc_sim(10L, 8L, 0, 0, sd_s = 1e-3, sd_e = 1, seed = seed)
+    fit <- .sfc_field_fit(d)
+    vc <- summary(fit)$varcomp
+    expect_identical(
+      vc$note[vc$component == "sd_spatial"],
+      "collapsed",
+      info = paste("seed", seed)
+    )
+  }
+})
+
+test_that("fields of SD 1 and 1.5 are not flagged on any seed", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = FALSE
+  )
+  fields <- list(
+    moderate = list(rho_r = 0.6, rho_c = 0.4, sd_s = 1, sd_e = 0.5),
+    strong = list(rho_r = 0.8, rho_c = 0.6, sd_s = 1.5, sd_e = 0.3)
+  )
+  for (nm in names(fields)) {
+    for (seed in c(20260819L, 11L, 12L)) {
+      a <- fields[[nm]]
+      d <- .sfc_sim(10L, 8L, a$rho_r, a$rho_c, a$sd_s, a$sd_e, seed = seed)
+      label <- paste(nm, "field, seed", seed)
+      expect_no_warning(fit <- .sfc_field_fit(d), message = "did not identify")
+      expect_identical(
+        flexyBayes:::.fb_spatial_collapse_reasons(fit),
+        character(0),
+        info = label
+      )
+      vc <- summary(fit)$varcomp
+      expect_identical(vc$note[vc$component == "sd_spatial"], "", info = label)
+    }
+  }
+})
+
+test_that("a weak field is flagged only where a REML test also finds none", {
+  # SD 0.4 beside a nugget of 1. A REML likelihood-ratio test (5%, critical
+  # value 7.05) detects the field on seeds 11 and 12 (statistic 7.24 and
+  # 10.60) and not on seed 20260819 (3.93).
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
+  detected <- c(`11` = TRUE, `12` = TRUE, `20260819` = FALSE)
+  for (seed in names(detected)) {
+    d <- .sfc_sim(10L, 8L, 0.6, 0.4, 0.4, 1, seed = as.integer(seed))
+    vc <- summary(.sfc_field_fit(d))$varcomp
+    expect_identical(
+      vc$note[vc$component == "sd_spatial"],
+      if (detected[[seed]]) "" else "collapsed",
+      info = paste("weak field, seed", seed)
+    )
+  }
+})
+
+test_that("the fit records the comparison with the model without the field", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
+  d <- .sfc_sim(10L, 8L, 0, 0, sd_s = 1e-3, sd_e = 1, seed = 20260819L)
+  fit <- .sfc_field_fit(d)
+
+  test <- fit$extras$field_test
+  expect_type(test, "list")
+  expect_match(test$statistic, "log Bayes factor", fixed = TRUE)
+  expect_true(test$refit)
+  expect_true(is.finite(test$value))
+  expect_equal(test$threshold, -log(100))
+  expect_equal(test$mlik_field, fit$inla$mlik[1L, 1L])
+  expect_equal(
+    test$value,
+    test$mlik_field - test$mlik_no_field,
+    tolerance = 1e-8
+  )
+  expect_true(test$value < test$threshold)
+  expect_false(test$field_supported)
+  expect_output(print(fit), "log Bayes factor", fixed = TRUE)
+})
+
+test_that("a correlation away from zero is a field, with no refit", {
+  skip_on_cran()
+  skip_on_ci()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
+  d <- .sfc_sim(10L, 8L, 0.8, 0.6, sd_s = 1.5, sd_e = 0.3, seed = 11L)
+  test <- .sfc_field_fit(d)$extras$field_test
+  expect_false(test$refit)
+  expect_true(test$field_supported)
+  expect_match(test$note, "excludes zero", fixed = TRUE)
 })
 
 test_that("a non-spatial fit is outside the warning's scope entirely", {
@@ -252,4 +354,29 @@ test_that("a fit carrying no field is never examined", {
     ),
     character(0)
   )
+})
+
+test_that("a recorded comparison decides, whatever the SD and correlations", {
+  medians <- c(sigma = 1)
+  shell <- .sfc_shell(.sfc_vc(0.027, -0.99, 0.99), medians)
+
+  shell$extras$field_test <- list(
+    value = 2,
+    threshold = -log(100),
+    field_supported = TRUE
+  )
+  expect_identical(
+    flexyBayes:::.fb_spatial_collapse_reasons(shell),
+    character(0)
+  )
+
+  shell <- .sfc_shell(.sfc_vc(0.9, -0.2, 0.25), medians)
+  shell$extras$field_test <- list(
+    value = -7.4,
+    threshold = -log(100),
+    field_supported = FALSE
+  )
+  reasons <- flexyBayes:::.fb_spatial_collapse_reasons(shell)
+  expect_length(reasons, 1L)
+  expect_match(reasons, "log Bayes factor -7.40 for the field", fixed = TRUE)
 })

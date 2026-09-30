@@ -188,7 +188,7 @@
     ),
     "Separable AR1 spatial field" = list(
       fit = function() fb_inla(y ~ 1, random = ~ ar1(row):ar1(col), data = f$d_capgrid),
-      link = "identity", y = f$d_capgrid$y, slots = "sigma:sigma"
+      link = "identity", y = f$d_capgrid$y, slots = c("sigma:sigma", "sd:spatial")
     ),
     "Univariate P-spline" = list(
       fit = function() fb_inla(y ~ 1, random = ~ spl(x), data = f$d_cap),
@@ -212,11 +212,12 @@
         fb_inla(y ~ 1, random = ~ id(trial):ar1(row):ar1(col),
                 data = f$d_ar1_at_trial)
       },
-      link = "identity", y = f$d_ar1_at_trial$y, slots = "sigma:sigma"
+      link = "identity", y = f$d_ar1_at_trial$y,
+      slots = c("sigma:sigma", "sd:spatial")
     ),
     "Grouped temporal AR1 field" = list(
       fit = function() fb_inla(y ~ 1, random = ~ ar1(t):g, data = f$d_ar1_tg),
-      link = "identity", y = f$d_ar1_tg$y, slots = "sigma:sigma"
+      link = "identity", y = f$d_ar1_tg$y, slots = c("sigma:sigma", "sd:spatial")
     )
   )
 }
@@ -397,6 +398,72 @@ test_that("every default slot on INLA carries the closed-form half-normal, by mo
       )
     }
   }
+})
+
+test_that("the AR1 field's precision on INLA carries the default half-normal, not INLA's loggamma", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_spatial_collapse_warning = TRUE
+  )
+  f <- .hn1_data()
+  fb_inla <- function(...) {
+    suppressMessages(flexybayes(..., backend = "inla", verbose = FALSE))
+  }
+  fields <- list(
+    "ar1(t)" = list(
+      fit = function() fb_inla(y ~ 1, random = ~ ar1(t), data = f$d_ar1_tg),
+      y = f$d_ar1_tg$y
+    ),
+    "ar1(row):ar1(col)" = list(
+      fit = function() fb_inla(y ~ 1, random = ~ ar1(row):ar1(col), data = f$d_capgrid),
+      y = f$d_capgrid$y
+    ),
+    "id(trial):ar1(row):ar1(col)" = list(
+      fit = function() {
+        fb_inla(y ~ 1, random = ~ id(trial):ar1(row):ar1(col),
+                data = f$d_ar1_at_trial)
+      },
+      y = f$d_ar1_at_trial$y
+    ),
+    "ar1(t):g" = list(
+      fit = function() fb_inla(y ~ 1, random = ~ ar1(t):g, data = f$d_ar1_tg),
+      y = f$d_ar1_tg$y
+    )
+  )
+
+  theta <- c(-4, -1, 0, 1, 4)
+  for (nm in names(fields)) {
+    spec <- fields[[nm]]
+    fit <- spec$fit()
+    std <- fit$extras$response_standardisation$scale
+    expect_equal(std, stats::sd(spec$y, na.rm = TRUE), tolerance = 1e-12,
+                 label = paste(nm, "standardisation scale"))
+    s <- .hn1_scale("identity", spec$y) / std
+
+    # Each fixture has one random term, the field.
+    random <- fit$inla$all.hyper$random
+    expect_length(random, 1L)
+    prec <- random[[1L]]$hyper$theta1
+    expect_identical(as.vector(prec$short.name), "prec", label = nm)
+    expect_match(prec$prior, "^expression: s=", label = nm)
+    if (grepl("^expression: s=", prec$prior)) {
+      s_received <- as.numeric(sub("^expression: s=([^;]+);.*$", "\\1", prec$prior))
+      expect_lt(abs(s_received / s - 1), 1e-12, label = paste(nm, "scale"))
+      expect_lt(
+        max(abs(.hn1_eval_expression(prec$prior, theta) -
+          .hn1_closed_form(theta, s))),
+        1e-10,
+        label = paste(nm, "density")
+      )
+    }
+
+    slots <- fit$extras$manifest$slots
+    row <- slots[grepl("^random .* theta1$", slots$engine_slot), , drop = FALSE]
+    expect_identical(row$source, "package", label = nm)
+    expect_true(isTRUE(row$readback_agrees), label = nm)
+  } # ends nm, over field spellings
 })
 
 

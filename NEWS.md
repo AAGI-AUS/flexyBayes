@@ -1,3 +1,38 @@
+# flexyBayes 0.14.5
+
+A patch release for fits with an AR1 field. The field's standard deviation
+now has the package's default prior, and whether the data support the field
+is tested against a fit without it. No model family, engine or exported
+function is added.
+
+* On INLA, the standard deviation of an AR1 field (`ar1(t)`,
+  `ar1(row):ar1(col)`, `id(trial):ar1(row):ar1(col)` and `ar1(t):g`) now has
+  the default half-normal prior, as every other random-effect standard
+  deviation does. It had INLA's own prior, log-gamma(1, 5e-05) on the
+  precision, and the model manifest recorded it as an engine default. A
+  stated prior reaches the field as
+  `fb_prior(sd(group = "spatial") ~ half_normal(scale = s))`.
+* The field's correlations keep INLA's own prior, and the manifest still
+  records them as engine defaults.
+* A fit with an AR1 field is now also fitted without the field, and the two
+  marginal likelihoods are compared. When the model without the field is
+  favoured by a Bayes factor of more than 100 to 1, the fit warns that the
+  field is not supported by the data, and `summary(fit)$varcomp` marks the
+  `sd_spatial` row `collapsed`. The field SD can no longer show this on its
+  own: on data with no spatial signal it now reads about 0.9 beside a
+  nugget of 0.8.
+* On simulated 10 x 8 grids, 13 per setting, the warning fired on all 13
+  grids with no field, on none of the 26 grids with a field SD of 1 or 1.5
+  (nugget 0.5 and 0.3), and on 11 of the 13 grids with a field SD of 0.4
+  beside a nugget of 1. In every one of the 52 cases it agreed with a REML
+  likelihood-ratio test at the 5% level, which also finds no field on
+  those 11 weak-field grids.
+* The fit without the field adds about 1.3 s on 80 plots, roughly doubling
+  the time of a small fit. It is not run when the 95% interval of a field
+  correlation excludes zero. `print(fit)` and `summary(fit)` show the log
+  Bayes factor under the field block, and `fit$extras$field_test` holds
+  the value, the threshold and the verdict.
+
 # flexyBayes 0.14.4
 
 A maintenance release. No model family, penalty family, engine or exported
