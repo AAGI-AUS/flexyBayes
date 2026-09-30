@@ -845,6 +845,13 @@
   }
   out$prior <- .fb_varcomp_priors(object, out$component)
   out$note <- .fb_varcomp_notes(out$component, out$conf.high, medians)
+  # A fit compared with the model without its AR1 field is flagged by that
+  # comparison, the same reading the fit-time warning takes.
+  if (is.list(object$extras$field_test)) {
+    field_rows <- out$component == "sd_spatial"
+    absent <- length(.fb_spatial_collapse_reasons(object)) > 0L
+    out$note[field_rows] <- if (absent) "collapsed" else ""
+  }
   # A row the source could summarise to a point and no further says so.
   # Blank cells beside three NAs read as a rendering slip; the words say
   # the fit recorded no interval for that component.

@@ -236,11 +236,12 @@ Each is reproducible on this release. Priority is for the MET use case.
    the field-book rows for every sown plot with the response set to `NA`
    or by padding the array with `fb_complete_grid()`; fit the same model
    on the brms engine for a second reading; or give the field an
-   informative prior with `fb_prior()` rather than leaving it to run to a
-   boundary. *What is still open* is the underlying identification, not
-   the reporting of it: a hyperparameterisation or a default field prior
-   under which an incomplete grid does not put the solution at a boundary
-   in the first place.
+   informative prior with `fb_prior()`. *Since 0.14.5* the field SD has
+   the half-normal default and no longer runs to a floor; a field with no
+   signal reads about 0.9 beside a nugget of 0.8. The warning and the
+   `collapsed` cell now come from a comparison with the same model
+   without the field (NEWS, 0.14.5). The measurements above were taken
+   under INLA's own field prior and have not been repeated.
 10. **Large Gaussian data has no aggregated route in this release.**
     `aggregate = TRUE` and `flexybayes_stream()` refuse a Gaussian model
     (`aggregation_residual_prior_not_composed`), because the aggregated

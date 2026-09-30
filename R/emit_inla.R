@@ -1701,6 +1701,31 @@ emit_inla <- function(
     }
   )
 
+  # Whether the data support the AR1 field, from a fit of the same model
+  # without it. Read by the collapse warning and the varcomp `note` below.
+  if (length(.inla_spatial_field_terms(out))) {
+    formula_without_field <- tryCatch(
+      .build_inla_formula(
+        .fb_drop_field_terms(fb),
+        hyper_ctrl = hyper_ctrl,
+        known_matrices = known_matrices,
+        sectioned_response = !is.null(sectioned),
+        standardisation = standardisation
+      ),
+      error = function(e) e
+    )
+    out$extras$field_test <- .fb_inla_field_test(
+      out,
+      inla_args,
+      formula_without_field,
+      mlik_shift = if (is.null(standardisation)) {
+        0
+      } else {
+        standardisation$n_obs * log(standardisation$scale)
+      }
+    )
+  }
+
   # A field that lost its identification is a fact about this fit that
   # nothing else on the printed surface states. Raised after the
   # variance-component table is built, because it is read off that table.
@@ -3177,44 +3202,139 @@ emit_inla <- function(
 # The spatial-field collapse warning                                #
 # ---------------------------------------------------------------- #
 #
-# An autoregressive field fitted on an incomplete grid can lose its
-# signal entirely: the field standard deviation runs to a floor, both
-# correlations sit at approximately zero with credible intervals spanning
-# almost the whole of [-1, 1], and the variance the field should have
-# carried is absorbed into the nugget. The fit's own convergence block
-# reports a converged mode and a passing numerical confirm throughout,
-# and the augmentation record says it completed the design, so nothing on
-# the printed surface says the field was not identified. Measured on ten
-# hole patterns over one 12 x 10 grid at 10 per cent missingness, five
-# lost the field.
+# At correlations near zero an AR1 field is the same model as the nugget,
+# so the field's SD alone cannot say whether a field exists. Under the
+# half-normal default a field with no spatial signal reads 0.93
+# [0.38, 2.02] beside a nugget of 0.79. Whether the data support the field
+# is decided instead by fitting the same model without it and comparing
+# the two marginal likelihoods, in the spirit of ASReml's
+# likelihood-ratio test on a spatial term.
 #
-# The intervals are the only sign and they are easy to read past,
-# so the fit says it out loud instead.
-#
-# Scope is the FIELD, on purpose. A grouping factor whose variance
-# component collapses is a different fact about a different structure --
-# often the thing a hierarchical model is there to show -- and it keeps
-# the quieter `collapsed` cell in the variance-component table.
+# The warning is scoped to the FIELD. A grouping factor whose variance
+# component collapses keeps the quieter `collapsed` cell in the
+# variance-component table (R/boundary_collapse.R).
 
-# A field standard deviation whose upper credible bound sits below this
-# fraction of the nugget's posterior median carries no spatial signal at
-# the scale of the noise it sits beside. Looser than the display flag's
-# .FB_COLLAPSE_FRACTION because a collapsed field is compared against the
-# nugget that absorbed its variance, not against an independent residual.
+# Log Bayes factor, field against no field, below which the field is
+# reported absent: the model without it is favoured 100 to 1 (Jeffreys'
+# "decisive"). On a 10 x 8 grid, 13 seeds per fixture, it flags 13 of 13
+# fields with no signal and 0 of 26 fields of SD 1 and 1.5, and agrees
+# with a REML likelihood-ratio test at 5% on all 52 data sets
+# (review/evidence_0.14.5_field_exists/).
+.FB_FIELD_LOG_BF_THRESHOLD <- -log(100)
+
+# The fit-only reading used when a fit carries no comparison: a field SD
+# whose upper credible bound is below this fraction of the nugget's
+# posterior median is at its boundary.
 .FB_SPATIAL_COLLAPSE_FRACTION <- 0.05
 
 # A correlation whose credible interval reaches beyond +/- this value at
-# both ends spans nearly the whole parameter space: the data placed no
-# constraint on it at all.
+# both ends spans nearly the whole parameter space.
 .FB_SPATIAL_RHO_UNIDENTIFIED <- 0.9
 
-# .fb_spatial_collapse_reasons() --- which field parameters lost their
-# identification, as a character vector of phrases. Empty when the field
-# is healthy or when the fit carries no field.
+# .fb_drop_field_terms() --- the IR without its AR1 field terms.
 #
-# Read off the canonical variance-component table rather than INLA's own
-# hyperparameter matrix, so the warning and the `collapsed` cell in
-# summary(fit)$varcomp are readings of one table.
+# @noRd
+# @keywords internal
+.fb_drop_field_terms <- function(fb) {
+  fb$random_terms <- Filter(
+    function(t) !(t$type %||% "") %in% c("ar1", "ar1_spatial"),
+    fb$random_terms %||% list()
+  )
+  fb
+}
+
+# .fb_inla_field_test() --- does the data support the AR1 field?
+#
+# Refits `inla_args` with `formula_without_field` and returns the log
+# Bayes factor of the fit against that refit, with its threshold and
+# verdict. The refit is skipped when a field correlation's interval
+# excludes zero: a correlation away from zero is a field. `mlik_shift`
+# moves the refit's marginal likelihood to the original response scale,
+# as .fb_inla_back_transform() moved the fit's.
+#
+# @noRd
+# @keywords internal
+.fb_inla_field_test <- function(
+  object,
+  inla_args,
+  formula_without_field,
+  mlik_shift = 0
+) {
+  record <- list(
+    statistic = "log Bayes factor, field against no field",
+    value = NA_real_,
+    threshold = .FB_FIELD_LOG_BF_THRESHOLD,
+    mlik_field = NA_real_,
+    mlik_no_field = NA_real_,
+    field_supported = NA,
+    refit = FALSE,
+    note = "",
+    run_time = 0
+  )
+
+  # A correlation away from zero -----------------------------------------
+  tab <- .inla_spatial_hyper_table(object)
+  rho <- tab[startsWith(tab$parameter, "correlation"), , drop = FALSE]
+  away <- is.finite(rho$lower) &
+    is.finite(rho$upper) &
+    (rho$lower > 0 | rho$upper < 0)
+  if (any(away)) {
+    record$field_supported <- TRUE
+    record$note <- paste0(
+      "not refitted: the interval of the ",
+      rho$parameter[which(away)[1L]],
+      " excludes zero"
+    )
+    return(record)
+  }
+
+  # The same model without the field -------------------------------------
+  if (inherits(formula_without_field, "error")) {
+    record$note <- paste0(
+      "the model without the field could not be built (",
+      conditionMessage(formula_without_field),
+      ")"
+    )
+    return(record)
+  }
+  args <- inla_args
+  args$formula <- formula_without_field
+  args$control.mode <- NULL
+  args$control.compute <- list(mlik = TRUE)
+  t0 <- proc.time()
+  fit0 <- tryCatch(.inla_call(args), error = function(e) e)
+  record$run_time <- unname((proc.time() - t0)["elapsed"])
+  record$refit <- TRUE
+  if (inherits(fit0, "error")) {
+    record$note <- paste0(
+      "the model without the field did not fit (",
+      conditionMessage(fit0),
+      ")"
+    )
+    return(record)
+  }
+
+  # Compare --------------------------------------------------------------
+  m1 <- object$inla$mlik[1L, 1L]
+  m0 <- if (is.null(fit0$mlik)) NA_real_ else fit0$mlik[1L, 1L] - mlik_shift
+  if (!is.finite(m1) || !is.finite(m0)) {
+    record$note <- "a marginal likelihood is not finite"
+    return(record)
+  }
+  record$mlik_field <- m1
+  record$mlik_no_field <- m0
+  record$value <- m1 - m0
+  record$field_supported <- record$value >= record$threshold
+  record
+}
+
+# .fb_spatial_collapse_reasons() --- why the field is reported absent, as
+# a character vector of phrases. Empty when the field is supported or the
+# fit carries no field.
+#
+# A fit with a comparison is judged by it. A fit without one (the refit
+# failed, or an object built before 0.14.5) is judged by the field SD
+# against the nugget and by correlations spanning the whole space.
 #
 # @noRd
 # @keywords internal
@@ -3226,9 +3346,24 @@ emit_inla <- function(
   if (!is.data.frame(vc) || nrow(vc) == 0L) {
     return(character(0L))
   }
+  test <- object$extras$field_test
+  if (is.list(test) && isTRUE(test$field_supported)) {
+    return(character(0L))
+  }
   medians <- attr(vc, "posterior_median") %||% numeric(0)
   cmp <- as.character(vc$component)
   reasons <- character(0L)
+
+  if (is.list(test) && isFALSE(test$field_supported)) {
+    reasons <- sprintf(
+      paste0(
+        "the model without the field is favoured (log Bayes factor %.2f ",
+        "for the field, below %.2f)"
+      ),
+      test$value,
+      test$threshold
+    )
+  }
 
   i_field <- match("sd_spatial", cmp)
   nugget <- if ("sigma" %in% names(medians)) medians[["sigma"]] else NA_real_
@@ -3293,18 +3428,17 @@ emit_inla <- function(
   warning(
     "flexyBayes: the autoregressive field in this fit did not identify -- ",
     paste(reasons, collapse = ", "),
-    ". The field carries no spatial signal and the fit is effectively an ",
-    "independent-errors model with the field's variance absorbed into the ",
-    "residual; the convergence block reports a converged mode regardless, ",
-    "because the optimiser did converge -- to a solution with no field in ",
-    "it. An incomplete grid raises the risk: in repeated runs over one ",
-    "12 x 10 field at 10 per cent missing responses, half the hole ",
-    "patterns lost the field and half did not, on the same data. Three ",
-    "routes: complete the grid, either by supplying the field-book rows ",
-    "for every sown plot with the response set to NA or by padding the ",
-    "array with fb_complete_grid(); fit the same model on the brms engine ",
-    "for a second reading; or give the field an informative prior with ",
-    "fb_prior() so it is not left to run to a boundary. Silence via ",
+    ". The field carries no spatial signal the data can detect: with its ",
+    "correlations near zero it is the same model as the residual, so the ",
+    "fit is effectively an independent-errors model and the split of that ",
+    "variance between the field and the residual is not identified. The ",
+    "convergence block reports a converged mode regardless, because the ",
+    "optimiser did converge. Four routes: fit the model without the field; ",
+    "complete the grid if responses are missing, by supplying the ",
+    "field-book rows with the response set to NA or with ",
+    "fb_complete_grid(); fit the same model on the brms engine for a ",
+    "second reading; or state what is known about the field's size with ",
+    "fb_prior(). Silence via ",
     "options(flexyBayes.silence_spatial_collapse_warning = TRUE).",
     call. = FALSE
   )
@@ -3513,7 +3647,31 @@ emit_inla <- function(
     "squares of the SDs.\n",
     sep = ""
   )
+  .print_inla_field_test(object$extras$field_test)
   invisible(tab)
+}
+
+
+# One line under the field block: the comparison with the model without
+# the field, from .fb_inla_field_test().
+.print_inla_field_test <- function(test) {
+  if (!is.list(test)) {
+    return(invisible(NULL))
+  }
+  line <- if (is.finite(test$value)) {
+    sprintf(
+      paste0(
+        "  Field against the same model without it: log Bayes factor ",
+        "%.2f;\n  the field is reported absent below %.2f.\n"
+      ),
+      test$value,
+      test$threshold
+    )
+  } else {
+    paste0("  Field against the same model without it: ", test$note, ".\n")
+  }
+  cat(line)
+  invisible(test)
 }
 
 

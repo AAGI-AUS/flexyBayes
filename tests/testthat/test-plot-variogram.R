@@ -136,11 +136,18 @@ test_that("a complete field fit draws a variogram over the array", {
   expect_true(all(tab$n_pairs > 0L))
   # Pair counts add to every unordered pair of observed rows.
   expect_identical(sum(tab$n_pairs), as.integer(48L * 47L / 2L))
-  # Along the row direction at zero column lag the semivariance rises with
-  # separation, which is what an AR1 field looks like.
-  strip <- tab[tab$lag_col == 0, ]
-  strip <- strip[order(strip$lag_row), ]
-  expect_lt(strip$semivariance[[1L]], strip$semivariance[[nrow(strip)]])
+  # The response's semivariance rises along rows; the fitted field takes
+  # that rise out of the residuals.
+  d <- .pv_grid()
+  raw <- flexyBayes:::.fb_variogram_table(
+    d$y - mean(d$y),
+    list(as.integer(d$row), as.integer(d$col)),
+    c("row", "col")
+  )
+  far <- function(t) t$semivariance[t$lag_row == 7 & t$lag_col == 0]
+  near <- function(t) t$semivariance[t$lag_row == 1 & t$lag_col == 0]
+  expect_gt(far(raw), 2 * near(raw))
+  expect_lt(far(tab), far(raw) / 3)
 })
 
 test_that("the variogram uses observed rows only (F-p2)", {
