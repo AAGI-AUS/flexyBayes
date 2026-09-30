@@ -2028,16 +2028,27 @@ emit_inla <- function(
     # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
     if (term$type %in% c("ar1", "ar1_spatial")) {
       if (identical(term$type, "ar1")) {
-        note(paste0(term[["var"]], "_id"), "ar1", term$type)
+        note(
+          paste0(term[["var"]], "_id"),
+          "ar1",
+          term$type,
+          "spatial",
+          hyper_ctrl[["spatial"]]
+        )
       } else {
         note(
           paste0(term[["row_var"]], "_id"),
           "ar1",
           term$type,
+          "spatial",
+          hyper_ctrl[["spatial"]],
           group_model = if (isTRUE(term[["col_ar1"]])) "ar1" else "iid"
         )
       }
-      rhs_terms <- c(rhs_terms, .inla_ar1_field_term(term))
+      rhs_terms <- c(
+        rhs_terms,
+        .inla_ar1_field_term(term, .inla_hyper_arg(hyper_ctrl[["spatial"]]))
+      )
       next
     }
     # fa(f, k):g -- k common factors as scaled copies, plus one specific
@@ -2581,7 +2592,8 @@ emit_inla <- function(
 # Kronecker AR1(row) (x) AR1(col) (col_ar1 = FALSE gives AR1 x iid). The
 # idiom's faithfulness was validated against a hand-built AR1(x)AR1 GLS/REML
 # oracle (rebuild/wp16_inla_spatial_oracle.R). The <..>_id integer index
-# columns are pre-built in emit_inla()'s data_inla setup.
+# columns are pre-built in emit_inla()'s data_inla setup. `hyper_str` is the
+# field precision's prior, keyed `spatial`; the correlations keep INLA's own.
 #
 # C5/FS-27: id(trial):ar1(row):ar1(col) -- one separable field per
 # level of `trial` -- adds `replicate = <at_var>_id` to the same f().
@@ -2591,9 +2603,10 @@ emit_inla <- function(
 # hyperparameters", with no second f() call and no per-replicate
 # hyperparameter block to keep in sync. `<at_var>_id` is pre-built in
 # emit_inla()'s data_inla setup alongside the row / col index columns.
-.inla_ar1_field_term <- function(term) {
+.inla_ar1_field_term <- function(term, hyper_str = "") {
+  hyper_clause <- if (nzchar(hyper_str)) paste0(", ", hyper_str) else ""
   if (identical(term$type, "ar1")) {
-    return(paste0("f(", term$var, "_id, model = \"ar1\")"))
+    return(paste0("f(", term$var, "_id, model = \"ar1\"", hyper_clause, ")"))
   }
   col_model <- if (isTRUE(term$col_ar1)) "ar1" else "iid"
   replicate_clause <- if (!is.null(term$at_var)) {
@@ -2610,6 +2623,7 @@ emit_inla <- function(
     col_model,
     "\")",
     replicate_clause,
+    hyper_clause,
     ")"
   )
 }

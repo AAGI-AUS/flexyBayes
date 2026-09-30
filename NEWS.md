@@ -1,3 +1,19 @@
+# flexyBayes 0.14.5
+
+A patch release. Fits with an AR1 field change, because the field's standard
+deviation now has the package's default prior. No model family, engine or
+exported function is added.
+
+* On INLA, the standard deviation of an AR1 field (`ar1(t)`,
+  `ar1(row):ar1(col)`, `id(trial):ar1(row):ar1(col)` and `ar1(t):g`) now has
+  the default half-normal prior, as every other random-effect standard
+  deviation does. It had INLA's own prior, log-gamma(1, 5e-05) on the
+  precision, and the model manifest recorded it as an engine default. A
+  stated prior reaches the field as
+  `fb_prior(sd(group = "spatial") ~ half_normal(scale = s))`.
+* The field's correlations keep INLA's own prior, and the manifest still
+  records them as engine defaults.
+
 # flexyBayes 0.14.4
 
 A maintenance release. No model family, penalty family, engine or exported

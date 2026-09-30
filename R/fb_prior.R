@@ -1187,19 +1187,18 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       next
     }
 
+    # AR1 field -- its standard deviation is keyed `spatial`, which the
+    # fingerprint names sd_spatial. The correlations keep INLA's own prior.
     if (ttype %in% c("ar1", "ar1_spatial")) {
-      add_engine(
-        "sd_spatial",
-        "AR1 latent field keeps INLA's own default hyperprior"
-      )
+      shared <- c(shared, "spatial")
       add_engine(
         "rho_row",
-        "AR1 latent field keeps INLA's own default hyperprior"
+        "AR1 latent field correlation keeps INLA's own default hyperprior"
       )
       if (identical(ttype, "ar1_spatial")) {
         add_engine(
           "rho_col",
-          "AR1 latent field keeps INLA's own default hyperprior"
+          "AR1 latent field correlation keeps INLA's own default hyperprior"
         )
       }
       next

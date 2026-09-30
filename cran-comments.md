@@ -1,6 +1,6 @@
 ## Submission
 
-This is a new submission of `flexyBayes`, version 0.14.4.
+This is a new submission of `flexyBayes`, version 0.14.5.
 
 The package specifies mixed models in ASReml-style or brms-style formula
 syntax and estimates them through one of two inference engines, INLA or
