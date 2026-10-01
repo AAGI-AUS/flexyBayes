@@ -22,6 +22,7 @@ fb_select(
   refit = NULL,
   ablation = FALSE,
   protected_alias = c("refuse", "drop"),
+  keep_fold_data = FALSE,
   ...
 )
 }
@@ -160,6 +161,13 @@ loss; see "Grouped ablation". It needs
 does with a protected column its training rows do not identify. See
 "Aliased protected columns". \code{"drop"} needs
 \code{workflow = "penalized_optimizer"} or \code{"unpenalized_benchmark"}.}
+
+\item{keep_fold_data}{\code{FALSE} (the default), or \code{TRUE} to keep each fold's
+whitened data on the result, for \code{\link[=fb_select_fold_data]{fb_select_fold_data()}},
+\code{\link[=fb_select_path]{fb_select_path()}} and \code{\link[=fb_select_refit]{fb_select_refit()}}. It needs
+\code{workflow = "penalized_optimizer"} or \code{"unpenalized_benchmark"}. The
+kept data holds the fold's design and Cholesky factor, so its size grows
+with the folds times the square of the training rows.}
 
 \item{...}{Reserved. \code{metric} is accepted here for one release with a
 deprecation notice; it now lives in \code{\link[=fb_decision]{fb_decision()}}.}
