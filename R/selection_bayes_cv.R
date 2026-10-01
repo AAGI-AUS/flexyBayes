@@ -95,6 +95,11 @@
 # either engine: `brms::posterior_predict()` integrates the same effect the
 # same way.
 
+# Posterior predictive draws per fold and model. At 4,000 draws the Monte
+# Carlo standard deviation of a between-model elpd difference was 0.26 nats
+# against a difference of 0.81 (800 rows, 20 sites); at 8,000 it was 0.12.
+.FB_SEL_N_DRAWS <- 8000L
+
 # --- the base's own specification -------------------------------------- #
 
 # .fb_sel_bayes_normalise_base() --- one shape for two engines.
@@ -811,7 +816,7 @@
   assess_rows,
   data,
   prediction = c("new_cluster", "known_cluster"),
-  n_draws = 4000L,
+  n_draws = .FB_SEL_N_DRAWS,
   seed = NULL
 ) {
   if (inherits(fit, "flexybayes_brms")) {
@@ -857,7 +862,7 @@
   assess_rows,
   data,
   prediction = c("new_cluster", "known_cluster"),
-  n_draws = 4000L,
+  n_draws = .FB_SEL_N_DRAWS,
   seed = NULL
 ) {
   prediction <- match.arg(prediction)
@@ -913,7 +918,7 @@
   assess_rows,
   data,
   prediction = c("new_cluster", "known_cluster"),
-  n_draws = 4000L,
+  n_draws = .FB_SEL_N_DRAWS,
   seed = NULL
 ) {
   prediction <- match.arg(prediction)
@@ -932,26 +937,29 @@
   if (sample_seed == 0L) {
     sample_seed <- 1L
   }
+  # Only the assessment rows' Predictor entries are kept from each draw.
   draws <- .fb_inla_posterior_sample(
     fit,
     as.integer(n_draws),
     seed = sample_seed,
-    num.threads = "1:1"
+    num.threads = "1:1",
+    selection = list(Predictor = as.integer(assess_rows))
   )
 
-  names_latent <- rownames(draws[[1L]]$latent)
-  predictor <- grep("^Predictor:", names_latent)
-  if (length(predictor) != nrow(data)) {
+  wanted <- match(
+    paste0("Predictor:", assess_rows),
+    rownames(draws[[1L]]$latent)
+  )
+  if (anyNA(wanted)) {
     stop(
-      "the sampled latent field carries ",
-      length(predictor),
-      " Predictor entries for ",
-      nrow(data),
-      " data rows, so the assessment rows cannot be indexed into it.",
+      "the sampled latent field carries no Predictor entry for ",
+      sum(is.na(wanted)),
+      " of the ",
+      length(assess_rows),
+      " assessment rows, so they cannot be scored.",
       call. = FALSE
     )
   }
-  wanted <- predictor[assess_rows]
   mu <- t(vapply(
     draws,
     function(z) as.numeric(z$latent)[wanted],
@@ -1289,7 +1297,7 @@
   seed,
   budget = NULL,
   data = NULL,
-  n_draws = 4000L,
+  n_draws = .FB_SEL_N_DRAWS,
   candidate_sets = NULL,
   cluster = NULL,
   refit_fn = NULL,
