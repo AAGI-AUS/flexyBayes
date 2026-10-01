@@ -173,3 +173,25 @@ test_that("cran-comments.md sits at the root, outside the build", {
   private <- grep("WS/|review/|/Users/", lines, value = TRUE)
   expect_identical(private, character(0))
 })
+
+test_that("every working folder at the root is kept out of the build", {
+  root <- .rh_root()
+  package <- c(
+    "DESCRIPTION", "NAMESPACE", "LICENSE", "NEWS.md", "README.md",
+    "R", "man", "tests", "vignettes", "inst", "data", "src", "tools",
+    ".Rbuildignore", ".git", ".gitignore"
+  )
+  # Named even when absent, since they exist only in some checkouts.
+  working <- c(
+    "review", "oracle_work", "validation", "vignettes-reserve", "data-raw",
+    "ledger", "paper", "dev-narrative", "docs", "flexyBayes.Rcheck"
+  )
+  present <- list.files(root, all.files = TRUE, no.. = TRUE)
+  candidates <- union(setdiff(present, package), working)
+  shipped <- candidates[!vapply(
+    candidates,
+    function(path) .rh_build_ignored(root, path),
+    logical(1L)
+  )]
+  expect_identical(shipped, character(0))
+})
