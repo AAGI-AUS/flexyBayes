@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=232
+      .refusal_registry: locked=TRUE n_keys=233
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -255,6 +255,7 @@
         selection_family_not_supported
         selection_fold_candidate_drop_not_representable
         selection_fold_covariance_not_factorisable
+        selection_fold_data_not_kept
         selection_fold_id_invalid
         selection_fold_level_absent
         selection_fold_not_usable

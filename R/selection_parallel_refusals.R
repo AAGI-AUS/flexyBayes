@@ -12,10 +12,10 @@
 # itself, so every existing refusal keeps its own name on the concurrent
 # path. A forked worker that ends without returning sends nothing back:
 # `parallel::mclapply()` returns a bare NULL in that element, with no
-# condition and no exit status attached. There is no existing code for a fold that neither
-# completed nor refused, and aggregating the folds that did come back would
-# report a cross-validation over a subset of its folds under the name of the
-# whole.
+# condition and no exit status attached. There is no existing code for a
+# fold that neither completed nor refused, and aggregating the folds that
+# did come back would report a cross-validation over a subset of its folds
+# under the name of the whole.
 
 .populate_refusal_registry_selection_parallel <- function() {
   .register_refusal(

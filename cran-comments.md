@@ -1,6 +1,6 @@
 ## Submission
 
-This is a new submission of `flexyBayes`, version 0.14.5.
+This is a new submission of `flexyBayes`, version 0.15.0.
 
 The package specifies mixed models in ASReml-style or brms-style formula
 syntax and estimates them through one of two inference engines, INLA or
@@ -24,13 +24,13 @@ unless it happened.
 ## R CMD check results
 
 The check artefacts for this release are
-`00check_v0.14.5_engines-present.log` and
-`00check_v0.14.5_engines-present_run2.log`, two runs with INLA, brms and
-cmdstanr installed, and `00check_v0.14.5_engines-absent.log`, one run with
+`00check_v0.15.0_engines-present.log` and
+`00check_v0.15.0_engines-present_run2.log`, two runs with INLA, brms and
+cmdstanr installed, and `00check_v0.15.0_engines-absent.log`, one run with
 all three masked, since the package behaves differently, and is tested
 differently, in each case. All three are produced at the release bake and
 kept with the release records alongside the tarball; that is where to read the exact
-error/warning/note count for 0.14.5, rather than a number quoted here with
+error/warning/note count for 0.15.0, rather than a number quoted here with
 no artefact behind it.
 
 The note below is the one the check produces. It is transcribed from this

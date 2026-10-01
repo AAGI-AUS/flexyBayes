@@ -234,6 +234,9 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     "prior_summary" = function(fit) utils::capture.output(print(prior_summary(fit))),
     "ranef" = function(fit) ranef(fit),
     "residuals" = function(fit) residuals(fit),
+    "rstantools::prior_summary" = function(fit) {
+      utils::capture.output(print(rstantools::prior_summary(fit)))
+    },
     "summary" = function(fit) utils::capture.output(print(summary(fit))),
     "tidy" = function(fit) tidy(fit),
     "update" = function(fit) update(fit),
@@ -247,7 +250,10 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     aggregated = .acc_fit("aggregated", y ~ env, .acc_counts(1200L, 321L), "poisson"),
     streamed_head_sample = .acc_fit("stream", y ~ env, .acc_counts(110000L, 322L), "poisson")
   )
-  for (pkg in c("bayesplot", "emmeans", "insight", "loo", "marginaleffects", "nlme", "posterior")) {
+  for (pkg in c(
+    "bayesplot", "emmeans", "insight", "loo", "marginaleffects", "nlme",
+    "posterior", "rstantools"
+  )) {
     skip_if_not_installed(pkg)
   }
 
@@ -269,5 +275,5 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
       checked <- checked + 1L
     }
   }
-  expect_identical(checked, 76L)
+  expect_identical(checked, 78L)
 })
