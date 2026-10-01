@@ -1,4 +1,4 @@
-# penalty_block_nl.R -- the reference model of a `scope = "block"` penalty.
+# penalty_block_nl.R: the reference model of a `scope = "block"` penalty.
 #
 # A class-wide prior (horseshoe, R2D2) with `scope = "block"` is fitted as the
 # brms non-linear formula

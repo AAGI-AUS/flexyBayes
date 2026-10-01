@@ -407,7 +407,7 @@ prior_summary.default <- function(object, ...) {
       !is.null(.fb_brms_nl_parts(object$brms))
   ) {
     out$fixed_sd_engine_default <- paste0(
-      "brms's own defaults for a non-linear part -- flat on the ",
+      "brms's own defaults for a non-linear part: flat on the ",
       "population-level coefficients and on the uncentred intercept"
     )
   }
