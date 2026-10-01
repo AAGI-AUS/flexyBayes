@@ -27,12 +27,10 @@
 # separate the folds, and seeds that differ between a serial and a
 # concurrent run.
 #
-# What is NOT done here, and where it is done instead. No block kills a
-# worker. A worker dying leaves a bare NULL in its element with no condition
-# attached, which was measured twice by two different means and recorded in
-# review/units/P4_2026-09-16; the block below drives the function that turns
-# that NULL into a named refusal, rather than killing a process inside the
-# test runner.
+# A forked worker dying leaves a bare NULL in its element with no condition
+# attached (review/units/P4_2026-09-16). One block drives the function that
+# turns that NULL into a named refusal; the blocks at the end of the file
+# kill a worker on each route, from inside the worker.
 # =============================================================================
 
 # --- fixtures ------------------------------------------------------------- #
@@ -58,16 +56,20 @@ fbpe_data <- function(seed = 20260916L, n_cluster = 8L, per = 5L) {
 }
 
 
-# Run `expr` with a worker count set, and put the option back afterwards.
-fbpe_with_workers <- function(workers, expr) {
-  old <- getOption("flexyBayes.selection_workers")
-  on.exit(options(flexyBayes.selection_workers = old), add = TRUE)
-  options(flexyBayes.selection_workers = workers)
+# Run `expr` with a worker count and a worker start set, and put both options
+# back afterwards. The blocks of this file that use the default start, "fork",
+# test the forked route; the default route is tested further down.
+fbpe_with_workers <- function(workers, expr, mode = "fork") {
+  old <- options(
+    flexyBayes.selection_workers = workers,
+    flexyBayes.isolation = mode
+  )
+  on.exit(options(old), add = TRUE)
   force(expr)
 }
 
 
-# Concurrency here is fork-based. On a platform that does not fork the folds
+# Concurrency in these blocks is fork-based. On a platform that does not fork the folds
 # run one at a time by design, and a serial-against-concurrent comparison has
 # nothing to compare, so the block skips rather than passing vacuously. The
 # plan is read with the option SET: read with the default it would say
@@ -219,9 +221,10 @@ test_that("a worker that returns no result at all refuses by name", {
   expect_s3_class(failed, "flexybayes_refusal")
   expect_identical(failed$reason_code, "selection_parallel_worker_failed")
   expect_match(conditionMessage(failed), "fold 2")
-  # The refusal points at the lever that fixes it, which is memory and not
-  # the core count.
-  expect_match(conditionMessage(failed), "selection_workers")
+  # The refusal states what was seen and names the causes only as possible.
+  expect_match(conditionMessage(failed), "ended without returning a result")
+  expect_match(conditionMessage(failed), "both possible causes")
+  expect_no_match(conditionMessage(failed), "selection_workers")
 
   # A result that did come back is passed through untouched, including a
   # fold that legitimately returned NULL.
@@ -559,4 +562,199 @@ test_that("the Bayesian route's bookkeeping is identical and its scores sit insi
     serial_a$aggregated$model[which.min(serial_a$aggregated$score)],
     concurrent$aggregated$model[which.min(concurrent$aggregated$score)]
   )
+})
+
+
+# --- the default start: a separate process per worker ---------------------- #
+
+fbpe_skip_without_callr <- function() {
+  skip_on_cran()
+  skip_if_not_installed("callr")
+  if (!identical(.Platform$OS.type, "unix")) {
+    skip("a worker kills itself by process ID on unix only")
+  }
+  invisible(NULL)
+}
+
+
+test_that("more than one worker starts separate processes, and fork is kept by option", {
+  testthat::local_mocked_bindings(.fb_sel_worker_cores = function() 3L)
+  default <- fbpe_with_workers(3L, .fb_sel_worker_plan(3L), mode = NULL)
+  expect_identical(default$workers, 3L)
+  expect_identical(default$mechanism, "process")
+  expect_identical(
+    fbpe_with_workers(1L, .fb_sel_worker_plan(3L), mode = NULL)$mechanism,
+    "serial"
+  )
+  if (identical(.Platform$OS.type, "unix")) {
+    forked <- fbpe_with_workers(3L, .fb_sel_worker_plan(3L), mode = "fork")
+    expect_identical(forked$mechanism, "fork")
+  }
+
+  # Without callr the default route refuses before any fold runs, and names
+  # the three ways on; one worker needs no callr.
+  testthat::local_mocked_bindings(
+    .fb_isolation_callr_available = function() FALSE
+  )
+  refusal <- tryCatch(
+    fbpe_with_workers(3L, .fb_sel_worker_plan(3L), mode = NULL),
+    error = function(e) e
+  )
+  expect_s3_class(refusal, "flexybayes_refusal")
+  expect_identical(refusal$reason_code, "isolation_requires_callr")
+  expect_match(conditionMessage(refusal), "flexyBayes.isolation = \"fork\"")
+  expect_match(conditionMessage(refusal), "selection_workers = 1")
+  expect_identical(
+    fbpe_with_workers(1L, .fb_sel_worker_plan(3L), mode = NULL)$mechanism,
+    "serial"
+  )
+})
+
+
+test_that("default workers give the serial selection and scores, from this build and these options", {
+  fbpe_skip_without_callr()
+  testthat::local_mocked_bindings(.fb_sel_worker_cores = function() 3L)
+  withr::local_options(list(flexyBayes.inla_threads = "1:1"))
+  d <- fbpe_data()
+  fb <- fb_from_asreml(y ~ p1, random = ~site, data = d)
+  fb$family <- "gaussian"
+  fb$link <- "identity"
+  base <- structure(
+    list(
+      fb = fb,
+      data = d,
+      extras = list(call_info = list(
+        fixed = y ~ p1, random = ~site, family = "gaussian"
+      ))
+    ),
+    class = c("flexybayes_inla", "flexybayes", "list")
+  )
+  run <- function(workers) {
+    fbpe_with_workers(workers, mode = NULL, fb_select(
+      base,
+      candidates = ~ z1 + z2 + g3,
+      penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.4)),
+      workflow = "penalized_optimizer",
+      resamples = fb_resamples(unit = ~site, v = 3L),
+      decision = fb_decision(method = "full", metric = "rmse"),
+      seed = 1L
+    ))
+  }
+  serial <- run(1L)
+  concurrent <- run(3L)
+  expect_identical(concurrent$certificate, serial$certificate)
+  expect_identical(concurrent$selection, serial$selection)
+  expect_identical(concurrent$scores, serial$scores)
+  expect_identical(concurrent$folds, serial$folds)
+
+  cv <- fbpe_cv(d, 3L)
+  serial_cv <- fbpe_cv(d, 1L)
+  cv_default <- fbpe_with_workers(3L, mode = NULL, .fb_sel_cv(
+    data = d,
+    response = "y",
+    protected = ~p1,
+    candidates = ~ z1 + z2,
+    random = "site",
+    resamples = fb_resamples(unit = ~site, v = 3L),
+    seed = 1L,
+    prediction = "new_cluster",
+    metric = "rmse"
+  ))
+  expect_identical(cv_default$parallel$mechanism, "process")
+  expect_identical(fbpe_without_plan(cv_default), fbpe_without_plan(serial_cv))
+  expect_identical(fbpe_without_plan(cv), fbpe_without_plan(serial_cv))
+
+  # Each worker is another process, running the namespace and library paths
+  # this session loaded, with its flexyBayes options.
+  me <- Sys.getpid()
+  seen <- fbpe_with_workers(3L, mode = NULL, .fb_sel_fold_lapply(
+    1:3,
+    function(j) {
+      list(
+        pid = Sys.getpid(),
+        path = getNamespaceInfo(asNamespace("flexyBayes"), "path"),
+        lib = .libPaths(),
+        inla_threads = getOption("flexyBayes.inla_threads")
+      )
+    },
+    .fb_sel_worker_plan(3L)
+  ))
+  pids <- vapply(seen, function(z) z$pid, integer(1))
+  expect_false(any(pids == me))
+  expect_identical(length(unique(pids)), 3L)
+  for (z in seen) {
+    expect_identical(z$path, getNamespaceInfo(asNamespace("flexyBayes"), "path"))
+    expect_identical(z$lib, .libPaths())
+    expect_identical(z$inla_threads, "1:1")
+  }
+})
+
+
+test_that("a worker killed on the default route refuses with its signal and no stated cause", {
+  fbpe_skip_without_callr()
+  testthat::local_mocked_bindings(.fb_sel_worker_cores = function() 2L)
+  me <- Sys.getpid()
+  plan <- fbpe_with_workers(2L, .fb_sel_worker_plan(3L), mode = NULL)
+  expect_identical(plan$mechanism, "process")
+  died <- tryCatch(
+    .fb_sel_fold_lapply(1:3, function(j) {
+      if (j == 2L && !identical(Sys.getpid(), me)) {
+        tools::pskill(Sys.getpid(), tools::SIGKILL)
+        Sys.sleep(5)
+      }
+      j
+    }, plan),
+    error = function(e) e
+  )
+  expect_s3_class(died, "flexybayes_refusal")
+  expect_identical(died$reason_code, "isolated_process_died")
+  expect_identical(died$fold, 2L)
+  expect_identical(died$signal, 9L)
+  expect_match(conditionMessage(died), "fold 2")
+  expect_match(conditionMessage(died), "signal 9 \\(SIGKILL\\)")
+  expect_match(conditionMessage(died), "both possible senders")
+  expect_no_match(conditionMessage(died), "most often")
+
+  # A fold's own refusal still arrives typed from a separate process.
+  refused <- tryCatch(
+    .fb_sel_fold_lapply(1:3, function(j) {
+      if (j == 2L) {
+        stop(.fb_refusal_condition(
+          reason_code = "selection_fold_not_usable",
+          message = "a fold refusing inside a process"
+        ))
+      }
+      j
+    }, plan),
+    error = function(e) e
+  )
+  expect_s3_class(refused, "flexybayes_refusal")
+  expect_identical(refused$reason_code, "selection_fold_not_usable")
+  expect_match(conditionMessage(refused), "refusing inside a process")
+})
+
+
+test_that("a forked worker that is killed refuses with what was observed", {
+  skip_on_cran()
+  fbpe_skip_without_fork()
+  testthat::local_mocked_bindings(.fb_sel_worker_cores = function() 2L)
+  me <- Sys.getpid()
+  plan <- fbpe_with_workers(2L, .fb_sel_worker_plan(3L), mode = "fork")
+  expect_identical(plan$mechanism, "fork")
+  died <- suppressWarnings(tryCatch(
+    .fb_sel_fold_lapply(1:3, function(j) {
+      if (j == 2L && !identical(Sys.getpid(), me)) {
+        tools::pskill(Sys.getpid(), tools::SIGKILL)
+        Sys.sleep(5)
+      }
+      j
+    }, plan),
+    error = function(e) e
+  ))
+  expect_s3_class(died, "flexybayes_refusal")
+  expect_identical(died$reason_code, "selection_parallel_worker_failed")
+  expect_identical(died$fold, 2L)
+  expect_match(conditionMessage(died), "ended without returning a result")
+  expect_match(conditionMessage(died), "both possible causes")
+  expect_no_match(conditionMessage(died), "selection_workers")
 })

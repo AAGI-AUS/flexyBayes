@@ -539,7 +539,9 @@
 #' callr the request refuses with
 #' `isolation_requires_callr` before anything is fitted. The option applies
 #' to `flexybayes()`, `fb_brms()`, `fb_inla()`, `proceed()` and each fold of
-#' [fb_select()]. The default, `"none"`, fits in this session.
+#' [fb_select()]. The default, `"none"`, fits in this session, and runs
+#' concurrent fold workers of [fb_select()] in separate processes; `"fork"`
+#' forks those workers instead.
 #'
 #' If the operating system kills that process, or compiled code crashes inside
 #' it, the call refuses with `isolated_process_died`, naming the engine, the

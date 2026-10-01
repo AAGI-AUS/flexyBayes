@@ -1220,3 +1220,121 @@ test_that("a fit class with no predictive route says so rather than guessing", {
     fixed = TRUE
   )
 })
+
+
+test_that("the INLA arm samples the scored rows' predictors only", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fb_bcv_quiet_missingness()
+
+  d <- fb_bcv_data(n_cluster = 8L, per = 8L)
+  base <- fb_bcv_cached(
+    "inla_default_small_base",
+    flexybayes(y ~ x1, random = ~site, data = d, backend = "inla",
+               verbose = FALSE)
+  )
+  split <- .fb_sel_folds(fb_resamples(unit = ~site, v = 4L), d)[[1L]]
+  inputs <- fb_bcv_builder(d, split)
+  fit <- .fb_sel_bayes_refit(
+    base,
+    inputs$engine_data,
+    .fb_sel_bayes_fixed("y", "x1", c("z1", "z2")),
+    "inla",
+    na_action = "augment"
+  )
+  seen <- new.env()
+  real <- .fb_inla_posterior_sample
+  testthat::local_mocked_bindings(
+    .fb_inla_posterior_sample = function(object, n, ...) {
+      seen$args <- list(...)
+      draws <- real(object, n, ...)
+      seen$latent_rows <- rownames(draws[[1L]]$latent)
+      draws
+    }
+  )
+  predictive <- .fb_sel_posterior_predict_fold(
+    fit,
+    split$assess_rows,
+    inputs$engine_data,
+    prediction = "new_cluster",
+    n_draws = 300L,
+    seed = 3L
+  )
+  expect_identical(
+    seen$args$selection,
+    list(Predictor = as.integer(split$assess_rows))
+  )
+  expect_identical(
+    seen$latent_rows,
+    paste0("Predictor:", split$assess_rows)
+  )
+  expect_identical(dim(predictive$mu), c(300L, length(split$assess_rows)))
+  # Each column is its own row's predictor: its mean over the draws is the
+  # fit's posterior mean for that row, to Monte-Carlo error.
+  expected <- fit$inla$summary.linear.predictor$mean[split$assess_rows]
+  mc_error <- max(apply(predictive$mu, 2L, stats::sd)) / sqrt(300)
+  expect_lt(max(abs(colMeans(predictive$mu) - expected)), 4 * mc_error)
+})
+
+
+test_that("fold scoring defaults to the draw count set from Monte-Carlo error", {
+  expect_identical(eval(formals(.fb_sel_bayes_cv)$n_draws), 8000L)
+  expect_identical(
+    eval(formals(.fb_sel_posterior_predict_fold)$n_draws),
+    8000L
+  )
+})
+
+
+test_that("the default draw count moves the score by less than its Monte-Carlo error at 4,000", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_long_tier()
+  fb_bcv_quiet_missingness()
+  # 800 rows over 20 sites with a weak candidate effect. Twelve replicate
+  # scorings at 4,000 draws gave a standard deviation of 0.164 nats on the
+  # aggregated score, and six at 8,000 gave 0.070.
+  d <- .fb_sel_with_seed(20261001L, {
+    n <- 800L
+    out <- data.frame(site = factor(rep(sprintf("S%02d", 1:20), each = 40L)))
+    for (v in c("x", "z1", "z2", "z3")) out[[v]] <- stats::rnorm(n)
+    u <- stats::rnorm(20L, sd = 0.8)
+    out$y <- 2 + 0.5 * out$x + 0.15 * out$z1 + u[as.integer(out$site)] +
+      stats::rnorm(n, sd = 0.5)
+    out
+  })
+  base <- flexybayes(y ~ x, random = ~site, data = d, backend = "inla",
+                     verbose = FALSE)
+  spec <- .fb_sel_bayes_base_spec(base)
+  folds <- .fb_sel_folds(fb_resamples(unit = ~site, v = 4L), spec$data,
+                         seed = 1L)
+  key <- .fb_sel_key(spec$data, "site")
+  fold_fits <- lapply(folds, function(split) {
+    inputs <- .fb_sel_bayes_fold_inputs(
+      spec$data, split, response = "y", protected = ~x,
+      candidates = ~ z1 + z2 + z3, random = "site", prediction = "new_cluster"
+    )
+    fit <- .fb_sel_bayes_refit(
+      base, inputs$engine_data, y ~ x + z1 + z2 + z3, "inla",
+      na_action = "augment"
+    )
+    list(fit = fit, inputs = inputs, split = split)
+  })
+  score <- function(n_draws) {
+    clusters <- lapply(fold_fits, function(z) {
+      p <- .fb_sel_posterior_predict_fold(
+        z$fit, z$split$assess_rows, z$inputs$engine_data,
+        prediction = "new_cluster", n_draws = n_draws, seed = 11L
+      )
+      .fb_sel_bayes_score_fold(
+        z$inputs$assessment$y, p$mu, p$sigma, key[z$split$assess_rows],
+        label = z$split$label
+      )$clusters
+    })
+    .fb_sel_aggregate_bayes_scores(
+      data.table::rbindlist(clusters), metric = "elpd"
+    )$score
+  }
+  # Three standard deviations of the difference of two independent scorings.
+  expect_lt(abs(score(8000L) - score(4000L)), 3 * sqrt(0.164^2 + 0.070^2))
+})

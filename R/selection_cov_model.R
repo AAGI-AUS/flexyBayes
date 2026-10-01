@@ -552,7 +552,8 @@
     carry_known_variance = TRUE,
     # The candidate space has already refused, or dropped, every protected
     # column aliased on this fold's training rows.
-    fixed_alias = "drop"
+    fixed_alias = "drop",
+    readout = "varcomp"
   )
   out <- .fb_sel_cov_components(fit, slots)
   out$rows_passed <- nrow(fold_data)

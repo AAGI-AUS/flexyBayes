@@ -634,7 +634,9 @@ separate R process started through callr, which is in Suggests; without
 callr the request refuses with
 \code{isolation_requires_callr} before anything is fitted. The option applies
 to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()}, \code{proceed()} and each fold of
-\code{\link[=fb_select]{fb_select()}}. The default, \code{"none"}, fits in this session.
+\code{\link[=fb_select]{fb_select()}}. The default, \code{"none"}, fits in this session, and runs
+concurrent fold workers of \code{\link[=fb_select]{fb_select()}} in separate processes; \code{"fork"}
+forks those workers instead.
 
 If the operating system kills that process, or compiled code crashes inside
 it, the call refuses with \code{isolated_process_died}, naming the engine, the
