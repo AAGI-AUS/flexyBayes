@@ -156,3 +156,46 @@ test_that("the path at the run's alpha is the run's, and at another alpha is tha
   )
   expect_s3_class(fb_select_path(laplace), "data.frame")
 })
+
+test_that("fb_variance_draws() draws the varcomp table's components on its scale", {
+  skip_if_not_installed("INLA")
+  fbsa_quiet()
+  withr::local_options(flexyBayes.inla_threads = "1:1")
+  d <- fbsa_data()
+  fit <- flexybayes(y ~ 1, random = ~site, data = d, backend = "inla",
+                    verbose = FALSE)
+  draws <- fb_variance_draws(fit, 4000L, seed = 5L)
+  vc <- summary(fit)$varcomp
+  expect_identical(nrow(draws), 4000L)
+  expect_setequal(names(draws), vc$component)
+  # Each mean within four Monte Carlo standard errors of the table's
+  # posterior mean, plus 2% for INLA's approximation of the joint draw.
+  for (k in vc$component) {
+    row <- vc[vc$component == k, ]
+    expect_lt(abs(mean(draws[[k]]) - row$estimate),
+              4 * row$std.error / sqrt(4000) + 0.02 * row$estimate)
+  }
+  expect_identical(fb_variance_draws(fit, 50L, seed = 5L),
+                   fb_variance_draws(fit, 50L, seed = 5L))
+  expect_error(fb_variance_draws(list(), 10L), "a flexyBayes fit on INLA")
+})
+
+test_that("model.matrix(fit, newdata) codes new rows on the fit's levels", {
+  skip_if_not_installed("INLA")
+  fbsa_quiet()
+  d <- fbsa_data()
+  d$grp <- factor(rep(c("a", "b", "c"), length.out = nrow(d)))
+  fit <- flexybayes(y ~ grp + x1, random = ~site, data = d, backend = "inla",
+                    verbose = FALSE)
+  new <- data.frame(grp = factor(c("c", "a"), levels = c("c", "a")),
+                    x1 = c(0.5, -1), site = d$site[1:2])
+  X <- model.matrix(fit, newdata = new)
+  expect_identical(colnames(X), names(coef(fit)))
+  expect_identical(nrow(X), 2L)
+  expect_identical(unname(X[, "grpc"]), c(1, 0))
+  expect_equal(unname(drop(X %*% coef(fit))),
+               unname(as.numeric(predict(fit, newdata = new))),
+               tolerance = 1e-10)
+  # Without newdata the design is the fitted data's.
+  expect_identical(nrow(model.matrix(fit)), nrow(d))
+})
