@@ -223,3 +223,15 @@ test_that("the 0.12.0 bound wording in NEWS carries its 0.12.1 correction", {
     perl = TRUE
   ))
 })
+
+test_that("vignette 03 counts the refusal codes when it is built", {
+  # The precompile bakes chunk output into the shipped .Rmd, so a count
+  # baked there goes stale at the next registered code.
+  root <- .cs_skip_if_no_source()
+  lines <- .cs_read(root, "vignettes/flexyBayes-03-syntax.Rmd")
+  at <- grep("nrow(fb_refusals())", lines, fixed = TRUE)
+  expect_length(at, 1L)
+  fences <- grep("^```", lines)
+  opening <- lines[max(fences[fences < at])]
+  expect_match(opening, "^```\\{r", label = "the chunk counting refusals")
+})

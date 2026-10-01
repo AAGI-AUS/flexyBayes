@@ -89,15 +89,11 @@ spelling that is.
 
 Every message flexyBayes can stop with is listed by `fb_refusals()`:
 
+```{r refusals-setup, include = FALSE}
+library(flexyBayes)
+```
 
-``` r
+```{r refusals, collapse = TRUE, comment = "#>"}
 nrow(fb_refusals())
-#> [1] 230
 head(fb_refusals()$reason_code)
-#> [1] "aggregated_evidence_unavailable"        
-#> [2] "aggregation_residual_prior_not_composed"
-#> [3] "aggregation_response_incomplete"        
-#> [4] "aggregation_route_unavailable"          
-#> [5] "approximate_route_not_yet_registered"   
-#> [6] "approximation_absent"
 ```
