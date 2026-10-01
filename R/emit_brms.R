@@ -154,6 +154,14 @@ emit_brms <- function(
   }
   # A known variance per row reaches brms as the standard error its
   # `se(, sigma = TRUE)` addition term reads (R/known_variance.R).
+  if (!is.null(.fb_known_variance_term(fb)$matrix)) {
+    .fb_known_variance_refuse(paste0(
+      "A known covariance matrix in `known_variance` is fitted on INLA only ",
+      "(backend = \"inla\"). brms has no term for sigma^2 I + K: fcor() ",
+      "fits sigma^2 K and does not combine with se(). For a diagonal K, ",
+      "pass its diagonal as a vector."
+    ))
+  }
   known_variance <- .fb_known_variance_values(fb, data)
   if (!is.null(known_variance)) {
     data[[.FB_BRMS_KNOWN_SE_COL]] <- sqrt(known_variance)

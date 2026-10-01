@@ -536,7 +536,8 @@ Selects how \code{fixed} is interpreted. \code{"auto"} detects the grammar
 from the call shape (a bar-grouped formula is read as brms,
 otherwise ASReml); the other values force a grammar.}
 
-\item{known_variance}{Optional numeric vector of length N: a known
+\item{known_variance}{Optional numeric vector of length N, or an N x N
+covariance matrix (below). A vector is a known
 variance for each response, added to the estimated residual variance,
 \code{Var(y_i) = sigma^2 + v_i}. This is the second stage of a two-stage
 analysis, where each response is a first-stage estimate (a variety
@@ -550,7 +551,15 @@ and fitted values on both engines leave the known part out. A vector
 of zeros fits the model without it. Any other family refuses with
 \code{known_variance_not_supported}, and a vector that is not one finite,
 non-negative value per row with \code{known_variance_invalid}.
-\code{\link[=fb_select]{fb_select()}} carries it into the fold covariance under
+A symmetric positive-definite N x N matrix \code{K} is a known covariance,
+\verb{Var(y) = sigma^2 I + K}, as when the first stage returns the full
+covariance of its estimates. It is fitted on INLA as a latent effect
+with precision \code{K^-1}; brms has no term for it and refuses with
+\code{known_variance_not_supported}. A row and column of zeros marks a row
+without a known part. A matrix that is not square, symmetric and
+positive definite over the rows of \code{data} refuses with
+\code{known_variance_invalid}.
+\code{\link[=fb_select]{fb_select()}} carries either form into the fold covariance under
 \code{covariance = "base_model"}.}
 
 \item{fixed_alias}{\code{"refuse"} (the default) or \code{"drop"}: what to do with

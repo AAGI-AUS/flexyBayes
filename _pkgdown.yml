@@ -47,6 +47,9 @@ reference:
       - fb_brms
       - fb_plan
       - fb_select
+      - fb_select_fold_data
+      - fb_select_path
+      - fb_select_refit
       - validate_approximation
       - proceed
   - title: Ingest adapters
@@ -127,6 +130,7 @@ reference:
       - confint.flexybayes_glm
       - vcov.flexybayes
       - vcov.flexybayes_inla
+      - fb_variance_draws
       - predict.flexybayes_brms
       - predict.flexybayes_inla
       - print.fb_predict_classify

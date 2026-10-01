@@ -2800,6 +2800,12 @@
 #'   does with a protected column its training rows do not identify. See
 #'   "Aliased protected columns". `"drop"` needs
 #'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`.
+#' @param keep_fold_data `FALSE` (the default), or `TRUE` to keep each fold's
+#'   whitened data on the result, for [fb_select_fold_data()],
+#'   [fb_select_path()] and [fb_select_refit()]. It needs
+#'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`. The
+#'   kept data holds the fold's design and Cholesky factor, so its size grows
+#'   with the folds times the square of the training rows.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
@@ -2862,8 +2868,10 @@ fb_select <- function(base,
                       refit = NULL,
                       ablation = FALSE,
                       protected_alias = c("refuse", "drop"),
+                      keep_fold_data = FALSE,
                       ...) {
   workflow <- match.arg(workflow)
+  .fb_sel_check_keep_fold_data(keep_fold_data, workflow)
   fallback <- match.arg(fallback)
   protected_alias <- match.arg(protected_alias)
   prediction <- match.arg(prediction)
@@ -3153,7 +3161,7 @@ fb_select <- function(base,
       engine = engine,
       protected_alias = protected_alias
     )
-    return(.fb_select_assemble(
+    out <- .fb_select_assemble(
       base = base,
       axes = list(
         workflow = bench$cv$workflow,
@@ -3170,7 +3178,13 @@ fb_select <- function(base,
       structure_gate = structure_gate,
       decision_resolution = forced_full,
       dots = dots
-    ))
+    )
+    if (keep_fold_data) {
+      out <- .fb_sel_keep_fold_data(
+        out, bench, base, resamples, blocks = NULL, decision = decision
+      )
+    }
+    return(out)
   }
 
   if (identical(workflow, "penalized_optimizer")) {
@@ -3196,6 +3210,7 @@ fb_select <- function(base,
       engine = engine,
       budget = budget,
       protected_alias = protected_alias,
+      keep_fold_data = keep_fold_data,
       decision_resolution = list(
         requested = decision_resolution$requested,
         resolved_from = if (
@@ -3636,7 +3651,8 @@ fb_select <- function(base,
                                  ablation = FALSE,
                                  engine = NULL,
                                  budget = NULL,
-                                 protected_alias = "refuse") {
+                                 protected_alias = "refuse",
+                                 keep_fold_data = FALSE) {
   resolved <- .fb_select_resolve_penalty(
     base,
     candidates,
@@ -3785,7 +3801,7 @@ fb_select <- function(base,
     )
   }
 
-  .fb_select_assemble(
+  out <- .fb_select_assemble(
     base = base,
     axes = axes,
     cv = bench$cv,
@@ -3825,6 +3841,13 @@ fb_select <- function(base,
     ablation = ablation_record,
     dots = list()
   )
+  if (keep_fold_data) {
+    out <- .fb_sel_keep_fold_data(
+      out, bench, base, resamples, blocks = resolved$blocks,
+      decision = decision
+    )
+  }
+  out
 }
 
 

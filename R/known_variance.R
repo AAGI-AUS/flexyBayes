@@ -40,24 +40,52 @@
 # A vector of zeros is the model without a known variance under another
 # spelling, so nothing is attached and the engines receive the call they
 # would have received without it.
+#
+# A known covariance matrix. `known_variance = K`, K symmetric and positive
+# definite with one row per data row, fits
+#
+#   y = X beta + Z u + e + k,   e ~ N(0, sigma^2 I),   k ~ N(0, K),
+#
+# the second stage of a two-stage analysis whose first stage returned the
+# covariance of its estimates, not only their variances. A row with a zero
+# diagonal entry, and so a zero row and column, carries no known part. INLA
+# fits k as a generic0 effect over the rows with a positive variance, with
+# Cmatrix the inverse of that block scaled to the standardised response and
+# its precision fixed at 1. sigma^2 stays estimated, as it is for a vector:
+# with one row per trial it is the trial term. A diagonal K is the vector
+# model under a second lowering. brms refuses a matrix: its fcor() term fits
+# sigma^2 K and does not combine with se() (brms 2.23.0), so sigma^2 I + K
+# has no spelling there.
+#
+# The matrix is stored once on the IR, and each data row carries its row
+# index into it in a second column, so the matrix follows the same row
+# operations the vector does. A cell the design grid adds has no index.
 
 .FB_KNOWN_VARIANCE_COL <- "flexybayes_known_variance"
 .FB_BRMS_KNOWN_SE_COL <- "flexybayes_known_se"
 .FB_INLA_KNOWN_INDEX <- "flexybayes_known_index"
 .FB_INLA_KNOWN_SCALE <- "flexybayes_known_scale"
+.FB_KNOWN_ROW_COL <- "flexybayes_known_row"
+.FB_INLA_KNOWN_PRECISION <- "flexybayes_known_precision"
 
 .fb_known_variance_columns <- function() {
   c(
     .FB_KNOWN_VARIANCE_COL,
     .FB_BRMS_KNOWN_SE_COL,
     .FB_INLA_KNOWN_INDEX,
-    .FB_INLA_KNOWN_SCALE
+    .FB_INLA_KNOWN_SCALE,
+    .FB_KNOWN_ROW_COL,
+    .FB_INLA_KNOWN_PRECISION
   )
 }
 
 # .fb_known_variance_check() --- refuse a vector that is not one finite,
-# non-negative variance per row of `data`.
+# non-negative variance per row of `data`, and a matrix that is not a
+# covariance over those rows.
 .fb_known_variance_check <- function(known_variance, data) {
+  if (is.matrix(known_variance) && ncol(known_variance) > 1L) {
+    return(.fb_known_covariance_check(known_variance, data))
+  }
   n <- nrow(data)
   values <- function(k) paste0(k, if (k == 1L) " value is" else " values are")
   problem <- if (!is.numeric(known_variance) || is.matrix(known_variance)) {
@@ -75,14 +103,72 @@
   if (is.null(problem)) {
     return(invisible(NULL))
   }
+  .fb_known_variance_invalid(problem)
+}
+
+# .fb_known_variance_invalid(): the refusal of a `known_variance` that is
+# neither form, with what was wrong with it.
+.fb_known_variance_invalid <- function(problem) {
   stop(.fb_refusal_condition(
     reason_code = "known_variance_invalid",
     message = paste0(
       "`known_variance` must be a numeric vector with one finite, ",
-      "non-negative variance for each row of `data`, and ", problem, ". ",
+      "non-negative variance for each row of `data`, or a symmetric ",
+      "positive-definite covariance matrix with one row and column for ",
+      "each row of `data`, and ", problem, ". ",
       "A row whose first-stage estimate carries no error takes 0."
     )
   ))
+}
+
+# Relative to the largest entry; a covariance read from a first-stage fit is
+# symmetric to rounding.
+.FB_KNOWN_SYMMETRY_TOL <- 1e-8
+
+# .fb_known_covariance_check(): refuse a matrix that is not a covariance
+# over the rows of `data`. A row with a zero variance must be zero
+# throughout, and the other rows must form a positive-definite block.
+.fb_known_covariance_check <- function(known_variance, data) {
+  n <- nrow(data)
+  k <- known_variance
+  problem <- if (!is.numeric(k)) {
+    paste0("a ", typeof(k), " matrix was given")
+  } else if (nrow(k) != ncol(k)) {
+    paste0("it is ", nrow(k), " x ", ncol(k))
+  } else if (nrow(k) != n) {
+    paste0("it has ", nrow(k), " rows and `data` has ", n)
+  } else if (any(!is.finite(k))) {
+    paste0(sum(!is.finite(k)), " entries are missing or not finite")
+  } else if (max(abs(k - t(k))) > .FB_KNOWN_SYMMETRY_TOL * max(abs(k))) {
+    paste0(
+      "it is not symmetric: an entry and its transpose differ by up to ",
+      signif(max(abs(k - t(k))), 3L)
+    )
+  } else if (any(diag(k) < 0)) {
+    paste0(sum(diag(k) < 0), " diagonal entries are negative")
+  }
+  if (is.null(problem)) {
+    zero <- which(diag(k) == 0)
+    positive <- which(diag(k) > 0)
+    linked <- zero[rowSums(k[zero, , drop = FALSE] != 0) > 0L]
+    if (length(linked) > 0L) {
+      problem <- paste0(
+        "row ", linked[[1L]], " has a zero variance and a nonzero covariance"
+      )
+    } else if (
+      length(positive) > 0L &&
+        is.null(tryCatch(
+          chol(k[positive, positive, drop = FALSE]),
+          error = function(e) NULL
+        ))
+    ) {
+      problem <- "it is not positive definite"
+    }
+  }
+  if (is.null(problem)) {
+    return(invisible(NULL))
+  }
+  .fb_known_variance_invalid(problem)
 }
 
 # .fb_known_variance_refuse() --- the refusal for a request that cannot carry
@@ -97,6 +183,12 @@
 # .fb_known_variance_attach() --- the vector as a column of the analysis data,
 # and its record on the IR. A vector of zeros attaches nothing.
 .fb_known_variance_attach <- function(fb, data, known_variance, aggregate) {
+  covariance <- NULL
+  if (is.matrix(known_variance) && ncol(known_variance) > 1L) {
+    covariance <- (known_variance + t(known_variance)) / 2
+    dimnames(covariance) <- NULL
+    known_variance <- diag(covariance)
+  }
   if (!any(known_variance > 0)) {
     return(list(fb = fb, data = data))
   }
@@ -133,14 +225,17 @@
     ))
   }
   data[[.FB_KNOWN_VARIANCE_COL]] <- as.numeric(known_variance)
-  fb$addition_terms <- c(
-    fb$addition_terms %||% list(),
-    list(list(
-      type = "known_variance",
-      column = .FB_KNOWN_VARIANCE_COL,
-      values = as.numeric(known_variance)
-    ))
+  term <- list(
+    type = "known_variance",
+    column = .FB_KNOWN_VARIANCE_COL,
+    values = as.numeric(known_variance)
   )
+  if (!is.null(covariance)) {
+    data[[.FB_KNOWN_ROW_COL]] <- seq_len(nrow(data))
+    term$matrix <- covariance
+    term$row_column <- .FB_KNOWN_ROW_COL
+  }
+  fb$addition_terms <- c(fb$addition_terms %||% list(), list(term))
   list(fb = fb, data = data)
 }
 
@@ -164,6 +259,9 @@
   }
   rows <- nrow(data) - seq_len(n_added) + 1L
   data[[.FB_KNOWN_VARIANCE_COL]][rows] <- 0
+  if (.FB_KNOWN_ROW_COL %in% names(data)) {
+    data[[.FB_KNOWN_ROW_COL]][rows] <- NA_integer_
+  }
   data
 }
 
@@ -176,8 +274,52 @@
   as.numeric(data[[.FB_KNOWN_VARIANCE_COL]])
 }
 
-# .fb_inla_known_variance_formula_term() --- the INLA row effect.
-.fb_inla_known_variance_formula_term <- function() {
+# .fb_known_covariance_values(): the known covariance over the rows of
+# `data`, or NULL when the model carries a vector or nothing. A row without
+# an index, a cell the design grid added, has a zero row and column.
+.fb_known_covariance_values <- function(fb, data) {
+  term <- .fb_known_variance_term(fb)
+  if (is.null(term$matrix)) {
+    return(NULL)
+  }
+  index <- data[[.FB_KNOWN_ROW_COL]]
+  if (is.null(index) || length(index) != nrow(data)) {
+    .fb_known_variance_refuse(paste0(
+      "The model carries a known covariance matrix, and its data has no `",
+      .FB_KNOWN_ROW_COL, "` column holding each row's index into it."
+    ))
+  }
+  out <- matrix(0, nrow = nrow(data), ncol = nrow(data))
+  keep <- which(!is.na(index))
+  out[keep, keep] <- term$matrix[index[keep], index[keep]]
+  out
+}
+
+# .fb_known_variance_reissue(): the `known_variance` argument that refits
+# the rows of `data`: the covariance over them, or the vector.
+.fb_known_variance_reissue <- function(fb, data) {
+  .fb_known_covariance_values(fb, data) %||% data[[.FB_KNOWN_VARIANCE_COL]]
+}
+
+# .fb_inla_known_index(): each row's generic0 index: its position among
+# the rows with a positive known variance, NA elsewhere.
+.fb_inla_known_index <- function(covariance) {
+  positive <- diag(covariance) > 0
+  index <- rep(NA_integer_, nrow(covariance))
+  index[positive] <- seq_len(sum(positive))
+  index
+}
+
+# .fb_inla_known_variance_formula_term(): the INLA row effect: a weighted
+# iid effect for a vector, generic0 over the known precision for a matrix.
+.fb_inla_known_variance_formula_term <- function(fb = NULL) {
+  if (!is.null(.fb_known_variance_term(fb)$matrix)) {
+    return(paste0(
+      "f(", .FB_INLA_KNOWN_INDEX, ", model = \"generic0\", Cmatrix = ",
+      .FB_INLA_KNOWN_PRECISION, ", ",
+      "hyper = list(prec = list(initial = 0, fixed = TRUE)))"
+    ))
+  }
   paste0(
     "f(", .FB_INLA_KNOWN_INDEX, ", ", .FB_INLA_KNOWN_SCALE,
     ", model = \"iid\", ",
@@ -195,6 +337,13 @@
   if (is.null(v) || is.null(effect)) {
     return(NULL)
   }
+  covariance <- .fb_known_covariance_values(fb, object$data)
+  if (!is.null(covariance)) {
+    # A generic0 effect carries no weight: its mapped mean is the row's part.
+    out <- effect$mean[match(.fb_inla_known_index(covariance), effect$ID)]
+    out[is.na(out)] <- 0
+    return(out)
+  }
   scale <- object$extras$response_standardisation$scale %||% 1
   # summary.random has been mapped back to the response scale, a factor of
   # `scale`, so each row adds w_i times its mean, w_i = sqrt(v_i) / scale.
@@ -206,13 +355,17 @@
 #
 # The fold covariance of the benchmark and optimiser workflows under
 # `covariance = "base_model"` carries each row's known variance on V's
-# diagonal, sigma^2 + v_i, with sigma^2 read off the fold refit, which is
+# diagonal, sigma^2 + v_i, and a known covariance matrix K in full,
+# sigma^2 I + K, with sigma^2 read off the fold refit, which is
 # itself fitted with the known variances of the rows it is handed
-# (R/selection_cov_model.R). Every other route leaves it out, and refuses: the
-# REML plug-in estimates one residual variance common to every row, and the
-# Bayesian workflow, the refit of each fold's chosen support and the
-# projection's reference fit score or project posterior draws whose
-# predictive variance omits it.
+# (R/selection_cov_model.R). The INLA refit of each fold's chosen support
+# (`refit = list(method = "bayes")`) is fitted with it, and each held-out
+# row's predictive variance gains v_i (R/selection_value.R); on brms, or
+# where the held-out density is read off the engine's draws, that refit
+# refuses. Every other route leaves it out, and refuses: the REML plug-in
+# estimates one residual variance common to every row, and the Bayesian
+# workflow and the projection's reference fit score or project posterior
+# draws whose predictive variance omits it.
 
 # .fb_sel_known_variance() --- each row's known variance, aligned to the
 # base's data, or NULL when the base carries none.
@@ -231,6 +384,12 @@
     ))
   }
   as.numeric(v)
+}
+
+# .fb_sel_known_covariance(): the known covariance over the base's rows,
+# or NULL when the base carries a vector or nothing.
+.fb_sel_known_covariance <- function(base) {
+  .fb_known_covariance_values(base$fb %||% base$extras$fb_terms, base$data)
 }
 
 # .fb_sel_known_variance_refuse_route() --- a route that would leave the
@@ -270,10 +429,11 @@
   if (identical(covariance, "reml_plugin")) {
     .fb_sel_known_variance_refuse_reml()
   }
-  if (!is.null(value_request)) {
+  if (!is.null(value_request) &&
+        !identical(.fb_sel_bayes_provider(base), "inla")) {
     .fb_sel_known_variance_refuse_route(paste0(
-      "the Bayesian refit of each fold's chosen support (`refit`), whose ",
-      "held-out log predictive density reads posterior draws,"
+      "the Bayesian refit of each fold's chosen support (`refit`) on brms, ",
+      "whose held-out log predictive density reads posterior draws,"
     ))
   }
   invisible(NULL)

@@ -376,6 +376,11 @@
   names_out <- character(0)
   for (e in calls) {
     args <- as.list(e)[-1L]
+    # A known variance's row effect is part of the residual, which
+    # .fb_sel_value_fold_inla() adds to the predictive variance itself.
+    if (identical(args[[1L]], as.name(.FB_INLA_KNOWN_INDEX))) {
+      next
+    }
     arg_names <- names(args) %||% rep("", length(args))
     positional <- args[!nzchar(arg_names)]
     named <- arg_names[nzchar(arg_names)]
@@ -468,6 +473,14 @@
   } else {
     "a random term's precision is not named after its index"
   }
+  # Each row's known variance, the diagonal of a known covariance, or NULL.
+  known <- engine_data[[.FB_KNOWN_VARIANCE_COL]]
+  if (!is.null(known) && !analytic) {
+    .fb_sel_known_variance_refuse_route(paste0(
+      "the Bayesian refit of this fold's support, whose held-out density is ",
+      "read off the engine's draws because ", reason, ","
+    ))
+  }
 
   sample_seed <- as.integer(abs(seed %||% 1L) %% .Machine$integer.max)
   if (sample_seed == 0L) {
@@ -509,7 +522,14 @@
       rows <- assess[columns]
       mean <- t(X[rows, , drop = FALSE] %*% beta) +
         matrix(offset[columns], nrow(hyper), length(columns), byrow = TRUE)
-      list(mean = mean, variance = variance)
+      if (is.null(known)) {
+        return(list(mean = mean, variance = variance))
+      }
+      list(
+        mean = mean,
+        variance = variance +
+          matrix(known[rows], nrow(hyper), length(columns), byrow = TRUE)
+      )
     })
   } else {
     predictor <- grep("^Predictor:", latent_names)
@@ -581,6 +601,12 @@
 #' @keywords internal
 .fb_sel_value_fold_brms <- function(fit, inputs, prediction, n_draws, seed,
                                     block, group) {
+  if (!is.null(inputs$engine_data[[.FB_KNOWN_VARIANCE_COL]])) {
+    .fb_sel_known_variance_refuse_route(paste0(
+      "the Bayesian refit of each fold's support on brms, whose held-out ",
+      "density reads posterior draws,"
+    ))
+  }
   newdata <- inputs$assess_data
   total <- brms::ndraws(fit$brms)
   ids <- if (total <= n_draws) {
@@ -862,7 +888,10 @@
       provider,
       engine = engine,
       seed = fit_seed,
-      na_action = if (identical(provider, "inla")) "augment" else NULL
+      na_action = if (identical(provider, "inla")) "augment" else NULL,
+      # A base's known variance is added to each held-out row's predictive
+      # variance by .fb_sel_value_fold_inla(); other routes refuse it first.
+      carry_known_variance = TRUE
     )
 
     # The declared block on this fold: its protected columns and the support

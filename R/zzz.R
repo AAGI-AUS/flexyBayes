@@ -187,6 +187,9 @@
   # estimate.
   .populate_refusal_registry_fixed_alias()
 
+  # 2026-10-01: the fold data of a selection run that kept none.
+  .populate_refusal_registry_selection_api()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
