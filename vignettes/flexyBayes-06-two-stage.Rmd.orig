@@ -30,7 +30,7 @@ rnd <- function(d, k = 3) {
 }
 ```
 
-This is a pilot vignette, to be revised and extended. It analyses a
+This vignette analyses a
 simulated series of trials in two stages and selects trial-level covariates
 in the second stage.
 

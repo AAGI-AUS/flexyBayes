@@ -14,7 +14,7 @@ vignette: >
 
 
 
-This is a pilot vignette, to be revised and extended. `fb_select()` is a
+`fb_select()` is a
 recent addition, and its arguments and output may change.
 
 `fb_select()` starts from a fitted mixed model and a list of candidate

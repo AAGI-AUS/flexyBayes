@@ -14,7 +14,7 @@ vignette: >
 
 
 
-This is a pilot vignette, to be revised and extended. It lists the ASReml
+This vignette lists the ASReml
 spellings flexyBayes reads, what each is for, and which engine fits it. A
 spelling the chosen engine cannot fit stops with a message that names it and
 says what to write instead. Under the default `backend = "auto"`, flexyBayes
