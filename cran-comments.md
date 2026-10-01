@@ -28,9 +28,8 @@ The check artefacts for this release are
 `00check_v0.14.5_engines-present_run2.log`, two runs with INLA, brms and
 cmdstanr installed, and `00check_v0.14.5_engines-absent.log`, one run with
 all three masked, since the package behaves differently, and is tested
-differently, in each case. Both are produced at the release bake (after the work
-recorded in `WS/review/phase_reports_0100/reports/`) and kept with the
-release records alongside the tarball; that is where to read the exact
+differently, in each case. All three are produced at the release bake and
+kept with the release records alongside the tarball; that is where to read the exact
 error/warning/note count for 0.14.5, rather than a number quoted here with
 no artefact behind it.
 

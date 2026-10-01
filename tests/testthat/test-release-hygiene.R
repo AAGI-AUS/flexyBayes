@@ -150,3 +150,26 @@ test_that("every citation surface names the DESCRIPTION authors", {
                      label = paste("codemeta.json", key))
   }
 })
+
+# Does any .Rbuildignore pattern exclude this top-level path from the build?
+.rh_build_ignored <- function(root, path) {
+  patterns <- readLines(file.path(root, ".Rbuildignore"), warn = FALSE)
+  patterns <- patterns[nzchar(patterns) & !startsWith(patterns, "#")]
+  any(vapply(
+    patterns,
+    function(p) grepl(p, path, perl = TRUE, ignore.case = TRUE),
+    logical(1L)
+  ))
+}
+
+test_that("cran-comments.md sits at the root, outside the build", {
+  root <- .rh_root()
+  # devtools::submit_cran() reads it from the package root.
+  lines <- .rh_read(root, "cran-comments.md")
+  expect_true(.rh_build_ignored(root, "cran-comments.md"))
+  expect_false(file.exists(file.path(root, "inst", "cran-comments.md")))
+
+  # A CRAN reviewer cannot open the maintainer's working folders.
+  private <- grep("WS/|review/|/Users/", lines, value = TRUE)
+  expect_identical(private, character(0))
+})
