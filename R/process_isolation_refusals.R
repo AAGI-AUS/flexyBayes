@@ -39,9 +39,9 @@
     reason_code = "isolated_process_died",
     description = paste0(
       "A separate R process running an engine fit or a fold of fb_select() ",
-      "ended before it returned: a signal ended it (SIGKILL is most often ",
-      "the operating system reclaiming memory; SIGSEGV or SIGABRT a crash ",
-      "in compiled code), or it exited with a non-zero status. The refusal ",
+      "ended before it returned: a signal ended it (SIGKILL is sent from ",
+      "outside the process; SIGSEGV or SIGABRT comes from a crash in ",
+      "compiled code), or it exited with a non-zero status. The refusal ",
       "names the engine, the entry point, the fold where there is one, the ",
       "exit status and the signal. The session that asked for the fit is ",
       "unaffected, and nothing from the process is returned."

@@ -235,8 +235,10 @@ fold covariance remains available through \code{benchmark = TRUE} and is
 labelled \code{unpenalized_benchmark} wherever it appears.
 
 Fold refits run one at a time by default.
-\code{options(flexyBayes.selection_workers = n)} runs \code{n} of them at once on a
-platform that forks, and divides the OpenMP threads between the workers so
+\code{options(flexyBayes.selection_workers = n)} runs \code{n} of them at once, each
+in a separate R process started through callr (in Suggests; without it the
+request refuses with \code{isolation_requires_callr}), and divides the OpenMP
+threads between the workers so
 that workers times threads does not exceed the machine; an INLA fold runs
 at option \code{flexyBayes.inla_threads}, one thread by default (see
 \code{\link[=flexybayes]{flexybayes()}}). Nothing the run
@@ -255,14 +257,19 @@ INLA, \code{penalty = NULL} and four folds, the whole call held at its peak
 2,000 rows and 20 candidates; 2.4 GB with one worker and 3.8, 5.3 and
 5.5 GB at 5,000 rows and 40 candidates; and, with three folds, 4.3 GB with
 one worker and 7.9 and 11.5 GB with two and three at 10,890 rows and 82
-candidates. A worker the operating system kills under that pressure
-refuses by name, and the aggregation keeps every fold or none.
+candidates (forked workers). A fold whose process ends before it returns
+refuses with \code{isolated_process_died}, naming the fold and the exit status
+or signal, this session carries on, and the aggregation keeps every fold
+or none.
 
-\code{options(flexyBayes.isolation = "process")} runs each fold in a separate R
-process (see \code{\link[=flexybayes]{flexybayes()}}), one at a time, or \code{n} at once with the worker
-option. A fold whose process ends before it returns refuses with
-\code{isolated_process_died}, naming the fold and the signal, and this session
-carries on. Each fold then pays for starting R and reading its inputs:
+\code{options(flexyBayes.isolation = "fork")} forks the workers from this
+session instead, on a platform that forks. A forked worker reports no exit
+status, and one that ends without returning refuses with
+\code{selection_parallel_worker_failed}.
+
+\code{options(flexyBayes.isolation = "process")} also runs the folds in a
+separate R process when they run one at a time (see \code{\link[=flexybayes]{flexybayes()}}).
+Each fold in a separate process pays for starting R and reading its inputs:
 about 2 seconds a fold on the closed-form route, and 2.3 to 2.4 seconds a
 fit for \code{flexybayes()} at 96 and 5,000 rows. At 2,000 rows and 20
 candidates the call held 2.1 GB with one fold at a time and 3.8 GB with

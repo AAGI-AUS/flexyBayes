@@ -272,11 +272,14 @@ fbiso_count_starts <- function(expr) {
 
 # --- the option ------------------------------------------------------------ #
 
-test_that("isolation is off unless asked for, and the option takes two values", {
+test_that("isolation is off unless asked for, and the option takes three values", {
   expect_null(getOption("flexyBayes.isolation"))
   expect_identical(.fb_isolation_mode(), "none")
   fbiso_with("none", expect_identical(.fb_isolation_mode(), "none"))
   fbiso_with("process", expect_identical(.fb_isolation_mode(), "process"))
+  fbiso_with("fork", expect_identical(.fb_isolation_mode(), "fork"))
+  # "fork" changes fold workers only: a single fit stays in this session.
+  fbiso_with("fork", expect_false(.fb_isolation_active("flexybayes()")))
   fbiso_with("thread", expect_error(.fb_isolation_mode(), "\"process\""))
   fbiso_with(TRUE, expect_error(.fb_isolation_mode(), "\"process\""))
   fbiso_with(c("none", "process"), expect_error(.fb_isolation_mode()))
