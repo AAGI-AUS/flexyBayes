@@ -522,6 +522,26 @@
   } else {
     .fb_select_compile_optimizer(blocks, coef_names_all)
   }
+  # The block's part holds every candidate term, so a candidate outside the
+  # block would be shrunk without being named.
+  if (!is.null(compiled$nl_block)) {
+    unnamed <- setdiff(
+      .fb_pen_brms_coef_names(candidate_names),
+      compiled$nl_block$coef_names
+    )
+    if (length(unnamed) > 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "penalty_block_targeting_unsupported",
+        message = paste0(
+          "fb_penalty(): scope = \"block\" fits every candidate as one ",
+          "non-linear part under one prior, and these candidates are ",
+          "outside the block: ", paste(unnamed, collapse = ", "),
+          ". Name them in the block, or leave them out of `candidates`."
+        ),
+        coefficients = unnamed
+      ))
+    }
+  }
 
   # The constants the apply step reads: one row per candidate column in a
   # block, and whether the apply step moves it.
@@ -1313,7 +1333,8 @@
       column_map = transform$column_map,
       engine = engine,
       seed = fit_seed,
-      data = fold_data
+      data = fold_data,
+      nl_block = transform$compiled$nl_block
     )
     if (!is.null(control)) {
       args$control <- control
@@ -3098,7 +3119,8 @@ fb_select <- function(base,
   # A base with a known variance per row runs only where the fold covariance
   # carries it (R/known_variance.R).
   .fb_select_require_known_variance_route(
-    base, workflow, covariance, value_request
+    base, workflow, covariance, value_request,
+    block_scope = .fb_pen_block_scope(penalty) && !isTRUE(benchmark)
   )
 
   # Every fold covariance and fold refit carries the base's observation
@@ -3319,6 +3341,35 @@ fb_select <- function(base,
   )
   .fb_sel_require_stability_family(resolved$blocks, decision)
 
+  # A block-scoped prior is fitted as a non-linear model, which the
+  # projection provider does not project.
+  if (
+    !is.null(resolved$compiled$nl_block) &&
+      identical(decision$method, "projection")
+  ) {
+    if (!identical(decision$requested_method, "auto")) {
+      stop(.fb_refusal_condition(
+        reason_code = "projection_structure_unsupported",
+        message = paste0(
+          "fb_select(): projection does not support the reference model of ",
+          "a scope = \"block\" prior. It is a brms non-linear model, with ",
+          "the candidate block as its own part, and projpred projects ",
+          "linear models only. Ask for decision = fb_decision(method = ",
+          "\"full\") or \"posterior_threshold\", which read the reference ",
+          "posterior directly."
+        ),
+        feature = "nonlinear_reference_model"
+      ))
+    }
+    decision$method <- "full"
+    decision_resolution$resolved_from <- "auto"
+    decision_resolution$reason <- paste0(
+      "the scope = \"block\" prior is fitted as a non-linear model, which ",
+      "the projection provider does not project, so the answer is the ",
+      "reference posterior itself"
+    )
+  }
+
   # The reference model is fitted by brms whatever fitted the base. That is
   # not a substitution: the parsed model is engine-independent, and the
   # reference is a re-emission of it with an extended fixed part and the
@@ -3457,7 +3508,8 @@ fb_select <- function(base,
     column_map = resolved$column_map,
     engine = engine,
     seed = seed,
-    data = resolved$reference_data
+    data = resolved$reference_data,
+    nl_block = resolved$compiled$nl_block
   )
   # The sampler's step-size target is a lever, not a default to be argued
   # with: the contract's 0.95 is the floor, and the convergence gate refuses
@@ -4620,7 +4672,7 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
 
   brmsfit <- x$reference$brms
   if (!is.null(brmsfit) && !is.null(x$blocks)) {
-    draws <- as.matrix(brmsfit)
+    draws <- .fb_brms_draws_matrix(brmsfit)
     keep <- colnames(draws) %in% c(paste0("b_", map$column), "b_Intercept")
     scaled <- .fb_pen_back_transform(draws[, keep, drop = FALSE], x$blocks)
     for (i in seq_len(nrow(out))) {

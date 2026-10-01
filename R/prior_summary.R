@@ -405,6 +405,18 @@ prior_summary.default <- function(object, ...) {
   out$fixed_sd_engine_default <- .prior_summary_fixed_engine_default(
     backend_label
   )
+  # In the protected part of a block-scoped fit the intercept is an
+  # ordinary uncentred coefficient (R/penalty_block_nl.R).
+  if (
+    identical(backend_label, "brms") &&
+      !is.null(object$brms) &&
+      !is.null(.fb_brms_nl_parts(object$brms))
+  ) {
+    out$fixed_sd_engine_default <- paste0(
+      "brms's own defaults for a non-linear part: flat on the ",
+      "population-level coefficients and on the uncentred intercept"
+    )
+  }
   # Which fixed-effect coefficients an fb_prior() covers with a `b()`
   # row. The engine-default sentence below is true only of the
   # coefficients nothing names: since 0.9.2 a `b()` row reaches brms as a

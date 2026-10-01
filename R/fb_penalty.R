@@ -112,6 +112,19 @@
 #' under which the protected coefficients also sit under the global-local
 #' prior and the certificate records the approximation.
 #'
+#' `scope = "block"` keeps the protected coefficients outside the prior. The
+#' reference model is written as the brms non-linear formula
+#' `y ~ a + b`, where part `a` holds the intercept, the protected fixed
+#' effects and the random terms under the base model's own priors, and part
+#' `b ~ 0 + <candidates>` holds the candidate block under the class-wide
+#' prior. The block must hold every candidate, and no other block can be
+#' declared beside it. The intercept of part `a` is not centred, so a prior
+#' brms would put on the centred intercept is not carried; the base's
+#' declared priors are. The projection decision refuses on this scope,
+#' because the projection provider does not project a non-linear model, so
+#' `decision = "auto"` resolves to `"full"`. Coefficients are reported under
+#' their own names, without the part prefix brms writes.
+#'
 #' @section Grouped families:
 #'
 #' Four families read a grouping of the candidate columns. They are fitted by
@@ -668,12 +681,13 @@ is_fb_penalty <- function(x) inherits(x, "fb_penalty")
 
   if (identical(domain, "scope")) {
     ok <- is.character(value) && length(value) == 1L && !is.na(value) &&
-      value %in% c("candidates", "all_fixed")
+      value %in% c("candidates", "all_fixed", "block")
     if (!ok) {
       stop(.fb_refusal_condition(
         reason_code = "penalty_hyperparameter_invalid",
         message = paste0(
-          label, " must be \"candidates\" or \"all_fixed\". Got ",
+          label, " must be \"candidates\", \"all_fixed\" or \"block\". ",
+          "Got ",
           .fb_prior_deparse(value), "."
         )
       ))

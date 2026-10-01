@@ -413,11 +413,15 @@
         It is a prior on the whole coefficient class, and brms refuses a
         coefficient prior beside it, so it targets the block exactly only
         when the base's fixed part is the intercept alone; otherwise it
-        refuses by name. Two ways forward: `laplace()`, `ridge()` or
-        `elastic_net()`, which target the block exactly, or
-        `scope = \"all_fixed\"`, under which the protected coefficients also
-        take the horseshoe, the projection search keeps them in every
-        submodel, and the certificate records the approximation. A candidate
+        refuses by name. Three ways forward: `laplace()`, `ridge()` or
+        `elastic_net()`, which target the block exactly;
+        `scope = \"block\"`, which fits the candidates as their own
+        non-linear part beside the protected effects, carries a known
+        variance per row, and is read with the full or posterior-threshold
+        decision; or `scope = \"all_fixed\"`, under which the protected
+        coefficients also take the horseshoe, the projection search keeps
+        them in every submodel, and the certificate records the
+        approximation. A candidate
         column the reference cannot standardise, such as a factor contrast
         or an interaction product, refuses by name. Fitted on brms, as for
         ridge.",

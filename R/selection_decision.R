@@ -92,7 +92,7 @@
     ))
   }
 
-  draws <- as.matrix(brmsfit)
+  draws <- .fb_brms_draws_matrix(brmsfit)
   coef_names <- unique(unlist(
     lapply(blocks %||% list(), function(b) b$coef_names),
     use.names = FALSE

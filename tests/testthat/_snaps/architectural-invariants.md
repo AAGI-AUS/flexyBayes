@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=231
+      .refusal_registry: locked=TRUE n_keys=232
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -197,6 +197,7 @@
         newdata_offset_missing
         numeric_variable_in_random_interaction
         penalty_block_overlap
+        penalty_block_part_name_taken
         penalty_block_targeting_unsupported
         penalty_candidate_columns_unscaled
         penalty_factor_contrast_ambiguous

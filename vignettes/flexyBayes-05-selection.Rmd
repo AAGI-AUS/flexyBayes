@@ -235,8 +235,10 @@ rnd(tidy(sel)[, c("term", "role", "estimate", "std.error", "retained")])
 # A base with protected fixed effects
 
 Most real models protect some fixed effects, such as a treatment. The
-horseshoe cannot be restricted to the candidates, so use `laplace()`,
-`ridge()` or `elastic_net()`, which put a prior on each candidate separately.
+horseshoe on its own covers every fixed effect, so use `laplace()`,
+`ridge()` or `elastic_net()`, which put a prior on each candidate separately,
+or `regularized_horseshoe(scope = "block")`, which fits the candidates as
+their own part of the model and leaves the protected effects outside it.
 
 
 ``` r
@@ -292,7 +294,7 @@ fb_select(
   seed       = 20260912L
 )
 #> Error:
-#> ! fb_penalty(): regularized_horseshoe() is a class-wide prior -- brms applies it to every population-level coefficient except the intercept -- and these coefficients are outside the block: p1. Two ways forward: use ridge(), laplace() or elastic_net(), which target blocks exactly; or write regularized_horseshoe(scope = "all_fixed"), an explicit opt-in under which those coefficients also sit under the global-local prior, the projection search forces them into every submodel, and the certificate records approximations = "protected_under_global_shrinkage".
+#> ! fb_penalty(): regularized_horseshoe() is a class-wide prior -- brms applies it to every population-level coefficient except the intercept -- and these coefficients are outside the block: p1. Three ways forward: use ridge(), laplace() or elastic_net(), which target blocks exactly; write regularized_horseshoe(scope = "block"), which fits the candidates as their own non-linear part and leaves those coefficients under their own priors, with the full or posterior-threshold decision; or write regularized_horseshoe(scope = "all_fixed"), an explicit opt-in under which those coefficients also sit under the global-local prior, the projection search forces them into every submodel, and the certificate records approximations = "protected_under_global_shrinkage".
 ```
 
 # Without a shrinkage prior

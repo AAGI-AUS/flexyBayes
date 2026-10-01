@@ -416,8 +416,14 @@
 .fb_select_require_known_variance_route <- function(base,
                                                     workflow,
                                                     covariance,
-                                                    value_request) {
+                                                    value_request,
+                                                    block_scope = FALSE) {
   if (is.null(.fb_sel_known_variance(base))) {
+    return(invisible(NULL))
+  }
+  # The reference fit of a block-scoped prior carries the known variance in
+  # its likelihood, and with no out-of-fold score nothing else is fitted.
+  if (identical(workflow, "bayes") && isTRUE(block_scope)) {
     return(invisible(NULL))
   }
   if (identical(workflow, "bayes")) {
