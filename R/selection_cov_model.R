@@ -446,6 +446,18 @@
     function(s) !is.null(s$structure) && !is.null(s$key),
     logical(1L)
   ))
+  # A known covariance with off-diagonal entries links rows across any
+  # grouping, so V is formed densely (R/known_variance.R).
+  known_covariance <- .fb_sel_known_covariance(base)
+  if (!is.null(known_covariance) &&
+        any(known_covariance[upper.tri(known_covariance)] != 0)) {
+    .fb_sel_require_dense(n, paste0(
+      "The known covariance in `known_variance` correlates rows across ",
+      "every grouping, so the covariance cannot be factored block by block."
+    ))
+    field_per_trial <- FALSE
+    blocking <- list(applicable = FALSE)
+  }
   whitening <- if (.fb_sel_dense_admitted(n) && !field_per_trial) {
     list(
       mode = "dense",
@@ -481,6 +493,9 @@
       # Each row's known variance, added to the residual on V's diagonal in
       # every fold, or NULL (R/known_variance.R).
       known_variance = .fb_sel_known_variance(base),
+      # The known covariance over the base's rows, whose off-diagonal part
+      # V carries beside the diagonal above, or NULL.
+      known_covariance = known_covariance,
       # Each row's observation weight, dividing the residual on V's diagonal,
       # or NULL.
       weights = .fb_sel_base_weights(base),
@@ -648,7 +663,8 @@
       components$terms[names(z)],
       estimand,
       known_variance = model$known_variance,
-      weights = model$weights
+      weights = model$weights,
+      known_covariance = model$known_covariance
     )
   } else {
     names_slots <- vapply(model$slots, function(s) s$name, character(1L))
