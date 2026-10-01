@@ -675,7 +675,10 @@
         "a Bayesian refit whose posterior predictive draws are scored"
       )
     }
-    known_variance <- data[[.FB_KNOWN_VARIANCE_COL]]
+    known_variance <- .fb_known_variance_reissue(
+      base$fb %||% base$extras$fb_terms,
+      data
+    )
     if (is.null(known_variance)) {
       .fb_known_variance_refuse(paste0(
         "fb_select(): the base carries a known variance per row, and the ",

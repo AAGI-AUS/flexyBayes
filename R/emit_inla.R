@@ -767,7 +767,16 @@ emit_inla <- function(
   # coordinates the fit runs on, so that it adds v_i to row i's variance on
   # the original scale (R/known_variance.R).
   known_variance <- .fb_known_variance_values(fb, data)
-  if (!is.null(known_variance)) {
+  known_covariance <- .fb_known_covariance_values(fb, data)
+  if (!is.null(known_covariance)) {
+    index <- .fb_inla_known_index(known_covariance)
+    positive <- which(!is.na(index))
+    data_inla[[.FB_INLA_KNOWN_INDEX]] <- index
+    # The covariance on the standardised response is K / scale^2.
+    data_inla[[.FB_INLA_KNOWN_PRECISION]] <-
+      (standardisation$scale %||% 1)^2 *
+      chol2inv(chol(known_covariance[positive, positive, drop = FALSE]))
+  } else if (!is.null(known_variance)) {
     data_inla[[.FB_INLA_KNOWN_INDEX]] <- seq_len(nrow(data))
     data_inla[[.FB_INLA_KNOWN_SCALE]] <- sqrt(known_variance) /
       (standardisation$scale %||% 1)
@@ -2312,7 +2321,7 @@ emit_inla <- function(
   # A known variance per row enters as a row effect of fixed unit precision,
   # scaled by the columns emit_inla() builds (R/known_variance.R).
   if (!is.null(.fb_known_variance_term(fb))) {
-    rhs_terms <- c(rhs_terms, .fb_inla_known_variance_formula_term())
+    rhs_terms <- c(rhs_terms, .fb_inla_known_variance_formula_term(fb))
   }
 
   rhs <- paste(rhs_terms, collapse = " + ")

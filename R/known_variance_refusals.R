@@ -10,11 +10,15 @@
     description = paste0(
       "`known_variance` is not one finite, non-negative variance for each ",
       "row of `data`: it is not numeric, its length differs from the row ",
-      "count, or a value is missing, infinite or negative."
+      "count, or a value is missing, infinite or negative. Or it is a ",
+      "matrix that is not square, does not match the row count, is not ",
+      "symmetric, or is not positive definite."
     ),
     message_template = paste0(
       "`known_variance` must be a numeric vector with one finite, ",
-      "non-negative variance for each row of `data`, and %s."
+      "non-negative variance for each row of `data`, or a symmetric ",
+      "positive-definite covariance matrix with one row and column for ",
+      "each row of `data`, and %s."
     ),
     registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-STAGE2-VAR)",
     plan_field = NA_character_,
@@ -26,7 +30,8 @@
     description = paste0(
       "A known variance per row was asked of a model or a route that cannot ",
       "carry it: a family other than the Gaussian on the identity link, ",
-      "the aggregated route, or an fb_select() route whose fold refit, ",
+      "the aggregated route, a known covariance matrix on brms, or an ",
+      "fb_select() route whose fold refit, ",
       "covariance or predictive score would leave it out. The message ",
       "names the route that carries it."
     ),
