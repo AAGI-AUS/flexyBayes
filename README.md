@@ -13,11 +13,13 @@ Version 0.14.5. Not on CRAN, and the functions may still change.
 ## Installation
 
 ``` r
+install.packages(c("remotes", "knitr", "rmarkdown"))
 remotes::install_github("AAGI-AUS/flexyBayes", build_vignettes = TRUE)
 ```
 
 Keep `build_vignettes = TRUE`. Without it, `vignette(package = "flexyBayes")`
-lists nothing.
+lists nothing. Building the vignettes needs knitr, rmarkdown and pandoc
+(RStudio includes pandoc).
 
 You need at least one engine. brms is on CRAN. INLA is not:
 
