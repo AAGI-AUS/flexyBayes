@@ -654,15 +654,25 @@ test_that("routes that would leave a known variance out refuse by name", {
     expect_error(fb_select(base, ~ z1 + z2, workflow = "unpenalized_benchmark",
                            resamples = resamples, seed = 1L, plan = TRUE),
                  class = refused)
+    # The Bayesian refit of the chosen support carries it on INLA, so the
+    # call passes the gate and reaches the first fold refit.
     expect_error(
       fb_select(base, ~ z1 + z2,
                 penalty = fbkv_penalty(),
                 workflow = "penalized_optimizer", covariance = "base_model",
                 refit = list(method = "bayes"), resamples = resamples,
                 seed = 1L),
-      class = refused
+      "a fold was refitted"
     )
   })
+  # On brms it refuses before any fit.
+  expect_error(
+    .fb_select_require_known_variance_route(
+      fbkv_stub_base(d, "flexybayes_brms"), "penalized_optimizer",
+      "base_model", list(method = "bayes")
+    ),
+    class = refused
+  )
 
   # The loci beneath, each refusing where it would otherwise build a model
   # without the known variance.

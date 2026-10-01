@@ -404,3 +404,84 @@ test_that("fb_select() with the fold refits run whitens by the refit's variances
     )
   }
 })
+
+
+# --- (iv) the Bayesian refit of a fold's support ---------------------------- #
+
+test_that("the INLA refit of a support adds each held-out row's known variance to its predictive variance", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fbkc_quiet()
+  tr <- fbkc_trials()
+  base <- flexybayes(m ~ 1, random = ~cluster, data = tr$d,
+                     known_variance = tr$k, backend = "inla", verbose = FALSE)
+  held <- tr$d$cluster %in% c("c10", "c11", "c12")
+  split <- list(
+    label = "1", repeat_id = 1L,
+    train_rows = which(!held), assess_rows = which(held),
+    not_estimable_rows = integer(0), unobserved_rows = integer(0)
+  )
+  inputs <- .fb_sel_bayes_fold_inputs(base$data, split, response = "m",
+                                      protected = ~1, random = "cluster")
+  fit <- .fb_sel_bayes_refit(base, inputs$engine_data, m ~ 1, "inla",
+                             na_action = "augment",
+                             carry_known_variance = TRUE)
+  # The refit carries the known covariance of every engine row.
+  expect_identical(
+    .fb_known_covariance_values(fit$fb %||% fit$extras$fb_terms, fit$data),
+    tr$k
+  )
+  block <- list(design = matrix(numeric(0), length(split$train_rows), 0L),
+                key = NULL, engine_names = list(inla = character(0)),
+                design_columns = character(0))
+  score <- function(inputs) {
+    .fb_sel_value_fold_inla(fit, inputs, split, ~1, character(0),
+                            "new_cluster", 400L, 11L, block, NA_character_)
+  }
+  # Both scorings read one set of posterior draws.
+  sample_draws <- .fb_inla_posterior_sample
+  kept <- NULL
+  local_mocked_bindings(.fb_inla_posterior_sample = function(...) {
+    if (is.null(kept)) {
+      kept <<- sample_draws(...)
+    }
+    kept
+  })
+  with_known <- score(inputs)
+  expect_identical(with_known$method, "analytic_gaussian")
+  without <- inputs
+  without$engine_data$flexybayes_known_variance <- NULL
+  without_known <- score(without)
+  # Same draws, so the predictive variances differ by K_ii exactly.
+  expect_lt(
+    fbkc_rel(with_known$scored$sd^2 - without_known$scored$sd^2,
+             diag(tr$k)[split$assess_rows]),
+    1e-10
+  )
+  expect_identical(with_known$scored$mean, without_known$scored$mean)
+})
+
+test_that("fb_select(refit = bayes) runs on an INLA base with a known covariance", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("glmnet")
+  skip_if_not_long_tier()
+  fbkc_quiet()
+  tr <- fbkc_trials()
+  base <- flexybayes(m ~ 1, random = ~cluster, data = tr$d,
+                     known_variance = tr$k, backend = "inla", verbose = FALSE)
+  sel <- fb_select(
+    base, ~ x1 + x2 + x3 + x4 + x5 + x6,
+    penalty = fb_penalty(term(everything()) ~
+                           elastic_net(lambda = 1, alpha = 1)),
+    workflow = "penalized_optimizer", covariance = "base_model",
+    decision = fb_decision(method = "full", metric = "rmse", n_lambda = 10L),
+    refit = list(method = "bayes", n_draws = 400L),
+    resamples = fb_resamples(unit = ~cluster, v = 4L), seed = 1L
+  )
+  rows <- sel$value$rows
+  expect_identical(nrow(rows), nrow(tr$d))
+  expect_true(all(rows$method == "analytic_gaussian"))
+  # The known part is a floor under each row's predictive variance.
+  expect_true(all(rows$predictive_sd^2 > diag(tr$k)[rows$row]))
+})

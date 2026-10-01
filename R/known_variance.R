@@ -358,11 +358,14 @@
 # diagonal, sigma^2 + v_i, and a known covariance matrix K in full,
 # sigma^2 I + K, with sigma^2 read off the fold refit, which is
 # itself fitted with the known variances of the rows it is handed
-# (R/selection_cov_model.R). Every other route leaves it out, and refuses: the
-# REML plug-in estimates one residual variance common to every row, and the
-# Bayesian workflow, the refit of each fold's chosen support and the
-# projection's reference fit score or project posterior draws whose
-# predictive variance omits it.
+# (R/selection_cov_model.R). The INLA refit of each fold's chosen support
+# (`refit = list(method = "bayes")`) is fitted with it, and each held-out
+# row's predictive variance gains v_i (R/selection_value.R); on brms, or
+# where the held-out density is read off the engine's draws, that refit
+# refuses. Every other route leaves it out, and refuses: the REML plug-in
+# estimates one residual variance common to every row, and the Bayesian
+# workflow and the projection's reference fit score or project posterior
+# draws whose predictive variance omits it.
 
 # .fb_sel_known_variance() --- each row's known variance, aligned to the
 # base's data, or NULL when the base carries none.
@@ -426,10 +429,11 @@
   if (identical(covariance, "reml_plugin")) {
     .fb_sel_known_variance_refuse_reml()
   }
-  if (!is.null(value_request)) {
+  if (!is.null(value_request) &&
+        !identical(.fb_sel_bayes_provider(base), "inla")) {
     .fb_sel_known_variance_refuse_route(paste0(
-      "the Bayesian refit of each fold's chosen support (`refit`), whose ",
-      "held-out log predictive density reads posterior draws,"
+      "the Bayesian refit of each fold's chosen support (`refit`) on brms, ",
+      "whose held-out log predictive density reads posterior draws,"
     ))
   }
   invisible(NULL)
