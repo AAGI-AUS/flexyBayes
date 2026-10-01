@@ -180,3 +180,38 @@ test_that("the citation surfaces still agree with DESCRIPTION", {
     )
   }
 })
+
+test_that("CITATION.cff's date-released is the release's date", {
+  root <- .vc_root()
+  skip_if(is.na(root), "not running from the source tree")
+  path <- file.path(root, "CITATION.cff")
+  skip_if_not(file.exists(path), "CITATION.cff is not in this tree")
+
+  field <- grep("^date-released:", readLines(path, warn = FALSE), value = TRUE)
+  expect_length(field, 1L)
+  released <- gsub("^date-released:\\s*\"?|\"?\\s*$", "", field)
+  expect_match(released, "^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+
+  citation <- readLines(file.path(root, "inst", "CITATION"), warn = FALSE)
+  expect_match(
+    grep("year", citation, value = TRUE),
+    paste0("\"", substr(released, 1L, 4L), "\""),
+    fixed = TRUE,
+    label = "inst/CITATION year"
+  )
+
+  # Once the release is tagged, the tag's date in its own time zone is the
+  # date of record.
+  git <- Sys.which("git")
+  skip_if(!nzchar(git), "git is not available")
+  tag <- paste0("refs/tags/v", .vc_release_line())
+  tagged <- suppressWarnings(system2(
+    git,
+    c("-C", shQuote(root), "for-each-ref",
+      shQuote("--format=%(creatordate:short)"), tag),
+    stdout = TRUE,
+    stderr = FALSE
+  ))
+  skip_if(length(tagged) != 1L, paste(tag, "does not exist yet"))
+  expect_identical(released, tagged)
+})

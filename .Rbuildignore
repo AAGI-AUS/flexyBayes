@@ -69,3 +69,4 @@ Rplots\.pdf$
 ^vignettes-reserve$
 ^vignettes-reserve/.*$
 ^oracle_work$
+^\.git$

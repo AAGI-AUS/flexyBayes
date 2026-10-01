@@ -26,6 +26,10 @@
 #' underlying `fb_prior` (when applicable) is exposed under
 #' `$fb_prior` for programmatic access.
 #'
+#' The methods are also registered on \pkg{rstantools}' `prior_summary()`
+#' generic, which \pkg{brms} re-exports, so `prior_summary(fit)` returns
+#' this summary when brms is attached after flexyBayes.
+#'
 #' @param object A `flexybayes_inla` or `flexybayes_brms` object.
 #' @param ... Ignored by current methods (reserved for future
 #'   per-component selection).
@@ -90,12 +94,14 @@ prior_summary <- function(object, ...) UseMethod("prior_summary")
 
 #' @rdname prior_summary
 #' @export
+#' @exportS3Method rstantools::prior_summary
 prior_summary.flexybayes_inla <- function(object, ...) {
   .prior_summary_impl(object, backend_label = "inla", declaration_only = FALSE)
 }
 
 #' @rdname prior_summary
 #' @export
+#' @exportS3Method rstantools::prior_summary
 prior_summary.flexybayes_brms <- function(object, ...) {
   .prior_summary_impl(object, backend_label = "brms", declaration_only = FALSE)
 }

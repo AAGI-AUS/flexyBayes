@@ -92,7 +92,17 @@ spelling that is.
 
 Every message flexyBayes can stop with is listed by `fb_refusals()`:
 
-```{r refusals}
-nrow(fb_refusals())
-head(fb_refusals()$reason_code)
+```{r refusals-live, echo = FALSE, results = "asis"}
+# Written out as a live chunk, so the count is read from the registry at build.
+cat(
+  "```{r refusals-setup, include = FALSE}",
+  "library(flexyBayes)",
+  "```",
+  "",
+  "```{r refusals, collapse = TRUE, comment = \"#>\"}",
+  "nrow(fb_refusals())",
+  "head(fb_refusals()$reason_code)",
+  "```",
+  sep = "\n"
+)
 ```

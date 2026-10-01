@@ -75,6 +75,11 @@ return value is an S3 object with a \code{print()} method; the
 underlying \code{fb_prior} (when applicable) is exposed under
 \verb{$fb_prior} for programmatic access.
 }
+\details{
+The methods are also registered on \pkg{rstantools}' \code{prior_summary()}
+generic, which \pkg{brms} re-exports, so \code{prior_summary(fit)} returns
+this summary when brms is attached after flexyBayes.
+}
 \examples{
 \dontrun{
 # live brms (Stan) fit -- needs a working Stan toolchain

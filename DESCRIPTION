@@ -46,6 +46,7 @@ Suggests:
     bayesplot,
     posterior,
     projpred,
+    rstantools,
     glmnet,
     grpreg,
     quadprog,
