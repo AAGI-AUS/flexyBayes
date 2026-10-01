@@ -640,6 +640,10 @@
 # base carried a user prior: the package's own default prior object is stamped
 # with `fb_prior_default_basis`, and re-passing it as an explicit prior would
 # take a different path through the emitter than the default it came from.
+#
+# `readout` names what the caller reads off an INLA refit ("varcomp",
+# "fitted" or "draws"), and the refit computes only that
+# (R/selection_fold_refit.R); NULL fits in full.
 .fb_sel_bayes_refit <- function(
   base,
   data,
@@ -649,7 +653,8 @@
   seed = NULL,
   na_action = NULL,
   carry_known_variance = FALSE,
-  fixed_alias = NULL
+  fixed_alias = NULL,
+  readout = NULL
 ) {
   info <- base$extras$call_info %||% list()
   # Each row's weight travels in its column of the fold's data
@@ -760,7 +765,12 @@
     args$chains <- chains
   }
 
-  fit <- do.call(flexybayes, args)
+  plan <- if (identical(provider, "inla") && !is.null(readout)) {
+    .fb_fold_refit_plan(readout)
+  } else {
+    NULL
+  }
+  fit <- .fb_with_fold_refit(plan, do.call(flexybayes, args))
   # A fold refit's manifest names it as one, beside the route the refit took.
   if (!is.null(fit[["extras"]][["manifest"]])) {
     route <- fit[["extras"]][["manifest"]][["route"]][["route"]]
@@ -1387,6 +1397,9 @@
   .fb_sel_bayes_check_budget(cost, budget)
 
   if (is.null(refit_fn)) {
+    # A decision product reads the fold's fits itself, so they are fitted
+    # in full when there is one.
+    readout <- if (is.null(derived_models)) "draws" else NULL
     refit_fn <- function(fold_data, fixed, fit_seed) {
       .fb_sel_bayes_refit(
         base,
@@ -1395,7 +1408,8 @@
         provider,
         engine = engine,
         seed = fit_seed,
-        na_action = if (identical(provider, "inla")) "augment" else NULL
+        na_action = if (identical(provider, "inla")) "augment" else NULL,
+        readout = readout
       )
     }
   }

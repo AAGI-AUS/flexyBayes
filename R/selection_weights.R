@@ -227,7 +227,8 @@
     seed = seed,
     na_action = if (identical(provider, "inla")) "augment" else NULL,
     carry_known_variance = TRUE,
-    fixed_alias = "drop"
+    fixed_alias = "drop",
+    readout = "fitted"
   )
   y <- as.numeric(.fb_response_values(list(response = spec$response),
                                       spec$data))
