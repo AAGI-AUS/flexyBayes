@@ -158,8 +158,10 @@ rnd(tidy(sel)[, c("term", "role", "estimate", "std.error", "retained")])
 # A base with protected fixed effects
 
 Most real models protect some fixed effects, such as a treatment. The
-horseshoe cannot be restricted to the candidates, so use `laplace()`,
-`ridge()` or `elastic_net()`, which put a prior on each candidate separately.
+horseshoe on its own covers every fixed effect, so use `laplace()`,
+`ridge()` or `elastic_net()`, which put a prior on each candidate separately,
+or `regularized_horseshoe(scope = "block")`, which fits the candidates as
+their own part of the model and leaves the protected effects outside it.
 
 ```{r protected-laplace}
 d$p1 <- stats::rnorm(nrow(d))
