@@ -22,7 +22,7 @@ authors:
     family-names: "Forte Deltell"
     orcid: "https://orcid.org/0000-0001-9534-1817"
 version: 0.14.5
-date-released: "2026-09-30"
+date-released: "2026-10-01"
 license: MIT
 repository-code: "https://github.com/AAGI-AUS/flexyBayes"
 url: "https://github.com/AAGI-AUS/flexyBayes"
