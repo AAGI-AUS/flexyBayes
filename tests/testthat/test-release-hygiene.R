@@ -176,7 +176,7 @@ test_that("every working folder at the root is kept out of the build", {
   package <- c(
     "DESCRIPTION", "NAMESPACE", "LICENSE", "NEWS.md", "README.md",
     "R", "man", "tests", "vignettes", "inst", "data", "src", "tools",
-    ".Rbuildignore", ".git", ".gitignore"
+    ".Rbuildignore", ".gitignore"
   )
   # Named even when absent, since they exist only in some checkouts.
   working <- c(
