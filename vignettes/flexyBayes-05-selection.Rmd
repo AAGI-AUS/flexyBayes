@@ -118,7 +118,7 @@ fb_select(
 #>   stanvars:     no
 #>   Structure gate: supported
 #>   Folds:        3, prediction new_cluster
-#>   Cost estimate: 25.5s over 4 fit(s) at 6.37s each
+#>   Cost estimate: 53.2s over 4 fit(s) at 13.30s each
 #>                  the per-fit figure is the base model's own recorded wall time; the reference model carries a wider fixed part and a shrinkage prior, so this is a floor
 #>   Approximations this route commits to:
 #>     - calibration_n_at_the_resampling_unit: the prior scales are calibrated against 20 units of site rather than against 200 rows, because rows inside a cluster are not independent pieces of evidence about a coefficient
@@ -326,7 +326,7 @@ rnd(glance(increment)[, c(
   "loss", "loss_protected_only", "loss_full", "loss_reduction", "n_units"
 )])
 #>       loss loss_protected_only loss_full loss_reduction n_units
-#> 1 neg_elpd              20.088    14.012          6.075      20
+#> 1 neg_elpd              20.088    13.956          6.132      20
 ```
 
 The scores are held-out losses, so lower is better. `neg_elpd` is minus the

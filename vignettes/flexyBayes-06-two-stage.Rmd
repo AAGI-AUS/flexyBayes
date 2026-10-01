@@ -191,7 +191,7 @@ sel <- fb_select(
 rnd(glance(sel)[, c("loss", "loss_protected_only", "loss_full",
                     "loss_reduction", "chosen_size", "n_units", "n_folds")])
 #>   loss loss_protected_only loss_full loss_reduction chosen_size n_units n_folds
-#> 1 nlpd               0.805     0.722          0.084           1      20       5
+#> 1 nlpd               0.806     0.722          0.084           1      20       5
 ```
 
 # When each covariate entered
@@ -321,12 +321,12 @@ rnd(data.frame(
   full_covariance = coef(base_k)
 ))
 #>                    term variances_only full_covariance
-#> (Intercept) (Intercept)          2.864           2.825
-#> varietyv2     varietyv2          0.342           0.416
-#> varietyv3     varietyv3          0.775           0.797
+#> (Intercept) (Intercept)          2.864           2.840
+#> varietyv2     varietyv2          0.342           0.419
+#> varietyv3     varietyv3          0.775           0.787
 #> varietyv4     varietyv4          1.133           1.180
-#> varietyv5     varietyv5          1.637           1.623
-#> varietyv6     varietyv6          2.079           2.136
+#> varietyv5     varietyv5          1.637           1.617
+#> varietyv6     varietyv6          2.079           2.134
 ```
 
 `fb_select(covariance = "base_model")` whitens by the full matrix. The
