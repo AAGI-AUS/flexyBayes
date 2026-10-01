@@ -1,6 +1,4 @@
-# brms, lme4 and glmmTMB export ranef() from nlme, and brms exports
-# prior_summary() from rstantools. Attached after flexyBayes, those generics
-# mask the package's own, so a bare call dispatches through them.
+# Attached after flexyBayes, brms and lme4 mask ranef() and prior_summary().
 
 # Evaluates `expr` where only base R is visible, as in a user session, so a
 # package method is found through its S3 registration alone.

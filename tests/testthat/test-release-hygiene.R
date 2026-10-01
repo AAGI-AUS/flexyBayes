@@ -1,7 +1,4 @@
-# Release hygiene: the README install line, the citation authors, the place
-# of cran-comments.md and the working folders kept out of the tarball. These
-# read source-tree files that are not installed, so each test skips when the
-# source tree is not reachable.
+# These tests read source files that are not installed, and skip without them.
 
 .rh_root <- function() {
   root <- normalizePath(testthat::test_path("..", ".."), mustWork = FALSE)
