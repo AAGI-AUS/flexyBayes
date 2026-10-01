@@ -104,7 +104,7 @@ fb_as_draws_simple.flexybayes_brms <- function(fit, ...) {
     stop("Cannot extract draws: fit$brms is missing.", call. = FALSE)
   }
   m <- tryCatch(
-    as.matrix(posterior::as_draws_matrix(fit$brms)),
+    .fb_brms_draws_matrix(fit$brms),
     error = function(e) {
       stop(
         "posterior::as_draws_matrix() failed on the ",

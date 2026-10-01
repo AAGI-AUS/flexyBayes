@@ -144,6 +144,19 @@
   )
 
   .register_refusal(
+    reason_code = "penalty_block_part_name_taken",
+    description = paste0(
+      "fb_penalty(): scope = \"block\" fits the model as the brms ",
+      "non-linear parts `a` and `b`, and the model uses one of those names ",
+      "as a variable, which brms would read as the part."
+    ),
+    message_template = "fb_penalty(): %s",
+    registered_in_adr = "Block-scoped class-wide prior (2026-10-01)",
+    plan_field = "selection_plan",
+    since_version = "0.15.0"
+  )
+
+  .register_refusal(
     reason_code = "penalty_scaling_column_constant",
     description = paste0(
       "fb_penalty(): a candidate column has no spread inside the training ",

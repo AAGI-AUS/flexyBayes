@@ -27,9 +27,18 @@
 # the order of `coef_names_all`.
 
 
+# The two non-linear parts of a `scope = "block"` reference model,
+# `y ~ a + b`: the protected part and the candidate block.
+.FB_NL_PROTECTED_PART <- "a"
+.FB_NL_BLOCK_PART <- "b"
+
+
 # --- the compiler ---------------------------------------------------------- #
 
-# .fb_pen_compile_brms() --- blocks to (prior, stanvars, param_map, route).
+# .fb_pen_compile_brms() --- blocks to (prior, stanvars, param_map, route,
+# nl_block). `nl_block` is NULL unless a class-wide block has
+# `scope = "block"`, and then names the two non-linear parts and the block's
+# coefficients (R/penalty_block_nl.R).
 #
 # `coef_names_all` is the brms `b` vector in order, intercept excluded. It is
 # an argument rather than something derived here because only the caller
@@ -83,6 +92,7 @@
   rows <- list()
   stanvars <- NULL
   map_rows <- list()
+  nl_block <- NULL
 
   for (b in blocks) {
     idx <- match(b$coef_names, coef_names_all)
@@ -112,10 +122,19 @@
     }
 
     if (identical(b$route, "class_wide")) {
+      block_scope <- identical(b$hyperparameters$scope %||% "", "block")
       rows[[length(rows) + 1L]] <- brms::set_prior(
         .fb_pen_class_wide_string(b),
-        class = "b"
+        class = "b",
+        nlpar = if (block_scope) .FB_NL_BLOCK_PART else ""
       )
+      if (block_scope) {
+        nl_block <- list(
+          protected_part = .FB_NL_PROTECTED_PART,
+          block_part = .FB_NL_BLOCK_PART,
+          coef_names = b$coef_names
+        )
+      }
       next
     }
 
@@ -178,7 +197,8 @@
     prior = if (length(rows) == 0L) NULL else do.call(rbind, rows),
     stanvars = stanvars,
     param_map = param_map,
-    route = routes
+    route = routes,
+    nl_block = nl_block
   )
 }
 

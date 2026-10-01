@@ -785,6 +785,25 @@ print.fb_prior_blocks <- function(x, ...) {
     return(invisible(blocks))
   }
 
+  # Under `scope = "block"` the block is its own non-linear part, which every
+  # candidate must join; a protected coefficient sits in the other part.
+  if (identical(scope, "block")) {
+    if (length(blocks) > 1L) {
+      stop(.fb_refusal_condition(
+        reason_code = "penalty_block_targeting_unsupported",
+        message = paste0(
+          "fb_penalty(): ", b$family, "(scope = \"block\") puts the whole ",
+          "candidate block in one non-linear part under one prior, so no ",
+          "other block can be declared beside it. These coefficients are ",
+          "claimed by another block: ",
+          paste(setdiff(covered, b$coef_names), collapse = ", "), "."
+        ),
+        coefficients = setdiff(covered, b$coef_names)
+      ))
+    }
+    return(invisible(blocks))
+  }
+
   if (length(outside) > 0L) {
     stop(.fb_refusal_condition(
       reason_code = "penalty_block_targeting_unsupported",
@@ -793,12 +812,16 @@ print.fb_prior_blocks <- function(x, ...) {
         "applies it to every population-level coefficient except the ",
         "intercept -- and these coefficients are outside the block: ",
         paste(outside, collapse = ", "),
-        ". Two ways forward: use ridge(), laplace() or elastic_net(), which ",
-        "target blocks exactly; or write ", b$family,
-        "(scope = \"all_fixed\"), an explicit opt-in under which those ",
-        "coefficients also sit under the global-local prior, the projection ",
-        "search forces them into every submodel, and the certificate ",
-        "records approximations = \"protected_under_global_shrinkage\"."
+        ". Three ways forward: use ridge(), laplace() or elastic_net(), ",
+        "which target blocks exactly; write ", b$family,
+        "(scope = \"block\"), which fits the candidates as their own ",
+        "non-linear part and leaves those coefficients under their own ",
+        "priors, with the full or posterior-threshold decision; or write ",
+        b$family, "(scope = \"all_fixed\"), an explicit opt-in under which ",
+        "those coefficients also sit under the global-local prior, the ",
+        "projection search forces them into every submodel, and the ",
+        "certificate records ",
+        "approximations = \"protected_under_global_shrinkage\"."
       ),
       coefficients = outside
     ))

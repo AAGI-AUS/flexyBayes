@@ -223,7 +223,7 @@ register_canonical_mapper <- function(backend, mapper) {
       return(character(0))
     }
     m <- tryCatch(
-      as.matrix(posterior::as_draws_matrix(fit$brms)),
+      .fb_brms_draws_matrix(fit$brms),
       error = function(e) NULL
     )
     if (is.null(m)) character(0) else colnames(m) %||% character(0)
@@ -952,7 +952,7 @@ register_canonical_mapper <- function(backend, mapper) {
   }
 
   draw_names <- tryCatch(
-    colnames(as.matrix(posterior::as_draws_matrix(fit$brms))),
+    colnames(.fb_brms_draws_matrix(fit$brms)),
     error = function(e) character(0)
   )
   if (length(draw_names) == 0L) {

@@ -122,6 +122,19 @@ fixed effects beyond the intercept therefore refuses, and names both ways
 forward: a family that targets blocks exactly, or \code{scope = "all_fixed"},
 under which the protected coefficients also sit under the global-local
 prior and the certificate records the approximation.
+
+\code{scope = "block"} keeps the protected coefficients outside the prior. The
+reference model is written as the brms non-linear formula
+\code{y ~ a + b}, where part \code{a} holds the intercept, the protected fixed
+effects and the random terms under the base model's own priors, and part
+\verb{b ~ 0 + <candidates>} holds the candidate block under the class-wide
+prior. The block must hold every candidate, and no other block can be
+declared beside it. The intercept of part \code{a} is not centred, so a prior
+brms would put on the centred intercept is not carried; the base's
+declared priors are. The projection decision refuses on this scope,
+because the projection provider does not project a non-linear model, so
+\code{decision = "auto"} resolves to \code{"full"}. Coefficients are reported under
+their own names, without the part prefix brms writes.
 }
 
 \section{Grouped families}{
