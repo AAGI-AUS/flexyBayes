@@ -1,4 +1,4 @@
-# selection_fold_refit.R -- what an INLA fold refit inside fb_select()
+# selection_fold_refit.R: what an INLA fold refit inside fb_select()
 # computes.
 #
 # A fold refit is read for one thing: its variance components (the fold
