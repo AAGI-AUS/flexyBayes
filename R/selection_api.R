@@ -1,4 +1,4 @@
-# selection_api.R -- the fold data an fb_select() run keeps, and three
+# selection_api.R: the fold data an fb_select() run keeps, and three
 # functions that read it.
 #
 # `fb_select(keep_fold_data = TRUE)` keeps, for the penalised optimiser and
@@ -13,9 +13,9 @@
 # None of them fits a model.
 
 
-# --- keeping the fold data ------------------------------------------------ #
+# Keeping the fold data ------------------------------------------------------
 
-# .fb_sel_keep_fold_data() --- `out` with the fold data of the benchmark run
+# .fb_sel_keep_fold_data(): `out` with the fold data of the benchmark run
 # `bench` attached.
 .fb_sel_keep_fold_data <- function(out, bench, base, resamples, blocks,
                                    decision) {
@@ -33,7 +33,7 @@
   out
 }
 
-# .fb_sel_check_keep_fold_data() --- refuse `keep_fold_data = TRUE` on the
+# .fb_sel_check_keep_fold_data(): refuse `keep_fold_data = TRUE` on the
 # Bayesian workflow, whose folds are model refits with no whitened data.
 .fb_sel_check_keep_fold_data <- function(keep_fold_data, workflow) {
   if (!is.logical(keep_fold_data) || length(keep_fold_data) != 1L ||
@@ -53,7 +53,7 @@
   invisible(keep_fold_data)
 }
 
-# .fb_sel_fold_data_get() --- the kept fold data of `x`, restricted to
+# .fb_sel_fold_data_get(): the kept fold data of `x`, restricted to
 # `folds`, or a refusal naming the argument that keeps it.
 .fb_sel_fold_data_get <- function(x, folds = NULL, caller) {
   if (!inherits(x, "fb_select") || is.null(x$fold_data)) {
@@ -83,7 +83,7 @@
   fold_data
 }
 
-# .fb_sel_fold_data_penalty() --- the run's penalty blocks resolved over the
+# .fb_sel_fold_data_penalty(): the run's penalty blocks resolved over the
 # candidate columns, or NULL for a run without a penalty.
 .fb_sel_fold_data_penalty <- function(fold_data, blocks = fold_data$blocks) {
   if (is.null(blocks) || length(blocks) == 0L) {
@@ -100,7 +100,7 @@
   )
 }
 
-# .fb_sel_whitener_of() --- L^-1 M over a fold's training rows.
+# .fb_sel_whitener_of(): L^-1 M over a fold's training rows.
 .fb_sel_whitener_of <- function(substrate) {
   factor_tt <- substrate$blocks$factor_tt
   function(m) {
@@ -111,7 +111,7 @@
 }
 
 
-# --- fb_select_fold_data() -------------------------------------------------- #
+# fb_select_fold_data() ------------------------------------------------------
 
 #' Whitened data of each fold of a selection run
 #'
@@ -174,7 +174,7 @@ fb_select_fold_data <- function(x, folds = NULL) {
   })
 }
 
-# .fb_sel_fold_data_one() --- one fold's public record.
+# .fb_sel_fold_data_one(): one fold's public record.
 .fb_sel_fold_data_one <- function(substrate, penalised_columns) {
   train_rows <- substrate$train_rows
   whiten <- .fb_sel_whitener_of(substrate)
@@ -208,7 +208,7 @@ fb_select_fold_data <- function(x, folds = NULL) {
 }
 
 
-# --- fb_select_path() ------------------------------------------------------ #
+# fb_select_path() -----------------------------------------------------------
 
 #' Penalised path of a selection run at another alpha
 #'
@@ -327,7 +327,7 @@ fb_select_path <- function(x,
   out
 }
 
-# .fb_sel_path_blocks() --- the run's penalty blocks, at `alpha` where one
+# .fb_sel_path_blocks(): the run's penalty blocks, at `alpha` where one
 # is given.
 .fb_sel_path_blocks <- function(blocks, alpha) {
   if (is.null(blocks) || length(blocks) == 0L) {
@@ -356,7 +356,7 @@ fb_select_path <- function(x,
   })
 }
 
-# .fb_sel_path_refuse() --- fb_select_path() asked for a path the run's
+# .fb_sel_path_refuse(): fb_select_path() asked for a path the run's
 # penalty does not give.
 .fb_sel_path_refuse <- function(detail) {
   stop(.fb_refusal_condition(
@@ -366,7 +366,7 @@ fb_select_path <- function(x,
 }
 
 
-# --- fb_select_refit() ---------------------------------------------------- #
+# fb_select_refit() ----------------------------------------------------------
 
 #' Refit a named column set on the folds of a selection run
 #'
@@ -453,7 +453,7 @@ fb_select_refit <- function(x, columns, folds = NULL) {
   )
 }
 
-# .fb_sel_refit_fold() --- one fold's GLS refit of the protected columns and
+# .fb_sel_refit_fold(): one fold's GLS refit of the protected columns and
 # `columns`, its held-out cluster scores and its coefficients.
 .fb_sel_refit_fold <- function(substrate, columns, cluster) {
   train_rows <- substrate$train_rows

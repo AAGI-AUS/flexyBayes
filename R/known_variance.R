@@ -106,7 +106,7 @@
   .fb_known_variance_invalid(problem)
 }
 
-# .fb_known_variance_invalid() --- the refusal of a `known_variance` that is
+# .fb_known_variance_invalid(): the refusal of a `known_variance` that is
 # neither form, with what was wrong with it.
 .fb_known_variance_invalid <- function(problem) {
   stop(.fb_refusal_condition(
@@ -125,7 +125,7 @@
 # symmetric to rounding.
 .FB_KNOWN_SYMMETRY_TOL <- 1e-8
 
-# .fb_known_covariance_check() --- refuse a matrix that is not a covariance
+# .fb_known_covariance_check(): refuse a matrix that is not a covariance
 # over the rows of `data`. A row with a zero variance must be zero
 # throughout, and the other rows must form a positive-definite block.
 .fb_known_covariance_check <- function(known_variance, data) {
@@ -274,7 +274,7 @@
   as.numeric(data[[.FB_KNOWN_VARIANCE_COL]])
 }
 
-# .fb_known_covariance_values() --- the known covariance over the rows of
+# .fb_known_covariance_values(): the known covariance over the rows of
 # `data`, or NULL when the model carries a vector or nothing. A row without
 # an index, a cell the design grid added, has a zero row and column.
 .fb_known_covariance_values <- function(fb, data) {
@@ -295,13 +295,13 @@
   out
 }
 
-# .fb_known_variance_reissue() --- the `known_variance` argument that refits
+# .fb_known_variance_reissue(): the `known_variance` argument that refits
 # the rows of `data`: the covariance over them, or the vector.
 .fb_known_variance_reissue <- function(fb, data) {
   .fb_known_covariance_values(fb, data) %||% data[[.FB_KNOWN_VARIANCE_COL]]
 }
 
-# .fb_inla_known_index() --- each row's generic0 index: its position among
+# .fb_inla_known_index(): each row's generic0 index: its position among
 # the rows with a positive known variance, NA elsewhere.
 .fb_inla_known_index <- function(covariance) {
   positive <- diag(covariance) > 0
@@ -310,7 +310,7 @@
   index
 }
 
-# .fb_inla_known_variance_formula_term() --- the INLA row effect: a weighted
+# .fb_inla_known_variance_formula_term(): the INLA row effect: a weighted
 # iid effect for a vector, generic0 over the known precision for a matrix.
 .fb_inla_known_variance_formula_term <- function(fb = NULL) {
   if (!is.null(.fb_known_variance_term(fb)$matrix)) {
@@ -386,7 +386,7 @@
   as.numeric(v)
 }
 
-# .fb_sel_known_covariance() --- the known covariance over the base's rows,
+# .fb_sel_known_covariance(): the known covariance over the base's rows,
 # or NULL when the base carries a vector or nothing.
 .fb_sel_known_covariance <- function(base) {
   .fb_known_covariance_values(base$fb %||% base$extras$fb_terms, base$data)

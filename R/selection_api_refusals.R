@@ -1,4 +1,4 @@
-# Selection fold-data refusals --- registry population for R/selection_api.R.
+# Selection fold-data refusals: registry population for R/selection_api.R.
 #
 # The code is thrown by fb_select(keep_fold_data = TRUE) on the Bayesian
 # workflow and by fb_select_fold_data(), fb_select_path() and
