@@ -10,31 +10,30 @@
 # Why the failure needs a name of its own. A fold that refuses, or errors,
 # inside a live worker sends its condition back and it is re-raised as
 # itself, so every existing refusal keeps its own name on the concurrent
-# path. A worker the operating system kills -- reclaiming memory, or losing
-# the process with an engine crash -- sends nothing back at all: measured
-# here, `parallel::mclapply()` returns a bare NULL in that element, with no
-# condition attached. There is no existing code for a fold that neither
-# completed nor refused, and aggregating the folds that did come back would
-# report a cross-validation over a subset of its folds under the name of the
-# whole.
+# path. A forked worker that ends without returning sends nothing back:
+# `parallel::mclapply()` returns a bare NULL in that element, with no
+# condition and no exit status attached. There is no existing code for a
+# fold that neither completed nor refused, and aggregating the folds that
+# did come back would report a cross-validation over a subset of its folds
+# under the name of the whole.
 
 .populate_refusal_registry_selection_parallel <- function() {
   .register_refusal(
     reason_code = "selection_parallel_worker_failed",
     description = paste0(
-      "fb_select(): a worker running one fold did not return a result and ",
-      "left no error to report, which is what a child killed from outside ",
-      "looks like -- the operating system reclaiming memory under the ",
-      "aggregate demand of concurrent fold refits, or an engine crash ",
-      "taking the process with it. The scores are not aggregated from the ",
+      "fb_select(): under options(flexyBayes.isolation = \"fork\"), a forked ",
+      "worker running one fold ended without returning a result and left ",
+      "no error; a forked worker's exit status is not reported, so memory ",
+      "reclaimed by the operating system and a crash in compiled code are ",
+      "both possible causes. The scores are not aggregated from the ",
       "folds that survived: a cross-validation missing a fold is not the ",
       "cross-validation that was asked for. A fold that refuses inside a ",
       "live worker is unaffected, and is re-raised under its own reason ",
       "code."
     ),
     message_template = paste0(
-      "fb_select(): the worker running fold %s did not return a result and ",
-      "left no error to report."
+      "fb_select(): the forked worker running fold %s ended without ",
+      "returning a result and left no error."
     ),
     registered_in_adr = "PLAN_green_0.12.1_to_0.15.0_2026-09-16 section 6 (P4)",
     plan_field = "selection_plan",

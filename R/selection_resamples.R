@@ -898,14 +898,16 @@
 # the VARIANCE scale and `terms` is matched to `Z` by name. `known_variance`,
 # one value per row of the data, is added to the residual on the diagonal
 # (R/known_variance.R). `weights`, one per row, divide the residual on the
-# diagonal: Var(y_i) = sigma^2 / w_i.
+# diagonal: Var(y_i) = sigma^2 / w_i. `known_covariance`, an n x n matrix
+# whose diagonal is `known_variance`, adds its off-diagonal part.
 .fb_sel_cov_spec <- function(
   Z,
   residual,
   terms,
   estimand = "reml_plugin_covariance",
   known_variance = NULL,
-  weights = NULL
+  weights = NULL,
+  known_covariance = NULL
 ) {
   if (length(Z) > 0L && !setequal(names(Z), names(terms))) {
     stop(
@@ -926,6 +928,13 @@
   }
   if (!is.null(weights)) {
     spec$weights <- weights
+  }
+  if (!is.null(known_covariance)) {
+    off_diagonal <- known_covariance
+    diag(off_diagonal) <- 0
+    if (any(off_diagonal != 0)) {
+      spec$known_off_diagonal <- off_diagonal
+    }
   }
   structure(spec, class = "fb_sel_cov_spec")
 }
@@ -994,6 +1003,13 @@
     v_tt <- v_tt + variance * tcrossprod(z_t)
     v_ss <- v_ss + variance * tcrossprod(z_s)
     v_st_structural <- v_st_structural + variance * tcrossprod(z_s, z_t)
+  }
+  known <- cov_spec$known_off_diagonal
+  if (!is.null(known)) {
+    v_tt <- v_tt + known[train_rows, train_rows, drop = FALSE]
+    v_ss <- v_ss + known[assess_rows, assess_rows, drop = FALSE]
+    v_st_structural <- v_st_structural +
+      known[assess_rows, train_rows, drop = FALSE]
   }
 
   # The indicator designs carry the data's row names, and a crossproduct

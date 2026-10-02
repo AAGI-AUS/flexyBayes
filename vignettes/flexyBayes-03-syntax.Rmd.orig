@@ -17,7 +17,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(flexyBayes)
 ```
 
-This is a pilot vignette, to be revised and extended. It lists the ASReml
+This vignette lists the ASReml
 spellings flexyBayes reads, what each is for, and which engine fits it. A
 spelling the chosen engine cannot fit stops with a message that names it and
 says what to write instead. Under the default `backend = "auto"`, flexyBayes
@@ -92,7 +92,17 @@ spelling that is.
 
 Every message flexyBayes can stop with is listed by `fb_refusals()`:
 
-```{r refusals}
-nrow(fb_refusals())
-head(fb_refusals()$reason_code)
+```{r refusals-live, echo = FALSE, results = "asis"}
+# Written out as a live chunk, so the count is read from the registry at build.
+cat(
+  "```{r refusals-setup, include = FALSE}",
+  "library(flexyBayes)",
+  "```",
+  "",
+  "```{r refusals, collapse = TRUE, comment = \"#>\"}",
+  "nrow(fb_refusals())",
+  "head(fb_refusals()$reason_code)",
+  "```",
+  sep = "\n"
+)
 ```

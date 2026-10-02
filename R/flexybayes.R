@@ -458,7 +458,8 @@
 #'   Selects how `fixed` is interpreted. `"auto"` detects the grammar
 #'   from the call shape (a bar-grouped formula is read as brms,
 #'   otherwise ASReml); the other values force a grammar.
-#' @param known_variance Optional numeric vector of length N: a known
+#' @param known_variance Optional numeric vector of length N, or an N x N
+#'   covariance matrix (below). A vector is a known
 #'   variance for each response, added to the estimated residual variance,
 #'   `Var(y_i) = sigma^2 + v_i`. This is the second stage of a two-stage
 #'   analysis, where each response is a first-stage estimate (a variety
@@ -472,7 +473,15 @@
 #'   of zeros fits the model without it. Any other family refuses with
 #'   `known_variance_not_supported`, and a vector that is not one finite,
 #'   non-negative value per row with `known_variance_invalid`.
-#'   [fb_select()] carries it into the fold covariance under
+#'   A symmetric positive-definite N x N matrix `K` is a known covariance,
+#'   `Var(y) = sigma^2 I + K`, as when the first stage returns the full
+#'   covariance of its estimates. It is fitted on INLA as a latent effect
+#'   with precision `K^-1`; brms has no term for it and refuses with
+#'   `known_variance_not_supported`. A row and column of zeros marks a row
+#'   without a known part. A matrix that is not square, symmetric and
+#'   positive definite over the rows of `data` refuses with
+#'   `known_variance_invalid`.
+#'   [fb_select()] carries either form into the fold covariance under
 #'   `covariance = "base_model"`.
 #' @param fixed_alias `"refuse"` (the default) or `"drop"`: what to do with
 #'   a fixed-effect column that is a linear combination of the columns
@@ -530,7 +539,9 @@
 #' callr the request refuses with
 #' `isolation_requires_callr` before anything is fitted. The option applies
 #' to `flexybayes()`, `fb_brms()`, `fb_inla()`, `proceed()` and each fold of
-#' [fb_select()]. The default, `"none"`, fits in this session.
+#' [fb_select()]. The default, `"none"`, fits in this session, and runs
+#' concurrent fold workers of [fb_select()] in separate processes; `"fork"`
+#' forks those workers instead.
 #'
 #' If the operating system kills that process, or compiled code crashes inside
 #' it, the call refuses with `isolated_process_died`, naming the engine, the
@@ -936,7 +947,7 @@ flexybayes <- function(
     # A known variance is a column of `data` by now (R/known_variance.R).
     # The call carries it as the argument, aligned to these rows, and the
     # data without it, so that evaluating the call attaches it once.
-    known_rows <- data[[.FB_KNOWN_VARIANCE_COL]]
+    known_rows <- .fb_known_variance_reissue(fb, data)
     if (!is.null(known_rows)) {
       the_call_proceed$data <- data[
         setdiff(names(data), .fb_known_variance_columns())

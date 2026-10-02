@@ -26,6 +26,10 @@
 #' underlying `fb_prior` (when applicable) is exposed under
 #' `$fb_prior` for programmatic access.
 #'
+#' The methods are also registered on \pkg{rstantools}' `prior_summary()`
+#' generic, which \pkg{brms} re-exports, so `prior_summary(fit)` returns
+#' this summary when brms is attached after flexyBayes.
+#'
 #' @param object A `flexybayes_inla` or `flexybayes_brms` object.
 #' @param ... Ignored by current methods (reserved for future
 #'   per-component selection).
@@ -90,12 +94,14 @@ prior_summary <- function(object, ...) UseMethod("prior_summary")
 
 #' @rdname prior_summary
 #' @export
+#' @exportS3Method rstantools::prior_summary
 prior_summary.flexybayes_inla <- function(object, ...) {
   .prior_summary_impl(object, backend_label = "inla", declaration_only = FALSE)
 }
 
 #' @rdname prior_summary
 #' @export
+#' @exportS3Method rstantools::prior_summary
 prior_summary.flexybayes_brms <- function(object, ...) {
   .prior_summary_impl(object, backend_label = "brms", declaration_only = FALSE)
 }
@@ -399,6 +405,18 @@ prior_summary.default <- function(object, ...) {
   out$fixed_sd_engine_default <- .prior_summary_fixed_engine_default(
     backend_label
   )
+  # In the protected part of a block-scoped fit the intercept is an
+  # ordinary uncentred coefficient (R/penalty_block_nl.R).
+  if (
+    identical(backend_label, "brms") &&
+      !is.null(object$brms) &&
+      !is.null(.fb_brms_nl_parts(object$brms))
+  ) {
+    out$fixed_sd_engine_default <- paste0(
+      "brms's own defaults for a non-linear part: flat on the ",
+      "population-level coefficients and on the uncentred intercept"
+    )
+  }
   # Which fixed-effect coefficients an fb_prior() covers with a `b()`
   # row. The engine-default sentence below is true only of the
   # coefficients nothing names: since 0.9.2 a `b()` row reaches brms as a

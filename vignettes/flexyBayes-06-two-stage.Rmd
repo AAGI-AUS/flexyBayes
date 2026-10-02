@@ -14,7 +14,7 @@ vignette: >
 
 
 
-This is a pilot vignette, to be revised and extended. It analyses a
+This vignette analyses a
 simulated series of trials in two stages and selects trial-level covariates
 in the second stage.
 
@@ -246,25 +246,89 @@ to the loss reduction of the full model.
 # Bayesian comparison of the chosen covariates
 
 `refit = list(method = "bayes")` refits the chosen covariates as a Bayesian
-model in each fold. It does not take known variances, so on this base it
-stops:
+model in each fold, known variances included, and scores each held-out mean
+by its log predictive density (`lpd`). Each mean's known variance is part
+of its predictive variance.
 
 
 ``` r
-refused_value <- tryCatch(
-  fb_select(
-    base, ~ z1 + z2 + z3 + z4,
-    penalty = pen,
-    workflow = "penalized_optimizer",
-    resamples = fb_resamples(unit = ~trial, v = 5L),
-    covariance = "base_model",
-    refit = list(method = "bayes"),
-    seed = 20260920L
-  ),
-  error = function(e) e
+val <- fb_select(
+  base, ~ z1 + z2 + z3 + z4,
+  penalty = pen,
+  workflow = "penalized_optimizer",
+  resamples = fb_resamples(unit = ~trial, v = 5L),
+  covariance = "base_model",
+  refit = list(method = "bayes"),
+  seed = 20260920L
 )
-class(refused_value)[1]
-#> [1] "flexybayes_refusal_known_variance_not_supported"
+rnd(head(val$value$rows[, c("unit", "observed", "predictive_mean",
+                            "predictive_sd", "lpd")]))
+#>   unit observed predictive_mean predictive_sd    lpd
+#> 1  t01    4.464           5.007         0.830 -0.947
+#> 2  t01    5.353           5.285         0.875 -0.771
+#> 3  t01    5.491           5.757         0.831 -0.770
+#> 4  t01    5.640           6.113         0.830 -0.891
+#> 5  t01    5.929           6.588         0.830 -1.056
+#> 6  t01    6.458           7.097         0.828 -1.035
 ```
 
-It runs on a second stage without known variances.
+This refit runs on INLA. On brms it stops with
+`known_variance_not_supported`.
+
+# Carrying the full covariance of the first stage
+
+The means of one trial share its block effects, so their errors are
+correlated. `vcov()` of each stage-one fit gives their covariance, and
+together the trials give a block-diagonal matrix with one row per mean.
+Passed as `known_variance`, the matrix replaces the variances: row $i$ and
+row $j$ have covariance $\sigma^2 [i = j] + K_{ij}$.
+
+
+``` r
+blocks <- lapply(trials, function(tr) {
+  dt <- plots[plots$trial == tr, ]
+  dt$variety <- droplevels(dt$variety)
+  fit <- flexybayes(
+    yield ~ 0 + variety,
+    random = ~block,
+    data = dt,
+    backend = "inla",
+    verbose = FALSE
+  )
+  v <- vcov(fit)
+  rownames(v) <- colnames(v) <- paste(tr, sub("^variety", "", rownames(v)))
+  v
+})
+K <- matrix(0, nrow(stage1), nrow(stage1))
+key <- paste(stage1$trial, stage1$variety)
+for (v in blocks) {
+  at <- match(rownames(v), key)
+  K[at, at] <- v
+}
+
+base_k <- flexybayes(
+  ybar ~ variety,
+  random = ~trial,
+  data = stage1,
+  known_variance = K,
+  backend = "inla",
+  verbose = FALSE
+)
+
+rnd(data.frame(
+  term = names(coef(base)),
+  variances_only = coef(base),
+  full_covariance = coef(base_k)
+))
+#>                    term variances_only full_covariance
+#> (Intercept) (Intercept)          2.864           2.840
+#> varietyv2     varietyv2          0.342           0.419
+#> varietyv3     varietyv3          0.775           0.787
+#> varietyv4     varietyv4          1.133           1.180
+#> varietyv5     varietyv5          1.637           1.617
+#> varietyv6     varietyv6          2.079           2.134
+```
+
+`fb_select(covariance = "base_model")` whitens by the full matrix. The
+matrix is fitted on INLA only, and brms stops with
+`known_variance_not_supported`.

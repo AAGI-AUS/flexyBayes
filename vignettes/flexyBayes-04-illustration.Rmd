@@ -14,7 +14,7 @@ vignette: >
 
 
 
-This is a pilot vignette, to be revised and extended. It compares ASReml and
+This vignette compares ASReml and
 flexyBayes on one public trial, first as laid out and then reduced in size.
 The ASReml results were computed with ASReml 4.2.0.392
 under R version 4.5.2 (2025-10-31) on 2026-09-10 by

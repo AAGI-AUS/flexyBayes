@@ -1,6 +1,6 @@
 # API stability -- flexyBayes
 
-`flexyBayes` is in the **0.14.5** development line. Every public export is at
+`flexyBayes` is in the **0.15.0** development line. Every public export is at
 the experimental `lifecycle` stage, so the guarantees below are deliberately
 weaker than they will be at v1.0: bug fixes and additions never break callers,
 but renamings, default changes, and shape changes are permitted within 0.x
@@ -92,6 +92,10 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 |---|---|---|
 | `fb_plan()` | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
 | `fb_select()` | experimental | Selection over a fitted model with an explicit workflow axis. `workflow = "bayes"` fits a posterior reference model; `workflow = "penalized_optimizer"` is a frequentist penalised-likelihood path (`glmnet` for ridge/lasso/elastic net and the package proximal provider for grouped families); `workflow = "unpenalized_benchmark"` is generalised least squares with plugged-in covariance. Every result records workflow, provider, prior and decision separately, so no optimiser is labelled Bayesian. Fold-local preprocessing, candidate availability, support history and score-contract hashes are recorded. |
+| `fb_select_fold_data()` | experimental | Each fold's whitened and protected-removed data from `fb_select(keep_fold_data = TRUE)`, with its held-out covariance and variance components. |
+| `fb_select_path()` | experimental | The penalised path of a kept `fb_select()` run solved again on its fold data, at the run's elastic-net alpha or another. |
+| `fb_select_refit()` | experimental | The unpenalised GLS refit of a named column set on each fold of a kept `fb_select()` run, with held-out cluster scores. |
+| `fb_variance_draws()` | experimental | Joint posterior draws of an INLA fit's variance components, under the names and on the scale of `summary(fit)$varcomp`. |
 | `fb_penalty()` | experimental | Declare the joint shrinkage prior over the candidate block: `target ~ family(...)` formulas resolved in written order against the model matrix. Families: `ridge`, `laplace`, `elastic_net`, `regularized_horseshoe`, `r2d2`, and `none()` to exempt coordinates. Targets: `term(everything())`, `term(x1, x2)`, `term(c("x1", "x2"))`, `term(matches("^SLGA_"))`. |
 | `fb_resamples()` | experimental | Declare the resampling scheme a selection is scored on: folds on original units before any transformation, frozen factor levels, and an unseen level in an assessment fold refused rather than dropped. |
 | `fb_decision()` | experimental | Declare how the selection decision is made: the method (`projection`, `full`, `posterior_threshold`), the metric, the rule (`one_se`, `min`, `tolerance`) and the search. Validated at construction, so a rule missing the number it needs refuses before anything is fitted. |

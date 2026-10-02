@@ -148,6 +148,7 @@
                                   engine = NULL,
                                   seed = NULL,
                                   data = NULL,
+                                  nl_block = NULL,
                                   ...) {
   if (!inherits(base, "flexybayes")) {
     stop(.fb_refusal_condition(
@@ -178,9 +179,11 @@
   }
 
   ir <- .fb_fit_ir(base)
-  # The reference model is re-emitted from the IR, which a known variance per
-  # row would not reach (R/known_variance.R).
-  if (!is.null(.fb_known_variance_term(ir))) {
+  # The reference model is re-emitted from the IR. A block-scoped prior
+  # carries the base's known variance per row onto it; every other route
+  # would leave it out (R/known_variance.R).
+  known_variance <- .fb_known_variance_term(ir)
+  if (!is.null(known_variance) && is.null(nl_block)) {
     .fb_sel_known_variance_refuse_route(
       "the projection's reference fit, whose posterior draws are projected,"
     )
@@ -239,6 +242,12 @@
   if (!is.null(ir$prior_scalars)) {
     fb$prior_scalars <- ir$prior_scalars
   }
+  if (!is.null(known_variance)) {
+    fb$addition_terms <- c(fb$addition_terms %||% list(), list(known_variance))
+  }
+  if (!is.null(nl_block)) {
+    nl_block$candidate_terms <- candidate_terms
+  }
 
   opts <- .fb_engine_opts(engine) %||% list()
   if (inherits(engine, "fb_engine") && !identical(engine$name, "brms")) {
@@ -271,6 +280,7 @@
         mcmc_verbose = FALSE,
         extra_prior = prior,
         stanvars = stanvars,
+        nl_block = nl_block,
         fixed = extended,
         random = call_info$random,
         residual = call_info$residual,
@@ -528,7 +538,7 @@
     hs_blocks[[1L]]$hyperparameters$p0 %||% NA_real_
   ))
 
-  draws <- posterior::as_draws_matrix(brmsfit)
+  draws <- .fb_brms_draws_matrix(brmsfit)
   available <- colnames(draws)
   wanted <- paste0("sdb_", coef_names)
   present <- wanted %in% available

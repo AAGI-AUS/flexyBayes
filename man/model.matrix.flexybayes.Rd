@@ -4,17 +4,21 @@
 \alias{model.matrix.flexybayes}
 \title{Fixed-effect model matrix of a flexyBayes fit}
 \usage{
-\method{model.matrix}{flexybayes}(object, ...)
+\method{model.matrix}{flexybayes}(object, newdata = NULL, ...)
 }
 \arguments{
 \item{object}{A \code{flexybayes} fit carrying a fixed-effect formula and the
 data it was fitted to.}
 
+\item{newdata}{Optional data frame of rows to build the design for. The
+response may be absent.}
+
 \item{...}{Ignored, present for compatibility with the generic.}
 }
 \value{
-A numeric matrix with one row per observation and one column
-per fixed-effect basis column, carrying the usual \code{assign} attribute.
+A numeric matrix with one row per observation (of \code{newdata}
+where given) and one column per fixed-effect basis column. Without
+\code{newdata} it carries the usual \code{assign} attribute.
 }
 \description{
 Rebuilds the population-level design matrix from the formula and data
@@ -32,4 +36,8 @@ intercept-only matrix of the calling frame's data.
 An aggregated fit keeps its call rather than a formula under \verb{$glm} and
 recovers the formula the same way. A streamed fit that keeps fewer rows
 than it was fitted to refuses by name (\code{streamed_rows_not_retained}).
+
+With \code{newdata}, the design is built for those rows instead, with each
+factor coded on the levels of the fitted data, so its columns are the
+fit's coefficients in their order: \code{model.matrix(fit, newdata) \%*\% coef(fit)} is the population-level prediction.
 }

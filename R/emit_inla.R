@@ -767,7 +767,16 @@ emit_inla <- function(
   # coordinates the fit runs on, so that it adds v_i to row i's variance on
   # the original scale (R/known_variance.R).
   known_variance <- .fb_known_variance_values(fb, data)
-  if (!is.null(known_variance)) {
+  known_covariance <- .fb_known_covariance_values(fb, data)
+  if (!is.null(known_covariance)) {
+    index <- .fb_inla_known_index(known_covariance)
+    positive <- which(!is.na(index))
+    data_inla[[.FB_INLA_KNOWN_INDEX]] <- index
+    # The covariance on the standardised response is K / scale^2.
+    data_inla[[.FB_INLA_KNOWN_PRECISION]] <-
+      (standardisation$scale %||% 1)^2 *
+      chol2inv(chol(known_covariance[positive, positive, drop = FALSE]))
+  } else if (!is.null(known_variance)) {
     data_inla[[.FB_INLA_KNOWN_INDEX]] <- seq_len(nrow(data))
     data_inla[[.FB_INLA_KNOWN_SCALE]] <- sqrt(known_variance) /
       (standardisation$scale %||% 1)
@@ -1355,16 +1364,14 @@ emit_inla <- function(
   # empty, so a fit that asks for nothing is byte-identical to the call
   # this emit made before the argument was wired.
   t0 <- proc.time()
+  # Inside fb_select()'s fold loops the refit computes only what the fold
+  # reads (R/selection_fold_refit.R); everywhere else `fold_refit` is NULL.
+  fold_refit <- .fb_fold_refit_active()
   inla_args <- list(
     formula = inla_form,
     family = inla_family,
     data = data_inla,
-    control.compute = list(
-      config = TRUE,
-      return.marginals = TRUE,
-      dic = TRUE,
-      waic = TRUE
-    ),
+    control.compute = .fb_inla_control_compute(fold_refit),
     control.family = control_family,
     ...
   )
@@ -1476,6 +1483,11 @@ emit_inla <- function(
   restart_probe$fit <- NULL
   num_check$restart_probe <- restart_probe
   num_check$restart_adopted <- restart_adopted
+  if (!is.null(fold_refit)) {
+    # INLA leaves NA in place of the latent marginals it did not compute.
+    fit$marginals.fixed <- NULL
+    fit$marginals.random <- NULL
+  }
 
   # Every bounded prior is checked against the fit INLA returned, before
   # anything is mapped back, because the bounds INLA received are on the
@@ -1703,7 +1715,7 @@ emit_inla <- function(
 
   # Whether the data support the AR1 field, from a fit of the same model
   # without it. Read by the collapse warning and the varcomp `note` below.
-  if (length(.inla_spatial_field_terms(out))) {
+  if (is.null(fold_refit) && length(.inla_spatial_field_terms(out))) {
     formula_without_field <- tryCatch(
       .build_inla_formula(
         .fb_drop_field_terms(fb),
@@ -2312,7 +2324,7 @@ emit_inla <- function(
   # A known variance per row enters as a row effect of fixed unit precision,
   # scaled by the columns emit_inla() builds (R/known_variance.R).
   if (!is.null(.fb_known_variance_term(fb))) {
-    rhs_terms <- c(rhs_terms, .fb_inla_known_variance_formula_term())
+    rhs_terms <- c(rhs_terms, .fb_inla_known_variance_formula_term(fb))
   }
 
   rhs <- paste(rhs_terms, collapse = " + ")

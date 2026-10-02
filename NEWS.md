@@ -1,3 +1,92 @@
+# flexyBayes 0.15.0
+
+A feature release for two-stage analyses of a series of trials and for
+selection runs. A second stage can take the full covariance of the first
+stage's estimates, selection runs expose their fold data, a shrinkage prior
+can be confined to the candidate covariates, and parallel fold workers run as
+separate R processes. No model family or engine is added.
+
+## Two-stage analysis
+
+* `flexybayes(known_variance = K)` takes a symmetric positive-definite
+  covariance matrix with one row per data row, for a second stage whose first
+  stage returned the full covariance of its estimates:
+  `Var(y) = sigma^2 I + K`. INLA fits `K` as a latent effect with precision
+  `K^-1`. brms refuses a matrix with `known_variance_not_supported`, because
+  its `fcor()` term fits `sigma^2 K` and does not combine with `se()`.
+
+* `fb_select(covariance = "base_model")` on such a base whitens each fold by
+  `sigma^2 I + sum_k sigma_k^2 Z_k Z_k' + K`, with `K` in full.
+
+* `fb_select(refit = list(method = "bayes"))` runs on an INLA base with a
+  known variance or covariance: each fold is refitted with it, and each
+  held-out row's known variance is added to its predictive variance.
+
+* `fb_select(keep_fold_data = TRUE)` keeps each fold's whitened data, read by
+  three new functions: `fb_select_fold_data()` returns the whitened and
+  protected-removed design of each fold, `fb_select_path()` solves the
+  penalised path again at the run's alpha or another, and
+  `fb_select_refit()` refits a named column set by generalised least squares
+  and scores its held-out clusters. New refusal code
+  `selection_fold_data_not_kept`.
+
+* `fb_variance_draws()` draws an INLA fit's variance components jointly,
+  under the names and on the scale of `summary(fit)$varcomp`.
+
+* `model.matrix()` on a fit takes `newdata`, coding its factors on the
+  fitted data's levels with columns in the order of `coef()`.
+
+## Shrinkage on a block of candidates
+
+* `regularized_horseshoe()` and `r2d2()` take `scope = "block"`, which keeps
+  protected fixed effects out of the shrinkage prior. The reference model of
+  `fb_select()` is fitted as the brms non-linear formula `y ~ a + b`: part `a`
+  holds the intercept, the protected effects and the random terms under the
+  base model's priors, and part `b ~ 0 + <candidates>` carries the prior. The
+  block must hold every candidate. Coefficients, `tidy()`, `confint()`, draws
+  and the shrinkage factors use the candidates' own names. A known variance
+  per row (`known_variance`) is carried when no out-of-fold score is asked
+  for. The projection decision refuses on this scope, and
+  `decision = "auto"` resolves to `"full"`. A model with a variable named `a`
+  or `b` refuses with `penalty_block_part_name_taken`.
+
+## Selection folds
+
+* With more than one fold worker (`options(flexyBayes.selection_workers)`),
+  `fb_select()` runs each fold in a separate R process started through callr,
+  instead of forking the session. A forked worker of a session with INLA,
+  OpenMP and TBB loaded had died with SIGABRT in R's garbage collector with
+  memory to spare. `options(flexyBayes.isolation = "fork")` keeps the forked
+  workers; without callr, more than one worker refuses with
+  `isolation_requires_callr`.
+* The refusal for a forked fold worker that ends without a result
+  (`selection_parallel_worker_failed`) states what was seen, and names memory
+  and a crash in compiled code only as possible causes.
+* INLA refits inside `fb_select()`'s fold loops compute only what the fold
+  reads: no DIC, WAIC or latent marginals, posterior configurations only where
+  draws are taken, and no second fit testing an AR1 field. The stored fold
+  fit is about 12 times smaller, and a fold whose field the data do not
+  support no longer fits twice.
+* On INLA, the posterior predictive draws that score a fold are taken for the
+  held-out rows only, so a draw no longer holds the whole latent field.
+* The Bayesian route scores each fold on 8,000 predictive draws, up from
+  4,000. On an 800-row, 20-site example with a weak candidate effect, the
+  Monte Carlo standard deviation of a between-model elpd difference was 0.26
+  nats at 4,000 draws against a difference of 0.81, and 0.12 at 8,000.
+  Sampling 16,000 draws for one fold took 28 s against 20 s for 500.
+
+## Other fixes
+
+* `prior_summary()` returns the flexyBayes summary when brms is attached after
+  flexyBayes. brms re-exports the rstantools generic, whose default returned
+  `NULL`; the methods are now registered on it too.
+* The README install block also installs remotes, knitr and rmarkdown, which
+  building the vignettes needs.
+* Vignette 03 reads the number of refusal codes from `fb_refusals()` when it
+  is built.
+* A build from a git worktree no longer ships its `.git` file.
+* The vignettes open with what each one covers.
+
 # flexyBayes 0.14.5
 
 A patch release for fits with an AR1 field. The field's standard deviation

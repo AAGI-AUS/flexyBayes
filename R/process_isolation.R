@@ -66,7 +66,12 @@
 
 #' The isolation mode the caller asked for
 #'
-#' @return `"none"` or `"process"`.
+#' `"none"` fits in this session and runs concurrent fold workers as separate
+#' processes; `"process"` also runs single fits and one-at-a-time folds in a
+#' separate process; `"fork"` fits in this session and forks concurrent fold
+#' workers.
+#'
+#' @return `"none"`, `"process"` or `"fork"`.
 #' @noRd
 #' @keywords internal
 .fb_isolation_mode <- function() {
@@ -75,10 +80,11 @@
     !is.character(value) ||
       length(value) != 1L ||
       is.na(value) ||
-      !value %in% c("none", "process")
+      !value %in% c("none", "process", "fork")
   ) {
     stop(
-      "option flexyBayes.isolation must be \"none\" or \"process\". It is: ",
+      "option flexyBayes.isolation must be \"none\", \"process\" or ",
+      "\"fork\". It is: ",
       .fb_prior_deparse(value),
       ".",
       call. = FALSE
@@ -474,8 +480,9 @@
   }
   cause <- if (identical(signal, 9L)) {
     paste0(
-      " A process ended by SIGKILL is most often one the operating system ",
-      "stopped to reclaim memory."
+      " SIGKILL is sent from outside the process; the operating system ",
+      "reclaiming memory and another process stopping it are both possible ",
+      "senders."
     )
   } else if (identical(signal, 11L) || identical(signal, 6L)) {
     " That signal is a crash in compiled code running inside the process."

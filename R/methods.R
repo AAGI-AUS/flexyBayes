@@ -804,13 +804,34 @@ formula.flexybayes <- function(x, ...) {
 #' recovers the formula the same way. A streamed fit that keeps fewer rows
 #' than it was fitted to refuses by name (`streamed_rows_not_retained`).
 #'
+#' With `newdata`, the design is built for those rows instead, with each
+#' factor coded on the levels of the fitted data, so its columns are the
+#' fit's coefficients in their order: `model.matrix(fit, newdata) %*%
+#' coef(fit)` is the population-level prediction.
+#'
 #' @param object A `flexybayes` fit carrying a fixed-effect formula and the
 #'   data it was fitted to.
+#' @param newdata Optional data frame of rows to build the design for. The
+#'   response may be absent.
 #' @param ... Ignored, present for compatibility with the generic.
-#' @returns A numeric matrix with one row per observation and one column
-#'   per fixed-effect basis column, carrying the usual `assign` attribute.
+#' @returns A numeric matrix with one row per observation (of `newdata`
+#'   where given) and one column per fixed-effect basis column. Without
+#'   `newdata` it carries the usual `assign` attribute.
 #' @export
-model.matrix.flexybayes <- function(object, ...) {
+model.matrix.flexybayes <- function(object, newdata = NULL, ...) {
+  if (!is.null(newdata)) {
+    terms_fixed <- stats::delete.response(stats::terms(stats::formula(object)))
+    X <- .fb_fixef_model_matrix(
+      terms_fixed,
+      as.data.frame(newdata),
+      names(stats::coef(object)),
+      .fb_fit_data(object)
+    )
+    if (!identical(colnames(X), names(stats::coef(object)))) {
+      X <- X[, names(stats::coef(object)), drop = FALSE]
+    }
+    return(X)
+  }
   .fb_aggregated_rows_held(object, "model.matrix()")
   form <- object$glm$formula
   # The aggregated emits keep the call, not a formula, under `$glm`.
@@ -1041,7 +1062,7 @@ update.flexybayes <- function(object, ...) {
   # (R/known_variance.R). It is re-issued from that column, aligned to the
   # rows the re-fit is handed, and the carrying columns leave the data so the
   # re-fit attaches it once.
-  known_variance <- dat[[.FB_KNOWN_VARIANCE_COL]]
+  known_variance <- .fb_known_variance_reissue(.fb_fit_ir(object), dat)
   if (any(.fb_known_variance_columns() %in% names(dat))) {
     dat <- dat[setdiff(names(dat), .fb_known_variance_columns())]
   }

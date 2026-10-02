@@ -43,12 +43,17 @@
 # is set by memory well below the core count. The option therefore defaults
 # to one worker and a caller raises it against a measured figure.
 #
-# A worker that dies. A forked child killed by the operating system under
-# memory pressure, or lost with an engine segfault, leaves no condition to
-# re-raise, because the process that would have raised it is gone. Every
-# child therefore returns its value inside a marked wrapper, and a result
-# without that marker refuses by name rather than leaving one fold quietly
-# missing from the aggregation.
+# How workers start. More than one worker runs each fold in a separate R
+# process (R/process_isolation.R). A forked worker inherits the session's
+# loaded engine libraries after fork, and a forked worker of a session with
+# INLA, OpenMP and TBB loaded has died with SIGABRT in R's garbage collector
+# with memory to spare. Option flexyBayes.isolation = "fork" keeps forking.
+#
+# A worker that dies. A forked child that ends without returning leaves no
+# condition to re-raise and no exit status. Every child therefore returns
+# its value inside a marked wrapper, and a result without that marker
+# refuses by name rather than leaving one fold quietly missing from the
+# aggregation. A separate process reports its exit status or signal.
 
 # --- the plan -------------------------------------------------------------- #
 
@@ -94,9 +99,10 @@
 
 #' How a fold loop will be run
 #'
-#' The requested worker count is capped by the number of folds -- a worker
-#' with no fold to run is a process for nothing -- and by the cores, and it
-#' drops to one where the platform cannot fork. The engine threads each
+#' The requested worker count is capped by the number of folds and by the
+#' cores. More than one worker runs each fold in a separate R process, unless
+#' option `flexyBayes.isolation` is `"fork"`, which forks them and drops to
+#' one worker where the platform cannot fork. The engine threads each
 #' worker may use are divided out of the cores at the same time, so the
 #' product of the two does not exceed the machine.
 #'
@@ -113,11 +119,16 @@
   cores <- .fb_sel_worker_cores()
   n_jobs <- max(1L, as.integer(n_jobs))
   forkable <- identical(.Platform$OS.type, "unix")
+  mode <- .fb_isolation_mode()
   # Under options(flexyBayes.isolation = "process") every fold runs in a
   # child R process of its own (R/process_isolation.R), which needs no fork.
   isolated <- .fb_isolation_active("fb_select()")
 
   workers <- max(1L, min(requested, n_jobs, cores))
+  if (workers > 1L && identical(mode, "none")) {
+    .fb_sel_require_callr(workers)
+    isolated <- TRUE
+  }
   note <- NA_character_
   if (workers > 1L && !forkable && !isolated) {
     note <- paste0(
@@ -162,6 +173,32 @@
     provider = provider %||% NA_character_,
     note = note
   )
+}
+
+
+#' Refuse concurrent fold workers when callr is missing
+#'
+#' @param workers The worker count the plan arrived at.
+#' @return `NULL`, invisibly; refuses when callr cannot be loaded.
+#' @noRd
+#' @keywords internal
+.fb_sel_require_callr <- function(workers) {
+  if (.fb_isolation_callr_available()) {
+    return(invisible(NULL))
+  }
+  stop(.fb_refusal_condition(
+    reason_code = "isolation_requires_callr",
+    message = paste0(
+      "fb_select(): ",
+      workers,
+      " fold workers run as separate R processes started through callr, ",
+      "and callr is not installed. Install it with install.packages(",
+      "\"callr\"), set options(flexyBayes.selection_workers = 1) to run the ",
+      "folds one at a time, or set options(flexyBayes.isolation = \"fork\") ",
+      "to fork the workers from this session."
+    ),
+    entry_point = "fb_select()"
+  ))
 }
 
 
@@ -214,16 +251,15 @@
   stop(.fb_refusal_condition(
     reason_code = "selection_parallel_worker_failed",
     message = paste0(
-      "fb_select(): the worker running fold ",
+      "fb_select(): the forked worker running fold ",
       index,
-      " did not return a result and left no error to report, which is what ",
-      "a child killed from outside looks like -- the operating system ",
-      "reclaiming memory, or an engine crash taking the process with it. ",
-      "Nothing is aggregated from a partial set of folds. Lower ",
-      "options(flexyBayes.selection_workers) and run again: fold refits ",
-      "hold their rows in memory at the same time, so the workers a machine ",
-      "supports follow from its memory, and usually sit well below its core ",
-      "count."
+      " ended without returning a result and left no error; a forked ",
+      "worker's exit status and signal are not reported. The operating ",
+      "system ending it to reclaim memory and a crash in compiled code ",
+      "inside it are both possible causes. Nothing is aggregated from a ",
+      "partial set of folds. With options(flexyBayes.isolation) unset, ",
+      "each fold runs in a separate R process and a fold that ends this ",
+      "way is reported with its exit status or signal."
     ),
     fold = index
   ))
@@ -296,7 +332,7 @@
         " folds were sent to the workers and ",
         length(results),
         " results came back. Nothing is aggregated from a partial set of ",
-        "folds. Lower options(flexyBayes.selection_workers) and run again."
+        "folds."
       ),
       fold = NA_integer_
     ))

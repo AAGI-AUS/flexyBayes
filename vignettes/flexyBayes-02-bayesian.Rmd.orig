@@ -18,7 +18,7 @@ library(flexyBayes)
 data(john.alpha, package = "agridat")
 ```
 
-This is a pilot vignette, to be revised and extended. It fits the model from
+This vignette fits the model from
 `vignette("flexyBayes-01-mixed-models")` and shows what a Bayesian fit adds.
 
 # Point estimates and distributions

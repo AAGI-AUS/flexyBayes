@@ -92,6 +92,7 @@ emit_brms <- function(
   return_code = FALSE,
   extra_prior = NULL,
   stanvars = NULL,
+  nl_block = NULL,
   the_call = NULL,
   fixed = NULL,
   random = NULL,
@@ -154,11 +155,26 @@ emit_brms <- function(
   }
   # A known variance per row reaches brms as the standard error its
   # `se(, sigma = TRUE)` addition term reads (R/known_variance.R).
+  if (!is.null(.fb_known_variance_term(fb)$matrix)) {
+    .fb_known_variance_refuse(paste0(
+      "A known covariance matrix in `known_variance` is fitted on INLA only ",
+      "(backend = \"inla\"). brms has no term for sigma^2 I + K: fcor() ",
+      "fits sigma^2 K and does not combine with se(). For a diagonal K, ",
+      "pass its diagonal as a vector."
+    ))
+  }
   known_variance <- .fb_known_variance_values(fb, data)
   if (!is.null(known_variance)) {
     data[[.FB_BRMS_KNOWN_SE_COL]] <- sqrt(known_variance)
   }
   brms_form <- .fb_to_brms_formula(fb)
+  # A `scope = "block"` penalty fits the two-part non-linear formula; the
+  # linear one still describes the fixed part to the GLM shim
+  # (R/penalty_block_nl.R).
+  linear_form <- brms_form
+  if (!is.null(nl_block)) {
+    brms_form <- .fb_nl_block_formula(linear_form, nl_block)
+  }
   # Materialised relationship covariances for any vm() / ped() term,
   # threaded into brms via data2 (empty list when there are none).
   brms_data2 <- .fb_brms_data2(fb, known_matrices, data)
@@ -180,7 +196,7 @@ emit_brms <- function(
   # user never wrote, untyped (field-sweep FS-20).
   .check_brms_prior_rows_reachable(
     brms_prior,
-    formula = brms_form,
+    formula = linear_form,
     data = data,
     data2 = brms_data2,
     family = brms_family
@@ -196,6 +212,9 @@ emit_brms <- function(
   # would read the blank class as a class the model does not carry. brms
   # validates these rows itself at brm() time.
   # The rows as compiled, each carrying its input identifier, for the manifest.
+  if (!is.null(nl_block)) {
+    brms_prior <- .fb_nl_block_prior(brms_prior, nl_block)
+  }
   tagged_prior <- brms_prior
   brms_prior <- .fb_brms_merge_extra_prior(brms_prior, extra_prior)
 
@@ -311,6 +330,13 @@ emit_brms <- function(
     }
   )
   draws_mat <- as.matrix(draws_arr)
+  nl_parts <- .fb_brms_nl_parts(brmsfit)
+  if (!is.null(nl_parts)) {
+    colnames(draws_mat) <- .fb_nl_canonical_names(
+      colnames(draws_mat),
+      nl_parts
+    )
+  }
 
   # Posterior summary in a shape compatible with the parent print /
   # summary methods. Single-chain treatment matches the way the
@@ -337,7 +363,7 @@ emit_brms <- function(
     draws_mat,
     data,
     family = brms_family,
-    formula_used = brms_form
+    formula_used = linear_form
   )
 
   # Variance components: extract sd_<group>__Intercept rows from the
@@ -1425,6 +1451,8 @@ emit_brms <- function(
   if (is.null(nm)) {
     return(character(0L))
   }
+  # The two parts of a block-scoped fit are non-linear parts, not dpars.
+  nm <- setdiff(nm, .fb_brms_nl_parts(brmsfit))
   nm[nzchar(nm)]
 }
 
@@ -2000,7 +2028,7 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
     "Package 'posterior' is required for confint() on brms ",
     "fits."
   )
-  draws <- as.matrix(posterior::as_draws_matrix(object$brms))
+  draws <- .fb_brms_draws_matrix(object$brms)
   cn <- colnames(draws)
   # Mean-model coefficients only, so this table and coef() / vcov()
   # describe the same parameter set on a distributional fit.

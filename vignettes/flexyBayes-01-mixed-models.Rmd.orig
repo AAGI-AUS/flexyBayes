@@ -17,7 +17,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 library(flexyBayes)
 ```
 
-This is a pilot vignette, to be revised and extended. Readers who already
+Readers who already
 use ASReml can go straight to `vignette("flexyBayes-03-syntax")`.
 
 # The idea

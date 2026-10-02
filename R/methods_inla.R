@@ -150,6 +150,62 @@ coef.flexybayes_inla <- function(
   )
 }
 
+#' Joint posterior draws of the variance components of an INLA fit
+#'
+#' @description
+#' Draws the hyperparameters of an INLA fit jointly and returns them on the
+#' scale and under the names of the fit's variance-component table
+#' (`summary(fit)$varcomp`): a standard deviation for the residual (`sigma`)
+#' and for each random term (`sd_<term>`), and a correlation as it is.
+#'
+#' @details
+#' The draws come from `INLA::inla.hyperpar.sample()` and are mapped to the
+#' response's original scale. A hyperparameter held fixed, such as the
+#' precision of a known variance, is not drawn. With `seed`, the draws are
+#' repeatable on one INLA thread (`options(flexyBayes.inla_threads = "1:1")`).
+#'
+#' @param object A `flexybayes_inla` fit.
+#' @param n The number of draws.
+#' @param seed An integer seed, or `NULL` (the default) to use the session's
+#'   random number stream.
+#'
+#' @returns A data frame with `n` rows and one column per variance
+#'   component.
+#'
+#' @examples
+#' \donttest{
+#' if (requireNamespace("INLA", quietly = TRUE)) {
+#'   set.seed(1)
+#'   d <- data.frame(site = factor(rep(1:6, each = 5)))
+#'   d$y <- rnorm(6)[d$site] + rnorm(30)
+#'   fit <- flexybayes(y ~ 1, random = ~site, data = d, backend = "inla",
+#'                     verbose = FALSE)
+#'   head(fb_variance_draws(fit, 100L, seed = 1L))
+#' }
+#' }
+#' @export
+fb_variance_draws <- function(object, n, seed = NULL) {
+  if (!inherits(object, "flexybayes_inla") || is.null(object$inla)) {
+    stop("`object` must be a flexyBayes fit on INLA.", call. = FALSE)
+  }
+  if (!is.numeric(n) || length(n) != 1L || !is.finite(n) || n < 1) {
+    stop("`n` must be a single positive number of draws.", call. = FALSE)
+  }
+  draw <- function() .fb_inla_hyperpar_sample(object, as.integer(n))
+  hyper <- if (is.null(seed)) draw() else .fb_sel_with_seed(seed, draw())
+  hyper <- as.matrix(hyper)
+  map <- .mapper_inla(object, object$fb)$map
+  out <- lapply(colnames(hyper), function(nm) {
+    if (startsWith(nm, "Precision for ")) 1 / sqrt(hyper[, nm]) else hyper[, nm]
+  })
+  names(out) <- vapply(
+    colnames(hyper),
+    function(nm) unname(map[nm] %||% nm),
+    character(1L)
+  )
+  as.data.frame(out, check.names = FALSE)
+}
+
 #' Posterior covariance of a per-row INLA fit's fixed effects
 #'
 #' Monte-Carlo estimate of the joint posterior covariance of the fixed

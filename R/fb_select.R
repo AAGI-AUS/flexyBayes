@@ -522,6 +522,26 @@
   } else {
     .fb_select_compile_optimizer(blocks, coef_names_all)
   }
+  # The block's part holds every candidate term, so a candidate outside the
+  # block would be shrunk without being named.
+  if (!is.null(compiled$nl_block)) {
+    unnamed <- setdiff(
+      .fb_pen_brms_coef_names(candidate_names),
+      compiled$nl_block$coef_names
+    )
+    if (length(unnamed) > 0L) {
+      stop(.fb_refusal_condition(
+        reason_code = "penalty_block_targeting_unsupported",
+        message = paste0(
+          "fb_penalty(): scope = \"block\" fits every candidate as one ",
+          "non-linear part under one prior, and these candidates are ",
+          "outside the block: ", paste(unnamed, collapse = ", "),
+          ". Name them in the block, or leave them out of `candidates`."
+        ),
+        coefficients = unnamed
+      ))
+    }
+  }
 
   # The constants the apply step reads: one row per candidate column in a
   # block, and whether the apply step moves it.
@@ -1313,7 +1333,8 @@
       column_map = transform$column_map,
       engine = engine,
       seed = fit_seed,
-      data = fold_data
+      data = fold_data,
+      nl_block = transform$compiled$nl_block
     )
     if (!is.null(control)) {
       args$control <- control
@@ -2519,8 +2540,10 @@
 #' labelled `unpenalized_benchmark` wherever it appears.
 #'
 #' Fold refits run one at a time by default.
-#' `options(flexyBayes.selection_workers = n)` runs `n` of them at once on a
-#' platform that forks, and divides the OpenMP threads between the workers so
+#' `options(flexyBayes.selection_workers = n)` runs `n` of them at once, each
+#' in a separate R process started through callr (in Suggests; without it the
+#' request refuses with `isolation_requires_callr`), and divides the OpenMP
+#' threads between the workers so
 #' that workers times threads does not exceed the machine; an INLA fold runs
 #' at option `flexyBayes.inla_threads`, one thread by default (see
 #' [flexybayes()]). Nothing the run
@@ -2539,14 +2562,19 @@
 #' 2,000 rows and 20 candidates; 2.4 GB with one worker and 3.8, 5.3 and
 #' 5.5 GB at 5,000 rows and 40 candidates; and, with three folds, 4.3 GB with
 #' one worker and 7.9 and 11.5 GB with two and three at 10,890 rows and 82
-#' candidates. A worker the operating system kills under that pressure
-#' refuses by name, and the aggregation keeps every fold or none.
+#' candidates (forked workers). A fold whose process ends before it returns
+#' refuses with `isolated_process_died`, naming the fold and the exit status
+#' or signal, this session carries on, and the aggregation keeps every fold
+#' or none.
 #'
-#' `options(flexyBayes.isolation = "process")` runs each fold in a separate R
-#' process (see [flexybayes()]), one at a time, or `n` at once with the worker
-#' option. A fold whose process ends before it returns refuses with
-#' `isolated_process_died`, naming the fold and the signal, and this session
-#' carries on. Each fold then pays for starting R and reading its inputs:
+#' `options(flexyBayes.isolation = "fork")` forks the workers from this
+#' session instead, on a platform that forks. A forked worker reports no exit
+#' status, and one that ends without returning refuses with
+#' `selection_parallel_worker_failed`.
+#'
+#' `options(flexyBayes.isolation = "process")` also runs the folds in a
+#' separate R process when they run one at a time (see [flexybayes()]).
+#' Each fold in a separate process pays for starting R and reading its inputs:
 #' about 2 seconds a fold on the closed-form route, and 2.3 to 2.4 seconds a
 #' fit for `flexybayes()` at 96 and 5,000 rows. At 2,000 rows and 20
 #' candidates the call held 2.1 GB with one fold at a time and 3.8 GB with
@@ -2800,6 +2828,12 @@
 #'   does with a protected column its training rows do not identify. See
 #'   "Aliased protected columns". `"drop"` needs
 #'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`.
+#' @param keep_fold_data `FALSE` (the default), or `TRUE` to keep each fold's
+#'   whitened data on the result, for [fb_select_fold_data()],
+#'   [fb_select_path()] and [fb_select_refit()]. It needs
+#'   `workflow = "penalized_optimizer"` or `"unpenalized_benchmark"`. The
+#'   kept data holds the fold's design and Cholesky factor, so its size grows
+#'   with the folds times the square of the training rows.
 #' @param ... Reserved. `metric` is accepted here for one release with a
 #'   deprecation notice; it now lives in [fb_decision()].
 #'
@@ -2862,8 +2896,10 @@ fb_select <- function(base,
                       refit = NULL,
                       ablation = FALSE,
                       protected_alias = c("refuse", "drop"),
+                      keep_fold_data = FALSE,
                       ...) {
   workflow <- match.arg(workflow)
+  .fb_sel_check_keep_fold_data(keep_fold_data, workflow)
   fallback <- match.arg(fallback)
   protected_alias <- match.arg(protected_alias)
   prediction <- match.arg(prediction)
@@ -3090,7 +3126,8 @@ fb_select <- function(base,
   # A base with a known variance per row runs only where the fold covariance
   # carries it (R/known_variance.R).
   .fb_select_require_known_variance_route(
-    base, workflow, covariance, value_request
+    base, workflow, covariance, value_request,
+    block_scope = .fb_pen_block_scope(penalty) && !isTRUE(benchmark)
   )
 
   # Every fold covariance and fold refit carries the base's observation
@@ -3153,7 +3190,7 @@ fb_select <- function(base,
       engine = engine,
       protected_alias = protected_alias
     )
-    return(.fb_select_assemble(
+    out <- .fb_select_assemble(
       base = base,
       axes = list(
         workflow = bench$cv$workflow,
@@ -3170,7 +3207,13 @@ fb_select <- function(base,
       structure_gate = structure_gate,
       decision_resolution = forced_full,
       dots = dots
-    ))
+    )
+    if (keep_fold_data) {
+      out <- .fb_sel_keep_fold_data(
+        out, bench, base, resamples, blocks = NULL, decision = decision
+      )
+    }
+    return(out)
   }
 
   if (identical(workflow, "penalized_optimizer")) {
@@ -3196,6 +3239,7 @@ fb_select <- function(base,
       engine = engine,
       budget = budget,
       protected_alias = protected_alias,
+      keep_fold_data = keep_fold_data,
       decision_resolution = list(
         requested = decision_resolution$requested,
         resolved_from = if (
@@ -3303,6 +3347,35 @@ fb_select <- function(base,
     collapse = " + "
   )
   .fb_sel_require_stability_family(resolved$blocks, decision)
+
+  # A block-scoped prior is fitted as a non-linear model, which the
+  # projection provider does not project.
+  if (
+    !is.null(resolved$compiled$nl_block) &&
+      identical(decision$method, "projection")
+  ) {
+    if (!identical(decision$requested_method, "auto")) {
+      stop(.fb_refusal_condition(
+        reason_code = "projection_structure_unsupported",
+        message = paste0(
+          "fb_select(): projection does not support the reference model of ",
+          "a scope = \"block\" prior. It is a brms non-linear model, with ",
+          "the candidate block as its own part, and projpred projects ",
+          "linear models only. Ask for decision = fb_decision(method = ",
+          "\"full\") or \"posterior_threshold\", which read the reference ",
+          "posterior directly."
+        ),
+        feature = "nonlinear_reference_model"
+      ))
+    }
+    decision$method <- "full"
+    decision_resolution$resolved_from <- "auto"
+    decision_resolution$reason <- paste0(
+      "the scope = \"block\" prior is fitted as a non-linear model, which ",
+      "the projection provider does not project, so the answer is the ",
+      "reference posterior itself"
+    )
+  }
 
   # The reference model is fitted by brms whatever fitted the base. That is
   # not a substitution: the parsed model is engine-independent, and the
@@ -3442,7 +3515,8 @@ fb_select <- function(base,
     column_map = resolved$column_map,
     engine = engine,
     seed = seed,
-    data = resolved$reference_data
+    data = resolved$reference_data,
+    nl_block = resolved$compiled$nl_block
   )
   # The sampler's step-size target is a lever, not a default to be argued
   # with: the contract's 0.95 is the floor, and the convergence gate refuses
@@ -3636,7 +3710,8 @@ fb_select <- function(base,
                                  ablation = FALSE,
                                  engine = NULL,
                                  budget = NULL,
-                                 protected_alias = "refuse") {
+                                 protected_alias = "refuse",
+                                 keep_fold_data = FALSE) {
   resolved <- .fb_select_resolve_penalty(
     base,
     candidates,
@@ -3785,7 +3860,7 @@ fb_select <- function(base,
     )
   }
 
-  .fb_select_assemble(
+  out <- .fb_select_assemble(
     base = base,
     axes = axes,
     cv = bench$cv,
@@ -3825,6 +3900,13 @@ fb_select <- function(base,
     ablation = ablation_record,
     dots = list()
   )
+  if (keep_fold_data) {
+    out <- .fb_sel_keep_fold_data(
+      out, bench, base, resamples, blocks = resolved$blocks,
+      decision = decision
+    )
+  }
+  out
 }
 
 
@@ -4597,7 +4679,7 @@ tidy.fb_select <- function(x, level = c("column", "group"), ...) {
 
   brmsfit <- x$reference$brms
   if (!is.null(brmsfit) && !is.null(x$blocks)) {
-    draws <- as.matrix(brmsfit)
+    draws <- .fb_brms_draws_matrix(brmsfit)
     keep <- colnames(draws) %in% c(paste0("b_", map$column), "b_Intercept")
     scaled <- .fb_pen_back_transform(draws[, keep, drop = FALSE], x$blocks)
     for (i in seq_len(nrow(out))) {
