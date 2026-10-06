@@ -236,7 +236,10 @@ fb_plan <- function(
     known_matrices = known_matrices
   )
 
-  preflight_refused <- inherits(preflight$refusal, "fb_preflight_refusal")
+  # Below the dispatch threshold the fit skips the preflight, so its refusal
+  # binds only there or when the caller set a memory ceiling.
+  preflight_refused <- inherits(preflight$refusal, "fb_preflight_refusal") &&
+    (!is.null(memory_ceiling_gb) || .preflight_runs_at_dispatch(fb))
 
   # ---- aggregation plan (read off preflight) -------------------- #
   agg_plan <- preflight$aggregation_plan
