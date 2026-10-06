@@ -12,7 +12,7 @@
 # R/methods.R). This file supplies those methods, reading the
 # fixed-effect posterior
 # from the INLA fit's `summary.fixed` (means, treatment-contrast basis)
-# and a Monte-Carlo joint covariance from `inla.posterior.sample()`
+# and the joint covariance from the Gaussian approximations INLA stores
 # (the fit is built with `control.compute = list(config = TRUE)`).
 #
 # Scope: the fixed-effect (population-level) surface. Random effects are
@@ -98,6 +98,84 @@
   aliased <- object$extras$fixed_alias$dropped$column
   mat[, colnames(mat) %in% aliased] <- 0
   mat
+}
+
+# Joint posterior covariance of the fixed effects, computed exactly from the
+# Gaussian approximations INLA stores for each hyperparameter configuration:
+# the covariance of the mixture that inla.posterior.sample() draws from.
+.inla_fixef_vcov <- function(object) {
+  cs <- object$inla$misc$configs
+  if (is.null(object$inla) || is.null(cs)) {
+    stop(
+      "vcov() needs an INLA fit built with ",
+      "control.compute = list(config = TRUE).",
+      call. = FALSE
+    )
+  }
+  fixed_names <- rownames(object$inla$summary.fixed)
+  p <- length(fixed_names)
+  # The stored precision matrices omit the linear-predictor block that the
+  # contents table lists first.
+  offset <- sum(cs$contents$length) - cs$n
+  idx <- cs$contents$start[match(fixed_names, cs$contents$tag)] - offset
+  if (anyNA(idx)) {
+    stop(
+      "Could not locate the fixed effects in the INLA configurations.",
+      call. = FALSE
+    )
+  }
+  unit <- Matrix::sparseMatrix(
+    i = idx,
+    j = seq_len(p),
+    x = 1,
+    dims = c(cs$n, p)
+  )
+  log_post <- vapply(cs$config, function(k) k$log.posterior, numeric(1L))
+  w <- exp(log_post - max(log_post))
+  w <- w / sum(w)
+
+  second <- matrix(0, p, p)
+  first <- numeric(p)
+  for (k in seq_along(cs$config)) {
+    config <- cs$config[[k]]
+    chol_q <- Matrix::Cholesky(Matrix::forceSymmetric(config$Q, uplo = "U"))
+    cov_f <- as.matrix(Matrix::solve(chol_q, unit))[idx, , drop = FALSE]
+    mu <- config$improved.mean
+    if (!is.null(cs$constr)) {
+      # Condition on the linear constraints A x = e, as the sampler does.
+      a_mat <- matrix(cs$constr$A, nrow = cs$constr$nc)
+      sigma_at <- as.matrix(Matrix::solve(chol_q, t(a_mat)))
+      gain <- sigma_at %*% solve(a_mat %*% sigma_at)
+      mu <- mu - drop(gain %*% (a_mat %*% mu - cs$constr$e))
+      cov_f <- cov_f -
+        gain[idx, , drop = FALSE] %*%
+          t(sigma_at[idx, , drop = FALSE])
+    }
+    mu <- mu[idx]
+    second <- second + w[k] * (cov_f + tcrossprod(mu))
+    first <- first + w[k] * mu
+  }
+  v <- second - tcrossprod(first)
+  v <- (v + t(v)) / 2
+
+  # Back to the original scale, by the factors the posterior draws use.
+  b <- rep(1, p)
+  spec <- object$extras$response_standardisation
+  if (!is.null(spec)) {
+    b <- b * spec$scale
+  }
+  cstd <- object$extras$covariate_standardisation
+  if (!is.null(cstd)) {
+    b <- b * .fb_inla_covariate_draw_factor(fixed_names, cstd)
+  }
+  v <- v * tcrossprod(b)
+
+  labels <- .inla_restore_term_labels(object$level_labels, fixed_names)
+  dimnames(v) <- list(labels, labels)
+  aliased <- labels %in% object$extras$fixed_alias$dropped$column
+  v[aliased, ] <- 0
+  v[, aliased] <- 0
+  v
 }
 
 
@@ -208,25 +286,26 @@ fb_variance_draws <- function(object, n, seed = NULL) {
 
 #' Posterior covariance of a per-row INLA fit's fixed effects
 #'
-#' Monte-Carlo estimate of the joint posterior covariance of the fixed
-#' effects, computed from `inla.posterior.sample()`. The marginal
-#' standard deviations match `summary.fixed$sd`; the off-diagonals carry
-#' the joint dependence that contrast / marginal-mean standard errors
-#' require. Because the estimate is sampling-based it varies slightly
-#' between calls; raise `n_samples` for a tighter estimate.
+#' The joint posterior covariance of the fixed effects, the matrix that
+#' contrast and marginal-mean standard errors need. It is computed exactly
+#' from the Gaussian approximations INLA stores for the fit, averaged over
+#' INLA's hyperparameter configurations, so it involves no random draws:
+#' every call on the same fit returns the same matrix and the session's
+#' random number stream is left untouched. It is the covariance of the
+#' draws `INLA::inla.posterior.sample()` would give, without their Monte
+#' Carlo error. The standard deviations on its diagonal agree closely with
+#' `summary.fixed$sd`, which comes from INLA's marginal densities.
 #'
 #' @param object A `flexybayes_inla` fit.
-#' @param n_samples Posterior sample size for the covariance estimate
-#'   (default 2000).
+#' @param n_samples Not used, as the covariance is exact. Accepted so that
+#'   calls written for earlier versions, which estimated the matrix from
+#'   `n_samples` posterior draws, still run.
 #' @param ... Ignored. Present for compatibility with the generic.
-#' @return Posterior covariance matrix of the fixed effects, with
-#'   `summary.fixed` rownames as dimnames.
+#' @return Posterior covariance matrix of the fixed effects, with the
+#'   coefficient names of [coef()] as dimnames.
 #' @export
 vcov.flexybayes_inla <- function(object, n_samples = 2000L, ...) {
-  draws <- .inla_fixef_draws(object, n_samples = n_samples)
-  v <- stats::cov(draws)
-  dimnames(v) <- list(colnames(draws), colnames(draws))
-  v
+  .inla_fixef_vcov(object)
 }
 
 #' Credible intervals for the fixed effects of a per-row INLA fit
