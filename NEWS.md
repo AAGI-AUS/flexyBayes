@@ -111,8 +111,13 @@
 ## Other fixes
 
 * `fb_plan()` refuses an argument it does not take with
-  `plan_argument_unknown`; a misspelt name used to fall into its unused `...`
+  `plan_argument_unknown`. A misspelt name used to fall into its unused `...`
   and the plan was made for a different model.
+
+* The `flexybayes_stream()` help now says that with `prior = NULL` each
+  random-effect standard deviation takes the package's half-normal default
+  and the fixed effects keep INLA's defaults. It used to say the backend's
+  defaults were used for every parameter.
 
 # flexyBayes 0.15.0
 

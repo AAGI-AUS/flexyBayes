@@ -102,8 +102,12 @@
 #' @param chunk_rows The number of rows to read per chunk. Larger chunks
 #'   read faster but use more peak memory; the default 5e6 keeps peak
 #'   memory modest while amortising read overhead.
-#' @param prior An optional [fb_prior()] object. When `NULL` the backend
-#'   default priors are used.
+#' @param prior An optional [fb_prior()] object. When `NULL`, each
+#'   random-effect standard deviation takes the default [flexybayes()]
+#'   applies, `half_normal(scale = 3)` for Poisson and
+#'   `half_normal(scale = 5)` for binomial, on the link scale. The fixed
+#'   effects keep INLA's default priors. [prior_summary()] lists the prior
+#'   on every parameter of the fit.
 #' @param fit When `TRUE` (default) the aggregated model is fitted and a
 #'   `<flexybayes>` object is returned. When `FALSE` the function returns
 #'   the `<fb_aggregated>` sufficient-statistics object without fitting --
