@@ -68,8 +68,8 @@ test_that("a column named offset is a covariate, not an offset", {
   d <- .off_sleepstudy()
   d$offset <- d$Days
   fb <- fb_from_asreml(fixed = Reaction ~ offset, random = ~ Subject, data = d)
-  expect_identical(fb$fixed[[1L]]$var, "offset")
-  expect_identical(fb$fixed[[1L]]$type, "continuous")
+  expect_identical(fb$fixed_terms[[1L]]$var, "offset")
+  expect_identical(fb$fixed_terms[[1L]]$type, "continuous")
   expect_length(fb$offsets, 0L)
 })
 
