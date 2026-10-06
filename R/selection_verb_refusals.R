@@ -9,9 +9,6 @@
 #
 #   selection_fallback_not_authorised   R/fb_select.R, the provider check
 #                                       test-fb-select-bayes.R
-#   prior_family_unsupported_inla       R/lgm_gate.R check 12, an internal
-#                                       guard no public call reaches
-#                                       test-lgm-gate.R, test-fb-select-bayes.R
 #   selection_decision_invalid          R/fb_decision.R, at construction
 #                                       test-fb-decision.R
 #
@@ -56,24 +53,6 @@
       "and fallback = \"none\"."
     ),
     registered_in_adr = "SPEC v5 section 3.3",
-    plan_field = "selection_plan",
-    since_version = "0.11.0"
-  )
-
-  .register_selection_refusal(
-    reason_code = "prior_family_unsupported_inla",
-    description = paste0(
-      "A joint shrinkage prior over the candidate fixed effects reached ",
-      "lgm_gate() on a model routed at INLA. flexyBayes fits joint ",
-      "shrinkage priors on brms only and has no INLA route for them. No ",
-      "public call reaches this refusal: fb_select() fits its reference ",
-      "model on brms whatever engine fitted the base. The check is kept as ",
-      "an internal guard."
-    ),
-    message_template = paste0(
-      "joint shrinkage priors are fitted on brms only (%s)."
-    ),
-    registered_in_adr = "SPEC v5 section 4.5",
     plan_field = "selection_plan",
     since_version = "0.11.0"
   )

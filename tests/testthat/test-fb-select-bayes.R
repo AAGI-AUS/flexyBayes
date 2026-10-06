@@ -1408,23 +1408,6 @@ test_that("an INLA-fitted base has its reference re-emitted on brms, and says so
   )))
   out <- paste(utils::capture.output(print(plan)), collapse = "\n")
   expect_match(out, "the base was fitted by inla", fixed = TRUE)
-
-  # The check still fires where it means something: a genuine INLA fit
-  # request carrying a joint block on the IR is refused by the gate itself,
-  # which is where the refusal belongs.
-  fb_gate <- base$fb
-  fb_gate$penalty_blocks <- .fb_pen_resolve(
-    fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
-    .fb_sel_term_map(~ p1 + x1 + x2 + z1 + z2, d),
-    protected = "p1"
-  )
-  gated <- lgm_gate(fb_gate)
-  expect_true(is_lgm_refusal(gated))
-  expect_true("prior_family_unsupported_inla" %in%
-    vapply(gated$failures, function(f) f$rule_id, character(1L)))
-  # The negative control: the same base with no joint block passes the same
-  # gate, so the refusal is the prior's and not the model's.
-  expect_silent(lgm_gate(base$fb))
 })
 
 

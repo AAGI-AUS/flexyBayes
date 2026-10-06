@@ -603,7 +603,8 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # (refit_not_reconstructable), brms objects handed to a refit not fitted
   # with brms (refit_hooks_require_brms), and a model whose marginal
   # covariance fb_marginal_cov() does not build (marginal_cov_not_buildable)
-  # (= 236).
+  # (= 236). The lgm_gate() check behind prior_family_unsupported_inla is
+  # deleted, since no route set the field it read (= 235).
   expect_true("selection_fold_data_not_kept" %in% entries)
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
@@ -625,12 +626,12 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("refit_not_reconstructable" %in% entries)
   expect_true("refit_hooks_require_brms" %in% entries)
   expect_true("marginal_cov_not_buildable" %in% entries)
-  expect_equal(length(entries), 236L)
-  # 0.16.0 splits the registry by partition: 73 selection codes (the 71 the
-  # selection files registered and the two loss-surface codes moved from the
+  expect_equal(length(entries), 235L)
+  # 0.16.0 splits the registry by partition: 72 selection codes (the 70 the
+  # selection files register and the two loss-surface codes moved from the
   # core) in "flexySelect", and 163 in the core.
   expect_equal(sum(tab$package == "flexyBayes"), 163L)
-  expect_equal(sum(tab$package == "flexySelect"), 73L)
+  expect_equal(sum(tab$package == "flexySelect"), 72L)
   expect_setequal(unique(tab$package), c("flexyBayes", "flexySelect"))
   expect_equal(length(ls(flexyBayes:::.refusal_registry)), 163L)
   expect_true("selection_weights_not_carried" %in% entries)
@@ -704,7 +705,7 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("selection_family_not_supported" %in% entries)
   expect_true("selection_provider_absent" %in% entries)
   expect_true("selection_fallback_not_authorised" %in% entries)
-  expect_true("prior_family_unsupported_inla" %in% entries)
+  expect_false("prior_family_unsupported_inla" %in% entries)
   expect_true("selection_decision_invalid" %in% entries)
   expect_true("penalty_runtime_budget_exceeded" %in% entries)
   expect_true("penalty_sampler_diagnostics_failed" %in% entries)
