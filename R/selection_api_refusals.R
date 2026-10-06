@@ -6,7 +6,7 @@
 # tests/testthat/test-selection-api.R.
 
 .populate_refusal_registry_selection_api <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_data_not_kept",
     description = paste0(
       "A selection run's fold data was asked for and the run kept none: it ",

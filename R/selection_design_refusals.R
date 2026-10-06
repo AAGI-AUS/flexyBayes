@@ -8,7 +8,7 @@
 # advance of the site that throws it.
 
 .populate_refusal_registry_selection_design <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_rank_deficient_protected",
     description = paste0(
       "fb_select(): the protected design is rank deficient after whitening. ",
@@ -25,7 +25,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_coordinate_basis_dependent",
     description = paste0(
       "fb_select(): a coordinate-wise L1 component was asked for over a ",

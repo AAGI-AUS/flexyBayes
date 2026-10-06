@@ -15,7 +15,7 @@ filter to. \code{NULL} (default) returns all.}
 }
 \value{
 A data frame of subclass \code{fb_refusals_table}, one row per
-matching refusal reason, with columns \code{reason_code},
+matching refusal reason, with columns \code{reason_code}, \code{package},
 \code{description}, \code{since_version}, and \code{plan_field}. The print
 method renders it as a compact checklist.
 }
@@ -41,6 +41,11 @@ Routing-decision reasons (surfaced by \code{\link[=fb_plan]{fb_plan()}} and
 \code{\link[=backend_decision]{backend_decision()}}) and internal control-flow signals are
 deliberately excluded: this table lists only refusals a user can
 actually encounter.
+
+Packages that extend flexyBayes add their own reasons with
+\code{\link[=fb_register_refusals]{fb_register_refusals()}}. The \code{package} column names the package
+each reason belongs to: \code{"flexyBayes"} for the core, and the
+plug-in's name for the rest.
 }
 \examples{
 fb_refusals()

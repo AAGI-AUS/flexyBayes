@@ -15,7 +15,7 @@
 # identical -- a call whose arguments do not bind.
 
 .populate_refusal_registry_penalty <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_spec_malformed",
     description = paste0(
       "fb_penalty(): an argument is not a two-sided `target ~ family(...)` ",
@@ -27,7 +27,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_target_unsupported",
     description = paste0(
       "fb_penalty(): the left-hand side is not one of the four supported ",
@@ -42,7 +42,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_target_not_in_model",
     description = paste0(
       "fb_penalty(): a named target is not a candidate term of the model ",
@@ -54,7 +54,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_target_ambiguous",
     description = paste0(
       "fb_penalty(): two equally broad selectors name the same coordinate, ",
@@ -66,7 +66,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_family_unknown",
     description = paste0(
       "fb_penalty(): the right-hand side names no shrinkage family this ",
@@ -78,7 +78,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_family_withdrawn",
     description = paste0(
       "fb_penalty(): a group, exclusive or adaptive family of the v3 ",
@@ -91,7 +91,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_hyperparameter_invalid",
     description = paste0(
       "fb_penalty(): a hyperparameter is outside the family table's domain, ",
@@ -103,7 +103,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_block_overlap",
     description = paste0(
       "fb_penalty(): one candidate design column ended up in two prior ",
@@ -116,7 +116,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_factor_contrast_ambiguous",
     description = paste0(
       "fb_penalty(): a coordinate-wise family reaches one contrast column ",
@@ -129,7 +129,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_block_targeting_unsupported",
     description = paste0(
       "fb_penalty(): a class-wide family cannot be aimed at a subset of the ",
@@ -143,7 +143,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_block_part_name_taken",
     description = paste0(
       "fb_penalty(): scope = \"block\" fits the model as the brms ",
@@ -156,7 +156,7 @@
     since_version = "0.15.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_scaling_column_constant",
     description = paste0(
       "fb_penalty(): a candidate column has no spread inside the training ",
@@ -168,7 +168,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_candidate_columns_unscaled",
     description = paste0(
       "fb_penalty(): a class-wide global-local family -- the regularised ",

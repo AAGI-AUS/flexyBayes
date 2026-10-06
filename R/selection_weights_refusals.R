@@ -18,7 +18,7 @@
 # accounting is new, because only it is new.
 
 .populate_refusal_registry_selection_weights <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_weights_not_positive",
     description = paste0(
       "fb_select(): an observation weight is not a finite positive ",
@@ -34,7 +34,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_weights_absorbed_twice",
     description = paste0(
       "fb_select(): the weighting the absorbed object actually carries ",
@@ -50,7 +50,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_weights_loss_route_requires_residual_only",
     description = paste0(
       "fb_select(): the provider-loss route reproduces weighted GLS ",
@@ -67,7 +67,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_weights_not_carried",
     description = paste0(
       "fb_select(): the base model was fitted with observation weights, and ",
@@ -84,7 +84,7 @@
     since_version = "0.14.2"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_weights_by_unweighted_base",
     description = paste0(
       "fb_select(): `fb_resamples(weights_by = )` re-estimates the base's ",
@@ -99,7 +99,7 @@
     since_version = "0.14.2"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_offset_absorbed_twice",
     description = paste0(
       "fb_select(): the Gaussian offset does not round-trip. It is ",
@@ -112,7 +112,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_missing_response_estimand_unnamed",
     description = paste0(
       "fb_select(): rows whose response is missing may enter prediction ",
@@ -128,7 +128,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_missing_response_in_objective",
     description = paste0(
       "fb_select(): a row carrying no observed outcome reached the ",
@@ -144,7 +144,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_preprocessing_leak",
     description = paste0(
       "fb_select(): a transformation the object records as learned on ",

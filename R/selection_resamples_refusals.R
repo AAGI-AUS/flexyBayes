@@ -17,7 +17,7 @@
 # caller got wrong rather than for the function that noticed.
 
 .populate_refusal_registry_selection_resamples <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_seed_required",
     description = paste0(
       "fb_select(): a stochastic resampling step was asked for without a ",
@@ -33,7 +33,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_level_absent",
     description = paste0(
       "fb_select(): an assessment fold carries a factor level that is ",
@@ -47,7 +47,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_resamples_underspecified",
     description = paste0(
       "fb_resamples(): a grouping unit was named without a resampling ",
@@ -63,7 +63,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_id_invalid",
     description = paste0(
       "fb_resamples(): the explicit `fold_id` does not describe a usable ",
@@ -77,7 +77,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_variable_not_in_data",
     description = paste0(
       "fb_select(): a variable named by `unit`, `strata` or the scoring ",
@@ -90,7 +90,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_strata_not_constant_within_unit",
     description = paste0(
       "fb_select(): a stratifying variable varies inside a grouping unit, ",
@@ -103,7 +103,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_not_usable",
     description = paste0(
       "fb_select(): a fold has no training rows, no assessment rows, or ",
@@ -117,7 +117,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_covariance_not_factorisable",
     description = paste0(
       "fb_select(): the training-block covariance of a fold has no Cholesky ",
@@ -133,7 +133,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_leakage_detected",
     description = paste0(
       "fb_select(): a quantity the substrate declares as learned on the ",
@@ -152,7 +152,7 @@
   # Thrown by R/selection_resamples.R on the benchmark substrate and by
   # R/selection_bayes_cv.R and R/fb_select.R on the Bayesian route; triggered
   # in tests/testthat/test-selection-fold-isolation.R.
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_formula_transform_not_fold_local",
     description = paste0(
       "fb_select(): a formula variable of the base or the candidates takes ",
@@ -173,7 +173,7 @@
 
   # Thrown by R/selection_candidate_space.R for every fold before any fold is
   # fitted; triggered in tests/testthat/test-selection-candidate-space.R.
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_protected_unidentified",
     description = paste0(
       "fb_select(): the protected design is not identified on a fold's ",
@@ -191,7 +191,7 @@
     since_version = "0.13.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fold_candidate_drop_not_representable",
     description = paste0(
       "fb_select(): a fold's training rows leave candidate columns ",
@@ -210,7 +210,7 @@
     since_version = "0.13.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_scoring_unit_undeclared",
     description = paste0(
       "fb_select(): the standard-error unit for the reported score cannot ",

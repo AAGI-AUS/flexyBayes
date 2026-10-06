@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=233
+      .refusal_registry: locked=TRUE n_keys=160
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -181,7 +181,6 @@
         known_variance_not_supported
         log_density_producer_unavailable
         loo_requires_sampler_draws
-        loss_surface_requires_plotly
         low_rank_rank_exceeds_basis
         low_rank_rank_invalid
         low_rank_scheme_required
@@ -196,16 +195,6 @@
         nested_variable_not_in_data
         newdata_offset_missing
         numeric_variable_in_random_interaction
-        penalty_block_overlap
-        penalty_block_part_name_taken
-        penalty_block_targeting_unsupported
-        penalty_candidate_columns_unscaled
-        penalty_factor_contrast_ambiguous
-        penalty_hyperparameter_invalid
-        penalty_reference_model_inadequate
-        penalty_runtime_budget_exceeded
-        penalty_sampler_diagnostics_failed
-        penalty_scaling_column_constant
         pol_degree_invalid
         pp_check_requires_predictive_draws
         precision_not_in_known_matrices
@@ -219,7 +208,6 @@
         prior_distribution_not_a_call
         prior_distribution_unknown
         prior_family_has_no_residual_scale
-        prior_family_unsupported_inla
         prior_hyperparameter_not_scalar
         prior_hyperparameter_out_of_domain
         prior_not_translatable_for_backend
@@ -232,73 +220,12 @@
         prior_target_not_in_model
         prior_target_unsupported
         prior_vc_sd_superseded_by_prior
-        projection_family_unsupported
-        projection_metric_unsupported
-        projection_search_unsupported
-        projection_structure_unsupported
         representation_unknown_for_preflight
         residual_type_unsupported_for_aggregation
         response_not_finite
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer
-        selection_ablation_route_undefined
-        selection_base_not_allowlisted
-        selection_base_shape_unreadable
-        selection_candidates_not_constant_within_term
-        selection_covariance_not_buildable
-        selection_covariance_not_positive_definite
-        selection_decision_invalid
-        selection_dense_covariance_too_large
-        selection_dense_reference_too_large
-        selection_fallback_not_authorised
-        selection_family_not_supported
-        selection_fold_candidate_drop_not_representable
-        selection_fold_covariance_not_factorisable
-        selection_fold_data_not_kept
-        selection_fold_id_invalid
-        selection_fold_level_absent
-        selection_fold_not_usable
-        selection_fold_protected_unidentified
-        selection_fold_variable_not_in_data
-        selection_formula_transform_not_fold_local
-        selection_leakage_detected
-        selection_loss_surface_undefined
-        selection_missing_response_estimand_unnamed
-        selection_missing_response_in_objective
-        selection_new_cluster_not_representable
-        selection_offset_absorbed_twice
-        selection_parallel_worker_failed
-        selection_penalty_blocks_not_expressible
-        selection_penalty_coordinate_basis_dependent
-        selection_penalty_family_optimizer_only
-        selection_penalty_family_unknown
-        selection_penalty_family_withdrawn
-        selection_penalty_group_structure_absent
-        selection_penalty_spec_malformed
-        selection_penalty_target_ambiguous
-        selection_penalty_target_not_in_model
-        selection_penalty_target_unsupported
-        selection_preprocessing_leak
-        selection_provider_absent
-        selection_prox_mode_not_converged
-        selection_rank_deficient_protected
-        selection_reduction_absorption_unsupported
-        selection_reduction_level_mismatch
-        selection_reduction_term_not_in_fit
-        selection_refit_support_undefined
-        selection_resamples_underspecified
-        selection_score_contract_unverifiable
-        selection_scoring_unit_mismatch
-        selection_scoring_unit_undeclared
-        selection_seed_required
-        selection_strata_not_constant_within_unit
-        selection_value_contract_mismatch
-        selection_weights_absorbed_twice
-        selection_weights_by_unweighted_base
-        selection_weights_loss_route_requires_residual_only
-        selection_weights_not_carried
-        selection_weights_not_positive
         smooth_variable_not_in_data
         spatial_field_requires_ar1_field
         stan_cannot_represent_ar1_field
