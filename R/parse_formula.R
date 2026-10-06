@@ -862,11 +862,7 @@
 
 # The bare node type each becomes when `:` pairs it with a plain inner
 # factor (id() / ide() / a bare name): fa(env, k) -> fa_gxe, us(env) ->
-# us_gxe. .classify_interaction() writes the paired string below, and
-# .fb_select_gate() (R/fb_select.R) has to recognise both the bare and the
-# paired form of each as the same covariance structure -- one table for
-# both readers, so a name changed on one side cannot go unmatched on the
-# other.
+# us_gxe. .classify_interaction() writes the paired string below.
 .FB_GXE_PAIR_TYPE <- c(fa = "fa_gxe", us = "us_gxe")
 
 # Classify what an a:b interaction means in ASReml context

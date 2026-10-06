@@ -43,20 +43,17 @@ computed on the draws rather than by the delta method.
 
 \section{Vignettes}{
 
-Six vignettes ship with the package: \emph{Mixed models in brief},
+Five vignettes ship with the package: \emph{Mixed models in brief},
 \emph{Bayesian estimation in brief}, \emph{The ASReml syntax flexyBayes covers},
-\emph{ASReml and flexyBayes on the same trials}, \emph{Selecting over a
-candidate block}, and \emph{A two-stage analysis of a series of trials}. The
-first two set up the model class and what changes
+\emph{ASReml and flexyBayes on the same trials}, and \emph{A two-stage analysis of a
+series of trials}. The first two set up the model class and what changes
 under a posterior; the third is the formula surface together with
 dispatch and the inventory of structures that are refused; the fourth
 fits the same trials through both and shows where the answers agree and
-where they do not; the fifth shrinks a block of candidate fixed effects
-under a declared joint prior, reads a projection predictive decision off
-it, and says what a benchmark against an external optimiser does and does
-not establish; the sixth fits each trial of a series on its own and
-carries the first stage's variances into a second stage that selects over
-trial-level covariates. The count here is checked against \verb{vignettes/} by
+where they do not; the fifth fits each trial of a series on its own,
+carries the first stage's variances into a second stage, and fits a
+penalised regression of trial-level covariates on the design whitened by
+the fitted covariance. The count here is checked against \verb{vignettes/} by
 a parity test, because a number written into prose is the first thing to
 drift.
 }

@@ -14,9 +14,8 @@ vignette: >
 
 
 
-This vignette analyses a
-simulated series of trials in two stages and selects trial-level covariates
-in the second stage.
+This vignette analyses a simulated series of trials in two stages, and then
+fits a penalised regression of the trial means on trial-level covariates.
 
 In the first stage each trial is fitted on its own and returns a mean for
 each variety. The second stage models those means across trials. The means
@@ -138,143 +137,6 @@ rnd(tidy(base))
 
 The simulated variety effects are 0.4 apart, so `v6` is 2.0 above `v1`.
 
-# Selecting trial-level covariates
-
-The four covariates are declared in two blocks, each with a Laplace prior.
-The folds hold out whole trials, because the covariates are constant within
-a trial.
-
-
-``` r
-pen <- fb_penalty(
-  term(z1, z2) ~ laplace(scale = 0.3),
-  term(z3, z4) ~ laplace(scale = 0.3)
-)
-```
-
-`fb_select()` needs the covariance of each fold. The default estimates it
-with one residual variance for all rows, which ignores the known variances,
-so it stops:
-
-
-``` r
-refused <- tryCatch(
-  fb_select(
-    base, ~ z1 + z2 + z3 + z4,
-    penalty = pen,
-    workflow = "penalized_optimizer",
-    resamples = fb_resamples(unit = ~trial, v = 5L),
-    seed = 20260920L
-  ),
-  error = function(e) e
-)
-cat(conditionMessage(refused))
-#> fb_select(): the base carries a known variance per row, which the REML plug-in (covariance = "reml_plugin"), which estimates one residual variance common to every row, would leave out. The penalised optimiser and the unpenalised benchmark carry it into the fold covariance with covariance = "base_model".
-```
-
-`covariance = "base_model"` refits the base model on each fold's training
-trials, known variances included, and uses that covariance.
-`ablation = TRUE` also measures what each block adds.
-
-
-``` r
-sel <- fb_select(
-  base, ~ z1 + z2 + z3 + z4,
-  penalty = pen,
-  workflow = "penalized_optimizer",
-  resamples = fb_resamples(unit = ~trial, v = 5L),
-  covariance = "base_model",
-  ablation = TRUE,
-  seed = 20260920L
-)
-
-rnd(glance(sel)[, c("loss", "loss_protected_only", "loss_full",
-                    "loss_reduction", "chosen_size", "n_units", "n_folds")])
-#>   loss loss_protected_only loss_full loss_reduction chosen_size n_units n_folds
-#> 1 nlpd               0.806     0.722          0.084           1      20       5
-```
-
-# When each covariate entered
-
-The penalised path runs from the strongest penalty to the weakest, indexed
-by `s = lambda / lambda_max`. A covariate with an effect enters early, at a
-high `s`. `entry_s_median` is the value of `s` by which half of the folds had
-included it.
-
-
-``` r
-tab <- tidy(sel)
-rnd(tab[tab$role == "candidate", c("term", "block", "retained",
-                                  "entry_s_median")])
-#>    term block retained entry_s_median
-#> 7    z1     1     TRUE          0.695
-#> 8    z2     1    FALSE          0.113
-#> 9    z3     2    FALSE          0.038
-#> 10   z4     2    FALSE          0.026
-```
-
-
-``` r
-plot(sel, type = "entrance_path")
-```
-
-![plot of chunk entrance-plot](flexyBayes-06-two-stage-figs/entrance-plot-1.png)
-
-# What each block adds
-
-With `ablation = TRUE`, each block is dropped in turn and the path is
-refitted on the same folds. `ablation_loss_difference` is the increase in
-held-out loss per trial when the block is dropped, with its standard error
-over trials.
-
-
-``` r
-ab <- tidy(sel, level = "group")
-rnd(ab[, c("group", "columns", "ablation_loss_difference",
-           "ablation_loss_se")])
-#>     group columns ablation_loss_difference ablation_loss_se
-#> 1 block_1  z1, z2                    0.044            0.016
-#> 2 block_2  z3, z4                    0.000            0.000
-```
-
-Dropping `z1` and `z2` increases the loss by
-0.044 (standard error
-0.016). Dropping `z3` and `z4` changes it by
-0. The differences do not add up
-to the loss reduction of the full model.
-
-# Bayesian comparison of the chosen covariates
-
-`refit = list(method = "bayes")` refits the chosen covariates as a Bayesian
-model in each fold, known variances included, and scores each held-out mean
-by its log predictive density (`lpd`). Each mean's known variance is part
-of its predictive variance.
-
-
-``` r
-val <- fb_select(
-  base, ~ z1 + z2 + z3 + z4,
-  penalty = pen,
-  workflow = "penalized_optimizer",
-  resamples = fb_resamples(unit = ~trial, v = 5L),
-  covariance = "base_model",
-  refit = list(method = "bayes"),
-  seed = 20260920L
-)
-rnd(head(val$value$rows[, c("unit", "observed", "predictive_mean",
-                            "predictive_sd", "lpd")]))
-#>   unit observed predictive_mean predictive_sd    lpd
-#> 1  t01    4.464           5.007         0.830 -0.947
-#> 2  t01    5.353           5.285         0.875 -0.771
-#> 3  t01    5.491           5.757         0.831 -0.770
-#> 4  t01    5.640           6.113         0.830 -0.891
-#> 5  t01    5.929           6.588         0.830 -1.056
-#> 6  t01    6.458           7.097         0.828 -1.035
-```
-
-This refit runs on INLA. On brms it stops with
-`known_variance_not_supported`.
-
 # Carrying the full covariance of the first stage
 
 The means of one trial share its block effects, so their errors are
@@ -321,14 +183,74 @@ rnd(data.frame(
   full_covariance = coef(base_k)
 ))
 #>                    term variances_only full_covariance
-#> (Intercept) (Intercept)          2.864           2.840
-#> varietyv2     varietyv2          0.342           0.419
-#> varietyv3     varietyv3          0.775           0.787
-#> varietyv4     varietyv4          1.133           1.180
-#> varietyv5     varietyv5          1.637           1.617
-#> varietyv6     varietyv6          2.079           2.134
+#> (Intercept) (Intercept)          2.864           2.835
+#> varietyv2     varietyv2          0.342           0.413
+#> varietyv3     varietyv3          0.775           0.785
+#> varietyv4     varietyv4          1.133           1.175
+#> varietyv5     varietyv5          1.637           1.612
+#> varietyv6     varietyv6          2.079           2.132
 ```
 
-`fb_select(covariance = "base_model")` whitens by the full matrix. The
-matrix is fitted on INLA only, and brms stops with
+The matrix is fitted on INLA only, and brms stops with
 `known_variance_not_supported`.
+
+# Penalised selection on the whitened design
+
+Penalised regression is a well-grounded way to choose among candidate
+covariates: the lasso and the elastic net shrink the coefficients of
+covariates that do not improve the fit to exactly zero. Its usual software
+assumes independent rows, and the trial means are not independent: means
+from one trial share its random effect and their first-stage errors. The
+fitted model gives their covariance $V$, and with $V = U^\top U$ its Cholesky
+factor, $U^{-\top} y$ and $U^{-\top} X$ have independent errors of variance
+one. A penalised regression on these whitened values is generalised least
+squares with a penalty.
+
+`fb_marginal_cov()` returns $V$ for the fitted model, here the model with the
+full first-stage covariance, and `as.matrix()` makes it dense. The variety
+columns are the part of the model that is not penalised; the four trial
+covariates are the candidates.
+
+
+``` r
+V <- as.matrix(fb_marginal_cov(base_k))
+U <- chol(V)
+
+X_variety <- stats::model.matrix(~ variety, stage1)
+Z <- as.matrix(stage1[, c("z1", "z2", "z3", "z4")])
+
+y_w <- backsolve(U, stage1$ybar, transpose = TRUE)
+X_w <- backsolve(U, cbind(X_variety, Z), transpose = TRUE)
+colnames(X_w) <- c(colnames(X_variety), colnames(Z))
+```
+
+glmnet then fits the lasso path. The whitened intercept is not a constant
+column, so it enters as one of the unpenalised columns and glmnet fits no
+intercept of its own. The folds hold out whole trials; whitening mixes rows
+only within a trial, because $V$ is block-diagonal by trial.
+
+
+``` r
+penalised <- c(rep(0, ncol(X_variety)), rep(1, ncol(Z)))
+fold <- as.integer(stage1$trial) %% 5L + 1L
+
+set.seed(20260920)
+cv <- glmnet::cv.glmnet(
+  X_w, y_w,
+  penalty.factor = penalised,
+  intercept = FALSE,
+  foldid = fold
+)
+round(as.matrix(stats::coef(cv, s = "lambda.1se"))[colnames(Z), , drop = FALSE], 3)
+#>    lambda.1se
+#> z1      0.359
+#> z2      0.000
+#> z3      0.000
+#> z4      0.000
+```
+
+The lasso keeps `z1`, the covariate with an effect, shrunk towards zero, and
+sets the other three to zero. Here one $V$, estimated from all trials,
+serves every fold. To keep the held-out trials out of $V$ as well, refit the
+model on each fold's training trials with `fb_refit()` and whiten with that
+fold's $V$.

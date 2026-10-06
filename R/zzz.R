@@ -140,7 +140,7 @@
   .populate_refusal_registry_process_isolation()
 
   # 2026-09-19: a known variance per row that is malformed, or asked of a
-  # model or an fb_select() route that cannot carry it.
+  # model or a route that cannot carry it.
   .populate_refusal_registry_known_variance()
 
   # 2026-09-24: fixed-effect columns the rows with a response do not
@@ -154,15 +154,14 @@
   # 2026-10-06: a model whose marginal covariance is not built.
   .populate_refusal_registry_marginal_cov()
 
+  # 0.16.0: a call to a penalised-selection function that left the package.
+  .populate_refusal_registry_selection_removed()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
   # raise rather than mutate the locked environment.
   .lock_refusal_registry()
-
-  # The selection layer's codes, in the "flexySelect" partition, registered
-  # through fb_register_refusals() as a plug-in registers its own.
-  .populate_refusal_registry_flexyselect()
 
   # Register the
   # first approximation scheme, low_rank_smooth, with its full

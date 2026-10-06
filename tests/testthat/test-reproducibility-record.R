@@ -52,8 +52,7 @@
   d
 }
 
-# A small clustered Gaussian design for brms. `p1` is the protected covariate
-# and `x1`, `x2` the candidate columns of the selection reference fit.
+# A small clustered Gaussian design for brms.
 .vr_brms_data <- function(seed = 20260917L, n = 36L) {
   set.seed(seed)
   d <- data.frame(
@@ -513,12 +512,13 @@ test_that("every INLA fit an entry point returns carries the record", {
   refit <- stats::update(per_row, random = ~ g + h)
   d_fold <- d
   d_fold$y[seq(1L, nrow(d), by = 4L)] <- NA
-  fold <- .fb_sel_bayes_refit(
+  fold <- fb_refit(
     per_row,
-    d_fold,
-    y ~ x,
-    "inla",
-    na_action = "augment"
+    data = d_fold,
+    fixed = y ~ x,
+    backend = "inla",
+    na_action = "augment",
+    verbose = FALSE
   )
   # No entry point reaches the aggregated Gaussian emitter
   # (test-aggregation-gaussian-containment.R); its build site is called here
@@ -625,18 +625,8 @@ test_that("every brms fit an entry point returns carries the record", {
     mcmc_verbose = FALSE
   )
   proceeded <- quiet(proceed(review))
-  fold <- quiet(.fb_sel_bayes_refit(per_row, d, y ~ p1, "brms", seed = 5L))
-  blocks <- .fb_sel_test_blocks(c("x1", "x2"), family = "ridge")
-  reference <- quiet(.fb_sel_reference_fit(
-    per_row,
-    ~ x1 + x2,
-    prior = blocks$prior,
-    stanvars = blocks$stanvars,
-    column_map = .fb_sel_test_column_map(c("x1", "x2")),
-    data = d,
-    engine = fb_engine("brms", chains = 1L, n_samples = 100L, warmup = 100L),
-    seed = 6L
-  ))
+  fold <- quiet(fb_refit(per_row, data = d, fixed = y ~ p1, backend = "brms",
+                        seed = 5L, verbose = FALSE, mcmc_verbose = FALSE))
 
   fits <- list(
     flexybayes = per_row,
@@ -644,16 +634,14 @@ test_that("every brms fit an entry point returns carries the record", {
     fb_brms = pinned,
     update = refit,
     proceed = proceeded,
-    fold_refit = fold,
-    reference_fit = reference
+    fold_refit = fold
   )
   seeds <- list(
     flexybayes = 1L,
     fb = 2L,
     fb_brms = 3L,
     update = 4L,
-    fold_refit = 5L,
-    reference_fit = 6L
+    fold_refit = 5L
   )
   problems <- lapply(names(fits), function(nm) {
     c(

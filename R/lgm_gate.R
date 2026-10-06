@@ -100,15 +100,7 @@ lgm_gate <- function(
     # and refuses if the INLA projection exceeds the active
     # ceiling. See .lgm_check_memory_feasibility_inla() below for
     # the multiplier rationale.
-    .lgm_check_memory_feasibility_inla(fb, preflight),
-    # check 12 -- joint shrinkage priors. INLA's latent field is Gaussian
-    # given the hyperparameters, and a scale-mixture prior over the fixed
-    # effects is not: a regularised horseshoe is a global scale times
-    # per-coefficient local scales, and there is no hyperparameter
-    # configuration under which the nested Laplace approximation integrates
-    # it. The check exists because the alternative is a fit that runs, looks
-    # normal, and reports a posterior under a prior nobody asked for.
-    .lgm_check_prior_family_inla_support(fb)
+    .lgm_check_memory_feasibility_inla(fb, preflight)
     # post-fit numerical-confirm gate -- see emit_inla.
   )
 
@@ -1385,50 +1377,3 @@ print.lgm_refusal <- function(x, ...) {
 }
 
 
-# Check 12 -- joint shrinkage prior families
-#
-# `fb$penalty_blocks` would hold the resolved `fb_prior_blocks` list, one
-# entry per declared shrinkage block over the candidate fixed effects. No
-# public call reaches this check: nothing in R/ writes that field, and
-# fb_select(), the only verb that takes a shrinkage prior, re-emits its
-# reference model on brms whatever engine fitted the base (R/fb_select.R).
-# The check is kept as an internal guard, so that a joint block handed to
-# the INLA route by future code refuses at the gate instead of reaching the
-# emitter. A model that carries none passes trivially.
-#
-# A block whose family is `none` is an explicit opt-OUT of shrinkage for the
-# coordinates it names and does not refuse. A Laplace, regularised horseshoe
-# or R2D2 prior is Gaussian given one local scale per coefficient, so the
-# model can be written as a latent Gaussian model, but it then carries a
-# hyperparameter for every coefficient and INLA's integration is built for a
-# few. Ridge and elastic-net blocks have no INLA implementation.
-.lgm_check_prior_family_inla_support <- function(fb) {
-  blocks <- fb$penalty_blocks %||% list()
-  if (length(blocks) == 0L) {
-    return(.lgm_pass("prior_family_unsupported_inla"))
-  }
-  families <- vapply(
-    blocks,
-    function(b) as.character(b$family %||% "none")[[1L]],
-    character(1L)
-  )
-  shrinkage <- setdiff(unique(families), "none")
-  if (length(shrinkage) == 0L) {
-    return(.lgm_pass("prior_family_unsupported_inla"))
-  }
-  .lgm_fail(
-    "prior_family_unsupported_inla",
-    reason = paste0(
-      "the joint shrinkage prior(s) ",
-      paste(shrinkage, collapse = ", "),
-      " are fitted on brms only: flexyBayes has no INLA route for a joint ",
-      "shrinkage block. Fit the reference model on brms, as fb_select() ",
-      "does, or select with penalty = NULL, which keeps every candidate ",
-      "protected."
-    ),
-    diagnostic = paste0(
-      "penalty block families: ",
-      paste(families, collapse = ", ")
-    )
-  )
-}

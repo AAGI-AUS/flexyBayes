@@ -46,10 +46,6 @@ reference:
       - fb_inla
       - fb_brms
       - fb_plan
-      - fb_select
-      - fb_select_fold_data
-      - fb_select_path
-      - fb_select_refit
       - validate_approximation
       - proceed
   - title: Ingest adapters
@@ -60,17 +56,12 @@ reference:
   - title: Constructor nouns
     desc: >
       The classed input constructors: priors, covariance carriers,
-      approximation schemes, engine selections, and the three the
-      selection module adds -- the joint shrinkage prior, the resampling
-      scheme and the decision rule.
+      approximation schemes and engine selections.
     contents:
       - fb_prior
       - fb_cov
       - fb_approx
       - fb_engine
-      - fb_penalty
-      - fb_resamples
-      - fb_decision
       - is_fb_cov
       - is_fb_approx
       - is_fb_engine
@@ -83,6 +74,7 @@ reference:
       - fb_refusals
       - fb_register_refusals
       - fb_refuse
+      - fb_isolated_lapply
       - prior_summary
       - ranef
       - vpredict
@@ -157,10 +149,6 @@ reference:
       - update.flexybayes
       - fb_refit
       - as.data.frame.fb_plan
-      - tidy.fb_select
-      - glance.fb_select
-      - augment.fb_select
-      - plot.fb_select
   - title: Genomics
     desc: >
       Genomic selection and the cross-engine genomic accessors.
@@ -174,20 +162,29 @@ reference:
   - title: Package
     contents:
       - flexyBayes-package
+  - title: Deprecated
+    desc: Functions that refuse in this release and will be removed in the next.
+    contents:
+      - fb_select
+      - fb_select_path
+      - fb_select_refit
+      - fb_select_fold_data
+      - fb_penalty
+      - fb_resamples
+      - fb_decision
 
 articles:
   - title: Read in order
     desc: >
-      Six pages, enough to start work: what a mixed model is, what
+      Five pages, enough to start work: what a mixed model is, what
       changes when it is estimated as a posterior, every ASReml spelling
-      the package covers, one worked comparison, how a candidate block
-      is selected over, and a series of trials analysed in two stages.
+      the package covers, one worked comparison, and a series of trials
+      analysed in two stages.
     contents:
       - flexyBayes-01-mixed-models
       - flexyBayes-02-bayesian
       - flexyBayes-03-syntax
       - flexyBayes-04-illustration
-      - flexyBayes-05-selection
       - flexyBayes-06-two-stage
 
 redirects:

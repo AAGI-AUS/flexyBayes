@@ -202,8 +202,8 @@ emit_brms <- function(
     brms_form <- hooked$formula
     brms_prior <- hooked$prior
   }
-  # Joint-block prior rows compiled outside the fb_prior() path (the
-  # selection module's shrinkage blocks) are merged after that check, not
+  # Prior rows compiled outside the fb_prior() path (`extra_prior` of
+  # fb_refit()) are merged after that check, not
   # before it. Two reasons. They are already resolved against this model's
   # own coefficient names by the compiler that built them, so the oracle
   # would be re-answering a question already answered; and one of their
@@ -604,8 +604,8 @@ emit_brms <- function(
 
 # .fb_brms_merge_extra_prior() --- one prior data frame from two sources.
 #
-# `prior` is what .priors_to_brms() built from the IR; `extra` is a
-# compiled joint block (the selection module's shrinkage prior). Where
+# `prior` is what .priors_to_brms() built from the IR; `extra` is the
+# `extra_prior` of fb_refit(). Where
 # both name the same parameter -- the same (class, coef, group, resp,
 # dpar, nlpar) tuple -- the extra row wins, which is the resolution rule
 # the rest of the package already uses for overlapping specifications:

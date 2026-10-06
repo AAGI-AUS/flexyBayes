@@ -82,10 +82,6 @@ cat(flexyBayes:::.fb_capability_markdown(markers = TRUE, layout = "fits"),
     sep = "\n")
 ```
 
-Candidate selection with `fb_select()`, and the Bayesian comparison of the
-chosen covariates (`refit = list(method = "bayes")`), are recent additions.
-Expect their arguments and output to change.
-
 ## Documentation
 
 | Vignette | Content |
@@ -94,7 +90,6 @@ Expect their arguments and output to change.
 | `flexyBayes-02-bayesian` | Bayesian estimation in brief |
 | `flexyBayes-03-syntax` | The ASReml syntax flexyBayes covers |
 | `flexyBayes-04-illustration` | ASReml and flexyBayes on the same trials |
-| `flexyBayes-05-selection` | Selecting over a candidate block |
 | `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials |
 
 ## Reporting problems

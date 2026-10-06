@@ -283,7 +283,7 @@ fb_variance_draws <- function(object, n, seed = NULL) {
     stop("`n` must be a single positive number of draws.", call. = FALSE)
   }
   draw <- function() .fb_inla_hyperpar_sample(object, as.integer(n))
-  hyper <- if (is.null(seed)) draw() else .fb_sel_with_seed(seed, draw())
+  hyper <- if (is.null(seed)) draw() else .fb_with_seed(seed, draw())
   hyper <- as.matrix(hyper)
   map <- .mapper_inla(object, object$fb)$map
   out <- lapply(colnames(hyper), function(nm) {
@@ -633,4 +633,25 @@ predict.flexybayes_inla <- function(
   }
   se[status == "Aliased"] <- NA_real_
   list(fit = eta, se.fit = se, status = status)
+}
+
+
+# .fb_with_seed() --- evaluate under a named seed and put the caller's random
+# stream back exactly as it was found.
+.fb_with_seed <- function(seed, expr) {
+  had_seed <- exists(".Random.seed", envir = globalenv(), inherits = FALSE)
+  if (had_seed) {
+    old <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+    on.exit(assign(".Random.seed", old, envir = globalenv()), add = TRUE)
+  } else {
+    on.exit(
+      suppressWarnings(rm(
+        list = ".Random.seed",
+        envir = globalenv()
+      )),
+      add = TRUE
+    )
+  }
+  set.seed(seed)
+  force(expr)
 }

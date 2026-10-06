@@ -149,31 +149,3 @@ test_that("update() into a formula with an unfitted part refuses", {
 })
 
 
-test_that("fb_select() refuses a base recorded from a formula it did not fit", {
-  # A base fitted before 0.14.0 from bf(y ~ x + (1 | gen), sigma ~ x)
-  # carried the IR of bf(y ~ x + (1 | gen)) and recorded the bf() object it
-  # was called with. That base is rebuilt here from the admitted formula and
-  # the recorded call, which is all the older fit differs by.
-  skip_on_cran()
-  skip_if_not_installed("brms")
-  skip_if_not_installed("INLA")
-  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
-  d <- fbbf_data()
-  base <- fb(brms::bf(y ~ x + (1 | gen)), data = d, backend = "inla",
-             verbose = FALSE)
-  recorded <- list(
-    sigma = brms::bf(y ~ x + (1 | gen), sigma ~ x),
-    family = brms::bf(y ~ x + (1 | gen), family = stats::poisson())
-  )
-  for (nm in names(recorded)) {
-    older <- base
-    older$extras$call_info$fixed <- recorded[[nm]]
-    err <- expect_error(
-      fb_select(older, candidates = ~ z, workflow = "unpenalized_benchmark",
-                resamples = fb_resamples(unit = ~ gen, v = 3L), seed = 1L),
-      class = fbbf_class
-    )
-    expect_match(conditionMessage(err), "fb_select(): in the base's model",
-                 fixed = TRUE, info = nm)
-  }
-})

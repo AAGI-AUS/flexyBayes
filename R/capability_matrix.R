@@ -258,13 +258,7 @@
       note = "On INLA flexyBayes takes the sparse-precision and
         pedigree-precision carriers and refuses a dense, Cholesky or blocks
         carrier by name; on brms it takes dense, Cholesky and precision
-        carriers and refuses a blocks carrier. In `fb_select()` a joint
-        shrinkage prior over candidate fixed effects fits on a base with one
-        of these terms, but the projection decision does not: the term is
-        written `(1 | gr(g, cov = K))`, and projpred refuses a function call
-        on the right of a group term's `|`. The default
-        `decision = \"auto\"` resolves to `full` there, and naming
-        `\"projection\"` refuses before the reference model is sampled.",
+        carriers and refuses a blocks carrier.",
       anchor = "test-known-covariance-inputs.R"
     ),
     list(
@@ -363,83 +357,6 @@
         returns the sufficient statistics.",
       anchor = "test-aggregation-gaussian-containment.R",
       inla_basis = "flexyBayes"
-    ),
-    list(
-      model_class = "Ridge shrinkage prior on candidate fixed effects",
-      spelling = "`fb_penalty(term(...) ~ ridge(scale))`",
-      inla = "n/a",
-      brms = "fits",
-      note = "A joint shrinkage prior over a declared block of candidate
-        fixed effects: one `normal` prior row per candidate, so the block is
-        targeted exactly and no protected coefficient is touched. Only
-        `fb_select()` takes a shrinkage prior, and it fits its reference
-        model on brms whatever engine fitted the base, carrying the base's
-        structure and priors through and recording this on the certificate.
-        flexyBayes has no INLA route for the block.",
-      anchor = "test-penalty-stancode.R"
-    ),
-    list(
-      model_class = "Laplace shrinkage prior on candidate fixed effects",
-      spelling = "`fb_penalty(term(...) ~ laplace(scale))`",
-      inla = "n/a",
-      brms = "fits",
-      note = "One `double_exponential` prior row per candidate. The
-        posterior mean is not a lasso estimate, and the draws carry no exact
-        zeros; the alias `lasso()` says so once per session. Fitted on brms,
-        as for ridge.",
-      anchor = "test-penalty-stancode.R"
-    ),
-    list(
-      model_class = "Elastic-net shrinkage prior on candidate fixed effects",
-      spelling = "`fb_penalty(term(...) ~ elastic_net(lambda, alpha))`",
-      inla = "n/a",
-      brms = "fits",
-      note = "The elastic-net density added to the Stan program over the
-        candidate coefficients, so the block is targeted exactly while a
-        protected coefficient keeps its own prior. The hyperparameters are
-        fixed, so the normalising constant does not matter. Fitted on brms,
-        as for ridge.",
-      anchor = "test-penalty-stancode.R"
-    ),
-    list(
-      model_class = paste(
-        "Regularised horseshoe shrinkage prior on candidate fixed effects"
-      ),
-      spelling = "`fb_penalty(term(...) ~ regularized_horseshoe(p0))`",
-      inla = "n/a",
-      brms = "fits",
-      note = "brms's `horseshoe()`, with `par_ratio` set from `p0` and
-        calibrated against the number of resampling units rather than rows.
-        It is a prior on the whole coefficient class, and brms refuses a
-        coefficient prior beside it, so it targets the block exactly only
-        when the base's fixed part is the intercept alone; otherwise it
-        refuses by name. Three ways forward: `laplace()`, `ridge()` or
-        `elastic_net()`, which target the block exactly;
-        `scope = \"block\"`, which fits the candidates as their own
-        non-linear part beside the protected effects, carries a known
-        variance per row, and is read with the full or posterior-threshold
-        decision; or `scope = \"all_fixed\"`, under which the protected
-        coefficients also take the horseshoe, the projection search keeps
-        them in every submodel, and the certificate records the
-        approximation. A candidate
-        column the reference cannot standardise, such as a factor contrast
-        or an interaction product, refuses by name. Fitted on brms, as for
-        ridge.",
-      anchor = "test-penalty-stancode.R"
-    ),
-    list(
-      model_class = "R2D2 shrinkage prior on candidate fixed effects",
-      spelling = "`fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))`",
-      inla = "n/a",
-      brms = "fits",
-      note = "brms's `R2D2()`, whose scales are stated as explained variance
-        rather than on a coefficient scale, so `p0` is refused for it. It
-        covers the whole coefficient class, with the same rule as the
-        horseshoe: exact only when the base's fixed part is the intercept
-        alone; otherwise `laplace()`, `ridge()` or `elastic_net()`, or
-        `scope = \"all_fixed\"`. Unstandardised candidate columns refuse as
-        for the horseshoe. Fitted on brms, as for ridge.",
-      anchor = "test-penalty-stancode.R"
     )
   )
 

@@ -1,5 +1,32 @@
 # flexyBayes 0.15.0.9000 (development version)
 
+## Breaking changes
+
+* Penalised selection is no longer part of flexyBayes. `fb_select()`,
+  `fb_select_path()`, `fb_select_refit()`, `fb_select_fold_data()`,
+  `fb_penalty()`, `fb_resamples()` and `fb_decision()` remain in this release
+  and stop with the refusal `selection_removed`. They will be removed in the
+  next one. The vignette *A two-stage analysis of a series of trials* now
+  shows a penalised regression fitted with glmnet on the design whitened by
+  `fb_marginal_cov()`, and the vignette *Selecting over a candidate block* is
+  withdrawn. The options `flexyBayes.selection_dense_gb`,
+  `flexyBayes.selection_grouped_solver` and `flexyBayes.selection_workers`
+  are no longer read, and projpred, grpreg, quadprog and plotly leave
+  Suggests.
+
+  ```r
+  # Before
+  sel <- fb_select(fit, ~ z1 + z2, penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.3)))
+  # Now: whiten the design X and response y by the fitted covariance, and
+  # fit the path with glmnet
+  U <- chol(as.matrix(fb_marginal_cov(fit)))
+  glmnet::cv.glmnet(backsolve(U, X, transpose = TRUE),
+                    backsolve(U, y, transpose = TRUE), intercept = FALSE)
+  ```
+
+* `lgm_gate()` no longer runs its check for joint shrinkage priors, which no
+  route reached, and the refusal `prior_family_unsupported_inla` is gone.
+
 ## Fixes to INLA results
 
 * The median and 95% limits of each variance component in
@@ -35,8 +62,7 @@
   from its `.onLoad()`, in a partition under its own name, and
   `fb_refuse()` raises any registered code as a `flexybayes_refusal`
   condition. `fb_refusals()` gains a `package` column, and every refusal
-  condition records the package that registered its code. The selection
-  layer's 73 codes now sit in a partition named `flexySelect`.
+  condition records the package that registered its code.
 
 * `fb_marginal_cov()` returns the marginal covariance of the response of a
   fit over given rows: one block per variance component with its design and
@@ -50,6 +76,21 @@
   variance. It can add fixed columns, and on brms it can take extra prior
   rows, Stan code and a hook that edits the formula. `emit_brms()` loses its
   `nl_block` argument, which `formula_hook` replaces.
+
+* `fb_isolated_lapply()` runs each call of a function in its own R process,
+  as `options(flexyBayes.isolation = "process")` does for a fit: values,
+  messages and warnings come back in job order, and a process that ends
+  without returning is the refusal `isolated_process_died`.
+
+* `fb_extension_api()` gives the version of the functions a package reads a
+  fit through, 1 in this release. `?fb_extension` documents them:
+  `fb_model_terms()`, `fb_response_values()`, `fb_offset_values()`,
+  `fb_model_weights()`, `fb_known_variance()`, `fb_engine_settings()`,
+  `fb_convergence()`, `fb_inla_posterior_sample()`, `fb_check_refit()` and
+  `fb_fixed_design()`. `fb_as_draws_simple()` gains a method for a brms fit.
+
+* Prior rows passed to `fb_refit(extra_prior = )` are recorded in the model
+  manifest with the source `extra_prior`.
 
 ## New: a flag for weakly identified variance components
 

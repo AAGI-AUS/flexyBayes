@@ -723,12 +723,18 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   )
 }
 
+# The viridis sequence at eleven steps, as grDevices::hcl.colors(11,
+# "viridis") gives it, written out so the display needs no graphics-device
+# package.
+.FB_HEAT_COLOURS <- c(
+  "#4B0055", "#44286E", "#274983", "#006791", "#008298", "#009B95",
+  "#00B28A", "#00C475", "#7ED357", "#C2DE34", "#FDE333"
+)
+
 # .plot_spatial_field() --- the type = "spatial_field" entry point.
 #
-# The palette is the viridis sequence the selection heat map uses
-# (.FB_SEL_HEAT_COLOURS, R/selection_entrance.R), written out so the display
-# needs no graphics-device package; it is ordered in lightness, so it reads
-# in grey and to the common colour-vision deficiencies.
+# The palette is .FB_HEAT_COLOURS, ordered in lightness, so it reads in grey
+# and to the common colour-vision deficiencies.
 #
 # @noRd
 # @keywords internal
@@ -737,7 +743,7 @@ plot.flexybayes_glm <- function(x, ...) plot.flexybayes(x, ...)
   values <- field$values
   n_row <- nrow(values)
   n_col <- ncol(values)
-  colours <- .FB_SEL_HEAT_COLOURS
+  colours <- .FB_HEAT_COLOURS
   span <- range(values)
   breaks <- seq(span[[1L]], span[[2L]], length.out = length(colours) + 1L)
 

@@ -153,11 +153,22 @@ test_that("every export appears in the pkgdown reference index", {
   pkgdown_lines <- trimws(.cs_read(root, "_pkgdown.yml"))
   entries <- sub("^-\\s*", "", grep("^-\\s*[A-Za-z._]+$", pkgdown_lines, value = TRUE))
 
+  # pkgdown leaves topics with \keyword{internal} out of the index.
+  rd_files <- list.files(file.path(root, "man"), pattern = "\\.Rd$", full.names = TRUE)
+  internal_aliases <- unlist(lapply(rd_files, function(path) {
+    rd <- readLines(path, warn = FALSE)
+    if (!any(rd == "\\keyword{internal}")) {
+      return(character(0))
+    }
+    sub("^\\\\alias\\{(.*)\\}$", "\\1", grep("^\\\\alias\\{", rd, value = TRUE))
+  }))
+
   missing <- Filter(
     function(x) {
       # An export is indexed either by its own name or, for a generic, by
       # the method entries that carry its flexyBayes implementations.
-      !(x %in% entries) && !any(startsWith(entries, paste0(x, ".")))
+      !(x %in% entries) && !any(startsWith(entries, paste0(x, "."))) &&
+        !(x %in% internal_aliases)
     },
     exported
   )

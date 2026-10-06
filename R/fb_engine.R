@@ -28,11 +28,8 @@
 # Tuning options an engine may carry. Restricted to the Monte-Carlo
 # sampler controls; an unrecognised option is rejected at construction
 # rather than silently dropped.
-# `adapt_delta` joined the set at 0.11.0. The selection module's reference
-# fit defaults to 0.95 and the convergence contract refuses on a single
-# divergent transition, which is the contract working -- but without a lever
-# a caller who hits one has nothing to reach for but a different seed. It is
-# read by the routes that emit through Stan and ignored by the rest.
+# `adapt_delta` is read by the routes that emit through Stan and ignored by
+# the rest.
 .fb_engine_opt_names <- c("n_samples", "warmup", "chains", "adapt_delta")
 
 
@@ -62,18 +59,8 @@
 #'   step-size adaptation, between 0 and 1. Raising it makes the sampler
 #'   take smaller steps, which costs time and removes the divergent
 #'   transitions a smaller step would have avoided. brms's own default is
-#'   0.8; [fb_select()]'s reference fit starts from 0.95 instead, and a
-#'   value given here replaces that.}
+#'   0.8.}
 #' }
-#'
-#' `adapt_delta` is the lever to reach for when a selection run refuses
-#' with `penalty_sampler_diagnostics_failed`. The adequacy gate refuses on
-#' a single divergent transition, because a selection read off a posterior
-#' the sampler did not explore is a statement about the sampler; a
-#' heavy-tailed prior on a small trial reaches that threshold routinely.
-#' A regularised horseshoe on a 200-row design ended two transitions of
-#' six thousand in a divergence at the 0.95 default and completed cleanly
-#' at `fb_engine("brms", adapt_delta = 0.999)`.
 #'
 #' @param name Character(1): the engine, one of `"inla"`, `"brms"`.
 #' @param opts Named list of tuning options. Recognised names are
@@ -87,8 +74,7 @@
 #'   `unavailable`), and `opts`.
 #' @section Deprecated:
 #' `fb_engine()` is deprecated as of 0.13.0. Pass the backend and engine
-#' settings directly to [flexybayes()], or pass a named settings list to the
-#' `engine` argument of [fb_select()].
+#' settings directly to [flexybayes()].
 #' @seealso [fb_approx()]
 #' @examples
 #' plan <- flexybayes(y ~ x, data = data.frame(y = 1:4, x = 4:1),

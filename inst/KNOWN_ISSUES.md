@@ -45,7 +45,7 @@ least one engine fits, without the notes.
 | Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model. On small simulated data both engines recover the genotype, genotype-by-environment and per-section residual standard deviations. `us(env):gen` with the sectioned residual is written out on brms but has not been checked against a reference fit, and `fa()` is refused on both engines. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | flexyBayes does not fit this structure on either engine. INLA can represent it, one latent field per common factor entered at each level as a scaled copy, but repeated identical calls did not return the same covariance where the genetic signal is weak: on `agridat::besag.met` eight calls spanned a ratio of 1.23 in a genotype-by-environment variance and 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05 set before the runs. Two simulated designs and `agridat::dasilva.maize` repeated to better than 1.01. The loadings are also anchored by factor-level order, and nothing checked that the anchor level carries a loading. flexyBayes has no factor-analytic lowering for brms. `diag(env):gen` fits on both engines, and `us(env):gen` on brms. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. brms writes it directly, as `(0 + trait \| gr(gen, cov = K))` on data with one row per trait or with `mvbind()` on data with one column per trait. INLA can build it from a known-covariance field for each trait joined by a scaled `copy`. flexyBayes emits neither. Fit it with brms directly, or fit each trait separately. |
-| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | On INLA flexyBayes takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or blocks carrier by name; on brms it takes dense, Cholesky and precision carriers and refuses a blocks carrier. In `fb_select()` a joint shrinkage prior over candidate fixed effects fits on a base with one of these terms, but the projection decision does not: the term is written `(1 \| gr(g, cov = K))`, and projpred refuses a function call on the right of a group term's `\|`. The default `decision = "auto"` resolves to `full` there, and naming `"projection"` refuses before the reference model is sampled. |
+| Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | On INLA flexyBayes takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or blocks carrier by name; on brms it takes dense, Cholesky and precision carriers and refuses a blocks carrier. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget: four hyperparameters, one observation per grid node. This is not ASReml's three-parameter residual without a nugget, so the residual spelling refuses and points to this one. flexyBayes has no brms lowering for the field. |
 | Per-trial separable AR1 field | `random = ~ id(trial):ar1(row):ar1(col)` | fits | refuses | One field realisation per level of `trial`, through INLA's `replicate =` mechanism. The row correlation, column correlation and field SD are shared by every level, not estimated per trial. `at(trial):ar1(row):ar1(col)`, which ASReml fits with per-trial parameters, and `at(trial, level):ar1(row):ar1(col)`, one trial's field, refuse by name on both engines. flexyBayes has no brms lowering for the field. |
 | Grouped temporal AR1 field | `random = ~ ar1(t):g`, `~ g:ar1(t)`, `~ ar1(t):id(g)` | fits | refuses | AR1 along `t` within each level of `g`, independent across levels: one correlation, one field SD and the Gaussian nugget, shared by every level. This is the units-by-occasions repeated-measures covariance of Verbyla and Cullis (1992), written on the random side; an occasion a unit missed stays as a row with the response `NA` under `na_action = "augment"`. Either factor order is accepted. flexyBayes has no brms lowering for it. |
@@ -53,11 +53,6 @@ least one engine fits, without the notes.
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits | Precision weights, Var(y_i) = sigma^2 / w_i, as in ASReml, lme4 and `glm(weights = )`: INLA's `scale = w`, and on brms a known offset on sigma rather than brms's own `weights()` term, which multiplies each observation's log-likelihood instead. Both engines match `lme4::lmer(weights = )` closely on a shared simulated fixture. Any other family, or a non-identity link on the Gaussian, refuses by name, and so does `aggregate = TRUE` with weights. |
 | Exact sufficient-statistic aggregation (binomial, Poisson) | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a | Exact cell-likelihood aggregation for binomial (logit) and Poisson (log) models with few cells; the posterior equals the per-row posterior. The marginal likelihood is not reported, because the engine's value omits a constant that depends on the data. flexyBayes has no aggregated route on brms. |
 | Exact sufficient-statistic aggregation (Gaussian) | `aggregate = TRUE`, `flexybayes_stream(family = "gaussian")` | refuses | n/a | Refused by name. The aggregated Gaussian route combined the within-cell sums of squares with a fixed prior on the residual precision, so a stated or default residual prior would not be the prior fitted. Gaussian models are fitted per row, which is what `aggregate = "auto"` does; `flexybayes_stream(fit = FALSE)` still returns the sufficient statistics. |
-| Ridge shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ ridge(scale))` | n/a | fits | A joint shrinkage prior over a declared block of candidate fixed effects: one `normal` prior row per candidate, so the block is targeted exactly and no protected coefficient is touched. Only `fb_select()` takes a shrinkage prior, and it fits its reference model on brms whatever engine fitted the base, carrying the base's structure and priors through and recording this on the certificate. flexyBayes has no INLA route for the block. |
-| Laplace shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ laplace(scale))` | n/a | fits | One `double_exponential` prior row per candidate. The posterior mean is not a lasso estimate, and the draws carry no exact zeros; the alias `lasso()` says so once per session. Fitted on brms, as for ridge. |
-| Elastic-net shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ elastic_net(lambda, alpha))` | n/a | fits | The elastic-net density added to the Stan program over the candidate coefficients, so the block is targeted exactly while a protected coefficient keeps its own prior. The hyperparameters are fixed, so the normalising constant does not matter. Fitted on brms, as for ridge. |
-| Regularised horseshoe shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ regularized_horseshoe(p0))` | n/a | fits | brms's `horseshoe()`, with `par_ratio` set from `p0` and calibrated against the number of resampling units rather than rows. It is a prior on the whole coefficient class, and brms refuses a coefficient prior beside it, so it targets the block exactly only when the base's fixed part is the intercept alone; otherwise it refuses by name. Three ways forward: `laplace()`, `ridge()` or `elastic_net()`, which target the block exactly; `scope = "block"`, which fits the candidates as their own non-linear part beside the protected effects, carries a known variance per row, and is read with the full or posterior-threshold decision; or `scope = "all_fixed"`, under which the protected coefficients also take the horseshoe, the projection search keeps them in every submodel, and the certificate records the approximation. A candidate column the reference cannot standardise, such as a factor contrast or an interaction product, refuses by name. Fitted on brms, as for ridge. |
-| R2D2 shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))` | n/a | fits | brms's `R2D2()`, whose scales are stated as explained variance rather than on a coefficient scale, so `p0` is refused for it. It covers the whole coefficient class, with the same rule as the horseshoe: exact only when the base's fixed part is the intercept alone; otherwise `laplace()`, `ridge()` or `elastic_net()`, or `scope = "all_fixed"`. Unstandardised candidate columns refuse as for the horseshoe. Fitted on brms, as for ridge. |
 
 `fits`: the engine fits it, and a test checks the fit. `refuses`: flexyBayes stops with a message saying why and what to use instead. `n/a`: the request does not apply to that engine.
 <!-- capability-matrix:end -->
@@ -253,47 +248,9 @@ Each is reproducible on this release. Priority is for the MET use case.
     an aggregated Gaussian likelihood that composes the stated or default
     residual prior exactly and restores the marginal likelihood, planned
     for 0.16.0 at the earliest.
-11. **Closed: held-out clusters under `prediction = "new_cluster"` are
-    relabelled for every grouping term, or the term refuses by name.**
-    `fb_select()` gives the assessment rows new labels for every column a
-    random term's effect is indexed by: the group of a random intercept, of
-    a random slope and of an `ide()` term, every factor of a two-way or
-    multi-way interaction, and the inner factor of `diag(f):g`. A `vm()`,
-    `ped()` or autoregressive term cannot take a new level and refuses with
-    `selection_new_cluster_not_representable`; `prediction = "known_cluster"`
-    keeps its levels. A base carrying `us(f):g` or `fa(f, k):g` never
-    reaches relabelling: `fb_select()` refuses it by name at the base gate,
-    before any fold runs (`selection_base_not_allowlisted`). A base written
-    in the brms grammar, such as `y ~ x + (x || g)`, carries its random
-    terms into every fold refit. On the benchmark route a two-way
-    interaction is one covariance term. With the default
-    `covariance = "reml_plugin"` every random term other than an intercept or
-    a two-way interaction (a random slope, a multi-way interaction,
-    `diag(f):g`, `vm()`) refuses with `selection_covariance_not_buildable`.
-    `covariance = "base_model"` reads the fold covariance from a refit of the
-    base model and builds random slopes, `diag(f):g`, a single-trial
-    `ar1(row):ar1(col)` field and `vm()` or `ped()` known covariances. A
-    multi-way interaction still refuses with that code.
-12. **Closed: on INLA, a fold refit's default priors read its training
-    rows.** Each INLA fold refit in `fb_select()` receives the training rows
-    and the assessment rows with the response set to missing. The default
-    scale on an uncorrelated random slope's standard deviation and the
-    default fixed-effect prior are scaled by covariate standard deviations
-    taken over the rows with an observed response, which in a fold refit are
-    its training rows, the rows the response-scaled defaults already read. A
-    fit with `na_action = "augment"` reads the same rows, so the covariates
-    of rows without a response leave its defaults unchanged.
-13. **Closed: the selection certificate identifies the values it scored.**
-    The score contract that decides whether two arms' out-of-fold scores
-    are comparable hashes the values of the response and of every design
-    column the arms were scored on. The response is read through the
-    model's own transformation, with its offsets, and the design columns
-    over all rows before fold-local preprocessing. The values pass through
-    a canonical byte encoding that reads the same under every R version,
-    and the contract carries a version field. Rescaling a covariate between
-    arms (`x1` to `1000 * x1 + 17`), or transforming the response under an
-    unchanged name, gives a different contract, and a contract whose hash
-    cannot be verified refuses with `selection_score_contract_unverifiable`.
+11. **Withdrawn in 0.16.0.** This item concerned penalised selection, which is no longer part of flexyBayes.
+12. **Withdrawn in 0.16.0.** This item concerned penalised selection, which is no longer part of flexyBayes.
+13. **Withdrawn in 0.16.0.** This item concerned penalised selection, which is no longer part of flexyBayes.
 14. **Closed: the boundary warning on a random slope no longer depends on
     the covariate's units.** The slope's standard deviation is multiplied by
     its covariate's before the comparison, in the fit-time warning and in
@@ -369,43 +326,8 @@ Each is reproducible on this release. Priority is for the MET use case.
     interval to cross, and the default `john.alpha` fit returns. *What is
     open*: a user-stated uniform bound is still refused when INLA's reported
     interval reaches past it.
-18. **Formula transforms that read other rows are refused on the Bayesian
-    selection route.** `fb_select()` refits the model formula on every fold,
-    and INLA evaluates it over the fold's training and assessment rows
-    together, so `scale(z1)` in a candidate formula was centred and scaled
-    with the assessment rows included: in one fold refit a single assessment
-    value moved the coefficient of `scale(z1)` from 0.10 to 0.52. The
-    Bayesian route (the penalty-free fold refits, the out-of-fold score of
-    `benchmark = TRUE`, and the projection's k-fold search) now refuses any
-    formula variable whose value on a row depends on other rows with
-    `selection_formula_transform_not_fold_local`, before anything is fitted.
-    The benchmark workflows learn `scale()`, `poly()`, `splines::ns()` and
-    `splines::bs()` on each fold's training rows and apply them to its
-    assessment rows, and refuse any other such transform, such as
-    `I(x - mean(x))`. *Workaround*: name the untransformed column (a
-    penalty's candidate standardisation is learned inside each fold), or
-    write the transform as a rule of one row at a time, such as `I(x^2)`.
-    *What is open*: carrying the training rows' transform parameters into
-    the INLA and brms fold refits.
-19. **A fold drop the route cannot write is refused.** `fb_select()` fixes
-    each fold's candidate space from the covariates on its training rows
-    and drops a candidate column those rows leave unidentified, with `NA`
-    for its coefficient and the drop on the certificate. Two routes cannot
-    drop a single column, and refuse with
-    `selection_fold_candidate_drop_not_representable` before anything is
-    fitted. The Bayesian fold refits write the model as formula text, so a
-    factor or interaction term with only some of its columns unidentified
-    on a fold is refused. The penalised reference's out-of-fold score
-    (`benchmark = TRUE` with a penalty) compiles its prior over the whole
-    candidate block, so any drop there is refused. The Bayesian refit of a
-    frozen support (`fb_select(refit = )`) writes each support column as a
-    design column of its own, so it refits such a fold on the columns the
-    fold kept. *Workaround*: score the
-    candidates with `workflow = "unpenalized_benchmark"` or the `glmnet`
-    arm, which drop single columns; cut the folds on a unit whose training
-    rows identify every candidate; or remove the unidentified columns from
-    `candidates`. *What is open*: single-column drops in the formula
-    refits, and a reference prior compiled over each fold's kept columns.
+18. **Withdrawn in 0.16.0.** This item concerned penalised selection, which is no longer part of flexyBayes.
+19. **Withdrawn in 0.16.0.** This item concerned penalised selection, which is no longer part of flexyBayes.
 20. **Closed on INLA: a weakly identified variance component is flagged.**
     Under the default half-normal prior on a standard deviation, a component
     the data barely inform is reported at a value driven mostly by the prior.

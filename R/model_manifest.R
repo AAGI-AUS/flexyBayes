@@ -28,7 +28,7 @@
   "filled_default",
   "covariate_scaled_default",
   "structure_default",
-  "selection_block"
+  "extra_prior"
 )
 
 # The package-chosen sources, as against a prior the caller wrote.
@@ -1013,18 +1013,18 @@
     completion = completion
   )
 
-  # Rows with no specification behind them: joint blocks the selection
-  # module compiled, and the log-sigma prior a sectioned residual needs when
-  # nothing states one.
+  # Rows with no specification behind them: prior rows passed to
+  # fb_refit(extra_prior = ), and the log-sigma prior a sectioned residual
+  # needs when nothing states one.
   extra_rows <- list()
   for (i in seq_len(nrow(emitted))) {
     id <- input_ids[[i]]
     if (!is.na(id) && id %in% inputs$input_id) {
       next
     }
-    source <- if (is.na(id)) "selection_block" else "structure_default"
+    source <- if (is.na(id)) "extra_prior" else "structure_default"
     if (is.na(id)) {
-      id <- paste0("selection:", emitted_tuple[[i]])
+      id <- paste0("extra_prior:", emitted_tuple[[i]])
       input_ids[[i]] <- id
     }
     density <- as.character(emitted$prior[[i]])

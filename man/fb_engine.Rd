@@ -49,25 +49,14 @@ construction rather than a silently dropped argument.
 step-size adaptation, between 0 and 1. Raising it makes the sampler
 take smaller steps, which costs time and removes the divergent
 transitions a smaller step would have avoided. brms's own default is
-0.8; \code{\link[=fb_select]{fb_select()}}'s reference fit starts from 0.95 instead, and a
-value given here replaces that.}
+0.8.}
 }
-
-\code{adapt_delta} is the lever to reach for when a selection run refuses
-with \code{penalty_sampler_diagnostics_failed}. The adequacy gate refuses on
-a single divergent transition, because a selection read off a posterior
-the sampler did not explore is a statement about the sampler; a
-heavy-tailed prior on a small trial reaches that threshold routinely.
-A regularised horseshoe on a 200-row design ended two transitions of
-six thousand in a divergence at the 0.95 default and completed cleanly
-at \code{fb_engine("brms", adapt_delta = 0.999)}.
 }
 
 \section{Deprecated}{
 
 \code{fb_engine()} is deprecated as of 0.13.0. Pass the backend and engine
-settings directly to \code{\link[=flexybayes]{flexybayes()}}, or pass a named settings list to the
-\code{engine} argument of \code{\link[=fb_select]{fb_select()}}.
+settings directly to \code{\link[=flexybayes]{flexybayes()}}.
 }
 
 \examples{

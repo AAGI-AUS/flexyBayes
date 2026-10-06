@@ -81,7 +81,7 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 |---|---|---|
 | `fb_cov()` | experimental | Construct a structured-covariance specification carried on a random term. |
 | `is_fb_cov()` | deprecated in 0.13.0 | Test for that class. Use `inherits(x, "fb_cov")`. |
-| `fb_engine()` | deprecated in 0.13.0 | Compatibility constructor. Pass `backend`, `chains`, `n_samples`, `warmup` and `control` directly to `flexybayes()`; `fb_select(engine = )` accepts a named sampler-settings list. |
+| `fb_engine()` | deprecated in 0.13.0 | Compatibility constructor. Pass `backend`, `chains`, `n_samples`, `warmup` and `control` directly to `flexybayes()`. |
 | `is_fb_engine()` | deprecated in 0.13.0 | Test for that class. Use `inherits(x, "fb_engine")`. |
 | `is_fb_approx()` | deprecated in 0.13.0 | Test for the `fb_approx` class. Use `inherits(x, "fb_approx")`. |
 | `fb_approx()`, `validate_approximation()` | experimental | Construct / validate an approximate-scheme request. Approximate schemes are gated: an unregistered scheme is refused with a structured message naming the available exact routes. |
@@ -91,16 +91,16 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | Export | Stage | Notes |
 |---|---|---|
 | `fb_plan()` | experimental | Returns the dispatch / aggregation plan for a model without fitting (`plan = TRUE` on a universal entry returns the same object). Explains which backend was chosen and why. |
-| `fb_select()` | experimental | Selection over a fitted model with an explicit workflow axis. `workflow = "bayes"` fits a posterior reference model; `workflow = "penalized_optimizer"` is a frequentist penalised-likelihood path (`glmnet` for ridge/lasso/elastic net and the package proximal provider for grouped families); `workflow = "unpenalized_benchmark"` is generalised least squares with plugged-in covariance. Every result records workflow, provider, prior and decision separately, so no optimiser is labelled Bayesian. Fold-local preprocessing, candidate availability, support history and score-contract hashes are recorded. |
-| `fb_select_fold_data()` | experimental | Each fold's whitened and protected-removed data from `fb_select(keep_fold_data = TRUE)`, with its held-out covariance and variance components. |
-| `fb_select_path()` | experimental | The penalised path of a kept `fb_select()` run solved again on its fold data, at the run's elastic-net alpha or another. |
-| `fb_select_refit()` | experimental | The unpenalised GLS refit of a named column set on each fold of a kept `fb_select()` run, with held-out cluster scores. |
+| `fb_select()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
+| `fb_select_fold_data()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
+| `fb_select_path()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
+| `fb_select_refit()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
 | `fb_variance_draws()` | experimental | Joint posterior draws of an INLA fit's variance components, under the names and on the scale of `summary(fit)$varcomp`. |
 | `fb_refit()` | experimental | The model of a fit refitted on new data, with added fixed columns, extra brms prior rows and Stan code, a formula hook, or a reduced INLA readout. |
 | `fb_marginal_cov()` | experimental | The marginal covariance of the response of a fit over given rows: one block per variance component, with its design, structure and Kronecker factors where it is separable, the residual, and any known variance or covariance. `as.matrix()` assembles it dense. |
-| `fb_penalty()` | experimental | Declare the joint shrinkage prior over the candidate block: `target ~ family(...)` formulas resolved in written order against the model matrix. Families: `ridge`, `laplace`, `elastic_net`, `regularized_horseshoe`, `r2d2`, and `none()` to exempt coordinates. Targets: `term(everything())`, `term(x1, x2)`, `term(c("x1", "x2"))`, `term(matches("^SLGA_"))`. |
-| `fb_resamples()` | experimental | Declare the resampling scheme a selection is scored on: folds on original units before any transformation, frozen factor levels, and an unseen level in an assessment fold refused rather than dropped. |
-| `fb_decision()` | experimental | Declare how the selection decision is made: the method (`projection`, `full`, `posterior_threshold`), the metric, the rule (`one_se`, `min`, `tolerance`) and the search. Validated at construction, so a rule missing the number it needs refuses before anything is fitted. |
+| `fb_penalty()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
+| `fb_resamples()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
+| `fb_decision()` | deprecated in 0.16.0 | Refuses with `selection_removed`: penalised selection is no longer part of flexyBayes. Removal in the next release. The two-stage vignette fits a penalised regression on the design whitened by `fb_marginal_cov()`. |
 | `flexybayes_stream()` | experimental | Chunked sufficient-statistic aggregation for data too large to hold in memory, fitted for `family = "binomial"` or `"poisson"` (which take `trials` / `exposure`). INLA is the default and the only engine with an aggregated emit. `fit = FALSE` returns the `<fb_aggregated>` carrier (compression ratio, `K`, `N`) without fitting, for a Gaussian family too. **Changed in 0.12.0:** a Gaussian fit refuses with `aggregation_residual_prior_not_composed` before any chunk is read, because the aggregated Gaussian likelihood did not carry the residual prior; fit a Gaussian model per row. An aggregated or streamed fit reports no marginal likelihood (`aggregated_evidence_unavailable`). |
 
 ## Diagnostics and introspection
@@ -112,6 +112,18 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | `fb_refusals()` | experimental | The refusal vocabulary as a table (code, package, description, since-version). The registry is the count -- no document quotes a number of refusal codes. |
 | `fb_register_refusals()` | experimental | For packages that extend flexyBayes: adds the package's refusal codes, from its `.onLoad()`, to its own partition of the registry. A code another package or flexyBayes already registered is refused. |
 | `fb_refuse()` | experimental | Raises a registered refusal as a `flexybayes_refusal` condition carrying the code and the package that registered it. |
+| `fb_isolated_lapply()` | experimental | For packages that extend flexyBayes: `lapply()` with each call in a separate R process that starts from the session's settings and random-number state; values, messages and warnings come back in job order, and a process that dies is a refusal. |
+| `fb_extension_api()` | experimental | The version of the set of functions a package that extends flexyBayes reads a fit through; 1 in this release. |
+| `fb_model_terms()` | experimental | For packages that extend flexyBayes: the model description of a fit. |
+| `fb_response_values()` | experimental | For packages that extend flexyBayes: a response, a column or an expression, evaluated over a data frame. |
+| `fb_offset_values()` | experimental | For packages that extend flexyBayes: the summed offsets of a model over the rows of a data frame. |
+| `fb_model_weights()` | experimental | For packages that extend flexyBayes: the observation weights a model was fitted with. |
+| `fb_known_variance()` | experimental | For packages that extend flexyBayes: the known variance or covariance of a model and the data column that carries it. |
+| `fb_engine_settings()` | experimental | For packages that extend flexyBayes: sampler settings, checked against those flexyBayes recognises. |
+| `fb_convergence()` | experimental | For packages that extend flexyBayes: the convergence verdict of a fit with its evidence. |
+| `fb_inla_posterior_sample()` | experimental | For packages that extend flexyBayes: joint posterior samples of an INLA fit on the scale of the data. |
+| `fb_check_refit()` | experimental | For packages that extend flexyBayes: refuses a fit that cannot be refitted as the model it was fitted as. |
+| `fb_fixed_design()` | experimental | For packages that extend flexyBayes: the design matrix of a fixed formula, with each column's term and ASReml's column order. |
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
 | `fb_structured_cov()` | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
 | `proceed()`, `cat_code()` | deprecated in 0.13.0 | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. The generated code is the token's `code` element, and `flexybayes(..., return_code = TRUE)` returns it; the fit comes from calling `flexybayes()` with the same arguments and `review_code = FALSE`. |

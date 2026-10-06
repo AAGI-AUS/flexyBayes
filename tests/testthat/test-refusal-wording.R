@@ -466,25 +466,3 @@ test_that("the default-prior notice is two sentences with the scale and the off 
   expect_lte(nchar(note), 320L)
 })
 
-test_that("the selection certificate says the shrinkage prior is fitted on brms by flexyBayes's choice", {
-  skip_on_cran()
-  skip_if_not_installed("INLA")
-  skip_if_not_installed("brms")
-  d <- fb_sel_bayes_data()
-  base <- suppressMessages(flexybayes(
-    y ~ p1, random = ~site, data = d, backend = "inla", verbose = FALSE
-  ))
-  plan <- fb_select(
-    base, ~ x1 + x2 + z1 + z2,
-    penalty = fb_penalty(term(everything()) ~ ridge(scale = 0.5)),
-    resamples = fb_resamples(unit = ~site, v = 3L),
-    decision = fb_decision(method = "full"),
-    plan = TRUE, seed = 1L
-  )
-  approx <- plan$selection$approximations
-  hit <- approx[grepl("reference_fitted_on_brms", approx, fixed = TRUE)]
-  expect_length(hit, 1L)
-  expect_match(hit, "flexyBayes fits a joint shrinkage prior on brms only",
-    fixed = TRUE)
-  expect_false(grepl("INLA does not fit", hit, fixed = TRUE))
-})

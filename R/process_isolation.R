@@ -1,9 +1,9 @@
-# Engine fits and fold loops in a separate R process.
+# Engine fits and loops of jobs in a separate R process.
 #
 # `options(flexyBayes.isolation = "process")` runs the engine fit behind
-# flexybayes() (and so behind fb(), fb_inla() and fb_brms()), the fit behind
-# proceed(), and each fold of fb_select()'s fold loops in a separate R process
-# started through callr. The default, "none", runs everything in the session,
+# flexybayes() (and so behind fb(), fb_inla() and fb_brms()) and the fit
+# behind proceed() in a separate R process started through callr, and
+# fb_isolated_lapply() runs each job of a loop that way. The default, "none", runs everything in the session,
 # exactly as before.
 #
 # How a session dies, path by path, and what isolation changes. Read from the
@@ -23,12 +23,7 @@
 #   * R itself: when the operating system kills the R process under memory
 #     pressure, or compiled code running inside it (a BLAS call on a dense
 #     matrix, a Stan sampler under rstan) crashes, the session ends with no
-#     condition to catch. The selection layer's dense covariance and the
-#     proximal solvers run inside R, so this is the path a wide selection
-#     call takes.
-#   * fb_select()'s forked fold workers (R/selection_parallel.R): a worker
-#     killed from outside leaves a bare NULL, which is refused by name, and
-#     the session survives.
+#     condition to catch.
 #
 # Isolation moves the third path into a child process, where it becomes a
 # child that ended with a signal or an exit status. That is reported as the
@@ -138,20 +133,26 @@
 
 # --- what the child is given --------------------------------------------- #
 
-#' How the child loads the namespace this session loaded
+#' How the child loads the namespaces this session loaded
 #'
-#' @return A list: `dev` (loaded from a source tree by pkgload), `path` (the
-#'   tree, or the installed directory) and `lib` (its library).
+#' @param packages The namespaces the child loads, in order: flexyBayes
+#'   first, then the package that owns a function handed to the child.
+#' @return One list per namespace: `package`, `dev` (loaded from a source
+#'   tree by pkgload), `path` (the tree, or the installed directory) and `lib`
+#'   (its library).
 #' @noRd
 #' @keywords internal
-.fb_isolation_load_spec <- function() {
-  ns <- asNamespace("flexyBayes")
-  path <- getNamespaceInfo(ns, "path")
-  list(
-    dev = exists(".__DEVTOOLS__", envir = ns, inherits = FALSE),
-    path = path,
-    lib = dirname(path)
-  )
+.fb_isolation_load_spec <- function(packages = "flexyBayes") {
+  lapply(packages, function(package) {
+    ns <- asNamespace(package)
+    path <- getNamespaceInfo(ns, "path")
+    list(
+      package = package,
+      dev = exists(".__DEVTOOLS__", envir = ns, inherits = FALSE),
+      path = path,
+      lib = dirname(path)
+    )
+  })
 }
 
 
@@ -256,9 +257,9 @@
 #'
 #' callr runs this function in the child with its environment set to the
 #' child's global environment, so it names nothing from this namespace until
-#' it has loaded it: the namespace this session loaded, found through
+#' it has loaded it: the namespaces this session loaded, found through
 #' `load`. Only then are the payload's closures read; their environments
-#' then attach to that namespace.
+#' then attach to those namespaces.
 #'
 #' @param payload_path The file holding the call.
 #' @param load A `.fb_isolation_load_spec()` record.
@@ -266,17 +267,19 @@
 #' @noRd
 #' @keywords internal
 .fb_isolation_child_entry <- function(payload_path, load) {
-  if (isTRUE(load$dev)) {
-    load_all <- getExportedValue("pkgload", "load_all")
-    suppressPackageStartupMessages(suppressMessages(load_all(
-      load$path,
-      quiet = TRUE,
-      helpers = FALSE,
-      attach_testthat = FALSE,
-      export_all = FALSE
-    )))
-  } else {
-    loadNamespace("flexyBayes", lib.loc = load$lib)
+  for (spec in load) {
+    if (isTRUE(spec$dev)) {
+      load_all <- getExportedValue("pkgload", "load_all")
+      suppressPackageStartupMessages(suppressMessages(load_all(
+        spec$path,
+        quiet = TRUE,
+        helpers = FALSE,
+        attach_testthat = FALSE,
+        export_all = FALSE
+      )))
+    } else {
+      loadNamespace(spec$package, lib.loc = spec$lib)
+    }
   }
   run <- get(".fb_isolation_child_run", envir = asNamespace("flexyBayes"))
   run(payload_path)
@@ -297,9 +300,7 @@
   .fb_isolation_apply_state(payload$state)
   # The child is the isolated process; it does not start another.
   options(flexyBayes.isolation = "none")
-  if (!is.null(payload$pin)) {
-    .fb_sel_pin_worker_threads(payload$pin)
-  }
+  .fb_isolation_pin_threads(payload$pin)
 
   events <- list()
   printed <- character(0)
@@ -362,8 +363,10 @@
 #'
 #' @param fn_path A file holding the function the child calls.
 #' @param args Its arguments.
-#' @param pin A `.fb_sel_worker_plan()` record whose engine threads the child
-#'   pins, or `NULL`.
+#' @param pin The OpenMP threads the child is limited to, or `NULL` to leave
+#'   them as the session has them.
+#' @param packages The namespaces the child loads; see
+#'   `.fb_isolation_load_spec()`.
 #' @param quote Passed to `do.call()` in the child. `TRUE` hands a call object
 #'   among `args` over as a value, as a direct call hands over its argument;
 #'   `FALSE` evaluates it, as `do.call()` does by default.
@@ -371,7 +374,7 @@
 #' @noRd
 #' @keywords internal
 .fb_isolation_start <- function(fn_path, args = list(), pin = NULL,
-                                quote = TRUE) {
+                                quote = TRUE, packages = "flexyBayes") {
   payload_path <- tempfile("fb_isolation_", fileext = ".rds")
   saveRDS(
     list(
@@ -388,7 +391,10 @@
   err_path <- tempfile("fb_isolation_", fileext = ".err")
   proc <- callr::r_bg(
     .fb_isolation_child_entry,
-    args = list(payload_path = payload_path, load = .fb_isolation_load_spec()),
+    args = list(
+      payload_path = payload_path,
+      load = .fb_isolation_load_spec(packages)
+    ),
     stdout = out_path,
     stderr = err_path,
     # No startup files: the child's environment is the session's as it
@@ -665,31 +671,84 @@
 }
 
 
-# --- the fold loop -------------------------------------------------------- #
+# --- jobs in separate processes ------------------------------------------- #
 
-#' Run a fold loop with each fold in its own R process
+#' Run jobs, each in its own R process
 #'
-#' Up to `plan$workers` children run at once. What comes back is delivered
-#' in FOLD order, never in completion order, so the printed output, the
-#' messages and warnings, and the first failure raised are the ones a serial
-#' run gives: a fold that fails stops new folds from starting, the folds
-#' before it are waited for, and the lowest failing fold's condition is the
-#' one raised. One fold at a time, each child starts from the random-number
-#' state the previous one left, as a serial loop does; concurrent children
-#' start from the session's state and leave it where it was, as forked
-#' workers do.
+#' `fb_isolated_lapply()` is [lapply()] with each call of `fn` made in a
+#' separate R process started through callr, so that a process ended by the
+#' operating system or by a crash in compiled code is reported as a refusal
+#' and the session goes on. It is the mechanism behind
+#' `options(flexyBayes.isolation = "process")`, offered to packages that
+#' extend flexyBayes for their own loops of model fits.
 #'
-#' @inheritParams .fb_sel_fold_lapply
-#' @return The folds' results, in fold order.
-#' @noRd
-#' @keywords internal
-.fb_sel_isolated_lapply <- function(jobs, fn, plan, warm_first = FALSE) {
-  n <- length(jobs)
-  engine <- if (is.null(plan$provider) || is.na(plan$provider)) {
-    "none"
-  } else {
-    plan$provider
+#' Each process loads flexyBayes, and the package whose namespace `fn` is
+#' defined in, from where this session loaded them, and starts from this
+#' session's flexyBayes, brms, cmdstanr and INLA settings, its environment
+#' variables and its random-number state. Messages, warnings and printed
+#' output come back and are replayed in job order, never in completion order.
+#' A job that fails stops new jobs from starting; the jobs before it are
+#' waited for, and the lowest failing job's error is raised. With one worker,
+#' each process starts from the random-number state the previous one left,
+#' as [lapply()] would; with several, each starts from the session's state
+#' and the session's state is left where it was.
+#'
+#' A process that ends without returning raises the refusal
+#' `isolated_process_died`, which names the engine, the entry point, the job
+#' and the signal or exit status.
+#'
+#' @param jobs A list or vector; `fn` is called on each element.
+#' @param fn A function of one element of `jobs`.
+#' @param plan A list:
+#'   * `workers`: how many processes run at once, a whole number of one or
+#'     more (default 1).
+#'   * `threads_per_worker`: the OpenMP threads each process may use, or
+#'     `NA` (default) to leave them as the session has them. A process also
+#'     runs one chain at a time when this is set.
+#'   * `warm_first`: `TRUE` runs the first job alone before the others
+#'     start, so that a Stan program compiled by it is cached for the rest
+#'     (default `FALSE`).
+#'   * `engine`: the engine the jobs fit with, named in a refusal (default
+#'     `"none"`).
+#'   * `entry_point`: the function the user called, named in a refusal
+#'     (default `"fb_isolated_lapply()"`).
+#'
+#' @return A list of the values `fn` returned, in the order of `jobs`.
+#'
+#' @seealso [fb_refit()], the refit that such jobs usually run.
+#'
+#' @examplesIf interactive() && requireNamespace("callr", quietly = TRUE)
+#' fb_isolated_lapply(1:2, function(i) i^2, list(workers = 2L))
+#'
+#' @export
+fb_isolated_lapply <- function(jobs, fn, plan = list()) {
+  plan <- .fb_isolation_plan(plan)
+  if (!is.function(fn)) {
+    stop("`fn` must be a function of one job.", call. = FALSE)
   }
+  if (!.fb_isolation_callr_available()) {
+    stop(.fb_refusal_condition(
+      reason_code = "isolation_requires_callr",
+      message = paste0(
+        plan$entry_point,
+        ": each job runs in a separate R process started through callr, ",
+        "and callr is not installed. Install it with ",
+        "install.packages(\"callr\")."
+      ),
+      entry_point = plan$entry_point
+    ))
+  }
+  n <- length(jobs)
+  if (n == 0L) {
+    return(list())
+  }
+  owner <- environmentName(topenv(environment(fn)))
+  packages <- unique(c(
+    "flexyBayes",
+    if (isNamespaceLoaded(owner) && !owner %in% c("base", "R_GlobalEnv")) {
+      owner
+    }
+  ))
   fn_path <- tempfile("fb_isolation_fn_", fileext = ".rds")
   saveRDS(fn, fn_path, compress = FALSE)
   running <- list()
@@ -703,12 +762,14 @@
     add = TRUE
   )
   sequential <- plan$workers <= 1L
-  pin <- if (sequential) NULL else plan
+  pin <- if (sequential) NULL else plan$threads_per_worker
   records <- vector("list", n)
   failures <- vector("list", n)
   done <- rep(FALSE, n)
   next_i <- 1L
   first_failure <- Inf
+
+  # Collect one finished job ----------------------------------------------
 
   harvest <- function(i) {
     h <- running[[as.character(i)]]
@@ -716,9 +777,13 @@
     outcome <- tryCatch(
       list(record = .fb_isolation_harvest(
         h,
-        engine,
-        "fb_select()",
-        fold = jobs[[i]]
+        plan$engine,
+        plan$entry_point,
+        fold = if (is.numeric(jobs[[i]]) && length(jobs[[i]]) == 1L) {
+          jobs[[i]]
+        } else {
+          i
+        }
       )),
       error = function(e) list(condition = e)
     )
@@ -729,7 +794,7 @@
         first_failure <<- min(first_failure, i)
       }
       if (sequential) {
-        # One fold at a time: the next child starts where this one left off.
+        # One job at a time: the next process starts where this one left off.
         .fb_isolation_set_seed(outcome$record$seed)
       }
     } else {
@@ -738,15 +803,18 @@
     }
   }
 
+  # Start jobs up to the worker count, collect what finishes ---------------
+
   while (!all(done[seq_len(min(n, first_failure))])) {
-    limit <- if (isTRUE(warm_first) && !done[[1L]]) 1L else plan$workers
+    limit <- if (plan$warm_first && !done[[1L]]) 1L else plan$workers
     while (
       next_i <= n && next_i < first_failure && length(running) < limit
     ) {
       running[[as.character(next_i)]] <- .fb_isolation_start(
         fn_path,
         list(jobs[[next_i]]),
-        pin = pin
+        pin = pin,
+        packages = packages
       )
       next_i <- next_i + 1L
     }
@@ -764,7 +832,8 @@
     }
   }
 
-  # Deliver in fold order, up to and including the first failure.
+  # Deliver in job order, up to and including the first failure -----------
+
   last <- min(n, first_failure)
   out <- vector("list", n)
   for (i in seq_len(last)) {
@@ -774,4 +843,85 @@
     out[[i]] <- .fb_isolation_deliver(records[[i]], adopt_seed = FALSE)
   }
   out
+}
+
+
+#' Check and complete the plan of `fb_isolated_lapply()`
+#'
+#' @param plan The `plan` argument.
+#' @return The plan with every field set.
+#' @noRd
+#' @keywords internal
+.fb_isolation_plan <- function(plan) {
+  if (!is.list(plan)) {
+    stop("`plan` must be a list.", call. = FALSE)
+  }
+  unknown <- setdiff(
+    names(plan),
+    c("workers", "threads_per_worker", "warm_first", "engine", "entry_point")
+  )
+  if (length(unknown) > 0L) {
+    stop(
+      "`plan` has unknown field",
+      if (length(unknown) > 1L) "s " else " ",
+      paste0("`", unknown, "`", collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  is_count <- function(x) {
+    is.numeric(x) && length(x) == 1L && is.finite(x) && x >= 1 && x == round(x)
+  }
+  workers <- plan$workers %||% 1L
+  if (!is_count(workers)) {
+    stop("`plan$workers` must be a whole number, one or more.", call. = FALSE)
+  }
+  threads <- plan$threads_per_worker %||% NA_integer_
+  if (!(length(threads) == 1L && is.na(threads)) && !is_count(threads)) {
+    stop(
+      "`plan$threads_per_worker` must be NA or a whole number, one or more.",
+      call. = FALSE
+    )
+  }
+  warm_first <- plan$warm_first %||% FALSE
+  if (!isTRUE(warm_first) && !isFALSE(warm_first)) {
+    stop("`plan$warm_first` must be TRUE or FALSE.", call. = FALSE)
+  }
+  label <- function(x, default, field) {
+    x <- x %||% default
+    if (!is.character(x) || length(x) != 1L || is.na(x) || !nzchar(x)) {
+      stop("`plan$", field, "` must be a single string.", call. = FALSE)
+    }
+    x
+  }
+  list(
+    workers = as.integer(workers),
+    threads_per_worker = as.integer(threads),
+    warm_first = warm_first,
+    engine = label(plan$engine, "none", "engine"),
+    entry_point = label(plan$entry_point, "fb_isolated_lapply()", "entry_point")
+  )
+}
+
+
+#' Limit a child's engine threads
+#'
+#' Called inside the child, before it runs anything. The settings are the
+#' child's own, so the session keeps what the caller set.
+#'
+#' @param threads The OpenMP threads, or `NULL` / `NA` to leave them.
+#' @return `NULL`, invisibly.
+#' @noRd
+#' @keywords internal
+.fb_isolation_pin_threads <- function(threads) {
+  if (length(threads) != 1L || is.na(threads)) {
+    return(invisible(NULL))
+  }
+  Sys.setenv(OMP_NUM_THREADS = as.character(threads))
+  # brms reads `cores` from this option; one chain process per child keeps
+  # the children from multiplying again.
+  options(mc.cores = 1L)
+  # INLA keeps option flexyBayes.inla_threads ("1:1" by default), which the
+  # child inherits, because another plan moves a fit's variance components.
+  invisible(NULL)
 }

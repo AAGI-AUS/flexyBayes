@@ -490,8 +490,8 @@
 # .fb_convergence_verdict() --- the authoritative tri-state answer.
 #
 # summary(), the ASReml oracle runner, the live-backend tests and
-# fb_select()'s fold gate all read this and nothing else. A second
-# implementation anywhere is how A25 happened.
+# fb_convergence() all read this and nothing else. A second implementation
+# anywhere is how A25 happened.
 .fb_convergence_verdict <- function(fit) {
   if (inherits(fit, "flexybayes_inla")) {
     return(.fb_conv_verdict_inla(fit))

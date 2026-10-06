@@ -212,18 +212,6 @@ test_that("the defunct rcov argument refuses with a defunctError on every entry"
   )
 })
 
-test_that("the fb_select() argument deprecations raise the documented class", {
-  absorb <- flexyBayes:::.fb_select_absorb_deprecated
-  expect_warning(
-    absorb(list(metric = "elpd")),
-    "`fb_decision()`", fixed = TRUE, class = "flexybayes_deprecated"
-  )
-  expect_warning(
-    flexyBayes:::.fb_select_resolve_covariance("plugin_mean_covariance"),
-    "source of the fold covariance", fixed = TRUE,
-    class = "flexybayes_deprecated"
-  )
-})
 
 test_that("the replacements named in the warnings raise no deprecation warning", {
   d <- .dep_data()
