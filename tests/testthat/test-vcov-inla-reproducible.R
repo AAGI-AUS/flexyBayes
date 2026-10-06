@@ -20,7 +20,7 @@
   d
 }
 
-test_that("two vcov() calls on one INLA fit return the same matrix", {
+test_that("DEF-005: two vcov() calls on one INLA fit return the same matrix", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(
@@ -47,7 +47,7 @@ test_that("two vcov() calls on one INLA fit return the same matrix", {
   expect_true(isSymmetric(v1))
 })
 
-test_that("vcov() on an INLA fit matches INLA's posterior draws", {
+test_that("DEF-005: vcov() on an INLA fit matches INLA's posterior draws", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(
