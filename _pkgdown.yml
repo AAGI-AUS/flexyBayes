@@ -81,6 +81,8 @@ reference:
       - canonical_names
       - fb_backend_status
       - fb_refusals
+      - fb_register_refusals
+      - fb_refuse
       - prior_summary
       - ranef
       - vpredict

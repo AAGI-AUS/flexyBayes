@@ -30,6 +30,11 @@
 # after by .lock_refusal_registry().
 .refusal_registry <- new.env(parent = emptyenv())
 
+# Plug-in partitions: one environment per registering package, filled by
+# fb_register_refusals() at any time after load. Each entry's binding is
+# locked as it is written.
+.refusal_plugin_registry <- new.env(parent = emptyenv())
+
 
 # --- registration helper ------------------------------------------ #
 
@@ -153,7 +158,8 @@
       message_template = message_template,
       registered_in_adr = registered_in_adr,
       plan_field = plan_field,
-      since_version = since_version
+      since_version = since_version,
+      package = "flexyBayes"
     ),
     envir = .refusal_registry
   )
@@ -178,10 +184,27 @@
   ) {
     return(NULL)
   }
-  if (!exists(reason_code, envir = .refusal_registry, inherits = FALSE)) {
-    return(NULL)
+  if (exists(reason_code, envir = .refusal_registry, inherits = FALSE)) {
+    return(get(reason_code, envir = .refusal_registry, inherits = FALSE))
   }
-  get(reason_code, envir = .refusal_registry, inherits = FALSE)
+  for (pkg in ls(.refusal_plugin_registry)) {
+    partition <- get(pkg, envir = .refusal_plugin_registry, inherits = FALSE)
+    if (exists(reason_code, envir = partition, inherits = FALSE)) {
+      return(get(reason_code, envir = partition, inherits = FALSE))
+    }
+  }
+  NULL
+}
+
+# Every registered entry, the core partition first, then each plug-in
+# partition in package-name order.
+.refusal_entries <- function() {
+  core <- mget(ls(.refusal_registry), envir = .refusal_registry)
+  plugins <- lapply(ls(.refusal_plugin_registry), function(pkg) {
+    partition <- get(pkg, envir = .refusal_plugin_registry, inherits = FALSE)
+    mget(ls(partition), envir = partition)
+  })
+  unname(c(core, unlist(plugins, recursive = FALSE)))
 }
 
 
@@ -221,7 +244,7 @@
 #
 # Arguments
 #   reason_code   canonical machine-readable identifier; must be in
-#                 the locked .refusal_registry.
+#                 the locked .refusal_registry or a plug-in partition.
 #   message       the fully-rendered, site-specific message string.
 #   family_class  zero or more legacy family-class strings to retain
 #                 below the per-code class (e.g.
@@ -234,7 +257,8 @@
 #                 (e.g. supplied, format, scheme, backend, factor)
 #                 exactly as the pre-migration sites carried them.
 #
-# Returns the condition object; the caller raises it via stop().
+# Returns the condition object, which also carries `package`, the
+# partition the code is registered in; the caller raises it via stop().
 .fb_refusal_condition <- function(
   reason_code,
   message,
@@ -254,7 +278,8 @@
     )
   }
 
-  if (is.null(.lookup_refusal(reason_code))) {
+  entry <- .lookup_refusal(reason_code)
+  if (is.null(entry)) {
     stop(
       ".fb_refusal_condition(): reason_code '",
       reason_code,
@@ -268,7 +293,12 @@
 
   structure(
     c(
-      list(message = message, reason_code = reason_code, call = call),
+      list(
+        message = message,
+        reason_code = reason_code,
+        package = entry$package,
+        call = call
+      ),
       list(...)
     ),
     class = c(
@@ -1227,50 +1257,6 @@
       "plot(type = \"spatial_field\") draws the posterior mean of a ",
       "separable spatial field, and this fit carries none. Fit one with ",
       "random = ~ ar1(row):ar1(col)."
-    ),
-    registered_in_adr = "0.14.0 figures",
-    plan_field = NA_character_,
-    since_version = "0.14.0"
-  )
-
-  # A suggested-package guard, as for emmeans above: the loss surface is a
-  # three-dimensional plotly display, and plotly is suggested rather than
-  # imported.
-  .register_refusal(
-    reason_code = "loss_surface_requires_plotly",
-    description = paste0(
-      "plot(type = \"loss_surface\") on an fb_select result draws a ",
-      "three-dimensional surface with plotly, a suggested package that is ",
-      "not installed."
-    ),
-    message_template = paste0(
-      "plot(type = \"loss_surface\") draws a three-dimensional surface with ",
-      "plotly, which is not installed. Install it with ",
-      "install.packages(\"plotly\")."
-    ),
-    registered_in_adr = "0.14.0 figures",
-    plan_field = NA_character_,
-    since_version = "0.14.0"
-  )
-
-  # One fb_select() call walks the path on s at one elastic-net mixing
-  # value, so the loss surface over s and alpha is drawn from several
-  # results. They are drawn together only when their losses were scored on
-  # one score contract, on one grid and chosen by one rule; otherwise two
-  # rows of the surface would not be the same quantity.
-  .register_refusal(
-    reason_code = "selection_loss_surface_undefined",
-    description = paste0(
-      "plot(type = \"loss_surface\") was given optimiser results that do ",
-      "not span a surface: fewer than two elastic-net mixing values, a ",
-      "mixing value given twice, an entry with no path on ",
-      "s = lambda / lambda_max, or results that differ in score contract, ",
-      "grid on s, decision rule, penalised columns or covariance source."
-    ),
-    message_template = paste0(
-      "plot(type = \"loss_surface\") draws the out-of-fold loss of ",
-      "optimiser results at two or more elastic-net mixing values, scored ",
-      "on one score contract: %s."
     ),
     registered_in_adr = "0.14.0 figures",
     plan_field = NA_character_,
@@ -2392,13 +2378,18 @@
 #' deliberately excluded: this table lists only refusals a user can
 #' actually encounter.
 #'
+#' Packages that extend flexyBayes add their own reasons with
+#' [fb_register_refusals()]. The `package` column names the package
+#' each reason belongs to: `"flexyBayes"` for the core, and the
+#' plug-in's name for the rest.
+#'
 #' @param reason_code Optional character vector of exact reason codes
 #'   to filter to. `NULL` (default) returns all registered reasons.
 #' @param since_version Optional single version-string prefix to
 #'   filter to. `NULL` (default) returns all.
 #'
 #' @return A data frame of subclass `fb_refusals_table`, one row per
-#'   matching refusal reason, with columns `reason_code`,
+#'   matching refusal reason, with columns `reason_code`, `package`,
 #'   `description`, `since_version`, and `plan_field`. The print
 #'   method renders it as a compact checklist.
 #'
@@ -2422,11 +2413,11 @@ fb_refusals <- function(reason_code = NULL, since_version = NULL) {
     )
   }
 
-  codes <- ls(.refusal_registry)
-  entries <- lapply(codes, .lookup_refusal)
+  entries <- .refusal_entries()
 
   df <- data.frame(
     reason_code = vapply(entries, `[[`, character(1L), "reason_code"),
+    package = vapply(entries, `[[`, character(1L), "package"),
     description = vapply(entries, `[[`, character(1L), "description"),
     since_version = vapply(entries, `[[`, character(1L), "since_version"),
     plan_field = vapply(entries, `[[`, character(1L), "plan_field"),
@@ -2488,11 +2479,338 @@ print.fb_refusals_table <- function(x, ...) {
 
   cat("\n")
   for (i in seq_len(n)) {
-    cat(sprintf("  [since %s] %s\n", x$since_version[[i]], x$reason_code[[i]]))
+    owner <- if (identical(x$package[[i]], "flexyBayes")) {
+      ""
+    } else {
+      paste0("  (", x$package[[i]], ")")
+    }
+    cat(sprintf(
+      "  [since %s] %s%s\n",
+      x$since_version[[i]],
+      x$reason_code[[i]],
+      owner
+    ))
     cat(strwrap(x$description[[i]], width = 72L, prefix = "      "), sep = "\n")
     cat("\n")
   }
   invisible(x)
+}
+
+
+# --- plug-in partitions ------------------------------------------ #
+
+#' Register a package's refusal reasons
+#'
+#' A package that extends flexyBayes calls `fb_register_refusals()` from its
+#' own `.onLoad()` to add the reasons it refuses with. Its users then catch
+#' those refusals with the same `flexybayes_refusal` condition class as the
+#' core's, find them in [fb_refusals()], and the package raises them with
+#' [fb_refuse()].
+#'
+#' Each package's reasons go into a partition named after the package.
+#' A reason code is unique across all partitions: a code that flexyBayes or
+#' another package already registered is refused, and so is any attempt to
+#' register under the name `"flexyBayes"`. Registering the same code again
+#' from the same package with identical fields does nothing, so a package
+#' can be loaded twice in one session; registering it with different fields
+#' is refused. A table that fails any check registers none of its rows.
+#'
+#' @param refusals A data frame with one row per reason and these
+#'   character columns:
+#'   * `reason_code` (required): lower-case letters, digits and
+#'     underscores, starting with a letter. Prefix codes with something
+#'     particular to the package so they do not collide with others.
+#'   * `description` (required): one sentence on what the refusal means,
+#'     shown by [fb_refusals()] and used by [fb_refuse()] when no message
+#'     is given.
+#'   * `since_version` (required): the package version that introduced
+#'     the reason.
+#'   * `message_template` (optional, default `"%s"`): the message shape,
+#'     for documentation.
+#'   * `registered_in_adr` (optional, default `NA`): the design record the
+#'     reason traces to.
+#'   * `plan_field` (optional, default `NA`): the [fb_plan()] slot that
+#'     reports the refusal before a fit, if any.
+#' @param package The package that owns the reasons. `NULL` (default)
+#'   takes the package whose code makes the call, which is the right value
+#'   inside `.onLoad()`; outside a package it must be given.
+#'
+#' @return The registered reasons as an `fb_refusals_table`, invisibly.
+#'
+#' @seealso [fb_refuse()] to raise a registered reason; [fb_refusals()] to
+#'   list them.
+#'
+#' @examples
+#' \dontrun{
+#' # In the plug-in's R/zzz.R:
+#' .onLoad <- function(libname, pkgname) {
+#'   flexyBayes::fb_register_refusals(
+#'     data.frame(
+#'       reason_code = "mypkg_threshold_negative",
+#'       description = "The threshold must be zero or positive.",
+#'       since_version = "0.1.0"
+#'     )
+#'   )
+#' }
+#' }
+#'
+#' @export
+fb_register_refusals <- function(refusals, package = NULL) {
+  if (is.null(package)) {
+    package <- .fb_calling_package(parent.frame())
+  }
+  if (is.null(package)) {
+    stop(
+      "fb_register_refusals() was called from outside a package, so ",
+      "`package` must name the package that owns these refusal codes.",
+      call. = FALSE
+    )
+  }
+  if (
+    !is.character(package) ||
+      length(package) != 1L ||
+      is.na(package) ||
+      !grepl("^[A-Za-z][A-Za-z0-9.]*[A-Za-z0-9]$", package)
+  ) {
+    stop("`package` must be a single package name.", call. = FALSE)
+  }
+  if (identical(package, "flexyBayes")) {
+    stop(
+      "The flexyBayes partition of the refusal registry is locked. ",
+      "Register a plug-in's codes under the plug-in's own package name.",
+      call. = FALSE
+    )
+  }
+  if (!is.data.frame(refusals)) {
+    stop(
+      "`refusals` must be a data frame with one row per refusal code.",
+      call. = FALSE
+    )
+  }
+  required <- c("reason_code", "description", "since_version")
+  absent <- setdiff(required, names(refusals))
+  if (length(absent) > 0L) {
+    stop(
+      "`refusals` has no column ",
+      paste0("`", absent, "`", collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+
+  n <- nrow(refusals)
+  column <- function(name, default) {
+    x <- if (name %in% names(refusals)) refusals[[name]] else rep(default, n)
+    if (is.logical(x) && all(is.na(x))) {
+      x <- as.character(x)
+    }
+    if (!is.character(x)) {
+      stop("Column `", name, "` of `refusals` must be character.", call. = FALSE)
+    }
+    x
+  }
+  fields <- list(
+    reason_code = column("reason_code"),
+    description = column("description"),
+    message_template = column("message_template", "%s"),
+    registered_in_adr = column("registered_in_adr", NA_character_),
+    plan_field = column("plan_field", NA_character_),
+    since_version = column("since_version")
+  )
+  for (name in c("reason_code", "description", "message_template", "since_version")) {
+    if (any(is.na(fields[[name]]) | !nzchar(fields[[name]]))) {
+      stop(
+        "Column `", name, "` of `refusals` has an empty or missing value.",
+        call. = FALSE
+      )
+    }
+  }
+
+  codes <- fields$reason_code
+  malformed <- codes[!grepl("^[a-z][a-z0-9_]*$", codes)]
+  if (length(malformed) > 0L) {
+    stop(
+      "Each reason_code must be lower-case letters, digits and ",
+      "underscores, starting with a letter: ",
+      paste0("'", malformed, "'", collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  repeated <- unique(codes[duplicated(codes)])
+  if (length(repeated) > 0L) {
+    stop(
+      "`refusals` gives reason_code ",
+      paste0("'", repeated, "'", collapse = ", "),
+      " more than once.",
+      call. = FALSE
+    )
+  }
+
+  entries <- lapply(seq_len(n), function(i1) {
+    list(
+      reason_code = fields$reason_code[[i1]],
+      description = fields$description[[i1]],
+      message_template = fields$message_template[[i1]],
+      registered_in_adr = fields$registered_in_adr[[i1]],
+      plan_field = fields$plan_field[[i1]],
+      since_version = fields$since_version[[i1]],
+      package = package
+    )
+  })
+  is_new <- logical(n)
+  for (i1 in seq_len(n)) {
+    held <- .lookup_refusal(codes[[i1]])
+    if (is.null(held)) {
+      is_new[[i1]] <- TRUE
+    } else if (!identical(held$package, package)) {
+      stop(
+        "reason_code '", codes[[i1]], "' is already registered by ",
+        held$package, ". Choose a code particular to ", package, ".",
+        call. = FALSE
+      )
+    } else if (!identical(held, entries[[i1]])) {
+      stop(
+        "reason_code '", codes[[i1]], "' is already registered by ",
+        package, " with different fields. Restart R to load the ",
+        "changed registration.",
+        call. = FALSE
+      )
+    }
+  }
+
+  if (any(is_new)) {
+    if (!exists(package, envir = .refusal_plugin_registry, inherits = FALSE)) {
+      assign(package, new.env(parent = emptyenv()), envir = .refusal_plugin_registry)
+    }
+    partition <- get(package, envir = .refusal_plugin_registry, inherits = FALSE)
+    for (i1 in which(is_new)) {
+      assign(codes[[i1]], entries[[i1]], envir = partition)
+      lockBinding(codes[[i1]], partition)
+    }
+  }
+
+  invisible(fb_refusals(reason_code = codes))
+}
+
+
+#' Raise a registered refusal
+#'
+#' `fb_refuse()` stops with a refusal condition for a reason registered by
+#' flexyBayes or by a package through [fb_register_refusals()]. The
+#' condition has the classes `flexybayes_refusal_<reason_code>`, any
+#' classes given in `class`, and `flexybayes_refusal`, so users catch a
+#' plug-in's refusals exactly as they catch the core's.
+#'
+#' @param reason_code A registered reason code (see [fb_refusals()]).
+#' @param message The message shown to the user. Defaults to the reason's
+#'   registered description; a message that names the user's own
+#'   variables or values is usually more helpful.
+#' @param ... Further named fields to carry on the condition object, for
+#'   handlers that need the offending value. The names `message`,
+#'   `reason_code`, `package` and `call` are set by `fb_refuse()` and
+#'   cannot be used.
+#' @param class Additional condition classes, placed between the per-code
+#'   class and `flexybayes_refusal`.
+#' @param call The call to record on the condition. Defaults to `NULL`,
+#'   as for the core's refusals.
+#'
+#' @return Does not return; it signals an error. The condition carries
+#'   `message`, `reason_code`, `package` (the package that registered the
+#'   code), `call` and the fields given in `...`.
+#'
+#' @seealso [fb_register_refusals()], [fb_refusals()].
+#'
+#' @examples
+#' res <- tryCatch(
+#'   fb_refuse("unsupported_family"),
+#'   flexybayes_refusal = function(e) e
+#' )
+#' res$reason_code
+#' res$package
+#'
+#' @export
+fb_refuse <- function(
+  reason_code,
+  message = NULL,
+  ...,
+  class = character(0),
+  call = NULL
+) {
+  if (
+    !is.character(reason_code) ||
+      length(reason_code) != 1L ||
+      is.na(reason_code) ||
+      !nzchar(reason_code)
+  ) {
+    stop("`reason_code` must be a single non-empty string.", call. = FALSE)
+  }
+  entry <- .lookup_refusal(reason_code)
+  if (is.null(entry)) {
+    stop(
+      "reason_code '", reason_code, "' is not registered. A package ",
+      "registers its codes with fb_register_refusals() in its .onLoad() ",
+      "before raising them.",
+      call. = FALSE
+    )
+  }
+  message <- message %||% entry$description
+  if (!is.character(message) || length(message) != 1L || is.na(message)) {
+    stop("`message` must be a single string.", call. = FALSE)
+  }
+  if (!is.character(class) || anyNA(class)) {
+    stop("`class` must be a character vector.", call. = FALSE)
+  }
+  fields <- list(...)
+  if (
+    length(fields) > 0L &&
+      (is.null(names(fields)) || any(!nzchar(names(fields))))
+  ) {
+    stop("Every field passed in `...` must be named.", call. = FALSE)
+  }
+  reserved <- intersect(
+    names(fields),
+    c("message", "reason_code", "package", "call")
+  )
+  if (length(reserved) > 0L) {
+    stop(
+      "fb_refuse() sets ",
+      paste0("`", reserved, "`", collapse = ", "),
+      " itself; give the extra field another name.",
+      call. = FALSE
+    )
+  }
+  cnd <- do.call(
+    .fb_refusal_condition,
+    c(
+      list(
+        reason_code = reason_code,
+        message = message,
+        family_class = class,
+        call = call
+      ),
+      fields
+    )
+  )
+  stop(cnd)
+}
+
+
+# The package whose namespace `env` belongs to, or NULL outside one.
+.fb_calling_package <- function(env) {
+  top <- topenv(env)
+  if (!isNamespace(top) || isBaseNamespace(top)) {
+    return(NULL)
+  }
+  unname(getNamespaceName(top))
+}
+
+# Removes a plug-in partition; used by tests to clean up fake plug-ins.
+.unregister_refusal_partition <- function(package) {
+  if (exists(package, envir = .refusal_plugin_registry, inherits = FALSE)) {
+    rm(list = package, envir = .refusal_plugin_registry)
+  }
+  invisible(NULL)
 }
 
 

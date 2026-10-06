@@ -96,42 +96,6 @@
   # arguments, literal counts, and the malformed-dsum fall-through.
   .populate_refusal_registry_grammar_contract()
 
-  # 0.10.0.9000: the selection module's covariance-builder refusals.
-  .populate_refusal_registry_selection()
-
-  # 0.10.0.9000: the selection module's design-side refusals -- the
-  # protected reduction's rank deficiency and the coordinate-semantics gate.
-  .populate_refusal_registry_selection_design()
-
-  # 0.10.0.9000: the selection module's weight, offset and missing-response
-  # absorption refusals.
-  .populate_refusal_registry_selection_weights()
-
-  # 0.10.0.9000: the selection module's resampling, prediction and scoring
-  # refusals, including the leakage gate.
-  .populate_refusal_registry_selection_resamples()
-
-  # 0.11.0: the joint-prior layer's grammar, resolution, targeting and
-  # scaling refusals.
-  .populate_refusal_registry_penalty()
-
-  # 0.11.0: the reference model's adequacy gates and the projection
-  # provider's structure and family gates.
-  .populate_refusal_registry_selection_projection()
-
-  # 0.11.0: the Bayesian selection route's absent-provider and runtime-budget
-  # refusals.
-  .populate_refusal_registry_selection_bayes_cv()
-
-  # 0.11.0: the penalised-optimiser provider -- an absent provider, a
-  # withdrawn penalty family, an uncertified proximal mode, and penalty
-  # blocks no single glmnet problem expresses.
-  .populate_refusal_registry_selection_glmnet()
-
-  # 0.11.0: the public verb's own refusals -- an unauthorised fallback, a
-  # joint shrinkage prior routed at INLA, and an incomplete decision rule.
-  .populate_refusal_registry_selection_verb()
-
   # 2026-09-13: INLA containment -- estimated correlation matrices go to
   # brms.
   .populate_refusal_registry_inla_containment()
@@ -171,10 +135,6 @@
   # tolerance declared before they were measured.
   .populate_refusal_registry_factor_analytic()
 
-  # 2026-09-16: a fold worker that neither completed nor refused, which is a
-  # child the operating system killed rather than a fold that failed.
-  .populate_refusal_registry_selection_parallel()
-
   # 2026-09-19: a fit asked to run in a separate R process -- callr absent,
   # and a process that ended before it returned.
   .populate_refusal_registry_process_isolation()
@@ -187,14 +147,15 @@
   # estimate.
   .populate_refusal_registry_fixed_alias()
 
-  # 2026-10-01: the fold data of a selection run that kept none.
-  .populate_refusal_registry_selection_api()
-
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point
   # raise rather than mutate the locked environment.
   .lock_refusal_registry()
+
+  # The selection layer's codes, in the "flexySelect" partition, registered
+  # through fb_register_refusals() as a plug-in registers its own.
+  .populate_refusal_registry_flexyselect()
 
   # Register the
   # first approximation scheme, low_rank_smooth, with its full

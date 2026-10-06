@@ -17,7 +17,7 @@
 # optimiser units can raise it without re-describing it.
 
 .populate_refusal_registry_selection_bayes_cv <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_provider_absent",
     description = paste0(
       "fb_select(): the provider the requested workflow needs -- the ",
@@ -36,7 +36,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_runtime_budget_exceeded",
     description = paste0(
       "fb_select(): the estimated cost of the requested route, measured as ",
@@ -54,7 +54,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_new_cluster_not_representable",
     description = paste0(
       "fb_select(): prediction = \"new_cluster\" gives each assessment row ",

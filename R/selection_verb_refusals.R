@@ -40,7 +40,7 @@
 # A registered code with no triggering test is a string, not a refusal.
 
 .populate_refusal_registry_selection_verb <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_fallback_not_authorised",
     description = paste0(
       "fb_select(): the Bayesian workflow's provider is not installed and ",
@@ -60,7 +60,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "prior_family_unsupported_inla",
     description = paste0(
       "A joint shrinkage prior over the candidate fixed effects reached ",
@@ -78,7 +78,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_decision_invalid",
     description = paste0(
       "fb_decision(): the decision rule is missing the number it needs, or ",
@@ -94,7 +94,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_score_contract_unverifiable",
     description = paste0(
       "fb_select(): an arm's score contract cannot be verified, so its ",
@@ -112,7 +112,7 @@
     since_version = "0.13.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_refit_support_undefined",
     description = paste0(
       "fb_select(): refit = list(method = \"bayes\") refits the support the ",
@@ -131,7 +131,7 @@
     since_version = "0.14.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_value_contract_mismatch",
     description = paste0(
       "glance() or augment() on an fb_select result was asked to difference ",
@@ -148,7 +148,7 @@
     since_version = "0.14.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_ablation_route_undefined",
     description = paste0(
       "fb_select(): ablation = TRUE drops each declared block of the ",

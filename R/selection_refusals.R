@@ -8,7 +8,7 @@
 # not a refusal, it is a string.
 
 .populate_refusal_registry_selection <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_covariance_not_buildable",
     description = paste0(
       "fb_select(): no admitted covariance builder applies to the base ",
@@ -20,7 +20,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_covariance_not_positive_definite",
     description = paste0(
       "fb_select(): a covariance block has no Cholesky factor. No jitter ",
@@ -33,7 +33,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_dense_reference_too_large",
     description = paste0(
       "fb_select(): the dense covariance reference was asked for above its ",
@@ -48,7 +48,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_dense_covariance_too_large",
     description = paste0(
       "fb_select(): a fold covariance would be formed as a dense n x n ",
@@ -66,7 +66,7 @@
     since_version = "0.14.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_reduction_term_not_in_fit",
     description = paste0(
       "fb_select(): the random term the reduction was asked for is not in ",
@@ -78,7 +78,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_reduction_level_mismatch",
     description = paste0(
       "fb_select(): a random term reports a level that is absent from the ",
@@ -93,7 +93,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_candidates_not_constant_within_term",
     description = paste0(
       "fb_select(): a candidate is not admissible for a term's reduction -- ",
@@ -107,7 +107,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_base_shape_unreadable",
     description = paste0(
       "fb_select(): the base fit does not carry the parsed model and data ",
@@ -122,7 +122,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_reduction_absorption_unsupported",
     description = paste0(
       "fb_select(): absorbing the reduction term as fixed leaves further ",
@@ -143,7 +143,7 @@
   # more: a registered code with no throwing site is a string, and the
   # registry is the count that public documents defer to.
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_base_not_allowlisted",
     description = paste0(
       "fb_select(): the base model's structure is not on the selection ",
@@ -158,7 +158,7 @@
     since_version = "0.10.0.9000"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_family_not_supported",
     description = paste0(
       "fb_select(): the whitening identity is exact only for a Gaussian ",
@@ -173,5 +173,114 @@
     since_version = "0.10.0.9000"
   )
 
+  invisible(NULL)
+}
+
+# The loss-surface figure's refusals, raised in R/selection_loss_surface.R.
+.populate_refusal_registry_selection_figures <- function() {
+  # A suggested-package guard: the loss surface is a three-dimensional
+  # plotly display, and plotly is a suggested package, not an import.
+  .register_selection_refusal(
+    reason_code = "loss_surface_requires_plotly",
+    description = paste0(
+      "plot(type = \"loss_surface\") on an fb_select result draws a ",
+      "three-dimensional surface with plotly, a suggested package that is ",
+      "not installed."
+    ),
+    message_template = paste0(
+      "plot(type = \"loss_surface\") draws a three-dimensional surface with ",
+      "plotly, which is not installed. Install it with ",
+      "install.packages(\"plotly\")."
+    ),
+    registered_in_adr = "0.14.0 figures",
+    plan_field = NA_character_,
+    since_version = "0.14.0"
+  )
+
+  # One fb_select() call walks the path on s at one elastic-net mixing
+  # value, so the loss surface over s and alpha is drawn from several
+  # results. They are drawn together only when their losses were scored on
+  # one score contract, on one grid and chosen by one rule; otherwise two
+  # rows of the surface would not be the same quantity.
+  .register_selection_refusal(
+    reason_code = "selection_loss_surface_undefined",
+    description = paste0(
+      "plot(type = \"loss_surface\") was given optimiser results that do ",
+      "not span a surface: fewer than two elastic-net mixing values, a ",
+      "mixing value given twice, an entry with no path on ",
+      "s = lambda / lambda_max, or results that differ in score contract, ",
+      "grid on s, decision rule, penalised columns or covariance source."
+    ),
+    message_template = paste0(
+      "plot(type = \"loss_surface\") draws the out-of-fold loss of ",
+      "optimiser results at two or more elastic-net mixing values, scored ",
+      "on one score contract: %s."
+    ),
+    registered_in_adr = "0.14.0 figures",
+    plan_field = NA_character_,
+    since_version = "0.14.0"
+  )
+
+  invisible(NULL)
+}
+
+# The selection layer's refusal codes form the "flexySelect" partition of the
+# registry. They are registered through the exported fb_register_refusals(),
+# in one table, the call the flexySelect package makes from its .onLoad().
+.populate_refusal_registry_flexyselect <- function() {
+  .selection_refusal_rows$rows <- list()
+  on.exit(.selection_refusal_rows$rows <- NULL)
+
+  .populate_refusal_registry_selection()
+  .populate_refusal_registry_selection_design()
+  .populate_refusal_registry_selection_weights()
+  .populate_refusal_registry_selection_resamples()
+  .populate_refusal_registry_penalty()
+  .populate_refusal_registry_selection_projection()
+  .populate_refusal_registry_selection_bayes_cv()
+  .populate_refusal_registry_selection_glmnet()
+  .populate_refusal_registry_selection_verb()
+  .populate_refusal_registry_selection_parallel()
+  .populate_refusal_registry_selection_api()
+  .populate_refusal_registry_selection_figures()
+
+  rows <- .selection_refusal_rows$rows
+  column <- function(name) vapply(rows, `[[`, character(1L), name)
+  fb_register_refusals(
+    data.frame(
+      reason_code = column("reason_code"),
+      description = column("description"),
+      message_template = column("message_template"),
+      registered_in_adr = column("registered_in_adr"),
+      plan_field = column("plan_field"),
+      since_version = column("since_version"),
+      stringsAsFactors = FALSE
+    ),
+    package = "flexySelect"
+  )
+  invisible(NULL)
+}
+
+.selection_refusal_rows <- new.env(parent = emptyenv())
+
+# Collects one selection code for .populate_refusal_registry_flexyselect().
+.register_selection_refusal <- function(
+  reason_code,
+  description,
+  message_template,
+  registered_in_adr,
+  plan_field = NA_character_,
+  since_version
+) {
+  rows <- .selection_refusal_rows$rows
+  rows[[length(rows) + 1L]] <- list(
+    reason_code = reason_code,
+    description = description,
+    message_template = message_template,
+    registered_in_adr = registered_in_adr,
+    plan_field = plan_field,
+    since_version = since_version
+  )
+  .selection_refusal_rows$rows <- rows
   invisible(NULL)
 }

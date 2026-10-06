@@ -18,7 +18,7 @@
   # `selection_penalty_family_withdrawn` is registered once, by the grammar
   # (R/penalty_refusals.R); the optimiser raises it without re-registering it.
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_prox_mode_not_converged",
     description = paste0(
       "fb_select(): the internal proximal-gradient or block coordinate ",
@@ -37,7 +37,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_blocks_not_expressible",
     description = paste0(
       "fb_select(): the resolved penalty blocks cannot be written as one ",
@@ -56,7 +56,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_group_structure_absent",
     description = paste0(
       "fb_select(): a grouped penalty family was declared over a column set ",
@@ -78,7 +78,7 @@
     since_version = "0.13.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_penalty_family_optimizer_only",
     description = paste0(
       "fb_penalty(): a grouped family -- group lasso, sparse group lasso, ",

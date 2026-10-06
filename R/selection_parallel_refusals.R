@@ -18,7 +18,7 @@
 # under the name of the whole.
 
 .populate_refusal_registry_selection_parallel <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_parallel_worker_failed",
     description = paste0(
       "fb_select(): under options(flexyBayes.isolation = \"fork\"), a forked ",

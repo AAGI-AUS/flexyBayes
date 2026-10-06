@@ -15,7 +15,7 @@
 # came back red. Unrun is not a permission.
 
 .populate_refusal_registry_selection_projection <- function() {
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_sampler_diagnostics_failed",
     description = paste0(
       "The reference model's convergence contract returned `fail`. A ",
@@ -28,7 +28,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "penalty_reference_model_inadequate",
     description = paste0(
       "The reference model's posterior predictive check puts the observed ",
@@ -43,7 +43,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "projection_structure_unsupported",
     description = paste0(
       "The reference model carries a structure the projection provider ",
@@ -56,7 +56,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "projection_family_unsupported",
     description = paste0(
       "The reference model's response family is not Gaussian with an ",
@@ -71,7 +71,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "selection_scoring_unit_mismatch",
     description = paste0(
       "The scoring unit key and the provider's pointwise log predictive ",
@@ -91,7 +91,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "projection_search_unsupported",
     description = paste0(
       "A projection search method with no executed gate was asked for. ",
@@ -109,7 +109,7 @@
     since_version = "0.11.0"
   )
 
-  .register_refusal(
+  .register_selection_refusal(
     reason_code = "projection_metric_unsupported",
     description = paste0(
       "A projection decision was asked for, by name or through ",

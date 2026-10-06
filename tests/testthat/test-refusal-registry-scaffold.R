@@ -124,9 +124,12 @@ test_that(".refusal_registry carries the v0.3.10 first-migration entries", {
 # reasons and the internal aggregate-out-of-scope control-flow
 # signals are deliberately excluded (see fb_refusals() docs).
 
-test_that(".refusal_registry holds the complete refusal vocabulary", {
-  reg <- flexyBayes:::.refusal_registry
-  entries <- ls(envir = reg, all.names = TRUE)
+test_that("the refusal registry holds the complete refusal vocabulary", {
+  # Since 0.16.0 the selection layer's codes are in the "flexySelect"
+  # partition and the rest in the locked core partition, so the vocabulary
+  # is read across both.
+  tab <- fb_refusals()
+  entries <- tab$reason_code
   # 31 from the Phase 1C bulk migration + the family-support refusal,
   # the four parse-time spec refusals, the tensor-smooth refusal, and
   # the two entry-point argument guards added in the 2026-05-30 audit
@@ -615,6 +618,13 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("at_field_per_level_parameters_not_fitted" %in% entries)
   expect_true("penalty_block_part_name_taken" %in% entries)
   expect_equal(length(entries), 233L)
+  # 0.16.0 splits the 233 by partition: 73 selection codes (the 71 the
+  # selection files registered and the two loss-surface codes moved from the
+  # core) in "flexySelect", and 160 in the core.
+  expect_equal(sum(tab$package == "flexyBayes"), 160L)
+  expect_equal(sum(tab$package == "flexySelect"), 73L)
+  expect_setequal(unique(tab$package), c("flexyBayes", "flexySelect"))
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 160L)
   expect_true("selection_weights_not_carried" %in% entries)
   expect_true("selection_weights_by_unweighted_base" %in% entries)
   expect_true("selection_parallel_worker_failed" %in% entries)
