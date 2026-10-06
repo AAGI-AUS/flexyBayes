@@ -235,7 +235,9 @@ test_that("the stored result equals a raw INLA fit on the standardised covariate
       prec.intercept = 1 / 100
     ),
     control.compute = list(config = TRUE, return.marginals = TRUE,
-                           dic = TRUE, waic = TRUE)
+                           dic = TRUE, waic = TRUE),
+    # flexyBayes fits on one thread; more threads move the result.
+    num.threads = "1:1"
   )
   got <- fit$inla
 
