@@ -131,6 +131,7 @@ reference:
       - vcov.flexybayes
       - vcov.flexybayes_inla
       - fb_variance_draws
+      - fb_marginal_cov
       - predict.flexybayes_brms
       - predict.flexybayes_inla
       - print.fb_predict_classify

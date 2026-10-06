@@ -77,14 +77,27 @@
       "whose residual is one variance common to every row,"
     ))
   }
-  vc <- .fb_sel_summary(object)$varcomp
+  # The fit's variances and the blocks they belong to, through the core's
+  # contract (R/marginal_cov.R).
+  marginal <- .fb_sel_marginal_cov(object)
+  vc <- marginal$varcomp
 
-  if (is.null(vc) || nrow(vc) == 0L) {
+  structured <- Filter(function(b) !is.null(b$structure), marginal$blocks)
+  unhandled <- c(
+    if (!is.null(marginal$residual$by)) {
+      paste0("sigma_", names(marginal$residual$variance))
+    },
+    vapply(structured, function(b) b$label, character(1L))
+  )
+  if (length(unhandled) > 0L) {
     stop(.fb_refusal_condition(
       reason_code = "selection_covariance_not_buildable",
       message = paste0(
-        "fb_select(): the base fit reports no variance components, so no ",
-        "covariance can be built from it."
+        "fb_select(): the base fit carries variance components this builder ",
+        "does not know how to place in V: ",
+        paste(unhandled, collapse = ", "),
+        ". Correlation, factor-analytic and known-covariance structures and ",
+        "a sectioned residual are not admitted in this release."
       )
     ))
   }
@@ -97,41 +110,19 @@
     point_estimate_covariance = function(m, s) m^2
   )
 
-  is_residual <- vc$component == "sigma"
-  is_sd <- startsWith(vc$component, "sd_")
-
-  if (!any(is_residual)) {
-    stop(.fb_refusal_condition(
-      reason_code = "selection_covariance_not_buildable",
-      message = paste0(
-        "fb_select(): the base fit reports no residual scale (`sigma`), so ",
-        "R cannot be formed."
-      )
-    ))
-  }
-
-  unhandled <- vc$component[!is_residual & !is_sd]
-  if (length(unhandled) > 0L) {
-    stop(.fb_refusal_condition(
-      reason_code = "selection_covariance_not_buildable",
-      message = paste0(
-        "fb_select(): the base fit carries variance components this builder ",
-        "does not know how to place in V: ",
-        paste(unhandled, collapse = ", "),
-        ". Correlation and factor-analytic parameters are not admitted in ",
-        "this release."
-      )
-    ))
-  }
-
-  terms <- to_variance(vc$estimate[is_sd], vc$std.error[is_sd])
-  names(terms) <- sub("^sd_", "", vc$component[is_sd])
+  # In the order of the variance-component table.
+  rows <- vapply(
+    marginal$blocks,
+    function(b) which(vc$component %in% b$components)[[1L]],
+    integer(1L)
+  )
+  rows <- rows[order(rows)]
+  terms <- to_variance(vc$estimate[rows], vc$std.error[rows])
+  names(terms) <- names(rows)
+  residual <- vc[vc$component == "sigma", , drop = FALSE]
 
   list(
-    residual = to_variance(
-      vc$estimate[is_residual][[1L]],
-      vc$std.error[is_residual][[1L]]
-    ),
+    residual = to_variance(residual$estimate[[1L]], residual$std.error[[1L]]),
     terms = terms,
     estimand = estimand
   )
