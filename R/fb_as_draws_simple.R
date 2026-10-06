@@ -15,6 +15,13 @@
 #' reach an active engine are `flexybayes_brms` and `flexybayes_inla`.
 #' User-defined methods can extend the generic.
 #'
+#' On an INLA fit the draws come from the fitted approximation: each draw
+#' takes one of INLA's hyperparameter configurations, chosen with its
+#' posterior weight, and draws the latent field from that configuration's
+#' Gaussian approximation, as `INLA::inla.posterior.sample()` does. Every
+#' random number comes from R's generator, so `set.seed()` before the call
+#' makes the draws repeatable.
+#'
 #' @param fit A model fit object carrying a posterior, dispatched on by
 #'   the methods listed above.
 #' @param ... Method-specific arguments: `n_samples` for the INLA method.
@@ -48,45 +55,13 @@ fb_as_draws_simple.flexybayes_inla <- function(fit, n_samples = 1000L, ...) {
     stop("Cannot extract draws: fit$inla is missing.", call. = FALSE)
   }
 
-  n_samples <- as.integer(n_samples)
-  # Force single-threaded sampling, matching the summary path in
-  # methods_inla.R. inla.posterior.sample() otherwise spawns one process
-  # per core, which fails under the two-core limit `R CMD check --as-cran`
-  # enforces (the worker count is reported as "N simultaneous processes
-  # spawned").
-  samples <- tryCatch(
-    .fb_inla_posterior_sample(fit, n_samples, num.threads = "1:1"),
-    error = function(e) {
-      stop(
-        "INLA::inla.posterior.sample() failed: ",
-        conditionMessage(e),
-        ". Re-fit with control.compute = list(config = TRUE).",
-        call. = FALSE
-      )
-    }
-  )
-
-  if (length(samples) == 0L) {
-    stop("INLA::inla.posterior.sample() returned an empty list.", call. = FALSE)
-  }
-
-  latent_names <- rownames(samples[[1]]$latent)
-  hyperpar_names <- names(samples[[1]]$hyperpar)
-
+  draws <- .fb_inla_config_sample(fit, as.integer(n_samples))
   out <- list()
-  for (pn in latent_names) {
-    out[[pn]] <- vapply(
-      samples,
-      function(s) as.numeric(s$latent[pn, 1]),
-      numeric(1)
-    )
+  for (pn in rownames(draws$latent)) {
+    out[[pn]] <- draws$latent[pn, ]
   }
-  for (pn in hyperpar_names) {
-    out[[pn]] <- vapply(
-      samples,
-      function(s) as.numeric(s$hyperpar[pn]),
-      numeric(1)
-    )
+  for (pn in colnames(draws$hyperpar)) {
+    out[[pn]] <- draws$hyperpar[, pn]
   }
   out
 }

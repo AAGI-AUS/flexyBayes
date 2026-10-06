@@ -31,6 +31,14 @@ from a fit, keyed by the engine's own parameter names. The methods that
 reach an active engine are \code{flexybayes_brms} and \code{flexybayes_inla}.
 User-defined methods can extend the generic.
 }
+\details{
+On an INLA fit the draws come from the fitted approximation: each draw
+takes one of INLA's hyperparameter configurations, chosen with its
+posterior weight, and draws the latent field from that configuration's
+Gaussian approximation, as \code{INLA::inla.posterior.sample()} does. Every
+random number comes from R's generator, so \code{set.seed()} before the call
+makes the draws repeatable.
+}
 \examples{
 # A named list of draw vectors, with no posterior dependency.
 \donttest{

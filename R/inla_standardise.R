@@ -385,13 +385,36 @@
 #' @keywords internal
 .fb_inla_posterior_sample <- function(object, n, ...) {
   draws <- INLA::inla.posterior.sample(n, object$inla, ...)
-  spec <- object$extras$response_standardisation
-  cstd <- object$extras$covariate_standardisation
-  if ((is.null(spec) && is.null(cstd)) || !length(draws)) {
+  if (!length(draws)) {
     return(draws)
   }
+  map <- .fb_inla_draw_map(
+    object,
+    rownames(draws[[1L]]$latent),
+    names(draws[[1L]]$hyperpar)
+  )
+  lapply(draws, function(z) {
+    z$latent[, 1L] <- map$a + map$b * z$latent[, 1L]
+    if (length(z$hyperpar)) {
+      z$hyperpar <- z$hyperpar * map$h
+    }
+    z
+  })
+}
 
-  rows <- rownames(draws[[1L]]$latent)
+#' Shift and scale that map INLA draws back to the original scale
+#'
+#' @param object A `flexybayes_inla` fit.
+#' @param rows Latent row names as INLA writes them (`"<tag>:<i>"`), or bare
+#'   tags.
+#' @param hyper_names Hyperparameter names on INLA's user scale.
+#' @returns A list: `a` and `b`, so that a latent row maps to `a + b * x`,
+#'   and `h`, the factor for each hyperparameter.
+#' @noRd
+#' @keywords internal
+.fb_inla_draw_map <- function(object, rows, hyper_names = character(0)) {
+  spec <- object$extras$response_standardisation
+  cstd <- object$extras$covariate_standardisation
   prefixes <- sub(":[0-9]+$", "", rows)
   a <- numeric(length(rows))
   b <- rep(1, length(rows))
@@ -421,16 +444,98 @@
     f <- if (is.null(spec)) 1 else .fb_inla_hyper_factor(nm, spec)
     if (is.null(cstd)) f else f * .fb_inla_covariate_hyper_factor(nm, cstd)
   }
+  h <- vapply(hyper_names, hyper_factor, numeric(1L))
+  list(a = a, b = b, h = h)
+}
 
-  lapply(draws, function(z) {
-    z$latent[, 1L] <- a + b * z$latent[, 1L]
-    if (length(z$hyperpar)) {
-      z$hyperpar <- z$hyperpar * vapply(
-        names(z$hyperpar), hyper_factor, numeric(1L)
-      )
+#' Posterior draws from an INLA fit with R's random number generator
+#'
+#' Draws from the distribution `INLA::inla.posterior.sample()` samples: a
+#' hyperparameter configuration chosen with its posterior weight, then the
+#' latent field from that configuration's Gaussian approximation, conditioned
+#' on any linear constraints. Every random number comes from R's stream, so
+#' `set.seed()` makes the draws repeatable.
+#'
+#' @param object A `flexybayes_inla` fit built with
+#'   `control.compute = list(config = TRUE)`.
+#' @param n Number of draws.
+#' @returns A list: `latent`, a matrix with one row per latent node and one
+#'   column per draw, and `hyperpar`, a matrix with one row per draw and one
+#'   column per hyperparameter; both on the original scale and under the
+#'   names `INLA::inla.posterior.sample()` uses.
+#' @noRd
+#' @keywords internal
+.fb_inla_config_sample <- function(object, n) {
+  inla_fit <- object$inla
+  cs <- inla_fit$misc$configs
+  if (is.null(cs)) {
+    stop(
+      "Drawing from an INLA fit needs control.compute = list(config = TRUE).",
+      call. = FALSE
+    )
+  }
+  pick <- sort(sample.int(
+    cs$nconfig,
+    n,
+    replace = TRUE,
+    prob = .fb_inla_config_weights(cs)
+  ))
+
+  # The precision matrices omit the linear-predictor block, which is
+  # A x + offsets.
+  ct <- cs$contents
+  offset <- sum(ct$length) - cs$n
+  field <- ct$start > offset
+  rows <- unlist(Map(
+    function(tag, len) paste0(tag, ":", seq_len(len)),
+    ct$tag[field],
+    ct$length[field]
+  ), use.names = FALSE)
+
+  internal <- rownames(inla_fit$internal.summary.hyperpar)
+  hyper_names <- rownames(inla_fit$summary.hyperpar)[
+    match(names(cs$config[[1L]]$theta), internal)
+  ]
+  x <- matrix(0, cs$n, n)
+  hyper <- matrix(0, n, length(hyper_names))
+  for (k in unique(pick)) {
+    cols <- which(pick == k)
+    g <- .fb_inla_config_gaussian(cs, k)
+    z <- matrix(stats::rnorm(cs$n * length(cols)), cs$n, length(cols))
+    # With Q = P' L L' P, the draw P' L'^{-1} z has covariance Q^{-1}.
+    xk <- Matrix::solve(
+      g$chol_q,
+      Matrix::solve(g$chol_q, z, system = "Lt"),
+      system = "Pt"
+    )
+    xk <- as.matrix(xk) + g$mu
+    if (!is.null(g$gain)) {
+      xk <- xk - g$gain %*% (g$a_mat %*% xk - cs$constr$e)
     }
-    z
-  })
+    x[, cols] <- xk
+    theta <- cs$config[[k]]$theta
+    for (j in seq_along(theta)) {
+      hyper[cols, j] <- do.call(inla_fit$misc$from.theta[[j]], list(theta[j]))
+    }
+  }
+
+  if (offset > 0) {
+    a_mat <- rbind(cs$pA %*% cs$A, cs$A)
+    pred_rows <- paste0("Predictor:", seq_len(nrow(cs$A)))
+    if (nrow(cs$pA) > 0L) {
+      pred_rows <- c(paste0("APredictor:", seq_len(nrow(cs$pA))), pred_rows)
+    }
+    x <- rbind(as.matrix(a_mat %*% x) + cs$offsets, x)
+    rows <- c(pred_rows, rows)
+  }
+  rownames(x) <- rows
+  colnames(hyper) <- hyper_names
+
+  map <- .fb_inla_draw_map(object, rows, hyper_names)
+  list(
+    latent = map$a + map$b * x,
+    hyperpar = sweep(hyper, 2L, map$h, `*`)
+  )
 }
 
 #' Joint hyperparameter draws from a standardised INLA fit, on the original
