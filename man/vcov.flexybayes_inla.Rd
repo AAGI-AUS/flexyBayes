@@ -9,20 +9,24 @@
 \arguments{
 \item{object}{A \code{flexybayes_inla} fit.}
 
-\item{n_samples}{Posterior sample size for the covariance estimate
-(default 2000).}
+\item{n_samples}{Not used, as the covariance is exact. Accepted so that
+calls written for earlier versions, which estimated the matrix from
+\code{n_samples} posterior draws, still run.}
 
 \item{...}{Ignored. Present for compatibility with the generic.}
 }
 \value{
-Posterior covariance matrix of the fixed effects, with
-\code{summary.fixed} rownames as dimnames.
+Posterior covariance matrix of the fixed effects, with the
+coefficient names of \code{\link[=coef]{coef()}} as dimnames.
 }
 \description{
-Monte-Carlo estimate of the joint posterior covariance of the fixed
-effects, computed from \code{inla.posterior.sample()}. The marginal
-standard deviations match \code{summary.fixed$sd}; the off-diagonals carry
-the joint dependence that contrast / marginal-mean standard errors
-require. Because the estimate is sampling-based it varies slightly
-between calls; raise \code{n_samples} for a tighter estimate.
+The joint posterior covariance of the fixed effects, the matrix that
+contrast and marginal-mean standard errors need. It is computed exactly
+from the Gaussian approximations INLA stores for the fit, averaged over
+INLA's hyperparameter configurations, so it involves no random draws:
+every call on the same fit returns the same matrix and the session's
+random number stream is left untouched. It is the covariance of the
+draws \code{INLA::inla.posterior.sample()} would give, without their Monte
+Carlo error. The standard deviations on its diagonal agree closely with
+\code{summary.fixed$sd}, which comes from INLA's marginal densities.
 }
