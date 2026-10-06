@@ -157,6 +157,9 @@
   # 0.16.0: a call to a penalised-selection function that left the package.
   .populate_refusal_registry_selection_removed()
 
+  # 0.16.0: an argument fb_plan() does not take.
+  .populate_refusal_registry_plan_arguments()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

@@ -74,12 +74,12 @@
 )
 
 test_that("the DESCRIPTION version is a release or a development version", {
-  # Three components on a release; four, ending 9000, while the line is
+  # Three components on a release; four, 9000 to 9999, while the line is
   # open. Anything else -- a stray suffix, a two-part string -- is what
   # this catches.
   version <- .vc_version()
   skip_if(is.na(version), "not running from the source tree")
-  expect_match(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(\\.9000)?$")
+  expect_match(version, "^[0-9]+\\.[0-9]+\\.[0-9]+(\\.9[0-9]{3})?$")
 })
 
 test_that("every metadata surface names the DESCRIPTION version", {

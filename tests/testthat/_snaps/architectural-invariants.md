@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=164
+      .refusal_registry: locked=TRUE n_keys=165
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -196,6 +196,7 @@
         nested_variable_not_in_data
         newdata_offset_missing
         numeric_variable_in_random_interaction
+        plan_argument_unknown
         pol_degree_invalid
         pp_check_requires_predictive_draws
         precision_not_in_known_matrices

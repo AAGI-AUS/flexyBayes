@@ -54,8 +54,12 @@ package withdrew entirely -- refuses with \code{unknown_backend}.}
 read faster but use more peak memory; the default 5e6 keeps peak
 memory modest while amortising read overhead.}
 
-\item{prior}{An optional \code{\link[=fb_prior]{fb_prior()}} object. When \code{NULL} the backend
-default priors are used.}
+\item{prior}{An optional \code{\link[=fb_prior]{fb_prior()}} object. When \code{NULL}, each
+random-effect standard deviation takes the default \code{\link[=flexybayes]{flexybayes()}}
+applies, \code{half_normal(scale = 3)} for Poisson and
+\code{half_normal(scale = 5)} for binomial, on the link scale. The fixed
+effects keep INLA's default priors. \code{\link[=prior_summary]{prior_summary()}} lists the prior
+on every parameter of the fit.}
 
 \item{fit}{When \code{TRUE} (default) the aggregated model is fitted and a
 \verb{<flexybayes>} object is returned. When \code{FALSE} the function returns

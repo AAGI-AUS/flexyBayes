@@ -108,6 +108,23 @@
   of the residual standard deviation, so the result no longer depends on the
   covariate's units.
 
+## Other fixes
+
+* `fb_plan()` refuses an argument it does not take with
+  `plan_argument_unknown`. A misspelt name used to fall into its unused `...`
+  and the plan was made for a different model.
+
+* The `flexybayes_stream()` help now says that with `prior = NULL` each
+  random-effect standard deviation takes the package's half-normal default
+  and the fixed effects keep INLA's defaults. It used to say the backend's
+  defaults were used for every parameter.
+
+* On brms, `prior_vc_sd` now sets `lognormal(0, prior_vc_sd)` on the standard
+  deviation of an interaction random effect such as `a:b` or `a:b:c`. A
+  three-way term used to stop with "'length = 3' in coercion to
+  'logical(1)'", because `term$var` partially matched the term's `vars`, and
+  a two-way term was left at brms's default prior.
+
 # flexyBayes 0.15.0
 
 A feature release for two-stage analyses of a series of trials and for
