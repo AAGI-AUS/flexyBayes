@@ -69,6 +69,7 @@
 #' * `fb_check_refit()`: `fit`, invisibly.
 #'
 #' @name fb_extension
+#' @keywords internal
 #'
 #' @examples
 #' fb_extension_api()

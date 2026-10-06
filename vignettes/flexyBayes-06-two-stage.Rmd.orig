@@ -229,7 +229,7 @@ round(as.matrix(stats::coef(cv, s = "lambda.1se"))[colnames(Z), , drop = FALSE],
 ```
 
 The lasso keeps `z1`, the covariate with an effect, shrunk towards zero, and
-sets the other three to zero. Cross-validation that keeps the held-out
-trials out of $V$ estimates it inside each training fold, by refitting the
-model on the training trials with `fb_refit()`, where above one $V$ from all
-trials serves every fold.
+sets the other three to zero. Here one $V$, estimated from all trials,
+serves every fold. To keep the held-out trials out of $V$ as well, refit the
+model on each fold's training trials with `fb_refit()` and whiten with that
+fold's $V$.

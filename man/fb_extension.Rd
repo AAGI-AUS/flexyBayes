@@ -148,3 +148,4 @@ fb_offset_values("offset(log(area))", d)
 fb_engine_settings(list(chains = 2L))
 fb_fixed_design(~ area, d)$X
 }
+\keyword{internal}
