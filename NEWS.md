@@ -1,3 +1,45 @@
+# flexyBayes (development version)
+
+## Fixes to INLA results
+
+* The median and 95% limits of each variance component in
+  `summary(fit)$varcomp` are now read from INLA's marginal of the log
+  precision, not of the precision. Standard deviations near zero were
+  overstated before: on one field-trial fit the median of the row term fell
+  from 0.123 to 0.009, matching INLA's `summary.hyperpar` quantiles converted
+  to the standard-deviation scale. Variance components saved from earlier
+  versions will differ from a refit.
+
+* `fb_variance_draws()` and `vpredict()` now draw the variance components
+  jointly with each component's distribution taken from INLA's stored
+  marginal, so the median and 95% limits of the draws equal those in
+  `summary(fit)$varcomp`. Earlier draws differed from them by up to about 1%.
+
+* `vcov()` on an INLA fit is now computed from INLA's Gaussian approximation
+  with no random draws. It was estimated from random draws before and varied
+  between calls. Two calls now give the same matrix. `n_samples` is still
+  accepted and ignored.
+
+* `fb_plan()` no longer reports that a model will not fit on data under
+  100,000 rows because the memory check cannot size one of its terms.
+  `flexybayes()` skips that check below 100,000 rows.
+
+## New: a flag for weakly identified variance components
+
+* On INLA fits, a variance component whose 95% posterior interval covers 40%
+  or more of its prior's probability is marked `weakly identified` in the
+  `note` column of `summary(fit)$varcomp`, and the fit warns. Data that
+  inform a component narrow it to a small share of the prior, and a share this
+  large means the reported value mostly reflects the prior. It is common with
+  a grouping factor of three or four levels, or a random term with the same
+  grouping as a fixed factor. brms fits are not checked yet. Silence the
+  warning with `options(flexyBayes.silence_weak_identification_warning = TRUE)`.
+
+* The warning that a random slope has collapsed to zero now compares the
+  slope's standard deviation times its covariate's standard deviation with 1%
+  of the residual standard deviation, so the result no longer depends on the
+  covariate's units.
+
 # flexyBayes 0.15.0
 
 A feature release for two-stage analyses of a series of trials and for

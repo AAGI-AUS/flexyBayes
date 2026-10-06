@@ -294,12 +294,11 @@ Each is reproducible on this release. Priority is for the MET use case.
     arms (`x1` to `1000 * x1 + 17`), or transforming the response under an
     unchanged name, gives a different contract, and a contract whose hash
     cannot be verified refuses with `selection_score_contract_unverifiable`.
-14. **The boundary warning on a random slope depends on the covariate's
-    units.** The warning for a variance component pinned at zero compares
-    the slope's standard deviation with a threshold that does not account
-    for the scale of its covariate, so the same model can warn or not
-    depending on the units the covariate is recorded in. *What is open*: a
-    term-aware threshold.
+14. **Closed: the boundary warning on a random slope no longer depends on
+    the covariate's units.** The slope's standard deviation is multiplied by
+    its covariate's before the comparison, in the fit-time warning and in
+    `summary(fit)$varcomp`. The check is in
+    `tests/testthat/test-weak-variance-flag.R`.
 15. **Blocks-format `vm()` and `ped()` carriers are refused on INLA.** A
     blocks carrier is one block-diagonal covariance with one standard
     deviation, and INLA fits each block as its own field with its own
@@ -407,20 +406,14 @@ Each is reproducible on this release. Priority is for the MET use case.
     rows identify every candidate; or remove the unidentified columns from
     `candidates`. *What is open*: single-column drops in the formula
     refits, and a reference prior compiled over each fold's kept columns.
-20. **A weakly identified variance component can sit high with nothing
-    flagging it.** Since 0.13.0 the default prior on a standard deviation is
-    a half-normal with no upper bound, so the support audit, which checks a
-    stated bounded prior against the fitted marginal, has nothing to check on
-    a default fit. A component the data do not identify is then reported at
-    whatever value the prior and the likelihood settle on, with no refusal and
-    no warning: a duplicated random term that splits the rows exactly as a
-    fixed factor does returns a standard deviation of 4.9, where the former
-    uniform default bounded it at 3. The number is not wrong under the model
-    fitted; it reflects a component the design cannot identify. *Workaround*:
-    state a prior with `fb_prior()`, which is audited, or drop the duplicated
-    term. *What is open*: decision-bearing identification diagnostics, so a
-    component like this is reported as `inconclusive` rather than as an
-    estimate. Planned for 0.15.0.
+20. **Closed on INLA: a weakly identified variance component is flagged.**
+    Under the default half-normal prior on a standard deviation, a component
+    the data barely inform is reported at a value driven mostly by the prior.
+    A component whose 95% interval covers 40% or more of its prior's
+    probability is now marked `weakly identified` in `summary(fit)$varcomp`,
+    and the fit warns. A random term with the same grouping as a fixed factor
+    is flagged this way. *What is open*: brms fits are not checked, because
+    that needs the prior each component received read back from Stan.
 21. **The factor-analytic covariance left the fitting route, because repeated
     identical calls did not agree.** `fa(env, k):gen` fitted on INLA from
     0.10.0.9000; from 0.13.0 both engines refuse it
