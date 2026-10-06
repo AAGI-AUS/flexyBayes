@@ -201,8 +201,8 @@
   warning(
     "flexyBayes: a variance component in this fit is weakly identified -- ",
     paste(reasons, collapse = "; "),
-    ". Its 95% interval still spans most of what its prior allows, so the ",
-    "reported value says more about the prior than about the data. Common ",
+    ". Its 95% interval still spans 40% or more of its prior's probability, ",
+    "so the reported value says more about the prior than about the data. Common ",
     "causes are a grouping factor with few levels and a random term that ",
     "splits the rows as a fixed term already does. Report the component ",
     "as weakly identified rather than as an estimate; state a prior you can ",
