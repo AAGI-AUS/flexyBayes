@@ -190,6 +190,10 @@
   # 2026-10-01: the fold data of a selection run that kept none.
   .populate_refusal_registry_selection_api()
 
+  # 2026-10-06: fb_refit() on a fit it cannot rebuild, and brms objects
+  # handed to a refit that is not fitted with brms.
+  .populate_refusal_registry_refit()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

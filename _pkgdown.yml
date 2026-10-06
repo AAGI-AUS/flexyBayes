@@ -152,6 +152,7 @@ reference:
       - formula.flexybayes_inla
       - model.matrix.flexybayes
       - update.flexybayes
+      - fb_refit
       - as.data.frame.fb_plan
       - tidy.fb_select
       - glance.fb_select

@@ -1,13 +1,11 @@
-# selection_fold_refit.R: what an INLA fold refit inside fb_select()
-# computes.
+# fold_refit.R: what an INLA refit with a reduced readout computes.
 #
-# A fold refit is read for one thing: its variance components (the fold
-# covariance), its fitted values (the weights of `weights_by`) or its
-# posterior draws on the held-out rows (the Bayesian route). While such a
-# refit runs, emit_inla() reads the plan set here and computes that readout
-# only: no DIC, WAIC or latent-field marginals, posterior configurations only
-# for draws, and no second fit testing an AR1 field. None of these changes
-# the mode INLA finds or the readout taken from it.
+# fb_refit(readout = ) names the one thing a refit is read for: its variance
+# components, its fitted values or its posterior draws on held-out rows.
+# While such a refit runs, emit_inla() reads the plan set here and computes
+# that readout only: no DIC, WAIC or latent-field marginals, posterior
+# configurations only for draws, and no second fit testing an AR1 field. None
+# of these changes the mode INLA finds or the readout taken from it.
 #
 # INLA's optimiser starts from its own default. Started from the base fit's
 # mode, it stopped at a lower marginal likelihood than from the default (by
@@ -17,7 +15,7 @@
 .fb_fold_refit_state <- new.env(parent = emptyenv())
 
 
-#' The readout plan of an INLA fold refit
+#' The readout plan of an INLA refit
 #'
 #' @param readout `"varcomp"`, `"fitted"` or `"draws"`.
 #' @returns A list: `readout`, and `config`, whether INLA keeps the posterior

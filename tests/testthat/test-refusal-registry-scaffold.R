@@ -596,6 +596,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   # (selection_fold_data_not_kept), and a block-scoped class-wide prior on a
   # model that uses a non-linear part's name as a variable
   # (penalty_block_part_name_taken) (= 233).
+  # 0.16.0 adds two: fb_refit() on a fit it cannot rebuild
+  # (refit_not_reconstructable), and brms objects handed to a refit not
+  # fitted with brms (refit_hooks_require_brms) (= 235).
   expect_true("selection_fold_data_not_kept" %in% entries)
   expect_false("selection_penalty_not_implemented" %in% entries)
   expect_false("inla_response_scale_unvalidated" %in% entries)
@@ -614,7 +617,9 @@ test_that(".refusal_registry holds the complete refusal vocabulary", {
   expect_true("fixed_effects_aliased" %in% entries)
   expect_true("at_field_per_level_parameters_not_fitted" %in% entries)
   expect_true("penalty_block_part_name_taken" %in% entries)
-  expect_equal(length(entries), 233L)
+  expect_true("refit_not_reconstructable" %in% entries)
+  expect_true("refit_hooks_require_brms" %in% entries)
+  expect_equal(length(entries), 235L)
   expect_true("selection_weights_not_carried" %in% entries)
   expect_true("selection_weights_by_unweighted_base" %in% entries)
   expect_true("selection_parallel_worker_failed" %in% entries)
