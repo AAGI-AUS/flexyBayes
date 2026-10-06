@@ -125,6 +125,11 @@
   'logical(1)'", because `term$var` partially matched the term's `vars`, and
   a two-way term was left at brms's default prior.
 
+* On INLA, `prior_vc_sd` now sets `lognormal(0, prior_vc_sd)` on a three-way
+  random term such as `a:b:c`, as brms does. The term used to get the
+  package's half-normal default, because the legacy prior list left out
+  multi-way interactions.
+
 # flexyBayes 0.15.0
 
 A feature release for two-stage analyses of a series of trials and for

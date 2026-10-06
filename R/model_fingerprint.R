@@ -259,6 +259,8 @@
     # missing rather than different.
     if (.fb_prior_scalar_supplied(fb, "vc_sd") && is.finite(prior_vc_sd)) {
       density <- sprintf("lognormal(0, %s)", format(prior_vc_sd, digits = 6))
+      unmatched <- c("sigma", paste0("sd_", .fb_legacy_vc_groups(fb)))
+      engine_default <- engine_default[!names(engine_default) %in% unmatched]
       return(list(
         recorded = stats::setNames(
           rep(density, length(unmatched)),
