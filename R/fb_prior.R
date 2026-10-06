@@ -1368,15 +1368,26 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   )
 }
 
+# The variance components `prior_vc_sd` reaches on both engines, as group
+# names: the default-prior walker's targets and every multi-way interaction
+# such as a:b:c, which the walker leaves out.
+.fb_legacy_vc_groups <- function(fb) {
+  targets <- .fb_default_prior_targets(fb)
+  groups <- unique(c(
+    targets$shared,
+    targets$vm_ped,
+    .fb_inla_sd_targets(fb)$shared
+  ))
+  groups[nzchar(groups)]
+}
+
 # The legacy scalar variance-component prior, keyed the way
 # priors_to_inla() keys an fb_prior: "sigma" for the residual, the
 # grouping-factor tag for each variance component the default-prior
 # walker reaches. One walk, so the two routes cannot disagree about
 # which components carry a prior this package chose.
 .priors_legacy_to_inla <- function(fb, vc_sd) {
-  targets <- .fb_default_prior_targets(fb)
-  keys <- unique(c("sigma", targets$shared, targets$vm_ped))
-  keys <- keys[nzchar(keys)]
+  keys <- c("sigma", .fb_legacy_vc_groups(fb))
   entry <- list(
     prior = .inla_lognormal_sd_expr(vc_sd),
     meta = list(family = "lognormal", scale = vc_sd)
