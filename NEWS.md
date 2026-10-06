@@ -20,6 +20,11 @@
   between calls. Two calls now give the same matrix. `n_samples` is still
   accepted and ignored.
 
+* `fb_as_draws_simple()` on an INLA fit draws with R's random number
+  generator from INLA's stored approximation, so `set.seed()` before the
+  call gives the same draws every time. INLA's own sampler does not repeat
+  under a seed. The draws match it in distribution.
+
 * `fb_plan()` no longer reports that a model will not fit on data under
   100,000 rows because the memory check cannot size one of its terms.
   `flexybayes()` skips that check below 100,000 rows.
