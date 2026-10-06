@@ -151,6 +151,9 @@
   # handed to a refit that is not fitted with brms.
   .populate_refusal_registry_refit()
 
+  # 2026-10-06: a model whose marginal covariance is not built.
+  .populate_refusal_registry_marginal_cov()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

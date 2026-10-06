@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=162
+      .refusal_registry: locked=TRUE n_keys=163
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -185,6 +185,7 @@
         low_rank_rank_invalid
         low_rank_scheme_required
         low_rank_smooth_unsupported
+        marginal_cov_not_buildable
         marginaleffects_link_not_supported
         met_summary_not_available
         missing_covariate_not_supported

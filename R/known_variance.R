@@ -386,12 +386,6 @@
   as.numeric(v)
 }
 
-# .fb_sel_known_covariance(): the known covariance over the base's rows,
-# or NULL when the base carries a vector or nothing.
-.fb_sel_known_covariance <- function(base) {
-  .fb_known_covariance_values(base$fb %||% base$extras$fb_terms, base$data)
-}
-
 # .fb_sel_known_variance_refuse_route() --- a route that would leave the
 # known variance out.
 .fb_sel_known_variance_refuse_route <- function(route) {

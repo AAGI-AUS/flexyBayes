@@ -20,8 +20,8 @@
   )))
 }
 
-# Side effects (plot, print), a refit (update) or a second fit (anova).
-.g05_skip <- c("plot", "print", "update", "anova")
+# Side effects (plot, print), a refit (update, fb_refit) or a second fit (anova).
+.g05_skip <- c("plot", "print", "update", "fb_refit", "anova")
 
 # Accessors that need more than the fit.
 .g05_args <- list(
