@@ -130,6 +130,10 @@
   package's half-normal default, because the legacy prior list left out
   multi-way interactions.
 
+* A non-Gaussian INLA fit with a three-way random term no longer warns
+  "partial match of 'var' to 'vars'" under `options(warnPartialMatchDollar =
+  TRUE)`; the covariate standardisation reads the term's fields by exact name.
+
 # flexyBayes 0.15.0
 
 A feature release for two-stage analyses of a series of trials and for

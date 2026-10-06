@@ -166,9 +166,10 @@
     }
   }
   for (term in fb$random_terms %||% list()) {
+    # [[ ]] because $var would partially match a combo term's `vars`.
     protected <- c(
       protected,
-      term$var %||% character(0),
+      term[["var"]] %||% character(0),
       term$vars %||% character(0),
       term$outer %||% character(0),
       term$inner %||% character(0)
