@@ -64,7 +64,7 @@ skip_if_no_inla <- function() skip_if_not_installed("INLA")
   )
 }
 
-test_that("the plan says a main-plot model with one GxE variance fits, and it does", {
+test_that("DEF-003: the plan says a main-plot model with one GxE variance fits, and it does", {
   skip_if_no_inla()
   d <- .met_field_data()
   p <- .met_field_plan(d, "TRIAL:VARIETY")
@@ -78,7 +78,7 @@ test_that("the plan says a main-plot model with one GxE variance fits, and it do
   expect_s3_class(fit, "flexybayes")
 })
 
-test_that("the plan says a main-plot model with GxE variance per state fits, and it does", {
+test_that("DEF-003: the plan says a main-plot model with GxE variance per state fits, and it does", {
   skip_if_no_inla()
   d <- .met_field_data()
   p <- .met_field_plan(d, "diag(state_f):tv_f")
@@ -91,7 +91,7 @@ test_that("the plan says a main-plot model with GxE variance per state fits, and
   expect_s3_class(fit, "flexybayes")
 })
 
-test_that("the plan and the fit both refuse GxE variance per trial on the hyperparameter budget", {
+test_that("DEF-003: the plan and the fit both refuse GxE variance per trial on the hyperparameter budget", {
   skip_if_no_inla()
   d <- .met_field_data()
   p <- .met_field_plan(d, "diag(TRIAL):VARIETY")
