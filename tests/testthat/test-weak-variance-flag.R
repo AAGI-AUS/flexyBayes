@@ -50,7 +50,7 @@
   d
 }
 
-test_that("a random copy of a fixed factor is flagged as weakly identified", {
+test_that("DEF-004: a random copy of a fixed factor is flagged as weakly identified", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   .wv_silent_prior_note()
@@ -67,7 +67,7 @@ test_that("a random copy of a fixed factor is flagged as weakly identified", {
   expect_equal(.wv_note(res$fit, "sd_plot"), "weakly identified")
 })
 
-test_that("a grouping factor with three levels is flagged", {
+test_that("DEF-004: a grouping factor with three levels is flagged", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   .wv_silent_prior_note()
@@ -85,7 +85,7 @@ test_that("a grouping factor with three levels is flagged", {
   }
 })
 
-test_that("a well-identified grouping factor is not flagged", {
+test_that("DEF-004: a well-identified grouping factor is not flagged", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   .wv_silent_prior_note()
@@ -102,7 +102,7 @@ test_that("a well-identified grouping factor is not flagged", {
   }
 })
 
-test_that("rescaling a slope covariate by 1000 changes neither flag", {
+test_that("DEF-004: rescaling a slope covariate by 1000 changes neither flag", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   .wv_silent_prior_note()
@@ -130,7 +130,7 @@ test_that("rescaling a slope covariate by 1000 changes neither flag", {
   }
 })
 
-test_that("a slope SD is compared with the residual SD in response units", {
+test_that("DEF-004: a slope SD is compared with the residual SD in response units", {
   vc <- data.frame(
     component = c("sigma", "sd_x_g"),
     estimate = c(1, 0.0005),
@@ -165,7 +165,7 @@ test_that("a slope SD is compared with the residual SD in response units", {
   expect_equal(flexyBayes:::.fb_summary_varcomp(fit)$note, c("", "collapsed"))
 })
 
-test_that("the weak-identification warning can be silenced by option", {
+test_that("DEF-004: the weak-identification warning can be silenced by option", {
   skip_on_cran()
   skip_if_not_installed("INLA")
   .wv_silent_prior_note()
