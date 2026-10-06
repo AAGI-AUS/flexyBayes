@@ -285,15 +285,17 @@ test_that("INLA SD components equal the marginal transform, not 1/sqrt(mean)", {
   wrong_route <- 1 / sqrt(hp[nm, "mean"])
   expect_gt(abs(reported - wrong_route), 1e-6)
 
-  # The bounds come from the precision marginal's own quantiles, with
-  # the probabilities reversed: 1 / sqrt() is strictly decreasing, so
-  # the SD's lower bound is carried by the precision's upper quantile.
-  # A monotone transform carries quantiles exactly, which is why the
-  # bounds may be transformed and the mean above may not.
-  prec_q <- INLA::inla.qmarginal(c(0.975, 0.025), marg[[nm]])
+  # The bounds come from the log-precision marginal (DEF-001), with the
+  # probabilities reversed: the SD's lower bound is the precision's upper
+  # quantile. A monotone transform carries quantiles exactly, which is why
+  # the bounds may be transformed and the mean above may not.
+  log_q <- INLA::inla.qmarginal(
+    c(0.975, 0.025),
+    fit$inla$internal.marginals.hyperpar[[sub("^Precision", "Log precision", nm)]]
+  )
   row <- out$varcomp[out$varcomp$component == "sigma", ]
-  expect_equal(row$conf.low, 1 / sqrt(prec_q[[1L]]), tolerance = 1e-10)
-  expect_equal(row$conf.high, 1 / sqrt(prec_q[[2L]]), tolerance = 1e-10)
+  expect_equal(row$conf.low, exp(-log_q[[1L]] / 2), tolerance = 1e-10)
+  expect_equal(row$conf.high, exp(-log_q[[2L]] / 2), tolerance = 1e-10)
   expect_lt(row$conf.low, row$estimate)
   expect_lt(row$estimate, row$conf.high)
 })

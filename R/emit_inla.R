@@ -3131,28 +3131,24 @@ emit_inla <- function(
       est <- INLA::inla.emarginal(function(x) 1 / sqrt(x), m)
       second <- INLA::inla.emarginal(function(x) 1 / x, m)
       sdv <- sqrt(max(second - est^2, 0))
-      # Reversed probabilities: 1 / sqrt() is decreasing, so the SD's
-      # lower bound is carried by the precision's upper quantile.
-      #
-      # Clamped to the marginal's own support. inla.qmarginal()
-      # interpolates the quantile function, and on a precision whose
-      # density is piled near zero the interpolation can return a value
-      # slightly outside the grid it was built from -- occasionally a
-      # negative precision, which has no square root. The clamp reads
-      # the bound off the edge of the support instead, which is the
-      # widest value the marginal actually carries; it never invents a
-      # bound the density does not reach.
-      support <- range(m[, 1L])
-      prec_q <- INLA::inla.qmarginal(c(0.975, 0.5, 0.025), m)
-      prec_q <- pmin(pmax(prec_q, support[[1L]]), support[[2L]])
-      if (
-        !all(is.finite(c(est, sdv, prec_q, support))) ||
-          any(prec_q <= 0)
-      ) {
+      # Quantiles come from the log-precision marginal, the scale INLA
+      # integrates on. Read off the precision marginal, a near-zero SD's
+      # median was up to 24% off INLA's own summary (DEF-001).
+      m_log <- fit$internal.marginals.hyperpar[[
+        sub("^Precision", "Log precision", nm)
+      ]]
+      if (is.null(m_log)) {
         unavailable <- c(unavailable, nm)
         next
       }
-      sd_q <- 1 / sqrt(prec_q)
+      # 1 / sqrt() is decreasing, so the SD's lower limit is the
+      # precision's upper quantile.
+      log_prec_q <- INLA::inla.qmarginal(c(0.975, 0.5, 0.025), m_log)
+      if (!all(is.finite(c(est, sdv, log_prec_q)))) {
+        unavailable <- c(unavailable, nm)
+        next
+      }
+      sd_q <- exp(-log_prec_q / 2)
       rows[[length(rows) + 1L]] <- data.frame(
         component = canonical,
         estimate = est,
