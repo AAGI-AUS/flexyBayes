@@ -83,6 +83,7 @@ reference:
       - fb_refusals
       - fb_register_refusals
       - fb_refuse
+      - fb_isolated_lapply
       - prior_summary
       - ranef
       - vpredict

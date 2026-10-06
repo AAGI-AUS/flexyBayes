@@ -283,7 +283,13 @@
 #' @keywords internal
 .fb_sel_fold_lapply <- function(jobs, fn, plan, warm_first = FALSE) {
   if (identical(plan$mechanism, "process")) {
-    return(.fb_sel_isolated_lapply(jobs, fn, plan, warm_first = warm_first))
+    return(fb_isolated_lapply(jobs, fn, list(
+      workers = plan$workers,
+      threads_per_worker = plan$threads_per_worker,
+      warm_first = isTRUE(warm_first),
+      engine = if (is.na(plan$provider)) "none" else plan$provider,
+      entry_point = "fb_select()"
+    )))
   }
   if (identical(plan$mechanism, "serial") || length(jobs) <= 1L) {
     return(lapply(jobs, fn))
