@@ -89,6 +89,41 @@
   NA_real_
 }
 
+# The standard deviation of each random slope's covariate, keyed by the
+# slope SD's canonical name on INLA (`sd_<x>_<g>`) and on brms
+# (`sd_<g>__<x>`). A slope SD times this is in response units, so the
+# boundary checks read it whatever units the covariate is recorded in.
+#
+# @noRd
+# @keywords internal
+.fb_slope_covariate_scale <- function(object) {
+  fb <- object$fb
+  data <- object$data
+  out <- numeric(0)
+  if (is.null(fb) || !is.data.frame(data)) {
+    return(out)
+  }
+  rows <- .fb_inla_default_rows(fb, data)
+  for (t in fb$random_terms %||% list()) {
+    if (!(t$type %||% "") %in% c("simple_slope_uncor", "simple_slope_cor")) {
+      next
+    }
+    x <- data[[t$slope_var]]
+    if (!is.numeric(x)) {
+      next
+    }
+    x <- x[rows]
+    x <- x[is.finite(x)]
+    s <- if (length(x) >= 2L) stats::sd(x) else NA_real_
+    if (!is.finite(s) || s <= 0) {
+      next
+    }
+    out[[paste0("sd_", t$slope_var, "_", t$var)]] <- s
+    out[[paste0("sd_", t$var, "__", t$slope_var)]] <- s
+  }
+  out
+}
+
 # Components whose upper credible bound is a negligible fraction of the
 # residual scale. `sd_spatial` is excluded: the spatial detector already
 # reports it, with grid-specific advice this one cannot give, and two
@@ -110,13 +145,18 @@
   }
 
   cmp <- as.character(vc$component)
+  covariate_scale <- .fb_slope_covariate_scale(object)
+  multiplier <- rep(1, length(cmp))
+  is_slope <- cmp %in% names(covariate_scale)
+  multiplier[is_slope] <- covariate_scale[cmp[is_slope]]
+  upper <- vc$q97.5 * multiplier
   candidates <- which(
     startsWith(cmp, "sd_") &
       cmp != "sd_spatial" &
-      is.finite(vc$q97.5)
+      is.finite(upper)
   )
   hit <- candidates[
-    vc$q97.5[candidates] < .FB_COLLAPSE_FRACTION * sigma
+    upper[candidates] < .FB_COLLAPSE_FRACTION * sigma
   ]
   if (length(hit) == 0L) {
     return(character(0L))
@@ -125,6 +165,17 @@
   vapply(
     hit,
     function(i) {
+      if (is_slope[[i]]) {
+        return(sprintf(
+          paste0(
+            "%s (upper credible bound %.4g per covariate standard ",
+            "deviation against a residual SD of %.4g)"
+          ),
+          cmp[[i]],
+          upper[[i]],
+          sigma
+        ))
+      }
       sprintf(
         "%s (upper credible bound %.4g against a residual SD of %.4g)",
         cmp[[i]],

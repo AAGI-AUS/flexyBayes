@@ -560,15 +560,37 @@
 # @keywords internal
 .FB_COLLAPSE_FRACTION <- 0.01
 
-.fb_varcomp_notes <- function(components, upper, medians) {
-  blank <- rep("", length(components))
+.fb_varcomp_notes <- function(
+  components,
+  upper,
+  medians,
+  covariate_scale = numeric(0),
+  prior_share = numeric(0)
+) {
+  notes <- rep("", length(components))
+  # A slope SD times its covariate's SD is in response units
+  # (.fb_slope_covariate_scale()).
+  is_slope <- components %in% names(covariate_scale)
+  upper[is_slope] <- upper[is_slope] * covariate_scale[components[is_slope]]
+
+  # Weakly identified (R/weak_identification.R); the spatial field has its
+  # own test.
+  share <- rep(NA_real_, length(components))
+  has_share <- components %in% names(prior_share)
+  share[has_share] <- prior_share[components[has_share]]
+  weak <- startsWith(components, "sd_") &
+    components != "sd_spatial" &
+    !is.na(share) &
+    share >= .FB_WEAK_IDENTIFICATION_SHARE
+  notes[weak] <- "weakly identified"
+
   ref <- if ("sigma" %in% names(medians)) {
     medians[["sigma"]]
   } else {
     NA_real_
   }
   if (!is.numeric(ref) || length(ref) != 1L || is.na(ref) || ref <= 0) {
-    return(blank)
+    return(notes)
   }
   fraction <- ifelse(
     components == "sd_spatial",
@@ -581,7 +603,8 @@
     components != "sigma" &
     is.finite(upper) &
     upper < fraction * ref
-  ifelse(flagged, "collapsed", "")
+  notes[flagged] <- "collapsed"
+  notes
 }
 
 
@@ -844,7 +867,13 @@
     out <- rbind(out, resid_rows)
   }
   out$prior <- .fb_varcomp_priors(object, out$component)
-  out$note <- .fb_varcomp_notes(out$component, out$conf.high, medians)
+  out$note <- .fb_varcomp_notes(
+    out$component,
+    out$conf.high,
+    medians,
+    covariate_scale = .fb_slope_covariate_scale(object),
+    prior_share = attr(vc, "prior_share") %||% numeric(0)
+  )
   # A fit compared with the model without its AR1 field is flagged by that
   # comparison, the same reading the fit-time warning takes.
   if (is.list(object$extras$field_test)) {
