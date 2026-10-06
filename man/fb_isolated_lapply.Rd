@@ -55,12 +55,9 @@ A process that ends without returning raises the refusal
 and the signal or exit status.
 }
 \examples{
-\donttest{
-if (requireNamespace("callr", quietly = TRUE)) {
-  fb_isolated_lapply(1:2, function(i) i^2, list(workers = 2L))
-}
-}
-
+\dontshow{if (interactive() && requireNamespace("callr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
+fb_isolated_lapply(1:2, function(i) i^2, list(workers = 2L))
+\dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=fb_refit]{fb_refit()}}, the refit that such jobs usually run.

@@ -38,7 +38,7 @@ fb_check_refit(fit, caller = "")
 fb_fixed_design(formula, data, train_rows = NULL)
 }
 \arguments{
-\item{fit, object}{A flexyBayes fit.}
+\item{fit}{A flexyBayes fit.}
 
 \item{response}{The response as written in the model: a column name or
 an R expression in the columns of \code{data}.}

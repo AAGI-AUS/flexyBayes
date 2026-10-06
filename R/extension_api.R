@@ -30,7 +30,7 @@
 #'   it was fitted as.
 #' * `fb_fixed_design()` builds the design matrix of a fixed formula.
 #'
-#' @param fit,object A flexyBayes fit.
+#' @param fit A flexyBayes fit.
 #' @param terms A model description from `fb_model_terms()`, or a fit.
 #' @param response The response as written in the model: a column name or
 #'   an R expression in the columns of `data`.

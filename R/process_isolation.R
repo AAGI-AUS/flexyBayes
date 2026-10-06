@@ -717,12 +717,8 @@
 #'
 #' @seealso [fb_refit()], the refit that such jobs usually run.
 #'
-#' @examples
-#' \donttest{
-#' if (requireNamespace("callr", quietly = TRUE)) {
-#'   fb_isolated_lapply(1:2, function(i) i^2, list(workers = 2L))
-#' }
-#' }
+#' @examplesIf interactive() && requireNamespace("callr", quietly = TRUE)
+#' fb_isolated_lapply(1:2, function(i) i^2, list(workers = 2L))
 #'
 #' @export
 fb_isolated_lapply <- function(jobs, fn, plan = list()) {
