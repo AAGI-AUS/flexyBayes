@@ -58,3 +58,66 @@ test_that("DEF-001: SD quantiles match inla.hyperpar.sample() draws", {
   expect_lt(max(abs(vc$q2.5 / q[1, ] - 1)), 0.03)
   expect_lt(max(abs(vc$q97.5 / q[3, ] - 1)), 0.03)
 })
+
+# DEF-002: hyperparameter draws reproduce the reported medians and 95% limits
+# on every component. Improved draws match the medians to about 1e-9 and the
+# limits to under 1e-3 at 20,000 draws; default draws missed by up to 1%.
+
+.vq_draw_error <- function(fit, draws) {
+  vc <- fit$extras$variance_comps
+  med <- attr(vc, "posterior_median")
+  comp <- intersect(names(med), names(draws))
+  vc <- vc[match(comp, vc$component), ]
+  q <- vapply(
+    comp,
+    function(k) stats::quantile(draws[[k]], c(0.025, 0.5, 0.975)),
+    numeric(3L)
+  )
+  list(
+    med = abs(q[2L, ] / med[comp] - 1),
+    lim = abs(c(q[1L, ] / vc$q2.5, q[3L, ] / vc$q97.5) - 1)
+  )
+}
+
+test_that("DEF-002: fb_variance_draws() reproduces the reported quantiles", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  fit <- .vq_fit()
+  err <- .vq_draw_error(fit, fb_variance_draws(fit, 20000L, seed = 1L))
+  expect_lt(max(err$med), 1e-4)
+  expect_lt(max(err$lim), 2e-3)
+})
+
+test_that("DEF-002: draws on a covariate-standardised slope are on the data scale", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  set.seed(20260916L)
+  d <- data.frame(g = factor(rep(sprintf("g%02d", 1:30), each = 8L)))
+  d$x <- stats::rnorm(nrow(d), 0, 1000)
+  u <- stats::rnorm(30L, 0, 0.7)
+  b <- stats::rnorm(30L, 0, 2e-4)
+  eta <- 0.4 + (5e-4 + b[as.integer(d$g)]) * d$x + u[as.integer(d$g)]
+  d$y <- stats::rpois(nrow(d), exp(eta))
+  fit <- suppressWarnings(suppressMessages(flexybayes(
+    y ~ x + (x || g), data = d, family = "poisson", backend = "inla",
+    verbose = FALSE
+  )))
+  expect_false(is.null(fit$extras$covariate_standardisation))
+  err <- .vq_draw_error(fit, fb_variance_draws(fit, 20000L, seed = 1L))
+  expect_lt(max(err$med), 1e-4)
+  expect_lt(max(err$lim), 2e-3)
+})
+
+test_that("DEF-002: vpredict() medians match the reported medians", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
+  fit <- .vq_fit()
+  med <- attr(fit$extras$variance_comps, "posterior_median")
+  set.seed(1)
+  vp <- vpredict(fit, g ~ sd_gen, e ~ sd_eb, s ~ sigma, n_draws = 20000L)
+  got <- vp$median[match(c("g", "e", "s"), vp$functional)]
+  expect_lt(max(abs(got / med[c("sd_gen", "sd_eb", "sigma")] - 1)), 1e-4)
+})

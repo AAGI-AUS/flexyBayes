@@ -443,19 +443,7 @@
 #' @noRd
 #' @keywords internal
 .fb_inla_hyperpar_sample <- function(object, n, ...) {
-  smp <- INLA::inla.hyperpar.sample(n, object$inla, ...)
-  spec <- object$extras$response_standardisation
-  cstd <- object$extras$covariate_standardisation
-  if ((is.null(spec) && is.null(cstd)) || !is.matrix(smp)) {
-    return(smp)
-  }
-  for (nm in colnames(smp)) {
-    if (!is.null(spec)) {
-      smp[, nm] <- smp[, nm] * .fb_inla_hyper_factor(nm, spec)
-    }
-    if (!is.null(cstd)) {
-      smp[, nm] <- smp[, nm] * .fb_inla_covariate_hyper_factor(nm, cstd)
-    }
-  }
-  smp
+  # Improved draws are mapped through the stored marginals, which the
+  # standardisation steps have already put on the original scale.
+  INLA::inla.hyperpar.sample(n, object$inla, improve.marginals = TRUE, ...)
 }
