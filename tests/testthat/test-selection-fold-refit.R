@@ -1,5 +1,5 @@
 # =============================================================================
-# What an INLA fold refit inside fb_select() computes (R/selection_fold_refit.R).
+# What an INLA fold refit inside fb_select() computes (R/fold_refit.R).
 #
 # A fold refit is read for its variance components, its fitted values or its
 # posterior draws on the held-out rows. It asks INLA for that readout only and

@@ -637,18 +637,13 @@
 
 
 # .fb_sel_bayes_refit() --- the base model, refitted on a fold, with the same
-# engine, structure and priors.
+# engine, structure and priors (fb_refit(), R/fb_refit.R).
 #
-# The base's own `call_info` is the record of how it was fitted, and every
-# field of it that describes the MODEL is re-issued unchanged; only the fixed
-# formula, the data and the seed differ. `prior` is re-issued only when the
-# base carried a user prior: the package's own default prior object is stamped
-# with `fb_prior_default_basis`, and re-passing it as an explicit prior would
-# take a different path through the emitter than the default it came from.
+# The fold's fixed formula, the data, the engine the fold runs on and the
+# seed differ from the base; fb_refit() carries everything else.
 #
 # `readout` names what the caller reads off an INLA refit ("varcomp",
-# "fitted" or "draws"), and the refit computes only that
-# (R/selection_fold_refit.R); NULL fits in full.
+# "fitted" or "draws"), and the refit computes only that; NULL fits in full.
 .fb_sel_bayes_refit <- function(
   base,
   data,
@@ -662,45 +657,26 @@
   readout = NULL
 ) {
   info <- base$extras$call_info %||% list()
+  overrides <- list()
   # Each row's weight travels in its column of the fold's data
   # (`.fb_sel_with_weights_column()`), so it follows every subset of rows.
-  weights <- NULL
   if (!is.null(.fb_sel_base_weights(base))) {
-    weights <- data[[.FB_SEL_WEIGHTS_COL]]
-    if (is.null(weights)) {
+    overrides$weights <- data[[.FB_SEL_WEIGHTS_COL]]
+    if (is.null(overrides$weights)) {
       .fb_sel_refuse_weights_not_carried(
         "a per-fold Bayesian refit handed data without the weights column"
       )
     }
   }
   data <- data[setdiff(names(data), .FB_SEL_WEIGHTS_COL)]
-  # A known variance per row (R/known_variance.R) travels in its column of
-  # the fold's data. The fold covariance carries it into the refit; every
-  # other refit here feeds a posterior predictive score that leaves it out,
-  # and refuses.
-  known_variance <- NULL
-  if (!is.null(.fb_known_variance_term(base$fb %||% base$extras$fb_terms))) {
-    if (!isTRUE(carry_known_variance)) {
-      .fb_sel_known_variance_refuse_route(
-        "a Bayesian refit whose posterior predictive draws are scored"
-      )
-    }
-    known_variance <- .fb_known_variance_reissue(
-      base$fb %||% base$extras$fb_terms,
-      data
+  # The fold covariance carries a known variance per row into the refit;
+  # every other refit here feeds a posterior predictive score that leaves it
+  # out, and refuses.
+  if (!is.null(.fb_known_variance_term(base$fb %||% base$extras$fb_terms)) &&
+        !isTRUE(carry_known_variance)) {
+    .fb_sel_known_variance_refuse_route(
+      "a Bayesian refit whose posterior predictive draws are scored"
     )
-    if (is.null(known_variance)) {
-      .fb_known_variance_refuse(paste0(
-        "fb_select(): the base carries a known variance per row, and the ",
-        "data handed to the fold refit has no `", .FB_KNOWN_VARIANCE_COL,
-        "` column to read it from."
-      ))
-    }
-    data <- data[setdiff(names(data), .fb_known_variance_columns())]
-  }
-  priors <- base$fb$priors
-  if (!is.null(attr(priors, "fb_prior_default_basis"))) {
-    priors <- NULL
   }
   # A base written in the brms grammar, `y ~ x + (x || g)`, records its
   # random terms in the model formula and no `random`. The fold's formula is
@@ -713,72 +689,39 @@
   }
 
   opts <- .fb_engine_opts(engine) %||% list()
-  n_samples <- opts$n_samples %||% info$n_samples
-  warmup <- opts$warmup %||% info$warmup
-  chains <- opts$chains %||% info$chains
-
-  args <- list(
-    fixed = fixed,
-    random = info$random,
-    residual = info$residual,
-    data = data,
-    family = info$family %||% base$fb$family,
-    link = info$link,
-    known_matrices = info$known_matrices %||% list(),
-    prior = priors,
-    control = info$control,
-    # `seed` is a Stan sampler setting. The INLA backend says so, once per
-    # call, and a fold loop would say it once per fold; the nested Laplace
-    # approximation draws no random numbers, so there is nothing for it to
-    # pin. The INLA arm's randomness is in the posterior sampling, and that
-    # seed is passed where it is used.
-    seed = if (identical(provider, "brms")) seed else NULL,
-    backend = provider,
-    verbose = FALSE,
-    mcmc_verbose = FALSE
-  )
-  # The scalar prior arguments describe the model as `prior` does: a base
-  # fitted with `prior_fixed_sd` or `prior_vc_sd` is refitted under them, and
-  # a base fitted without them keeps the package default.
-  for (which in c("fixed_sd", "vc_sd")) {
-    if (.fb_prior_scalar_supplied(base$fb, which)) {
-      args[[paste0("prior_", which)]] <- .fb_prior_scalar_value(base$fb, which)
+  for (nm in c("n_samples", "warmup", "chains")) {
+    if (!is.null(opts[[nm]])) {
+      overrides[[nm]] <- opts[[nm]]
     }
   }
   if (!is.null(na_action)) {
-    args$na_action <- na_action
-  } else if (!is.null(info$na_action)) {
-    args$na_action <- info$na_action
+    overrides$na_action <- na_action
   }
-  if (!is.null(known_variance)) {
-    args$known_variance <- known_variance
-  }
-  if (!is.null(weights)) {
-    args$weights <- weights
-  }
-  fixed_alias <- fixed_alias %||% info$fixed_alias
   if (!is.null(fixed_alias)) {
-    args$fixed_alias <- fixed_alias
-  }
-  # The sampler settings are absent on the INLA path, where the nested
-  # Laplace approximation has no chains to run; a NULL is dropped rather
-  # than passed, so the call is the one the base itself made.
-  if (!is.null(n_samples)) {
-    args$n_samples <- n_samples
-  }
-  if (!is.null(warmup)) {
-    args$warmup <- warmup
-  }
-  if (!is.null(chains)) {
-    args$chains <- chains
+    overrides$fixed_alias <- fixed_alias
   }
 
-  plan <- if (identical(provider, "inla") && !is.null(readout)) {
-    .fb_fold_refit_plan(readout)
-  } else {
-    NULL
-  }
-  fit <- .fb_with_fold_refit(plan, do.call(flexybayes, args))
+  fit <- do.call(
+    fb_refit,
+    c(
+      list(
+        base,
+        data = data,
+        fixed = fixed,
+        readout = readout %||% "full",
+        backend = provider,
+        # `seed` is a Stan sampler setting. The INLA backend says so, once
+        # per call, and a fold loop would say it once per fold; the nested
+        # Laplace approximation draws no random numbers, so there is nothing
+        # for it to pin. The INLA arm's randomness is in the posterior
+        # sampling, and that seed is passed where it is used.
+        seed = if (identical(provider, "brms")) seed else NULL,
+        verbose = FALSE,
+        mcmc_verbose = FALSE
+      ),
+      overrides
+    )
+  )
   # A fold refit's manifest names it as one, beside the route the refit took.
   if (!is.null(fit[["extras"]][["manifest"]])) {
     route <- fit[["extras"]][["manifest"]][["route"]][["route"]]

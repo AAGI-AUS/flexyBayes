@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=160
+      .refusal_registry: locked=TRUE n_keys=162
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -220,6 +220,8 @@
         prior_target_not_in_model
         prior_target_unsupported
         prior_vc_sd_superseded_by_prior
+        refit_hooks_require_brms
+        refit_not_reconstructable
         representation_unknown_for_preflight
         residual_type_unsupported_for_aggregation
         response_not_finite

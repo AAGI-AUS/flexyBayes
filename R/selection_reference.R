@@ -216,38 +216,6 @@
 
   candidate_terms <- .fb_sel_candidate_labels(candidates)
   protected_terms <- .fb_sel_protected_labels(ir)
-  extended <- .fb_sel_extend_fixed(call_info$fixed, candidate_terms)
-
-  fb <- .build_ir_polymorphic(
-    fixed = extended,
-    random = call_info$random,
-    residual = call_info$residual,
-    data = data,
-    family = call_info$family %||% ir$family,
-    link = call_info$link %||% ir$link,
-    weights = call_info$weights,
-    known_matrices = call_info$known_matrices %||% list(),
-    prior = NULL,
-    prior_fixed_sd = call_info$prior_fixed_sd %||% 100,
-    prior_vc_sd = call_info$prior_vc_sd %||% 1,
-    syntax = "auto"
-  )
-  # The base's own resolved prior, carried onto the extended IR rather than
-  # re-derived: the reference model differs from the base in its fixed part
-  # and nowhere else, and re-deriving would silently substitute this
-  # release's default for whatever the base was actually fitted under.
-  if (!is.null(ir$priors)) {
-    fb$priors <- ir$priors
-  }
-  if (!is.null(ir$prior_scalars)) {
-    fb$prior_scalars <- ir$prior_scalars
-  }
-  if (!is.null(known_variance)) {
-    fb$addition_terms <- c(fb$addition_terms %||% list(), list(known_variance))
-  }
-  if (!is.null(nl_block)) {
-    nl_block$candidate_terms <- candidate_terms
-  }
 
   opts <- .fb_engine_opts(engine) %||% list()
   if (inherits(engine, "fb_engine") && !identical(engine$name, "brms")) {
@@ -257,55 +225,60 @@
       call. = FALSE
     )
   }
+  # A block-scoped prior fits the two-part non-linear formula, with the base
+  # model's prior rows moved onto the protected part (R/penalty_block_nl.R).
+  formula_hook <- NULL
+  if (!is.null(nl_block)) {
+    nl_block$candidate_terms <- candidate_terms
+    formula_hook <- function(formula, prior) {
+      list(
+        formula = .fb_nl_block_formula(formula, nl_block),
+        prior = .fb_nl_block_prior(prior, nl_block)
+      )
+    }
+  }
   dots <- list(...)
   control <- dots$control %||% list(adapt_delta = 0.95)
   dots$control <- NULL
+  # A weighted base's weights travel in their column of the data, so they
+  # follow a fold's rows.
+  if (!is.null(.fb_sel_base_weights(base))) {
+    dots$weights <- data[[.FB_SEL_WEIGHTS_COL]]
+    if (is.null(dots$weights)) {
+      .fb_sel_refuse_weights_not_carried(
+        "a reference fit handed data without the weights column"
+      )
+    }
+  }
+  data <- data[setdiff(names(data), .FB_SEL_WEIGHTS_COL)]
 
   fit <- do.call(
-    emit_brms,
+    fb_refit,
     c(
       list(
-        fb = fb,
+        base,
         data = data,
-        known_matrices = call_info$known_matrices %||% list(),
-        weights = call_info$weights,
+        add_fixed = candidate_terms,
+        extra_prior = prior,
+        stanvars = stanvars,
+        formula_hook = formula_hook,
+        backend = "brms",
         n_samples = opts$n_samples %||% 1500L,
         warmup = opts$warmup %||% 500L,
         chains = opts$chains %||% 4L,
         seed = as.integer(seed),
         control = control,
-        prior_fixed_sd = call_info$prior_fixed_sd %||% 100,
-        prior_vc_sd = call_info$prior_vc_sd %||% 1,
         verbose = FALSE,
-        mcmc_verbose = FALSE,
-        extra_prior = prior,
-        stanvars = stanvars,
-        nl_block = nl_block,
-        fixed = extended,
-        random = call_info$random,
-        residual = call_info$residual,
-        family = call_info$family %||% ir$family,
-        link = call_info$link %||% ir$link,
-        data_name = call_info$data_name %||% NA_character_,
-        requested_backend = "brms"
+        mcmc_verbose = FALSE
       ),
       dots
     )
   )
 
-  # The IR and the analysis data, on the slots the selection substrate
-  # reads. The shared dispatch path writes `$extras$fb_terms` and the INLA
-  # emit writes `$fb` / `$data`; a reference fit built here never passes
-  # through either, so it writes all three itself rather than being a fit
-  # that half the module cannot read.
-  fit$fb <- fb
-  fit$data <- data
-  fit$extras$fb_terms <- fb
-
   attr(fit, "column_map") <- column_map
   attr(fit, "candidate_terms") <- candidate_terms
   attr(fit, "protected_terms") <- protected_terms
-  attr(fit, "random_terms") <- .fb_sel_random_labels(fb)
+  attr(fit, "random_terms") <- .fb_sel_random_labels(fit$fb)
   attr(fit, "reference_seed") <- as.integer(seed)
   fit
 }

@@ -1364,8 +1364,8 @@ emit_inla <- function(
   # empty, so a fit that asks for nothing is byte-identical to the call
   # this emit made before the argument was wired.
   t0 <- proc.time()
-  # Inside fb_select()'s fold loops the refit computes only what the fold
-  # reads (R/selection_fold_refit.R); everywhere else `fold_refit` is NULL.
+  # Inside fb_refit(readout = ) the refit computes only that readout
+  # (R/fold_refit.R); everywhere else `fold_refit` is NULL.
   fold_refit <- .fb_fold_refit_active()
   inla_args <- list(
     formula = inla_form,

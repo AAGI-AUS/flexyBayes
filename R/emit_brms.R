@@ -92,7 +92,7 @@ emit_brms <- function(
   return_code = FALSE,
   extra_prior = NULL,
   stanvars = NULL,
-  nl_block = NULL,
+  formula_hook = NULL,
   the_call = NULL,
   fixed = NULL,
   random = NULL,
@@ -168,13 +168,9 @@ emit_brms <- function(
     data[[.FB_BRMS_KNOWN_SE_COL]] <- sqrt(known_variance)
   }
   brms_form <- .fb_to_brms_formula(fb)
-  # A `scope = "block"` penalty fits the two-part non-linear formula; the
-  # linear one still describes the fixed part to the GLM shim
-  # (R/penalty_block_nl.R).
+  # A formula hook may fit another formula (R/fb_refit.R); the linear one
+  # still describes the fixed part to the GLM shim.
   linear_form <- brms_form
-  if (!is.null(nl_block)) {
-    brms_form <- .fb_nl_block_formula(linear_form, nl_block)
-  }
   # Materialised relationship covariances for any vm() / ped() term,
   # threaded into brms via data2 (empty list when there are none).
   brms_data2 <- .fb_brms_data2(fb, known_matrices, data)
@@ -201,6 +197,11 @@ emit_brms <- function(
     data2 = brms_data2,
     family = brms_family
   )
+  if (!is.null(formula_hook)) {
+    hooked <- .fb_refit_apply_formula_hook(formula_hook, linear_form, brms_prior)
+    brms_form <- hooked$formula
+    brms_prior <- hooked$prior
+  }
   # Joint-block prior rows compiled outside the fb_prior() path (the
   # selection module's shrinkage blocks) are merged after that check, not
   # before it. Two reasons. They are already resolved against this model's
@@ -212,9 +213,6 @@ emit_brms <- function(
   # would read the blank class as a class the model does not carry. brms
   # validates these rows itself at brm() time.
   # The rows as compiled, each carrying its input identifier, for the manifest.
-  if (!is.null(nl_block)) {
-    brms_prior <- .fb_nl_block_prior(brms_prior, nl_block)
-  }
   tagged_prior <- brms_prior
   brms_prior <- .fb_brms_merge_extra_prior(brms_prior, extra_prior)
 
