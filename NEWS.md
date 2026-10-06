@@ -29,6 +29,28 @@
   100,000 rows because the memory check cannot size one of its terms.
   `flexybayes()` skips that check below 100,000 rows.
 
+## For packages that extend flexyBayes
+
+* `fb_register_refusals()` lets another package add its own refusal codes
+  from its `.onLoad()`, in a partition under its own name, and
+  `fb_refuse()` raises any registered code as a `flexybayes_refusal`
+  condition. `fb_refusals()` gains a `package` column, and every refusal
+  condition records the package that registered its code. The selection
+  layer's 73 codes now sit in a partition named `flexySelect`.
+
+* `fb_marginal_cov()` returns the marginal covariance of the response of a
+  fit over given rows: one block per variance component with its design and
+  structure, the Kronecker factors of an AR1 x AR1 field, the residual, and
+  any known variance or covariance. `as.matrix()` gives the dense matrix.
+  Each variance is its posterior mean, the squared estimate plus the squared
+  standard error of that component in `summary(fit)$varcomp`.
+
+* `fb_refit()` refits the model of a fit on new data, keeping its random
+  terms, family, priors, engine settings, weights, offsets and known
+  variance. It can add fixed columns, and on brms it can take extra prior
+  rows, Stan code and a hook that edits the formula. `emit_brms()` loses its
+  `nl_block` argument, which `formula_hook` replaces.
+
 ## New: a flag for weakly identified variance components
 
 * On INLA fits, a variance component whose 95% posterior interval covers 40%
