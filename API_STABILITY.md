@@ -113,6 +113,17 @@ object: pass the formula and data, not a `brmsfit` or an `asreml` fit.
 | `fb_register_refusals()` | experimental | For packages that extend flexyBayes: adds the package's refusal codes, from its `.onLoad()`, to its own partition of the registry. A code another package or flexyBayes already registered is refused. |
 | `fb_refuse()` | experimental | Raises a registered refusal as a `flexybayes_refusal` condition carrying the code and the package that registered it. |
 | `fb_isolated_lapply()` | experimental | For packages that extend flexyBayes: `lapply()` with each call in a separate R process that starts from the session's settings and random-number state; values, messages and warnings come back in job order, and a process that dies is a refusal. |
+| `fb_extension_api()` | experimental | The version of the set of functions a package that extends flexyBayes reads a fit through; 1 in this release. |
+| `fb_model_terms()` | experimental | For packages that extend flexyBayes: the model description of a fit. |
+| `fb_response_values()` | experimental | For packages that extend flexyBayes: a response, a column or an expression, evaluated over a data frame. |
+| `fb_offset_values()` | experimental | For packages that extend flexyBayes: the summed offsets of a model over the rows of a data frame. |
+| `fb_model_weights()` | experimental | For packages that extend flexyBayes: the observation weights a model was fitted with. |
+| `fb_known_variance()` | experimental | For packages that extend flexyBayes: the known variance or covariance of a model and the data column that carries it. |
+| `fb_engine_settings()` | experimental | For packages that extend flexyBayes: sampler settings, checked against those flexyBayes recognises. |
+| `fb_convergence()` | experimental | For packages that extend flexyBayes: the convergence verdict of a fit with its evidence. |
+| `fb_inla_posterior_sample()` | experimental | For packages that extend flexyBayes: joint posterior samples of an INLA fit on the scale of the data. |
+| `fb_check_refit()` | experimental | For packages that extend flexyBayes: refuses a fit that cannot be refitted as the model it was fitted as. |
+| `fb_fixed_design()` | experimental | For packages that extend flexyBayes: the design matrix of a fixed formula, with each column's term and ASReml's column order. |
 | `fb_backend_status()` | experimental | Which engines are installed and usable in the current session, and why an unusable one is unusable. |
 | `fb_structured_cov()` | withdrawn at 0.10.0 | The identified covariance of a factor-analytic structured-covariance term. No active engine emits an `fa()` term, so it reported nothing on every reachable fit and is no longer exported. |
 | `proceed()`, `cat_code()` | deprecated in 0.13.0 | Companions to the `review_code = TRUE` workflow (inspect, then run, generated engine code). brms is the only engine with a code slot, so the deferred-execution token is available under `backend = "brms"` and under `"auto"`, and refuses under `backend = "inla"` with `review_code_backend_unsupported`. The generated code is the token's `code` element, and `flexybayes(..., return_code = TRUE)` returns it; the fit comes from calling `flexybayes()` with the same arguments and `review_code = FALSE`. |

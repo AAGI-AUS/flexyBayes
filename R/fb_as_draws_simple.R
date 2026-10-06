@@ -12,7 +12,9 @@
 #'
 #' S3 generic that extracts a named list of numeric posterior-draw vectors
 #' from a fit, keyed by the engine's own parameter names. The methods that
-#' reach an active engine are `flexybayes_brms` and `flexybayes_inla`.
+#' reach an active engine are `flexybayes_brms` and `flexybayes_inla`. The
+#' `brmsfit` method reads a brms fit inside a flexyBayes fit, a two-part
+#' non-linear fit from [fb_refit()] under the names of the linear model.
 #' User-defined methods can extend the generic.
 #'
 #' On an INLA fit the draws come from the fitted approximation: each draw
@@ -94,6 +96,18 @@ fb_as_draws_simple.flexybayes_brms <- function(fit, ...) {
     cols <- paste0("V", seq_len(ncol(m)))
   }
   setNames(lapply(seq_len(ncol(m)), function(j) as.numeric(m[, j])), cols)
+}
+
+#' @rdname fb_as_draws_simple
+#' @keywords internal
+#' @export
+fb_as_draws_simple.brmsfit <- function(fit, ...) {
+  .check_installed(
+    "posterior",
+    "Package 'posterior' is required to extract draws from a brmsfit."
+  )
+  m <- .fb_brms_draws_matrix(fit)
+  setNames(lapply(seq_len(ncol(m)), function(j) as.numeric(m[, j])), colnames(m))
 }
 
 #' @rdname fb_as_draws_simple

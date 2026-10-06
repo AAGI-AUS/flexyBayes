@@ -6,8 +6,8 @@
 # column at its prior, and a prediction that depends on it is the prior's.
 # flexybayes() therefore refuses such a model by default
 # (`fixed_effects_aliased`). With `fixed_alias = "drop"` it drops the
-# columns by the rule `fb_select(protected_alias = "drop")` uses, measured
-# against asreml 4.2 (R/selection_candidate_space.R): terms in model order,
+# columns by the rule measured against asreml 4.2 (R/fixed_design.R): terms
+# in model order,
 # within a term by descending factor levels with the term's first factor
 # varying slowest, and a column that is a combination of the columns before
 # it is dropped. A dropped column is fixed at zero, which is how asreml
@@ -56,7 +56,7 @@
     if (isTRUE(fb$intercept)) "1 + " else "0 + ",
     paste(labels, collapse = " + ")
   ))
-  design <- .fb_sel_design(rhs, data)
+  design <- fb_fixed_design(rhs, data)
   X <- design$X
   response_vars <- intersect(all.vars(str2lang(fb$response)), names(data))
   rows <- which(
@@ -71,8 +71,8 @@
       m[, centre, drop = FALSE], 2L, colMeans(m[, centre, drop = FALSE])
     )
   }
-  entry <- .fb_sel_asreml_order(design)
-  decomposition <- qr(m[, entry, drop = FALSE], tol = .FB_SEL_RANK_TOL)
+  entry <- design$asreml_order
+  decomposition <- qr(m[, entry, drop = FALSE], tol = .FB_FIXED_RANK_TOL)
   rank <- decomposition$rank
   dropped <- if (rank < ncol(m)) {
     sort(entry[decomposition$pivot[-seq_len(rank)]])
@@ -90,7 +90,7 @@
   if (length(dropped) > 0L) {
     # Each dropped column is, on the fitting rows, the kept columns times `a`.
     a <- qr.coef(
-      qr(x_fit[, kept, drop = FALSE], tol = .FB_SEL_RANK_TOL),
+      qr(x_fit[, kept, drop = FALSE], tol = .FB_FIXED_RANK_TOL),
       x_fit[, dropped, drop = FALSE]
     )
     nbasis[kept, ] <- -a
@@ -98,7 +98,7 @@
   }
   list(
     columns = colnames(X)[dropped],
-    terms = .fb_sel_column_terms(design)[dropped],
+    terms = design$column_terms[dropped],
     n_columns = ncol(X),
     n_rows = length(rows),
     nbasis = nbasis
@@ -248,6 +248,6 @@
   nbasis <- nbasis[colnames(X), , drop = FALSE]
   residual <- X %*% nbasis
   scale <- 1 + abs(X) %*% abs(nbasis)
-  aliased <- rowSums(abs(residual) > .FB_SEL_RANK_TOL * scale) > 0L
+  aliased <- rowSums(abs(residual) > .FB_FIXED_RANK_TOL * scale) > 0L
   unname(ifelse(aliased, "Aliased", "Estimable"))
 }

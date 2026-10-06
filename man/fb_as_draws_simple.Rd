@@ -4,6 +4,7 @@
 \alias{fb_as_draws_simple}
 \alias{fb_as_draws_simple.flexybayes_inla}
 \alias{fb_as_draws_simple.flexybayes_brms}
+\alias{fb_as_draws_simple.brmsfit}
 \alias{fb_as_draws_simple.default}
 \title{Extract per-parameter posterior draws from a model fit}
 \usage{
@@ -12,6 +13,8 @@ fb_as_draws_simple(fit, ...)
 \method{fb_as_draws_simple}{flexybayes_inla}(fit, n_samples = 1000L, ...)
 
 \method{fb_as_draws_simple}{flexybayes_brms}(fit, ...)
+
+\method{fb_as_draws_simple}{brmsfit}(fit, ...)
 
 \method{fb_as_draws_simple}{default}(fit, ...)
 }
@@ -28,7 +31,9 @@ each element holding that parameter's posterior draws.
 \description{
 S3 generic that extracts a named list of numeric posterior-draw vectors
 from a fit, keyed by the engine's own parameter names. The methods that
-reach an active engine are \code{flexybayes_brms} and \code{flexybayes_inla}.
+reach an active engine are \code{flexybayes_brms} and \code{flexybayes_inla}. The
+\code{brmsfit} method reads a brms fit inside a flexyBayes fit, a two-part
+non-linear fit from \code{\link[=fb_refit]{fb_refit()}} under the names of the linear model.
 User-defined methods can extend the generic.
 }
 \details{

@@ -27,12 +27,6 @@
 # the order of `coef_names_all`.
 
 
-# The two non-linear parts of a `scope = "block"` reference model,
-# `y ~ a + b`: the protected part and the candidate block.
-.FB_NL_PROTECTED_PART <- "a"
-.FB_NL_BLOCK_PART <- "b"
-
-
 # --- the compiler ---------------------------------------------------------- #
 
 # .fb_pen_compile_brms() --- blocks to (prior, stanvars, param_map, route,
