@@ -128,28 +128,20 @@
 #'
 #' On an **INLA** fit there is no sampler. The fit is a nested Laplace
 #' approximation, and the draws are sampled *from that fitted
-#' approximation* by `INLA::inla.posterior.sample()`, reading the
-#' configuration store every flexyBayes INLA fit is built with
-#' (`control.compute = list(config = TRUE)`). Two consequences follow,
-#' and they are the ones Tutorials 01 and 10 teach:
+#' approximation*, from the same distribution
+#' `INLA::inla.posterior.sample()` samples, reading the configuration store
+#' every flexyBayes INLA fit is built with
+#' (`control.compute = list(config = TRUE)`). Two consequences follow:
 #'
 #' \itemize{
 #'   \item The **fitting** is deterministic. The Laplace approximation
 #'     draws no random numbers, so a `seed` passed to [flexybayes()]
 #'     changes nothing about the fit itself.
-#'   \item The **sampling** step is not, and it is not reproducible from
-#'     `set.seed()` alone. The hyperparameter draws follow R's random
-#'     stream, but the latent field -- the intercept and the
-#'     fixed-effect terms -- is drawn by INLA's own generator, which
-#'     `INLA::inla.posterior.sample()` seeds at random unless its own
-#'     `seed` argument is given, and flexyBayes leaves that argument at
-#'     its default. `?INLA::inla.posterior.sample` states that
-#'     reproducing a sample needs that seed *and* R's RNG state fixed.
-#'     Treat the result as one sample of the posterior rather than a
-#'     fixed object: Monte-Carlo error in anything computed from it
-#'     shrinks with `n_draws`, so raise `n_draws` before reading a small
-#'     difference between two sets of draws as a difference between two
-#'     posteriors.
+#'   \item The **sampling** step draws from R's random number generator,
+#'     so `set.seed()` before the call makes the draws repeatable.
+#'     Monte-Carlo error in anything computed from them shrinks with
+#'     `n_draws`, so raise `n_draws` before reading a small difference
+#'     between two sets of draws as a difference between two posteriors.
 #' }
 #'
 #' @param x A fitted `flexybayes` object from either active engine.

@@ -52,28 +52,20 @@ number of draws was fixed when the model was sampled.
 
 On an \strong{INLA} fit there is no sampler. The fit is a nested Laplace
 approximation, and the draws are sampled \emph{from that fitted
-approximation} by \code{INLA::inla.posterior.sample()}, reading the
-configuration store every flexyBayes INLA fit is built with
-(\code{control.compute = list(config = TRUE)}). Two consequences follow,
-and they are the ones Tutorials 01 and 10 teach:
+approximation}, from the same distribution
+\code{INLA::inla.posterior.sample()} samples, reading the configuration store
+every flexyBayes INLA fit is built with
+(\code{control.compute = list(config = TRUE)}). Two consequences follow:
 
 \itemize{
 \item The \strong{fitting} is deterministic. The Laplace approximation
 draws no random numbers, so a \code{seed} passed to \code{\link[=flexybayes]{flexybayes()}}
 changes nothing about the fit itself.
-\item The \strong{sampling} step is not, and it is not reproducible from
-\code{set.seed()} alone. The hyperparameter draws follow R's random
-stream, but the latent field -- the intercept and the
-fixed-effect terms -- is drawn by INLA's own generator, which
-\code{INLA::inla.posterior.sample()} seeds at random unless its own
-\code{seed} argument is given, and flexyBayes leaves that argument at
-its default. \code{?INLA::inla.posterior.sample} states that
-reproducing a sample needs that seed \emph{and} R's RNG state fixed.
-Treat the result as one sample of the posterior rather than a
-fixed object: Monte-Carlo error in anything computed from it
-shrinks with \code{n_draws}, so raise \code{n_draws} before reading a small
-difference between two sets of draws as a difference between two
-posteriors.
+\item The \strong{sampling} step draws from R's random number generator,
+so \code{set.seed()} before the call makes the draws repeatable.
+Monte-Carlo error in anything computed from them shrinks with
+\code{n_draws}, so raise \code{n_draws} before reading a small difference
+between two sets of draws as a difference between two posteriors.
 }
 }
 

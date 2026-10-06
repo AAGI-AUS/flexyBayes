@@ -100,6 +100,34 @@
   mat
 }
 
+# Posterior weights of INLA's stored hyperparameter configurations.
+.fb_inla_config_weights <- function(cs) {
+  log_post <- vapply(cs$config, function(k) k$log.posterior, numeric(1L))
+  w <- exp(log_post - max(log_post))
+  w / sum(w)
+}
+
+# The Gaussian approximation of the latent field at configuration k: the
+# Cholesky factor of its precision Q (the stored Qinv holds only the entries
+# on the factor's sparsity pattern), its mean, and the kriging gain that
+# conditions a draw on the linear constraints A x = e.
+.fb_inla_config_gaussian <- function(cs, k) {
+  config <- cs$config[[k]]
+  chol_q <- Matrix::Cholesky(
+    Matrix::forceSymmetric(config$Q, uplo = "U"),
+    LDL = FALSE
+  )
+  out <- list(chol_q = chol_q, mu = config$improved.mean, gain = NULL)
+  if (!is.null(cs$constr)) {
+    a_mat <- matrix(cs$constr$A, nrow = cs$constr$nc)
+    sigma_at <- as.matrix(Matrix::solve(chol_q, t(a_mat)))
+    out$a_mat <- a_mat
+    out$sigma_at <- sigma_at
+    out$gain <- sigma_at %*% solve(a_mat %*% sigma_at)
+  }
+  out
+}
+
 # Joint posterior covariance of the fixed effects, computed exactly from the
 # Gaussian approximations INLA stores for each hyperparameter configuration:
 # the covariance of the mixture that inla.posterior.sample() draws from.
@@ -130,26 +158,19 @@
     x = 1,
     dims = c(cs$n, p)
   )
-  log_post <- vapply(cs$config, function(k) k$log.posterior, numeric(1L))
-  w <- exp(log_post - max(log_post))
-  w <- w / sum(w)
+  w <- .fb_inla_config_weights(cs)
 
   second <- matrix(0, p, p)
   first <- numeric(p)
   for (k in seq_along(cs$config)) {
-    config <- cs$config[[k]]
-    chol_q <- Matrix::Cholesky(Matrix::forceSymmetric(config$Q, uplo = "U"))
-    cov_f <- as.matrix(Matrix::solve(chol_q, unit))[idx, , drop = FALSE]
-    mu <- config$improved.mean
-    if (!is.null(cs$constr)) {
-      # Condition on the linear constraints A x = e, as the sampler does.
-      a_mat <- matrix(cs$constr$A, nrow = cs$constr$nc)
-      sigma_at <- as.matrix(Matrix::solve(chol_q, t(a_mat)))
-      gain <- sigma_at %*% solve(a_mat %*% sigma_at)
-      mu <- mu - drop(gain %*% (a_mat %*% mu - cs$constr$e))
+    g <- .fb_inla_config_gaussian(cs, k)
+    cov_f <- as.matrix(Matrix::solve(g$chol_q, unit))[idx, , drop = FALSE]
+    mu <- g$mu
+    if (!is.null(g$gain)) {
+      mu <- mu - drop(g$gain %*% (g$a_mat %*% mu - cs$constr$e))
       cov_f <- cov_f -
-        gain[idx, , drop = FALSE] %*%
-          t(sigma_at[idx, , drop = FALSE])
+        g$gain[idx, , drop = FALSE] %*%
+          t(g$sigma_at[idx, , drop = FALSE])
     }
     mu <- mu[idx]
     second <- second + w[k] * (cov_f + tcrossprod(mu))
@@ -159,15 +180,7 @@
   v <- (v + t(v)) / 2
 
   # Back to the original scale, by the factors the posterior draws use.
-  b <- rep(1, p)
-  spec <- object$extras$response_standardisation
-  if (!is.null(spec)) {
-    b <- b * spec$scale
-  }
-  cstd <- object$extras$covariate_standardisation
-  if (!is.null(cstd)) {
-    b <- b * .fb_inla_covariate_draw_factor(fixed_names, cstd)
-  }
+  b <- .fb_inla_draw_map(object, fixed_names)$b
   v <- v * tcrossprod(b)
 
   labels <- .inla_restore_term_labels(object$level_labels, fixed_names)
