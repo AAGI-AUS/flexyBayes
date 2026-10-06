@@ -119,6 +119,12 @@
   and the fixed effects keep INLA's defaults. It used to say the backend's
   defaults were used for every parameter.
 
+* On brms, `prior_vc_sd` now sets `lognormal(0, prior_vc_sd)` on the standard
+  deviation of an interaction random effect such as `a:b` or `a:b:c`. A
+  three-way term used to stop with "'length = 3' in coercion to
+  'logical(1)'", because `term$var` partially matched the term's `vars`, and
+  a two-way term was left at brms's default prior.
+
 # flexyBayes 0.15.0
 
 A feature release for two-stage analyses of a series of trials and for

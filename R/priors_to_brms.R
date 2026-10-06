@@ -627,7 +627,22 @@
     if (is.null(term$type)) {
       next
     }
-    grp <- term$var
+
+    # emit_brms writes these as (1 | a:b) and (1 | a:b:c).
+    if (term$type %in% c("nested", "combo")) {
+      specs[[length(specs) + 1L]] <- list(
+        string = sprintf("lognormal(0, %s)", .fmt_num(prior_vc_sd)),
+        class = "sd",
+        coef = NA_character_,
+        group = paste(.fb_nested_vars(term), collapse = ":"),
+        lb = 0,
+        ub = NA_real_
+      )
+      next
+    }
+
+    # [[ ]] because $var would partially match a combo term's `vars`.
+    grp <- term[["var"]]
     if (is.null(grp) || !nzchar(grp)) {
       next
     }
