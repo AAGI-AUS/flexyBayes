@@ -2013,6 +2013,13 @@
 }
 
 
+# Whether dispatch runs the design-memory preflight on this IR. fb_plan()
+# reads the same rule, so a plan refuses only where the fit would.
+.preflight_runs_at_dispatch <- function(fb, threshold = 1e5L) {
+  isTRUE(!is.null(fb$data_summary$n) && fb$data_summary$n >= threshold)
+}
+
+
 # Shared preflight call. Runs IFF the IR carries
 # n_rows >= 1e5; below that threshold the v0.2 user surface is
 # unchanged. Returns the <fb_preflight> result (or NULL when below
@@ -2027,12 +2034,7 @@
   known_matrices = NULL,
   threshold = 1e5L
 ) {
-  if (
-    !isTRUE(
-      !is.null(fb$data_summary$n) &&
-        fb$data_summary$n >= threshold
-    )
-  ) {
+  if (!.preflight_runs_at_dispatch(fb, threshold)) {
     return(NULL)
   }
   # Optional global ceiling override -- lets the user set a stricter
