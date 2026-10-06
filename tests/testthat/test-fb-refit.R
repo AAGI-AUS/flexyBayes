@@ -72,6 +72,21 @@ fbrf_capture <- function(code) {
   list(value = value, args = seen$args)
 }
 
+# The value of `code`, and the arguments of every INLA call it makes.
+fbrf_capture_all <- function(code) {
+  seen <- new.env()
+  seen$args <- list()
+  real <- .inla_call
+  value <- testthat::with_mocked_bindings(
+    code,
+    .inla_call = function(args) {
+      seen$args[[length(seen$args) + 1L]] <- args
+      real(args)
+    }
+  )
+  list(value = value, args = seen$args)
+}
+
 # Two INLA calls with the same formula, data, likelihood, priors and
 # settings.
 fbrf_expect_same_call <- function(a, b) {
@@ -358,4 +373,41 @@ test_that("readout asks INLA for that readout only and returns the same estimate
     expect_lt(fbrf_rel(fbrf_medians(lean), fbrf_medians(full)), FBRF_TOL)
   }
   expect_null(.fb_fold_refit_active())
+})
+
+
+test_that("a reduced readout runs no field test, and a full refit still does", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fbrf_quiet()
+  # No spatial signal, so the full refit's field test refits without the field.
+  d <- .fb_with_seed(5L, {
+    grid <- expand.grid(col = seq_len(6L), row = seq_len(8L))
+    out <- data.frame(row = factor(grid$row), col = factor(grid$col))
+    out$y <- 3 + stats::rnorm(nrow(out), sd = 0.6)
+    out
+  })
+  fit <- flexybayes(y ~ 1, random = ~ ar1(row):ar1(col), data = d,
+                    backend = "inla", verbose = FALSE)
+  fd <- fit$data
+  fd$y[1:8] <- NA
+  # The field test's fit is the one call that asks for the marginal
+  # likelihood alone.
+  field_tests <- function(code) {
+    calls <- fbrf_capture_all(code)
+    sum(vapply(
+      calls$args,
+      function(a) identical(a$control.compute, list(mlik = TRUE)),
+      logical(1L)
+    ))
+  }
+  expect_identical(
+    field_tests(suppressWarnings(fb_refit(fit, data = fd, na_action = "augment"))),
+    1L
+  )
+  expect_identical(
+    field_tests(fb_refit(fit, data = fd, na_action = "augment",
+                         readout = "varcomp")),
+    0L
+  )
 })

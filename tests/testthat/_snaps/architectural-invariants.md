@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=163
+      .refusal_registry: locked=TRUE n_keys=164
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -229,6 +229,7 @@
         response_not_in_data
         review_code_backend_unsupported
         row_count_exceeds_integer
+        selection_removed
         smooth_variable_not_in_data
         spatial_field_requires_ar1_field
         stan_cannot_represent_ar1_field

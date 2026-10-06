@@ -1,9 +1,9 @@
-# Engine fits and fold loops in a separate R process.
+# Engine fits and loops of jobs in a separate R process.
 #
 # `options(flexyBayes.isolation = "process")` runs the engine fit behind
-# flexybayes() (and so behind fb(), fb_inla() and fb_brms()), the fit behind
-# proceed(), and each fold of fb_select()'s fold loops in a separate R process
-# started through callr. The default, "none", runs everything in the session,
+# flexybayes() (and so behind fb(), fb_inla() and fb_brms()) and the fit
+# behind proceed() in a separate R process started through callr, and
+# fb_isolated_lapply() runs each job of a loop that way. The default, "none", runs everything in the session,
 # exactly as before.
 #
 # How a session dies, path by path, and what isolation changes. Read from the
@@ -23,12 +23,7 @@
 #   * R itself: when the operating system kills the R process under memory
 #     pressure, or compiled code running inside it (a BLAS call on a dense
 #     matrix, a Stan sampler under rstan) crashes, the session ends with no
-#     condition to catch. The selection layer's dense covariance and the
-#     proximal solvers run inside R, so this is the path a wide selection
-#     call takes.
-#   * fb_select()'s forked fold workers (R/selection_parallel.R): a worker
-#     killed from outside leaves a bare NULL, which is refused by name, and
-#     the session survives.
+#     condition to catch.
 #
 # Isolation moves the third path into a child process, where it becomes a
 # child that ended with a signal or an exit status. That is reported as the

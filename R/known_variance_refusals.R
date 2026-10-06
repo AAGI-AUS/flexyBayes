@@ -1,8 +1,7 @@
 # Known-variance refusals --- registry population for R/known_variance.R.
 #
-# Both codes are thrown by R/known_variance.R and by the fb_select() routes
-# that cannot carry a known variance, and triggered in
-# tests/testthat/test-known-variance.R.
+# Both codes are thrown by R/known_variance.R and triggered in
+# tests/testthat/test-known-covariance-inputs.R.
 
 .populate_refusal_registry_known_variance <- function() {
   .register_refusal(
@@ -30,10 +29,9 @@
     description = paste0(
       "A known variance per row was asked of a model or a route that cannot ",
       "carry it: a family other than the Gaussian on the identity link, ",
-      "the aggregated route, a known covariance matrix on brms, or an ",
-      "fb_select() route whose fold refit, ",
-      "covariance or predictive score would leave it out. The message ",
-      "names the route that carries it."
+      "the aggregated route, a known covariance matrix on brms, or a ",
+      "route whose refit, covariance or predictive score would leave it ",
+      "out. The message names the route that carries it."
     ),
     message_template = "%s",
     registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.0_2026-09-19 (U-STAGE2-VAR)",

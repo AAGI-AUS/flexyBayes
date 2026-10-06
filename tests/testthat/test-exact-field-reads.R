@@ -124,18 +124,3 @@ test_that("the plan reads the aggregation cell count by its name", {
   expect_equal(res$value$aggregation$ratio, nrow(d) / n_cells)
 })
 
-test_that("an unfilled convention refuses instead of reading its rule as the scale", {
-  res <- .pm_collect(.fb_sel_convention_response_scale(
-    list(response_scale_rule = "rms")
-  ))
-
-  expect_identical(res$matches, character(0))
-  expect_s3_class(res$value, "error")
-  expect_match(conditionMessage(res$value), "response_scale", fixed = TRUE)
-
-  filled <- .pm_collect(.fb_sel_convention_response_scale(
-    list(response_scale_rule = "rms", response_scale = 2)
-  ))
-  expect_identical(filled$matches, character(0))
-  expect_identical(filled$value, 2)
-})

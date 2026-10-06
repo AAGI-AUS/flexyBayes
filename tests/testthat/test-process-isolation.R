@@ -1,10 +1,10 @@
 # =============================================================================
-# Engine fits and fold loops in a separate R process.
+# Engine fits in a separate R process.
 #
 # `options(flexyBayes.isolation = "process")` runs the engine fit behind
-# flexybayes() -- and so behind fb(), fb_inla() and fb_brms() -- the fit
-# behind proceed(), and each fold of fb_select()'s fold loops in a separate R
-# process started through callr. This file holds that to five claims.
+# flexybayes() -- and so behind fb(), fb_inla() and fb_brms() -- and the fit
+# behind proceed() in a separate R process started through callr. This file
+# holds that to four claims; test-isolated-lapply.R covers loops of jobs.
 #
 #   1. A process killed by a signal inside a fit ends in a typed refusal that
 #      names the engine, the entry point and the signal, and the session goes
@@ -25,24 +25,18 @@
 #      copy) are named rather than skipped.
 #   4. brms with a seed returns identical draws, and with no seed the draw
 #      comes from the session's random-number stream in both places.
-#   5. fb_select() under isolation is identical to a serial run on the
-#      closed-form route, and its bookkeeping is identical on the Bayesian
-#      route, where its scores sit inside a bound derived from repeated
-#      serial runs of the same call (probe 05).
 #
 # How a process is killed here. A watcher process started by this file looks
 # only at the children of this R session, skips itself, and sends SIGKILL to
 # one PID: the first child that is itself running a program (the engine), so
 # the signal lands inside the fit, or, where no engine runs, the first child.
-# It never selects a process by name. The fold-loop blocks use a fold function
-# that sends the signal to its own PID, and only when it is not running in
-# this session.
+# It never selects a process by name.
 # =============================================================================
 
 # --- fixtures ------------------------------------------------------------- #
 
 fbiso_data <- function(seed = 20260919L, n_group = 12L, per = 8L) {
-  .fb_sel_with_seed(seed, {
+  .fb_with_seed(seed, {
     n <- n_group * per
     d <- data.frame(
       g = factor(rep(sprintf("G%02d", seq_len(n_group)), each = per))
@@ -58,13 +52,9 @@ fbiso_data <- function(seed = 20260919L, n_group = 12L, per = 8L) {
 }
 
 
-# Run `expr` with the isolation option (and optionally the worker option)
-# set, and put both back afterwards.
-fbiso_with <- function(mode, expr, workers = NULL) {
-  old <- options(
-    flexyBayes.isolation = mode,
-    flexyBayes.selection_workers = workers
-  )
+# Run `expr` with the isolation option set, and put it back afterwards.
+fbiso_with <- function(mode, expr) {
+  old <- options(flexyBayes.isolation = mode)
   on.exit(options(old), add = TRUE)
   force(expr)
 }
@@ -220,56 +210,6 @@ FBISO_INLA_BOUND <- 2e-4
 FBISO_DERIVED_BOUND <- 3.5e-3
 
 
-# A base object for the closed-form route, as the concurrency envelope builds
-# one: no engine runs anywhere in the fold loop.
-fbiso_stub_base <- function(d) {
-  fb <- fb_from_asreml(y ~ x, random = ~g, data = d)
-  fb$family <- "gaussian"
-  fb$link <- "identity"
-  structure(
-    list(
-      fb = fb,
-      data = d,
-      extras = list(call_info = list(
-        fixed = y ~ x, random = ~g, family = "gaussian"
-      ))
-    ),
-    class = c("flexybayes_inla", "flexybayes", "list")
-  )
-}
-
-fbiso_optimizer_select <- function(base) {
-  fb_select(
-    base,
-    candidates = ~ z1 + z2,
-    penalty = fb_penalty(term(everything()) ~ laplace(scale = 0.4)),
-    workflow = "penalized_optimizer",
-    resamples = fb_resamples(unit = ~g, v = 3L),
-    decision = fb_decision(method = "full", metric = "rmse"),
-    seed = 1L
-  )
-}
-
-
-# Count the child processes a call starts, by wrapping the function that
-# starts one. The wrapper runs in this session only; the children run the
-# namespace as loaded.
-fbiso_count_starts <- function(expr) {
-  real <- .fb_isolation_start
-  starts <- 0L
-  testthat::with_mocked_bindings(
-    {
-      value <- force(expr)
-    },
-    .fb_isolation_start = function(...) {
-      starts <<- starts + 1L
-      real(...)
-    }
-  )
-  list(value = value, starts = starts)
-}
-
-
 # --- the option ------------------------------------------------------------ #
 
 test_that("isolation is off unless asked for, and the option takes three values", {
@@ -299,17 +239,6 @@ test_that("asking for isolation without callr refuses by name, before any fit", 
   expect_identical(refusal$reason_code, "isolation_requires_callr")
   expect_match(conditionMessage(refusal), "callr")
   expect_match(conditionMessage(refusal), "flexyBayes.isolation")
-
-  # fb_select() refuses at its start, not after its fold loop has begun.
-  refusal <- fbiso_with("process", tryCatch(
-    fbiso_optimizer_select(fbiso_stub_base(d)),
-    error = function(e) e
-  ))
-  expect_s3_class(refusal, "flexybayes_refusal")
-  expect_identical(refusal$reason_code, "isolation_requires_callr")
-
-  # Without the option, nothing asks for callr.
-  expect_s3_class(fbiso_optimizer_select(fbiso_stub_base(d)), "fb_select")
 })
 
 
@@ -412,7 +341,7 @@ test_that("output, messages and warnings come back in order, and a refusal arriv
     fbiso_with("process", .fb_isolated_call(
       function() {
         stop(asNamespace("flexyBayes")$.fb_refusal_condition(
-          reason_code = "selection_fold_not_usable",
+          reason_code = "isolated_process_died",
           message = "a refusal inside the child"
         ))
       },
@@ -422,7 +351,7 @@ test_that("output, messages and warnings come back in order, and a refusal arriv
     error = function(e) e
   )
   expect_s3_class(refusal, "flexybayes_refusal")
-  expect_identical(refusal$reason_code, "selection_fold_not_usable")
+  expect_identical(refusal$reason_code, "isolated_process_died")
   expect_match(conditionMessage(refusal), "inside the child")
 })
 
@@ -463,86 +392,6 @@ test_that("a child killed by a signal inside an INLA fit refuses by name, and th
   expect_true(isTRUE(again$num_check$pass))
   here <- fit_once()
   expect_s3_class(here, "flexybayes_inla")
-})
-
-
-test_that("a fold whose process dies is named, a fold's own refusal keeps its code, and folds come back in order", {
-  fbiso_skip()
-  skip_if_not_long_tier()
-  me <- Sys.getpid()
-  for (w in c(1L, 3L)) {
-    fbiso_with("process", workers = w, {
-      testthat::local_mocked_bindings(.fb_sel_worker_cores = function() 3L)
-      plan <- .fb_sel_worker_plan(3L, provider = NULL)
-      expect_identical(plan$workers, w)
-
-      # The third fold finishes first and the first finishes last.
-      out <- .fb_sel_fold_lapply(1:3, function(j) {
-        Sys.sleep(c(0.4, 0.2, 0)[[j]])
-        list(j = j, pid = Sys.getpid())
-      }, plan)
-      expect_identical(vapply(out, function(z) z$j, integer(1)), 1:3)
-      expect_false(any(vapply(out, function(z) z$pid, integer(1)) == me))
-
-      died <- tryCatch(
-        .fb_sel_fold_lapply(1:3, function(j) {
-          if (j == 2L && !identical(Sys.getpid(), me)) {
-            tools::pskill(Sys.getpid(), tools::SIGKILL)
-            Sys.sleep(5)
-          }
-          j
-        }, plan),
-        error = function(e) e
-      )
-      expect_s3_class(died, "flexybayes_refusal")
-      expect_identical(died$reason_code, "isolated_process_died")
-      expect_identical(died$entry_point, "fb_select()")
-      expect_identical(died$fold, 2L)
-      expect_identical(died$signal, 9L)
-      expect_match(conditionMessage(died), "fold 2")
-
-      # The lowest failing fold's own condition, as a serial run raises it.
-      refused <- tryCatch(
-        .fb_sel_fold_lapply(1:3, function(j) {
-          if (j >= 2L) {
-            stop(.fb_refusal_condition(
-              reason_code = "selection_fold_not_usable",
-              message = paste0("fold ", j, " refusing")
-            ))
-          }
-          j
-        }, plan),
-        error = function(e) e
-      )
-      expect_identical(refused$reason_code, "selection_fold_not_usable")
-      expect_match(conditionMessage(refused), "fold 2 refusing")
-    })
-  }
-})
-
-
-test_that("fb_select() names a fold whose process was killed, and the next call returns", {
-  fbiso_skip()
-  skip_if_not_long_tier()
-  d <- fbiso_data()
-  base <- fbiso_stub_base(d)
-
-  watcher <- fbiso_watcher(busy = FALSE)
-  refusal <- fbiso_with(
-    "process",
-    tryCatch(fbiso_optimizer_select(base), error = function(e) e)
-  )
-  killed <- fbiso_watcher_result(watcher)
-
-  expect_false(is.na(killed))
-  expect_s3_class(refusal, "flexybayes_refusal")
-  expect_identical(refusal$reason_code, "isolated_process_died")
-  expect_identical(refusal$entry_point, "fb_select()")
-  expect_identical(refusal$signal, 9L)
-  expect_true(refusal$fold %in% 1:3)
-
-  again <- fbiso_with("process", fbiso_optimizer_select(base))
-  expect_s3_class(again, "fb_select")
 })
 
 
@@ -681,84 +530,3 @@ test_that("an isolated brms fit returns the in-process draws, with a seed and fr
 })
 
 
-test_that("fb_select() under isolation is identical to a serial run on the closed-form route", {
-  fbiso_skip()
-  skip_if_not_long_tier()
-  d <- fbiso_data()
-  base <- fbiso_stub_base(d)
-  serial <- fbiso_optimizer_select(base)
-  counted <- fbiso_with(
-    "process",
-    fbiso_count_starts(fbiso_optimizer_select(base))
-  )
-  isolated <- counted$value
-  # One child per fold of the three-fold loop.
-  expect_identical(counted$starts, 3L)
-  expect_identical(isolated$certificate, serial$certificate)
-  expect_identical(isolated$selection, serial$selection)
-  expect_identical(isolated$scores, serial$scores)
-  expect_identical(isolated$folds, serial$folds)
-
-  # The fold loop itself, whole, apart from the record of how it was run.
-  cv <- function() {
-    .fb_sel_cv(
-      data = d,
-      response = "y",
-      protected = ~x,
-      candidates = ~ z1 + z2,
-      random = "g",
-      resamples = fb_resamples(unit = ~g, v = 3L),
-      seed = 1L,
-      prediction = "new_cluster",
-      metric = "rmse"
-    )
-  }
-  serial_cv <- cv()
-  isolated_cv <- fbiso_with("process", cv())
-  expect_identical(isolated_cv$parallel$mechanism, "process")
-  serial_cv$parallel <- NULL
-  isolated_cv$parallel <- NULL
-  expect_identical(isolated_cv, serial_cv)
-})
-
-
-test_that("fb_select() under isolation keeps the Bayesian route's bookkeeping and its scores inside the envelope", {
-  fbiso_skip()
-  skip_if_not_installed("INLA")
-  skip_if_not_long_tier()
-  old_threads <- INLA::inla.getOption("num.threads")
-  on.exit(INLA::inla.setOption(num.threads = old_threads), add = TRUE)
-  INLA::inla.setOption(num.threads = "1:1")
-  withr::local_options(list(
-    flexyBayes.silence_default_prior_note = TRUE,
-    flexyBayes.silence_high_missingness_warning = TRUE
-  ))
-  d <- fbiso_data()
-  base <- flexybayes(y ~ x, random = ~g, data = d, backend = "inla", verbose = FALSE)
-  run <- function() {
-    suppressWarnings(fb_select(
-      base,
-      candidates = ~ z1 + z2,
-      penalty = NULL,
-      resamples = fb_resamples(unit = ~g, v = 3L),
-      decision = fb_decision(method = "full", metric = "elpd"),
-      seed = 1L
-    ))
-  }
-  serial <- run()
-  counted <- fbiso_with("process", fbiso_count_starts(run()))
-  isolated <- counted$value
-  # At least one child per fold: the fold loops ran outside this session.
-  expect_gte(counted$starts, 3L)
-
-  expect_identical(isolated$folds, serial$folds)
-  expect_identical(isolated$certificate, serial$certificate)
-  expect_identical(isolated$selection$chosen_terms, serial$selection$chosen_terms)
-  expect_identical(as.character(isolated$scores$model), as.character(serial$scores$model))
-  expect_identical(isolated$scores$n_units, serial$scores$n_units)
-  # INLA's posterior sampler is not bit-reproducible, so two serial runs of
-  # this call differ too: six serial runs on this fixture, 15 pairs, differed
-  # by at most 0.039 (probe 05). The bound is three times that, the margin the
-  # concurrency envelope applies to its own measured range.
-  expect_lte(max(abs(isolated$scores$score - serial$scores$score)), 0.12)
-})

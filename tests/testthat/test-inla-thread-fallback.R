@@ -98,23 +98,3 @@ test_that("every INLA route runs at the package plan, whatever INLA's own option
   expect_identical(INLA::inla.getOption("num.threads"), "4:1")
 })
 
-test_that("a fold worker keeps the caller's INLA plan", {
-  skip_if_not_installed("INLA")
-  skip_on_cran()
-  withr::local_options(
-    flexyBayes.silence_default_prior_note = TRUE,
-    flexyBayes.inla_threads = NULL,
-    flexyBayes.selection_workers = 4L,
-    mc.cores = getOption("mc.cores")
-  )
-  withr::local_envvar(OMP_NUM_THREADS = NA)
-  old <- INLA::inla.getOption("num.threads")
-  withr::defer(INLA::inla.setOption(num.threads = old))
-  plan <- .fb_sel_worker_plan(22L, provider = "inla")
-  skip_if(plan$workers < 2L, "this host runs one worker")
-  before <- INLA::inla.getOption("num.threads")
-  .fb_sel_pin_worker_threads(plan)
-  expect_identical(INLA::inla.getOption("num.threads"), before)
-  expect_identical(Sys.getenv("OMP_NUM_THREADS"), as.character(plan$threads_per_worker))
-  expect_identical(.th_fit(.th_data())$extras$reproducibility$threads$num_threads, "1:1")
-})

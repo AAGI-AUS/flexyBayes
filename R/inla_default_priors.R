@@ -130,11 +130,11 @@
 #' Every row whose working response is observed. A row with a missing
 #' response adds no term to the likelihood, so its covariate values carry no
 #' information about the effect a default is scaled for. Two routes hand the
-#' emit such rows: a fit with `na_action = "augment"`, and an `fb_select()`
-#' fold refit, which carries its assessment rows with the response set to
-#' `NA`. Read over every row, the fold's default moved with the covariates of
-#' the rows the fold is scored on. The response-scaled defaults already read
-#' the observed rows, so both kinds of default now read the same rows.
+#' emit such rows: a fit with `na_action = "augment"`, and an [fb_refit()] on
+#' a fold, which carries its assessment rows with the response set to `NA`.
+#' Read over every row, the fold's default moved with the covariates of the
+#' rows the fold is scored on. The response-scaled defaults already read the
+#' observed rows, so both kinds of default now read the same rows.
 #'
 #' @param fb An `fb_terms` object.
 #' @param data A data frame.

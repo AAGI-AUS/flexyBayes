@@ -264,22 +264,3 @@ test_that("fb_register_refusals() validates the table", {
   expect_false("fakea_x" %in% fb_refusals()$reason_code)
 })
 
-test_that("the selection layer registers in the flexySelect partition", {
-  tab <- fb_refusals()
-  sel <- tab$reason_code[tab$package == "flexySelect"]
-  expect_true("selection_seed_required" %in% sel)
-  expect_true("penalty_block_overlap" %in% sel)
-  expect_true("loss_surface_requires_plotly" %in% sel)
-  expect_true("selection_loss_surface_undefined" %in% sel)
-  expect_false("loss_surface_requires_plotly" %in% ls(flexyBayes:::.refusal_registry))
-
-  cnd <- tryCatch(
-    stop(flexyBayes:::.fb_refusal_condition(
-      reason_code = "selection_seed_required",
-      message = "probe"
-    )),
-    error = function(e) e
-  )
-  expect_s3_class(cnd, "flexybayes_refusal_selection_seed_required")
-  expect_identical(cnd$package, "flexySelect")
-})

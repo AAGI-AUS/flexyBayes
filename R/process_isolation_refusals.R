@@ -13,15 +13,14 @@
 # isolation. A child that the operating system kills, or that crashes in
 # compiled code, sends nothing back: all that is left is its exit status or
 # the signal that ended it. No existing code names a fit whose process ended
-# without returning, and `selection_parallel_worker_failed` is the forked
-# fold worker's, which has no exit status to report.
+# without returning.
 
 .populate_refusal_registry_process_isolation <- function() {
   .register_refusal(
     reason_code = "isolation_requires_callr",
     description = paste0(
       "options(flexyBayes.isolation = \"process\") runs each engine fit, ",
-      "and each fold of fb_select(), in a separate R process started ",
+      "and fb_isolated_lapply() each job, in a separate R process started ",
       "through callr, which is in Suggests and not installed. The request ",
       "is refused before anything is fitted, so no fit runs without the ",
       "protection that was asked for."
@@ -38,7 +37,8 @@
   .register_refusal(
     reason_code = "isolated_process_died",
     description = paste0(
-      "A separate R process running an engine fit or a fold of fb_select() ",
+      "A separate R process running an engine fit or a job of ",
+      "fb_isolated_lapply() ",
       "ended before it returned: a signal ended it (SIGKILL is sent from ",
       "outside the process; SIGSEGV or SIGABRT comes from a crash in ",
       "compiled code), or it exited with a non-zero status. The refusal ",

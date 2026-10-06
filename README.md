@@ -99,18 +99,9 @@ the models neither engine fits, are in
 | Univariate P-spline | `~ spl(x)` | fits | refuses |
 | Observation weights (Gaussian, identity link) | `weights = w` | fits | fits |
 | Exact sufficient-statistic aggregation (binomial, Poisson) | `aggregate = TRUE`, `flexybayes_stream()` | fits | n/a |
-| Ridge shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ ridge(scale))` | n/a | fits |
-| Laplace shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ laplace(scale))` | n/a | fits |
-| Elastic-net shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ elastic_net(lambda, alpha))` | n/a | fits |
-| Regularised horseshoe shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ regularized_horseshoe(p0))` | n/a | fits |
-| R2D2 shrinkage prior on candidate fixed effects | `fb_penalty(term(...) ~ r2d2(mean_R2, prec_R2, cons_D2))` | n/a | fits |
 
 `fits`: the engine fits it, and a test checks the fit. `refuses`: flexyBayes stops with a message saying why and what to use instead. `n/a`: the request does not apply to that engine.
 <!-- capability-matrix:end -->
-
-Candidate selection with `fb_select()`, and the Bayesian comparison of the
-chosen covariates (`refit = list(method = "bayes")`), are recent additions.
-Expect their arguments and output to change.
 
 ## Documentation
 
@@ -120,7 +111,6 @@ Expect their arguments and output to change.
 | `flexyBayes-02-bayesian` | Bayesian estimation in brief |
 | `flexyBayes-03-syntax` | The ASReml syntax flexyBayes covers |
 | `flexyBayes-04-illustration` | ASReml and flexyBayes on the same trials |
-| `flexyBayes-05-selection` | Selecting over a candidate block |
 | `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials |
 
 ## Reporting problems

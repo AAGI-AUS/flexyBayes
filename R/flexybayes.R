@@ -481,8 +481,6 @@
 #'   without a known part. A matrix that is not square, symmetric and
 #'   positive definite over the rows of `data` refuses with
 #'   `known_variance_invalid`.
-#'   [fb_select()] carries either form into the fold covariance under
-#'   `covariance = "base_model"`.
 #' @param fixed_alias `"refuse"` (the default) or `"drop"`: what to do with
 #'   a fixed-effect column that is a linear combination of the columns
 #'   before it on the rows with a response, as in a factorial with empty
@@ -495,9 +493,7 @@
 #'   reports it with estimate 0 and no standard error, the columns are
 #'   listed in `fit$extras$fixed_alias$dropped`, and a prediction whose row
 #'   is not a combination of the fitting rows is `NA` with status
-#'   `"Aliased"` (see [predict.flexybayes_inla()]). [fb_select()]'s
-#'   `protected_alias` takes the same values and applies the same rule on
-#'   each fold.
+#'   `"Aliased"` (see [predict.flexybayes_inla()]).
 #'
 #' @returns An object of class `"flexybayes"`, a list with three
 #'   components.
@@ -538,10 +534,9 @@
 #' separate R process started through callr, which is in Suggests; without
 #' callr the request refuses with
 #' `isolation_requires_callr` before anything is fitted. The option applies
-#' to `flexybayes()`, `fb_brms()`, `fb_inla()`, `proceed()` and each fold of
-#' [fb_select()]. The default, `"none"`, fits in this session, and runs
-#' concurrent fold workers of [fb_select()] in separate processes; `"fork"`
-#' forks those workers instead.
+#' to `flexybayes()`, `fb_brms()`, `fb_inla()` and `proceed()`, and
+#' [fb_isolated_lapply()] runs any loop of calls the same way. The default,
+#' `"none"`, fits in this session.
 #'
 #' If the operating system kills that process, or compiled code crashes inside
 #' it, the call refuses with `isolated_process_died`, naming the engine, the
@@ -560,8 +555,7 @@
 #' agrees with an in-process one as closely as two in-process fits agree.
 #' The separate process starts with an empty global environment, so the
 #' formula finds its variables in `data`. Starting the process and
-#' moving the data and the fit costs time on every call; see [fb_select()]
-#' for the measured figures.
+#' moving the data and the fit costs time on every call.
 #'
 #' @examples
 #' \dontrun{

@@ -469,7 +469,7 @@ silenceable via \code{options(flexyBayes.silence_auto_fallback_note = TRUE)} (ga
 installed).
 
 \strong{What each engine represents.}
-INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link); Ridge shrinkage prior on candidate fixed effects; Laplace shrinkage prior on candidate fixed effects; Elastic-net shrinkage prior on candidate fixed effects; Regularised horseshoe shrinkage prior on candidate fixed effects; R2D2 shrinkage prior on candidate fixed effects. brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
+INLA fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Uncorrelated random slope; Factor-by-numeric fixed interaction; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline; Observation weights (Gaussian, identity link); Exact sufficient-statistic aggregation (binomial, Poisson). INLA refuses: Hurdle gamma (zero mass plus a positive gamma part); Correlated random slope; Unstructured genotype-by-environment covariance; Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Exact sufficient-statistic aggregation (Gaussian). brms fits: Gaussian LMM, simple random intercept; GLMM (binomial, Poisson, negative binomial, gamma, beta), simple random effect; Hurdle gamma (zero mass plus a positive gamma part); Uncorrelated random slope; Factor-by-numeric fixed interaction; Correlated random slope; Nested / interaction random effects, multi-stratum; Heterogeneous variance by factor level; Unstructured genotype-by-environment covariance; Heterogeneous residual by factor level; Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual; Known-covariance genomic / pedigree random effect; Observation weights (Gaussian, identity link). brms refuses: Heterogeneous variances with one shared correlation; Factor-analytic genotype-by-environment covariance; Multi-trait covariance; Separable AR1 spatial field; Per-trial separable AR1 field; Grouped temporal AR1 field; Univariate P-spline.
 The per-class table is in \code{README.md}, and with a note on each row in
 \code{system.file("KNOWN_ISSUES.md", package = "flexyBayes")}.
 
@@ -558,9 +558,7 @@ with precision \code{K^-1}; brms has no term for it and refuses with
 \code{known_variance_not_supported}. A row and column of zeros marks a row
 without a known part. A matrix that is not square, symmetric and
 positive definite over the rows of \code{data} refuses with
-\code{known_variance_invalid}.
-\code{\link[=fb_select]{fb_select()}} carries either form into the fold covariance under
-\code{covariance = "base_model"}.}
+\code{known_variance_invalid}.}
 
 \item{fixed_alias}{\code{"refuse"} (the default) or \code{"drop"}: what to do with
 a fixed-effect column that is a linear combination of the columns
@@ -574,9 +572,7 @@ combination of the columns before it is fixed at zero. \code{summary()}
 reports it with estimate 0 and no standard error, the columns are
 listed in \code{fit$extras$fixed_alias$dropped}, and a prediction whose row
 is not a combination of the fitting rows is \code{NA} with status
-\code{"Aliased"} (see \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}). \code{\link[=fb_select]{fb_select()}}'s
-\code{protected_alias} takes the same values and applies the same rule on
-each fold.}
+\code{"Aliased"} (see \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}).}
 
 \item{rcov}{Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 the residual-structure argument; ASReml 4 renamed it to \code{residual} and
@@ -633,10 +629,9 @@ for INLA's own default; the plan a fit ran with is in
 separate R process started through callr, which is in Suggests; without
 callr the request refuses with
 \code{isolation_requires_callr} before anything is fitted. The option applies
-to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()}, \code{proceed()} and each fold of
-\code{\link[=fb_select]{fb_select()}}. The default, \code{"none"}, fits in this session, and runs
-concurrent fold workers of \code{\link[=fb_select]{fb_select()}} in separate processes; \code{"fork"}
-forks those workers instead.
+to \code{flexybayes()}, \code{fb_brms()}, \code{fb_inla()} and \code{proceed()}, and
+\code{\link[=fb_isolated_lapply]{fb_isolated_lapply()}} runs any loop of calls the same way. The default,
+\code{"none"}, fits in this session.
 
 If the operating system kills that process, or compiled code crashes inside
 it, the call refuses with \code{isolated_process_died}, naming the engine, the
@@ -655,8 +650,7 @@ numbers for two identical calls in one session, and an isolated INLA fit
 agrees with an in-process one as closely as two in-process fits agree.
 The separate process starts with an empty global environment, so the
 formula finds its variables in \code{data}. Starting the process and
-moving the data and the fit costs time on every call; see \code{\link[=fb_select]{fb_select()}}
-for the measured figures.
+moving the data and the fit costs time on every call.
 }
 
 \section{Deprecated}{

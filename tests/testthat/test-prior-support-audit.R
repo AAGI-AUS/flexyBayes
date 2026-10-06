@@ -336,8 +336,9 @@ test_that("every INLA fit an entry point returns has been through the audit", {
   refit <- stats::update(per_row, random = ~ g + h)
   d_fold <- d
   d_fold$y[seq(1L, nrow(d), by = 4L)] <- NA
-  fold <- .fb_sel_bayes_refit(
-    per_row, d_fold, y ~ x, "inla", na_action = "augment"
+  fold <- fb_refit(
+    per_row, data = d_fold, fixed = y ~ x, backend = "inla",
+    na_action = "augment", verbose = FALSE
   )
 
   fits <- list(
