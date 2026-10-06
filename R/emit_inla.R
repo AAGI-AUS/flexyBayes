@@ -1743,6 +1743,7 @@ emit_inla <- function(
   # variance-component table is built, because it is read off that table.
   .fb_warn_spatial_field_collapsed(out)
   .fb_warn_boundary_collapse(out)
+  .fb_warn_weak_identification(out)
 
   out
 }
@@ -3202,6 +3203,9 @@ emit_inla <- function(
   # the five column names are a broom contract. The boundary-collapse
   # display flag in summary() reads them.
   attr(out, "posterior_median") <- medians
+  # The share of each prior inside the 95% interval
+  # (R/weak_identification.R).
+  attr(out, "prior_share") <- .fb_inla_prior_share(object, mapper$map)
   out
 }
 
