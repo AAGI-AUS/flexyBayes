@@ -1,4 +1,4 @@
-# flexyBayes (development version)
+# flexyBayes 0.15.0.9000 (development version)
 
 ## Fixes to INLA results
 
