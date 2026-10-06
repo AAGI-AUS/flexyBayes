@@ -72,7 +72,8 @@ fires \code{predict()}.}
 detected from \code{formula} / \code{random} / \code{residual} exactly as
 \code{flexybayes()} does), \code{"asreml"}, or \code{"brms"}.}
 
-\item{...}{Currently unused, reserved for future plan inputs.}
+\item{...}{Not used. Any argument \code{fb_plan()} does not take,
+such as a misspelt name, is refused with \code{plan_argument_unknown}.}
 }
 \value{
 An \verb{<fb_plan>} classed list. See \code{print.fb_plan()} for the

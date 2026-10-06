@@ -108,6 +108,12 @@
   of the residual standard deviation, so the result no longer depends on the
   covariate's units.
 
+## Other fixes
+
+* `fb_plan()` refuses an argument it does not take with
+  `plan_argument_unknown`; a misspelt name used to fall into its unused `...`
+  and the plan was made for a different model.
+
 # flexyBayes 0.15.0
 
 A feature release for two-stage analyses of a series of trials and for

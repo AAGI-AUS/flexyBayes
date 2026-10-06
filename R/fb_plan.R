@@ -91,7 +91,8 @@
 #' @param syntax      Grammar override, one of `"auto"` (default,
 #'   detected from `formula` / `random` / `residual` exactly as
 #'   `flexybayes()` does), `"asreml"`, or `"brms"`.
-#' @param ...         Currently unused, reserved for future plan inputs.
+#' @param ...         Not used. Any argument `fb_plan()` does not take,
+#'   such as a misspelt name, is refused with `plan_argument_unknown`.
 #'
 #' @returns An `<fb_plan>` classed list. See `print.fb_plan()` for the
 #'   one-screen surface, `summary.fb_plan()` for the verbose dump, and
@@ -132,6 +133,7 @@ fb_plan <- function(
   syntax = c("auto", "asreml", "brms"),
   ...
 ) {
+  .check_plan_dots(match.call(expand.dots = FALSE)[["..."]])
   .check_approximate_scheme(backend)
   .check_known_backend_name(backend, allowed = c("auto", "inla", "brms"))
   backend <- match.arg(backend)
@@ -501,6 +503,56 @@ fb_plan <- function(
 # ---------------------------------------------------------------- #
 # Helpers                                                            #
 # ---------------------------------------------------------------- #
+
+# .check_plan_dots() --- refuses whatever reached fb_plan()'s `...`, the
+# unevaluated list match.call(expand.dots = FALSE) holds there.
+.check_plan_dots <- function(dots) {
+  if (length(dots) == 0L) {
+    return(invisible(NULL))
+  }
+  nms <- names(dots) %||% rep("", length(dots))
+  named <- nms[nzchar(nms)]
+  n_unnamed <- sum(!nzchar(nms))
+  what <- c(
+    if (length(named)) {
+      paste0(
+        if (length(named) > 1L) "arguments " else "an argument named ",
+        paste0("`", named, "`", collapse = ", ")
+      )
+    },
+    if (n_unnamed > 0L) {
+      paste0(n_unnamed, " unnamed argument", if (n_unnamed > 1L) "s", " too many")
+    }
+  )
+  stop(.fb_refusal_condition(
+    reason_code = "plan_argument_unknown",
+    message = paste0(
+      "fb_plan() was given ", paste(what, collapse = " and "), ", which it ",
+      "does not take, so the plan would not describe the model as written. ",
+      "Its arguments are ",
+      paste0("`", setdiff(names(formals(fb_plan)), "..."), "`", collapse = ", "),
+      "."
+    ),
+    arguments = named
+  ))
+}
+
+
+.populate_refusal_registry_plan_arguments <- function() {
+  .register_refusal(
+    reason_code = "plan_argument_unknown",
+    description = paste0(
+      "fb_plan() was given an argument it does not take, such as a misspelt ",
+      "name, which would otherwise be dropped and the plan made for a ",
+      "different model."
+    ),
+    message_template = "fb_plan() was given %s, which it does not take.",
+    registered_in_adr = "DEF-196",
+    plan_field = NA_character_,
+    since_version = "0.15.0.9001"
+  )
+}
+
 
 # .cov_validation_policy() --- maps the flexyBayes.trust_pd option +
 # the known-matrices argument into one of three policy values shown
