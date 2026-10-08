@@ -85,6 +85,8 @@
     "one-to-many: one likelihood per section",
   "Sectioned residual, ASReml 3 spelling" =
     "one-to-many: one likelihood per section",
+  "Per-trial genotype and residual variances" =
+    "one-to-many: one field and one likelihood per trial",
   "Unstructured covariance over a factor, on brms" =
     "one-to-one: one standard-deviation row for the group",
   "Unstructured covariance over a factor, on INLA" = "refused",
@@ -109,6 +111,10 @@
   "Penalised spline" = "one-to-one: smooth() on the random walk's precision",
   "Gaussian relative weights" = "one-to-one: the residual prior is unchanged",
   "Missing response retained as a prediction target" =
+    "one-to-one: the priors are unchanged",
+  "Prediction over a random classify factor" =
+    "one-to-one: the priors are unchanged",
+  "Prediction at a level the fit did not see" =
     "one-to-one: the priors are unchanged",
   "Heterogeneous variance with one common correlation" = "refused",
   "Tensor-product and multivariate smooths" = "refused",
@@ -221,6 +227,30 @@
       ),
       oracle = "Shares the dsum() route and its evidence",
       anchor = "test-sectioned-residual-inla.R"
+    ),
+    list(
+      structure = "Per-trial genotype and residual variances",
+      spelling = paste(
+        "`random = ~ diag(trial):g`,",
+        "`residual = ~ dsum(~ units | trial)`"
+      ),
+      vintage = "ASReml 4",
+      engine = "inla, brms",
+      class = "covariance-family",
+      condition = paste(
+        "Past 15 variance parameters INLA fits the model by empirical Bayes",
+        "(int.strategy = \"eb\"): the fixed and random effects are",
+        "conditional on the posterior mode of the variance parameters, and",
+        "each variance keeps its own posterior. Other models past 15 refuse",
+        "with hyperparam_budget."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor on 12 simulated trials, 26 variance",
+        "parameters (data-raw/model_c_reference.R): every per-trial variance",
+        "ASReml identifies within 0.17 of its ASReml standard error on INLA",
+        "and 0.28 on brms"
+      ),
+      anchor = "test-model-c-per-trial-variances.R"
     ),
     list(
       structure = "Unstructured covariance over a factor, on brms",
@@ -508,6 +538,49 @@
       oracle =
         "Large missing-plot simulation study and independent dense-V REML",
       anchor = "test-na-action-augment.R"
+    ),
+    list(
+      structure = "Prediction over a random classify factor",
+      spelling = "`predict(fit, classify = \"gen\")` with `gen` random",
+      vintage = "ASReml 4",
+      engine = "inla, brms",
+      class = "exact",
+      condition = paste(
+        "ASReml's default prediction rule: the fixed part averaged over the",
+        "other fixed factors, plus the random effects of the classify terms;",
+        "other random terms are ignored. present, average, ignore, sed and",
+        "vcov refuse with classify_argument_not_supported."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor on agridat::john.alpha and 16",
+        "genotypes of agridat::besag.met (data-raw/asreml_classify_random.R):",
+        "within 0.11 SE for genotypes and 0.4 SE for genotype-by-county",
+        "cells, and within 0.006 SE with the variances held at ASReml's"
+      ),
+      anchor = "test-predict-classify-random.R"
+    ),
+    list(
+      structure = "Prediction at a level the fit did not see",
+      spelling = paste(
+        "`predict(fit, newdata, allow_new_levels = TRUE,",
+        "mean_by = ~ trial)`"
+      ),
+      vintage = "flexyBayes extension",
+      engine = "inla, brms",
+      class = "covariance-family",
+      condition = paste(
+        "A posterior predictive, with new levels drawn from their fitted",
+        "variances and the observation noise included. Random slopes,",
+        "splines, known covariances, factor-analytic and unstructured",
+        "terms, observation weights, a known variance and non-Gaussian",
+        "responses refuse by name."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor (data-raw/asreml_predict_new_level.R):",
+        "at ASReml's REML variances the variance of a trial, cell or",
+        "locality mean agrees with ASReml's plug-in value to 2e-15"
+      ),
+      anchor = "test-predict-new-levels-asreml.R"
     ),
     list(
       structure = "Heterogeneous variance with one common correlation",
