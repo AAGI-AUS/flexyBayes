@@ -30,7 +30,7 @@
 }
 
 .gs_refuse <- function(..., backend = "brms") {
-  options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   args <- list(..., backend = backend, verbose = FALSE)
   if (identical(backend, "brms")) {
     args <- c(
@@ -86,7 +86,7 @@ test_that("the named ASReml surfaces do fit -- the refusal is not a dead end", {
   # both surfaces the messages above name are exercised here.
   skip_if_not_installed("brms")
   skip_if_not_long_tier()
-  options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
   for (rnd in list(~ us(trt):g, ~ diag(trt):g)) {
     fit <- suppressWarnings(suppressMessages(flexybayes(
@@ -121,7 +121,7 @@ test_that("the supported bar forms are untouched by the factor-slope branch", {
   skip_on_cran()
   skip_if_not_installed("brms")
   skip_if_not_long_tier()
-  options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
   for (form in list(y ~ x + (1 | g), y ~ x + (x || g), y ~ x + (1 + x || g))) {
     fit <- suppressWarnings(suppressMessages(flexybayes(
@@ -220,7 +220,7 @@ test_that("a spline on a variable that is also fixed refuses typed on INLA", {
 
 test_that("the same spline without the duplicate fixed term still fits", {
   skip_if_not_installed("INLA")
-  options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
   fit <- suppressMessages(flexybayes(
     y ~ 1,
@@ -253,7 +253,7 @@ test_that("the earlier fixed-and-random guard still owns the factor case", {
 
 test_that("an ordinary random intercept is not caught by the duplicate-key guard", {
   skip_if_not_installed("INLA")
-  options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   d <- .gs_data()
   fit <- suppressMessages(flexybayes(
     y ~ x,
