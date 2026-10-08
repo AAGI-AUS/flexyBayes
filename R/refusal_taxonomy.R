@@ -1790,29 +1790,19 @@
     plan_field = "rejected_routes",
     since_version = "0.9.1"
   )
-  # emmeans builds its reference grid from the population-level design
-  # matrix, so a factor entering the model only as a random-effects
-  # grouping term is not in the grid and the call dies in a third-party
-  # package with no mention of this one. The information exists on the
-  # fit -- it is the marginal-means door that is shut, not the effects.
+  # predict(classify = ) on a random factor whose random terms the table
+  # cannot use: a structured covariance, a non-identity link, an offset, or
+  # every term with the factor naming a variable the rules leave out.
   .register_refusal(
     reason_code = "classify_random_factor_not_supported",
     description = paste0(
-      "predict(classify = ) was asked for a factor that enters the model ",
-      "only as a random-effects grouping term. Marginal means are built ",
-      "over the population-level reference grid, which such a factor is ",
-      "not part of."
+      "predict(classify = ) was asked for a factor that enters the model as ",
+      "a random term the predicted-value table cannot use."
     ),
     message_template = paste0(
-      "predict(classify = \"%1$s\") asks for marginal means of %1$s, and ",
-      "%1$s enters this model only as a random-effects grouping factor. ",
-      "The marginal-means table is built over the population-level ",
-      "reference grid, which carries the fixed part of the model only, so ",
-      "there is no %1$s to average over there. The level effects ",
-      "themselves are on the fit: coef(fit, what = \"random\") or ",
-      "ranef(fit) return the shrunk predictions for %1$s with their ",
-      "intervals. Population-level marginal means for a random factor are ",
-      "planned; they are not in this release."
+      "predict(classify = \"%1$s\") is not available: %2$s. The effects ",
+      "of %1$s with their intervals are in ranef(fit) and ",
+      "coef(fit, what = \"random\")."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = NA_character_,

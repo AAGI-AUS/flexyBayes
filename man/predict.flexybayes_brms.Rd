@@ -38,11 +38,14 @@ all random effects, \code{NA} excludes them (population-level).}
 draws to a numeric vector; if \code{FALSE}, return the
 \verb{draws x rows} posterior matrix.}
 
-\item{classify}{The factors to break a marginal-means table down by:
+\item{classify}{The factors to break a predicted-value table down by:
 a character value (\code{"Variety"}, \code{"Variety:env"}) or a one-sided
-formula (\code{~ Variety}). \code{NULL} (the default) is the historical
-behaviour. See \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}} for how the two active
-engines' prediction paths differ.}
+formula (\code{~ Variety}). The factors may be fixed or random, and the
+table follows ASReml's default rules, described under
+\code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}. On this engine the values come from the
+posterior draws; a level combination the data never held is drawn
+from its fitted normal distribution. \code{NULL} (the default) is the
+historical behaviour.}
 
 \item{level}{Credible level for the classify table's interval, as a
 proportion. Default \code{0.95}.}

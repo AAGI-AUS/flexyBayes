@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=165
+      .refusal_registry: locked=TRUE n_keys=166
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -128,6 +128,7 @@
         chol_not_in_known_matrices
         chol_not_square
         chol_not_triangular
+        classify_argument_not_supported
         classify_random_factor_not_supported
         classify_requires_emmeans
         code_flags_mutually_exclusive

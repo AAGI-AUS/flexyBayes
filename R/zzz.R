@@ -160,6 +160,10 @@
   # 0.16.0: an argument fb_plan() does not take.
   .populate_refusal_registry_plan_arguments()
 
+  # 0.16.0: an argument of ASReml's predict() that predict(classify = )
+  # does not implement.
+  .populate_refusal_registry_classify_random()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

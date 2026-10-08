@@ -420,56 +420,51 @@ test_that("the refusal code is registered in the taxonomy", {
 
 
 # ---------------------------------------------------------------- #
-# 8. A random-effects grouping factor has no marginal mean here     #
+# 8. A random-effects grouping factor is predicted, as in ASReml    #
 # ---------------------------------------------------------------- #
 #
 # `predict(fit, classify = "Geno")` on a multi-environment trial is the
-# first thing a breeder asks of a fitted model, and ASReml serves it.
-# emmeans builds its reference grid from the population-level design, so a
-# factor entering only as a grouping term is not in it and the call died
-# inside emmeans with "No variable named Geno in the reference grid" -- a
-# third-party message with no reason code, no mention of this package, and
-# no route onward. The level effects are on the fit the whole time.
+# first thing a breeder asks of a fitted model. Up to 0.15.0 it refused by
+# name. It now returns the fixed part plus each level's random effect;
+# the ASReml comparison is in test-predict-classify-random.R.
 
-test_that("classify on a random-only factor refuses by name, both engines", {
+test_that("classify on a random-only factor returns its levels, both engines", {
   skip_on_cran()
   skip_on_ci()
   .pc_silence()
 
   if (requireNamespace("INLA", quietly = TRUE)) {
-    expect_error(
-      predict(.pc_inla_fit(), classify = "blk"),
-      class = "flexybayes_refusal_classify_random_factor_not_supported"
-    )
+    tab <- predict(.pc_inla_fit(), classify = "blk")
+    expect_s3_class(tab, "fb_predict_classify")
+    expect_identical(as.character(tab$blk), letters[1:5])
+    expect_identical(attr(tab, "random"), "blk")
   }
   if (requireNamespace("brms", quietly = TRUE)) {
-    expect_error(
-      predict(.pc_brms_fit(), classify = "blk"),
-      class = "flexybayes_refusal_classify_random_factor_not_supported"
-    )
+    tab <- predict(.pc_brms_fit(), classify = "blk")
+    expect_s3_class(tab, "fb_predict_classify")
+    expect_identical(nrow(tab), 5L)
   }
 })
 
-test_that("the refusal names the factor and the accessors that answer", {
+test_that("each block's prediction is the fixed mean plus its effect", {
   skip_if_not_installed("INLA")
+  skip_if_not_installed("emmeans")
   skip_on_cran()
   skip_on_ci()
   .pc_silence()
+  fit <- .pc_inla_fit()
 
-  cnd <- tryCatch(
-    predict(.pc_inla_fit(), classify = "blk"),
-    error = function(e) e
+  tab <- predict(fit, classify = "blk")
+  # The fixed part averaged over variety and env, which is what emmeans
+  # returns for the grand mean.
+  cells <- suppressMessages(predict(fit, classify = "variety:env"))
+  grand <- mean(cells$estimate)
+  re <- ranef(fit)$blk
+  expect_equal(
+    tab$estimate,
+    grand + re$estimate[match(as.character(tab$blk), re$level)],
+    tolerance = 1e-3
   )
-  expect_identical(cnd$reason_code, "classify_random_factor_not_supported")
-  expect_identical(cnd$factor, "blk")
-
-  msg <- conditionMessage(cnd)
-  expect_match(msg, "blk", fixed = TRUE)
-  expect_match(msg, "random-effects grouping factor", fixed = TRUE)
-  expect_match(msg, "reference grid", fixed = TRUE)
-  expect_match(msg, "coef(fit, what = \"random\")", fixed = TRUE)
-  expect_match(msg, "ranef(fit)", fixed = TRUE)
-  expect_match(msg, "are planned", fixed = TRUE)
 })
 
 test_that("the named accessors do answer for that factor", {

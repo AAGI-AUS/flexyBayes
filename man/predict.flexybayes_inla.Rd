@@ -28,15 +28,16 @@ refuses with \code{newdata_offset_missing} rather than being taken as zero.}
 \item{se.fit}{Logical: also return delta-method standard errors from
 the fixed-effect covariance.}
 
-\item{classify}{The factors to break a marginal-means table down by:
+\item{classify}{The factors to break a predicted-value table down by:
 a character value (\code{"Variety"}, \code{"Variety:env"}) or a one-sided
-formula (\code{~ Variety}). \code{NULL} (the default) is the historical
-behaviour.}
+formula (\code{~ Variety}). The factors may be fixed or random. \code{NULL}
+(the default) is the historical behaviour.}
 
 \item{level}{Credible level for the classify table's interval, as a
 proportion. Default \code{0.95}.}
 
-\item{...}{Ignored. Present for compatibility with the generic.
+\item{...}{Ignored, except that an argument of ASReml's \code{predict()}
+given with \code{classify} is refused by name.
 On a fit with \code{fixed_alias = "drop"}, a row that is not a linear
 combination of the rows the model was fitted to has no estimable
 prediction: it is returned as \code{NA}, and the \code{status} attribute (a
@@ -57,9 +58,20 @@ coincide. This is the prediction surface \pkg{marginaleffects} uses
 for average predictions and slopes.
 }
 \details{
-The \code{classify} path builds a marginal-means table through the emmeans
-seam (the same construction \code{\link[=predict.flexybayes_brms]{predict.flexybayes_brms()}} uses), whose
-interval on this engine comes from the Gaussian approximation of the
-joint fixed-effect posterior rather than from INLA's own marginals.
-The printed table names that.
+With \code{gen} random, \code{classify = "gen"} returns each genotype's fixed part
+plus its random effect, and on a multi-environment fit with \code{gen:env}
+random it also adds that genotype's \code{gen:env} effects averaged over
+environments. This matches ASReml's default \code{predict()}: equal-weight
+averaging over the fixed-term variables not in \code{classify}, a covariate
+held at its mean, variables that appear only in random terms ignored, and
+every random term whose variables are all in \code{classify} or averaged over
+included. The intervals integrate over INLA's hyperparameter
+configurations, so they include the uncertainty in the variance
+components. A table with no random term is computed by emmeans, with
+intervals from the Gaussian approximation of the fixed-effect
+posterior. The arguments of
+ASReml's \code{predict()} that change these rules (\code{present}, \code{average},
+\code{ignore}, \code{use}, \code{except}, \code{only}, \code{associate}, \code{levels}, \code{vcov}, \code{sed},
+\code{parallel}, \code{aliased}, \code{design.points}) are refused with
+\code{classify_argument_not_supported}.
 }
