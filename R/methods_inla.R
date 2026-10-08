@@ -553,9 +553,49 @@ logLik.flexybayes_inla <- function(object, ...) {
 #'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
 #'   formula (`~ Variety`). `NULL` (the default) is the historical
 #'   behaviour.
-#' @param level Credible level for the classify table's interval, as a
-#'   proportion. Default `0.95`.
+#' @param level Credible level for the classify table's interval, or for the
+#'   predictive interval with `allow_new_levels = TRUE`, as a proportion.
+#'   Default `0.95`.
+#' @param allow_new_levels Logical. `FALSE` (the default) is the
+#'   population-level prediction above. `TRUE` returns the posterior
+#'   predictive of the rows of `newdata` (see Details), in which every random
+#'   effect enters: a level the fit saw at its posterior draw, and a level it
+#'   did not see drawn from its fitted variance component.
+#' @param mean_by With `allow_new_levels = TRUE`, the columns of `newdata`
+#'   whose combinations define the sets of rows to average: a character
+#'   vector or a one-sided formula. `mean_by = ~ TRIAL` predicts each trial
+#'   mean, `~ TRIAL + VARIETY + NRATE` each cell mean. `NULL` (the default)
+#'   predicts each row.
+#' @param n_draws With `allow_new_levels = TRUE`, the number of posterior
+#'   draws. Default `1000`.
 #' @param ... Ignored. Present for compatibility with the generic.
+#'
+#' @details
+#' With `allow_new_levels = TRUE`, the prediction for a set of rows is the
+#' mean response over them, observation noise included, as an observed trial
+#' or cell mean at a new locality would be. Given one posterior draw it is
+#' normal, with mean `x'beta` averaged over the rows plus the mean of the
+#' effects at levels the fit saw, and variance the sum over random terms of
+#' `sigma^2 * sum_l (n_l / n)^2` over the unseen levels `l` (`n_l` of the `n`
+#' rows at level `l`), plus `sigma_field^2` times the mean AR1 x AR1
+#' correlation over pairs of rows in a trial the fit did not see, plus the
+#' residual variance over `n`. The prediction is the mixture of these normals
+#' over the draws: `estimate` and `sd` are its exact mean and standard
+#' deviation, and `lower` and `upper` its quantiles. The fixed effects and the
+#' seen effects are drawn jointly from INLA's approximation, and the variances
+#' from their continuous joint posterior (as [fb_variance_draws()] draws
+#' them). Every random number comes from R's generator, so `set.seed()` before
+#' the call makes the result repeatable.
+#'
+#' The new-level draw is built for random intercepts, interactions
+#' (`TRIAL:REP`), `diag(f):g` and `id(trial):ar1(row):ar1(col)`, over an
+#' independent residual or `dsum(~ units | f)`, for a Gaussian response on the
+#' identity link. Any other structure is refused with
+#' `predict_new_levels_structure_not_supported`, a new level with no fitted
+#' variance (a new level of `f` in `diag(f):g`, a new residual section, a row
+#' or column off the fitted lattice) with `predict_new_levels_no_variance`,
+#' and another family with `predict_new_levels_family_not_supported`.
+#'
 #' On a fit with `fixed_alias = "drop"`, a row that is not a linear
 #' combination of the rows the model was fitted to has no estimable
 #' prediction: it is returned as `NA`, and the `status` attribute (a
@@ -564,8 +604,13 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' asreml's `predict()`.
 #'
 #' @return With `classify`, a data frame of class `fb_predict_classify`.
-#'   Otherwise a numeric vector of predictions, or a list `fit` /
-#'   `se.fit` when `se.fit = TRUE`.
+#'   With `allow_new_levels = TRUE`, a data frame of class `fb_predict_new`:
+#'   one row per set, holding the `mean_by` columns (or `row`), `n_rows`,
+#'   `estimate`, `sd`, `lower` and `upper` (and `status` on a fit with
+#'   `fixed_alias = "drop"`, where a set holding a row the fit does not
+#'   estimate is `NA`), with the joint predictive draws, draws by sets, in
+#'   `attr(, "draws")`. Otherwise a numeric vector of predictions, or a list
+#'   `fit` / `se.fit` when `se.fit = TRUE`.
 #' @export
 predict.flexybayes_inla <- function(
   object,
@@ -574,9 +619,16 @@ predict.flexybayes_inla <- function(
   se.fit = FALSE,
   classify = NULL,
   level = 0.95,
+  allow_new_levels = FALSE,
+  mean_by = NULL,
+  n_draws = 1000L,
   ...
 ) {
   type <- match.arg(type)
+  .fb_predict_new_route(allow_new_levels, mean_by, classify, type, se.fit)
+  if (isTRUE(allow_new_levels)) {
+    return(.fb_predict_new_inla(object, newdata, mean_by, n_draws, level))
+  }
   if (!is.null(classify)) {
     .fb_classify_newdata_note(newdata)
     return(.fb_predict_classify(object, classify, level))

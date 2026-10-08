@@ -2098,12 +2098,29 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #'   formula (`~ Variety`). `NULL` (the default) is the historical
 #'   behaviour. See [predict.flexybayes_inla()] for how the two active
 #'   engines' prediction paths differ.
-#' @param level Credible level for the classify table's interval, as a
-#'   proportion. Default `0.95`.
+#' @param level Credible level for the classify table's interval, or for the
+#'   predictive interval with `allow_new_levels = TRUE`, as a proportion.
+#'   Default `0.95`.
+#' @param allow_new_levels Logical. `TRUE` returns the posterior predictive of
+#'   the rows of `newdata`, observation noise included, in which a level the
+#'   fit did not see is drawn from its fitted standard deviation:
+#'   `brms::posterior_predict(allow_new_levels = TRUE, sample_new_levels =
+#'   "gaussian")`. The table matches the INLA method's; see
+#'   [predict.flexybayes_inla()] for the structures it is built for and the
+#'   refusals. Its `estimate`, `sd`, `lower` and `upper` are the mean,
+#'   standard deviation and quantiles of the draws. `FALSE` (the default)
+#'   leaves the paths above unchanged.
+#' @param mean_by With `allow_new_levels = TRUE`, the columns of `newdata`
+#'   whose combinations define the sets of rows to average, as a character
+#'   vector or a one-sided formula (`~ TRIAL`). `NULL` predicts each row.
+#' @param n_draws With `allow_new_levels = TRUE`, the number of posterior
+#'   draws used, at most the number the fit holds. Default `1000`.
 #' @param ... Forwarded to `brms::posterior_epred()` /
 #'   `brms::posterior_linpred()`.
-#' @returns One of four shapes, by argument. With `classify` set, the
-#'   marginal-means table for those factors. Otherwise with
+#' @returns One of five shapes, by argument. With `classify` set, the
+#'   marginal-means table for those factors. With `allow_new_levels = TRUE`,
+#'   the `fb_predict_new` table described in [predict.flexybayes_inla()].
+#'   Otherwise with
 #'   `summary = FALSE`, the `draws x rows` posterior matrix; with
 #'   `se.fit = TRUE`, a list of `fit` (posterior mean per row) and
 #'   `se.fit` (posterior SD per row); and by default a numeric vector of
@@ -2118,9 +2135,18 @@ predict.flexybayes_brms <- function(
   summary = TRUE,
   classify = NULL,
   level = 0.95,
+  allow_new_levels = FALSE,
+  mean_by = NULL,
+  n_draws = 1000L,
   ...
 ) {
   type <- match.arg(type)
+  .fb_predict_new_route(
+    allow_new_levels, mean_by, classify, type, se.fit, re_formula, summary
+  )
+  if (isTRUE(allow_new_levels)) {
+    return(.fb_predict_new_brms(object, newdata, mean_by, n_draws, level))
+  }
   if (!is.null(classify)) {
     .fb_classify_newdata_note(newdata)
     return(.fb_predict_classify(object, classify, level))
