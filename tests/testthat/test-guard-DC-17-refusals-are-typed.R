@@ -73,28 +73,7 @@
 }
 
 # Case and route pairs that stop untyped today, with their register rows.
-.g17_open <- c(
-  "missing_column inla" = "DEF-212",
-  "missing_column brms_code" = "DEF-212",
-  "missing_column aggregate" = "DEF-212",
-  "missing_random_column inla" = "DEF-212",
-  "missing_random_column brms_code" = "DEF-212",
-  "missing_random_column aggregate" = "DEF-216",
-  "bad_aggregate inla" = "DEF-213",
-  "bad_aggregate brms_code" = "DEF-213",
-  "bad_aggregate aggregate" = "DEF-213",
-  "bad_aggregate plan" = "DEF-213",
-  "weights_wrong_length inla" = "DEF-214",
-  "weights_wrong_length brms_code" = "DEF-214",
-  "weights_wrong_length aggregate" = "DEF-214",
-  "weights_wrong_length plan" = "DEF-214",
-  "bad_prior inla" = "DEF-215",
-  "bad_prior brms_code" = "DEF-215",
-  "bad_prior aggregate" = "DEF-216",
-  "factor_slope_bar stream" = "DEF-216",
-  "fa_term stream" = "DEF-216",
-  "data_not_frame stream" = "DEF-217"
-)
+.g17_open <- stats::setNames(character(0), character(0))
 
 test_that("DC-17 guard: every route refuses an unfittable model with a typed refusal", {
   skip_on_cran()
@@ -107,7 +86,7 @@ test_that("DC-17 guard: every route refuses an unfittable model with a typed ref
   )
   d <- .g17_data()
   routes <- .g17_routes(d)
-  untyped <- character(0)
+  untyped <- stats::setNames(character(0), character(0))
   refused <- 0L
   for (nm in names(.g17_corpus)) {
     for (r in names(routes)) {

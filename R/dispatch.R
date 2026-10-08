@@ -1609,11 +1609,7 @@
   if (is.character(x) && length(x) == 1L && identical(x, "auto")) {
     return("auto")
   }
-  stop(
-    "`aggregate` must be TRUE, FALSE, or \"auto\"; got: ",
-    paste(deparse(x), collapse = " "),
-    call. = FALSE
-  )
+  .fb_refuse_aggregate_argument(x)
 }
 
 
@@ -1805,20 +1801,18 @@
       # a few lines below, so a caller pattern-matching on
       # `flexybayes_aggregate_refusal` catches every aggregated-route
       # refusal rather than only some of them.
-      cond <- structure(
-        class = c("flexybayes_aggregate_refusal", "error", "condition"),
-        list(
-          message = paste0(
-            "`aggregate = TRUE` refused: flexyBayes's aggregated route has ",
-            "no sectioned residual. Pass aggregate = FALSE to fit the model ",
-            "row by row."
-          ),
-          call = the_call,
-          reason_codes = "structured_residual_not_aggregatable",
-          plan = NULL
-        )
-      )
-      stop(cond)
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_plan_ineligible",
+        message = paste0(
+          "`aggregate = TRUE` refused: flexyBayes's aggregated route has ",
+          "no sectioned residual. Pass aggregate = FALSE to fit the model ",
+          "row by row."
+        ),
+        family_class = "flexybayes_aggregate_refusal",
+        call = the_call,
+        reason_codes = "structured_residual_not_aggregatable",
+        plan = NULL
+      ))
     }
     return(NULL)
   }
@@ -1872,22 +1866,20 @@
           family_class = "flexybayes_aggregate_refusal"
         ))
       }
-      cond <- structure(
-        class = c("flexybayes_aggregate_refusal", "error", "condition"),
-        list(
-          message = paste0(
-            "`aggregate = TRUE` refused by .fb_aggregation_plan(): ",
-            paste(plan$reason_codes, collapse = ", "),
-            ".",
-            .agg_refusal_note(plan$reason_codes),
-            " Pass aggregate = FALSE for the per-row path."
-          ),
-          call = the_call,
-          reason_codes = plan$reason_codes,
-          plan = plan
-        )
-      )
-      stop(cond)
+      stop(.fb_refusal_condition(
+        reason_code = "aggregation_plan_ineligible",
+        message = paste0(
+          "`aggregate = TRUE` refused by .fb_aggregation_plan(): ",
+          paste(plan$reason_codes, collapse = ", "),
+          ".",
+          .agg_refusal_note(plan$reason_codes),
+          " Pass aggregate = FALSE for the per-row path."
+        ),
+        family_class = "flexybayes_aggregate_refusal",
+        call = the_call,
+        reason_codes = plan$reason_codes,
+        plan = plan
+      ))
     }
     return(NULL)
   }

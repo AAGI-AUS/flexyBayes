@@ -287,16 +287,15 @@
     "(no compression); this condition is informational, not an error ",
     "in the per-row path."
   )
-  cond <- structure(
-    class = c("flexybayes_aggregate_out_of_scope", "error", "condition"),
-    list(
-      message = msg,
-      call = NULL,
-      reason_code = reason_code,
-      detail = detail
-    )
-  )
-  stop(cond)
+  # The gate's reasons are routing facts, not registered codes; the
+  # registered code is the scope refusal itself.
+  stop(.fb_refusal_condition(
+    reason_code = "aggregation_out_of_scope",
+    message = msg,
+    family_class = "flexybayes_aggregate_out_of_scope",
+    scope_reason = reason_code,
+    detail = detail
+  ))
 }
 
 

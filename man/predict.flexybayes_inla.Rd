@@ -15,6 +15,8 @@
   allow_new_levels = FALSE,
   mean_by = NULL,
   n_draws = 1000L,
+  re_formula = NA,
+  summary = TRUE,
   ...
 )
 
@@ -57,6 +59,15 @@ predicts each row.}
 
 \item{n_draws}{With \code{allow_new_levels = TRUE}, the number of posterior
 draws. Default \code{1000}.}
+
+\item{re_formula}{\code{NA} (the default): the prediction is population-level,
+the fixed part of the model, as \code{re_formula = NA} gives on a brms fit.
+Any other value refuses with \code{method_argument_not_supported}; \code{\link[=fitted]{fitted()}}
+returns the predictions at the fitted levels of the random effects.}
+
+\item{summary}{\code{TRUE} (the default): the prediction is the posterior
+mean. \code{FALSE} refuses with \code{method_argument_not_supported};
+\code{\link[=fb_as_draws_simple]{fb_as_draws_simple()}} returns the posterior draws.}
 
 \item{...}{Ignored, except that an argument of ASReml's \code{predict()}
 given with \code{classify} is refused by name.}

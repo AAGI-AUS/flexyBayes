@@ -27,6 +27,8 @@
 #' @param fit A model fit object carrying a posterior, dispatched on by
 #'   the methods listed above.
 #' @param ... Method-specific arguments: `n_samples` for the INLA method.
+#'   The brms method returns every stored draw and refuses `n_samples` with
+#'   `method_argument_not_supported`.
 #' @returns A named list of numeric vectors, one element per parameter,
 #'   each element holding that parameter's posterior draws.
 #' @examples
@@ -72,6 +74,16 @@ fb_as_draws_simple.flexybayes_inla <- function(fit, n_samples = 1000L, ...) {
 #' @keywords internal
 #' @export
 fb_as_draws_simple.flexybayes_brms <- function(fit, ...) {
+  if ("n_samples" %in% names(list(...))) {
+    .fb_refuse_method_argument(
+      "fb_as_draws_simple() on a brms fit",
+      "n_samples",
+      paste0(
+        "it returns every draw the sampler stored; the fit's `n_samples` ",
+        "and `chains` set how many there are."
+      )
+    )
+  }
   .check_installed(
     "posterior",
     "Package 'posterior' is required to extract draws from a ",

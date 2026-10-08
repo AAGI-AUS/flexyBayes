@@ -624,7 +624,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("predict_new_levels_no_variance" %in% entries)
   expect_true("predict_new_levels_family_not_supported" %in% entries)
   expect_true("classify_argument_not_supported" %in% entries)
-  expect_equal(length(entries), 169L)
+  expect_true("model_variable_not_in_data" %in% entries)
+  expect_true("aggregation_plan_ineligible" %in% entries)
+  expect_true("method_argument_not_supported" %in% entries)
+  expect_equal(length(entries), 178L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
@@ -636,8 +639,12 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # level and a family the new-level draw is not built for (= 168), and
   # classify_argument_not_supported, an argument of ASReml's predict() that
   # predict(classify = ) does not implement (= 169).
+  # Nine codes for inputs the entry routes stopped on untyped, a factor
+  # response, an argument a sibling method takes, and the aggregated
+  # routes' refusals, aggregation_plan_ineligible and
+  # aggregation_out_of_scope (= 178).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 169L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 178L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

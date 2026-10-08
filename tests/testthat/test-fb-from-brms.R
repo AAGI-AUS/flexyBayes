@@ -216,6 +216,6 @@ test_that("fb_from_brms() rejects response not in data", {
   d <- mk_brms_data()
   expect_error(
     flexyBayes:::fb_from_brms(missing_y ~ x, data = d),
-    "Response variable 'missing_y' not found"
+    class = "flexybayes_refusal_response_not_in_data"
   )
 })

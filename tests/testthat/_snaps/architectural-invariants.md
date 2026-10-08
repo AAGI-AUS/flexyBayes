@@ -92,8 +92,11 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=169
+      .refusal_registry: locked=TRUE n_keys=178
+        aggregate_argument_invalid
         aggregated_evidence_unavailable
+        aggregation_out_of_scope
+        aggregation_plan_ineligible
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
         aggregation_route_unavailable
@@ -189,9 +192,11 @@
         marginal_cov_not_buildable
         marginaleffects_link_not_supported
         met_summary_not_available
+        method_argument_not_supported
         missing_covariate_not_supported
         missing_response_refused
         model_matrix_not_recoverable
+        model_variable_not_in_data
         multivariate_smooth_unsupported
         nested_index_name_collision
         nested_variable_not_in_data
@@ -216,6 +221,7 @@
         prior_family_has_no_residual_scale
         prior_hyperparameter_not_scalar
         prior_hyperparameter_out_of_domain
+        prior_not_fb_prior
         prior_not_translatable_for_backend
         prior_spec_empty
         prior_spec_not_formula
@@ -232,6 +238,7 @@
         residual_type_unsupported_for_aggregation
         response_not_finite
         response_not_in_data
+        response_not_numeric
         review_code_backend_unsupported
         row_count_exceeds_integer
         selection_removed
@@ -244,6 +251,7 @@
         str_not_representable
         stream_model_column_not_in_source
         stream_response_must_be_a_column
+        stream_source_invalid
         stream_source_no_rows
         streamed_rows_not_retained
         tensor_smooth_unsupported
@@ -259,6 +267,7 @@
         vpredict_component_not_in_posterior
         vpredict_functional_not_one_value_per_draw
         vpredict_no_functional
+        weights_invalid
         weights_not_aggregatable
         weights_not_supported
         weights_requires_gaussian

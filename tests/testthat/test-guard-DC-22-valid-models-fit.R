@@ -84,7 +84,7 @@
   )
 }
 
-.g22_open <- c(bar_grammar_transformed = "DEF-224")
+.g22_open <- stats::setNames(character(0), character(0))
 
 test_that("DC-22 guard: every model the peers fit, flexybayes() fits on INLA", {
   skip_on_cran()
@@ -97,7 +97,7 @@ test_that("DC-22 guard: every model the peers fit, flexybayes() fits on INLA", {
   )
   d <- .g22_data()
   corpus <- .g22_corpus(d)
-  refused <- character(0)
+  refused <- stats::setNames(character(0), character(0))
   for (nm in names(corpus)) {
     peer <- tryCatch(
       suppressWarnings(suppressMessages(eval(corpus[[nm]]$peer))),

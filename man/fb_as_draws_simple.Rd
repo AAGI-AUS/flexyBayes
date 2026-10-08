@@ -22,7 +22,9 @@ fb_as_draws_simple(fit, ...)
 \item{fit}{A model fit object carrying a posterior, dispatched on by
 the methods listed above.}
 
-\item{...}{Method-specific arguments: \code{n_samples} for the INLA method.}
+\item{...}{Method-specific arguments: \code{n_samples} for the INLA method.
+The brms method returns every stored draw and refuses \code{n_samples} with
+\code{method_argument_not_supported}.}
 }
 \value{
 A named list of numeric vectors, one element per parameter,

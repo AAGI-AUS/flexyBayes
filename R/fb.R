@@ -160,12 +160,7 @@ fb_from_asreml <- function(
 
   # weights -> addition_terms (per IR design sketch Sec.2)
   addition_terms <- if (!is.null(weights)) {
-    if (!is.numeric(weights) || length(weights) != nrow(data)) {
-      stop(
-        "`weights` must be a numeric vector of length nrow(data).",
-        call. = FALSE
-      )
-    }
+    .fb_check_weights(weights, data)
     list(list(type = "weights", values = weights))
   } else {
     list()
@@ -262,8 +257,9 @@ fb_from_asreml <- function(
   prior_vc_sd,
   syntax = "auto"
 ) {
+  .fb_check_prior_argument(prior)
   grammar <- .detect_grammar(fixed, random, residual, syntax)
-  switch(
+  fb <- switch(
     grammar,
     asreml = .fb_from_asreml_impl(
       fixed = fixed,
@@ -315,6 +311,9 @@ fb_from_asreml <- function(
       )
     }
   )
+  .fb_refuse_absent_model_variables(fb, data)
+  .fb_refuse_non_numeric_response(fb, data)
+  fb
 }
 
 # Note: the `fb` alias for `flexybayes()` is defined at the bottom

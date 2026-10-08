@@ -166,6 +166,9 @@
   # 0.16.0: an argument of ASReml's predict() that predict(classify = )
   # does not implement.
   .populate_refusal_registry_classify_random()
+  # 0.16.0: entry arguments and model variables the routes stopped on
+  # untyped, and the aggregated routes' scope reasons.
+  .populate_refusal_registry_entry_arguments()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the

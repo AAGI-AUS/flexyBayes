@@ -376,6 +376,16 @@ fb_plan <- function(
     chosen_backend <- NA_character_
     chosen_path <- "aggregation_residual_prior_not_composed"
     chosen_reason <- "aggregation_residual_prior_not_composed"
+  } else if (isTRUE(aggregate)) {
+    # Dispatch refuses aggregate = TRUE wherever the aggregated route is
+    # not taken; it never falls back to the per-row route.
+    chosen_backend <- NA_character_
+    chosen_reason <- if (isTRUE(agg$eligible)) {
+      "aggregation_route_unavailable"
+    } else {
+      "aggregation_plan_ineligible"
+    }
+    chosen_path <- chosen_reason
   } else {
     chosen_backend <- routing$chosen_backend
     chosen_path <- routing$reason_code

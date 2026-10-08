@@ -333,20 +333,20 @@ flexybayes_stream <- function(
   if (is.character(source)) {
     miss <- source[!file.exists(source)]
     if (length(miss)) {
-      stop(
-        "`source` file(s) do not exist: ",
-        paste(miss, collapse = ", "),
-        call. = FALSE
-      )
+      .fb_refuse_stream_source(paste0(
+        "`source` names ",
+        paste0("`", miss, "`", collapse = ", "),
+        ", which ", if (length(miss) == 1L) "is not an existing file" else "are not existing files",
+        "."
+      ))
     }
     is_fst <- grepl("\\.fst$", source, ignore.case = TRUE)
     if (length(source) > 1L) {
       if (!all(is_fst)) {
-        stop(
+        .fb_refuse_stream_source(paste0(
           "A multi-file `source` must be a vector of .fst shard ",
-          "paths (partitioned dataset).",
-          call. = FALSE
-        )
+          "paths (partitioned dataset)."
+        ))
       }
       return(.fb_stream_source_fst_multi(source, chunk_rows))
     }
@@ -355,12 +355,23 @@ flexybayes_stream <- function(
     }
     return(.fb_stream_source_delim(source, chunk_rows))
   }
-  stop(
-    "`source` must be an .fst path (or vector of .fst shard paths), ",
-    "a delimited-file path, a data.frame / data.table, or a ",
-    "chunk-generator function.",
-    call. = FALSE
-  )
+  .fb_refuse_stream_source(paste0(
+    "`source` is a ", class(source)[[1L]], "."
+  ))
+}
+
+# .fb_refuse_stream_source() --- a `source` the stream cannot read.
+.fb_refuse_stream_source <- function(problem) {
+  stop(.fb_refusal_condition(
+    reason_code = "stream_source_invalid",
+    message = paste0(
+      problem,
+      " flexybayes_stream() reads an .fst path (or a vector of .fst shard ",
+      "paths), a delimited-file path, a data.frame / data.table, or a ",
+      "chunk-generator function."
+    ),
+    family_class = "flexybayes_aggregate_refusal"
+  ))
 }
 
 # .fb_checked_row_count() --- an integer row count, or a refusal.
