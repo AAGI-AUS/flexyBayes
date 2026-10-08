@@ -199,7 +199,9 @@ emit_brms <- function(
     family = brms_family
   )
   if (!is.null(formula_hook)) {
-    hooked <- .fb_refit_apply_formula_hook(formula_hook, linear_form, brms_prior)
+    hooked <- .fb_refit_apply_formula_hook(
+      formula_hook, linear_form, brms_prior
+    )
     brms_form <- hooked$formula
     brms_prior <- hooked$prior
   }

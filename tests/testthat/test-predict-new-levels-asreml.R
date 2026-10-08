@@ -40,8 +40,13 @@ test_that("at ASReml's REML variances the set variance is ASReml's plug-in", {
   expect_identical(fx$stamp$asreml, "4.2.0.482")
   # One "draw" holding ASReml's variances, as standard deviations, and its
   # field correlations.
+  # The fixture keeps ASReml's RANGE and ROW correlations as rho_row and
+  # rho_col; a fit names them rho_RANGE and rho_ROW.
+  cor_reml <- fx$correlation
+  names(cor_reml)[match(c("rho_row", "rho_col"), names(cor_reml))] <-
+    c("rho_RANGE", "rho_ROW")
   at_reml <- as.data.frame(
-    as.list(c(sqrt(fx$variance), fx$correlation)),
+    as.list(c(sqrt(fx$variance), cor_reml)),
     check.names = FALSE
   )
   for (nm in names(fx$sets)) {

@@ -113,7 +113,8 @@
 #'   separate field on each trial, with its own SD and correlations, as
 #'   ASReml does: three parameters per trial, reported as
 #'   `sd_spatial__trial<level>`, `rho_row__trial<level>` and
-#'   `rho_col__trial<level>` for `ar1(row):ar1(col)`, plus the shared Gaussian nugget.
+#'   `rho_col__trial<level>` for `ar1(row):ar1(col)`, plus the shared
+#'   Gaussian nugget.
 #'   `at(trial, level):ar1(row):ar1(col)` fits the field on the named trials
 #'   only. Each trial's plots must fill its own grid. brms refuses both.
 #'

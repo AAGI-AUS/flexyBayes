@@ -119,7 +119,10 @@ fb_as_draws_simple.brmsfit <- function(fit, ...) {
     "Package 'posterior' is required to extract draws from a brmsfit."
   )
   m <- .fb_brms_draws_matrix(fit)
-  setNames(lapply(seq_len(ncol(m)), function(j) as.numeric(m[, j])), colnames(m))
+  setNames(
+    lapply(seq_len(ncol(m)), function(j) as.numeric(m[, j])),
+    colnames(m)
+  )
 }
 
 #' @rdname fb_as_draws_simple

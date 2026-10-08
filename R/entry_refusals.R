@@ -65,7 +65,11 @@
     message = paste0(
       "The model names ",
       paste0("`", absent, "`", collapse = ", "),
-      if (length(absent) == 1L) ", which is not a column" else ", which are not columns",
+      if (length(absent) == 1L) {
+        ", which is not a column"
+      } else {
+        ", which are not columns"
+      },
       " of the data. Correct the name in the formula, or add the column."
     ),
     variables = absent

@@ -1408,5 +1408,3 @@ print.lgm_refusal <- function(x, ...) {
     )
   )
 }
-
-

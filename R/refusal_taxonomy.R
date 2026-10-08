@@ -2586,7 +2586,10 @@ fb_register_refusals <- function(refusals, package = NULL) {
       x <- as.character(x)
     }
     if (!is.character(x)) {
-      stop("Column `", name, "` of `refusals` must be character.", call. = FALSE)
+      stop(
+        "Column `", name, "` of `refusals` must be character.",
+        call. = FALSE
+      )
     }
     x
   }
@@ -2598,7 +2601,10 @@ fb_register_refusals <- function(refusals, package = NULL) {
     plan_field = column("plan_field", NA_character_),
     since_version = column("since_version")
   )
-  for (name in c("reason_code", "description", "message_template", "since_version")) {
+  required <- c(
+    "reason_code", "description", "message_template", "since_version"
+  )
+  for (name in required) {
     if (any(is.na(fields[[name]]) | !nzchar(fields[[name]]))) {
       stop(
         "Column `", name, "` of `refusals` has an empty or missing value.",
@@ -2662,9 +2668,14 @@ fb_register_refusals <- function(refusals, package = NULL) {
 
   if (any(is_new)) {
     if (!exists(package, envir = .refusal_plugin_registry, inherits = FALSE)) {
-      assign(package, new.env(parent = emptyenv()), envir = .refusal_plugin_registry)
+      assign(
+        package, new.env(parent = emptyenv()),
+        envir = .refusal_plugin_registry
+      )
     }
-    partition <- get(package, envir = .refusal_plugin_registry, inherits = FALSE)
+    partition <- get(
+      package, envir = .refusal_plugin_registry, inherits = FALSE
+    )
     for (i1 in which(is_new)) {
       assign(codes[[i1]], entries[[i1]], envir = partition)
       lockBinding(codes[[i1]], partition)

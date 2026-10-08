@@ -336,7 +336,12 @@ flexybayes_stream <- function(
       .fb_refuse_stream_source(paste0(
         "`source` names ",
         paste0("`", miss, "`", collapse = ", "),
-        ", which ", if (length(miss) == 1L) "is not an existing file" else "are not existing files",
+        ", which ",
+        if (length(miss) == 1L) {
+          "is not an existing file"
+        } else {
+          "are not existing files"
+        },
         "."
       ))
     }

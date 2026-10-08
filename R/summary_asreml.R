@@ -149,20 +149,22 @@
     },
     ar1_spatial = if (isTRUE(term$residual)) {
       paste0(.ar1_term_spelling(term), " residual, no nugget (3 parameters)")
-    } else paste0(
-      .ar1_term_spelling(term),
-      if (isTRUE(term$col_ar1)) {
-        " field + nugget (4 parameters)"
-      } else {
-        paste0(
-          " field, AR1 along ",
-          term$row_var,
-          " and independent across ",
-          term$col_var,
-          ", + nugget (3 parameters)"
-        )
-      }
-    ),
+    } else {
+      paste0(
+        .ar1_term_spelling(term),
+        if (isTRUE(term$col_ar1)) {
+          " field + nugget (4 parameters)"
+        } else {
+          paste0(
+            " field, AR1 along ",
+            term$row_var,
+            " and independent across ",
+            term$col_var,
+            ", + nugget (3 parameters)"
+          )
+        }
+      )
+    },
     spline = paste0("spline in ", term$var),
     smooth_mgcv = paste0("smooth in ", term$var),
     vm = paste0("vm(", term$var, ") known covariance"),

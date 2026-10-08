@@ -175,7 +175,8 @@ is the model ASReml fits under the same spelling.
 separate field on each trial, with its own SD and correlations, as
 ASReml does: three parameters per trial, reported as
 \verb{sd_spatial__trial<level>}, \verb{rho_row__trial<level>} and
-\verb{rho_col__trial<level>} for \code{ar1(row):ar1(col)}, plus the shared Gaussian nugget.
+\verb{rho_col__trial<level>} for \code{ar1(row):ar1(col)}, plus the shared
+Gaussian nugget.
 \code{at(trial, level):ar1(row):ar1(col)} fits the field on the named trials
 only. Each trial's plots must fill its own grid. brms refuses both.
 

@@ -3,7 +3,8 @@
 # `options(flexyBayes.isolation = "process")` runs the engine fit behind
 # flexybayes() (and so behind fb(), fb_inla() and fb_brms()) and the fit
 # behind proceed() in a separate R process started through callr, and
-# fb_isolated_lapply() runs each job of a loop that way. The default, "none", runs everything in the session,
+# fb_isolated_lapply() runs each job of a loop that way. The default, "none",
+# runs everything in the session,
 # exactly as before.
 #
 # How a session dies, path by path, and what isolation changes. Read from the

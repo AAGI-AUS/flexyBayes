@@ -576,7 +576,8 @@
         "responses refuse by name."
       ),
       oracle = paste(
-        "ASReml 4.2.0.482 at this anchor (data-raw/asreml_predict_new_level.R):",
+        "ASReml 4.2.0.482 at this anchor",
+        "(data-raw/asreml_predict_new_level.R):",
         "at ASReml's REML variances the variance of a trial, cell or",
         "locality mean agrees with ASReml's plug-in value to 2e-15"
       ),

@@ -540,7 +540,10 @@ fb_plan <- function(
       )
     },
     if (n_unnamed > 0L) {
-      paste0(n_unnamed, " unnamed argument", if (n_unnamed > 1L) "s", " too many")
+      paste0(
+        n_unnamed, " unnamed argument", if (n_unnamed > 1L) "s",
+        " too many"
+      )
     }
   )
   stop(.fb_refusal_condition(
@@ -549,7 +552,10 @@ fb_plan <- function(
       "fb_plan() was given ", paste(what, collapse = " and "), ", which it ",
       "does not take, so the plan would not describe the model as written. ",
       "Its arguments are ",
-      paste0("`", setdiff(names(formals(fb_plan)), "..."), "`", collapse = ", "),
+      paste0(
+        "`", setdiff(names(formals(fb_plan)), "..."), "`",
+        collapse = ", "
+      ),
       "."
     ),
     arguments = named

@@ -333,6 +333,12 @@
   flexyBayes. sommer's own `vpredict()` used to mask it and stop with "no
   applicable method".
 
+* A brms fit finished with `proceed()` after `review_code = TRUE` carries
+  the record of the direct call: its known variance, missing-response
+  policy, backend and aggregation setting, the routing decision and the
+  prior record. It used to lack them, so `update()` on it refitted without
+  the known variance.
+
 ## Minor improvements
 
 * `vcov()`, `predict(se.fit = TRUE)` and `predict(classify = )` on an INLA fit

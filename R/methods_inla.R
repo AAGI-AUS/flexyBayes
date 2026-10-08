@@ -719,7 +719,9 @@ predict.flexybayes_inla <- function(
   ...
 ) {
   type <- match.arg(type)
-  if (!(is.atomic(re_formula) && length(re_formula) == 1L && is.na(re_formula))) {
+  re_na <- is.atomic(re_formula) && length(re_formula) == 1L &&
+    is.na(re_formula)
+  if (!re_na) {
     .fb_refuse_method_argument(
       "predict() on an INLA fit",
       "re_formula",
