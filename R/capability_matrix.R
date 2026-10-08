@@ -193,9 +193,12 @@
       brms = "fits",
       note = "One residual variance per section. INLA fits one Gaussian
         likelihood per level; brms fits `sigma ~ 0 + f`. Both report
-        `sigma_<level>` on the standard-deviation scale. Refused for a
-        family with no residual scale, and for `at(f, level):units`, which
-        conditions on selected levels.",
+        `sigma_<level>` on the standard-deviation scale. With `diag(f):g`
+        beside it past 15 variance parameters, INLA fits by empirical Bayes;
+        on 12 simulated trials every per-trial variance ASReml identifies is
+        within 0.17 of its ASReml standard error. Refused for a family with
+        no residual scale, and for `at(f, level):units`, which conditions on
+        selected levels.",
       anchor = "test-sectioned-residual-inla.R"
     ),
     list(

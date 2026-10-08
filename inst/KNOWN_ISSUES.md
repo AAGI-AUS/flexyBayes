@@ -41,7 +41,7 @@ least one engine fits, without the notes.
 | Heterogeneous variance by factor level | `~ diag(f):g`, `~ idh(f):g`, `~ at(f):g` | fits | fits | One variance per level of `f`, no covariance between levels. The three spellings give identical code: k independent iid fields on INLA, `(0 + f \|\| g)` on brms. Both report `sd_<g>__<f><level>` and agree with lme4's REML fit of the same model. `at(f, level):g` keeps the named levels of `f` only, each with its own variance, and agrees with ASReml on both engines. |
 | Unstructured genotype-by-environment covariance | `~ us(f):g` | refuses | fits | Written `(0 + f \| g)` on brms. flexyBayes fits estimated correlation matrices on brms only, and `backend = "auto"` sends them there. On INLA the structure was one iidKd field under a joint Wishart prior. On `agridat::besag.met` it gave a genetic correlation of 0.142 where ASReml gives 0.930, and eight identical calls on the response rescaled by ten did not converge and returned correlations from -0.894 to +0.686. The structure has k(k+1)/2 parameters against the k of `diag()`. With one observation per cell the residual variance is confounded with the diagonal of the covariance, and a longer chain does not separate them: replicate within cells, or put an informative prior on the residual. |
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. With one variance for every level and a correlation of zero or more, the same covariance is `random = ~ g + f:g`, which fits on both engines. INLA has an exchangeable group model with one variance and one shared correlation, which flexyBayes does not use. Use `diag(f):g` for separate variances without correlation, or `us(f):g` on brms for every correlation. |
-| Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA fits one Gaussian likelihood per level; brms fits `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. Refused for a family with no residual scale, and for `at(f, level):units`, which conditions on selected levels. |
+| Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA fits one Gaussian likelihood per level; brms fits `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. With `diag(f):g` beside it past 15 variance parameters, INLA fits by empirical Bayes; on 12 simulated trials every per-trial variance ASReml identifies is within 0.17 of its ASReml standard error. Refused for a family with no residual scale, and for `at(f, level):units`, which conditions on selected levels. |
 | Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model. On small simulated data both engines recover the genotype, genotype-by-environment and per-section residual standard deviations. `us(env):gen` with the sectioned residual is written out on brms but has not been checked against a reference fit, and `fa()` is refused on both engines. |
 | Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | flexyBayes does not fit this structure on either engine. INLA can represent it, one latent field per common factor entered at each level as a scaled copy, but repeated identical calls did not return the same covariance where the genetic signal is weak: on `agridat::besag.met` eight calls spanned a ratio of 1.23 in a genotype-by-environment variance and 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05 set before the runs. Two simulated designs and `agridat::dasilva.maize` repeated to better than 1.01. The loadings are also anchored by factor-level order, and nothing checked that the anchor level carries a loading. flexyBayes has no factor-analytic lowering for brms. `diag(env):gen` fits on both engines, and `us(env):gen` on brms. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. brms writes it directly, as `(0 + trait \| gr(gen, cov = K))` on data with one row per trait or with `mvbind()` on data with one column per trait. INLA can build it from a known-covariance field for each trait joined by a scaled `copy`. flexyBayes emits neither. Fit it with brms directly, or fit each trait separately. |
@@ -152,10 +152,11 @@ Each is reproducible on this release. Priority is for the MET use case.
    with lme4's REML fit of the same model on `agridat::john.alpha` (see the
    table).
 4. **A residual with many sections on INLA.** A residual per section fits on
-   INLA (see the table), and the hyperparameter cap does not limit the number
-   of sections (see above). *What is open*: checking fits with many sections,
-   and a hierarchical form, a prior `log sigma^2_env ~ Normal(mu, tau)`, that
-   replaces many free variances with two.
+   INLA (see the table). Past 15 variance parameters it fits by empirical
+   Bayes (see above). *What is open*: checking fits with many more sections
+   than the 12 trials compared with ASReml, and a hierarchical
+   form, a prior `log sigma^2_env ~ Normal(mu, tau)`, that replaces many free
+   variances with two.
 5. **Exact aggregation of a factor interaction.** The per-row INLA path
    fits `y ~ a*b` on any family (see the resolved list below), but the
    aggregated path cannot: it expands the fixed effects to a model matrix
@@ -394,6 +395,22 @@ Each is reproducible on this release. Priority is for the MET use case.
     the model with brms directly, or fit each trait separately. *What is
     open*: a lowering on either engine, which is a new model structure and
     waits for a release that admits one.
+24. **The weak-identification flag can stay silent on a variance REML cannot
+    identify.** On `agridat::besag.met` with `random = ~ diag(env):gen`,
+    ASReml estimates the county `C2` genotype variance at 3.28 with a
+    standard error of 23.6, and `C5` at 3.77 with 23.7. The INLA posterior
+    medians are 15.6 and 15.3 on the variance scale, and neither row of
+    `summary(fit)$varcomp` is marked `weakly identified`. Read the REML
+    standard error beside the posterior for such a component. *What is
+    open*: a flag that catches this case. The regression test is in
+    `tests/testthat/test-asreml-parity.R` (DEF-201), skipped while this is
+    open.
+25. **`ar1(t):g` reports its correlation as `rho_row`.** For
+    `random = ~ ar1(t):g`, in either factor order, `summary(fit)$varcomp`
+    calls the correlation along `t` `rho_row`, while
+    `summary(fit)$spatial_field` calls it `rho_t`. The value is the same.
+    The regression test is in `tests/testthat/test-ar1-varcomp-names.R`
+    (DEF-225), skipped while this is open.
 
 ## Closed since the previous revision
 
@@ -436,11 +453,10 @@ know it went away. Each was re-checked live against this tree.
   realisation per level of `trial`, but the field's row correlation,
   column correlation and SD are **shared across every level** -- not
   estimated per trial. ASReml reads `at(trial):ar1(row):ar1(col)` as
-  per-trial parameters, so that spelling refuses
-  (`at_field_per_level_parameters_not_fitted`), as does
-  `at(trial, level):ar1(row):ar1(col)`, a field on one trial
-  (`at_field_per_level_hyper_not_representable`). brms has no lowering
-  for the field.
+  per-trial parameters, and since 0.16.0 that spelling fits on INLA with
+  its own SD and both correlations on each trial;
+  `at(trial, level):ar1(row):ar1(col)` fits the field on the named trials
+  only. brms has no lowering for the field.
 - **Units followed through time.** `random = ~ ar1(t):g`, in either
   factor order, fits one AR1 series per level of `g` on INLA,
   independent across levels, with the correlation and field SD shared

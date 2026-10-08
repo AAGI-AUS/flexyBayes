@@ -112,6 +112,7 @@ the models neither engine fits, are in
 | `flexyBayes-03-syntax` | The ASReml syntax flexyBayes covers |
 | `flexyBayes-04-illustration` | ASReml and flexyBayes on the same trials |
 | `flexyBayes-06-two-stage` | A two-stage analysis of a series of trials |
+| `flexyBayes-07-from-asreml` | Moving from ASReml-R |
 
 ## Reporting problems
 

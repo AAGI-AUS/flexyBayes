@@ -214,7 +214,7 @@ redirects:
   # current page rather than at the intermediate that replaced them, so
   # no old link takes two hops -- and so they survive a clean CI build,
   # which regenerates docs/ from this file alone.
-  - ["articles/flexyBayes-00-from-asreml.html", "articles/flexyBayes-01-getting-started.html"]
+  - ["articles/flexyBayes-00-from-asreml.html", "articles/flexyBayes-07-from-asreml.html"]
   - ["articles/flexyBayes-06-priors.html", "articles/flexyBayes-04-priors.html"]
   - ["articles/flexyBayes-07-met-and-genomics.html", "articles/flexyBayes-05-met-and-genomics.html"]
   - ["articles/flexyBayes-08-downstream-analysis.html", "articles/flexyBayes-07-after-the-fit.html"]
