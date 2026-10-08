@@ -624,7 +624,8 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("predict_new_levels_no_variance" %in% entries)
   expect_true("predict_new_levels_family_not_supported" %in% entries)
   expect_true("classify_argument_not_supported" %in% entries)
-  expect_equal(length(entries), 169L)
+  expect_true("inla_config_precision_not_positive_definite" %in% entries)
+  expect_equal(length(entries), 170L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
@@ -635,9 +636,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # Three refusals of predict(allow_new_levels = TRUE): a structure, a
   # level and a family the new-level draw is not built for (= 168), and
   # classify_argument_not_supported, an argument of ASReml's predict() that
-  # predict(classify = ) does not implement (= 169).
+  # predict(classify = ) does not implement (= 169). An INLA configuration
+  # precision that no constraint of the fit makes positive definite (= 170).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 169L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 170L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

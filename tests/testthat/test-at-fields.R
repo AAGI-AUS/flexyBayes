@@ -37,13 +37,9 @@
   ds <- grepl("^TRIAL_", term)
   sfx[ds] <- sub("^TRIAL_([^!]+)!.*$", "__TRIAL\\1", term[ds])
   out <- ifelse(
-    grepl("!ROW!cor$", term),
-    paste0("rho_row", sfx),
-    ifelse(
-      grepl("!RANGE!cor$", term),
-      paste0("rho_col", sfx),
-      paste0("sd_spatial", sfx)
-    )
+    grepl("!cor$", term),
+    paste0("rho_", sub("^.*!([A-Za-z]+)!cor$", "\\1", term), sfx),
+    paste0("sd_spatial", sfx)
   )
   out[term == "units!R"] <- "sigma"
   out[term == "TRIAL:REP"] <- "sd_TRIAL:REP"
@@ -296,7 +292,7 @@ test_that("at(TRIAL):ar1(ROW):ar1(RANGE) matches ASReml per trial", {
   })
   planted <- rbind(vc[vc$component == "sigma", ], do.call(rbind, rows))
   attr(planted, "posterior_median") <- stats::setNames(
-    c(med[["sigma"]], rep(med[c("sd_spatial", "rho_row", "rho_col")], 3L)),
+    c(med[["sigma"]], rep(med[c("sd_spatial", "rho_ROW", "rho_RANGE")], 3L)),
     planted$component
   )
   shared$extras$variance_comps <- planted
