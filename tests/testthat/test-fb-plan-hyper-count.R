@@ -3,8 +3,9 @@
 # AR1 x AR1 field was planned as "Will fit: no  (preflight refused)" and
 # then fitted on INLA by flexybayes(). The fit runs the design-memory
 # preflight only from 100,000 rows; the plan applied it to every model.
-# The model with one variety-by-trial variance per trial is still refused
-# by the hyperparameter budget, by both the plan and the fit.
+# The model with one variety-by-trial variance per trial is past the
+# hyperparameter budget; the plan and the fit both put it on INLA by
+# empirical Bayes.
 
 skip_if_no_inla <- function() skip_if_not_installed("INLA")
 
@@ -91,19 +92,19 @@ test_that("DEF-003: the plan says a main-plot model with GxE variance per state 
   expect_s3_class(fit, "flexybayes")
 })
 
-test_that("DEF-003: the plan and the fit both refuse GxE variance per trial on the hyperparameter budget", {
+test_that("DEF-003: the plan and the fit both take GxE variance per trial to INLA by empirical Bayes", {
   skip_if_no_inla()
   d <- .met_field_data()
   p <- .met_field_plan(d, "diag(TRIAL):VARIETY")
-  expect_identical(p$gate_outcome, "refuse_structural")
-  expect_identical(p$gate_primary_rule, "hyperparam_budget")
-  expect_false(p$will_fit)
-  # Six per-trial variances take the count from 12 to 17, above the limit of 15.
-  expect_match(p$gate_checks[[1L]]$reason, "count = 17 ", fixed = TRUE)
+  expect_identical(p$gate_outcome, "accept")
+  expect_true(p$will_fit)
+  expect_identical(p$backend_chosen, "inla")
+  # Six per-trial variances take the count from 12 to 17, above the limit
+  # of 15; counted as one term they leave it at 12.
+  expect_identical(p$inla_integration, "eb")
 
-  expect_error(
-    .met_field_fit(d, "diag(TRIAL):VARIETY"),
-    "hyperparameter count = 17 ",
-    fixed = TRUE
-  )
+  fit <- .met_field_fit(d, "diag(TRIAL):VARIETY")
+  expect_s3_class(fit, "flexybayes_inla")
+  expect_identical(fit$extras$inla_integration$strategy, "eb")
+  expect_identical(nrow(fit$inla$summary.hyperpar), 17L)
 })

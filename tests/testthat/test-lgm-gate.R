@@ -630,20 +630,19 @@ test_that("a gate refusal through the fb_inla() pin is typed and names its rule"
   # exercises it directly on a hand-built IR.
   #
   # The second vehicle was a six-level us(), refused by the budget; us() is
-  # now refused first by the correlated-covariance rule. One variance per
-  # level over twenty levels is 21 hyperparameters, refused by the budget
-  # alone.
-  d <- data.frame(
-    y = stats::rnorm(200L),
-    x = stats::rnorm(200L),
-    env = factor(rep(sprintf("e%02d", seq_len(20L)), each = 10L)),
-    gen = factor(rep(seq_len(10L), times = 20L))
-  )
+  # now refused first by the correlated-covariance rule. The third,
+  # diag(env):gen over twenty levels, now fits by empirical Bayes. Sixteen
+  # separate random intercepts are 17 hyperparameters, refused by the
+  # budget alone.
+  d <- data.frame(y = stats::rnorm(200L), x = stats::rnorm(200L))
+  for (k in seq_len(16L)) {
+    d[[paste0("g", k)]] <- factor(sample(letters[1:5], 200L, replace = TRUE))
+  }
 
   err <- tryCatch(
     suppressMessages(suppressWarnings(fb_inla(
       fixed = y ~ x,
-      random = ~ diag(env):gen,
+      random = stats::reformulate(paste0("g", 1:16)),
       data = d,
       verbose = FALSE
     ), classes = "flexybayes_deprecated")),
