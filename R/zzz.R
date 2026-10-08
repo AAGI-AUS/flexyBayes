@@ -160,6 +160,10 @@
   # 0.16.0: an argument fb_plan() does not take.
   .populate_refusal_registry_plan_arguments()
 
+  # 0.16.0: predict(allow_new_levels = TRUE) on a structure, a level or a
+  # family the new-level draw is not built for.
+  .populate_refusal_registry_predict_new_levels()
+
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
   # package is loaded; .register_refusal() calls beyond this point

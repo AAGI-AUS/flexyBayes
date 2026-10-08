@@ -617,12 +617,17 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("marginal_cov_not_buildable" %in% entries)
   expect_true("selection_removed" %in% entries)
   expect_true("plan_argument_unknown" %in% entries)
-  expect_equal(length(entries), 165L)
+  expect_true("predict_new_levels_structure_not_supported" %in% entries)
+  expect_true("predict_new_levels_no_variance" %in% entries)
+  expect_true("predict_new_levels_family_not_supported" %in% entries)
+  expect_equal(length(entries), 168L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
-  # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
+  # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165),
+  # and three refusals of predict(allow_new_levels = TRUE): a structure, a
+  # level and a family the new-level draw is not built for (= 168).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 165L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 168L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

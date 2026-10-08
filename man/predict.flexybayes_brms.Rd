@@ -13,6 +13,9 @@
   summary = TRUE,
   classify = NULL,
   level = 0.95,
+  allow_new_levels = FALSE,
+  mean_by = NULL,
+  n_draws = 1000L,
   ...
 )
 }
@@ -44,15 +47,34 @@ formula (\code{~ Variety}). \code{NULL} (the default) is the historical
 behaviour. See \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}} for how the two active
 engines' prediction paths differ.}
 
-\item{level}{Credible level for the classify table's interval, as a
-proportion. Default \code{0.95}.}
+\item{level}{Credible level for the classify table's interval, or for the
+predictive interval with \code{allow_new_levels = TRUE}, as a proportion.
+Default \code{0.95}.}
+
+\item{allow_new_levels}{Logical. \code{TRUE} returns the posterior predictive of
+the rows of \code{newdata}, observation noise included, in which a level the
+fit did not see is drawn from its fitted standard deviation:
+\code{brms::posterior_predict(allow_new_levels = TRUE, sample_new_levels = "gaussian")}. The table matches the INLA method's; see
+\code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}} for the structures it is built for and the
+refusals. Its \code{estimate}, \code{sd}, \code{lower} and \code{upper} are the mean,
+standard deviation and quantiles of the draws. \code{FALSE} (the default)
+leaves the paths above unchanged.}
+
+\item{mean_by}{With \code{allow_new_levels = TRUE}, the columns of \code{newdata}
+whose combinations define the sets of rows to average, as a character
+vector or a one-sided formula (\code{~ TRIAL}). \code{NULL} predicts each row.}
+
+\item{n_draws}{With \code{allow_new_levels = TRUE}, the number of posterior
+draws used, at most the number the fit holds. Default \code{1000}.}
 
 \item{...}{Forwarded to \code{brms::posterior_epred()} /
 \code{brms::posterior_linpred()}.}
 }
 \value{
-One of four shapes, by argument. With \code{classify} set, the
-marginal-means table for those factors. Otherwise with
+One of five shapes, by argument. With \code{classify} set, the
+marginal-means table for those factors. With \code{allow_new_levels = TRUE},
+the \code{fb_predict_new} table described in \code{\link[=predict.flexybayes_inla]{predict.flexybayes_inla()}}.
+Otherwise with
 \code{summary = FALSE}, the \verb{draws x rows} posterior matrix; with
 \code{se.fit = TRUE}, a list of \code{fit} (posterior mean per row) and
 \code{se.fit} (posterior SD per row); and by default a numeric vector of
