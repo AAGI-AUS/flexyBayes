@@ -97,18 +97,26 @@ Where each stands today:
 - **INLA** fits both, separately and together, on the small simulated
   multi-environment data of `tests/testthat/test-sectioned-residual-inla.R`,
   where it recovers the genotype, genotype-by-environment and per-section
-  residual standard deviations. Scale is the open question. INLA integrates
-  over its hyperparameters numerically, and flexyBayes refuses an INLA model
-  with more than 15 of them by name (`hyperparam_budget`). That count takes a
-  sectioned residual as one hyperparameter however many sections it has, so
-  a residual with one variance for each of 107 environments is not refused,
-  and no fit of that size has been checked.
+  residual standard deviations. INLA integrates over its hyperparameters
+  numerically, and flexyBayes refuses an INLA model with more than 15 of
+  them by name (`hyperparam_budget`), counting one per section of a
+  sectioned residual. Past 15, a model whose excess is one variance per
+  level of `diag(f):g` or `dsum(~ units | f)` fits by empirical Bayes
+  (`int.strategy = "eb"`): the fixed and random effects are conditional on
+  the posterior mode of the variance parameters, each variance keeps its own
+  posterior, and the fit's print says so. On 12 simulated trials with both
+  per-trial structures (26 variance parameters,
+  `inst/extdata/model_c_reference.rds`) every per-trial variance ASReml
+  identifies is within 0.17 of its ASReml standard error.
 
 The direction of travel: take the baseline MET model to realistic scale on
 **brms**, where the emit and the live fit are both in place (the verified fit
-is 120 rows, not a national trial series), and give **INLA** a
-*hierarchically shrunk* residual, a prior `log sigma^2_env ~ Normal(mu, tau)`
-that replaces 107 free hyperparameters with two.
+is 120 rows, not a national trial series). A *hierarchically shrunk*
+per-trial variance, a prior
+`log sigma_trial ~ Normal(mu, tau)`, is not offered. Fitted through brms on
+the same 12 trials it moved well-identified residual variances by up to 0.8
+of an ASReml standard error, which is partial pooling at work and a different
+model from ASReml's.
 
 ## Open issues (contributions welcome)
 

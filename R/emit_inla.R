@@ -72,6 +72,21 @@
   fit
 }
 
+# "eb" when lgm_gate() admitted the model past the hyperparameter budget.
+.fb_inla_integration <- function(fb) {
+  if (!"inla_integration:eb" %in% fb$capabilities) {
+    return(NULL)
+  }
+  list(
+    strategy = "eb",
+    label = paste0(
+      "empirical Bayes (INLA int.strategy = \"eb\"): the fixed and random ",
+      "effects are conditional on the posterior mode of the variance ",
+      "parameters; each variance component keeps its own posterior"
+    )
+  )
+}
+
 # A host may report no core count at all. INLA turns that missing value into
 # the malformed default `NA:1`, prints a parser failure, and silently falls
 # back to another thread plan. The fit remains usable, but its actual resource
@@ -1463,6 +1478,10 @@ emit_inla <- function(
   if (length(control_fixed)) {
     inla_args$control.fixed <- control_fixed
   }
+  integration <- .fb_inla_integration(fb)
+  if (!is.null(integration) && is.null(inla_args$control.inla)) {
+    inla_args$control.inla <- list(int.strategy = integration$strategy)
+  }
   inla_args$num.threads <- .fb_inla_thread_plan(inla_args$num.threads)
   # The offset reaches INLA through inla()'s `offset` argument, evaluated
   # here from the model description, rather than as `offset()` in the
@@ -1665,6 +1684,11 @@ emit_inla <- function(
           family = inla_family,
           link = fb$link
         ),
+        # NULL unless the hyperparameters are fixed at their mode
+        # (int.strategy = "eb"); print() and summary() then say so.
+        inla_integration = if (!is.null(integration)) {
+          c(integration, list(n_hyper = nrow(fit$summary.hyperpar)))
+        },
         # The argument record update() rebuilds the call from. Before
         # 0.9.1 this held six fields against brms's fifteen, and the
         # difference -- not anything about the engine -- is why update()

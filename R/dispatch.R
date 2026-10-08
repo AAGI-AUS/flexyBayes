@@ -1459,7 +1459,14 @@
                 "explicit_inla_accept"
               },
               gate_checks = gated$capabilities,
-              reason = "lgm_gate() accepted; INLA dispatch.",
+              reason = if (is.null(fit$extras$inla_integration)) {
+                "lgm_gate() accepted; INLA dispatch."
+              } else {
+                paste0(
+                  "lgm_gate() accepted; INLA dispatch by empirical Bayes ",
+                  "(int.strategy = \"eb\"), past the hyperparameter budget."
+                )
+              },
               preflight_summary = preflight_result,
               representation_plan = .representation_plan_from_preflight(
                 preflight_result

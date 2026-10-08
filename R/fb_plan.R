@@ -282,6 +282,7 @@ fb_plan <- function(
   gate_outcome <- NA_character_
   gate_checks <- NULL
   gate_primary_rule <- NA_character_
+  gate_integration <- NA_character_
 
   if (backend %in% c("inla", "auto")) {
     gated <- tryCatch(lgm_gate(fb, preflight = preflight), error = function(e) {
@@ -309,6 +310,9 @@ fb_plan <- function(
     } else {
       gate_outcome <- "accept"
       gate_checks <- gated$checks %||% NULL
+      if ("inla_integration:eb" %in% gated$capabilities) {
+        gate_integration <- "eb"
+      }
     }
   }
 
@@ -483,6 +487,11 @@ fb_plan <- function(
       gate_outcome = gate_outcome,
       gate_primary_rule = gate_primary_rule,
       gate_checks = gate_checks,
+      inla_integration = if (identical(chosen_backend, "inla")) {
+        gate_integration
+      } else {
+        NA_character_
+      },
       aggregation = agg,
       representation_plan = representation_plan,
       representation_label = repr_label,
@@ -904,6 +913,13 @@ print.fb_plan <- function(x, ...) {
         ""
       },
       "\n",
+      sep = ""
+    )
+  }
+  if (identical(x$inla_integration, "eb")) {
+    cat(
+      "  INLA integration:        empirical Bayes (int.strategy = \"eb\"), ",
+      "past the hyperparameter budget\n",
       sep = ""
     )
   }

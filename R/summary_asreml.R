@@ -1816,7 +1816,16 @@
     cat("  aggregation: ", agg, "\n", sep = "")
   }
   if (!is.null(mi$family)) {
-    cat("  Family   :", mi$family, "/", mi$link %||% "identity", "\n")
+    # A dsum() residual on INLA records one family per section.
+    cat("  Family   :", unique(mi$family), "/", mi$link %||% "identity", "\n")
+  }
+  integ <- object$extras$inla_integration
+  if (!is.null(integ)) {
+    cat(
+      "  Inference: ", integ$label, ". ", integ$n_hyper,
+      " variance parameters, above the 15 INLA integrates over.\n",
+      sep = ""
+    )
   }
 
   # The representation / engine pair is the package's standing truth
