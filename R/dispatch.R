@@ -635,14 +635,12 @@
 # passes through, with a reason code the caller can catch and an alternative
 # the caller can act on.
 #
-# The residual-side AR1 is the load-bearing entry. The INLA emit is a latent
-# autoregressive field plus the observation-level Gaussian nugget -- four
-# parameters -- and the residual spelling names ASReml's three-parameter
-# nugget-free process. Emitting one under the other's name is the single
-# place the package used to keep the original name for a different model.
+# A residual-side AR1 reaches here when it is not the separable form on a
+# Gaussian identity-link response, which R/fb.R carries as a nugget-free
+# field: the 1-D and grouped forms, and any other family.
 .refuse_unrepresentable_structures <- function(fb) {
   for (term in fb$residual_terms %||% list()) {
-    if ((term$type %||% "") %in% c("ar1", "ar1_spatial")) {
+    if ((term$type %||% "") %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
       stop(.fb_refusal_condition(
         reason_code = "ar1_residual_not_representable",
         message = .ar1_residual_refusal_message(term)
@@ -835,21 +833,32 @@
 }
 
 
-# The D-A refusal text for a residual-side AR1 spelling. Kept beside the
-# guard so the three- against four-parameter statement lives in one place.
+# The refusal text for a residual-side AR1 flexyBayes does not fit. A
+# separable one reaches here only off the Gaussian identity link.
 .ar1_residual_refusal_message <- function(term) {
+  if (
+    identical(term$type, "ar1_spatial_at") ||
+      (identical(term$type, "ar1_spatial") && isTRUE(term$col_ar1) &&
+        is.null(term$at_var))
+  ) {
+    spelling <- if (identical(term$type, "ar1_spatial_at")) {
+      paste0(
+        "dsum(~ ar1(", term$row_var, "):ar1(", term$col_var, ") | ",
+        term$by_var, ")"
+      )
+    } else {
+      .ar1_term_spelling(term)
+    }
+    return(paste0(
+      "residual = ~ ", spelling, " asks for ASReml's nugget-free ",
+      "separable residual, which flexyBayes fits for a Gaussian response ",
+      "with the identity link only. For this family, write the field on ",
+      "the random side, random = ~ ar1(", term$row_var, "):ar1(",
+      term$col_var, "), which fits on INLA."
+    ))
+  }
   spelling <- .ar1_term_spelling(term)
-  # The parameter count depends on the shape of the field: two
-  # correlations on a separable grid, one along a series or within each
-  # level of a group. The sentence counts the model the user asked for and
-  # the one the engine has, whichever shape was written.
-  separable <- identical(term$type, "ar1_spatial") && isTRUE(term$col_ar1)
-  asreml_params <- if (separable) {
-    paste0(
-      "three parameters on a field grid (row correlation, column ",
-      "correlation, one variance)"
-    )
-  } else if (identical(term$type, "ar1_spatial")) {
+  asreml_params <- if (identical(term$type, "ar1_spatial")) {
     paste0(
       "two parameters (the correlation along ", term$row_var,
       " and one variance, shared by every level of ", term$col_var, ")"
@@ -859,20 +868,17 @@
       "two parameters (the correlation along ", term$var, " and one variance)"
     )
   }
-  field_params <- if (separable) "four parameters" else "three parameters"
-  named_as <- if (separable) "three-parameter" else "two-parameter"
   paste0(
-    "residual = ~ ", spelling, " asks for ASReml's ",
-    if (separable) "separable " else "",
-    "autoregressive residual: one correlated residual with no independent ",
-    "plot error, ", asreml_params, ". flexyBayes fits an autoregressive ",
-    "process as a latent field plus the Gaussian observation error, ",
-    field_params, ", which is a different model from the ", named_as,
-    " one and gives different correlations when the data carry ",
-    "plot-to-plot noise. Write the field on the random side, random = ~ ",
-    spelling, ", which fits that model under its own name on INLA (one ",
-    "observation per grid node), or use ASReml for the residual form ",
-    "(Gilmour, Cullis, & Verbyla, 1997)."
+    "residual = ~ ", spelling, " asks for ASReml's autoregressive ",
+    "residual: one correlated residual with no independent plot error, ",
+    asreml_params, ". flexyBayes fits this process as a latent field plus ",
+    "the Gaussian observation error, three parameters, which is a ",
+    "different model and gives a different correlation when the data ",
+    "carry plot-to-plot noise. Write the field on the random side, ",
+    "random = ~ ", spelling, ", which fits that model under its own name ",
+    "on INLA (one observation per grid node), or use ASReml for the ",
+    "residual form (Gilmour, Cullis, & Verbyla, 1997). The separable ",
+    "residual ~ ar1(row):ar1(col) is fitted without a nugget."
   )
 }
 

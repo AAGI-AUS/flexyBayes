@@ -167,6 +167,7 @@ emit_brms <- function(
   if (!is.null(known_variance)) {
     data[[.FB_BRMS_KNOWN_SE_COL]] <- sqrt(known_variance)
   }
+  data <- .fb_brms_at_level_data(fb, data)
   brms_form <- .fb_to_brms_formula(fb)
   # A formula hook may fit another formula (R/fb_refit.R); the linear one
   # still describes the fixed part to the GLM shim.
@@ -762,33 +763,17 @@ emit_brms <- function(
     # us() when the true cross-level correlations are zero. It was checking
     # the count that caught lme4's `||` quietly fitting a correlated block for
     # a factor slope, which a value comparison had passed.
+    # at(f, level):g keeps the named levels: one 0/1 column per level,
+    # named <f><level> so brms reports sd_<g>__<f><level> as for at(f):g.
     if (identical(ttype, "at_simple")) {
-      if (!is.null(term$level)) {
-        stop(.fb_refusal_condition(
-          reason_code = "at_level_conditioning_unsupported",
-          message = paste0(
-            "at(",
-            term$outer,
-            ", ",
-            paste(term$level, collapse = ", "),
-            "):",
-            term$inner,
-            " conditions the random effect on selected ",
-            "levels of ",
-            term$outer,
-            ", which is a different model from a ",
-            "heterogeneous variance across all of them. Drop the level to ",
-            "fit diag(",
-            term$outer,
-            "):",
-            term$inner,
-            "."
-          )
-        ))
+      slope <- if (is.null(term$level)) {
+        term$outer
+      } else {
+        paste(.fb_brms_at_columns(term), collapse = " + ")
       }
       re_terms <- c(
         re_terms,
-        paste0("(0 + ", term$outer, " || ", term$inner, ")")
+        paste0("(0 + ", slope, " || ", term$inner, ")")
       )
       next
     }
@@ -1247,6 +1232,43 @@ emit_brms <- function(
 # positionally (the same level-alignment contract the INLA
 # path enforces); existing dimnames are preserved so brms aligns by
 # name.
+# The 0/1 columns an at(f, level):g term reads on brms, one per named
+# level, named after the factor and the level.
+.fb_brms_at_columns <- function(term) {
+  stats::setNames(
+    make.names(paste0(term$outer, term$outer_levels)),
+    term$outer_levels
+  )
+}
+
+# `data` with the at(f, level) indicator columns added. Used for the fit,
+# where a user column of the same name refuses, and for `newdata`, where
+# the column is rebuilt.
+.fb_brms_at_level_data <- function(fb, data, newdata = FALSE) {
+  for (term in fb$random_terms %||% list()) {
+    if (!identical(term$type %||% "", "at_simple") || is.null(term$level)) {
+      next
+    }
+    cols <- .fb_brms_at_columns(term)
+    for (lev in names(cols)) {
+      if (!newdata && cols[[lev]] %in% names(data)) {
+        stop(.fb_refusal_condition(
+          reason_code = "nested_index_name_collision",
+          message = paste0(
+            "Fitting at(", term$outer, ", ", term$level, "):", term$inner,
+            " on brms needs a column named `", cols[[lev]], "`, and ",
+            "`data` already has one. Rename that column."
+          )
+        ))
+      }
+      data[[cols[[lev]]]] <- as.numeric(
+        as.character(data[[term$outer]]) %in% lev
+      )
+    }
+  }
+  data
+}
+
 .fb_brms_data2 <- function(fb, known_matrices, data) {
   d2 <- list()
   for (term in fb$random_terms) {
@@ -2183,6 +2205,11 @@ predict.flexybayes_brms <- function(
   if (!is.null(newdata)) {
     .fb_offset_values(.fb_fit_ir(object), newdata, newdata = TRUE)
     newdata <- .fb_brms_known_se_newdata(object, newdata)
+    newdata <- .fb_brms_at_level_data(
+      .fb_fit_ir(object),
+      newdata,
+      newdata = TRUE
+    )
   }
 
   post_mat <- if (is.null(newdata)) {

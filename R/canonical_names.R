@@ -306,7 +306,8 @@ register_canonical_mapper <- function(backend, mapper) {
     vm = .fb_inla_spec_known_cov,
     ped = .fb_inla_spec_known_cov,
     ar1 = .fb_inla_spec_ar1,
-    ar1_spatial = .fb_inla_spec_ar1
+    ar1_spatial = .fb_inla_spec_ar1,
+    ar1_spatial_at = .fb_inla_spec_ar1_at
   )
 }
 
@@ -588,6 +589,32 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
+# at(trial):ar1(row):ar1(col) -- one f() term per level of `trial`, indexed
+# by that level's row index and reading its column index as `group =`. A
+# level reads `T1:R1:C1`, row fastest, as for the shared field.
+.fb_inla_spec_ar1_at <- function(t, ctx) {
+  out <- lapply(t$by_levels, function(lev) {
+    rows <- t$level_grids[[lev]]$rows
+    cols <- t$level_grids[[lev]]$cols
+    cells <- expand.grid(rows, cols, KEEP.OUT.ATTRS = FALSE,
+                         stringsAsFactors = FALSE)
+    levs <- paste(lev, cells[[1L]], cells[[2L]], sep = ":")
+    idx <- .fb_inla_field_at_index(t, lev)
+    .fb_inla_index_spec(
+      paste0(.ar1_term_spelling(t), " (", lev, ")"),
+      levs,
+      carries = idx[["col"]],
+      ids = rep(seq_along(rows), times = length(cols))
+    )
+  })
+  names(out) <- vapply(
+    t$by_levels,
+    function(lev) .fb_inla_field_at_index(t, lev)[["row"]],
+    character(1L)
+  )
+  out
+}
+
 # .fb_inla_group_labels() --- generated index name -> the group a user wrote.
 #
 # Read off .fb_inla_index_specs(). The variance COMPONENTS were mapped back to
@@ -712,6 +739,22 @@ register_canonical_mapper <- function(backend, mapper) {
   # (identity, no transform), the Precision is the field precision -> SD.
   # Matched BEFORE the generic "Precision for <group>" rule so the field
   # precision resolves to sd_spatial, not sd_<idx>.
+  # One field per level: its three hyperparameters carry the level in
+  # their names, rho_row__<by><level>, rho_col__<by><level> and
+  # sd_spatial__<by><level>.
+  field_at <- list()
+  for (t in fb_terms$random_terms %||% list()) {
+    if (!identical(t$type %||% "", "ar1_spatial_at")) {
+      next
+    }
+    for (lev in t$by_levels) {
+      idx <- .fb_inla_field_at_index(t, lev)[["row"]]
+      sfx <- paste0("__", t$by_var, lev)
+      field_at[[paste0("Rho for ", idx)]] <- paste0("rho_row", sfx)
+      field_at[[paste0("GroupRho for ", idx)]] <- paste0("rho_col", sfx)
+      field_at[[paste0("Precision for ", idx)]] <- paste0("sd_spatial", sfx)
+    }
+  }
   spatial_idx <- character(0)
   for (t in c(
     fb_terms$random_terms %||% list(),
@@ -841,6 +884,13 @@ register_canonical_mapper <- function(backend, mapper) {
   hyper_names <- rownames(fit$inla$summary.hyperpar) %||% character(0)
   for (nm in hyper_names) {
     sp_hit <- FALSE
+    if (!is.null(field_at[[nm]])) {
+      map[nm] <- field_at[[nm]]
+      if (startsWith(nm, "Precision for ")) {
+        transform[[nm]] <- prec_to_sd
+      }
+      next
+    }
     if (!is.null(us_prec[[nm]])) {
       map[nm] <- us_prec[[nm]]
       transform[[nm]] <- prec_to_sd

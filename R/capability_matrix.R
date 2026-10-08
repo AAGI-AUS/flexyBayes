@@ -146,9 +146,9 @@
       note = "One variance per level of `f`, no covariance between levels.
         The three spellings give identical code: k independent iid fields on
         INLA, `(0 + f || g)` on brms. Both report `sd_<g>__<f><level>` and
-        agree with lme4's REML fit of the same model. `at(f, level)`
-        conditions on selected levels, which is a different model, and is
-        refused.",
+        agree with lme4's REML fit of the same model. `at(f, level):g` keeps
+        the named levels of `f` only, each with its own variance, and agrees
+        with ASReml on both engines.",
       anchor = "test-heterogeneous-variance-inla.R"
     ),
     list(
@@ -267,10 +267,11 @@
       inla = "fits",
       brms = "refuses",
       note = "A latent AR1 field plus the Gaussian observation nugget: four
-        hyperparameters, one observation per grid node. This is not ASReml's
-        three-parameter residual without a nugget, so the residual spelling
-        refuses and points to this one. flexyBayes has no brms lowering for
-        the field.",
+        hyperparameters, one observation per grid node. ASReml's
+        three-parameter residual without a nugget is written `residual = ~
+        ar1(row):ar1(col)` and fits on INLA for a Gaussian response; the 1-D
+        residual `~ ar1(t)` refuses. flexyBayes has no brms lowering for
+        either.",
       anchor = "test-inla-spatial-ar1.R",
       brms_basis = "flexyBayes"
     ),
@@ -282,10 +283,10 @@
       note = "One field realisation per level of `trial`, through INLA's
         `replicate =` mechanism. The row correlation, column correlation and
         field SD are shared by every level, not estimated per trial.
-        `at(trial):ar1(row):ar1(col)`, which ASReml fits with per-trial
-        parameters, and `at(trial, level):ar1(row):ar1(col)`, one trial's
-        field, refuse by name on both engines. flexyBayes has no brms
-        lowering for the field.",
+        `at(trial):ar1(row):ar1(col)` fits a field with its own SD and
+        correlations on each trial, as ASReml does, and `at(trial,
+        level):ar1(row):ar1(col)` on the named trials only; both agree with
+        ASReml. flexyBayes has no brms lowering for the field.",
       anchor = "test-nested-ar1-field.R",
       brms_basis = "flexyBayes"
     ),

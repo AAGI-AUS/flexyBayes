@@ -174,13 +174,13 @@ test_that("ar2() says flexyBayes writes first-order terms only", {
 test_that("the residual AR1 refusal describes flexyBayes's field, not INLA", {
   skip_if_not_installed("INLA")
   g <- .rw_grid()
-  err <- .rw_refusal(y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
+  err <- .rw_refusal(y ~ 1, residual = ~ ar1(row), data = g,
     backend = "inla")
   expect_s3_class(err, "flexybayes_refusal_ar1_residual_not_representable")
   msg <- conditionMessage(err)
-  expect_match(msg, "flexyBayes fits an autoregressive process", fixed = TRUE)
+  expect_match(msg, "flexyBayes fits this process", fixed = TRUE)
   expect_false(grepl("INLA represents", msg, fixed = TRUE))
-  expect_match(msg, "random = ~ ar1(row):ar1(col)", fixed = TRUE)
+  expect_match(msg, "random = ~ ar1(row)", fixed = TRUE)
 })
 
 test_that("a low-rank smooth refusal points at a smooth that fits", {
@@ -373,7 +373,7 @@ test_that("the gate's link refusal describes flexyBayes's INLA route", {
 test_that("the gate does not point at brms for a model brms refuses too", {
   skip_if_not_installed("INLA")
   d <- .rw_data()
-  for (spell in list(~ at(env, "1"):gen, ~ s(x))) {
+  for (spell in list(~ s(x))) {
     err <- .rw_refusal(y ~ env, random = spell, data = d, backend = "inla")
     expect_s3_class(err, "flexybayes_refusal_inla_gate_refused")
     msg <- conditionMessage(err)

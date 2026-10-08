@@ -147,7 +147,8 @@
     ar1 = asr(~ ar1(t), series[series$plot == "P1", ]),
     ar1_grouped = asr(~ ar1(t):plot, series),
     ar1_spatial = asr(~ ar1(row):ar1(col), grid[grid$trial == "TA", ]),
-    ar1_replicated = asr(~ id(trial):ar1(row):ar1(col), grid)
+    ar1_replicated = asr(~ id(trial):ar1(row):ar1(col), grid),
+    ar1_at = asr(~ at(trial):ar1(row):ar1(col), grid)
   )
 }
 
@@ -427,7 +428,7 @@ test_that("every specification relabels a table carrying its index values and no
     }
   }
   # Every generated index of every fixture with levels, none skipped.
-  expect_identical(checked, 23L)
+  expect_identical(checked, 25L)
 })
 
 test_that("every specification's index values are the IDs a fitted INLA table carries", {
@@ -470,5 +471,5 @@ test_that("every specification's index values are the IDs a fitted INLA table ca
     }
     expect_no_warning(.fb_random_inla(fit))
   }
-  expect_identical(checked, 23L)
+  expect_identical(checked, 25L)
 })
