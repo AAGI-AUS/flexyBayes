@@ -6,7 +6,8 @@
 #    flexyBayes method, never another package's default (DEF-011, DEF-020,
 #    DEF-039);
 # 2. an argument one class's method takes is not swallowed by another
-#    class's `...` without being read (DEF-069: tidy() on INLA fits had no
+#    class's `...` without being read: on an INLA fit the call is made, and
+#    a brms-only method's body is read (DEF-069: tidy() on INLA fits had no
 #    `effects` argument and returned fixed effects);
 # 3. where an installed suggested package exports the same generic, that
 #    generic dispatches to the package's methods too, so attaching the
@@ -48,11 +49,13 @@
   NA_character_
 }
 
-# Packages whose methods for one generic share a named argument: the
-# arguments a method reads, by name or through `...`.
+# Whether a method's body reads its `...` at all.
 .g12_reads_dots <- function(fn) {
   "..." %in% all.names(body(fn))
 }
+
+# Generics whose calls draw a plot or re-fit the model.
+.g12_side_effects <- c("plot", "update", "anova")
 
 # Method and argument pairs that swallow a sibling's argument today.
 .g12_open <- c(
@@ -109,25 +112,55 @@ test_that("DC-12 guard: every fit class reaches a package method", {
 })
 
 test_that("DC-12 guard: no fit-class method swallows an argument a sibling takes", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  withr::local_options(
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_weak_identification_warning = TRUE,
+    flexyBayes.inla_threads = "1:1"
+  )
   ns <- asNamespace("flexyBayes")
   m <- .g12_methods()
-  classes <- list(
-    per_row = c("flexybayes_inla", "flexybayes"),
-    aggregated = c("flexybayes_aggregated", "flexybayes_inla", "flexybayes"),
-    brms = .g12_brms_class
+  d <- .g12_data()
+  inla_fits <- list(
+    per_row = suppressMessages(flexybayes(y ~ f, random = ~g, data = d, verbose = FALSE)),
+    aggregated = suppressMessages(flexybayes(
+      n ~ f, random = ~g, data = d, family = "poisson", verbose = FALSE
+    ))
   )
+  classes <- c(lapply(inla_fits, class), list(brms = .g12_brms_class))
+  # A value no method could take without reading it.
+  sentinel <- structure(list(), class = "g12_sentinel")
   swallowed <- character(0)
-  for (g in unique(m$generic[m$home == ""])) {
-    funs <- unique(stats::na.omit(vapply(
-      classes, function(k) .g12_resolve(m, g, k), character(1L)
-    )))
+  for (g in setdiff(unique(m$generic[m$home == ""]), .g12_side_effects)) {
+    resolved <- vapply(classes, function(k) .g12_resolve(m, g, k), character(1L))
+    funs <- unique(stats::na.omit(resolved))
     args <- lapply(funs, function(f) setdiff(names(formals(get(f, envir = ns))), "..."))
     names(args) <- funs
     every <- unique(unlist(args))
     for (f in funs) {
       lacking <- setdiff(every, args[[f]])
-      if (!length(lacking) || .g12_reads_dots(get(f, envir = ns))) next
-      swallowed <- c(swallowed, paste(f, lacking))
+      if (!length(lacking)) next
+      on_inla <- intersect(names(inla_fits), names(resolved)[resolved %in% f])
+      if (!length(on_inla)) {
+        # Only a brms fit reaches this method; its body is read instead.
+        if (!.g12_reads_dots(get(f, envir = ns))) {
+          swallowed <- c(swallowed, paste(f, lacking))
+        }
+        next
+      }
+      # On an INLA fit the call is made: an argument the method neither
+      # takes nor reads comes back without an error or a warning.
+      for (a in lacking) {
+        out <- tryCatch(
+          suppressMessages(utils::capture.output(do.call(
+            get(f, envir = ns), c(list(inla_fits[[on_inla[1L]]]), stats::setNames(list(sentinel), a))
+          ))),
+          error = function(e) e,
+          warning = function(w) w
+        )
+        if (!inherits(out, "condition")) swallowed <- c(swallowed, paste(f, a))
+      }
     }
   }
   new_swallowed <- setdiff(swallowed, names(.g12_open))
