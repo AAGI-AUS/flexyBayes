@@ -1177,12 +1177,32 @@ update.flexybayes <- function(object, ...) {
     }
   }
 
+  # A scalar the original call did not write is not re-issued. Written, it
+  # is applied, so the re-fit would run under a prior the fit did not.
+  supplied <- .fb_fit_ir(object)$prior_scalars$supplied
+  if (!is.null(supplied)) {
+    if (!isTRUE(supplied[["fixed_sd"]])) args$prior_fixed_sd <- NULL
+    if (!isTRUE(supplied[["vc_sd"]])) args$prior_vc_sd <- NULL
+  }
+
   # Override with user-supplied arguments
   for (nm in names(dots)) {
     args[[nm]] <- dots[[nm]]
   }
 
-  do.call(flexybayes, args)
+  # The re-fit records its data under the name the fit recorded, not as a
+  # deparse of the data frame.
+  env <- new.env(parent = parent.frame())
+  data_name <- cl$data_name
+  if (
+    !"data" %in% names(dots) && is.character(data_name) &&
+      length(data_name) == 1L && identical(make.names(data_name), data_name)
+  ) {
+    assign(data_name, args$data, envir = env)
+    args$data <- as.name(data_name)
+  }
+
+  do.call(flexybayes, args, envir = env)
 }
 
 #' Compare flexyBayes models on a plug-in information criterion

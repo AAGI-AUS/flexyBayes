@@ -329,6 +329,8 @@ test_that("a fit carrying no prior record re-fits as it did before", {
   # A pre-IR object: the record the repair reads is simply absent, and
   # the re-fit falls back to the recorded scalars rather than refusing.
   fit$extras$fb_terms$priors <- NULL
+  # Which prior scalars the call wrote is recorded later still.
+  fit$extras$fb_terms$prior_scalars <- NULL
   expect_identical(prior_summary(fit)$kind, "no_prior_recorded")
 
   refit <- suppressMessages(stats::update(
