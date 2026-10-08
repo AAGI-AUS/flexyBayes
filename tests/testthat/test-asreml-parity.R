@@ -285,13 +285,20 @@ test_that("DEF-201: a genotype variance REML cannot identify is flagged", {
 
 # --- us(): refused on INLA by name, fitted on brms ---------------------- #
 
-test_that("06 and 07 us(env):gen: INLA refuses by name and auto chooses brms", {
+test_that("06 and 07 us(env):gen: INLA refuses by name", {
   skip_if_not_installed("agridat")
   for (shape in c("06_us_dim2", "07_us_dim3")) {
     expect_error(
       .ap_fit(shape, backend = "inla"),
       class = "flexybayes_refusal_correlated_covariance_requires_brms"
     )
+  }
+})
+
+test_that("06 and 07 us(env):gen: auto chooses brms", {
+  skip_if_not_installed("agridat")
+  skip_if_not_installed("brms")
+  for (shape in c("06_us_dim2", "07_us_dim3")) {
     p <- .ap_fit(shape, plan = TRUE)
     expect_identical(p$backend_chosen, "brms")
   }

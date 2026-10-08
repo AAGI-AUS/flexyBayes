@@ -242,7 +242,11 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     "update" = function(fit) update(fit),
     "vcov" = function(fit) vcov(fit),
     "vpredict" = function(fit) vpredict(fit, ratio ~ sd_geno^2),
-    "sommer::vpredict" = function(fit) sommer::vpredict(fit, ratio ~ sd_geno^2)
+    "sommer::vpredict" = function(fit) {
+      if (requireNamespace("sommer", quietly = TRUE)) {
+        sommer::vpredict(fit, ratio ~ sd_geno^2)
+      }
+    }
   )
   # A generic with no call written here fails the test by name.
   expect_identical(setdiff(generics, names(calls)), character(0))

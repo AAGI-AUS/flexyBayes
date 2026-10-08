@@ -22,6 +22,7 @@ test_that("DEF-205: the stored precision does not factorise as it stands", {
 })
 
 test_that("DEF-205: vcov() matches INLA's own posterior draws", {
+  skip_if_not_installed("INLA")
   ref <- .cc_ref()
   fit <- ref$fit
   n <- ref$oracle$n_draws
@@ -44,6 +45,7 @@ test_that("DEF-205: vcov() matches INLA's own posterior draws", {
 })
 
 test_that("DEF-205: posterior draws meet the constraint and match INLA's", {
+  skip_if_not_installed("INLA")
   ref <- .cc_ref()
   fit <- ref$fit
   n <- 4000L
@@ -66,6 +68,7 @@ test_that("DEF-205: posterior draws meet the constraint and match INLA's", {
 })
 
 test_that("DEF-205: the user-facing summaries of the fit are computed", {
+  skip_if_not_installed("INLA")
   ref <- .cc_ref()
   fit <- ref$fit
   se <- predict(fit, se.fit = TRUE)$se.fit
