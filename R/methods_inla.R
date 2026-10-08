@@ -652,6 +652,13 @@ logLik.flexybayes_inla <- function(object, ...) {
 #'   predicts each row.
 #' @param n_draws With `allow_new_levels = TRUE`, the number of posterior
 #'   draws. Default `1000`.
+#' @param re_formula `NA` (the default): the prediction is population-level,
+#'   the fixed part of the model, as `re_formula = NA` gives on a brms fit.
+#'   Any other value refuses with `method_argument_not_supported`; [fitted()]
+#'   returns the predictions at the fitted levels of the random effects.
+#' @param summary `TRUE` (the default): the prediction is the posterior
+#'   mean. `FALSE` refuses with `method_argument_not_supported`;
+#'   [fb_as_draws_simple()] returns the posterior draws.
 #' @param ... Ignored, except that an argument of ASReml's `predict()`
 #'   given with `classify` is refused by name.
 #'
@@ -707,9 +714,32 @@ predict.flexybayes_inla <- function(
   allow_new_levels = FALSE,
   mean_by = NULL,
   n_draws = 1000L,
+  re_formula = NA,
+  summary = TRUE,
   ...
 ) {
   type <- match.arg(type)
+  if (!(is.atomic(re_formula) && length(re_formula) == 1L && is.na(re_formula))) {
+    .fb_refuse_method_argument(
+      "predict() on an INLA fit",
+      "re_formula",
+      paste0(
+        "it returns population-level predictions, the fixed part of the ",
+        "model, which is re_formula = NA. fitted() returns the predictions ",
+        "at the fitted levels of the random effects."
+      )
+    )
+  }
+  if (!isTRUE(summary)) {
+    .fb_refuse_method_argument(
+      "predict() on an INLA fit",
+      "summary",
+      paste0(
+        "it returns posterior means, which is summary = TRUE. ",
+        "fb_as_draws_simple() returns the posterior draws."
+      )
+    )
+  }
   .fb_predict_new_route(allow_new_levels, mean_by, classify, type, se.fit)
   if (isTRUE(allow_new_levels)) {
     return(.fb_predict_new_inla(object, newdata, mean_by, n_draws, level))

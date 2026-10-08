@@ -493,7 +493,10 @@ ranef.flexybayes <- function(object, ...) {
 
 #' Extract variance-covariance matrix of fixed effects
 #' @param object A fitted `flexybayes` object of any backend.
-#' @param ... Ignored, present for compatibility with the generic.
+#' @param ... Ignored, present for compatibility with the generic, except
+#'   that `n_samples`, which the INLA method takes, is refused with
+#'   `method_argument_not_supported`: the matrix comes from every stored
+#'   posterior draw.
 #' @returns The posterior covariance matrix of the fixed effects, square
 #'   with one row and column per coefficient and dimnames taken from
 #'   [coef()]. This is a posterior covariance, not a sampling-theory
@@ -501,6 +504,13 @@ ranef.flexybayes <- function(object, ...) {
 #'   treat it as one.
 #' @export
 vcov.flexybayes <- function(object, ...) {
+  if ("n_samples" %in% names(list(...))) {
+    .fb_refuse_method_argument(
+      "vcov() on this fit",
+      "n_samples",
+      "the matrix comes from every stored posterior draw."
+    )
+  }
   attr(object$glm, "posterior_vcov")
 }
 

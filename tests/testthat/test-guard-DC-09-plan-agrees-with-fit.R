@@ -47,10 +47,7 @@
 )
 
 # Pairs where the plan and the fit disagree today.
-.g09_open <- c(
-  "aggregate_continuous auto" = "DEF-223",
-  "aggregate_continuous inla" = "DEF-223"
-)
+.g09_open <- stats::setNames(character(0), character(0))
 
 .g09_plan_verdict <- function(p) {
   if (inherits(p, "error")) {
@@ -101,7 +98,7 @@ test_that("DC-09 guard: fb_plan() names the route the fit takes", {
   quiet <- function(expr) {
     tryCatch(suppressWarnings(suppressMessages(expr)), error = function(e) e)
   }
-  disagree <- character(0)
+  disagree <- stats::setNames(character(0), character(0))
   verdicts <- character(0)
   for (nm in names(.g09_corpus)) {
     for (backend in c("auto", "inla")) {

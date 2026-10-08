@@ -9,7 +9,10 @@
 \arguments{
 \item{object}{A fitted \code{flexybayes} object of any backend.}
 
-\item{...}{Ignored, present for compatibility with the generic.}
+\item{...}{Ignored, present for compatibility with the generic, except
+that \code{n_samples}, which the INLA method takes, is refused with
+\code{method_argument_not_supported}: the matrix comes from every stored
+posterior draw.}
 }
 \value{
 The posterior covariance matrix of the fixed effects, square

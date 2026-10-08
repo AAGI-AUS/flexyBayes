@@ -251,10 +251,9 @@ fb_from_brms <- function(
   link_name <- fl$link
 
   # ------------------------- Response --------------------------- #
-  response <- deparse(formula[[2]])
-  if (!response %in% names(data)) {
-    stop("Response variable '", response, "' not found in data.", call. = FALSE)
-  }
+  # A transformed response, log(y), is evaluated by .parse_fixed() below,
+  # as the ASReml grammar does.
+  response <- paste(deparse(formula[[2]]), collapse = "")
 
   # ------------------------- Walk RHS --------------------------- #
   walked <- .brms_walk_rhs(formula[[3]])
@@ -352,12 +351,7 @@ fb_from_brms <- function(
 
   # ------------------------- Weights --------------------------- #
   addition_terms <- if (!is.null(weights)) {
-    if (!is.numeric(weights) || length(weights) != nrow(data)) {
-      stop(
-        "`weights` must be a numeric vector of length nrow(data).",
-        call. = FALSE
-      )
-    }
+    .fb_check_weights(weights, data)
     list(list(type = "weights", values = weights))
   } else {
     list()
@@ -385,6 +379,7 @@ fb_from_brms <- function(
 
   new_fb_terms(
     response = response,
+    response_is_expression = isTRUE(fixed_info$response_is_expression),
     family = fam_name,
     link = link_name,
     intercept = fixed_info$intercept,

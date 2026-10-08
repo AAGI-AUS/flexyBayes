@@ -242,7 +242,7 @@ test_that("refusal: non-gaussian family", {
     flexybayes_aggregate_out_of_scope = function(c) c
   )
   expect_s3_class(err, "flexybayes_aggregate_out_of_scope")
-  expect_identical(err$reason_code, "non_gaussian_family")
+  expect_identical(err$scope_reason, "non_gaussian_family")
 })
 
 test_that("refusal: smooth fixed term", {
@@ -257,7 +257,7 @@ test_that("refusal: smooth fixed term", {
     flexybayes_aggregate_out_of_scope = function(c) c
   )
   expect_s3_class(err, "flexybayes_aggregate_out_of_scope")
-  expect_identical(err$reason_code, "smooth_term_not_aggregatable")
+  expect_identical(err$scope_reason, "smooth_term_not_aggregatable")
 })
 
 test_that("refusal: uncorrelated random slope (x || g)", {
@@ -275,7 +275,7 @@ test_that("refusal: uncorrelated random slope (x || g)", {
     flexybayes_aggregate_out_of_scope = function(c) c
   )
   expect_s3_class(err, "flexybayes_aggregate_out_of_scope")
-  expect_identical(err$reason_code, "random_slope_not_aggregatable")
+  expect_identical(err$scope_reason, "random_slope_not_aggregatable")
 })
 
 test_that("refusal: structured-covariance random term (audit P2.8)", {
@@ -290,7 +290,7 @@ test_that("refusal: structured-covariance random term (audit P2.8)", {
     flexybayes_aggregate_out_of_scope = function(c) c
   )
   expect_s3_class(err, "flexybayes_aggregate_out_of_scope")
-  expect_identical(err$reason_code, "structured_random_not_aggregatable")
+  expect_identical(err$scope_reason, "structured_random_not_aggregatable")
 })
 
 test_that("refusal: metadata-only dataset (no y to sum)", {
