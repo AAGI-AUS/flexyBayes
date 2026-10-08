@@ -114,32 +114,89 @@
 #
 # `reuse`, from an earlier configuration, refactorises a Q of the same pattern
 # on its ordering; the factor is the one Cholesky() would return.
+#
+# An intrinsic term (rw1, rw2, besag) leaves Q singular in a direction its
+# sum-to-zero constraint fixes, such as a constant shared by the smooth and
+# the intercept, and rounding can then make Q fail to factorise. On the
+# constraint set A x = e, Q + c A'A gives the same exponent up to a constant
+# for every c > 0, so conditioning a draw from it on A x = e gives the same
+# distribution INLA::inla.posterior.sample() draws from Q.
 .fb_inla_config_gaussian <- function(cs, k, reuse = NULL) {
   config <- cs$config[[k]]
   q <- Matrix::forceSymmetric(config$Q, uplo = "U")
-  same_pattern <- !is.null(reuse) &&
-    identical(reuse$p, q@p) &&
-    identical(reuse$i, q@i)
-  if (same_pattern) {
-    chol_q <- Matrix::update(reuse$factor, q)
-  } else {
-    chol_q <- Matrix::Cholesky(q, LDL = FALSE)
-    reuse <- list(factor = chol_q, p = q@p, i = q@i)
+  a_mat <- if (!is.null(cs$constr)) matrix(cs$constr$A, nrow = cs$constr$nc)
+  factored <- .fb_inla_config_factor(q, reuse)
+  if (is.null(factored) && !is.null(a_mat)) {
+    # c puts c A'A on the scale of an average diagonal entry of Q.
+    c_scale <- mean(Matrix::diag(q)) / max(rowSums(a_mat^2))
+    q <- Matrix::forceSymmetric(
+      q + Matrix::Matrix(c_scale * crossprod(a_mat), sparse = TRUE),
+      uplo = "U"
+    )
+    factored <- .fb_inla_config_factor(q, reuse)
   }
+  if (is.null(factored)) {
+    stop(.fb_refusal_condition(
+      reason_code = "inla_config_precision_not_positive_definite",
+      message = sprintf(
+        paste0(
+          "The precision of the latent field INLA stored for ",
+          "hyperparameter configuration %d is not positive definite%s. ",
+          "The latent field's posterior is improper in a direction no ",
+          "constraint of the model fixes, so vcov(), predict() standard ",
+          "errors and posterior draws are not computed."
+        ),
+        k,
+        if (is.null(a_mat)) "" else ", even on its linear constraints"
+      )
+    ))
+  }
+  chol_q <- factored$factor
+  reuse <- factored$reuse
   out <- list(
     chol_q = chol_q,
     mu = config$improved.mean,
     gain = NULL,
     reuse = reuse
   )
-  if (!is.null(cs$constr)) {
-    a_mat <- matrix(cs$constr$A, nrow = cs$constr$nc)
+  if (!is.null(a_mat)) {
     sigma_at <- as.matrix(Matrix::solve(chol_q, t(a_mat)))
     out$a_mat <- a_mat
     out$sigma_at <- sigma_at
     out$gain <- sigma_at %*% solve(a_mat %*% sigma_at)
   }
   out
+}
+
+# The Cholesky factor of q, or NULL when q is not positive definite.
+.fb_inla_config_factor <- function(q, reuse) {
+  same_pattern <- !is.null(reuse) &&
+    identical(reuse$p, q@p) &&
+    identical(reuse$i, q@i)
+  not_pd <- function(cnd) grepl("not positive", conditionMessage(cnd))
+  chol_q <- withCallingHandlers(
+    tryCatch(
+      if (same_pattern) {
+        Matrix::update(reuse$factor, q)
+      } else {
+        Matrix::Cholesky(q, LDL = FALSE)
+      },
+      error = function(e) {
+        if (not_pd(e)) NULL else stop(e)
+      }
+    ),
+    # CHOLMOD warns before it fails on a matrix that is not positive definite.
+    warning = function(w) {
+      if (not_pd(w)) invokeRestart("muffleWarning")
+    }
+  )
+  if (is.null(chol_q)) {
+    return(NULL)
+  }
+  if (!same_pattern) {
+    reuse <- list(factor = chol_q, p = q@p, i = q@i)
+  }
+  list(factor = chol_q, reuse = reuse)
 }
 
 # Joint posterior covariance of the fixed effects, computed exactly from the
