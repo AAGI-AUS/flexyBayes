@@ -21,7 +21,7 @@
 
 .c6_object_mb <- function(x) as.numeric(utils::object.size(x)) / 2^20
 
-test_that("DEF-201: a saved INLA fit is no larger than the fit in memory", {
+test_that("DEF-204: a saved INLA fit is no larger than the fit in memory", {
   skip_if_not_installed("INLA")
   skip_on_cran()
   withr::local_options(
