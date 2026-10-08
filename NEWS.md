@@ -1,4 +1,4 @@
-# flexyBayes 0.15.0.9000 (development version)
+# flexyBayes 0.16.0
 
 ## Breaking changes
 
@@ -26,6 +26,104 @@
 
 * `lgm_gate()` no longer runs its check for joint shrinkage priors, which no
   route reached, and the refusal `prior_family_unsupported_inla` is gone.
+
+* This renames the correlations of every field whose factors are not called
+  `row` and `col`: `ar1(ROW):ar1(RANGE)` now reports `rho_ROW` and
+  `rho_RANGE`, where it reported `rho_row` and `rho_col`. For
+  `ar1(range):ar1(row)`, `rho_row` is now the correlation along `row`, which
+  was `rho_col` before, and the correlation along `range` is `rho_range`.
+  A field written `ar1(row):ar1(col)` keeps its names. A fit saved with an
+  earlier version keeps the old names in `summary()` until it is refitted,
+  and `fb_marginal_cov()` refuses such a fit by name.
+
+* On brms, `allow_new_levels = TRUE` used to pass through to
+  `posterior_epred()` with brms's default new-level policy, which resamples the
+  effects of seen levels and leaves out observation noise. It now returns the
+  table above, built from `posterior_predict(sample_new_levels = "gaussian")`.
+
+* `at_field_per_level_parameters_not_fitted` and
+  `at_field_per_level_hyper_not_representable` leave the refusal registry, since
+  both spellings now fit. The nugget-free residual beside a random-side field
+  refuses (`ar1_residual_with_random_field`), and `residual = ~ ar1(t)` still
+  refuses.
+
+## New features
+
+* `predict(fit, newdata, allow_new_levels = TRUE)` predicts trials and
+  localities the fit did not see, on INLA and on brms. Each level the fit did
+  not see is drawn from its fitted variance, and an INLA fit's AR1 x AR1 field
+  is drawn afresh for a new trial; levels the fit saw keep their own posterior
+  effects. `mean_by = ~ TRIAL` gives the mean of each trial's rows,
+  `~ TRIAL + VARIETY + NRATE` each cell mean. The result is a table of
+  predictive means, SDs and intervals, observation noise included, with joint
+  draws in `attr(, "draws")`, and it repeats under `set.seed()`.
+
+* On INLA the mean and SD are exact for the posterior draws used. At
+  ASReml 4.2's REML variances the variance of a trial, cell or locality mean
+  agrees with ASReml's plug-in value to 2e-15.
+
+* A structure the new-level draw is not built for (random slopes, splines,
+  known covariances, factor-analytic and unstructured terms, observation
+  weights, a known variance), a new level with no fitted variance (a new level
+  of `f` in `diag(f):g`, a new residual section, a plot off the fitted
+  lattice) and a non-Gaussian response are refused by name:
+  `predict_new_levels_structure_not_supported`, `predict_new_levels_no_variance`
+  and `predict_new_levels_family_not_supported`.
+
+* A series of trials with its own genotype-by-trial variance and its own
+  residual variance in every trial, `random = ~ ... + diag(TRIAL):VARIETY` with
+  `residual = ~ dsum(~ units | TRIAL)`, now fits on INLA past 15 variance
+  parameters. Above that limit INLA fits it by empirical Bayes
+  (`int.strategy = "eb"`): the fixed and random effects are conditional on the
+  posterior mode of the variance parameters, and each variance keeps its own
+  posterior. `print()`, `summary()`, `backend_decision()` and `fb_plan()` say
+  so. On 12 simulated trials (26 variance parameters) every per-trial variance
+  ASReml 4.2 identifies is within 0.17 of its ASReml standard error, and the
+  fit takes 8 seconds. Other models past 15 are still refused by
+  `hyperparam_budget`. `backend = "auto"` now fits these models on INLA rather
+  than brms.
+
+* `predict(fit, classify = "gen")` now works when `gen` is random, on INLA
+  and brms fits. Each genotype's prediction is the fixed part, averaged
+  over the other fixed factors, plus its random effect, with a posterior SD
+  and credible interval. On a multi-environment fit with `gen:env` also
+  random, `classify = "gen"` adds each genotype's `gen:env` effects averaged
+  over environments, and `classify = "gen:env"` returns one value per
+  genotype and environment, including combinations with no plots. This
+  matches ASReml's default `predict()`. On two field trials (john.alpha and
+  16 genotypes of besag.met) the predictions differ from ASReml's by at most
+  0.11 SE for genotypes and 0.4 SE for genotype-by-county cells, and the
+  posterior SDs are 1-25% wider than ASReml's SEs, because they include the
+  uncertainty in the variance components. With the variance components held
+  at ASReml's estimates, the predictions agree to 0.006 SE and the SDs to
+  0.3%.
+
+* The arguments of ASReml's `predict()` that change those rules, such as
+  `present`, `average` and `ignore`, or ask for `sed` or `vcov`, now stop
+  with the error `classify_argument_not_supported` instead of being ignored.
+
+* `at(f, level):g` fits on both engines. The random effect `g` applies only
+  where `f` takes the named levels, with one variance per level, as in
+  ASReml; `at(design, "split"):mainplot` gives a main-plot variance to the
+  split-plot trials alone. Levels can be named by value or by position in
+  `levels(f)`, and a level the data lack is refused (`at_level_not_in_data`).
+  On simulated split-plot and RCB trials the main-plot SD was within 1% of
+  ASReml's on INLA and 3% on brms.
+
+* `at(trial):ar1(row):ar1(col)` fits a separate AR1 x AR1 field on each
+  trial on INLA, with its own SD and both correlations, reported as
+  `sd_spatial__trial<level>`, `rho_row__trial<level>` and
+  `rho_col__trial<level>`. `at(trial, "T2"):ar1(row):ar1(col)` fits the field
+  on the named trials only. On three simulated trials every posterior median
+  was within 0.3 posterior SDs of ASReml's estimate. brms refuses the term.
+
+* `residual = ~ ar1(row):ar1(col)` fits ASReml's separable residual with no
+  nugget on INLA, for a Gaussian response: three parameters, and no `sigma`
+  row. `residual = ~ dsum(~ ar1(row):ar1(col) | trial)` fits it separately in
+  each trial. The random-side `random = ~ ar1(row):ar1(col)` keeps its
+  nugget, so the two models are told apart by where they are written. On a
+  simulated 16 x 10 trial the field SD and the two correlations were within
+  1.4% of ASReml's.
 
 ## Fixes to INLA results
 
@@ -55,6 +153,22 @@
 * `fb_plan()` no longer reports that a model will not fit on data under
   100,000 rows because the memory check cannot size one of its terms.
   `flexybayes()` skips that check below 100,000 rows.
+
+## New: a flag for weakly identified variance components
+
+* On INLA fits, a variance component whose 95% posterior interval covers 40%
+  or more of its prior's probability is marked `weakly identified` in the
+  `note` column of `summary(fit)$varcomp`, and the fit warns. Data that
+  inform a component narrow it to a small share of the prior, and a share this
+  large means the reported value mostly reflects the prior. It is common with
+  a grouping factor of three or four levels, or a random term with the same
+  grouping as a fixed factor. brms fits are not checked yet. Silence the
+  warning with `options(flexyBayes.silence_weak_identification_warning = TRUE)`.
+
+* The warning that a random slope has collapsed to zero now compares the
+  slope's standard deviation times its covariate's standard deviation with 1%
+  of the residual standard deviation, so the result no longer depends on the
+  covariate's units.
 
 ## For packages that extend flexyBayes
 
@@ -92,22 +206,6 @@
 * Prior rows passed to `fb_refit(extra_prior = )` are recorded in the model
   manifest with the source `extra_prior`.
 
-## New: a flag for weakly identified variance components
-
-* On INLA fits, a variance component whose 95% posterior interval covers 40%
-  or more of its prior's probability is marked `weakly identified` in the
-  `note` column of `summary(fit)$varcomp`, and the fit warns. Data that
-  inform a component narrow it to a small share of the prior, and a share this
-  large means the reported value mostly reflects the prior. It is common with
-  a grouping factor of three or four levels, or a random term with the same
-  grouping as a fixed factor. brms fits are not checked yet. Silence the
-  warning with `options(flexyBayes.silence_weak_identification_warning = TRUE)`.
-
-* The warning that a random slope has collapsed to zero now compares the
-  slope's standard deviation times its covariate's standard deviation with 1%
-  of the residual standard deviation, so the result no longer depends on the
-  covariate's units.
-
 ## Other fixes
 
 * `fb_plan()` refuses an argument it does not take with
@@ -134,6 +232,151 @@
   "partial match of 'var' to 'vars'" under `options(warnPartialMatchDollar =
   TRUE)`. The covariate standardisation now reads the term's fields by exact
   name.
+
+* With `gen` fixed and `gen:env` random, `predict(classify = "gen")` now
+  includes the `gen:env` effects, as ASReml does. It used to return the
+  fixed part only, with SEs 8-11% wider than ASReml's on besag.met.
+
+* `fb_plan()` names an AR1 field term as it was written, for example
+  `ar1(row):ar1(col)`, in its representation plan. It printed
+  `(ar1_spatial | ?)` for every field.
+
+* The INLA hyperparameter count now has one precision per section of a
+  `dsum(~ units | f)` residual. It counted the residual as one, so with 12
+  trials it read 16 where INLA has 26, and a residual over many sections could
+  pass the limit of 15 unrefused.
+
+* The print of an INLA fit with a `dsum()` residual names its family once
+  instead of once per section.
+
+* The gate's warning above 10 hyperparameters no longer says that a `ccd`
+  integration is set; nothing set it.
+
+* A saved INLA fit holds only the fit. The formula and INLA's prior functions
+  kept the frame the model was fitted in, with the data and the engine's
+  working copies, so `saveRDS()` of a 10,368-plot fit wrote 1,119 MB in 93 s.
+  It now writes 160 MB in 17 s, and a job of `fb_isolated_lapply()` that is
+  given the fit runs in 3.7 s instead of 7.4 s with about a quarter of the memory.
+  Results are unchanged.
+
+* The two correlations of an AR1 x AR1 field are now named after the factor
+  each runs along, `rho_<factor>`, in `summary()$varcomp`, `print()`,
+  `fb_variance_draws()`, `vpredict()` and the per-level
+  names of `at(trial):ar1(row):ar1(col)` and
+  `dsum(~ ar1(row):ar1(col) | trial)`. `ar1(col):ar1(row)` and
+  `ar1(row):ar1(col)` now report the same correlation under the same name,
+  as the field panel and ASReml (`ar1(row):ar1(col)!row!cor`) already did. Previously `rho_row` was the correlation along whichever factor
+  the term wrote first.
+
+* `vcov()`, `predict(se.fit = TRUE)`, `predict(classify = )` and the posterior
+  draws of an INLA fit with a smooth beside the intercept, such as
+  `random = ~ site + spl(x)`, stopped with "leading principal minor ... is not
+  positive" in 18 of 40 simulated fits of one such design. The smooth and the intercept
+  share a constant that only the smooth's sum-to-zero constraint fixes, so the
+  precision INLA stores is singular in that direction and rounding can make
+  its factorisation fail. These calls now condition on the constraint the way
+  `INLA::inla.posterior.sample()` does, and on such a fit the `vcov()` SDs
+  agree with INLA's `summary.fixed` to 5e-6 and with 100,000 of INLA's own
+  posterior draws to within 0.5 Monte Carlo standard errors. Fits whose
+  precision factorises give the same results as before.
+
+* A fit whose stored precision is singular in a direction no constraint fixes
+  is refused by name, `inla_config_precision_not_positive_definite`.
+
+* A fixed or random term that names a column not in the data is refused
+  before any engine runs, with `model_variable_not_in_data` and the missing
+  names in `variables`. It used to stop with R's "object 'x' not found", on
+  INLA only after the fit had run.
+
+* A response that is a factor or character vector is refused with
+  `response_not_numeric` on both engines and in `fb_plan()`. A three-level
+  factor used to be fitted on INLA as a Gaussian on its level codes 1 to 3. A
+  binomial response keeps its own refusal, `binomial_response_not_binary`,
+  which `fb_plan()` now reports too.
+
+* The bar grammar fits a transformed response, `log(y) ~ x + (1 | g)`, as
+  the ASReml grammar does. The two fits agree to within the spread of two
+  identical INLA calls (1e-8 in the coefficients), and the coefficients agree
+  with `lme4::lmer()` to 2e-4.
+
+* `aggregate = "foo"` (`aggregate_argument_invalid`), weights that are not one
+  number per row (`weights_invalid`), a `prior` that is not an `fb_prior()`
+  object (`prior_not_fb_prior`) and a `flexybayes_stream()` source that is not
+  a file, a data frame or a chunk generator (`stream_source_invalid`) are
+  refused by name. They used to stop untyped, and a character prior crashed
+  with "$ operator is invalid for atomic vectors".
+
+* The refusals of the aggregated and streamed routes are `flexybayes_refusal`
+  conditions with a registered `reason_code`. A model the aggregation plan
+  cannot compress refuses with `aggregation_plan_ineligible`, its reasons in
+  `reason_codes`, and a model outside the aggregated or streamed route's scope
+  with `aggregation_out_of_scope`, its reason in `scope_reason`.
+
+* `fb_plan(aggregate = TRUE)` reports no route where the fit refuses
+  `aggregate = TRUE`, for example a Poisson model with a continuous covariate.
+  It used to plan a per-row fit.
+
+* `predict()` on an INLA fit takes `re_formula` and `summary`. Its predictions
+  are population-level, so `re_formula = NA` returns the fixed part of the
+  model, as on a brms fit; any other `re_formula`, and `summary = FALSE`, are
+  refused with `method_argument_not_supported`. `vcov()` and
+  `fb_as_draws_simple()` on a brms fit refuse `n_samples`, which they used to
+  ignore.
+
+* `update()` with no change now re-fits under the prior the fit ran under.
+  When the original call stated a prior or `prior_vc_sd` but not
+  `prior_fixed_sd`, the re-fit put a normal(0, 100) prior on every fixed
+  effect, which the original fit did not have. The re-fit also records its
+  data under the name the fit recorded.
+
+* `vpredict()` works on a flexyBayes fit when sommer is attached after
+  flexyBayes. sommer's own `vpredict()` used to mask it and stop with "no
+  applicable method".
+
+## Minor improvements
+
+* `vcov()`, `predict(se.fit = TRUE)` and `predict(classify = )` on an INLA fit
+  take about half the time (4.7 s to 2.2 s on a 10,368-plot fit with 79
+  hyperparameter configurations): each configuration's precision matrix is
+  factorised on the ordering of the first, which gives the same factor.
+  Results are identical.
+
+## Documentation
+
+* New vignette, *Moving from ASReml-R*: the flexyBayes spelling of each
+  ASReml construct the package supports (`fixed`, `random`, `residual`,
+  `at()`, `diag()`, `us()`, `ar1()`, `dsum()`, `weights`,
+  `predict(classify = )`, `vpredict()`, `summary()$varcomp`), the
+  constructs it refuses and why, and how to read a posterior summary beside
+  a REML one. Every ASReml number on the page comes from a stored fit, so it
+  builds without an ASReml licence.
+
+* *Moving from ASReml-R* shows the 0.16.0 additions beside stored ASReml
+  4.2 fits: `predict(classify = "gen")` with `gen` random, `at(f, level):g`,
+  the nugget-free `residual = ~ ar1(row):ar1(col)`, a separate field per
+  trial with `at(trial):ar1(row):ar1(col)`, per-trial genotype and residual
+  variances on 12 trials fitted by empirical Bayes, and
+  `predict(allow_new_levels = TRUE, mean_by = )` for a county the fit did not
+  see. Its list of refused models no longer includes `at(env, "C1"):gen` or
+  the nugget-free residual, which both fit.
+
+* `inst/TRANSLATION.md` lists per-trial genotype and residual variances,
+  prediction with a random classify factor, and prediction at new levels,
+  each with its ASReml comparison. `inst/KNOWN_ISSUES.md` adds two open
+  issues: the weak-identification flag can stay silent where REML cannot
+  identify a variance, and `ar1(t):g` reports its correlation as
+  `rho_row`.
+
+## Tests
+
+* flexyBayes is now compared with stored ASReml 4.2 fits on all eight model
+  shapes of the ASReml oracle suite, up from one. On the six shapes fitted
+  on INLA the fixed effects agree to within 0.011 of ASReml's standard error
+  and every variance component ASReml identifies agrees to within 9% (the
+  tolerance is 15%). The replicate variance of `john.alpha`, which ASReml
+  estimates with a standard error larger than itself, is flagged weakly
+  identified in all three shapes that carry it. `us(env):gen` is refused on
+  INLA by name, and on brms its fixed effects and identified variances agree.
 
 # flexyBayes 0.15.0
 
