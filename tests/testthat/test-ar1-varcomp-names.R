@@ -120,9 +120,9 @@ test_that("DEF-202: summary, the field panel and the draws agree on the names", 
                tolerance = 0.02)
 })
 
-test_that("DEF-207: a field with one AR1 factor names its correlation by factor", {
+test_that("DEF-225: a field with one AR1 factor names its correlation by factor", {
   skip(paste(
-    "DEF-207 open: ar1(t):g reports its correlation as rho_row in",
+    "DEF-225 open: ar1(t):g reports its correlation as rho_row in",
     "summary()$varcomp while the field panel says rho_t"
   ))
   skip_on_cran()
