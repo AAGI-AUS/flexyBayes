@@ -74,26 +74,26 @@
 
 # Case and route pairs that stop untyped today, with their register rows.
 .g17_open <- c(
-  "missing_column inla" = "DEF-203",
-  "missing_column brms_code" = "DEF-203",
-  "missing_column aggregate" = "DEF-203",
-  "missing_random_column inla" = "DEF-203",
-  "missing_random_column brms_code" = "DEF-203",
-  "missing_random_column aggregate" = "DEF-207",
-  "bad_aggregate inla" = "DEF-204",
-  "bad_aggregate brms_code" = "DEF-204",
-  "bad_aggregate aggregate" = "DEF-204",
-  "bad_aggregate plan" = "DEF-204",
-  "weights_wrong_length inla" = "DEF-205",
-  "weights_wrong_length brms_code" = "DEF-205",
-  "weights_wrong_length aggregate" = "DEF-205",
-  "weights_wrong_length plan" = "DEF-205",
-  "bad_prior inla" = "DEF-206",
-  "bad_prior brms_code" = "DEF-206",
-  "bad_prior aggregate" = "DEF-207",
-  "factor_slope_bar stream" = "DEF-207",
-  "fa_term stream" = "DEF-207",
-  "data_not_frame stream" = "DEF-208"
+  "missing_column inla" = "DEF-212",
+  "missing_column brms_code" = "DEF-212",
+  "missing_column aggregate" = "DEF-212",
+  "missing_random_column inla" = "DEF-212",
+  "missing_random_column brms_code" = "DEF-212",
+  "missing_random_column aggregate" = "DEF-216",
+  "bad_aggregate inla" = "DEF-213",
+  "bad_aggregate brms_code" = "DEF-213",
+  "bad_aggregate aggregate" = "DEF-213",
+  "bad_aggregate plan" = "DEF-213",
+  "weights_wrong_length inla" = "DEF-214",
+  "weights_wrong_length brms_code" = "DEF-214",
+  "weights_wrong_length aggregate" = "DEF-214",
+  "weights_wrong_length plan" = "DEF-214",
+  "bad_prior inla" = "DEF-215",
+  "bad_prior brms_code" = "DEF-215",
+  "bad_prior aggregate" = "DEF-216",
+  "factor_slope_bar stream" = "DEF-216",
+  "fa_term stream" = "DEF-216",
+  "data_not_frame stream" = "DEF-217"
 )
 
 test_that("DC-17 guard: every route refuses an unfittable model with a typed refusal", {

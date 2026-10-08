@@ -48,8 +48,8 @@
 
 # Pairs where the plan and the fit disagree today.
 .g09_open <- c(
-  "aggregate_continuous auto" = "DEF-214",
-  "aggregate_continuous inla" = "DEF-214"
+  "aggregate_continuous auto" = "DEF-223",
+  "aggregate_continuous inla" = "DEF-223"
 )
 
 .g09_plan_verdict <- function(p) {

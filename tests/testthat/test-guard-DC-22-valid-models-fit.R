@@ -84,7 +84,7 @@
   )
 }
 
-.g22_open <- c(bar_grammar_transformed = "DEF-215")
+.g22_open <- c(bar_grammar_transformed = "DEF-224")
 
 test_that("DC-22 guard: every model the peers fit, flexybayes() fits on INLA", {
   skip_on_cran()

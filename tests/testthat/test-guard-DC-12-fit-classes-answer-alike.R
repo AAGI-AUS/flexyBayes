@@ -56,10 +56,10 @@
 
 # Method and argument pairs that swallow a sibling's argument today.
 .g12_open <- c(
-  "predict.flexybayes_inla re_formula" = "DEF-212",
-  "predict.flexybayes_inla summary" = "DEF-212",
-  "vcov.flexybayes n_samples" = "DEF-212",
-  "fb_as_draws_simple.flexybayes_brms n_samples" = "DEF-212"
+  "predict.flexybayes_inla re_formula" = "DEF-221",
+  "predict.flexybayes_inla summary" = "DEF-221",
+  "vcov.flexybayes n_samples" = "DEF-221",
+  "fb_as_draws_simple.flexybayes_brms n_samples" = "DEF-221"
 )
 
 .g12_data <- function() {
