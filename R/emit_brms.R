@@ -2093,11 +2093,14 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #' @param summary Logical: if `TRUE` (default), summarise across
 #'   draws to a numeric vector; if `FALSE`, return the
 #'   `draws x rows` posterior matrix.
-#' @param classify The factors to break a marginal-means table down by:
+#' @param classify The factors to break a predicted-value table down by:
 #'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
-#'   formula (`~ Variety`). `NULL` (the default) is the historical
-#'   behaviour. See [predict.flexybayes_inla()] for how the two active
-#'   engines' prediction paths differ.
+#'   formula (`~ Variety`). The factors may be fixed or random, and the
+#'   table follows ASReml's default rules, described under
+#'   [predict.flexybayes_inla()]. On this engine the values come from the
+#'   posterior draws; a level combination the data never held is drawn
+#'   from its fitted normal distribution. `NULL` (the default) is the
+#'   historical behaviour.
 #' @param level Credible level for the classify table's interval, or for the
 #'   predictive interval with `allow_new_levels = TRUE`, as a proportion.
 #'   Default `0.95`.
@@ -2149,7 +2152,7 @@ predict.flexybayes_brms <- function(
   }
   if (!is.null(classify)) {
     .fb_classify_newdata_note(newdata)
-    return(.fb_predict_classify(object, classify, level))
+    return(.fb_predict_classify(object, classify, level, ...))
   }
   if (is.null(object$brms)) {
     stop(

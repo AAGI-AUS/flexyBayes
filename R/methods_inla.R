@@ -534,11 +534,22 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' coincide. This is the prediction surface \pkg{marginaleffects} uses
 #' for average predictions and slopes.
 #'
-#' The `classify` path builds a marginal-means table through the emmeans
-#' seam (the same construction [predict.flexybayes_brms()] uses), whose
-#' interval on this engine comes from the Gaussian approximation of the
-#' joint fixed-effect posterior rather than from INLA's own marginals.
-#' The printed table names that.
+#' With `gen` random, `classify = "gen"` returns each genotype's fixed part
+#' plus its random effect, and on a multi-environment fit with `gen:env`
+#' random it also adds that genotype's `gen:env` effects averaged over
+#' environments. This matches ASReml's default `predict()`: equal-weight
+#' averaging over the fixed-term variables not in `classify`, a covariate
+#' held at its mean, variables that appear only in random terms ignored, and
+#' every random term whose variables are all in `classify` or averaged over
+#' included. The intervals integrate over INLA's hyperparameter
+#' configurations, so they include the uncertainty in the variance
+#' components. A table with no random term is computed by emmeans, with
+#' intervals from the Gaussian approximation of the fixed-effect
+#' posterior. The arguments of
+#' ASReml's `predict()` that change these rules (`present`, `average`,
+#' `ignore`, `use`, `except`, `only`, `associate`, `levels`, `vcov`, `sed`,
+#' `parallel`, `aliased`, `design.points`) are refused with
+#' `classify_argument_not_supported`.
 #'
 #' @param object A `flexybayes_inla` fit.
 #' @param newdata Optional data frame; defaults to the fit data. Ignored,
@@ -549,10 +560,10 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' @param type `"response"` or `"link"`.
 #' @param se.fit Logical: also return delta-method standard errors from
 #'   the fixed-effect covariance.
-#' @param classify The factors to break a marginal-means table down by:
+#' @param classify The factors to break a predicted-value table down by:
 #'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
-#'   formula (`~ Variety`). `NULL` (the default) is the historical
-#'   behaviour.
+#'   formula (`~ Variety`). The factors may be fixed or random. `NULL`
+#'   (the default) is the historical behaviour.
 #' @param level Credible level for the classify table's interval, or for the
 #'   predictive interval with `allow_new_levels = TRUE`, as a proportion.
 #'   Default `0.95`.
@@ -568,7 +579,8 @@ logLik.flexybayes_inla <- function(object, ...) {
 #'   predicts each row.
 #' @param n_draws With `allow_new_levels = TRUE`, the number of posterior
 #'   draws. Default `1000`.
-#' @param ... Ignored. Present for compatibility with the generic.
+#' @param ... Ignored, except that an argument of ASReml's `predict()`
+#'   given with `classify` is refused by name.
 #'
 #' @details
 #' With `allow_new_levels = TRUE`, the prediction for a set of rows is the
@@ -631,7 +643,7 @@ predict.flexybayes_inla <- function(
   }
   if (!is.null(classify)) {
     .fb_classify_newdata_note(newdata)
-    return(.fb_predict_classify(object, classify, level))
+    return(.fb_predict_classify(object, classify, level, ...))
   }
   fam <- family(object)
   if (!identical(fam$link, "identity")) {
