@@ -221,11 +221,7 @@ test_that("with the variances held at REML, the table reproduces ASReml", {
 })
 
 test_that("DEF-201: gen fixed, gen:county random includes gen:county", {
-  # ASReml's rules use every term built from the classify and averaged
-  # variables, so gen:county enters predict(classify = "gen") averaged over
-  # county. The table used to be the fixed part alone, 11% wider than
-  # ASReml's SE on this fit. The variances are held within 0.5% of REML, as
-  # in the test above, so the width ratio must be within 1%.
+  # Variances held within 0.5% of REML, as in the test above.
   skip_if_not_installed("INLA")
   skip_on_cran()
   ref <- .cr_ref()

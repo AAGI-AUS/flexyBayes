@@ -423,10 +423,7 @@ test_that("the refusal code is registered in the taxonomy", {
 # 8. A random-effects grouping factor is predicted, as in ASReml    #
 # ---------------------------------------------------------------- #
 #
-# `predict(fit, classify = "Geno")` on a multi-environment trial is the
-# first thing a breeder asks of a fitted model. Up to 0.15.0 it refused by
-# name. It now returns the fixed part plus each level's random effect;
-# the ASReml comparison is in test-predict-classify-random.R.
+# The ASReml comparison is in test-predict-classify-random.R.
 
 test_that("classify on a random-only factor returns its levels, both engines", {
   skip_on_cran()
