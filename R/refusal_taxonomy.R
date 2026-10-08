@@ -1294,25 +1294,22 @@
     since_version = "0.9.0"
   )
 
-  # at(f, level) selects levels; diag(f) / idh(f) vary the variance across
-  # all of them. The two are easy to conflate because they share a spelling
-  # and both "do something per level", but they are different models: the
-  # conditioned form gives the effect only where the condition holds, the
-  # diagonal form gives it everywhere with a level-specific variance. Fitting
-  # one under the other's name is exactly the failure this package refuses.
+  # at(f, level):units sections the residual on selected levels only, a
+  # different model from dsum(~ units | f), which sections it on all of
+  # them. The random-side at(f, level):g fits from 0.16.0.
   .register_refusal(
     reason_code = "at_level_conditioning_unsupported",
     description = paste0(
-      "at(f, level):g conditions a random effect on selected levels of f, ",
-      "and flexyBayes has no lowering for it on either engine. It is a ",
-      "different model from the heterogeneous variance structure ",
-      "diag(f):g, and is refused by name."
+      "at(f, level):units gives selected levels of f a residual variance ",
+      "of their own, and flexyBayes has no lowering for it on either ",
+      "engine. It is a different model from dsum(~ units | f), and is ",
+      "refused by name."
     ),
     message_template = paste0(
-      "at(<factor>, <level>):<term> conditions the random effect on ",
-      "selected levels, which is a different model from a heterogeneous ",
-      "variance across all of them, and flexyBayes has no lowering for the ",
-      "conditioned form. Drop the level to fit diag(<factor>):<term>."
+      "at(<factor>, <level>):units gives a residual variance to selected ",
+      "levels only, which is a different model from a residual variance ",
+      "per level, and flexyBayes has no lowering for it. Drop the level to ",
+      "fit dsum(~ units | <factor>)."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -2266,31 +2263,28 @@
     since_version = "0.9.3"
   )
   .register_refusal(
-    reason_code = "at_field_per_level_hyper_not_representable",
+    reason_code = "at_level_not_in_data",
     description = paste0(
-      "at(trial, level):ar1(row):ar1(col) asks for an AR1 x AR1 field on ",
-      "one level of `trial`, which flexyBayes does not fit. ",
-      "id(trial):ar1(row):ar1(col) fits one field per level on INLA, with ",
-      "the variance and both correlations shared across levels."
+      "at(f, level) names a level that is not a level of f in the data. ",
+      "Levels are literal values or positions in levels(f), as ASReml ",
+      "reads them."
     ),
     message_template = "%s",
-    registered_in_adr = "FS-27 / C5",
+    registered_in_adr = "PLAN_0.16.0 C5",
     plan_field = NA_character_,
-    since_version = "0.9.3"
+    since_version = "0.16.0"
   )
   .register_refusal(
-    reason_code = "at_field_per_level_parameters_not_fitted",
+    reason_code = "ar1_residual_with_random_field",
     description = paste0(
-      "at(trial):ar1(row):ar1(col) asks for a separate field variance and ",
-      "correlations for each level of `trial`, as ASReml fits it. ",
-      "flexyBayes does not fit per-level field parameters on either ",
-      "engine. id(trial):ar1(row):ar1(col) fits one field per level on ",
-      "INLA, with the variance and both correlations shared across levels."
+      "The nugget-free autoregressive residual together with an ",
+      "autoregressive field on the random side. flexyBayes fits one of ",
+      "the two per model."
     ),
     message_template = "%s",
-    registered_in_adr = "PLAN_AND_UNIT_BRIEFS_0.14.1_2026-09-24 (U-AR-SPELL)",
+    registered_in_adr = "PLAN_0.16.0 C5",
     plan_field = NA_character_,
-    since_version = "0.14.1"
+    since_version = "0.16.0"
   )
   .register_refusal(
     reason_code = "binomial_response_not_binary",

@@ -697,6 +697,11 @@ print.lgm_refusal <- function(x, ...) {
       # precision, already counted by .lgm_family_hypers().
       "ar1" = 2L,
       "ar1_spatial" = 3L,
+      # One field per level of the by-factor, each with its own SD and
+      # correlations.
+      "ar1_spatial_at" = as.integer(
+        length(term$by_levels %||% 1L) * (if (isTRUE(term$col_ar1)) 3L else 2L)
+      ),
       "spline" = 1L,
       "polynomial" = 1L,
       1L
@@ -943,6 +948,7 @@ print.lgm_refusal <- function(x, ...) {
     "us_gxe" = "unstructured GxE",
     "ar1" = "autoregressive lag-1",
     "ar1_spatial" = "AR1 spatial",
+    "ar1_spatial_at" = "AR1 spatial field per level",
     "corh_gxe" = "equicorrelated GxE",
     "nested" = "nested / interaction random effect",
     "combo" = "multi-way interaction random effect",
@@ -1130,9 +1136,8 @@ print.lgm_refusal <- function(x, ...) {
     return(TRUE)
   }
   # diag(f):g / idh(f):g / at(f):g -- k independent iid fields, one per level
-  # of the outer factor. The `level` argument conditions on selected levels,
-  # which is a different model, and stays refused.
-  if (identical(term$type, "at_simple") && is.null(term$level)) {
+  # of the outer factor; at(f, level):g keeps the named levels.
+  if (identical(term$type, "at_simple")) {
     return(TRUE)
   }
   # us(f):g is not accepted here: the INLA emit still builds its iidKd
@@ -1148,7 +1153,7 @@ print.lgm_refusal <- function(x, ...) {
   # emit_inla() validates the one-observation-per-node grid condition and
   # refuses an incomplete / replicated grid there (gate accepts the class;
   # emit validates the instance -- the simple_slope_uncor pattern).
-  if (term$type %in% c("ar1", "ar1_spatial")) {
+  if (term$type %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
     return(TRUE)
   }
   if (term$type %in% c("vm", "ped")) {

@@ -715,7 +715,7 @@
   # wrapper's dictionaries (k = NA_integer_) -- the level count is
   # the binding factor for the latent vector size, so refusing
   # cleanly beats guessing.
-  KNOWN_INDEXED <- c("vm", "ped", "ar1", "ar1_spatial")
+  KNOWN_INDEXED <- c("vm", "ped", "ar1", "ar1_spatial", "ar1_spatial_at")
 
   if (is.na(k) || !rtype %in% KNOWN_INDEXED) {
     return(.preflight_entry(
@@ -856,6 +856,9 @@
     return("<fixed:unnamed>")
   }
   # random
+  if (identical(ttype, "ar1_spatial_at")) {
+    return(.ar1_term_spelling(term))
+  }
   # A multi-way interaction random term (combo A:B:C) carries its columns in
   # `vars` and has no `var`; they collapse to a single "A:B:C" string so the
   # label stays scalar. A vector label otherwise propagated into
@@ -931,6 +934,17 @@
   # already populates $n_row / $n_col / $n_at from the real data at
   # IR-build time; .fb_dataset_levels() is the metadata-only fallback
   # (fb_from_brms(data = NULL, carry_n_rows = ...)).
+  if (identical(term$type, "ar1_spatial_at")) {
+    grids <- term$level_grids
+    if (is.null(grids)) {
+      return(NA_integer_)
+    }
+    return(as.integer(sum(vapply(
+      grids,
+      function(g) length(g$rows) * length(g$cols),
+      numeric(1L)
+    ))))
+  }
   if (identical(term$type, "ar1_spatial")) {
     n_row <- term$n_row %||%
       .fb_dataset_levels(fb_dataset, as.character(term$row_var %||% ""))

@@ -136,7 +136,20 @@
     # Spelled back from the IR so the grouped field (AR1 along the first
     # factor, independent across the second) is not described as a second
     # ar1() on the group with a fourth parameter it does not have.
-    ar1_spatial = paste0(
+    ar1_spatial_at = if (isTRUE(term$residual)) {
+      paste0(
+        "dsum(~ ar1(", term$row_var, "):ar1(", term$col_var, ") | ",
+        term$by_var, ") residual, no nugget (3 parameters per level)"
+      )
+    } else {
+      paste0(
+        .ar1_term_spelling(term), " field per level (",
+        if (isTRUE(term$col_ar1)) 3L else 2L, " parameters each) + nugget"
+      )
+    },
+    ar1_spatial = if (isTRUE(term$residual)) {
+      paste0(.ar1_term_spelling(term), " residual, no nugget (3 parameters)")
+    } else paste0(
       .ar1_term_spelling(term),
       if (isTRUE(term$col_ar1)) {
         " field + nugget (4 parameters)"

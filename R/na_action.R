@@ -306,7 +306,7 @@
   terms_all <- c(fb$random_terms %||% list(), fb$residual_terms %||% list())
   for (t in terms_all) {
     ty <- t$type %||% ""
-    if (identical(ty, "ar1_spatial")) {
+    if (ty %in% c("ar1_spatial", "ar1_spatial_at")) {
       out <- c(out, t$row_var, t$col_var)
     } else if (identical(ty, "ar1")) {
       out <- c(out, t$var)
@@ -321,7 +321,10 @@
   out <- character(0)
   collect <- function(tl) {
     for (t in tl %||% list()) {
-      for (f in c("var", "row_var", "col_var", "group", "inner", "outer")) {
+      fields <- c(
+        "var", "row_var", "col_var", "by_var", "group", "inner", "outer"
+      )
+      for (f in fields) {
         v <- t[[f]]
         if (is.character(v)) out <<- c(out, v)
       }

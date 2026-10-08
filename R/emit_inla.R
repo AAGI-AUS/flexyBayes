@@ -1043,6 +1043,66 @@ emit_inla <- function(
     }
   }
 
+  # at(trial):ar1(row):ar1(col) -- one field per level of `trial`, each
+  # with its own SD and correlations. Each level gets its own row and column
+  # index, NA outside the level, so its f() term covers that trial's plots
+  # only. Each level's plots must form a complete grid.
+  for (term in fb$random_terms) {
+    if (!identical(term$type %||% "", "ar1_spatial_at")) {
+      next
+    }
+    by_f <- as.character(data[[term$by_var]])
+    row_f <- factor(data[[term$row_var]])
+    col_f <- factor(data[[term$col_var]])
+    bad <- character(0L)
+    for (lev in term$by_levels) {
+      at_lev <- !is.na(by_f) & by_f == lev
+      idx <- .fb_inla_field_at_index(term, lev)
+      collide <- intersect(unname(idx), names(data))
+      if (length(collide)) {
+        stop(.fb_refusal_condition(
+          reason_code = "nested_index_name_collision",
+          message = paste0(
+            "Fitting the field on level ", lev, " of `", term$by_var,
+            "` on INLA needs an index column named `", collide[[1L]],
+            "`, and `data` already has one. Rename that column."
+          )
+        ))
+      }
+      grid <- term$level_grids[[lev]]
+      cells <- paste(row_f[at_lev], col_f[at_lev], sep = "\r")
+      if (
+        sum(at_lev) != length(grid$rows) * length(grid$cols) ||
+          anyDuplicated(cells) > 0L
+      ) {
+        bad <- c(bad, lev)
+      }
+      data_inla[[idx[["row"]]]] <- ifelse(
+        at_lev, match(as.character(row_f), grid$rows), NA_integer_
+      )
+      data_inla[[idx[["col"]]]] <- ifelse(
+        at_lev, match(as.character(col_f), grid$cols), NA_integer_
+      )
+    }
+    if (length(bad)) {
+      stop(.fb_refusal_condition(
+        reason_code = "ar1_spatial_requires_complete_grid",
+        message = paste0(
+          "The plots of level(s) ", paste(bad, collapse = ", "), " of `",
+          term$by_var, "` do not form a complete (", term$row_var, ", ",
+          term$col_var, ") grid with one plot per cell. ",
+          .ar1_term_spelling(term), " fits a separable autoregressive ",
+          "field on each level's own grid, so every combination of the two ",
+          "factors within a level has to identify exactly one plot. Keep ",
+          "the unobserved plots as design cells with the response set to ",
+          "NA (na_action = \"augment\", the default), or pad the grid with ",
+          "fb_complete_grid()."
+        ),
+        family_class = "flexybayes_ar1_spatial_refusal"
+      ))
+    }
+  }
+
   # fa(f, k):g -- a factor-analytic covariance. Each common factor is one
   # latent field over the inner levels, entered once per level of f. INLA's
   # copy= carries an ESTIMATED scaling, and that scaling IS the loading, so
@@ -1128,7 +1188,7 @@ emit_inla <- function(
     }
     outer_f <- factor(data[[term$outer]])
     inner_f <- factor(data[[term$inner]])
-    for (lev in levels(outer_f)) {
+    for (lev in term$outer_levels %||% levels(outer_f)) {
       idx_name <- .fb_inla_at_index(term$outer, term$inner, lev)
       if (idx_name %in% names(data)) {
         stop(.fb_refusal_condition(
@@ -2063,6 +2123,32 @@ emit_inla <- function(
       rhs_terms <- c(rhs_terms, contrib)
       next
     }
+    # One field per level, each with its own hyperparameters.
+    if (identical(term$type, "ar1_spatial_at")) {
+      hyper_str <- .inla_hyper_arg(hyper_ctrl[["spatial"]])
+      for (lev in term$by_levels) {
+        idx <- .fb_inla_field_at_index(term, lev)
+        note(
+          idx[["row"]],
+          "ar1",
+          term$type,
+          "spatial",
+          hyper_ctrl[["spatial"]],
+          group_model = if (isTRUE(term$col_ar1)) "ar1" else "iid"
+        )
+        rhs_terms <- c(
+          rhs_terms,
+          paste0(
+            "f(", idx[["row"]], ", model = \"ar1\", group = ", idx[["col"]],
+            ", control.group = list(model = \"",
+            if (isTRUE(term$col_ar1)) "ar1" else "iid", "\")",
+            if (nzchar(hyper_str)) paste0(", ", hyper_str) else "",
+            ")"
+          )
+        )
+      }
+      next
+    }
     # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
     if (term$type %in% c("ar1", "ar1_spatial")) {
       if (identical(term$type, "ar1")) {
@@ -2609,6 +2695,19 @@ emit_inla <- function(
 .ar1_term_spelling <- function(term) {
   if (identical(term$type, "ar1")) {
     return(paste0("ar1(", term$var, ")"))
+  }
+  if (identical(term$type, "ar1_spatial_at")) {
+    inner <- if (isTRUE(term$col_ar1)) {
+      paste0("ar1(", term$col_var, ")")
+    } else {
+      term$col_var
+    }
+    at_txt <- if (is.null(term$level)) {
+      term$by_var
+    } else {
+      paste0(term$by_var, ", ", term$level)
+    }
+    return(paste0("at(", at_txt, "):ar1(", term$row_var, "):", inner))
   }
   inner <- if (isTRUE(term$col_ar1)) {
     paste0("ar1(", term$col_var, ")")
@@ -3813,6 +3912,16 @@ summary.flexybayes_inla <- function(object, ...) {
 # make.names() so a level like "2024-25" still yields a usable symbol.
 .fb_inla_at_index <- function(outer, inner, level) {
   make.names(paste0(inner, "_at_", outer, "_", level))
+}
+
+# The row and column index columns of the field on one level of an
+# at(trial):ar1(row):ar1(col) term.
+.fb_inla_field_at_index <- function(term, level) {
+  stem <- paste0("_at_", term$by_var, "_", level, "_id")
+  c(
+    row = make.names(paste0(term$row_var, stem)),
+    col = make.names(paste0(term$col_var, stem))
+  )
 }
 
 

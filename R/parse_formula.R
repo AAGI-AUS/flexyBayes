@@ -931,52 +931,28 @@
   # at(trial):ar1(row) is the first half of at(trial):ar1(row):ar1(col);
   # a:b:c parses as (a:b):c, so the next fold completes it.
   if (lt == "at" && rt == "ar1") {
-    if (!is.null(l$level)) {
-      stop(.fb_refusal_condition(
-        reason_code = "at_field_per_level_hyper_not_representable",
-        message = paste0(
-          # l$level is already deparsed, quotes included.
-          "at(", l$var, ", ", l$level, "):ar1(", r$var, ") asks for a ",
-          "field on a single level of `", l$var, "`, which flexyBayes ",
-          "does not fit. For one field per level of `", l$var, "` with ",
-          "the variance and correlations shared across levels, write ",
-          "id(", l$var, "):ar1(", r$var, "):ar1(...). For one level ",
-          "alone, fit ar1(", r$var, "):ar1(...) on that level's data."
-        ),
-        family_class = "flexybayes_ar1_spatial_refusal"
-      ))
-    }
     return(list(list(
       type = "at_ar1_partial",
       at_var = l$var,
+      level = l$level,
       row_var = r$var
     )))
   }
-  # ASReml fits at(trial):ar1(row):ar1(col) with a separate variance and
-  # correlations for each trial.
+  # at(trial):ar1(row):ar1(col), ASReml's separate field per level of
+  # `trial`, each with its own variance and correlations. at(trial, level)
+  # keeps the named levels only.
   if (
     identical(lt, "at_ar1_partial") &&
       rt %in% c("ar1", "id", "ide", "simple")
   ) {
-    last <- switch(
-      rt,
-      simple = r$var,
-      ar1 = paste0("ar1(", r$var, ")"),
-      paste0("id(", r$var, ")")
-    )
-    field <- paste0(":ar1(", l$row_var, "):", last)
-    stop(.fb_refusal_condition(
-      reason_code = "at_field_per_level_parameters_not_fitted",
-      message = paste0(
-        "at(", l$at_var, ")", field, " asks for a separate field ",
-        "variance and correlations for each level of `", l$at_var, "`, ",
-        "as ASReml fits it. flexyBayes does not fit per-level field ",
-        "parameters. For one field per level of `", l$at_var, "` with ",
-        "the variance and correlations shared across levels, write id(",
-        l$at_var, ")", field, "."
-      ),
-      family_class = "flexybayes_ar1_spatial_refusal"
-    ))
+    return(list(list(
+      type = "ar1_spatial_at",
+      row_var = l$row_var,
+      col_var = r$var,
+      col_ar1 = (rt == "ar1"),
+      by_var = l$at_var,
+      level = l$level
+    )))
   }
   # id(trial):ar1(row):ar1(col); the left node is trial:ar1(row) or
   # ar1(row):trial, with `trial` as its col_var.
@@ -1018,6 +994,60 @@
   }
   # fallback
   list(list(type = "interaction_generic", left = l, right = r))
+}
+
+# The levels of `var` an at() term covers: every level when `level_txt` is
+# NULL, otherwise the levels it names. ASReml reads a number as a position
+# in levels(var), and so does this. `rest` is the remainder of the term, for
+# the refusal message.
+.fb_at_selected_levels <- function(var, level_txt, all_levels, rest) {
+  if (is.null(level_txt)) {
+    return(all_levels)
+  }
+  # Only a literal, or c() of literals, is read; nothing else is evaluated.
+  expr <- tryCatch(str2lang(level_txt), error = function(e) NULL)
+  is_literal <- function(e) {
+    (is.character(e) || is.numeric(e)) && length(e) == 1L
+  }
+  value <- if (is_literal(expr)) {
+    expr
+  } else if (
+    is.call(expr) &&
+      identical(expr[[1L]], as.name("c")) &&
+      length(expr) > 1L &&
+      all(vapply(as.list(expr)[-1L], is_literal, logical(1L)))
+  ) {
+    unlist(as.list(expr)[-1L])
+  } else {
+    NULL
+  }
+  written <- paste0("at(", var, ", ", level_txt, ")", rest)
+  bad <- if (is.character(value) || is.factor(value)) {
+    setdiff(as.character(value), all_levels)
+  } else if (is.numeric(value)) {
+    value[!value %in% seq_along(all_levels)]
+  } else {
+    level_txt
+  }
+  if (length(value) == 0L || length(bad) > 0L) {
+    stop(.fb_refusal_condition(
+      reason_code = "at_level_not_in_data",
+      message = paste0(
+        written, " names ", paste(bad, collapse = ", "),
+        ", which is not a level of `", var, "`. Name the levels as ",
+        "literal values, or as positions in levels(", var, "); `", var,
+        "` has ", length(all_levels), " level(s): ",
+        paste(utils::head(all_levels, 10L), collapse = ", "),
+        if (length(all_levels) > 10L) ", ..." else "", "."
+      )
+    ))
+  }
+  out <- if (is.numeric(value)) {
+    all_levels[value]
+  } else {
+    as.character(value)
+  }
+  unique(out)
 }
 
 # Enrich a term descriptor with data-derived information
@@ -1124,11 +1154,16 @@
     "at_simple" = {
       if (term$outer %in% names(data)) {
         of <- factor(data[[term$outer]])
-        term$n_outer <- nlevels(of)
         # The INLA emit writes one f() per level of the outer factor and
         # builds the formula without seeing `data`, so the level names have
-        # to travel on the term.
-        term$outer_levels <- levels(of)
+        # to travel on the term. at(f, level) keeps the named levels only.
+        term$outer_levels <- .fb_at_selected_levels(
+          term$outer,
+          term$level,
+          levels(of),
+          paste0(":", term$inner)
+        )
+        term$n_outer <- length(term$outer_levels)
       }
       if (term$inner %in% names(data)) {
         inf <- factor(data[[term$inner]])
@@ -1145,6 +1180,49 @@
         # resulting sigma rows after the levels, without seeing `data`.
         term$var_levels <- levels(vf)
       }
+      term
+    },
+    "ar1_spatial_at" = {
+      for (v in c(term$row_var, term$col_var, term$by_var)) {
+        if (!v %in% names(data)) {
+          stop(.fb_refusal_condition(
+            reason_code = "nested_variable_not_in_data",
+            message = paste0(
+              "The field term names `", v, "`, which is not a column of ",
+              "`data`."
+            )
+          ))
+        }
+      }
+      term$n_row <- length(unique(data[[term$row_var]]))
+      term$n_col <- length(unique(data[[term$col_var]]))
+      term$by_levels <- .fb_at_selected_levels(
+        term$by_var,
+        term$level,
+        levels(factor(data[[term$by_var]])),
+        paste0(
+          ":ar1(", term$row_var, "):",
+          if (isTRUE(term$col_ar1)) {
+            paste0("ar1(", term$col_var, ")")
+          } else {
+            term$col_var
+          }
+        )
+      )
+      # Each level's own row and column levels, in the order the INLA index
+      # numbers them; the formula and the random-effect table read these
+      # without seeing `data`.
+      by_chr <- as.character(data[[term$by_var]])
+      term$level_grids <- lapply(
+        stats::setNames(nm = term$by_levels),
+        function(lev) {
+          at_lev <- !is.na(by_chr) & by_chr == lev
+          list(
+            rows = levels(droplevels(factor(data[[term$row_var]])[at_lev])),
+            cols = levels(droplevels(factor(data[[term$col_var]])[at_lev]))
+          )
+        }
+      )
       term
     },
     "ar1_spatial" = {
