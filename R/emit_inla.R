@@ -44,7 +44,32 @@
 # mocking this function alone exercises that translation exactly as a
 # real crash would.
 .inla_call <- function(args) {
-  do.call(INLA::inla, args)
+  .fb_inla_force_closures(do.call(INLA::inla, args))
+}
+
+# INLA's all.hyper functions keep frames whose unevaluated arguments hold the
+# inla() call frame; evaluating them keeps that frame out of a saved fit.
+.fb_inla_force_closures <- function(fit) {
+  visit <- function(x) {
+    if (is.function(x)) {
+      env <- environment(x)
+      if (!is.null(env) && !isNamespace(env)) {
+        for (nm in ls(env, all.names = TRUE)) {
+          if (!eval(call("missing", as.name(nm)), env)) {
+            get(nm, envir = env, inherits = FALSE)
+          }
+        }
+      }
+    } else if (is.list(x)) {
+      for (y in x) {
+        visit(y)
+      }
+    }
+  }
+  if (is.list(fit)) {
+    visit(fit$all.hyper)
+  }
+  fit
 }
 
 # "eb" when lgm_gate() admitted the model past the hyperparameter budget.
@@ -728,6 +753,9 @@ emit_inla <- function(
     )
   }
   control_family <- .build_inla_control_family(hyper_ctrl, family = inla_family)
+  if (.fb_has_residual_field(fb)) {
+    control_family <- .fb_inla_nugget_free_family(hyper_ctrl, standardisation)
+  }
   # fixed_alias = "drop": each aliased column fixed at zero (R/fixed_alias.R).
   control_fixed <- .fb_inla_pin_aliased(
     control_fixed,
@@ -948,11 +976,9 @@ emit_inla <- function(
   # model + grouped-AR1 need consecutive-integer indices; build <var>_id for
   # the 1D term and <row>_id / <col>_id for the separable term.
   #
-  # 0.9.0: the field is read from the random terms only. It used to be read
-  # from the residual terms as well, reinterpreting an ASReml residual as a
-  # latent field plus the Gaussian observation nugget -- four parameters
-  # under a three-parameter name. The residual spelling now refuses at
-  # dispatch and the field is written where it belongs.
+  # The field is read from the random terms only. ASReml's nugget-free
+  # residual arrives here as a random-side field marked `residual = TRUE`
+  # (R/fb.R), with the observation precision fixed in control.family.
   #
   # The field is faithful only with one observation per grid node: with a
   # gap or a replicate the latent index no longer matches the design, so the
@@ -1058,6 +1084,65 @@ emit_inla <- function(
     }
   }
 
+  # at(trial):ar1(row):ar1(col): each level's row and column index is NA
+  # outside the level, so its f() term covers that trial's plots only.
+  for (term in fb$random_terms) {
+    if (!identical(term$type %||% "", "ar1_spatial_at")) {
+      next
+    }
+    by_f <- as.character(data[[term$by_var]])
+    row_f <- factor(data[[term$row_var]])
+    col_f <- factor(data[[term$col_var]])
+    bad <- character(0L)
+    for (lev in term$by_levels) {
+      at_lev <- !is.na(by_f) & by_f == lev
+      idx <- .fb_inla_field_at_index(term, lev)
+      collide <- intersect(unname(idx), names(data))
+      if (length(collide)) {
+        stop(.fb_refusal_condition(
+          reason_code = "nested_index_name_collision",
+          message = paste0(
+            "Fitting the field on level ", lev, " of `", term$by_var,
+            "` on INLA needs an index column named `", collide[[1L]],
+            "`, and `data` already has one. Rename that column."
+          )
+        ))
+      }
+      grid <- term$level_grids[[lev]]
+      cells <- paste(row_f[at_lev], col_f[at_lev], sep = "\r")
+      if (
+        sum(at_lev) != length(grid$rows) * length(grid$cols) ||
+          anyDuplicated(cells) > 0L
+      ) {
+        bad <- c(bad, lev)
+      }
+      data_inla[[idx[["row"]]]] <- ifelse(
+        at_lev, match(as.character(row_f), grid$rows), NA_integer_
+      )
+      data_inla[[idx[["col"]]]] <- ifelse(
+        at_lev, match(as.character(col_f), grid$cols), NA_integer_
+      )
+    }
+    if (length(bad)) {
+      stop(.fb_refusal_condition(
+        reason_code = "ar1_spatial_requires_complete_grid",
+        message = paste0(
+          "The plots of ", if (length(bad) > 1L) "levels " else "level ",
+          paste(bad, collapse = ", "), " of `",
+          term$by_var, "` do not form a complete (", term$row_var, ", ",
+          term$col_var, ") grid with one plot per cell. ",
+          .ar1_term_spelling(term), " fits a separable autoregressive ",
+          "field on each level's own grid, so every combination of the two ",
+          "factors within a level has to identify exactly one plot. Keep ",
+          "the unobserved plots as design cells with the response set to ",
+          "NA (na_action = \"augment\", the default), or pad the grid with ",
+          "fb_complete_grid()."
+        ),
+        family_class = "flexybayes_ar1_spatial_refusal"
+      ))
+    }
+  }
+
   # fa(f, k):g -- a factor-analytic covariance. Each common factor is one
   # latent field over the inner levels, entered once per level of f. INLA's
   # copy= carries an ESTIMATED scaling, and that scaling IS the loading, so
@@ -1143,7 +1228,7 @@ emit_inla <- function(
     }
     outer_f <- factor(data[[term$outer]])
     inner_f <- factor(data[[term$inner]])
-    for (lev in levels(outer_f)) {
+    for (lev in term$outer_levels %||% levels(outer_f)) {
       idx_name <- .fb_inla_at_index(term$outer, term$inner, lev)
       if (idx_name %in% names(data)) {
         stop(.fb_refusal_condition(
@@ -1739,7 +1824,11 @@ emit_inla <- function(
 
   # Whether the data support the AR1 field, from a fit of the same model
   # without it. Read by the collapse warning and the varcomp `note` below.
-  if (is.null(fold_refit) && length(.inla_spatial_field_terms(out))) {
+  if (
+    is.null(fold_refit) &&
+      length(.inla_spatial_field_terms(out)) &&
+      !.fb_has_residual_field(fb)
+  ) {
     formula_without_field <- tryCatch(
       .build_inla_formula(
         .fb_drop_field_terms(fb),
@@ -1784,6 +1873,9 @@ emit_inla <- function(
   standardisation = NULL,
   with_slots = FALSE
 ) {
+  # The formula keeps this frame; an unevaluated argument here would keep
+  # the caller's frame, data and fit included, in every saved fit.
+  force(known_matrices)
   rhs_terms <- character(0)
 
   # The engine slot each f() term writes, and the prior keys it reads, for
@@ -2085,6 +2177,32 @@ emit_inla <- function(
         ")"
       )
       rhs_terms <- c(rhs_terms, contrib)
+      next
+    }
+    # One field per level, each with its own hyperparameters.
+    if (identical(term$type, "ar1_spatial_at")) {
+      hyper_str <- .inla_hyper_arg(hyper_ctrl[["spatial"]])
+      for (lev in term$by_levels) {
+        idx <- .fb_inla_field_at_index(term, lev)
+        note(
+          idx[["row"]],
+          "ar1",
+          term$type,
+          "spatial",
+          hyper_ctrl[["spatial"]],
+          group_model = if (isTRUE(term$col_ar1)) "ar1" else "iid"
+        )
+        rhs_terms <- c(
+          rhs_terms,
+          paste0(
+            "f(", idx[["row"]], ", model = \"ar1\", group = ", idx[["col"]],
+            ", control.group = list(model = \"",
+            if (isTRUE(term$col_ar1)) "ar1" else "iid", "\")",
+            if (nzchar(hyper_str)) paste0(", ", hyper_str) else "",
+            ")"
+          )
+        )
+      }
       next
     }
     # WP16: AR1 (1D) / separable AR1xAR1 spatial random field.
@@ -2634,6 +2752,19 @@ emit_inla <- function(
   if (identical(term$type, "ar1")) {
     return(paste0("ar1(", term$var, ")"))
   }
+  if (identical(term$type, "ar1_spatial_at")) {
+    inner <- if (isTRUE(term$col_ar1)) {
+      paste0("ar1(", term$col_var, ")")
+    } else {
+      term$col_var
+    }
+    at_txt <- if (is.null(term$level)) {
+      term$by_var
+    } else {
+      paste0(term$by_var, ", ", term$level)
+    }
+    return(paste0("at(", at_txt, "):ar1(", term$row_var, "):", inner))
+  }
   inner <- if (isTRUE(term$col_ar1)) {
     paste0("ar1(", term$col_var, ")")
   } else {
@@ -2688,6 +2819,51 @@ emit_inla <- function(
     hyper_clause,
     ")"
   )
+}
+
+# Whether the model carries ASReml's nugget-free residual, an AR1 field
+# moved to the random side by .fb_residual_field_to_random() (R/fb.R).
+.fb_has_residual_field <- function(fb) {
+  any(vapply(
+    fb$random_terms %||% list(),
+    function(t) isTRUE(t$residual),
+    logical(1L)
+  ))
+}
+
+# The log precision the Gaussian observation error is fixed at under the
+# nugget-free residual, on the standardised response: a nugget variance of
+# exp(-12), about 6e-6 of the response variance.
+.FB_NUGGET_FREE_LOG_PREC <- 12
+
+# control.family for the nugget-free residual: the observation precision
+# fixed, so the field is the whole residual. A prior on the residual SD
+# has nothing to act on and is refused.
+.fb_inla_nugget_free_family <- function(hyper_ctrl, standardisation) {
+  if (!is.null(hyper_ctrl[["sigma"]])) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_target_not_in_model",
+      message = paste0(
+        "A prior on the residual SD (sigma) was given, and the model's ",
+        "residual is the nugget-free autoregressive field, which has no ",
+        "separate residual SD. Put the prior on the field SD instead, ",
+        "group = \"spatial\"."
+      )
+    ))
+  }
+  if (is.null(standardisation)) {
+    stop(.fb_refusal_condition(
+      reason_code = "ar1_residual_not_representable",
+      message = paste0(
+        "The nugget-free autoregressive residual is fitted on INLA for a ",
+        "Gaussian response with the identity link only."
+      )
+    ))
+  }
+  list(hyper = list(prec = list(
+    initial = .FB_NUGGET_FREE_LOG_PREC,
+    fixed = TRUE
+  )))
 }
 
 # Build the control.family list passed to INLA::inla(). When the user
@@ -3676,13 +3852,21 @@ emit_inla <- function(
     stringsAsFactors = FALSE
   )
   print(body, row.names = FALSE)
-  cat(
-    "  The field and the nugget are separate parameters: this is a ",
-    "latent\n  autoregressive field plus independent observation noise, ",
-    "not ASReml's\n  nugget-free separable residual. Variances are the ",
-    "squares of the SDs.\n",
-    sep = ""
-  )
+  if (.fb_has_residual_field(object$fb)) {
+    cat(
+      "  The field is the residual, with no nugget: ASReml's separable\n",
+      "  residual = ~ ar1:ar1. Variances are the squares of the SDs.\n",
+      sep = ""
+    )
+  } else {
+    cat(
+      "  The field and the nugget are separate parameters: this is a ",
+      "latent\n  autoregressive field plus independent observation noise, ",
+      "not ASReml's\n  nugget-free separable residual. Variances are the ",
+      "squares of the SDs.\n",
+      sep = ""
+    )
+  }
   .print_inla_field_test(object$extras$field_test)
   invisible(tab)
 }
@@ -3837,6 +4021,16 @@ summary.flexybayes_inla <- function(object, ...) {
 # make.names() so a level like "2024-25" still yields a usable symbol.
 .fb_inla_at_index <- function(outer, inner, level) {
   make.names(paste0(inner, "_at_", outer, "_", level))
+}
+
+# The row and column index columns of the field on one level of an
+# at(trial):ar1(row):ar1(col) term.
+.fb_inla_field_at_index <- function(term, level) {
+  stem <- paste0("_at_", term$by_var, "_", level, "_id")
+  c(
+    row = make.names(paste0(term$row_var, stem)),
+    col = make.names(paste0(term$col_var, stem))
+  )
 }
 
 

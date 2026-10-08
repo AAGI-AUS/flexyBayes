@@ -989,15 +989,21 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   link = NULL,
   random_groups = character(0),
   vm_ped_groups = character(0),
-  resp_sd = NULL
+  resp_sd = NULL,
+  residual_sigma = TRUE
 ) {
   scl <- .default_half_normal_scale(
     data, response, family, link, resp_sd = resp_sd
   )
-  specs <- list(list(
-    target = list(type = "sigma"),
-    spec = list(family = "half_normal", args = list(scale = scl$scale))
-  ))
+  # A nugget-free residual field has no residual SD to put a prior on.
+  specs <- if (residual_sigma) {
+    list(list(
+      target = list(type = "sigma"),
+      spec = list(family = "half_normal", args = list(scale = scl$scale))
+    ))
+  } else {
+    list()
+  }
   for (g in unique(random_groups)) {
     if (!nzchar(g)) {
       next
@@ -1189,6 +1195,21 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 
     # AR1 field -- its standard deviation is keyed `spatial`, which the
     # fingerprint names sd_spatial. The correlations keep INLA's own prior.
+    if (identical(ttype, "ar1_spatial_at")) {
+      shared <- c(shared, "spatial")
+      for (lev in t$by_levels) {
+        sfx <- paste0("__", t$by_var, lev)
+        add_engine(
+          paste0("rho_row", sfx),
+          "AR1 latent field correlation keeps INLA's own default hyperprior"
+        )
+        add_engine(
+          paste0("rho_col", sfx),
+          "AR1 latent field correlation keeps INLA's own default hyperprior"
+        )
+      }
+      next
+    }
     if (ttype %in% c("ar1", "ar1_spatial")) {
       shared <- c(shared, "spatial")
       add_engine(

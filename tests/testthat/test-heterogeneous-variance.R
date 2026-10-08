@@ -63,16 +63,24 @@ test_that("us(f):g keeps the correlations that diag(f):g drops", {
   expect_true(grepl("cor_1|L_1", us_txt))
 })
 
-test_that("at(f, level):g is refused, not silently treated as diagonal", {
+test_that("at(f, level):g is not emitted as the diagonal structure", {
   skip_if_not_installed("brms")
   d <- .het_data()
   # at(site, 2):gen gives the effect only where site == 2; diag(site):gen
   # gives it everywhere with a per-level variance. Different models that
   # share a spelling, which is precisely how one gets fitted under the
   # other's name.
-  err <- tryCatch(.emitted(~ at(site, 2):gen, d), error = function(e) e)
-  expect_s3_class(err, "flexybayes_refusal_at_level_conditioning_unsupported")
-  expect_match(conditionMessage(err), "conditions the random effect")
+  at_fb <- fb_from_asreml(
+    fixed = y ~ site, random = ~ at(site, 2):gen, data = d
+  )
+  expect_identical(
+    format(flexyBayes:::.fb_to_brms_formula(at_fb)),
+    "y ~ site + (0 + site2 || gen)"
+  )
+  expect_false(identical(
+    .emitted(~ at(site, 2):gen, d),
+    .emitted(~ diag(site):gen, d)
+  ))
 })
 
 test_that("the refusal code is registered in the taxonomy", {

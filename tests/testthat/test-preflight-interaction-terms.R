@@ -56,3 +56,26 @@ test_that(".preflight_term_label collapses an interaction group to a scalar", {
   expect_length(lab, 1L)
   expect_match(lab, "a:b:cc", fixed = TRUE)
 })
+
+test_that("DEF-206: the plan labels an AR1 field by its spelling", {
+  d <- expand.grid(
+    row = factor(1:4), col = factor(1:3), trial = factor(c("A", "B"))
+  )
+  d$y <- stats::rnorm(nrow(d))
+  one <- d[d$trial == "A", ]
+  for (case in list(
+    list(random = ~ ar1(row):ar1(col), data = one,
+         label = "ar1(row):ar1(col)"),
+    list(random = ~ ar1(row), data = one[one$col == "1", ],
+         label = "ar1(row)"),
+    list(random = ~ id(trial):ar1(row):ar1(col), data = d,
+         label = "id(trial):ar1(row):ar1(col)"),
+    list(random = ~ at(trial):ar1(row):ar1(col), data = d,
+         label = "at(trial):ar1(row):ar1(col)")
+  )) {
+    p <- fb_plan(y ~ 1, random = case$random, data = case$data)
+    expect_true(case$label %in% names(p$representation_plan),
+                label = case$label)
+    expect_false(any(grepl("?", names(p$representation_plan), fixed = TRUE)))
+  }
+})

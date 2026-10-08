@@ -167,6 +167,7 @@ emit_brms <- function(
   if (!is.null(known_variance)) {
     data[[.FB_BRMS_KNOWN_SE_COL]] <- sqrt(known_variance)
   }
+  data <- .fb_brms_at_level_data(fb, data)
   brms_form <- .fb_to_brms_formula(fb)
   # A formula hook may fit another formula (R/fb_refit.R); the linear one
   # still describes the fixed part to the GLM shim.
@@ -762,33 +763,17 @@ emit_brms <- function(
     # us() when the true cross-level correlations are zero. It was checking
     # the count that caught lme4's `||` quietly fitting a correlated block for
     # a factor slope, which a value comparison had passed.
+    # at(f, level):g keeps the named levels: one 0/1 column per level,
+    # named <f><level> so brms reports sd_<g>__<f><level> as for at(f):g.
     if (identical(ttype, "at_simple")) {
-      if (!is.null(term$level)) {
-        stop(.fb_refusal_condition(
-          reason_code = "at_level_conditioning_unsupported",
-          message = paste0(
-            "at(",
-            term$outer,
-            ", ",
-            paste(term$level, collapse = ", "),
-            "):",
-            term$inner,
-            " conditions the random effect on selected ",
-            "levels of ",
-            term$outer,
-            ", which is a different model from a ",
-            "heterogeneous variance across all of them. Drop the level to ",
-            "fit diag(",
-            term$outer,
-            "):",
-            term$inner,
-            "."
-          )
-        ))
+      slope <- if (is.null(term$level)) {
+        term$outer
+      } else {
+        paste(.fb_brms_at_columns(term), collapse = " + ")
       }
       re_terms <- c(
         re_terms,
-        paste0("(0 + ", term$outer, " || ", term$inner, ")")
+        paste0("(0 + ", slope, " || ", term$inner, ")")
       )
       next
     }
@@ -1247,6 +1232,43 @@ emit_brms <- function(
 # positionally (the same level-alignment contract the INLA
 # path enforces); existing dimnames are preserved so brms aligns by
 # name.
+# The 0/1 columns an at(f, level):g term reads on brms, one per named
+# level, named after the factor and the level.
+.fb_brms_at_columns <- function(term) {
+  stats::setNames(
+    make.names(paste0(term$outer, term$outer_levels)),
+    term$outer_levels
+  )
+}
+
+# `data` with the at(f, level) indicator columns added. Used for the fit,
+# where a user column of the same name refuses, and for `newdata`, where
+# the column is rebuilt.
+.fb_brms_at_level_data <- function(fb, data, newdata = FALSE) {
+  for (term in fb$random_terms %||% list()) {
+    if (!identical(term$type %||% "", "at_simple") || is.null(term$level)) {
+      next
+    }
+    cols <- .fb_brms_at_columns(term)
+    for (lev in names(cols)) {
+      if (!newdata && cols[[lev]] %in% names(data)) {
+        stop(.fb_refusal_condition(
+          reason_code = "nested_index_name_collision",
+          message = paste0(
+            "Fitting at(", term$outer, ", ", term$level, "):", term$inner,
+            " on brms needs a column named `", cols[[lev]], "`, and ",
+            "`data` already has one. Rename that column."
+          )
+        ))
+      }
+      data[[cols[[lev]]]] <- as.numeric(
+        as.character(data[[term$outer]]) %in% lev
+      )
+    }
+  }
+  data
+}
+
 .fb_brms_data2 <- function(fb, known_matrices, data) {
   d2 <- list()
   for (term in fb$random_terms) {
@@ -2093,17 +2115,37 @@ confint.flexybayes_brms <- function(object, parm = NULL, level = 0.95, ...) {
 #' @param summary Logical: if `TRUE` (default), summarise across
 #'   draws to a numeric vector; if `FALSE`, return the
 #'   `draws x rows` posterior matrix.
-#' @param classify The factors to break a marginal-means table down by:
+#' @param classify The factors to break a predicted-value table down by:
 #'   a character value (`"Variety"`, `"Variety:env"`) or a one-sided
-#'   formula (`~ Variety`). `NULL` (the default) is the historical
-#'   behaviour. See [predict.flexybayes_inla()] for how the two active
-#'   engines' prediction paths differ.
-#' @param level Credible level for the classify table's interval, as a
-#'   proportion. Default `0.95`.
+#'   formula (`~ Variety`). The factors may be fixed or random, and the
+#'   table follows ASReml's default rules, described under
+#'   [predict.flexybayes_inla()]. On this engine the values come from the
+#'   posterior draws; a level combination the data never held is drawn
+#'   from its fitted normal distribution. `NULL` (the default) is the
+#'   historical behaviour.
+#' @param level Credible level for the classify table's interval, or for the
+#'   predictive interval with `allow_new_levels = TRUE`, as a proportion.
+#'   Default `0.95`.
+#' @param allow_new_levels Logical. `TRUE` returns the posterior predictive of
+#'   the rows of `newdata`, observation noise included, in which a level the
+#'   fit did not see is drawn from its fitted standard deviation:
+#'   `brms::posterior_predict(allow_new_levels = TRUE, sample_new_levels =
+#'   "gaussian")`. The table matches the INLA method's; see
+#'   [predict.flexybayes_inla()] for the structures it is built for and the
+#'   refusals. Its `estimate`, `sd`, `lower` and `upper` are the mean,
+#'   standard deviation and quantiles of the draws. `FALSE` (the default)
+#'   leaves the paths above unchanged.
+#' @param mean_by With `allow_new_levels = TRUE`, the columns of `newdata`
+#'   whose combinations define the sets of rows to average, as a character
+#'   vector or a one-sided formula (`~ TRIAL`). `NULL` predicts each row.
+#' @param n_draws With `allow_new_levels = TRUE`, the number of posterior
+#'   draws used, at most the number the fit holds. Default `1000`.
 #' @param ... Forwarded to `brms::posterior_epred()` /
 #'   `brms::posterior_linpred()`.
-#' @returns One of four shapes, by argument. With `classify` set, the
-#'   marginal-means table for those factors. Otherwise with
+#' @returns One of five shapes, by argument. With `classify` set, the
+#'   marginal-means table for those factors. With `allow_new_levels = TRUE`,
+#'   the `fb_predict_new` table described in [predict.flexybayes_inla()].
+#'   Otherwise with
 #'   `summary = FALSE`, the `draws x rows` posterior matrix; with
 #'   `se.fit = TRUE`, a list of `fit` (posterior mean per row) and
 #'   `se.fit` (posterior SD per row); and by default a numeric vector of
@@ -2118,12 +2160,21 @@ predict.flexybayes_brms <- function(
   summary = TRUE,
   classify = NULL,
   level = 0.95,
+  allow_new_levels = FALSE,
+  mean_by = NULL,
+  n_draws = 1000L,
   ...
 ) {
   type <- match.arg(type)
+  .fb_predict_new_route(
+    allow_new_levels, mean_by, classify, type, se.fit, re_formula, summary
+  )
+  if (isTRUE(allow_new_levels)) {
+    return(.fb_predict_new_brms(object, newdata, mean_by, n_draws, level))
+  }
   if (!is.null(classify)) {
     .fb_classify_newdata_note(newdata)
-    return(.fb_predict_classify(object, classify, level))
+    return(.fb_predict_classify(object, classify, level, ...))
   }
   if (is.null(object$brms)) {
     stop(
@@ -2154,6 +2205,11 @@ predict.flexybayes_brms <- function(
   if (!is.null(newdata)) {
     .fb_offset_values(.fb_fit_ir(object), newdata, newdata = TRUE)
     newdata <- .fb_brms_known_se_newdata(object, newdata)
+    newdata <- .fb_brms_at_level_data(
+      .fb_fit_ir(object),
+      newdata,
+      newdata = TRUE
+    )
   }
 
   post_mat <- if (is.null(newdata)) {

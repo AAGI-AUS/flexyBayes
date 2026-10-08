@@ -164,13 +164,14 @@ interface mirroring `stats::predict()`. Both take `type`, `se.fit`, `classify`
 and `level`; the brms method additionally takes `re_formula` and `summary`.
 There is no parent `predict.flexybayes()` method: it was removed at 0.9.3 so
 that each engine states its own prediction contract. Chunked output is
-not an argument of these methods: `output_file` belongs to `fb_plan()`. The
-brms method passes further arguments on to brms's own prediction functions,
-so `allow_new_levels = TRUE` reaches brms's new-level policy there; the INLA
-method takes no new-level argument. An earlier revision of this page
-advertised three arguments that `...` silently swallowed.
-Interval semantics are *posterior expected-response* (no residual observation
-noise), not posterior-predictive.
+not an argument of these methods: `output_file` belongs to `fb_plan()`. Both
+methods take `allow_new_levels` and `mean_by`. With `allow_new_levels = TRUE`
+each grouping level absent from the fit is drawn from its fitted variance,
+and the intervals are posterior-predictive, observation noise included;
+`mean_by` returns the mean of the rows in each group. Without it, intervals
+are *posterior expected-response* (no residual observation noise), as before.
+An earlier revision of this page advertised three arguments that `...`
+silently swallowed.
 
 Where a method has no meaning on an engine it states that rather than
 returning a number. `logLik()` on an INLA fit reports that INLA returns a

@@ -110,8 +110,8 @@ genetic signal, and flexyBayes has no factor-analytic lowering for brms.
 Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms.
 The bare spelling \code{fa(v, k)}, with no grouping factor for the covariance
 to apply to, keeps its own refusal (\code{fa_not_representable}).
-\code{corh(f):g} and \code{at(f, level):g} are likewise ASReml syntax that
-flexyBayes parses and refuses by name; both are described just below.
+\code{corh(f):g} is likewise ASReml syntax that flexyBayes parses and
+refuses by name; it is described just below.
 
 \strong{Heterogeneous variances.} \code{diag(f):g}, \code{idh(f):g} and \code{at(f):g} all fit
 one variance per level of \code{f} with no covariance between levels -- the
@@ -126,9 +126,15 @@ is refused on both engines: flexyBayes has no lowering for it, and
 approximating it with either neighbour would change the parameter count.
 With one variance for every level and a correlation of zero or more,
 \code{random = ~ g + f:g} is the same covariance and fits on both engines.
-\code{at(f, level):g} is also refused, because conditioning on selected
-levels is a different model from varying the variance across all of
-them.
+
+\strong{Selected levels.} \code{at(f, level):g} gives the random effect \code{g} only
+to the rows where \code{f} takes one of the named levels, with one variance
+per named level, as in ASReml. \code{at(design, "split"):mainplot} is a
+main-plot effect in the split-plot trials alone. Levels are written as
+values, \code{at(f, c("a", "b"))}, or as positions in \code{levels(f)},
+\code{at(f, 2)}; a level the data do not have is refused
+(\code{at_level_not_in_data}). It fits on both engines and reports
+\verb{sd_<g>__<f><level>}, the name \code{at(f):g} gives the same level.
 
 \code{diag(f):g} fits on both engines. \code{us(f):g} fits on brms, and INLA
 refuses it, so \code{auto} routes such a model to brms.
@@ -151,22 +157,24 @@ with real plot-to-plot noise the two return different correlations,
 because a nugget-free model must absorb independent noise into the
 correlated structure and is pulled towards zero by it. The gap grows
 with the share of the total variance the nugget holds, and it falls on
-the correlations a reader acts on. Neither model is wrong. They are
-different models, and writing the field on the random side is what
-keeps them distinguishable by name.
+the correlations a reader acts on. Neither model is wrong. The residual
+form is written on the residual side, \code{residual = ~ ar1(row):ar1(col)},
+described under \code{residual} below.
 
 \strong{Per-trial nested field.} \code{id(trial):ar1(row):ar1(col)} fits one
 separable AR1 field per level of \code{trial} on INLA, via the \verb{replicate =}
 mechanism -- one complete grid per trial, each with its own realised
 field, but the row correlation, column correlation and field SD are
 \strong{shared across every level of \code{trial}}, not estimated per trial. This
-is the model ASReml fits under the same spelling. ASReml reads
-\code{at(trial):ar1(row):ar1(col)} as a separate variance and correlations
-for each trial; flexyBayes does not fit per-trial parameters and refuses
-that spelling (\code{at_field_per_level_parameters_not_fitted}), as it
-refuses \code{at(trial, level):ar1(row):ar1(col)}, a field on one trial
-(\code{at_field_per_level_hyper_not_representable}). It has no brms lowering
-for this field at all, so brms refuses.
+is the model ASReml fits under the same spelling.
+
+\strong{A field for each trial.} \code{at(trial):ar1(row):ar1(col)} fits a
+separate field on each trial, with its own SD and correlations, as
+ASReml does: three parameters per trial, reported as
+\verb{sd_spatial__trial<level>}, \verb{rho_row__trial<level>} and
+\verb{rho_col__trial<level>}, plus the shared Gaussian nugget.
+\code{at(trial, level):ar1(row):ar1(col)} fits the field on the named trials
+only. Each trial's plots must fill its own grid. brms refuses both.
 
 \strong{Units followed through time.} \code{ar1(t):g}, or the same term written
 \code{g:ar1(t)}, fits one AR1 series along \code{t} within each level of \code{g},
@@ -187,10 +195,16 @@ Only families that carry a residual scale parameter can have one made
 heterogeneous -- a Poisson's dispersion is a function of its mean, so
 there is nothing there to vary, and the request is refused.
 
-\code{~ ar1(row):ar1(col)} and \code{~ ar1(t)} are \strong{refused} here: they name
-ASReml's nugget-free separable residual, which flexyBayes does not fit
-on either engine. The refusal points at the random-side field described
-under \code{random} above, and at ASReml for the residual formulation itself.}
+\code{~ ar1(row):ar1(col)} is ASReml's separable residual: one correlated
+residual with no nugget, three parameters (\code{sd_spatial}, \code{rho_row},
+\code{rho_col}), and no \code{sigma} row. \code{~ dsum(~ ar1(row):ar1(col) | trial)}
+fits it separately in each trial, with names suffixed
+\verb{__trial<level>}. Both fit on INLA for a Gaussian response with the
+identity link and one plot per grid cell, where the observation error
+is fixed at a variance of \code{exp(-12)} on the standardised response;
+brms refuses them. They cannot be combined with a random-side field.
+\code{~ ar1(t)} and \code{~ ar1(row):col} are refused on both engines, with a
+pointer to the random-side field described under \code{random} above.}
 
 \item{data}{A data.frame containing all variables referenced in the formulas.}
 

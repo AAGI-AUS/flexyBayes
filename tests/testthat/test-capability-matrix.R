@@ -775,21 +775,6 @@ test_that("the separable AR1 field fits on INLA and refuses on brms", {
     "brms",
     condition_class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
   )
-  # The row's note says the residual spelling refuses and names this one.
-  # Pin both halves of that sentence: the refusal fires on either engine,
-  # and its message points at the random-side field.
-  for (engine in c("inla", "brms")) {
-    old <- .cap_emit(engine, y ~ 1, residual = ~ ar1(row):ar1(col), data = g)
-    expect_true(
-      inherits(old, "flexybayes_refusal_ar1_residual_not_representable"),
-      label = paste("residual spelling on", engine)
-    )
-    expect_match(
-      conditionMessage(old),
-      "random = ~ ar1(row):ar1(col)",
-      fixed = TRUE
-    )
-  }
 })
 
 test_that("the per-trial separable AR1 field fits on INLA and refuses on brms", {
@@ -816,21 +801,6 @@ test_that("the per-trial separable AR1 field fits on INLA and refuses on brms", 
     "brms",
     condition_class = "flexybayes_refusal_stan_cannot_represent_ar1_field"
   )
-  # The row's note says both at() spellings refuse by name.
-  per_level <- .cap_emit(
-    "inla", y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = g
-  )
-  expect_true(inherits(
-    per_level,
-    "flexybayes_refusal_at_field_per_level_parameters_not_fitted"
-  ))
-  level_conditioned <- .cap_emit(
-    "inla", y ~ 1, random = ~ at(trial, "A"):ar1(row):ar1(col), data = g
-  )
-  expect_true(inherits(
-    level_conditioned,
-    "flexybayes_refusal_at_field_per_level_hyper_not_representable"
-  ))
 })
 
 test_that("the grouped temporal AR1 field fits on INLA and refuses on brms", {

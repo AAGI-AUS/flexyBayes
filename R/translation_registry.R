@@ -100,14 +100,21 @@
     "one-to-one: the intercept and slope standard deviations each take a field",
   "Temporal AR1 on the random side" =
     "engine default: the field's precision and correlation keep INLA's priors",
-  "Separable residual AR1 x AR1" = "refused",
+  "Separable residual AR1 x AR1" =
+    "engine default: the field's precision and correlations keep INLA's priors",
+  "Random term on selected levels of a factor" =
+    "one-to-many: one field per named level",
+  "Separable AR1 field per level of a factor" =
+    "one-to-many: one field per level, each with its own hyperparameters",
   "Penalised spline" = "one-to-one: smooth() on the random walk's precision",
   "Gaussian relative weights" = "one-to-one: the residual prior is unchanged",
   "Missing response retained as a prediction target" =
     "one-to-one: the priors are unchanged",
   "Heterogeneous variance with one common correlation" = "refused",
   "Tensor-product and multivariate smooths" = "refused",
-  "Structured inner term inside a sectioned residual" = "refused"
+  "Structured inner term inside a sectioned residual" = "refused",
+  "Separable residual AR1 x AR1 per section" =
+    "one-to-many: one field per section, each with its own hyperparameters"
 )
 
 .FB_TRANSLATION_VINTAGES <- c(
@@ -387,15 +394,75 @@
       structure = "Separable residual AR1 x AR1",
       spelling = "`residual = ~ ar1(row):ar1(col)`",
       vintage = "ASReml 4",
-      engine = "inla, brms",
-      class = "refused",
+      engine = "inla",
+      class = "covariance-family",
       condition = paste(
-        "The package's latent field plus nugget is a four-parameter",
-        "neighbour, not ASReml's nugget-free residual, so it refuses rather",
-        "than substituting."
+        "Gaussian response with the identity link, one plot per grid cell.",
+        "The observation error is fixed at a variance of exp(-12) on the",
+        "standardised response; the posterior medians move by less than",
+        "1e-4 between exp(-10) and exp(-16). brms refuses."
       ),
-      oracle = "Refusal is the claim; asserted by name",
-      anchor = "test-inla-spatial-ar1.R"
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor on a simulated 16 x 10 trial",
+        "(data-raw/at_ar1_reference.R): every posterior median within 0.3",
+        "posterior SDs of the REML estimate"
+      ),
+      anchor = "test-at-fields.R"
+    ),
+    list(
+      structure = "Separable residual AR1 x AR1 per section",
+      spelling = "`residual = ~ dsum(~ ar1(row):ar1(col) | trial)`",
+      vintage = "ASReml 4",
+      engine = "inla",
+      class = "covariance-family",
+      condition = paste(
+        "As for the single residual field, on each section's own grid.",
+        "brms refuses."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor on three simulated trials",
+        "(data-raw/at_ar1_reference.R): every posterior median within 0.3",
+        "posterior SDs of the REML estimate"
+      ),
+      anchor = "test-at-fields.R"
+    ),
+    list(
+      structure = "Random term on selected levels of a factor",
+      spelling = "`at(f, level):g`",
+      vintage = "ASReml 4",
+      engine = "inla, brms",
+      class = "exact",
+      condition = paste(
+        "g is a plain factor. Levels are named by value or by position in",
+        "levels(f); a level the data lack refuses."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor on six simulated trials, three with",
+        "main plots (data-raw/at_ar1_reference.R), on both engines: every",
+        "posterior median within 0.3 posterior SDs of the REML estimate"
+      ),
+      anchor = "test-at-fields.R"
+    ),
+    list(
+      structure = "Separable AR1 field per level of a factor",
+      spelling = paste(
+        "`at(trial):ar1(row):ar1(col)`,",
+        "`at(trial, level):ar1(row):ar1(col)`"
+      ),
+      vintage = "ASReml 4",
+      engine = "inla",
+      class = "exact",
+      condition = paste(
+        "An AR1 field with its own SD and correlations on each named level,",
+        "plus the observation residual; each level's plots fill its grid.",
+        "brms refuses."
+      ),
+      oracle = paste(
+        "ASReml 4.2.0.482 at this anchor on three simulated trials",
+        "(data-raw/at_ar1_reference.R): every posterior median within 0.3",
+        "posterior SDs of the REML estimate"
+      ),
+      anchor = "test-at-fields.R"
     ),
     list(
       structure = "Penalised spline",
@@ -469,7 +536,10 @@
     ),
     list(
       structure = "Structured inner term inside a sectioned residual",
-      spelling = "`dsum(~ ar1(a) | b)`",
+      spelling = paste(
+        "`dsum(~ ar1(a) | b)`, any inner term but `units` and",
+        "`ar1(a):ar1(b)`"
+      ),
       vintage = "ASReml 4",
       engine = "inla, brms",
       class = "refused",

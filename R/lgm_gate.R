@@ -723,6 +723,11 @@ print.lgm_refusal <- function(x, ...) {
       # precision, already counted by .lgm_family_hypers().
       "ar1" = 2L,
       "ar1_spatial" = 3L,
+      # One field per level of the by-factor, each with its own SD and
+      # correlations.
+      "ar1_spatial_at" = as.integer(
+        length(term$by_levels %||% 1L) * (if (isTRUE(term$col_ar1)) 3L else 2L)
+      ),
       "spline" = 1L,
       "polynomial" = 1L,
       1L
@@ -853,12 +858,9 @@ print.lgm_refusal <- function(x, ...) {
 # accepts. INLA folds residual variance into the likelihood and
 # does not represent structured-residual forms.
 .inla_residual_term_type_allowlist <- function() {
-  # 0.9.0: the separable AR1 field moved to the random side. INLA emits it
-  # as a latent autoregressive field plus the observation-level Gaussian
-  # nugget -- four parameters against the three of ASReml's nugget-free
-  # residual -- so the residual spelling is refused by name at dispatch
-  # (.refuse_unrepresentable_structures(), R/dispatch.R) and only the
-  # homogeneous residual reaches the INLA emit.
+  # A residual AR1 either reaches the emit as a random-side field with a
+  # fixed nugget (R/fb.R) or is refused by name at dispatch
+  # (.refuse_unrepresentable_structures(), R/dispatch.R).
   c("units", "at_units")
 }
 
@@ -974,6 +976,7 @@ print.lgm_refusal <- function(x, ...) {
     "us_gxe" = "unstructured GxE",
     "ar1" = "autoregressive lag-1",
     "ar1_spatial" = "AR1 spatial",
+    "ar1_spatial_at" = "AR1 spatial field per level",
     "corh_gxe" = "equicorrelated GxE",
     "nested" = "nested / interaction random effect",
     "combo" = "multi-way interaction random effect",
@@ -1161,9 +1164,8 @@ print.lgm_refusal <- function(x, ...) {
     return(TRUE)
   }
   # diag(f):g / idh(f):g / at(f):g -- k independent iid fields, one per level
-  # of the outer factor. The `level` argument conditions on selected levels,
-  # which is a different model, and stays refused.
-  if (identical(term$type, "at_simple") && is.null(term$level)) {
+  # of the outer factor; at(f, level):g keeps the named levels.
+  if (identical(term$type, "at_simple")) {
     return(TRUE)
   }
   # us(f):g is not accepted here: the INLA emit still builds its iidKd
@@ -1179,7 +1181,7 @@ print.lgm_refusal <- function(x, ...) {
   # emit_inla() validates the one-observation-per-node grid condition and
   # refuses an incomplete / replicated grid there (gate accepts the class;
   # emit validates the instance -- the simple_slope_uncor pattern).
-  if (term$type %in% c("ar1", "ar1_spatial")) {
+  if (term$type %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
     return(TRUE)
   }
   if (term$type %in% c("vm", "ped")) {

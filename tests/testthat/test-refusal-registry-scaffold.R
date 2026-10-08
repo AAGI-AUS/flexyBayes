@@ -611,18 +611,33 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("known_variance_invalid" %in% entries)
   expect_true("known_variance_not_supported" %in% entries)
   expect_true("fixed_effects_aliased" %in% entries)
-  expect_true("at_field_per_level_parameters_not_fitted" %in% entries)
+  expect_false("at_field_per_level_parameters_not_fitted" %in% entries)
+  expect_false("at_field_per_level_hyper_not_representable" %in% entries)
+  expect_true("at_level_not_in_data" %in% entries)
+  expect_true("ar1_residual_with_random_field" %in% entries)
   expect_true("refit_not_reconstructable" %in% entries)
   expect_true("refit_hooks_require_brms" %in% entries)
   expect_true("marginal_cov_not_buildable" %in% entries)
   expect_true("selection_removed" %in% entries)
   expect_true("plan_argument_unknown" %in% entries)
-  expect_equal(length(entries), 165L)
+  expect_true("predict_new_levels_structure_not_supported" %in% entries)
+  expect_true("predict_new_levels_no_variance" %in% entries)
+  expect_true("predict_new_levels_family_not_supported" %in% entries)
+  expect_true("classify_argument_not_supported" %in% entries)
+  expect_equal(length(entries), 169L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
+  # Per-level at() fields fit, so at_field_per_level_parameters_not_fitted and
+  # at_field_per_level_hyper_not_representable go; a level at() names that
+  # the data lack (at_level_not_in_data) and the nugget-free residual beside
+  # a random-side field (ar1_residual_with_random_field) come in (= 165).
+  # Three refusals of predict(allow_new_levels = TRUE): a structure, a
+  # level and a family the new-level draw is not built for (= 168), and
+  # classify_argument_not_supported, an argument of ASReml's predict() that
+  # predict(classify = ) does not implement (= 169).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 165L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 169L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

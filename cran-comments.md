@@ -114,7 +114,7 @@ None. This is a new submission.
 
 ## Vignettes
 
-The five vignettes ship pre-evaluated. Their sources carry live model
+The six vignettes ship pre-evaluated. Their sources carry live model
 fits, and those are run by the maintainer through
 `vignettes/_precompile.R`; what the tarball contains is the resulting
 static markdown, with the fitted output already in it. Building the

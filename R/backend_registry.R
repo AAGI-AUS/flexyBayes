@@ -325,7 +325,11 @@
     # 1-D `ar1` is in .STRUCTURED_COV_TYPES) and auto would route a failed
     # INLA spatial fit to brms, which reconstructs the fixed and random
     # blocks and would drop the field.
-    if (ty %in% c("ar1", "ar1_spatial")) {
+    # ASReml's nugget-free residual is carried on the random side.
+    if (isTRUE(t$residual)) {
+      return("stan_cannot_represent_ar1_residual")
+    }
+    if (ty %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
       return("stan_cannot_represent_ar1_field")
     }
     if (!ty %in% .STRUCTURED_COV_TYPES) {
@@ -347,7 +351,7 @@
     if (ty %in% .BRMS_RESIDUAL_TYPE_ALLOWLIST) {
       next
     }
-    if (ty %in% c("ar1", "ar1_spatial")) {
+    if (ty %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
       return("stan_cannot_represent_ar1_residual")
     }
     return("stan_cannot_represent_structured_residual")
