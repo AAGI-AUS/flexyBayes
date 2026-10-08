@@ -587,8 +587,8 @@ logLik.flexybayes_inla <- function(object, ...) {
 #' them). Every random number comes from R's generator, so `set.seed()` before
 #' the call makes the result repeatable.
 #'
-#' The new-level draw is built for random intercepts, interactions such as
-#' `TRIAL:REP`, `diag(f):g` and `id(trial):ar1(row):ar1(col)`, over an
+#' The new-level draw is built for random intercepts, interactions
+#' (`TRIAL:REP`), `diag(f):g` and `id(trial):ar1(row):ar1(col)`, over an
 #' independent residual or `dsum(~ units | f)`, for a Gaussian response on the
 #' identity link. Any other structure is refused with
 #' `predict_new_levels_structure_not_supported`, a new level with no fitted

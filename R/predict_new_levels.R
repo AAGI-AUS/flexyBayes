@@ -73,8 +73,8 @@
   vars <- if (inherits(mean_by, "formula")) {
     if (length(mean_by) != 2L) {
       stop(
-        "predict(): `mean_by` takes a one-sided formula, such as ",
-        "mean_by = ~ TRIAL.",
+        "predict(): `mean_by` takes a one-sided formula: mean_by = ~ TRIAL ",
+        "averages the rows of each trial.",
         call. = FALSE
       )
     }
@@ -204,7 +204,7 @@
       "predict_new_levels_structure_not_supported",
       paste0(
         "a level the fit did not see is drawn for random intercepts, ",
-        "interactions such as TRIAL:REP, diag(f):g and ",
+        "interactions (TRIAL:REP), diag(f):g and ",
         "id(trial):ar1(row):ar1(col), over an independent residual or one ",
         "variance per section (dsum(~ units | f)). This model also carries ",
         paste(unique(blocked), collapse = ", "),

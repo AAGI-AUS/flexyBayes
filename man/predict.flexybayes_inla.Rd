@@ -105,8 +105,8 @@ from their continuous joint posterior (as \code{\link[=fb_variance_draws]{fb_var
 them). Every random number comes from R's generator, so \code{set.seed()} before
 the call makes the result repeatable.
 
-The new-level draw is built for random intercepts, interactions such as
-\code{TRIAL:REP}, \code{diag(f):g} and \code{id(trial):ar1(row):ar1(col)}, over an
+The new-level draw is built for random intercepts, interactions
+(\code{TRIAL:REP}), \code{diag(f):g} and \code{id(trial):ar1(row):ar1(col)}, over an
 independent residual or \code{dsum(~ units | f)}, for a Gaussian response on the
 identity link. Any other structure is refused with
 \code{predict_new_levels_structure_not_supported}, a new level with no fitted
