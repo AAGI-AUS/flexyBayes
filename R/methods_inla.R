@@ -111,13 +111,27 @@
 # Cholesky factor of its precision Q (the stored Qinv holds only the entries
 # on the factor's sparsity pattern), its mean, and the kriging gain that
 # conditions a draw on the linear constraints A x = e.
-.fb_inla_config_gaussian <- function(cs, k) {
+#
+# `reuse`, from an earlier configuration, refactorises a Q of the same pattern
+# on its ordering; the factor is the one Cholesky() would return.
+.fb_inla_config_gaussian <- function(cs, k, reuse = NULL) {
   config <- cs$config[[k]]
-  chol_q <- Matrix::Cholesky(
-    Matrix::forceSymmetric(config$Q, uplo = "U"),
-    LDL = FALSE
+  q <- Matrix::forceSymmetric(config$Q, uplo = "U")
+  same_pattern <- !is.null(reuse) &&
+    identical(reuse$p, q@p) &&
+    identical(reuse$i, q@i)
+  if (same_pattern) {
+    chol_q <- Matrix::update(reuse$factor, q)
+  } else {
+    chol_q <- Matrix::Cholesky(q, LDL = FALSE)
+    reuse <- list(factor = chol_q, p = q@p, i = q@i)
+  }
+  out <- list(
+    chol_q = chol_q,
+    mu = config$improved.mean,
+    gain = NULL,
+    reuse = reuse
   )
-  out <- list(chol_q = chol_q, mu = config$improved.mean, gain = NULL)
   if (!is.null(cs$constr)) {
     a_mat <- matrix(cs$constr$A, nrow = cs$constr$nc)
     sigma_at <- as.matrix(Matrix::solve(chol_q, t(a_mat)))
@@ -162,8 +176,10 @@
 
   second <- matrix(0, p, p)
   first <- numeric(p)
+  reuse <- NULL
   for (k in seq_along(cs$config)) {
-    g <- .fb_inla_config_gaussian(cs, k)
+    g <- .fb_inla_config_gaussian(cs, k, reuse)
+    reuse <- g$reuse
     cov_f <- as.matrix(Matrix::solve(g$chol_q, unit))[idx, , drop = FALSE]
     mu <- g$mu
     if (!is.null(g$gain)) {
