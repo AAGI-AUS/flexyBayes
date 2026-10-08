@@ -166,18 +166,18 @@ test_that("parse_formula reads dsum(~units|env) as a `at_units` term", {
   expect_equal(terms[[1]]$var, "env")
 })
 
-test_that("parse_formula refuses a structured dsum() inner (no silent drop)", {
+test_that("parse_formula keeps a structured dsum() inner (no silent drop)", {
   dat <- data.frame(
     env = factor(rep(1:2, each = 6)),
     xf = factor(rep(1:3, 4)),
     yf = factor(rep(1:2, 6))
   )
-  # A separable spatial inner must refuse loudly, not silently reduce to
-  # a per-region heteroscedastic variance (the design-fidelity defect).
-  expect_error(
-    flexyBayes:::.parse_formula(~ dsum(~ ar1(xf):ar1(yf) | env), dat),
-    "structured residual"
-  )
+  # A separable spatial inner is a field in each section, never a
+  # per-region heteroscedastic variance (the design-fidelity defect).
+  terms <- flexyBayes:::.parse_formula(~ dsum(~ ar1(xf):ar1(yf) | env), dat)
+  expect_length(terms, 1L)
+  expect_identical(terms[[1]]$type, "ar1_spatial_at")
+  expect_false(identical(terms[[1]]$type, "at_units"))
   # A single ar1() inner is structured too, so it also refuses.
   expect_error(
     flexyBayes:::.parse_formula(~ dsum(~ ar1(xf) | env), dat),
