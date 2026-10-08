@@ -112,9 +112,8 @@
 # on the factor's sparsity pattern), its mean, and the kriging gain that
 # conditions a draw on the linear constraints A x = e.
 #
-# `reuse` is the `reuse` element of an earlier configuration's result. A Q
-# with the same sparsity pattern is factorised with that factor's fill-reducing
-# ordering, which gives the factor a fresh Cholesky() would.
+# `reuse`, from an earlier configuration, refactorises a Q of the same pattern
+# on its ordering; the factor is the one Cholesky() would return.
 .fb_inla_config_gaussian <- function(cs, k, reuse = NULL) {
   config <- cs$config[[k]]
   q <- Matrix::forceSymmetric(config$Q, uplo = "U")

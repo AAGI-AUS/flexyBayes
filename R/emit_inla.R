@@ -47,9 +47,8 @@
   .fb_inla_force_closures(do.call(INLA::inla, args))
 }
 
-# The functions in INLA's `all.hyper` keep INLA frames whose unevaluated
-# arguments hold the whole inla() call frame; evaluating them lets a saved fit
-# leave that frame behind.
+# INLA's all.hyper functions keep frames whose unevaluated arguments hold the
+# inla() call frame; evaluating them keeps that frame out of a saved fit.
 .fb_inla_force_closures <- function(fit) {
   visit <- function(x) {
     if (is.function(x)) {
