@@ -45,6 +45,7 @@ Each term has one variance unless stated otherwise.
 | `~ rep:block` | Blocks nested within replicates, as in an alpha design | both |
 | `~ gen:env` | Genotype-by-environment effects with one variance | both |
 | `~ diag(env):gen` | A separate genotype variance in each environment, with no covariance. `idh()` and `at()` are synonyms | both |
+| `~ at(design, "split"):mainplot` | An effect only where `design` takes the named levels, with a variance for each | both |
 | `~ us(env):gen` | All genotype variances and covariances between environments | brms |
 | `~ vm(gen, K)` | A known relationship matrix, as in genomic prediction | both |
 | `~ ped(animal, A)` | The same with a pedigree matrix, in the ASReml 3 spelling (ASReml 4 uses `vm()`) | both |
@@ -52,6 +53,7 @@ Each term has one variance unless stated otherwise.
 | `~ ar1(t)` | An autoregressive field in one dimension | INLA |
 | `~ ar1(t):g` | An autoregressive field within each level of `g`, independent between levels | INLA |
 | `~ id(trial):ar1(row):ar1(col)` | One field per trial, with the correlations shared across trials | INLA |
+| `~ at(trial):ar1(row):ar1(col)` | One field per trial, each with its own variance and correlations. `at(trial, "T1")` keeps the named trials | INLA |
 | `~ spl(x)` | A penalised spline, fitted as a second-order random walk. It is similar to, but not the same as, ASReml's spline | INLA |
 | `(x \| g)` | Correlated random intercept and slope | brms |
 | `(x \|\| g)` | Uncorrelated random intercept and slope | both |
@@ -63,6 +65,8 @@ Each term has one variance unless stated otherwise.
 | `~ units` | Independent residuals with one variance (the default) | both |
 | `~ dsum(~ units \| env)` | One residual variance per environment | both |
 | `~ at(env):units` | The same, in ASReml 3's spelling | both |
+| `~ ar1(row):ar1(col)` | A separable autoregressive residual with no independent plot error, for a Gaussian response | INLA |
+| `~ dsum(~ ar1(row):ar1(col) \| trial)` | The same residual in each trial, with its own variance and correlations | INLA |
 
 # Families
 
@@ -80,8 +84,7 @@ both engines. `hurdle_gamma` on brms only.
 | `~ ar2(t)`, `~ ar3(t)` | `ar1(t)` |
 | `~ str(...)` | Write the structure on the term that carries it |
 | `~ te(x, y)`, `~ ti(x, y)`, `~ t2(x, y)` | `spl(x)` for one covariate |
-| `residual = ~ ar1(row):ar1(col)` | The same field on the random side, which adds an independent plot error |
-| `~ at(trial):ar1(row):ar1(col)`, which ASReml fits with correlations per trial | `id(trial):ar1(row):ar1(col)`, with the correlations shared across trials |
+| `residual = ~ ar1(t)` | The same field on the random side, which adds an independent plot error |
 
 ASReml's `ante`, `chol`, `corb`, `corg`, `corgh`, `sfa`, `rr`, `own`, `exp`,
 `gau` and `mtrn` are not recognised. The error message suggests the nearest

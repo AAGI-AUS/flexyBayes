@@ -48,8 +48,8 @@
 #'   Write `diag(f):g`, which fits on both engines, or `us(f):g` on brms.
 #'   The bare spelling `fa(v, k)`, with no grouping factor for the covariance
 #'   to apply to, keeps its own refusal (`fa_not_representable`).
-#'   `corh(f):g` and `at(f, level):g` are likewise ASReml syntax that
-#'   flexyBayes parses and refuses by name; both are described just below.
+#'   `corh(f):g` is likewise ASReml syntax that flexyBayes parses and
+#'   refuses by name; it is described just below.
 #'
 #'   **Heterogeneous variances.** `diag(f):g`, `idh(f):g` and `at(f):g` all fit
 #'   one variance per level of `f` with no covariance between levels -- the
@@ -64,9 +64,15 @@
 #'   approximating it with either neighbour would change the parameter count.
 #'   With one variance for every level and a correlation of zero or more,
 #'   `random = ~ g + f:g` is the same covariance and fits on both engines.
-#'   `at(f, level):g` is also refused, because conditioning on selected
-#'   levels is a different model from varying the variance across all of
-#'   them.
+#'
+#'   **Selected levels.** `at(f, level):g` gives the random effect `g` only
+#'   to the rows where `f` takes one of the named levels, with one variance
+#'   per named level, as in ASReml. `at(design, "split"):mainplot` is a
+#'   main-plot effect in the split-plot trials alone. Levels are written as
+#'   values, `at(f, c("a", "b"))`, or as positions in `levels(f)`,
+#'   `at(f, 2)`; a level the data do not have is refused
+#'   (`at_level_not_in_data`). It fits on both engines and reports
+#'   `sd_<g>__<f><level>`, the name `at(f):g` gives the same level.
 #'
 #'   `diag(f):g` fits on both engines. `us(f):g` fits on brms, and INLA
 #'   refuses it, so `auto` routes such a model to brms.
@@ -89,22 +95,24 @@
 #'   because a nugget-free model must absorb independent noise into the
 #'   correlated structure and is pulled towards zero by it. The gap grows
 #'   with the share of the total variance the nugget holds, and it falls on
-#'   the correlations a reader acts on. Neither model is wrong. They are
-#'   different models, and writing the field on the random side is what
-#'   keeps them distinguishable by name.
+#'   the correlations a reader acts on. Neither model is wrong. The residual
+#'   form is written on the residual side, `residual = ~ ar1(row):ar1(col)`,
+#'   described under `residual` below.
 #'
 #'   **Per-trial nested field.** `id(trial):ar1(row):ar1(col)` fits one
 #'   separable AR1 field per level of `trial` on INLA, via the `replicate =`
 #'   mechanism -- one complete grid per trial, each with its own realised
 #'   field, but the row correlation, column correlation and field SD are
 #'   **shared across every level of `trial`**, not estimated per trial. This
-#'   is the model ASReml fits under the same spelling. ASReml reads
-#'   `at(trial):ar1(row):ar1(col)` as a separate variance and correlations
-#'   for each trial; flexyBayes does not fit per-trial parameters and refuses
-#'   that spelling (`at_field_per_level_parameters_not_fitted`), as it
-#'   refuses `at(trial, level):ar1(row):ar1(col)`, a field on one trial
-#'   (`at_field_per_level_hyper_not_representable`). It has no brms lowering
-#'   for this field at all, so brms refuses.
+#'   is the model ASReml fits under the same spelling.
+#'
+#'   **A field for each trial.** `at(trial):ar1(row):ar1(col)` fits a
+#'   separate field on each trial, with its own SD and correlations, as
+#'   ASReml does: three parameters per trial, reported as
+#'   `sd_spatial__trial<level>`, `rho_row__trial<level>` and
+#'   `rho_col__trial<level>`, plus the shared Gaussian nugget.
+#'   `at(trial, level):ar1(row):ar1(col)` fits the field on the named trials
+#'   only. Each trial's plots must fill its own grid. brms refuses both.
 #'
 #'   **Units followed through time.** `ar1(t):g`, or the same term written
 #'   `g:ar1(t)`, fits one AR1 series along `t` within each level of `g`,
@@ -124,10 +132,16 @@
 #'   heterogeneous -- a Poisson's dispersion is a function of its mean, so
 #'   there is nothing there to vary, and the request is refused.
 #'
-#'   `~ ar1(row):ar1(col)` and `~ ar1(t)` are **refused** here: they name
-#'   ASReml's nugget-free separable residual, which flexyBayes does not fit
-#'   on either engine. The refusal points at the random-side field described
-#'   under `random` above, and at ASReml for the residual formulation itself.
+#'   `~ ar1(row):ar1(col)` is ASReml's separable residual: one correlated
+#'   residual with no nugget, three parameters (`sd_spatial`, `rho_row`,
+#'   `rho_col`), and no `sigma` row. `~ dsum(~ ar1(row):ar1(col) | trial)`
+#'   fits it separately in each trial, with names suffixed
+#'   `__trial<level>`. Both fit on INLA for a Gaussian response with the
+#'   identity link and one plot per grid cell, where the observation error
+#'   is fixed at a variance of `exp(-12)` on the standardised response;
+#'   brms refuses them. They cannot be combined with a random-side field.
+#'   `~ ar1(t)` and `~ ar1(row):col` are refused on both engines, with a
+#'   pointer to the random-side field described under `random` above.
 #' @param rcov Defunct in flexyBayes 0.9.0. This was the ASReml 3 name for
 #'   the residual-structure argument; ASReml 4 renamed it to `residual` and
 #'   flexyBayes follows the ASReml 4 name. Supplying `rcov` now raises an
