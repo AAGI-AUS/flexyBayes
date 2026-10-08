@@ -611,7 +611,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("known_variance_invalid" %in% entries)
   expect_true("known_variance_not_supported" %in% entries)
   expect_true("fixed_effects_aliased" %in% entries)
-  expect_true("at_field_per_level_parameters_not_fitted" %in% entries)
+  expect_false("at_field_per_level_parameters_not_fitted" %in% entries)
+  expect_false("at_field_per_level_hyper_not_representable" %in% entries)
+  expect_true("at_level_not_in_data" %in% entries)
+  expect_true("ar1_residual_with_random_field" %in% entries)
   expect_true("refit_not_reconstructable" %in% entries)
   expect_true("refit_hooks_require_brms" %in% entries)
   expect_true("marginal_cov_not_buildable" %in% entries)
@@ -621,6 +624,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
+  # Per-level at() fields fit, so at_field_per_level_parameters_not_fitted and
+  # at_field_per_level_hyper_not_representable go; a level at() names that
+  # the data lack (at_level_not_in_data) and the nugget-free residual beside
+  # a random-side field (ar1_residual_with_random_field) come in (= 165).
   expect_identical(unique(tab$package), "flexyBayes")
   expect_equal(length(ls(flexyBayes:::.refusal_registry)), 165L)
   expect_true("family_response_domain_violation" %in% entries)

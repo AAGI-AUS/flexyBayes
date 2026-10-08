@@ -103,12 +103,12 @@
         approximation_scheme_unknown
         approximation_spec_invalid
         ar1_residual_not_representable
+        ar1_residual_with_random_field
         ar1_spatial_requires_complete_grid
         ar2_not_representable
         asreml_function_not_recognised
-        at_field_per_level_hyper_not_representable
-        at_field_per_level_parameters_not_fitted
         at_level_conditioning_unsupported
+        at_level_not_in_data
         augment_cell_not_determinable
         augment_not_available_inla
         auto_no_active_route

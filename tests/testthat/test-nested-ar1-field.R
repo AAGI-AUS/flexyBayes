@@ -4,8 +4,8 @@
 # level of `trial` on INLA, with the two correlations and the field
 # variance shared across trials (INLA's `replicate =` on the ar1 + group
 # `f()`), the model ASReml fits under the same spelling. ASReml reads
-# `at(trial):ar1(row):ar1(col)` as separate parameters for each trial,
-# which flexyBayes does not fit, so that spelling refuses by name.
+# `at(trial):ar1(row):ar1(col)` as separate parameters for each trial;
+# that spelling is tested in test-at-fields.R.
 #
 # The term is an "ar1_spatial" node whose `at_var` names the trial factor;
 # `at_var` is NULL for a single field.
@@ -89,28 +89,25 @@ test_that("other AR1 fields of three or more factors still refuse", {
   }
 })
 
-test_that("at(trial):ar1(row):ar1(col) refuses by name on both engines and in the plan", {
+test_that("at(trial):ar1(row):ar1(col) is one field per trial, not on brms", {
   sim <- .three_trial_data()
-  calls <- list(
-    function() flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
-                          data = sim$data, backend = "inla", verbose = FALSE),
-    function() flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
-                          data = sim$data, backend = "brms", verbose = FALSE),
-    function() fb_plan(y ~ 1, data = sim$data,
-                       random = ~ at(trial):ar1(row):ar1(col), backend = "brms")
+  fb <- fb_from_asreml(
+    fixed = y ~ 1, random = ~ at(trial):ar1(row):ar1(col), data = sim$data
   )
-  for (call in calls) {
-    err <- tryCatch(call(), error = function(e) e)
-    expect_s3_class(err, "flexybayes_refusal_at_field_per_level_parameters_not_fitted")
-    expect_match(conditionMessage(err), "write id(trial):ar1(row):ar1(col).", fixed = TRUE)
-    expect_match(conditionMessage(err), "does not fit per-level field parameters", fixed = TRUE)
-  }
+  term <- fb$random_terms[[1]]
+  expect_identical(term$type, "ar1_spatial_at")
+  expect_identical(term$by_levels, c("T1", "T2", "T3"))
   err <- tryCatch(
-    fb_from_asreml(fixed = y ~ 1, random = ~ at(trial):ar1(row):id(col), data = sim$data),
+    flexybayes(y ~ 1, random = ~ at(trial):ar1(row):ar1(col),
+               data = sim$data, backend = "brms", verbose = FALSE),
     error = function(e) e
   )
-  expect_s3_class(err, "flexybayes_refusal_at_field_per_level_parameters_not_fitted")
-  expect_match(conditionMessage(err), "write id(trial):ar1(row):id(col).", fixed = TRUE)
+  expect_s3_class(err, "flexybayes_refusal_stan_cannot_represent_ar1_field")
+  plan <- fb_plan(y ~ 1, data = sim$data,
+                  random = ~ at(trial):ar1(row):ar1(col), backend = "brms")
+  expect_false(plan$will_fit)
+  expect_match(plan$will_fit_reason, "stan_cannot_represent_ar1_field",
+               fixed = TRUE)
 })
 
 test_that("ar1(row):ar1(col) alone still parses with at_var = NULL (no regression)", {
@@ -121,24 +118,18 @@ test_that("ar1(row):ar1(col) alone still parses with at_var = NULL (no regressio
   expect_null(term$at_var)
 })
 
-test_that("at(trial, level):ar1(row):ar1(col) refuses at_field_per_level_hyper_not_representable", {
+test_that("at(trial, level):ar1(row):ar1(col) keeps the named level only", {
   d <- data.frame(
-    y = rnorm(6), row = factor(1:6), col = factor(rep(1, 6)),
-    trial = factor(rep("T1", 6))
+    y = rnorm(12), row = factor(rep(1:6, 2)), col = factor(rep(1, 12)),
+    trial = factor(rep(c("T1", "T2"), each = 6))
   )
-  err <- tryCatch(
-    fb_from_asreml(
-      fixed = y ~ 1,
-      random = ~ at(trial, "T1"):ar1(row):ar1(col),
-      data = d
-    ),
-    error = function(e) e
+  fb <- fb_from_asreml(
+    fixed = y ~ 1,
+    random = ~ at(trial, "T1"):ar1(row):ar1(col),
+    data = d
   )
-  expect_s3_class(err, "flexybayes_refusal_at_field_per_level_hyper_not_representable")
-  expect_match(conditionMessage(err), "single level", fixed = TRUE)
-  expect_match(conditionMessage(err), "write id(trial):ar1(row):ar1(...)", fixed = TRUE)
+  expect_identical(fb$random_terms[[1]]$by_levels, "T1")
 })
-
 
 # ---------------------------------------------------------------- #
 # The complete-lattice check runs PER LEVEL of at_var                #
