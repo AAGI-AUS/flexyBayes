@@ -827,12 +827,9 @@ print.lgm_refusal <- function(x, ...) {
 # accepts. INLA folds residual variance into the likelihood and
 # does not represent structured-residual forms.
 .inla_residual_term_type_allowlist <- function() {
-  # 0.9.0: the separable AR1 field moved to the random side. INLA emits it
-  # as a latent autoregressive field plus the observation-level Gaussian
-  # nugget -- four parameters against the three of ASReml's nugget-free
-  # residual -- so the residual spelling is refused by name at dispatch
-  # (.refuse_unrepresentable_structures(), R/dispatch.R) and only the
-  # homogeneous residual reaches the INLA emit.
+  # A residual AR1 either reaches the emit as a random-side field with a
+  # fixed nugget (R/fb.R) or is refused by name at dispatch
+  # (.refuse_unrepresentable_structures(), R/dispatch.R).
   c("units", "at_units")
 }
 

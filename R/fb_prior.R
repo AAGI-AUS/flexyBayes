@@ -989,15 +989,21 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   link = NULL,
   random_groups = character(0),
   vm_ped_groups = character(0),
-  resp_sd = NULL
+  resp_sd = NULL,
+  residual_sigma = TRUE
 ) {
   scl <- .default_half_normal_scale(
     data, response, family, link, resp_sd = resp_sd
   )
-  specs <- list(list(
-    target = list(type = "sigma"),
-    spec = list(family = "half_normal", args = list(scale = scl$scale))
-  ))
+  # A nugget-free residual field has no residual SD to put a prior on.
+  specs <- if (residual_sigma) {
+    list(list(
+      target = list(type = "sigma"),
+      spec = list(family = "half_normal", args = list(scale = scl$scale))
+    ))
+  } else {
+    list()
+  }
   for (g in unique(random_groups)) {
     if (!nzchar(g)) {
       next

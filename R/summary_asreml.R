@@ -193,8 +193,16 @@
       collapse = "; "
     )
   }
-  g <- side(ir$random_terms %||% list(), "none")
-  r <- side(ir$residual_terms %||% list(), "units")
+  # ASReml's nugget-free residual is carried on the random side; it is
+  # described on the residual side, where the user wrote it.
+  random <- ir$random_terms %||% list()
+  resid_field <- vapply(random, function(t) isTRUE(t$residual), logical(1L))
+  g <- side(random[!resid_field], "none")
+  r <- if (any(resid_field)) {
+    side(random[resid_field], "units")
+  } else {
+    side(ir$residual_terms %||% list(), "units")
+  }
   paste0("G: ", g, "; R: ", r)
 }
 
@@ -252,7 +260,9 @@
   terms_all <- c(ir$random_terms %||% list(), ir$residual_terms %||% list())
   any(vapply(
     terms_all,
-    function(t) (t$type %||% "") %in% c("ar1", "ar1_spatial"),
+    function(t) {
+      (t$type %||% "") %in% c("ar1", "ar1_spatial") && !isTRUE(t$residual)
+    },
     logical(1L)
   ))
 }
@@ -2061,11 +2071,19 @@ print.summary.flexybayes <- function(x, digits = 4L, ...) {
     body$prior <- .fb_round_prior_cell(body$prior, digits = digits)
     print(body, row.names = FALSE)
     if (.fb_is_spatial_varcomp(x$varcomp)) {
-      cat(
-        "The field and the nugget are separate parameters: this is not ",
-        "ASReml's nugget-free residual.\n",
-        sep = ""
-      )
+      if (grepl("no nugget", x$model %||% "", fixed = TRUE)) {
+        cat(
+          "The residual is the autoregressive field, with no nugget: ",
+          "ASReml's residual = ~ ar1:ar1.\n",
+          sep = ""
+        )
+      } else {
+        cat(
+          "The field and the nugget are separate parameters: this is not ",
+          "ASReml's nugget-free residual.\n",
+          sep = ""
+        )
+      }
     }
   } else {
     cat("  (none available)\n")

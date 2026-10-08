@@ -859,7 +859,8 @@ flexybayes <- function(
       vm_ped_groups = prior_targets$vm_ped,
       # On an offset model the scale reads sd(y - o), on both engines,
       # as the INLA standardisation does (R/inla_standardise.R).
-      resp_sd = if (length(fb$offsets)) .fb_response_sd(fb, data) else NULL
+      resp_sd = if (length(fb$offsets)) .fb_response_sd(fb, data) else NULL,
+      residual_sigma = !.fb_has_residual_field(fb)
     )
     fb$priors <- hn_default
     prior <- hn_default

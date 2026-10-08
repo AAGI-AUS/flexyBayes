@@ -1080,9 +1080,9 @@
     message_template = paste0(
       "flexyBayes cannot fit this model on brms: it has no brms lowering ",
       "for an AR1 or separable AR1xAR1 residual, and fitting without it ",
-      "would return an independent-residual model. Write the field on the ",
-      "random side and fit it with backend = \"inla\" on a complete grid ",
-      "with one observation per node."
+      "would return an independent-residual model. Fit it with ",
+      "backend = \"inla\", on a complete grid with one observation per ",
+      "node."
     ),
     registered_in_adr = "ADR 0031",
     plan_field = "rejected_routes",
@@ -1506,12 +1506,9 @@
 
 # 0.9.0 fidelity-of-names pass. Two families of refusal register here.
 #
-# The first renames the separable AR1 spatial structure. The INLA emit is a
-# latent AR1 field plus the observation-level Gaussian nugget -- four
-# parameters -- which is not the three-parameter nugget-free residual an
-# ASReml user writes as `residual = ~ ar1(row):ar1(col)`. The residual
-# spelling is therefore refused by name and the field is written on the
-# random side, where a random field is what it is.
+# The first separates the random-side AR1 field, a latent field plus the
+# Gaussian observation nugget, from a residual-side AR1 the package does not
+# fit.
 #
 # The second closes the parser: an unrecognised call, and every IR type that
 # parses for the formula catalogue without an emit path, now reaches a named
@@ -1521,10 +1518,10 @@
   .register_refusal(
     reason_code = "ar1_residual_not_representable",
     description = paste0(
-      "A separable AR1 process written on the residual side. flexyBayes ",
-      "fits an AR1 process as a latent field plus the Gaussian observation ",
-      "error, four parameters, and not as ASReml's three-parameter residual ",
-      "without that error, so the residual spelling is refused by name."
+      "An AR1 process written on the residual side that flexyBayes does not ",
+      "fit: the 1-D and grouped forms, and the separable form for a ",
+      "response other than Gaussian with the identity link. The separable ",
+      "residual on a Gaussian response fits on INLA without a nugget."
     ),
     message_template = "%s",
     registered_in_adr = "Spec 2 D-A",

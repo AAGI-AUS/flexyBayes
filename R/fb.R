@@ -150,6 +150,13 @@ fb_from_asreml <- function(
     list(list(type = "units"))
   }
   fam_link <- .resolve_family(family, link)
+  moved <- .fb_residual_field_to_random(
+    random_terms,
+    residual_terms,
+    fam_link
+  )
+  random_terms <- moved$random_terms
+  residual_terms <- moved$residual_terms
 
   # weights -> addition_terms (per IR design sketch Sec.2)
   addition_terms <- if (!is.null(weights)) {
@@ -314,3 +321,52 @@ fb_from_asreml <- function(
 # of R/flexybayes.R so that the alias target is in scope at source
 # time (R sources files alphabetically; this file loads before
 # flexybayes.R).
+
+# ASReml's nugget-free separable residual, residual = ~ ar1(row):ar1(col)
+# or ~ dsum(~ ar1(row):ar1(col) | trial), is carried as an AR1 field on the
+# random side marked `residual = TRUE`, with a `units` residual whose
+# variance the INLA emit fixes near zero. Only a Gaussian response with
+# the identity link has a residual to replace; any other family keeps the
+# term on the residual side, where dispatch refuses it by name.
+.fb_residual_field_to_random <- function(
+  random_terms,
+  residual_terms,
+  fam_link
+) {
+  is_field <- vapply(
+    residual_terms,
+    function(t) {
+      ty <- t$type %||% ""
+      identical(ty, "ar1_spatial_at") ||
+        (identical(ty, "ar1_spatial") && isTRUE(t$col_ar1) && is.null(t$at_var))
+    },
+    logical(1L)
+  )
+  gaussian_identity <- identical(fam_link$family, "gaussian") &&
+    identical(fam_link$link %||% "identity", "identity")
+  if (!any(is_field) || length(residual_terms) != 1L || !gaussian_identity) {
+    return(list(random_terms = random_terms, residual_terms = residual_terms))
+  }
+  random_field <- vapply(
+    random_terms,
+    function(t) (t$type %||% "") %in% c("ar1", "ar1_spatial", "ar1_spatial_at"),
+    logical(1L)
+  )
+  if (any(random_field)) {
+    stop(.fb_refusal_condition(
+      reason_code = "ar1_residual_with_random_field",
+      message = paste0(
+        "The model has an autoregressive field on the random side and the ",
+        "nugget-free autoregressive residual. flexyBayes fits one of them ",
+        "per model: keep the random-side field, whose Gaussian residual is ",
+        "the nugget, or the residual field alone."
+      )
+    ))
+  }
+  field <- residual_terms[[1L]]
+  field$residual <- TRUE
+  list(
+    random_terms = c(random_terms, list(field)),
+    residual_terms = list(list(type = "units", nugget_free = TRUE))
+  )
+}

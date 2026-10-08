@@ -692,6 +692,18 @@
         # be silently reduced to at_units -- fitting a heteroscedastic
         # model where a per-region spatial one was requested. Refuse loudly
         # instead (charter: never silently reduce a model).
+        if (.dsum_inner_is_separable_ar1(parsed$inner)) {
+          inner <- parsed$inner
+          return(list(list(
+            type = "ar1_spatial_at",
+            row_var = .dep(inner[[2]], 2),
+            col_var = .dep(inner[[3]], 2),
+            col_ar1 = TRUE,
+            by_var = parsed$grp,
+            level = NULL,
+            residual = TRUE
+          )))
+        }
         if (!.dsum_inner_is_plain_units(parsed$inner)) {
           inner_txt <- paste(deparse(parsed$inner), collapse = "")
           stop(.fb_refusal_condition(
@@ -834,6 +846,21 @@
     ),
     token = token
   ))
+}
+
+# A dsum() inner term that is ar1(row):ar1(col) on two plain variables,
+# ASReml's separable spatial residual in each section.
+.dsum_inner_is_separable_ar1 <- function(expr) {
+  is_ar1 <- function(e) {
+    is.call(e) &&
+      identical(e[[1L]], as.name("ar1")) &&
+      length(e) == 2L &&
+      is.symbol(e[[2L]])
+  }
+  is.call(expr) &&
+    identical(expr[[1L]], as.name(":")) &&
+    is_ar1(expr[[2L]]) &&
+    is_ar1(expr[[3L]])
 }
 
 # A dsum() inner term is "plain units" -- the only residual structure

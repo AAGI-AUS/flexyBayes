@@ -713,6 +713,9 @@ emit_inla <- function(
     )
   }
   control_family <- .build_inla_control_family(hyper_ctrl, family = inla_family)
+  if (.fb_has_residual_field(fb)) {
+    control_family <- .fb_inla_nugget_free_family(hyper_ctrl, standardisation)
+  }
   # fixed_alias = "drop": each aliased column fixed at zero (R/fixed_alias.R).
   control_fixed <- .fb_inla_pin_aliased(
     control_fixed,
@@ -933,11 +936,9 @@ emit_inla <- function(
   # model + grouped-AR1 need consecutive-integer indices; build <var>_id for
   # the 1D term and <row>_id / <col>_id for the separable term.
   #
-  # 0.9.0: the field is read from the random terms only. It used to be read
-  # from the residual terms as well, reinterpreting an ASReml residual as a
-  # latent field plus the Gaussian observation nugget -- four parameters
-  # under a three-parameter name. The residual spelling now refuses at
-  # dispatch and the field is written where it belongs.
+  # The field is read from the random terms only. ASReml's nugget-free
+  # residual arrives here as a random-side field marked `residual = TRUE`
+  # (R/fb.R), with the observation precision fixed in control.family.
   #
   # The field is faithful only with one observation per grid node: with a
   # gap or a replicate the latent index no longer matches the design, so the
@@ -1775,7 +1776,11 @@ emit_inla <- function(
 
   # Whether the data support the AR1 field, from a fit of the same model
   # without it. Read by the collapse warning and the varcomp `note` below.
-  if (is.null(fold_refit) && length(.inla_spatial_field_terms(out))) {
+  if (
+    is.null(fold_refit) &&
+      length(.inla_spatial_field_terms(out)) &&
+      !.fb_has_residual_field(fb)
+  ) {
     formula_without_field <- tryCatch(
       .build_inla_formula(
         .fb_drop_field_terms(fb),
@@ -2765,6 +2770,51 @@ emit_inla <- function(
   )
 }
 
+# Whether the model carries ASReml's nugget-free residual, an AR1 field
+# moved to the random side by .fb_residual_field_to_random() (R/fb.R).
+.fb_has_residual_field <- function(fb) {
+  any(vapply(
+    fb$random_terms %||% list(),
+    function(t) isTRUE(t$residual),
+    logical(1L)
+  ))
+}
+
+# The log precision the Gaussian observation error is fixed at under the
+# nugget-free residual, on the standardised response: a nugget variance of
+# exp(-12), about 6e-6 of the response variance.
+.FB_NUGGET_FREE_LOG_PREC <- 12
+
+# control.family for the nugget-free residual: the observation precision
+# fixed, so the field is the whole residual. A prior on the residual SD
+# has nothing to act on and is refused.
+.fb_inla_nugget_free_family <- function(hyper_ctrl, standardisation) {
+  if (!is.null(hyper_ctrl[["sigma"]])) {
+    stop(.fb_refusal_condition(
+      reason_code = "prior_target_not_in_model",
+      message = paste0(
+        "A prior on the residual SD (sigma) was given, and the model's ",
+        "residual is the nugget-free autoregressive field, which has no ",
+        "separate residual SD. Put the prior on the field SD instead, ",
+        "group = \"spatial\"."
+      )
+    ))
+  }
+  if (is.null(standardisation)) {
+    stop(.fb_refusal_condition(
+      reason_code = "ar1_residual_not_representable",
+      message = paste0(
+        "The nugget-free autoregressive residual is fitted on INLA for a ",
+        "Gaussian response with the identity link only."
+      )
+    ))
+  }
+  list(hyper = list(prec = list(
+    initial = .FB_NUGGET_FREE_LOG_PREC,
+    fixed = TRUE
+  )))
+}
+
 # Build the control.family list passed to INLA::inla(). When the user
 # supplies an fb_prior() spec keyed under "sigma", attach it as the
 # residual-scale hyperprior under the keyword the likelihood actually
@@ -3751,13 +3801,21 @@ emit_inla <- function(
     stringsAsFactors = FALSE
   )
   print(body, row.names = FALSE)
-  cat(
-    "  The field and the nugget are separate parameters: this is a ",
-    "latent\n  autoregressive field plus independent observation noise, ",
-    "not ASReml's\n  nugget-free separable residual. Variances are the ",
-    "squares of the SDs.\n",
-    sep = ""
-  )
+  if (.fb_has_residual_field(object$fb)) {
+    cat(
+      "  The field is the residual, with no nugget: ASReml's separable\n",
+      "  residual = ~ ar1:ar1. Variances are the squares of the SDs.\n",
+      sep = ""
+    )
+  } else {
+    cat(
+      "  The field and the nugget are separate parameters: this is a ",
+      "latent\n  autoregressive field plus independent observation noise, ",
+      "not ASReml's\n  nugget-free separable residual. Variances are the ",
+      "squares of the SDs.\n",
+      sep = ""
+    )
+  }
   .print_inla_field_test(object$extras$field_test)
   invisible(tab)
 }
