@@ -470,5 +470,5 @@ test_that("a trial whose plots do not fill its grid refuses", {
     error = function(e) e
   )
   expect_s3_class(err, "flexybayes_refusal_ar1_spatial_requires_complete_grid")
-  expect_match(conditionMessage(err), "level(s) T1", fixed = TRUE)
+  expect_match(conditionMessage(err), "level T1 of", fixed = TRUE)
 })

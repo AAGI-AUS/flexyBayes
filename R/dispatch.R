@@ -833,10 +833,8 @@
 }
 
 
-# The refusal text for a residual-side AR1 spelling flexyBayes does not fit.
-# The separable ar1(row):ar1(col), alone or within dsum(), is fitted for a
-# Gaussian response with the identity link, so reaching here it names the
-# family; every other shape names the random-side field.
+# The refusal text for a residual-side AR1 flexyBayes does not fit. A
+# separable one reaches here only off the Gaussian identity link.
 .ar1_residual_refusal_message <- function(term) {
   if (
     identical(term$type, "ar1_spatial_at") ||

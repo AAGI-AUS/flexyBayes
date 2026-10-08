@@ -322,12 +322,9 @@ fb_from_asreml <- function(
 # time (R sources files alphabetically; this file loads before
 # flexybayes.R).
 
-# ASReml's nugget-free separable residual, residual = ~ ar1(row):ar1(col)
-# or ~ dsum(~ ar1(row):ar1(col) | trial), is carried as an AR1 field on the
-# random side marked `residual = TRUE`, with a `units` residual whose
-# variance the INLA emit fixes near zero. Only a Gaussian response with
-# the identity link has a residual to replace; any other family keeps the
-# term on the residual side, where dispatch refuses it by name.
+# ASReml's nugget-free separable residual becomes a random-side field
+# marked `residual = TRUE`; the INLA emit fixes the `units` variance near
+# zero. Any family but Gaussian identity keeps it on the residual side.
 .fb_residual_field_to_random <- function(
   random_terms,
   residual_terms,

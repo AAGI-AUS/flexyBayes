@@ -1023,10 +1023,8 @@
   list(list(type = "interaction_generic", left = l, right = r))
 }
 
-# The levels of `var` an at() term covers: every level when `level_txt` is
-# NULL, otherwise the levels it names. ASReml reads a number as a position
-# in levels(var), and so does this. `rest` is the remainder of the term, for
-# the refusal message.
+# The levels of `var` an at() term covers. A number is a position in
+# levels(var), as ASReml reads it; `rest` completes the refusal message.
 .fb_at_selected_levels <- function(var, level_txt, all_levels, rest) {
   if (is.null(level_txt)) {
     return(all_levels)
@@ -1063,7 +1061,8 @@
         written, " names ", paste(bad, collapse = ", "),
         ", which is not a level of `", var, "`. Name the levels as ",
         "literal values, or as positions in levels(", var, "); `", var,
-        "` has ", length(all_levels), " level(s): ",
+        "` has ", length(all_levels),
+        if (length(all_levels) > 1L) " levels: " else " level: ",
         paste(utils::head(all_levels, 10L), collapse = ", "),
         if (length(all_levels) > 10L) ", ..." else "", "."
       )

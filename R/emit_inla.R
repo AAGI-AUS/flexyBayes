@@ -1044,10 +1044,8 @@ emit_inla <- function(
     }
   }
 
-  # at(trial):ar1(row):ar1(col) -- one field per level of `trial`, each
-  # with its own SD and correlations. Each level gets its own row and column
-  # index, NA outside the level, so its f() term covers that trial's plots
-  # only. Each level's plots must form a complete grid.
+  # at(trial):ar1(row):ar1(col): each level's row and column index is NA
+  # outside the level, so its f() term covers that trial's plots only.
   for (term in fb$random_terms) {
     if (!identical(term$type %||% "", "ar1_spatial_at")) {
       next
@@ -1089,7 +1087,8 @@ emit_inla <- function(
       stop(.fb_refusal_condition(
         reason_code = "ar1_spatial_requires_complete_grid",
         message = paste0(
-          "The plots of level(s) ", paste(bad, collapse = ", "), " of `",
+          "The plots of ", if (length(bad) > 1L) "levels " else "level ",
+          paste(bad, collapse = ", "), " of `",
           term$by_var, "` do not form a complete (", term$row_var, ", ",
           term$col_var, ") grid with one plot per cell. ",
           .ar1_term_spelling(term), " fits a separable autoregressive ",
