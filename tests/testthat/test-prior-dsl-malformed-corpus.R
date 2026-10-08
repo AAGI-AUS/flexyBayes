@@ -277,7 +277,7 @@ test_that("the family parameter table is the only list of prior families", {
 }
 
 .corpus_fit_entry <- function(prior, backend) {
-  options(flexyBayes.silence_default_prior_note = TRUE)
+  withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   args <- list(
     y ~ x,
     random = ~g,
