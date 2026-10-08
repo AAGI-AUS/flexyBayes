@@ -44,7 +44,33 @@
 # mocking this function alone exercises that translation exactly as a
 # real crash would.
 .inla_call <- function(args) {
-  do.call(INLA::inla, args)
+  .fb_inla_force_closures(do.call(INLA::inla, args))
+}
+
+# The functions in INLA's `all.hyper` keep INLA frames whose unevaluated
+# arguments hold the whole inla() call frame; evaluating them lets a saved fit
+# leave that frame behind.
+.fb_inla_force_closures <- function(fit) {
+  visit <- function(x) {
+    if (is.function(x)) {
+      env <- environment(x)
+      if (!is.null(env) && !isNamespace(env)) {
+        for (nm in ls(env, all.names = TRUE)) {
+          if (!eval(call("missing", as.name(nm)), env)) {
+            get(nm, envir = env, inherits = FALSE)
+          }
+        }
+      }
+    } else if (is.list(x)) {
+      for (y in x) {
+        visit(y)
+      }
+    }
+  }
+  if (is.list(fit)) {
+    visit(fit$all.hyper)
+  }
+  fit
 }
 
 # A host may report no core count at all. INLA turns that missing value into
@@ -1760,6 +1786,9 @@ emit_inla <- function(
   standardisation = NULL,
   with_slots = FALSE
 ) {
+  # The formula keeps this frame; an unevaluated argument here would keep
+  # the caller's frame, data and fit included, in every saved fit.
+  force(known_matrices)
   rhs_terms <- character(0)
 
   # The engine slot each f() term writes, and the prior keys it reads, for
