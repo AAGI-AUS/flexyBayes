@@ -241,7 +241,8 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
     "tidy" = function(fit) tidy(fit),
     "update" = function(fit) update(fit),
     "vcov" = function(fit) vcov(fit),
-    "vpredict" = function(fit) vpredict(fit, ratio ~ sd_geno^2)
+    "vpredict" = function(fit) vpredict(fit, ratio ~ sd_geno^2),
+    "sommer::vpredict" = function(fit) sommer::vpredict(fit, ratio ~ sd_geno^2)
   )
   # A generic with no call written here fails the test by name.
   expect_identical(setdiff(generics, names(calls)), character(0))
@@ -275,5 +276,6 @@ test_that("every generic reaching an aggregated or streamed fit returns or refus
       checked <- checked + 1L
     }
   }
-  expect_identical(checked, 78L)
+  # 39 generics on two fits, and sommer's vpredict() when sommer is installed.
+  expect_identical(checked, 78L + 2L * ("sommer::vpredict" %in% generics))
 })
