@@ -98,6 +98,9 @@
 #' this one cannot: every draw of `sd_g^2 / (sd_g^2 + sigma^2)` lies in
 #' \[0, 1\], so the interval does too.
 #'
+#' The method is also registered on \pkg{sommer}'s `vpredict()` generic, so
+#' `vpredict(fit, ...)` reaches it when sommer is attached after flexyBayes.
+#'
 #' @param object A fitted `flexybayes` model.
 #' @param ... One or more two-sided formulas, `name ~ expression`.
 #' @param n_draws Number of posterior draws to evaluate over.
@@ -123,6 +126,7 @@ vpredict <- function(object, ...) {
 
 #' @rdname vpredict
 #' @export
+#' @exportS3Method sommer::vpredict
 vpredict.flexybayes <- function(
   object,
   ...,

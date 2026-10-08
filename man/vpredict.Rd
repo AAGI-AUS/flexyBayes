@@ -43,6 +43,9 @@ The interval is a quantile interval of the functional's own posterior.
 Where the delta method would put a heritability's interval below zero,
 this one cannot: every draw of \code{sd_g^2 / (sd_g^2 + sigma^2)} lies in
 [0, 1], so the interval does too.
+
+The method is also registered on \pkg{sommer}'s \code{vpredict()} generic, so
+\code{vpredict(fit, ...)} reaches it when sommer is attached after flexyBayes.
 }
 \examples{
 \dontrun{
