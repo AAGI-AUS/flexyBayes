@@ -82,7 +82,10 @@
 #'   emitted on INLA as a latent autoregressive field plus the Gaussian
 #'   observation nugget. Four hyperparameters on a field grid: the row
 #'   correlation, the column correlation, the field SD and the nugget SD, all
-#'   four printed by `summary()`. The field is faithful only with one
+#'   four printed by `summary()`. Each correlation is named after the factor
+#'   it runs along, `rho_<factor>`: `rho_row` and `rho_col` for
+#'   `ar1(row):ar1(col)`, and the same two names for `ar1(col):ar1(row)`.
+#'   The field is faithful only with one
 #'   observation per grid node, so an incomplete or replicated grid refuses
 #'   (keep the unobserved nodes as design cells with the default
 #'   `na_action = "augment"`). flexyBayes has no brms lowering for the
@@ -110,7 +113,7 @@
 #'   separate field on each trial, with its own SD and correlations, as
 #'   ASReml does: three parameters per trial, reported as
 #'   `sd_spatial__trial<level>`, `rho_row__trial<level>` and
-#'   `rho_col__trial<level>`, plus the shared Gaussian nugget.
+#'   `rho_col__trial<level>` for `ar1(row):ar1(col)`, plus the shared Gaussian nugget.
 #'   `at(trial, level):ar1(row):ar1(col)` fits the field on the named trials
 #'   only. Each trial's plots must fill its own grid. brms refuses both.
 #'

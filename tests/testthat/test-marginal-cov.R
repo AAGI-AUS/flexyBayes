@@ -126,7 +126,7 @@ test_that("nested intercepts: V adds sigma_{site:year}^2 for the site:year cell"
   expect_length(x$groups$blocks, 6L)
 })
 
-test_that("one AR1 x AR1 field per trial: rho_row^|dr| rho_col^|dc| within a trial, zero across", {
+test_that("one AR1 x AR1 field per trial: rho_range^|dr| rho_row^|dc| within a trial, zero across", {
   skip_if_not_installed("INLA")
   fbmc_quiet()
   d <- fbmc_field_data()
@@ -139,8 +139,8 @@ test_that("one AR1 x AR1 field per trial: rho_row^|dr| rho_col^|dc| within a tri
   want <- diag(s[["sigma"]], nrow(d)) +
     s[["sd_trial"]] * same +
     s[["sd_spatial"]] * same *
-      rho[["rho_row"]]^abs(outer(as.integer(d$range), as.integer(d$range), "-")) *
-      rho[["rho_col"]]^abs(outer(as.integer(d$row), as.integer(d$row), "-"))
+      rho[["rho_range"]]^abs(outer(as.integer(d$range), as.integer(d$range), "-")) *
+      rho[["rho_row"]]^abs(outer(as.integer(d$row), as.integer(d$row), "-"))
   x <- fb_marginal_cov(fit)
   got <- as.matrix(x)
   expect_lt(fbmc_rel(got, want), 1e-12)

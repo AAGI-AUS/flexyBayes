@@ -144,7 +144,10 @@ separable \code{ar1(row):ar1(col)} are written here, on the random side, and
 emitted on INLA as a latent autoregressive field plus the Gaussian
 observation nugget. Four hyperparameters on a field grid: the row
 correlation, the column correlation, the field SD and the nugget SD, all
-four printed by \code{summary()}. The field is faithful only with one
+four printed by \code{summary()}. Each correlation is named after the factor
+it runs along, \verb{rho_<factor>}: \code{rho_row} and \code{rho_col} for
+\code{ar1(row):ar1(col)}, and the same two names for \code{ar1(col):ar1(row)}.
+The field is faithful only with one
 observation per grid node, so an incomplete or replicated grid refuses
 (keep the unobserved nodes as design cells with the default
 \code{na_action = "augment"}). flexyBayes has no brms lowering for the
@@ -172,7 +175,7 @@ is the model ASReml fits under the same spelling.
 separate field on each trial, with its own SD and correlations, as
 ASReml does: three parameters per trial, reported as
 \verb{sd_spatial__trial<level>}, \verb{rho_row__trial<level>} and
-\verb{rho_col__trial<level>}, plus the shared Gaussian nugget.
+\verb{rho_col__trial<level>} for \code{ar1(row):ar1(col)}, plus the shared Gaussian nugget.
 \code{at(trial, level):ar1(row):ar1(col)} fits the field on the named trials
 only. Each trial's plots must fill its own grid. brms refuses both.
 

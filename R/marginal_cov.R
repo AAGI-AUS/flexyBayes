@@ -749,7 +749,7 @@ print.fb_marginal_cov <- function(x, ...) {
       n_row = n_row,
       n_col = n_col,
       n_at = n_at,
-      rho = c(row = "rho_row", col = "rho_col")
+      rho = c(row = paste0("rho_", row_var), col = paste0("rho_", col_var))
     )
   ))
 }

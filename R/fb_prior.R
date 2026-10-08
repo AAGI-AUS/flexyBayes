@@ -1197,14 +1197,15 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     # fingerprint names sd_spatial. The correlations keep INLA's own prior.
     if (identical(ttype, "ar1_spatial_at")) {
       shared <- c(shared, "spatial")
+      rho <- .fb_ar1_rho_names(t)
       for (lev in t$by_levels) {
         sfx <- paste0("__", t$by_var, lev)
         add_engine(
-          paste0("rho_row", sfx),
+          paste0(rho[["row"]], sfx),
           "AR1 latent field correlation keeps INLA's own default hyperprior"
         )
         add_engine(
-          paste0("rho_col", sfx),
+          paste0(rho[["col"]], sfx),
           "AR1 latent field correlation keeps INLA's own default hyperprior"
         )
       }
@@ -1212,13 +1213,14 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     }
     if (ttype %in% c("ar1", "ar1_spatial")) {
       shared <- c(shared, "spatial")
+      rho <- .fb_ar1_rho_names(t)
       add_engine(
-        "rho_row",
+        rho[["row"]],
         "AR1 latent field correlation keeps INLA's own default hyperprior"
       )
       if (identical(ttype, "ar1_spatial")) {
         add_engine(
-          "rho_col",
+          rho[["col"]],
           "AR1 latent field correlation keeps INLA's own default hyperprior"
         )
       }

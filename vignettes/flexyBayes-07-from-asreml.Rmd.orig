@@ -297,8 +297,7 @@ summary(fit_field)$spatial_field
 ```
 
 The same correlations appear in `summary(fit)$varcomp` as `rho_row` and
-`rho_col`, which name the first and second factor written inside the term,
-here `row` and `col`.
+`rho_col`, each named after the factor it runs along.
 
 ASReml's `residual = ~ ar1(row):ar1(col)` without `units` is a different
 model: one correlated residual with no independent plot error. flexyBayes

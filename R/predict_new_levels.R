@@ -499,7 +499,7 @@
   }
   list(
     component = "sd_spatial",
-    rho = c(row = "rho_row", col = "rho_col"),
+    rho = .fb_ar1_rho_names(t),
     n_row = row$n,
     n_col = col$n,
     row = row$new_id,

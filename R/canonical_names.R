@@ -704,6 +704,17 @@ register_canonical_mapper <- function(backend, mapper) {
 #       "Precision for the Gaussian observations" -> "sigma" + sqrt(1/prec)
 #       "Precision for <group>"                   -> "sd_<group>" + sqrt(1/prec)
 
+# The canonical names of an AR1 field's correlations, c(row = , col = ) for
+# INLA's Rho and GroupRho. On an AR1 x AR1 field each is rho_<factor>, the
+# factor it runs along, so ar1(col):ar1(row) and ar1(row):ar1(col) name the
+# same correlation alike. A field with one AR1 factor has rho_row only.
+.fb_ar1_rho_names <- function(t) {
+  if (!isTRUE(t$col_ar1)) {
+    return(c(row = "rho_row", col = "rho_col"))
+  }
+  c(row = paste0("rho_", t$row_var), col = paste0("rho_", t$col_var))
+}
+
 .mapper_inla <- function(fit, fb_terms) {
   if (is.null(fit$inla)) {
     return(list(map = character(0), transform = list()))
@@ -735,37 +746,43 @@ register_canonical_mapper <- function(backend, mapper) {
   # WP16: AR1 / separable AR1xAR1 spatial latent-field hyperparameters. INLA
   # names them "Rho for <idx>", "GroupRho for <idx>", "Precision for <idx>"
   # where <idx> is the f() index column (<row_var>_id). Map to canonical
-  # rho_row / rho_col / sd_spatial; the two Rho values are correlations
-  # (identity, no transform), the Precision is the field precision -> SD.
+  # correlation names (.fb_ar1_rho_names()) and sd_spatial; the two Rho
+  # values are correlations (identity, no transform), the Precision is the
+  # field precision -> SD.
   # Matched BEFORE the generic "Precision for <group>" rule so the field
   # precision resolves to sd_spatial, not sd_<idx>.
   # One field per level: its three hyperparameters carry the level in
-  # their names, rho_row__<by><level>, rho_col__<by><level> and
-  # sd_spatial__<by><level>.
+  # their names, rho_<factor>__<by><level> and sd_spatial__<by><level>.
   field_at <- list()
   for (t in fb_terms$random_terms %||% list()) {
     if (!identical(t$type %||% "", "ar1_spatial_at")) {
       next
     }
+    rho <- .fb_ar1_rho_names(t)
     for (lev in t$by_levels) {
       idx <- .fb_inla_field_at_index(t, lev)[["row"]]
       sfx <- paste0("__", t$by_var, lev)
-      field_at[[paste0("Rho for ", idx)]] <- paste0("rho_row", sfx)
-      field_at[[paste0("GroupRho for ", idx)]] <- paste0("rho_col", sfx)
+      field_at[[paste0("Rho for ", idx)]] <- paste0(rho[["row"]], sfx)
+      field_at[[paste0("GroupRho for ", idx)]] <- paste0(rho[["col"]], sfx)
       field_at[[paste0("Precision for ", idx)]] <- paste0("sd_spatial", sfx)
     }
   }
   spatial_idx <- character(0)
+  spatial_rho <- list()
   for (t in c(
     fb_terms$random_terms %||% list(),
     fb_terms$residual_terms %||% list()
   )) {
     tt <- t$type %||% ""
     if (identical(tt, "ar1_spatial")) {
-      spatial_idx <- c(spatial_idx, paste0(t$row_var, "_id"))
+      idx <- paste0(t$row_var, "_id")
     } else if (identical(tt, "ar1")) {
-      spatial_idx <- c(spatial_idx, paste0(t$var, "_id"))
+      idx <- paste0(t$var, "_id")
+    } else {
+      next
     }
+    spatial_idx <- c(spatial_idx, idx)
+    spatial_rho[[idx]] <- .fb_ar1_rho_names(t)
   }
   # Nested / interaction random effects. The INLA emit fits these as an iid
   # field over a generated interaction index (<a>_<b>_id), so INLA names the
@@ -916,12 +933,12 @@ register_canonical_mapper <- function(backend, mapper) {
     }
     for (idx in spatial_idx) {
       if (identical(nm, paste0("Rho for ", idx))) {
-        map[nm] <- "rho_row"
+        map[nm] <- spatial_rho[[idx]][["row"]]
         sp_hit <- TRUE
         break
       }
       if (identical(nm, paste0("GroupRho for ", idx))) {
-        map[nm] <- "rho_col"
+        map[nm] <- spatial_rho[[idx]][["col"]]
         sp_hit <- TRUE
         break
       }
