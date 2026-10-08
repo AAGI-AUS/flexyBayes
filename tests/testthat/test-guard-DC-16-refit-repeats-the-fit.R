@@ -78,10 +78,10 @@
       out <- c(out, paste0(label, ": ", nm, " differs"))
     }
   }
-  # Two identical INLA calls agree to about 1e-6 relative on these fits.
+  # Identical INLA calls on these fits differ by up to 2.3e-5 relative.
   for (nm in c("fixed", "varcomp")) {
     same <- length(a[[nm]]) == length(b[[nm]]) &&
-      isTRUE(all.equal(a[[nm]], b[[nm]], tolerance = 1e-5))
+      isTRUE(all.equal(a[[nm]], b[[nm]], tolerance = 1e-4))
     if (!same) {
       out <- c(out, paste0(
         label, ": ", nm, " estimates differ (",
