@@ -34,7 +34,8 @@
   call,
   seed,
   proceed_args,
-  preflight = NULL
+  preflight = NULL,
+  finish = NULL
 ) {
   if (!is.character(code) || length(code) != 1L) {
     stop("`code` must be a length-1 character string.", call. = FALSE)
@@ -72,6 +73,7 @@
   env$call <- call
   env$seed <- seed
   env$proceed_args <- proceed_args
+  env$finish <- finish
   env$proceeded <- FALSE
   env$fit <- NULL
   env$preflight <- preflight # NULL below 1e5 rows
@@ -270,21 +272,21 @@ proceed.flexybayes_review <- function(x, ...) {
   }
 
   args <- x$proceed_args
-  emit_fn <- switch(
-    x$backend,
-    "stan_via_brms" = emit_brms,
+  if (!identical(x$backend, "stan_via_brms")) {
     stop(
       "proceed(): unrecognised backend \"",
       x$backend,
       "\" on review object.",
       call. = FALSE
     )
-  )
+  }
+  # The fit runs through the dispatch flexybayes() uses, so it carries the
+  # same routing record, terms and dataset record as the direct call.
   # Under options(flexyBayes.isolation = "process") the fit runs in a
   # separate R process (R/process_isolation.R).
   if (.fb_isolation_active("proceed()")) {
     run <- .fb_isolated_call(
-      emit_fn,
+      .dispatch_backend,
       args,
       engine = "brms",
       entry_point = "proceed()",
@@ -297,7 +299,13 @@ proceed.flexybayes_review <- function(x, ...) {
       fit$extras$isolation <- list(mode = "process", pid = run$pid)
     }
   } else {
-    fit <- do.call(emit_fn, args)
+    fit <- do.call(.dispatch_backend, args)
+  }
+  if (!is.null(x$finish)) {
+    fit <- .fb_finish_fit(
+      fit, x$ir, x$finish$na_meta, x$finish$na_action,
+      x$finish$known_variance
+    )
   }
 
   x$fit <- fit

@@ -1039,7 +1039,15 @@ flexybayes <- function(
         residual = residual,
         family = family,
         link = link,
-        data_name = data_name
+        data_name = data_name,
+        backend = backend,
+        aggregate = aggregate,
+        na_action = na_policy$y
+      ),
+      finish = list(
+        na_meta = na_meta$meta,
+        na_action = na_policy$y,
+        known_variance = known_variance
       )
     ))
   }
@@ -1124,12 +1132,26 @@ flexybayes <- function(
       na_action = na_policy$y
     )
   }
+  if (!isTRUE(return_code)) {
+    fit <- .fb_finish_fit(fit, fb, na_meta$meta, na_policy$y, known_variance)
+  }
+  .fb_warn_poor_convergence(fit)
+  fit
+}
+
+
+# .fb_finish_fit() --- the records flexybayes() adds to a fit after its
+# engine returns. proceed() calls it too, so a reviewed fit carries the
+# same record as the direct call.
+#
+# @noRd
+.fb_finish_fit <- function(fit, fb, na_meta, na_action, known_variance) {
   # Record what the missing-response layer did. Whether a posterior was
   # computed on the design as laid out or on the plots that survived is
   # not recoverable from the fit otherwise, and the two are different
   # models whenever a covariance is indexed by the design.
-  if (!isTRUE(return_code) && is.list(fit) && !is.null(fit$extras)) {
-    fit$extras$na_action <- na_meta$meta
+  if (is.list(fit) && !is.null(fit$extras)) {
+    fit$extras$na_action <- na_meta
     # The active emits record the policy in the call record themselves.
     # The aggregated and worker-hosted routes reach their emit by another
     # path, so the record is completed here rather than left absent on
@@ -1138,7 +1160,7 @@ flexybayes <- function(
       !is.null(fit$extras$call_info) &&
         is.null(fit$extras$call_info$na_action)
     ) {
-      fit$extras$call_info$na_action <- na_policy$y
+      fit$extras$call_info$na_action <- na_action
     }
     # A known variance is recorded as it was given, only when it was: the
     # record of a fit without one keeps its fields.
@@ -1146,11 +1168,7 @@ flexybayes <- function(
       fit$extras$call_info$known_variance <- known_variance
     }
   }
-  if (!isTRUE(return_code)) {
-    fit <- .fb_fixed_alias_attach(fit, fb)
-  }
-  .fb_warn_poor_convergence(fit)
-  fit
+  .fb_fixed_alias_attach(fit, fb)
 }
 
 
