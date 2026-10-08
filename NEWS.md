@@ -1,3 +1,13 @@
+# flexyBayes (development version)
+
+## Documentation
+
+* An INLA fit is not guaranteed to give the same result in a fresh R
+  session, even on one thread; earlier help pages said it was. The
+  measurements, and a check to run where a conclusion rests on a weakly
+  informed variance, are in `?flexybayes` (section *INLA threads*) and
+  `inst/KNOWN_ISSUES.md` (item 26).
+
 # flexyBayes 0.16.0
 
 ## Breaking changes

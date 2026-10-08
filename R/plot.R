@@ -4,8 +4,8 @@
 #'
 #' Draws one of eight standard displays for a fitted model, chosen by
 #' `type`. Every backend reaches the same method, and a display that needs
-#' a slot a given engine does not populate -- posterior draws on the
-#' deterministic INLA path, for instance -- prints a message naming what
+#' a slot a given engine does not populate -- posterior draws on an INLA
+#' fit, for instance -- prints a message naming what
 #' is missing and returns invisibly rather than erroring or drawing an
 #' empty panel. The one exception is `"pp_check"`, which raises the
 #' refusal [pp_check.flexybayes()] raises, so a caller can catch it by

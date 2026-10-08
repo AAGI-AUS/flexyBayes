@@ -27,8 +27,11 @@ and for each random term (\verb{sd_<term>}), and a correlation as it is.
 \details{
 The draws come from \code{INLA::inla.hyperpar.sample()} and are mapped to the
 response's original scale. A hyperparameter held fixed, such as the
-precision of a known variance, is not drawn. With \code{seed}, the draws are
-repeatable on one INLA thread (\code{options(flexyBayes.inla_threads = "1:1")}).
+precision of a known variance, is not drawn. With \code{seed}, the draws from a
+given fit are repeatable on one INLA thread
+(\code{options(flexyBayes.inla_threads = "1:1")}). A refit of the same model in
+another R session can reach a different mode (see \code{\link[=flexybayes]{flexybayes()}}, section
+\emph{INLA threads}).
 }
 \examples{
 \donttest{

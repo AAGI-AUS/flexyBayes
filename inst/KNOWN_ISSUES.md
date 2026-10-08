@@ -358,7 +358,8 @@ Each is reproducible on this release. Priority is for the MET use case.
     correlation -- the structure repeated to 1.003 and 1.007 on the two
     simulated designs the recovery claim rested on, and to 1.0001 on
     `agridat::dasilva.maize`. On `agridat::besag.met` at 30 genotypes, a
-    trial with weak genetic signal, eight identical calls spanned 1.23 in a
+    trial with weak genetic signal, eight identical calls in one R session
+    spanned 1.23 in a
     genotype-by-environment variance and 0.12 in a genetic correlation. On
     one thread seven of eight calls agreed exactly and the eighth landed on a
     different mode, so the cause is the shape of the likelihood surface
@@ -411,6 +412,30 @@ Each is reproducible on this release. Priority is for the MET use case.
     `summary(fit)$spatial_field` calls it `rho_t`. The value is the same.
     The regression test is in `tests/testthat/test-ar1-varcomp-names.R`
     (DEF-225), skipped while this is open.
+26. **A refit in a fresh R process can reach a different INLA mode.** INLA
+    reports a converged mode in every case, so `summary()` does not show it.
+    Measured with INLA 26.8.7 on one thread, the same call and the same data
+    in each process:
+    - On a 48-trial barley series (10,890 plots), four processes reached two
+      modes, 0.10 apart in log marginal likelihood. The variance component
+      standard deviations differed by at most 3.4% between them.
+    - On six trials of the same series, eight processes reached four modes,
+      up to 0.45 apart.
+    - Over 32 processes on those six trials, some with INLA's optimiser
+      settings changed (reordering, search directions, initial values, the
+      start-up benchmark below), the main-plot standard deviation differed by up to 26%,
+      the locality standard deviation (four localities) by 14%, the others
+      by 7% or less and the residual by 0.4%.
+
+    flexyBayes passes INLA the same arguments in every run. INLA's log was
+    identical across runs up to its start-up benchmark of linear-algebra
+    routines, and the differences remained with that benchmark switched
+    off. INLA's `restart = 3` made all four processes on the full series
+    agree, but on the lower mode, so it does not fix this. *Workaround*:
+    where a conclusion rests on a weakly informed variance, refit in several
+    fresh processes (for example with `fb_isolated_lapply()`) and compare.
+    *What is open*: no fitting route is yet known that reliably reaches the
+    highest mode.
 
 ## Closed since the previous revision
 

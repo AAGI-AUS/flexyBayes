@@ -325,8 +325,11 @@ coef.flexybayes_inla <- function(
 #' @details
 #' The draws come from `INLA::inla.hyperpar.sample()` and are mapped to the
 #' response's original scale. A hyperparameter held fixed, such as the
-#' precision of a known variance, is not drawn. With `seed`, the draws are
-#' repeatable on one INLA thread (`options(flexyBayes.inla_threads = "1:1")`).
+#' precision of a known variance, is not drawn. With `seed`, the draws from a
+#' given fit are repeatable on one INLA thread
+#' (`options(flexyBayes.inla_threads = "1:1")`). A refit of the same model in
+#' another R session can reach a different mode (see [flexybayes()], section
+#' *INLA threads*).
 #'
 #' @param object A `flexybayes_inla` fit.
 #' @param n The number of draws.

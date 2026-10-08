@@ -2,7 +2,9 @@
 # with.
 #
 # Every fit records, at `fit$extras$reproducibility`, what a second run has to
-# match before its numbers can be expected to agree with the first:
+# match before its numbers can be expected to agree with the first. Matching it
+# is not enough on INLA: a refit in a fresh R process can reach another mode
+# (inst/KNOWN_ISSUES.md).
 #
 #   r_version            R.version.string
 #   flexybayes_version   this package's version

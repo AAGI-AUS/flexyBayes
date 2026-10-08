@@ -355,10 +355,10 @@ as \code{brms::posterior_epred()} on new levels, follow R's random-number
 stream and not this seed.
 
 On INLA the seed has no effect: \code{INLA::inla()} takes no seed, and the
-argument says once that it was not used. Repeated INLA fits agree to
-the precision of its optimiser, and a seed does not change that. The
-thread setting an INLA fit ran with is recorded beside the engine
-versions, in the same record.}
+argument says once that it was not used. A refit in a fresh R session
+can reach a different mode whatever the seed (see the section \emph{INLA
+threads}). The thread setting an INLA fit ran with is recorded beside
+the engine versions, in the same record.}
 
 \item{control}{A named list of sampler control settings or \code{NULL},
 forwarded to \code{brms::brm(control = )}. This is the route to
@@ -435,7 +435,7 @@ The two engines therefore carry the same variance-component prior.}
 \item{verbose}{Logical: print the generated backend code to the console.}
 
 \item{mcmc_verbose}{Logical: show the sampler's progress bar. Has no
-effect on the deterministic INLA path.}
+effect on INLA, which does not sample.}
 
 \item{return_code}{Logical: if TRUE, return the generated backend code
 without fitting the model -- the Stan program on \code{backend = "brms"},
@@ -463,8 +463,8 @@ to brms). Under \code{backend = "inla"} it refuses with
 need an INLA-side code slot, which is queued for a later release.}
 
 \item{backend}{Character: one of \code{"auto"} (\strong{default}), \code{"inla"}, or
-\code{"brms"}. INLA is the deterministic Laplace path over the
-latent-Gaussian model class; brms is the Stan passthrough. Any other
+\code{"brms"}. INLA fits the latent-Gaussian model class by nested Laplace
+approximation, without sampling; brms is the Stan passthrough. Any other
 value -- including a formerly-registered engine name this package
 withdrew entirely (see \code{NEWS.md}) -- refuses with \code{unknown_backend}
 naming the two active engines.
@@ -510,8 +510,8 @@ effective sample size). Treat such a posterior with caution ---
 increase \code{warmup} / \code{n_samples}, simplify the model, or supply a more
 informative prior --- and inspect the full diagnostics with
 \code{\link[=summary]{summary()}}. Silence the warning (for intentionally short fits) via
-\code{options(flexyBayes.silence_convergence_warning = TRUE)}. The INLA
-path is deterministic and carries no such warning.
+\code{options(flexyBayes.silence_convergence_warning = TRUE)}. An INLA fit
+does not sample and carries no such warning.
 
 \strong{Code inspection.} brms is the only engine with a code slot, so
 \code{return_code = TRUE} / \code{review_code = TRUE} under \code{"auto"} resolve to
@@ -639,6 +639,15 @@ from 0.75 to 0.79, with the fixed effects unchanged. Set
 \code{options(flexyBayes.inla_threads = "4:1")} for another plan, or \code{"inla"}
 for INLA's own default; the plan a fit ran with is in
 \verb{$extras$reproducibility}.
+
+One thread does not guarantee the same result in a new R session.
+Identical calls in fresh R processes can reach different modes. On a
+48-trial barley series, four processes reached two modes, 0.10 apart in
+log marginal likelihood, whose variance component standard deviations
+differed by at most 3.4\%. On six trials of the same series, the modes
+differed by up to 26\%. Where a conclusion rests on a weakly informed
+variance, refit in several fresh processes, for example with
+\code{\link[=fb_isolated_lapply]{fb_isolated_lapply()}}, and compare.
 }
 
 \section{Fitting in a separate process}{

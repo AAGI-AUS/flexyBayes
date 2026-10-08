@@ -287,10 +287,10 @@
 #'   stream and not this seed.
 #'
 #'   On INLA the seed has no effect: `INLA::inla()` takes no seed, and the
-#'   argument says once that it was not used. Repeated INLA fits agree to
-#'   the precision of its optimiser, and a seed does not change that. The
-#'   thread setting an INLA fit ran with is recorded beside the engine
-#'   versions, in the same record.
+#'   argument says once that it was not used. A refit in a fresh R session
+#'   can reach a different mode whatever the seed (see the section *INLA
+#'   threads*). The thread setting an INLA fit ran with is recorded beside
+#'   the engine versions, in the same record.
 #' @param control A named list of sampler control settings or `NULL`,
 #'   forwarded to `brms::brm(control = )`. This is the route to
 #'   `adapt_delta` and `max_treedepth`: `control = list(adapt_delta = 0.95)`
@@ -361,7 +361,7 @@
 #'   The two engines therefore carry the same variance-component prior.
 #' @param verbose Logical: print the generated backend code to the console.
 #' @param mcmc_verbose Logical: show the sampler's progress bar. Has no
-#'   effect on the deterministic INLA path.
+#'   effect on INLA, which does not sample.
 #' @param return_code Logical: if TRUE, return the generated backend code
 #'   without fitting the model -- the Stan program on `backend = "brms"`,
 #'   the INLA formula, family and hyperparameter list on
@@ -396,8 +396,8 @@
 #'   immediately semantics.  Mutually exclusive with `return_code` and
 #'   `review_code`.
 #' @param backend Character: one of `"auto"` (**default**), `"inla"`, or
-#'   `"brms"`. INLA is the deterministic Laplace path over the
-#'   latent-Gaussian model class; brms is the Stan passthrough. Any other
+#'   `"brms"`. INLA fits the latent-Gaussian model class by nested Laplace
+#'   approximation, without sampling; brms is the Stan passthrough. Any other
 #'   value -- including a formerly-registered engine name this package
 #'   withdrew entirely (see `NEWS.md`) -- refuses with `unknown_backend`
 #'   naming the two active engines.
@@ -444,8 +444,8 @@
 #'   increase `warmup` / `n_samples`, simplify the model, or supply a more
 #'   informative prior --- and inspect the full diagnostics with
 #'   [summary()]. Silence the warning (for intentionally short fits) via
-#'   `options(flexyBayes.silence_convergence_warning = TRUE)`. The INLA
-#'   path is deterministic and carries no such warning.
+#'   `options(flexyBayes.silence_convergence_warning = TRUE)`. An INLA fit
+#'   does not sample and carries no such warning.
 #'
 #'   **Code inspection.** brms is the only engine with a code slot, so
 #'   `return_code = TRUE` / `review_code = TRUE` under `"auto"` resolve to
@@ -546,6 +546,15 @@
 #' `options(flexyBayes.inla_threads = "4:1")` for another plan, or `"inla"`
 #' for INLA's own default; the plan a fit ran with is in
 #' `$extras$reproducibility`.
+#'
+#' One thread does not guarantee the same result in a new R session.
+#' Identical calls in fresh R processes can reach different modes. On a
+#' 48-trial barley series, four processes reached two modes, 0.10 apart in
+#' log marginal likelihood, whose variance component standard deviations
+#' differed by at most 3.4%. On six trials of the same series, the modes
+#' differed by up to 26%. Where a conclusion rests on a weakly informed
+#' variance, refit in several fresh processes, for example with
+#' [fb_isolated_lapply()], and compare.
 #'
 #' @section Fitting in a separate process:
 #' `options(flexyBayes.isolation = "process")` runs the engine fit in a
