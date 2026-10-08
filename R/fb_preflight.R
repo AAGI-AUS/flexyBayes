@@ -856,7 +856,7 @@
     return("<fixed:unnamed>")
   }
   # random
-  if (identical(ttype, "ar1_spatial_at")) {
+  if (ttype %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
     return(.ar1_term_spelling(term))
   }
   # A multi-way interaction random term (combo A:B:C) carries its columns in
