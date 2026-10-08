@@ -33,19 +33,20 @@
 #'   computed on the draws rather than by the delta method.
 #'
 #' @section Vignettes:
-#' Five vignettes ship with the package: *Mixed models in brief*,
-#' *Bayesian estimation in brief*, *The ASReml syntax flexyBayes covers*,
-#' *ASReml and flexyBayes on the same trials*, and *A two-stage analysis of a
-#' series of trials*. The first two set up the model class and what changes
-#' under a posterior; the third is the formula surface together with
-#' dispatch and the inventory of structures that are refused; the fourth
-#' fits the same trials through both and shows where the answers agree and
-#' where they do not; the fifth fits each trial of a series on its own,
-#' carries the first stage's variances into a second stage, and fits a
+#' Six vignettes ship with the package: *Mixed models in brief*, *Bayesian
+#' estimation in brief*, *The ASReml syntax flexyBayes covers*, *ASReml and
+#' flexyBayes on the same trials*, *A two-stage analysis of a series of
+#' trials*, and *Moving from ASReml-R*. The first two set up the model class
+#' and what changes under a posterior; the third is the formula surface
+#' together with dispatch and the inventory of structures that are refused;
+#' the fourth fits the same trials through both and shows where the answers
+#' agree and where they do not; the fifth fits each trial of a series on its
+#' own, carries the first stage's variances into a second stage, and fits a
 #' penalised regression of trial-level covariates on the design whitened by
-#' the fitted covariance. The count here is checked against `vignettes/` by
-#' a parity test, because a number written into prose is the first thing to
-#' drift.
+#' the fitted covariance; the sixth gives the flexyBayes spelling of each
+#' ASReml construct, beside stored ASReml fits. The count here is checked
+#' against `vignettes/` by a parity test, because a number written into prose
+#' is the first thing to drift.
 #'
 #' @section Capability:
 #' What each active engine fits, emits, or refuses by model class is

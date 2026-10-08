@@ -289,35 +289,31 @@ test_that("auto routes a designed spatial trial to INLA", {
   expect_identical(fit$extras$backend_decision$backend, "inla")
 })
 
-test_that("the residual spelling refuses and names the random-side field", {
-  # D-A. ASReml's residual ar1(row):ar1(col) is a three-parameter nugget-free
-  # process; the INLA emit builds a latent field plus the observation nugget,
-  # four parameters. The package used to fit the second under the first's
-  # name. It now refuses, on every engine, and says where the field lives.
+test_that("the residual field fits without a nugget; the 1-D one refuses", {
+  # ASReml's residual ar1(row):ar1(col) is a three-parameter nugget-free
+  # process; the random-side spelling adds the observation nugget, four
+  # parameters. The residual spelling fits the first, so its fit reports
+  # no residual SD.
   skip_if_not_installed("INLA")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   set.seed(5L)
   d <- .spatial_sim(6L, 5L, 0.7, 0.4, 1, 0.5)
-  refusal <- tryCatch(
-    suppressMessages(flexybayes(
-      y ~ 1, residual = ~ ar1(row):ar1(col), data = d, backend = "inla"
-    )),
-    error = function(e) e
+  fit <- suppressMessages(flexybayes(
+    y ~ 1, residual = ~ ar1(row):ar1(col), data = d, backend = "inla"
+  ))
+  expect_setequal(
+    as.character(summary(fit)$varcomp$component),
+    c("sd_spatial", "rho_row", "rho_col")
   )
-  expect_s3_class(
-    refusal, "flexybayes_refusal_ar1_residual_not_representable"
-  )
-  msg <- conditionMessage(refusal)
-  expect_match(msg, "random = ~ ar1(row):ar1(col)", fixed = TRUE)
-  expect_match(msg, "four parameters", fixed = TRUE)
-  expect_match(msg, "ASReml", fixed = TRUE)
-  # The 1-D residual spelling refuses on the same grounds.
-  expect_error(
+  # The 1-D residual spelling refuses.
+  err <- tryCatch(
     suppressMessages(flexybayes(
       y ~ 1, residual = ~ ar1(row), data = d, backend = "inla"
     )),
-    class = "flexybayes_refusal_ar1_residual_not_representable"
+    error = function(e) e
   )
+  expect_s3_class(err, "flexybayes_refusal_ar1_residual_not_representable")
+  expect_match(conditionMessage(err), "random = ~ ar1(row)", fixed = TRUE)
 })
 
 test_that("a replicated / incomplete grid refuses (fidelity condition)", {

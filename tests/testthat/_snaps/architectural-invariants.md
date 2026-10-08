@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=165
+      .refusal_registry: locked=TRUE n_keys=169
         aggregated_evidence_unavailable
         aggregation_residual_prior_not_composed
         aggregation_response_incomplete
@@ -103,12 +103,12 @@
         approximation_scheme_unknown
         approximation_spec_invalid
         ar1_residual_not_representable
+        ar1_residual_with_random_field
         ar1_spatial_requires_complete_grid
         ar2_not_representable
         asreml_function_not_recognised
-        at_field_per_level_hyper_not_representable
-        at_field_per_level_parameters_not_fitted
         at_level_conditioning_unsupported
+        at_level_not_in_data
         augment_cell_not_determinable
         augment_not_available_inla
         auto_no_active_route
@@ -128,6 +128,7 @@
         chol_not_in_known_matrices
         chol_not_square
         chol_not_triangular
+        classify_argument_not_supported
         classify_random_factor_not_supported
         classify_requires_emmeans
         code_flags_mutually_exclusive
@@ -204,6 +205,9 @@
         precision_not_square
         precision_not_symmetric
         predict_link_not_supported
+        predict_new_levels_family_not_supported
+        predict_new_levels_no_variance
+        predict_new_levels_structure_not_supported
         prior_argument_duplicated
         prior_argument_missing
         prior_argument_unknown

@@ -176,16 +176,17 @@ reference:
 articles:
   - title: Read in order
     desc: >
-      Five pages, enough to start work: what a mixed model is, what
+      Six pages, enough to start work: what a mixed model is, what
       changes when it is estimated as a posterior, every ASReml spelling
-      the package covers, one worked comparison, and a series of trials
-      analysed in two stages.
+      the package covers, one worked comparison, a series of trials
+      analysed in two stages, and a guide for ASReml-R users.
     contents:
       - flexyBayes-01-mixed-models
       - flexyBayes-02-bayesian
       - flexyBayes-03-syntax
       - flexyBayes-04-illustration
       - flexyBayes-06-two-stage
+      - flexyBayes-07-from-asreml
 
 redirects:
   # The eight-page tutorial deck was retired at 0.10.0.9000 and kept under

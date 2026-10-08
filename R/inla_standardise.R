@@ -498,9 +498,11 @@
   ]
   x <- matrix(0, cs$n, n)
   hyper <- matrix(0, n, length(hyper_names))
+  reuse <- NULL
   for (k in unique(pick)) {
     cols <- which(pick == k)
-    g <- .fb_inla_config_gaussian(cs, k)
+    g <- .fb_inla_config_gaussian(cs, k, reuse)
+    reuse <- g$reuse
     z <- matrix(stats::rnorm(cs$n * length(cols)), cs$n, length(cols))
     # With Q = P' L L' P, the draw P' L'^{-1} z has covariance Q^{-1}.
     xk <- Matrix::solve(

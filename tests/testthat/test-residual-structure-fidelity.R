@@ -102,23 +102,27 @@ test_that("explicit brms refuses a random-side AR1 field", {
   )
 })
 
-test_that("the residual AR1 spelling refuses on every route", {
-  # ASReml's separable residual is a three-parameter nugget-free process.
-  # The INLA emit builds a latent field plus the observation nugget -- four
-  # parameters, a different model -- so the spelling refuses rather than
-  # being fitted under a name it does not have, whichever engine is asked.
+test_that("the residual AR1 spelling is not handed to brms", {
+  # ASReml's separable residual is a three-parameter nugget-free process,
+  # fitted on INLA only. brms and the code-inspection route of auto, which
+  # resolves to brms, refuse it.
   skip_if_not_installed("brms")
   withr::local_options(flexyBayes.silence_default_prior_note = TRUE)
   g <- .complete_grid()
-  for (engine in c("inla", "brms", "auto")) {
-    expect_error(
-      suppressMessages(flexybayes(
-        y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
-        backend = engine, return_code = TRUE
-      )),
-      class = "flexybayes_refusal_ar1_residual_not_representable"
-    )
-  }
+  expect_error(
+    suppressMessages(flexybayes(
+      y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
+      backend = "brms", return_code = TRUE
+    )),
+    class = "flexybayes_refusal_stan_cannot_represent_ar1_residual"
+  )
+  expect_error(
+    suppressMessages(flexybayes(
+      y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
+      backend = "auto", return_code = TRUE
+    )),
+    class = "flexybayes_refusal_auto_no_active_route"
+  )
   # The 1-D spelling refuses on the same grounds.
   expect_error(
     suppressMessages(flexybayes(

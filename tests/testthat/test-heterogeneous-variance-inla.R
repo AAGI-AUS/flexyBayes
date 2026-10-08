@@ -112,7 +112,7 @@ test_that("the per-level index does not leak into the summary label", {
   expect_false(any(grepl("_at_", comps, fixed = TRUE)))
 })
 
-test_that("at(f, level) still refuses -- it is a different model", {
+test_that("at(f, level) passes the gate with one field for the named level", {
   tab <- .hv_fixture(n_gen = 8L, n_rep = 2L)
   fb <- fb_from_asreml(
     fixed = y ~ env,
@@ -121,5 +121,6 @@ test_that("at(f, level) still refuses -- it is a different model", {
     family = "gaussian"
   )
   res <- lgm_gate(fb)
-  expect_false("lgm_compatible" %in% res$capabilities)
+  expect_true("lgm_compatible" %in% res$capabilities)
+  expect_identical(fb$random_terms[[1L]]$outer_levels, "1")
 })

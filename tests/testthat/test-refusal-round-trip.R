@@ -191,10 +191,10 @@ test_that("a term brms cannot lower is refused by name, not dropped", {
 
 # --- the AR1 respelling ----------------------------------------------- #
 
-test_that("the residual AR1 spelling refuses and the random side fits", {
+test_that("the 1-D residual AR1 spelling refuses and the random side fits", {
   skip_if_not_installed("INLA")
   g <- .rt_grid()
-  bad <- .rt_emit(y ~ 1, residual = ~ ar1(row):ar1(col), data = g,
+  bad <- .rt_emit(y ~ 1, residual = ~ ar1(row), data = g,
                   backend = "inla")
   expect_s3_class(bad, "flexybayes_refusal_ar1_residual_not_representable")
   ok <- .rt_emit(y ~ 1, random = ~ ar1(row):ar1(col), data = g,

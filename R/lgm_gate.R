@@ -113,6 +113,11 @@ lgm_gate <- function(
     for (w in warnings) {
       caps <- c(caps, paste0("lgm_warning:", w$rule_id, ":", w$warning))
     }
+    for (r in checks) {
+      if (!is.null(r$int_strategy)) {
+        caps <- c(caps, paste0("inla_integration:", r$int_strategy))
+      }
+    }
     fb$capabilities <- caps
     return(fb)
   }
@@ -584,15 +589,31 @@ print.lgm_refusal <- function(x, ...) {
 #
 # Count hyperparameters: 1 likelihood (depending on family) + per
 # random-effect contribution (1 for simple, 2 for fa, k+ for fa_gxe,
-# n*(n+1)/2 for us_gxe, etc.) + per heterogeneous-residual term. Refuse
-# if total > 15 (CCD/grid intractable). Warn at >10 -- emit_inla
-# (deliverable 5+) will set int.strategy = "ccd" automatically.
+# n*(n+1)/2 for us_gxe, etc.) + one per section of a dsum() residual.
+# Refuse if total > 15 (CCD/grid intractable). Warn at >10.
+#
+# Above 15, a model whose excess is one variance per level of diag(f):g or
+# dsum(~ units | f) passes with int.strategy = "eb" when, counted with one
+# hyperparameter per such term, it is within the limit. INLA's hyperparameter
+# marginals are the same under "eb", "ccd" and "auto" (26 hyperparameters,
+# inst/extdata/model_c_reference.rds); the fixed and random effects become
+# conditional on the hyperparameter mode.
 .lgm_check_hyperparam_budget <- function(
   fb,
   hard_limit = 15L,
   warn_limit = 10L
 ) {
   n_hyp <- .lgm_count_hyperparams(fb)
+
+  if (
+    n_hyp > hard_limit &&
+      .lgm_count_hyperparams(fb, per_level = FALSE) <= hard_limit
+  ) {
+    out <- .lgm_pass("hyperparam_budget")
+    out$int_strategy <- "eb"
+    out$n_hyper <- n_hyp
+    return(out)
+  }
 
   if (n_hyp > hard_limit) {
     return(.lgm_fail(
@@ -621,7 +642,8 @@ print.lgm_refusal <- function(x, ...) {
         n_hyp,
         " exceeds soft limit ",
         warn_limit,
-        "; emit_inla will set int.strategy = \"ccd\"."
+        "; INLA's numerical integration over them takes longer as the ",
+        "count grows."
       )
     ))
   }
@@ -655,7 +677,9 @@ print.lgm_refusal <- function(x, ...) {
   )
 }
 
-.lgm_count_hyperparams <- function(fb) {
+# `per_level = FALSE` counts a diag(f):g term and a dsum() residual as one
+# hyperparameter each, the measure the empirical-Bayes admission uses.
+.lgm_count_hyperparams <- function(fb, per_level = TRUE) {
   fam_hypers <- .lgm_family_hypers(fb)
 
   re_hypers <- 0L
@@ -677,7 +701,9 @@ print.lgm_refusal <- function(x, ...) {
         n <- if (!is.null(term$n_outer)) term$n_outer else 4L
         as.integer(n * (n + 1L) / 2L)
       },
-      "at_simple" = if (!is.null(term$n_outer)) {
+      "at_simple" = if (!per_level) {
+        1L
+      } else if (!is.null(term$n_outer)) {
         as.integer(term$n_outer)
       } else {
         2L
@@ -697,6 +723,11 @@ print.lgm_refusal <- function(x, ...) {
       # precision, already counted by .lgm_family_hypers().
       "ar1" = 2L,
       "ar1_spatial" = 3L,
+      # One field per level of the by-factor, each with its own SD and
+      # correlations.
+      "ar1_spatial_at" = as.integer(
+        length(term$by_levels %||% 1L) * (if (isTRUE(term$col_ar1)) 3L else 2L)
+      ),
       "spline" = 1L,
       "polynomial" = 1L,
       1L
@@ -704,9 +735,14 @@ print.lgm_refusal <- function(x, ...) {
     re_hypers <- re_hypers + contrib
   }
 
+  # A dsum() residual is one Gaussian likelihood per section, each with its
+  # own precision, in place of the family's single one.
   residual_hypers <- 0L
   for (term in fb$residual_terms) {
-    if (term$type != "units") {
+    if (identical(term$type, "at_units") && !is.null(term$n_var)) {
+      n_sec <- if (per_level) as.integer(term$n_var) else 1L
+      residual_hypers <- residual_hypers + n_sec - min(fam_hypers, 1L)
+    } else if (term$type != "units") {
       residual_hypers <- residual_hypers + 1L
     }
   }
@@ -822,12 +858,9 @@ print.lgm_refusal <- function(x, ...) {
 # accepts. INLA folds residual variance into the likelihood and
 # does not represent structured-residual forms.
 .inla_residual_term_type_allowlist <- function() {
-  # 0.9.0: the separable AR1 field moved to the random side. INLA emits it
-  # as a latent autoregressive field plus the observation-level Gaussian
-  # nugget -- four parameters against the three of ASReml's nugget-free
-  # residual -- so the residual spelling is refused by name at dispatch
-  # (.refuse_unrepresentable_structures(), R/dispatch.R) and only the
-  # homogeneous residual reaches the INLA emit.
+  # A residual AR1 either reaches the emit as a random-side field with a
+  # fixed nugget (R/fb.R) or is refused by name at dispatch
+  # (.refuse_unrepresentable_structures(), R/dispatch.R).
   c("units", "at_units")
 }
 
@@ -943,6 +976,7 @@ print.lgm_refusal <- function(x, ...) {
     "us_gxe" = "unstructured GxE",
     "ar1" = "autoregressive lag-1",
     "ar1_spatial" = "AR1 spatial",
+    "ar1_spatial_at" = "AR1 spatial field per level",
     "corh_gxe" = "equicorrelated GxE",
     "nested" = "nested / interaction random effect",
     "combo" = "multi-way interaction random effect",
@@ -1130,9 +1164,8 @@ print.lgm_refusal <- function(x, ...) {
     return(TRUE)
   }
   # diag(f):g / idh(f):g / at(f):g -- k independent iid fields, one per level
-  # of the outer factor. The `level` argument conditions on selected levels,
-  # which is a different model, and stays refused.
-  if (identical(term$type, "at_simple") && is.null(term$level)) {
+  # of the outer factor; at(f, level):g keeps the named levels.
+  if (identical(term$type, "at_simple")) {
     return(TRUE)
   }
   # us(f):g is not accepted here: the INLA emit still builds its iidKd
@@ -1148,7 +1181,7 @@ print.lgm_refusal <- function(x, ...) {
   # emit_inla() validates the one-observation-per-node grid condition and
   # refuses an incomplete / replicated grid there (gate accepts the class;
   # emit validates the instance -- the simple_slope_uncor pattern).
-  if (term$type %in% c("ar1", "ar1_spatial")) {
+  if (term$type %in% c("ar1", "ar1_spatial", "ar1_spatial_at")) {
     return(TRUE)
   }
   if (term$type %in% c("vm", "ped")) {
