@@ -976,6 +976,8 @@
 #' @param completion The default slope priors the brms emit divided by their
 #'   covariates' standard deviations (`.fb_default_covariate_scaled()`), or
 #'   `NULL`.
+#' @param pooled_slots Slot rows of the pooled() Stan statements, read back
+#'   from the compiled program (`.fb_manifest_brms_pooled_slots()`).
 #' @returns An `fb_manifest`.
 #' @noRd
 #' @keywords internal
@@ -984,7 +986,8 @@
   emitted_prior,
   brmsfit,
   tagged_prior = emitted_prior,
-  completion = NULL
+  completion = NULL,
+  pooled_slots = list()
 ) {
   emitted <- as.data.frame(emitted_prior %||% data.frame())
   tagged <- as.data.frame(tagged_prior %||% data.frame())
@@ -1101,7 +1104,12 @@
       stringsAsFactors = FALSE
     )
   }
-  slots <- .fb_manifest_bind_out(slot_rows)
+  slots <- .fb_manifest_bind_out(c(slot_rows, pooled_slots))
+  pooled_agree <- vapply(
+    pooled_slots,
+    function(r) isTRUE(r$readback_agrees),
+    logical(1L)
+  )
 
   reasons <- c(
     "scalar:prior_vc_sd" = "prior_vc_sd_superseded_by_prior"
@@ -1120,7 +1128,7 @@
     slots = slots,
     reasons = reasons,
     evidence = .fb_manifest_evidence_unavailable("evidence_not_computed"),
-    readback_complete = all(found)
+    readback_complete = all(found) && all(pooled_agree)
   )
 }
 

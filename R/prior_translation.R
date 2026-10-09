@@ -79,6 +79,10 @@
 #   (`half_normal`, `exponential`, `gamma`, `pc`) does not describe an
 #   unbounded coefficient.
 #
+#   `pooled()` on `sigma(by = )` and `sd(group = , by = )` is a log-normal
+#   hierarchy over the per-level SDs (R/pooled_prior.R): prior rows on the
+#   log-sigma intercept and group SD, and stanvars for diag() terms.
+#
 #   `cor()` and `smooth()` have no reachable parameter -- the brms
 #   models flexyBayes emits carry classes `b`, `Intercept`, `sd` and
 #   `sigma` only (correlated random slopes are refused at ingest and
@@ -120,6 +124,8 @@
       }
       if (fam %in% brms_translate) {
         add("brms", tg, fam, "translate", "brms prior row (lb = 0)")
+      } else if (identical(fam, "pooled") && tg %in% c("sigma", "sd")) {
+        add("brms", tg, fam, "translate", "log-normal hierarchy (stanvars)")
       } else {
         add("brms", tg, fam, "refuse", NA_character_)
       }

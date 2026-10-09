@@ -180,13 +180,29 @@ emit_brms <- function(
   # covariate's standard deviation, as on INLA, so the slope slot carries the
   # same prior on both engines (R/inla_default_priors.R).
   default_completion <- .fb_default_covariate_scaled(fb, data)
-  brms_prior <- .priors_to_brms(
-    .fb_default_prior_scaled(fb, default_completion$covariate_scaled) %||%
-      list(legacy = TRUE, fixed_sd = prior_fixed_sd, vc_sd = prior_vc_sd),
-    fb,
-    prior_fixed_sd = prior_fixed_sd,
-    prior_vc_sd = prior_vc_sd
+  # .priors_to_brms(), with the rows and stanvars of any pooled() block.
+  brms_specs <- .brms_retarget_sigma_for_heterogeneous_residual(
+    .priors_to_brms_specs(
+      .fb_default_prior_scaled(fb, default_completion$covariate_scaled) %||%
+        list(legacy = TRUE, fixed_sd = prior_fixed_sd, vc_sd = prior_vc_sd),
+      fb,
+      prior_fixed_sd = prior_fixed_sd,
+      prior_vc_sd = prior_vc_sd
+    ),
+    fb
   )
+  pooled <- .fb_brms_pooled_lowering(
+    .fb_pooled_blocks(fb), brms_specs, fb, brms_form, data, brms_data2,
+    brms_family
+  )
+  brms_prior <- .brms_specs_to_object(c(brms_specs, pooled$specs))
+  if (!is.null(pooled)) {
+    stanvars <- if (is.null(stanvars)) {
+      pooled$stanvars
+    } else {
+      stanvars + pooled$stanvars
+    }
+  }
   # A prior naming a term the model does not have is caught here, against
   # brms's own parameter list, rather than left to brms's parser. The
   # parser reports a synthesised Stan name (`b_nonexistent_term`) the
@@ -473,8 +489,14 @@ emit_brms <- function(
       # (R/model_manifest.R).
       manifest = .fb_manifest_brms(
         fb, brms_prior, brmsfit, tagged_prior,
-        completion = default_completion
+        completion = default_completion,
+        pooled_slots = .fb_manifest_brms_pooled_slots(
+          pooled, if (!is.null(pooled)) brms::stancode(brmsfit)
+        )
       ),
+      # NULL unless the fit carries a pooled() prior; print(), summary()
+      # and prior_summary() then name it.
+      pooled = .fb_brms_pooled_record(pooled, draws_mat),
       # The versions, threads and seed the fit ran with
       # (R/reproducibility_record.R). `cores` reaches brm() only through
       # `...`, and brms keeps no record of it on the fit.
@@ -991,7 +1013,19 @@ emit_brms <- function(
         )
       ))
     }
-    sigma_rhs <- paste0("0 + ", term$var)
+    pooled_by <- vapply(
+      Filter(
+        function(s) identical(s$target$type, "sigma"),
+        .fb_pooled_specs(fb$priors)
+      ),
+      function(s) s$target$by,
+      character(1L)
+    )
+    sigma_rhs <- if (term$var %in% pooled_by) {
+      paste0("1 + (1 | ", term$var, ")")
+    } else {
+      paste0("0 + ", term$var)
+    }
   } else {
     sigma_rhs <- "1"
   }
@@ -1824,24 +1858,38 @@ emit_brms <- function(
   if (is.null(draws)) {
     return(NULL)
   }
-  cols <- grep("^b_sigma_", colnames(draws), value = TRUE)
-  if (length(cols) == 0L) {
-    return(NULL)
+  # A pooled residual, `sigma ~ 1 + (1 | f)`, puts each level's log sigma
+  # at b_sigma_Intercept + r_<f>__sigma[<level>,Intercept].
+  pooled_cols <- grep(
+    paste0("^r_", var_name, "__sigma\\["), colnames(draws), value = TRUE
+  )
+  if (length(pooled_cols) && "b_sigma_Intercept" %in% colnames(draws)) {
+    labels <- sub(
+      paste0("^r_", var_name, "__sigma\\[(.*),Intercept\\]$"), "\\1",
+      pooled_cols
+    )
+    log_sigma <- as.numeric(draws[, "b_sigma_Intercept"]) +
+      matrix(as.numeric(draws[, pooled_cols]), ncol = length(pooled_cols))
+  } else {
+    cols <- grep("^b_sigma_", colnames(draws), value = TRUE)
+    if (length(cols) == 0L) {
+      return(NULL)
+    }
+    # `sigma ~ 0 + f` names each coefficient <factor><level>, so the level
+    # is what remains once the factor's own name is removed.
+    labels <- sub(paste0("^b_sigma_", var_name), "", cols)
+    log_sigma <- draws[, cols, drop = FALSE]
   }
-
-  # `sigma ~ 0 + f` names each coefficient <factor><level>, so the level
-  # is what remains once the factor's own name is removed. Ordering
-  # follows the data's factor levels where they are recoverable, so the
-  # printed block reads in the same order as every other per-level
+  # Ordering follows the data's factor levels where they are recoverable,
+  # so the printed block reads in the same order as every other per-level
   # summary the user has seen.
-  labels <- sub(paste0("^b_sigma_", var_name), "", cols)
   declared <- tryCatch(
     levels(object$brms$data[[var_name]]),
     error = function(e) NULL
   )
   if (!is.null(declared) && setequal(labels, declared)) {
     ord <- match(declared, labels)
-    cols <- cols[ord]
+    log_sigma <- log_sigma[, ord, drop = FALSE]
     labels <- labels[ord]
   }
 
@@ -1849,8 +1897,8 @@ emit_brms <- function(
     q <- stats::quantile(x, probs = probs, names = FALSE, na.rm = TRUE)
     c(stats::median(x, na.rm = TRUE), q[1L], q[2L])
   }
-  rows <- lapply(seq_along(cols), function(i) {
-    b <- draws[, cols[[i]]]
+  rows <- lapply(seq_along(labels), function(i) {
+    b <- log_sigma[, i]
     v <- summarise(exp(2 * b))
     s <- summarise(exp(b))
     data.frame(
@@ -1872,6 +1920,7 @@ emit_brms <- function(
   out <- do.call(rbind, rows)
   attr(out, "factor") <- var_name
   attr(out, "probs") <- probs
+  attr(out, "pooled") <- length(pooled_cols) > 0L
   out
 }
 
@@ -1956,8 +2005,13 @@ emit_brms <- function(
     stringsAsFactors = FALSE
   )
   print(body, row.names = FALSE)
+  log_sigma <- if (isTRUE(attr(tab, "pooled"))) {
+    "(b_sigma_Intercept + r_<level>)"
+  } else {
+    "b_sigma_<level>"
+  }
   cat(
-    "  Summarised from the draws of exp(2 * b_sigma_<level>); the fitted\n",
+    "  Summarised from the draws of exp(2 * ", log_sigma, "); the fitted\n",
     "  coefficients are on log sigma, so neither they nor their posterior\n",
     "  means are variances. There is no scalar residual variance in this\n",
     "  model -- the sectioning replaces it.\n",

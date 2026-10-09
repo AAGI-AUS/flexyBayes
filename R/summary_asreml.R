@@ -387,6 +387,10 @@
       if (cmp %in% not_applied) {
         return("engine default")
       }
+      pooled <- .fb_varcomp_pooled_prior(object, cmp)
+      if (!is.na(pooled)) {
+        return(pooled)
+      }
       if (cmp %in% names(recorded)) {
         return(unname(recorded[[cmp]]))
       }
@@ -1826,6 +1830,16 @@
     cat(
       "  Inference: ", integ$label, ". ", integ$n_hyper,
       " variance parameters, above the 15 INLA integrates over.\n",
+      sep = ""
+    )
+  }
+  pooled <- object$extras$pooled
+  if (!is.null(pooled)) {
+    sds <- pooled$pooling_sd
+    cat(
+      "  Prior    : ", pooled$label, "; pooling SD (posterior median): ",
+      paste(names(sds), format(signif(sds, 3L)), collapse = ", "),
+      ".\n",
       sep = ""
     )
   }

@@ -968,6 +968,10 @@
   # one engine and an untyped stop() on the other.
   .refuse_unrepresentable_structures(fb)
 
+  # A pooled() prior names its term; one the model does not have is refused
+  # here, before either engine is chosen.
+  .fb_pooled_blocks(fb)
+
   # D14 / WP-D: a family = "binomial" response outside {0, 1} on this
   # (non-streaming) entry used to reach the engine unrefused on every
   # route -- an INLA subprocess death, an untyped brms condition, and an
@@ -1143,11 +1147,11 @@
         backend = "brms",
         path = "explicit_brms",
         gate_checks = NULL,
-        reason = paste0(
+        reason = .fb_pooled_reason(paste0(
           "user requested brms explicitly ",
           "(Stan passthrough; lgm_gate() not ",
           "consulted on this path)."
-        ),
+        ), fb),
         preflight_summary = preflight_result,
         representation_plan = .representation_plan_from_preflight(
           preflight_result
@@ -1572,6 +1576,9 @@
 
   if (!isTRUE(return_code) && !is.null(fit$extras)) {
     if (!is.null(decision)) {
+      if (identical(decision$backend, "brms")) {
+        decision$reason <- .fb_pooled_reason(decision$reason, fb)
+      }
       fit$extras$backend_decision <- decision
     }
     fit$extras$fb_terms <- fb

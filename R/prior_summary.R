@@ -181,6 +181,15 @@ prior_summary.default <- function(object, ...) {
   if (length(sectioned) == 0L) {
     return(NULL)
   }
+  # A pooled residual keeps its prior on the log-sigma intercept and group
+  # SD, as written (R/pooled_prior.R).
+  pooled_sigma <- Filter(
+    function(s) identical(s$target$type, "sigma"),
+    .fb_pooled_specs(fb_terms$priors)
+  )
+  if (length(pooled_sigma)) {
+    return(NULL)
+  }
   term <- sectioned[[1L]]
   term$var %||% term$outer %||% NA_character_
 }
@@ -473,6 +482,7 @@ prior_summary.default <- function(object, ...) {
   # engine's own table is carried rather than reconstructed. This is what
   # closes the gap the declaration alone leaves: a retargeted residual
   # prior and an engine default both appear here under their real names.
+  out$pooled <- object$extras$pooled
   out$engine_prior_table <- if (
     identical(backend_label, "brms") && !is.null(object$brms)
   ) {
@@ -692,6 +702,13 @@ print.prior_summary_flexybayes <- function(x, ...) {
         }
       } else {
         cat("  Source: user-supplied fb_prior()\n")
+      }
+      if (!is.null(x$pooled)) {
+        cat(
+          "  Pooling: ", x$pooled$label, " (",
+          paste(x$pooled$targets, collapse = "; "), ")\n",
+          sep = ""
+        )
       }
       .prior_summary_cat_fixed_line(x)
       cat("\n")

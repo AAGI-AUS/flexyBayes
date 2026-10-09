@@ -82,6 +82,8 @@ lgm_gate <- function(
     # structural checks so that the refusal a user reads first is the one
     # that names where the model is fitted.
     .lgm_check_correlated_covariance(fb),
+    # check 1c -- pooled() priors go to brms (R/pooled_prior.R).
+    .lgm_check_pooled_prior(fb),
     .lgm_check_predictor(fb), # check 2
     .lgm_check_distributional(fb), # check 3
     .lgm_check_re_prior(fb), # check 4

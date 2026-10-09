@@ -77,7 +77,7 @@
 #'
 #' Supported distribution families: `pc`, `half_normal`, `half_cauchy`,
 #' `student_t`, `normal`, `exponential`, `lkj`, `cauchy`, `gamma`,
-#' `uniform`. Note that `uniform()` on a variance component sits
+#' `uniform`, and `pooled` (see "Partially pooled SDs" below). Note that `uniform()` on a variance component sits
 #' outside the PC-canonical interlingua, but both active backends
 #' represent it faithfully on the SD scale: the INLA backend via an
 #' expression-prior on the log-precision, and brms as a bounded
@@ -128,6 +128,33 @@
 #' `sd(y)`, where the same prior is `half_normal(scale = 5)`; the printed
 #' formula and `prior_summary()` show it on both scales.
 #'
+#' @section Partially pooled SDs:
+#'
+#' `pooled()` puts one shared prior on a set of per-level standard
+#' deviations, instead of a separate prior on each. The target names the
+#' term, and `by` the factor whose levels are pooled:
+#'
+#' * `sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
+#'   pooled(scale = half_normal(scale = 0.5))` for the genotype-by-trial SDs
+#'   of `diag(TRIAL):VARIETY`;
+#' * `sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))` for the
+#'   residual SDs of `dsum(~ units | TRIAL)`.
+#'
+#' Either set can be pooled without the other. The log SDs of a pooled set
+#' are normal with an estimated mean and an estimated SD, the pooling SD.
+#' `scale` is the prior on the pooling SD and has no default; it can be any
+#' prior brms accepts for a standard deviation. The mean has a
+#' `normal(log(s / 5), 2)` prior, where `s` is the scale of the package's
+#' default SD prior. On an identity link that is `normal(log(sd(y)), 2)`.
+#'
+#' Pooling shrinks the per-level SDs toward each other, so the estimates
+#' differ from ASReml's, which fits each SD separately. Only brms fits it,
+#' because INLA cannot put a shared prior on separate variance parameters:
+#' `backend = "inla"` refuses with `pooled_prior_requires_brms`, and
+#' `backend = "auto"` uses brms. Printed output labels the fit
+#' "per-trial SDs partially pooled", with the `by` factor's name in place
+#' of "trial".
+#'
 #' @returns An `fb_prior` object, an S3 class inheriting from list,
 #'   whose `$specs` element carries the parsed `target` and `spec`
 #'   pairs.
@@ -139,6 +166,13 @@
 #'   b("treatment")        ~ student_t(df = 4, scale = 2.5)
 #' )
 #' p
+#'
+#' # Model C with both per-trial SD blocks partially pooled
+#' fb_prior(
+#'   sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
+#'     pooled(scale = half_normal(scale = 0.5)),
+#'   sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))
+#' )
 #' @export
 fb_prior <- function(...) {
   args <- list(...)
@@ -182,6 +216,7 @@ fb_prior <- function(...) {
       target = .parse_prior_target(a[[2]]),
       spec = .parse_prior_distribution(a[[3]], envir = environment(a))
     )
+    .check_prior_pooled_pairing(specs[[i]], a)
   }
 
   obj <- list(specs = specs)
@@ -217,11 +252,16 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     args_list <- as.list(expr[-1])
 
     if (fn == "sigma") {
-      return(list(type = "sigma"))
+      if (is.null(args_list$by)) {
+        return(list(type = "sigma"))
+      }
+      return(list(type = "sigma", by = as.character(args_list$by)))
     }
 
     if (fn == "sd") {
-      group <- .extract_string_arg(args_list, "group")
+      group_args <- args_list
+      group_args$by <- NULL
+      group <- .extract_string_arg(group_args, "group")
       if (is.null(group)) {
         stop(.fb_refusal_condition(
           reason_code = "prior_target_argument_missing",
@@ -230,7 +270,10 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           )
         ))
       }
-      return(list(type = "sd", group = group))
+      if (is.null(args_list$by)) {
+        return(list(type = "sd", group = group))
+      }
+      return(list(type = "sd", group = group, by = as.character(args_list$by)))
     }
 
     if (fn == "b") {
@@ -365,6 +408,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
 #                the non-negative SD scale)
 #   real         finite, any sign (means and locations)
 #   unit_open    finite and strictly inside (0, 1) (tail probabilities)
+#   distribution a prior call of its own (the pooling SD of pooled())
 .fb_prior_family_table <- function() {
   list(
     normal = list(
@@ -416,6 +460,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       params = c("lower", "upper"),
       required = "upper",
       domain = c(lower = "nonnegative", upper = "positive")
+    ),
+    pooled = list(
+      params = "scale",
+      required = "scale",
+      domain = c(scale = "distribution")
     )
   )
 }
@@ -675,6 +724,9 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
   # the usual rules -- and a call base R cannot match is refused here
   # rather than carried unnamed into the emit paths.
   expr <- .name_prior_args(expr, fn)
+  if (identical(fn, "pooled")) {
+    return(.parse_prior_pooled(expr, envir))
+  }
 
   # Evaluate distribution arguments in the formula's calling
   # environment so users can pass data-driven scales like
@@ -1472,10 +1524,14 @@ print.fb_prior <- function(x, ...) {
 }
 
 .format_prior_target <- function(target) {
+  by <- if (is.null(target$by)) "" else paste0("by = \"", target$by, "\"")
   switch(
     target$type,
-    "sigma" = "sigma",
-    "sd" = paste0("sd(group = \"", target$group, "\")"),
+    "sigma" = if (nzchar(by)) paste0("sigma(", by, ")") else "sigma",
+    "sd" = paste0(
+      "sd(group = \"", target$group, "\"",
+      if (nzchar(by)) paste0(", ", by), ")"
+    ),
     "b" = paste0("b(\"", target$name, "\")"),
     "cor" = paste0("cor(group = \"", target$group, "\")"),
     "smooth" = paste0(
@@ -1500,6 +1556,12 @@ print.fb_prior <- function(x, ...) {
         return(paste0(
           if (nzchar(nm %||% "")) paste0(nm, " = ") else "",
           format(val)
+        ))
+      }
+      if (is.list(val) && !is.null(val$family)) {
+        return(paste0(
+          if (nzchar(nm %||% "")) paste0(nm, " = ") else "",
+          .format_prior_distribution(val)
         ))
       }
       paste0(if (nzchar(nm %||% "")) paste0(nm, " = ") else "", deparse(val))
