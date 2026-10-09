@@ -1522,6 +1522,7 @@ emit_inla <- function(
   if (.fb_weights_nonconstant(ir_weights)) {
     inla_args$scale <- ir_weights
   }
+  best_of_k <- .fb_inla_best_of_k()
   fit <- tryCatch(
     .inla_call(inla_args),
     error = function(e) {
@@ -1551,6 +1552,11 @@ emit_inla <- function(
       )
     ))
   }
+  # The k - 1 further fits in fresh R processes (R/inla_best_of.R). The
+  # restart probe below examines the fit kept.
+  best_of <- .fb_inla_best_of(fit, inla_args, best_of_k)
+  fit <- best_of$fit
+  best_of <- best_of$record
   elapsed <- unname((proc.time() - t0)["elapsed"])
 
   # Post-fit numerical-confirm gate.
@@ -1605,6 +1611,7 @@ emit_inla <- function(
   if (!is.null(standardisation)) {
     fit <- .fb_inla_back_transform(fit, standardisation)
     mlik_shift <- standardisation$n_obs * log(standardisation$scale)
+    best_of <- .fb_best_of_shift(best_of, mlik_shift)
     for (nm in c("mlik_original", "mlik_restart")) {
       if (is.numeric(num_check$restart_probe[[nm]])) {
         num_check$restart_probe[[nm]] <-
@@ -1781,7 +1788,7 @@ emit_inla <- function(
         support_audit = support_audit,
         # The versions, threads and seed the fit ran with
         # (R/reproducibility_record.R).
-        reproducibility = .fb_repro_record_inla(fit, seed)
+        reproducibility = .fb_repro_record_inla(fit, seed, best_of)
       )
     ),
     # The INLA fit wears the shared `flexybayes` parent, as the brms fit

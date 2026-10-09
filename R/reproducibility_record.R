@@ -20,6 +20,12 @@
 #                        as_run: the seed Stan ran with, which the backend
 #                        drew when none was supplied; NA on INLA, which takes
 #                        no seed.
+#   best_of              INLA, when the fit was run more than once
+#                        (option flexyBayes.inla_best_of): each fit's log
+#                        marginal likelihood and mode status, the fit kept,
+#                        the range of the marginal likelihoods, and each
+#                        standard deviation per fit with its largest
+#                        difference across the fits (R/inla_best_of.R).
 #
 # A value is read from the engine's own return wherever the engine reports it:
 # INLA keeps the num.threads it ran with at `$.args$num.threads`, and CmdStan
@@ -47,12 +53,13 @@
 #'
 #' @param inla_fit The object `INLA::inla()` returned.
 #' @param seed The `seed` the emitter received, or `NULL`.
+#' @param best_of The `.fb_inla_best_of()` record, or `NULL` for one fit.
 #' @returns The record, a named list (see the file header).
 #' @noRd
 #' @keywords internal
-.fb_repro_record_inla <- function(inla_fit, seed = NULL) {
+.fb_repro_record_inla <- function(inla_fit, seed = NULL, best_of = NULL) {
   num_threads <- inla_fit[[".args"]][["num.threads"]]
-  list(
+  rec <- list(
     r_version = R.version.string,
     flexybayes_version = .fb_repro_version("flexyBayes"),
     engine = "inla",
@@ -70,6 +77,8 @@
       as_run = NA_integer_
     )
   )
+  rec$best_of <- best_of
+  rec
 }
 
 #' The reproducibility record of a brms fit
@@ -278,7 +287,12 @@
       if (is.na(supplied)) " (none supplied)" else " (supplied)"
     )
   }
-  c(Versions = versions, Threads = threads, Seed = seed)
+  c(
+    Versions = versions,
+    Threads = threads,
+    Seed = seed,
+    "Best of" = .fb_best_of_line(rec$best_of)
+  )
 }
 
 .fb_repro_value <- function(x) {

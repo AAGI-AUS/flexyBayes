@@ -20,7 +20,8 @@
     reason_code = "isolation_requires_callr",
     description = paste0(
       "options(flexyBayes.isolation = \"process\") runs each engine fit, ",
-      "and fb_isolated_lapply() each job, in a separate R process started ",
+      "fb_isolated_lapply() each job, and option flexyBayes.inla_best_of ",
+      "above 1 the further INLA fits, in a separate R process started ",
       "through callr, which is in Suggests and not installed. The request ",
       "is refused before anything is fitted, so no fit runs without the ",
       "protection that was asked for."

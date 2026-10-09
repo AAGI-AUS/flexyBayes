@@ -172,6 +172,8 @@
   # 0.16.0: entry arguments and model variables the routes stopped on
   # untyped, and the aggregated routes' scope reasons.
   .populate_refusal_registry_entry_arguments()
+  # 0.17.0: option flexyBayes.inla_best_of that is not a count.
+  .populate_refusal_registry_inla_best_of()
 
   # Lock the refusal-reason registry (v0.3.8 scaffold).
   # The lock makes the registry immutable to user code once the
