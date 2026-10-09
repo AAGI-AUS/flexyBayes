@@ -689,11 +689,10 @@
         message = paste0(
           "fa(", term$outer, ", ", term$k, "):", term$inner,
           " asks for a factor-analytic genotype-by-environment covariance, ",
-          "which flexyBayes does not fit on either engine: on INLA, ",
-          "repeated identical calls did not agree on the covariance (on ",
-          "agridat::besag.met eight fits spanned a ratio of 1.23 in a ",
-          "genotype-by-environment variance, against a tolerance of 1.10), ",
-          "and flexyBayes has no factor-analytic lowering for brms. Write ",
+          "which flexyBayes does not fit on either engine: fits on INLA did ",
+          "not reproduce ASReml 4.2's split of the genetic variance into ",
+          "common and specific parts, and flexyBayes has no factor-analytic ",
+          "lowering for brms. Write ",
           "diag(", term$outer, "):", term$inner, ", one variance per ",
           "environment, which fits on both engines, or us(", term$outer,
           "):", term$inner, " on brms, which estimates every correlation."

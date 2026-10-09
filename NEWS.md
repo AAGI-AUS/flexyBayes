@@ -42,6 +42,9 @@
   that was more than one (`parallel`).
 * When fits running at once fail, the call stops with the message of the
   lowest-numbered failed fit, and the fits still running are ended.
+* Once the last fresh-process fit has finished, the processx supervisor that
+  flexyBayes started for it is ended, so a fit leaves no connection open. A
+  supervisor the session already ran is left running.
 
 ## New features
 

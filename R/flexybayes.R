@@ -41,10 +41,9 @@
 #'
 #'   **Parsed and refused by name.** `fa(f, k):g`, the factor-analytic
 #'   genotype-by-environment covariance, is refused on both engines
-#'   (`factor_analytic_not_repeatable`). INLA can represent it, by entering
-#'   each common factor as scaled copies of a latent field, but repeated
-#'   identical calls did not return the same covariance on a trial with weak
-#'   genetic signal, and flexyBayes has no factor-analytic lowering for brms.
+#'   (`factor_analytic_not_repeatable`). Fits on INLA did not reproduce
+#'   ASReml 4.2's split of the genetic variance into common and specific
+#'   parts, and flexyBayes has no factor-analytic lowering for brms.
 #'   Write `diag(f):g`, which fits on both engines, or `us(f):g` on brms.
 #'   The bare spelling `fa(v, k)`, with no grouping factor for the covariance
 #'   to apply to, keeps its own refusal (`fa_not_representable`).

@@ -223,13 +223,10 @@
       brms = "refuses",
       note = "flexyBayes does not fit this structure on either engine. INLA
         can represent it, one latent field per common factor entered at each
-        level as a scaled copy, but repeated identical calls did not return
-        the same covariance where the genetic signal is weak: on
-        `agridat::besag.met` eight calls spanned a ratio of 1.23 in a
-        genotype-by-environment variance and 0.12 in a genetic correlation,
-        against tolerances of 1.10 and 0.05 set before the runs. Two
-        simulated designs and `agridat::dasilva.maize` repeated to better
-        than 1.01. Each factor's loading is fixed at one at an anchor
+        level as a scaled copy, but fits on INLA did not reproduce ASReml
+        4.2's split of the genetic variance into common and specific parts,
+        which ASReml often places at a specific variance of zero. Each
+        factor's loading is fixed at one at an anchor
         environment, chosen from the data as the environment with the
         largest common genetic variance. flexyBayes has no factor-analytic
         lowering for brms. `diag(env):gen` fits on
