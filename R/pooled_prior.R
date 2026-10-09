@@ -6,14 +6,11 @@
 # estimated location and an estimated scale (the pooling SD). Fitted on brms
 # only; the INLA gate refuses it (pooled_prior_requires_brms).
 #
-# The brms lowering is route B1 of the 2026-10-08 model C spike
-# (review/units/c2_2026-10-08/SPIKE_REPORT.md):
+# The brms lowering is route B1 of the 2026-10-08 model C spike:
 #   residual  `sigma ~ 1 + (1 | f)`, a normal(location, 2) prior on the
 #             log-sigma intercept and the scale prior on its group SD;
 #   diag      a flat prior on the per-level SDs and, through `stanvars`,
 #             `target += lognormal_lpdf(sd_K | pool_mean_g, pool_sd_g)`.
-# The location is log(s / 5), with s the default prior's scale: log(sd(y))
-# on an identity link.
 
 # Distributions a pooling SD can take: every SD-scale density the brms
 # translation carries.
@@ -220,7 +217,8 @@
   )
 }
 
-# The location prior's centre on the log-SD scale.
+# The location prior's centre on the log-SD scale: log(s / 5), with s the
+# default prior's scale, which is log(sd(y)) on an identity link.
 .fb_pooled_location <- function(fb, data) {
   s <- .default_half_normal_scale(data, fb$response, fb$family, fb$link)$scale
   log(s / .FB_DEFAULT_SD_MULTIPLIER)
