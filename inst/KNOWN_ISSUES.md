@@ -430,7 +430,10 @@ Each is reproducible on this release. Priority is for the MET use case.
     flexyBayes passes INLA the same arguments in every run. INLA's log was
     identical across runs up to its start-up benchmark of linear-algebra
     routines, and the differences remained with that benchmark switched
-    off. INLA's `restart = 3` made all four processes on the full series
+    off. Setting `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`,
+    `VECLIB_MAXIMUM_THREADS` and `MKL_NUM_THREADS` to 1 did not remove them
+    either: six fresh processes on the six trials reached three modes, as
+    six at 8 threads did. INLA's `restart = 3` made all four processes on the full series
     agree, but on the lower mode, so it does not fix this.
 
     Since 0.17.0 each INLA fit is run three times, once in the session and
