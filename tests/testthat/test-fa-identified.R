@@ -135,3 +135,99 @@ test_that("the stored records say which ASReml fits converged", {
     matrix(c(TRUE, TRUE, TRUE, FALSE, TRUE, TRUE), 2L)
   )
 })
+
+# ---------------------------------------------------------------- #
+# The k-fit agreement gate on the INLA fa route                     #
+# ---------------------------------------------------------------- #
+
+# An fa(env, 1):gen term over three levels anchored at B, and a stand-in INLA
+# fit carrying its joint mode: log precisions and copy scalings.
+.fag_term <- function() {
+  list(type = "fa_gxe", outer = "env", inner = "gen", k = 1L,
+       outer_levels = c("A", "B", "C"), fa_order = c(2L, 1L, 3L))
+}
+.fag_fake <- function(mlik, beta_c = -1) {
+  theta <- c(
+    "Log precision for the Gaussian observations" = 0,
+    "Log precision for gen_fa1_env_B" = -2 * log(2),
+    "Log precision for gen_psi_env_A" = -2 * log(0.1),
+    "Log precision for gen_psi_env_B" = -2 * log(0.2),
+    "Log precision for gen_psi_env_C" = -2 * log(0.3),
+    "Beta_intern for gen_fa1_env_A" = 0.5,
+    "Beta_intern for gen_fa1_env_C" = beta_c
+  )
+  list(mlik = matrix(c(mlik, mlik), 2L, 1L),
+       mode = list(mode.status = 0L, theta = theta))
+}
+
+# The k - 1 fresh-process fits replaced by `fits`, in order.
+.fag_mock <- function(fits, env = parent.frame()) {
+  n <- 0L
+  testthat::local_mocked_bindings(
+    .fb_inla_isolated_fit = function(args) {
+      n <<- n + 1L
+      fits[[n]]
+    },
+    .env = env
+  )
+}
+
+test_that(".fb_fa_mode_identified() is G at the joint mode, anchors read in fa order", {
+  got <- .fb_fa_mode_identified(.fag_fake(-10), .fag_term())
+  mat_l <- matrix(c(0.5, 1, -1), ncol = 1L)
+  want <- .fb_fa_g(mat_l, 2, c(0.1, 0.2, 0.3))
+  dimnames(want) <- list(c("A", "B", "C"), c("A", "B", "C"))
+  expect_equal(got$G, want)
+  expect_equal(got$cor, stats::cov2cor(want))
+})
+
+test_that("the gate records agreement when the k fits land on one mode", {
+  .fag_mock(list(.fag_fake(-10), .fag_fake(-10)))
+  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L, fa_term = .fag_term())$record
+  gate <- rec$fa_gate
+  expect_true(gate$agree)
+  expect_identical(gate$g_rel_max, 0)
+  expect_identical(gate$cor_abs_max, 0)
+  expect_identical(gate$g_tol, 0.10)
+  expect_identical(gate$cor_tol, 0.05)
+  expect_identical(gate$n_fits, 3L)
+})
+
+test_that("the gate records disagreement when one fit lands elsewhere", {
+  # Fit 3 puts the loading at C at -0.5 instead of -1: G_CC moves from 4.09
+  # to 1.09.
+  .fag_mock(list(.fag_fake(-10), .fag_fake(-11, beta_c = -0.5)))
+  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L, fa_term = .fag_term())$record
+  gate <- rec$fa_gate
+  expect_false(gate$agree)
+  expect_gt(gate$g_rel_max, 0.10)
+  expect_identical(names(which.max(gate$g_rel)), "C")
+})
+
+test_that("a fit without an fa() term records no gate", {
+  .fag_mock(list(.fag_fake(-10), .fag_fake(-10)))
+  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L)$record
+  expect_null(rec$fa_gate)
+})
+
+test_that("a live fa fit with k = 3 records the gate on its reproducibility record", {
+  skip_if_not_long_tier()
+  skip_if_not_installed("INLA")
+  skip_if_not_installed("callr")
+  withr::local_options(
+    flexyBayes.inla_threads = "1:1",
+    flexyBayes.inla_best_of = 3L,
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_weak_identification_warning = TRUE
+  )
+  set.seed(51L)
+  vec_f <- rnorm(30L, 0, 0.9)
+  tab <- expand.grid(gen = factor(1:30), env = factor(1:4), rep = 1:2)
+  tab$y <- 5 + outer(vec_f, c(1, 1.6, 0.5, -0.9))[cbind(tab$gen, tab$env)] +
+    rnorm(nrow(tab), 0, 0.3)
+  fit <- .fa_fit_past_refusal(y ~ env, ~ fa(env, 1):gen, tab)
+  gate <- fit$extras$reproducibility$best_of$fa_gate
+  expect_identical(gate$n_fits, 3L)
+  expect_type(gate$agree, "logical")
+  expect_setequal(names(gate$g_rel), as.character(1:4))
+})

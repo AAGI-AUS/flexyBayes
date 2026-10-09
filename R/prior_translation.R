@@ -64,6 +64,9 @@
 #   `cor()` has no counterpart: the INLA emit produces no correlation
 #   hyperparameter.
 #
+#   `loading()` is the scaling of an fa() copy field, which INLA gives a
+#   Gaussian prior as a mean and a precision. Only `normal` translates.
+#
 # brms (grounded against brms 2.23.0):
 #
 #   Variance components take any Stan density brms will parse, with the
@@ -148,6 +151,18 @@
         NA_character_
       }
     )
+    add(
+      "inla",
+      "loading",
+      fam,
+      if (identical(fam, "normal")) "translate" else "refuse",
+      if (identical(fam, "normal")) {
+        "copy hyper beta (mean, precision)"
+      } else {
+        NA_character_
+      }
+    )
+    add("brms", "loading", fam, "refuse", NA_character_)
     add("inla", "cor", fam, "refuse", NA_character_)
     add("brms", "cor", fam, "refuse", NA_character_)
     add("brms", "smooth", fam, "refuse", NA_character_)
@@ -251,7 +266,8 @@
     sd = "sd(group = ...)",
     smooth = "smooth(\"var\")",
     b = "b(\"name\")",
-    cor = "cor(group = ...)"
+    cor = "cor(group = ...)",
+    loading = "loading(group = ...)"
   )
   out <- character(0)
   for (tg in unique(tbl$target)) {

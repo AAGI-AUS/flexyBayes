@@ -191,3 +191,73 @@
     n_fits = length(fits)
   )
 }
+
+
+# Thresholds of the k-fit agreement gate, from U-FA-1: the largest relative
+# spread of a genetic variance and the largest absolute spread of a genetic
+# correlation across the k fits.
+.FB_FA_GATE_G_REL <- 0.10
+.FB_FA_GATE_COR_ABS <- 0.05
+
+
+# .fb_fa_term() -- the first fa(f, k):g term of an IR, or NULL.
+.fb_fa_term <- function(fb) {
+  for (t in fb$random_terms %||% list()) {
+    if (identical(t$type, "fa_gxe")) {
+      return(t)
+    }
+  }
+  NULL
+}
+
+
+# .fb_fa_mode_identified() -- G and the genetic correlations at an INLA
+# fit's joint hyperparameter mode, `inla_fit$mode$theta`.
+#
+# Read on the coordinates INLA ran on. A standardised response scales every
+# entry of G by the same factor, which leaves the relative spreads and the
+# correlations the gate compares unchanged.
+.fb_fa_mode_identified <- function(inla_fit, term) {
+  th <- inla_fit$mode$theta
+  levs <- term$outer_levels
+  levs_fa <- .fb_fa_levels(term, levs)
+  k <- term$k
+  sd_of <- function(idx) exp(-th[[paste0("Log precision for ", idx)]] / 2)
+  mat_l <- matrix(0, length(levs), k, dimnames = list(levs, NULL))
+  vec_sf <- numeric(k)
+  for (j1 in seq_len(k)) {
+    vec_sf[[j1]] <- sd_of(.fb_inla_fa_index(term$outer, term$inner, j1,
+                                            levs_fa[[j1]]))
+    mat_l[levs_fa[[j1]], j1] <- 1
+    for (lev in levs_fa[-seq_len(j1)]) {
+      idx <- .fb_inla_fa_index(term$outer, term$inner, j1, lev)
+      mat_l[lev, j1] <- th[[paste0("Beta_intern for ", idx)]]
+    }
+  }
+  vec_psi <- vapply(
+    levs,
+    function(lev) sd_of(.fb_inla_fa_specific(term$outer, term$inner, lev)),
+    numeric(1L)
+  )
+  mat_g <- .fb_fa_g(mat_l, vec_sf, vec_psi)
+  dimnames(mat_g) <- list(levs, levs)
+  list(G = mat_g, cor = stats::cov2cor(mat_g))
+}
+
+
+# .fb_fa_gate() -- the k-fit agreement record of a fa(f, k):g fit.
+#
+# `fits` holds the k INLA fits. `agree` is TRUE when both spreads are within
+# the thresholds.
+.fb_fa_gate <- function(fits, term) {
+  agr <- .fb_fa_agreement(lapply(fits, .fb_fa_mode_identified, term = term))
+  c(
+    agr,
+    list(
+      g_tol = .FB_FA_GATE_G_REL,
+      cor_tol = .FB_FA_GATE_COR_ABS,
+      agree = agr$g_rel_max <= .FB_FA_GATE_G_REL &&
+        agr$cor_abs_max <= .FB_FA_GATE_COR_ABS
+    )
+  )
+}

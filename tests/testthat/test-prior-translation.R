@@ -78,7 +78,7 @@
 test_that("every (engine, target, distribution) triple carries a verdict", {
   tbl <- flexyBayes:::.fb_prior_translation_table()
   families <- flexyBayes:::.fb_prior_supported_families()
-  targets <- c("sigma", "sd", "smooth", "b", "cor")
+  targets <- c("sigma", "sd", "smooth", "b", "cor", "loading")
   expect_setequal(unique(tbl$engine), c("inla", "brms"))
   expect_setequal(unique(tbl$target), targets)
   expect_setequal(unique(tbl$family), families)
@@ -91,6 +91,9 @@ test_that("every (engine, target, distribution) triple carries a verdict", {
   # Every translate row names the engine argument it arrives through.
   expect_true(all(nzchar(tbl$route[tbl$verdict == "translate"])))
   expect_true(all(is.na(tbl$route[tbl$verdict == "refuse"])))
+  # An fa() loading takes a normal prior on INLA and nothing on brms.
+  ld <- tbl[tbl$target == "loading" & tbl$verdict == "translate", ]
+  expect_identical(paste(ld$engine, ld$family), "inla normal")
 })
 
 test_that("the rendered menu is derived from the table, not re-listed", {

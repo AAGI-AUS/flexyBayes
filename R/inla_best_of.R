@@ -123,6 +123,9 @@
 #' @param args The arguments it was made with.
 #' @param k The number of fits, from `.fb_inla_best_of_k()`, read before
 #'   the first fit.
+#' @param fa_term The model's fa(f, k):g term, or `NULL`. With one, the
+#'   record also holds `fa_gate`, the agreement of the k fits on the
+#'   genetic covariance (`.fb_fa_gate()`).
 #' @return A list: `fit`, the fit with the highest marginal likelihood (the
 #'   first of equals), and `record`, `NULL` when `k` is 1, otherwise
 #'   `k`, `mlik`, `mode_status`, `chosen`, `mlik_range`, `sd` (one row per
@@ -130,13 +133,14 @@
 #'   deviation across the fits relative to its smallest value.
 #' @noRd
 #' @keywords internal
-.fb_inla_best_of <- function(fit, args, k) {
+.fb_inla_best_of <- function(fit, args, k, fa_term = NULL) {
   if (k == 1L) {
     return(list(fit = fit, record = NULL))
   }
   mlik <- numeric(k)
   status <- integer(k)
   sds <- vector("list", k)
+  fits <- vector("list", k)
   best <- fit
   chosen <- 1L
   for (j in seq_len(k)) {
@@ -159,6 +163,9 @@
     mlik[[j]] <- .fb_best_of_mlik(fit)
     status[[j]] <- as.integer(fit$mode$mode.status %||% NA_integer_)
     sds[[j]] <- .fb_best_of_sds(fit)
+    if (!is.null(fa_term)) {
+      fits[[j]] <- fit
+    }
     if (mlik[[j]] > mlik[[chosen]]) {
       best <- fit
       chosen <- j
@@ -184,7 +191,8 @@
         diff(range(mlik, na.rm = TRUE))
       },
       sd = sd_mat,
-      sd_rel_diff = sd_rel_diff
+      sd_rel_diff = sd_rel_diff,
+      fa_gate = if (is.null(fa_term)) NULL else .fb_fa_gate(fits, fa_term)
     )
   )
 }

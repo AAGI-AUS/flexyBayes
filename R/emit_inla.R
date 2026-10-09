@@ -1555,7 +1555,7 @@ emit_inla <- function(
   }
   # The k - 1 further fits in fresh R processes (R/inla_best_of.R). The
   # restart probe below examines the fit kept.
-  best_of <- .fb_inla_best_of(fit, inla_args, best_of_k)
+  best_of <- .fb_inla_best_of(fit, inla_args, best_of_k, .fb_fa_term(fb))
   fit <- best_of$fit
   best_of <- best_of$record
   elapsed <- unname((proc.time() - t0)["elapsed"])
@@ -2253,6 +2253,20 @@ emit_inla <- function(
       # boundary, so it is spliced rather than omitted.
       hyper_str <- .inla_hyper_arg(hyper_ctrl[[term$inner]])
       hyper_sfx <- if (nzchar(hyper_str)) paste0(", ", hyper_str) else ""
+      load_key <- paste0("loading:", term$inner)
+      load_entry <- hyper_ctrl[[load_key]]
+      load_sfx <- if (is.null(load_entry)) {
+        ""
+      } else {
+        paste0(
+          ", hyper = list(beta = list(prior = \"normal\", param = c(",
+          paste(
+            vapply(load_entry$param, format, character(1L), digits = 15L),
+            collapse = ", "
+          ),
+          ")))"
+        )
+      }
       for (j in seq_len(term$k)) {
         anchor_idx <- .fb_inla_fa_index(term$outer, term$inner, j, levs[[j]])
         note(anchor_idx, "iid", term$type, term$inner, hyper_ctrl[[term$inner]])
@@ -2265,11 +2279,14 @@ emit_inla <- function(
           note(
             .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
             "copy",
-            term$type
+            term$type,
+            if (is.null(load_entry)) NA_character_ else load_key,
+            load_entry,
+            consult = load_key
           )
           rhs_terms <- c(rhs_terms, paste0(
             "f(", .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]]),
-            ", copy = \"", anchor_idx, "\", fixed = FALSE)"
+            ", copy = \"", anchor_idx, "\", fixed = FALSE", load_sfx, ")"
           ))
         }
       }

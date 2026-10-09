@@ -96,6 +96,9 @@
 #' @keywords internal
 .fb_inla_map_hyper_entry <- function(entry, k) {
   meta <- entry$meta
+  if (isTRUE(meta$scale_free)) {
+    return(entry)
+  }
   family <- meta$family %||% entry$prior %||% ""
 
   if (identical(family, "uniform")) {
