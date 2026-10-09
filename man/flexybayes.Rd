@@ -648,7 +648,7 @@ differed by at most 3.4\%. On six trials of the same series, the modes
 differed by up to 26\%.
 
 Each INLA fit is therefore run three times: once in this session and twice
-in fresh R processes started through callr, one after another. The fit
+in fresh R processes started through callr. The fit
 with the highest log marginal likelihood is returned (the first of equal
 ones). \code{options(flexyBayes.inla_best_of = k)} sets the number of fits, a
 whole number of one or more; \code{1} fits once in this session, as 0.16.0 did,
@@ -661,6 +661,11 @@ likelihoods, and each standard deviation per fit with its largest
 difference across the fits, relative to the smallest. \code{print()} and
 \code{summary()} add a line when a standard deviation differs by more than 5\%.
 The restart probe of the numerical-confirm gate examines the fit kept.
+The fresh-process fits run beside the session fit, at most
+\code{options(flexyBayes.inla_best_of_workers)} fits at once (default: all of
+them) and fewer, with a message, when the free memory holds fewer; the
+record gives each fit's time in seconds (\code{wall_s}) and whether they ran at
+once (\code{parallel}).
 }
 
 \section{Fitting in a separate process}{

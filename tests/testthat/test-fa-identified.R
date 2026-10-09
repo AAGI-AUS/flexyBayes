@@ -160,14 +160,25 @@ test_that("the stored records say which ASReml fits converged", {
        mode = list(mode.status = 0L, theta = theta))
 }
 
-# The k - 1 fresh-process fits replaced by `fits`, in order.
-.fag_mock <- function(fits, env = parent.frame()) {
+# The k - 1 fresh-process fits replaced by `fits`, numbered by start; fit j
+# finishes `delays[[j]]` seconds after it starts.
+.fag_mock <- function(fits, delays = 0, env = parent.frame()) {
+  delays <- rep_len(delays, length(fits))
   n <- 0L
   testthat::local_mocked_bindings(
-    .fb_inla_isolated_fit = function(args) {
+    .fb_inla_isolated_start = function(args) {
       n <<- n + 1L
-      fits[[n]]
+      list(i = n, done_at = Sys.time() + delays[[n]])
     },
+    .fb_inla_isolated_running = function(handle) Sys.time() < handle$done_at,
+    .fb_inla_isolated_collect = function(handle) {
+      list(ok = TRUE, value = fits[[handle$i]],
+           seed = get0(".Random.seed", globalenv()))
+    },
+    .fb_inla_isolated_stop = function(handle) invisible(NULL),
+    .fb_isolation_callr_available = function() TRUE,
+    .fb_free_memory_bytes = function() 64 * 1024^3,
+    .fb_inla_fit_bytes = function(fb, data) 1024^3,
     .env = env
   )
 }
@@ -183,7 +194,8 @@ test_that(".fb_fa_mode_identified() is G at the joint mode, anchors read in fa o
 
 test_that("the gate records agreement when the k fits land on one mode", {
   .fag_mock(list(.fag_fake(-10), .fag_fake(-10)))
-  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L, fa_term = .fag_term())$record
+  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L,
+                          fa_term = .fag_term())$record
   gate <- rec$fa_gate
   expect_true(gate$agree)
   expect_identical(gate$g_rel_max, 0)
@@ -197,11 +209,32 @@ test_that("the gate records disagreement when one fit lands elsewhere", {
   # Fit 3 puts the loading at C at -0.5 instead of -1: G_CC moves from 4.09
   # to 1.09.
   .fag_mock(list(.fag_fake(-10), .fag_fake(-11, beta_c = -0.5)))
-  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L, fa_term = .fag_term())$record
+  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L,
+                          fa_term = .fag_term())$record
   gate <- rec$fa_gate
   expect_false(gate$agree)
   expect_gt(gate$g_rel_max, 0.10)
   expect_identical(names(which.max(gate$g_rel)), "C")
+})
+
+test_that("the gate is recorded when the k fits ran in parallel", {
+  # Launched before the session fit, run beside it, and finishing in reverse
+  # order of start; fit 3 lands on another mode.
+  .fag_mock(list(.fag_fake(-10), .fag_fake(-11, beta_c = -0.5)),
+            delays = c(0.3, 0.05))
+  pool <- .fb_inla_best_of_launch(list(), 3L, NULL, NULL)
+  rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L, pool,
+                          fa_term = .fag_term())$record
+  expect_true(rec$parallel)
+  expect_identical(rec$fa_gate$n_fits, 3L)
+  expect_false(rec$fa_gate$agree)
+  expect_identical(names(which.max(rec$fa_gate$g_rel)), "C")
+  # The same k fits run one at a time give the same gate.
+  .fag_mock(list(.fag_fake(-10), .fag_fake(-11, beta_c = -0.5)))
+  seq_rec <- .fb_inla_best_of(.fag_fake(-10), list(), 3L,
+                              fa_term = .fag_term())$record
+  expect_false(seq_rec$parallel)
+  expect_identical(seq_rec$fa_gate, rec$fa_gate)
 })
 
 test_that("a fit without an fa() term records no gate", {

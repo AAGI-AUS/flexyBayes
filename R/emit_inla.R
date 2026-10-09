@@ -1524,6 +1524,9 @@ emit_inla <- function(
     inla_args$scale <- ir_weights
   }
   best_of_k <- .fb_inla_best_of_k()
+  # The k - 1 further fits start here and run beside this one.
+  best_of_pool <- .fb_inla_best_of_launch(inla_args, best_of_k, fb, data)
+  on.exit(.fb_inla_best_of_stop(best_of_pool), add = TRUE)
   fit <- tryCatch(
     .inla_call(inla_args),
     error = function(e) {
@@ -1555,7 +1558,13 @@ emit_inla <- function(
   }
   # The k - 1 further fits in fresh R processes (R/inla_best_of.R). The
   # restart probe below examines the fit kept.
-  best_of <- .fb_inla_best_of(fit, inla_args, best_of_k, .fb_fa_term(fb))
+  best_of <- .fb_inla_best_of(
+    fit,
+    inla_args,
+    best_of_k,
+    best_of_pool,
+    fa_term = .fb_fa_term(fb)
+  )
   fit <- best_of$fit
   best_of <- best_of$record
   elapsed <- unname((proc.time() - t0)["elapsed"])

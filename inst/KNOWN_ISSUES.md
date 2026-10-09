@@ -447,7 +447,10 @@ Each is reproducible on this release. Priority is for the MET use case.
     -1459.520. Within a process the three marginal likelihoods differed by
     up to 0.29, the main-plot standard deviation by up to 13.6%, and the
     others by 3.9% or less. Best of three narrows the spread but does not
-    make fresh processes agree. *Workaround*: where a conclusion rests on a
+    make fresh processes agree. The three fits run at once when free memory
+    holds them (`options(flexyBayes.inla_best_of_workers)`), and on the six
+    trials best of three took a median 29 s against 64 s one after another.
+    *Workaround*: where a conclusion rests on a
     weakly informed variance, raise `flexyBayes.inla_best_of` or refit in
     several fresh processes (for example with `fb_isolated_lapply()`) and
     compare. *What is open*: no fitting route is yet known that reliably
