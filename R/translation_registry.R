@@ -303,9 +303,9 @@
         "identical calls do not agree on a trial with weak genetic signal.",
         "The loadings are anchored to one for factor j at an anchor level,",
         "which represents the factor-analytic family only where that level",
-        "carries a common-factor loading. From 0.17.0 the anchors are chosen",
-        "from the data, as the levels with the largest common genetic",
-        "variance, rather than taken from factor-level order. The row was",
+        "carries a common-factor loading. From 0.17.0 the anchors are the",
+        "levels with the largest common genetic variance in the data; until",
+        "0.16.0 they were the first levels in factor order. The row was",
         "covariance-family until",
         "2026-09-11, conditional from then, and refused from 2026-09-16."
       ),

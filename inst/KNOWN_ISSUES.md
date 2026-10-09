@@ -367,8 +367,8 @@ Each is reproducible on this release. Priority is for the MET use case.
     a passing numerical confirm. The loadings are anchored at one for
     factor *j* at an anchor level, which represents the family only where
     that level carries a common-factor loading. From 0.17.0 the anchors are
-    chosen from the data, as the levels with the largest common genetic
-    variance, rather than taken from factor-level order.
+    the levels with the largest common genetic variance in the data; until
+    0.16.0 they were the first levels in factor order.
     *Workaround*: `diag(env):gen`, one variance per environment with no
     covariance between them, fits on both engines; `us(env):gen` fits on brms
     and estimates the correlations directly.
