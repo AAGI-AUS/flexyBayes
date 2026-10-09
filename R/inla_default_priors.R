@@ -90,6 +90,11 @@
 }
 
 
+# The default prior on an fa(f, k):g loading: INLA's own prior on a copy
+# scaling, normal(mean 1, precision 10), until the plan owner chooses one.
+.FB_FA_LOADING_PRIOR <- c(mean = 1, sd = 1 / sqrt(10))
+
+
 # --- random-effect standard deviations ------------------------------------ #
 
 #' The standard-deviation targets the INLA default reaches
@@ -316,6 +321,26 @@
         filled[[k]] <- spec
       }
     }
+  }
+
+  # The loadings of each fa(f, k):g take .FB_FA_LOADING_PRIOR when none is
+  # stated, filled here so the manifest records it and the read-back checks
+  # it (DEF-229).
+  for (t in fb$random_terms %||% list()) {
+    key <- paste0("loading:", t$inner %||% "")
+    if (!identical(t$type, "fa_gxe") || key %in% names(hyper_ctrl)) {
+      next
+    }
+    filled[[key]] <- list(
+      target = list(type = "loading", group = t$inner),
+      spec = list(
+        family = "normal",
+        args = list(
+          mean = .FB_FA_LOADING_PRIOR[["mean"]],
+          sd = .FB_FA_LOADING_PRIOR[["sd"]]
+        )
+      )
+    )
   }
 
   covariate_scaled <- .fb_default_covariate_scaled(fb, data)$covariate_scaled

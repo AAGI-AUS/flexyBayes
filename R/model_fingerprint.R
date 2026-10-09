@@ -373,6 +373,9 @@
     }
     return(paste0("sd_", grp))
   }
+  if (identical(ttype, "loading") && nzchar(s$target$group %||% "")) {
+    return(paste0("loading_", s$target$group))
+  }
   NA_character_
 }
 

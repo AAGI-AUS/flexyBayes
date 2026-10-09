@@ -229,9 +229,10 @@
         genotype-by-environment variance and 0.12 in a genetic correlation,
         against tolerances of 1.10 and 0.05 set before the runs. Two
         simulated designs and `agridat::dasilva.maize` repeated to better
-        than 1.01. The loadings are also anchored by factor-level order, and
-        nothing checked that the anchor level carries a loading. flexyBayes
-        has no factor-analytic lowering for brms. `diag(env):gen` fits on
+        than 1.01. Each factor's loading is fixed at one at an anchor
+        environment, chosen from the data as the environment with the
+        largest common genetic variance. flexyBayes has no factor-analytic
+        lowering for brms. `diag(env):gen` fits on
         both engines, and `us(env):gen` on brms.",
       anchor = "test-capability-matrix.R",
       inla_basis = "flexyBayes",

@@ -82,12 +82,123 @@ test_that("the emitted formula carries scaled copies and specific variances", {
   )
   txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
                                 collapse = " "))
+  anchor <- paste0("gen_fa1_env_", fb$random_terms[[1L]]$fa_order[[1L]])
   # The anchor is an ordinary iid field.
-  expect_match(txt, "f(gen_fa1_env_1, model = \"iid\"", fixed = TRUE)
+  expect_match(txt, paste0("f(", anchor, ", model = \"iid\""), fixed = TRUE)
   # Every other level is a scaled copy of it -- that scaling is the loading.
-  expect_match(txt, "copy = \"gen_fa1_env_1\", fixed = FALSE", fixed = TRUE)
+  expect_match(txt, paste0("copy = \"", anchor, "\", fixed = FALSE"),
+               fixed = TRUE)
   # And one specific variance per level.
   expect_match(txt, "f(gen_psi_env_4, model = \"iid\"", fixed = TRUE)
+})
+
+# ---------------------------------------------------------------- #
+# The anchor levels are chosen from the data                        #
+# ---------------------------------------------------------------- #
+
+# A k = 2 fixture whose first level loads on neither factor, so factor
+# order would anchor both factors where the true loadings are near zero.
+.fa_fixture_k2_weak_first <- function(seed = 77L, n_gen = 100L, n_rep = 4L) {
+  set.seed(seed)
+  mat_l <- cbind(
+    c(0.05, 1.6, 0.6, -0.8, 1.1),
+    c(0.02, 0.0, 1.2, 0.4, -0.9)
+  )
+  n_env <- nrow(mat_l)
+  mat_u <- cbind(rnorm(n_gen, 0, 0.9), rnorm(n_gen, 0, 0.8)) %*% t(mat_l) +
+    matrix(rnorm(n_gen * n_env, 0, 0.25), ncol = n_env)
+  tab <- expand.grid(
+    gen = factor(seq_len(n_gen)),
+    env = factor(seq_len(n_env)),
+    rep = seq_len(n_rep)
+  )
+  tab$y <- 5 + mat_u[cbind(as.integer(tab$gen), as.integer(tab$env))] +
+    rnorm(nrow(tab), 0, 0.3)
+  tab
+}
+
+test_that("a level with a near-zero loading is not chosen as the anchor", {
+  # Level 1 has true loading 0.05. Anchored there, every other loading is a
+  # ratio to almost zero.
+  tab <- .fa_fixture(n_gen = 60L, n_rep = 3L,
+                     loadings = c(0.05, 1.6, 0.5, -0.9))
+  fb <- fb_from_asreml(
+    fixed = y ~ env,
+    random = ~ fa(env, 1):gen,
+    data = tab,
+    family = "gaussian"
+  )
+  term <- fb$random_terms[[1L]]
+  # Level 2 carries the largest loading.
+  expect_identical(term$fa_order[[1L]], 2L)
+  expect_setequal(term$fa_order, seq_len(4L))
+  # The level order the rest of the package reads is unchanged.
+  expect_identical(term$outer_levels, as.character(1:4))
+  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
+                                collapse = " "))
+  expect_match(txt, "f(gen_fa1_env_2, model = \"iid\"", fixed = TRUE)
+  expect_match(txt, "f(gen_fa1_env_1, copy = \"gen_fa1_env_2\"", fixed = TRUE)
+  expect_false(grepl("f(gen_fa1_env_1, model", txt, fixed = TRUE))
+})
+
+test_that("with k = 2 the second anchor is a different level carrying factor 2", {
+  tab <- .fa_fixture_k2_weak_first()
+  fb <- fb_from_asreml(
+    fixed = y ~ env,
+    random = ~ fa(env, 2):gen,
+    data = tab,
+    family = "gaussian"
+  )
+  ord <- fb$random_terms[[1L]]$fa_order
+  # Levels 2 and 3 carry the largest loadings on the two factors; level 1,
+  # which factor order would anchor first, carries almost none.
+  expect_identical(ord[1:2], c(2L, 3L))
+  expect_setequal(ord, seq_len(5L))
+  txt <- gsub("\\s+", " ", paste(deparse(.build_inla_formula(fb)),
+                                collapse = " "))
+  expect_match(txt, "f(gen_fa1_env_2, model = \"iid\"", fixed = TRUE)
+  expect_match(txt, "f(gen_fa2_env_3, model = \"iid\"", fixed = TRUE)
+  # Factor 2 is not entered at the first anchor: the zero upper triangle.
+  expect_false(grepl("gen_fa2_env_2", txt, fixed = TRUE))
+  expect_match(txt, "f(gen_fa2_env_1, copy = \"gen_fa2_env_3\"", fixed = TRUE)
+})
+
+test_that("the index columns follow the chosen anchors at k = 2", {
+  # With k = 2 the data must carry a factor-2 column at every level after
+  # the second anchor, in anchor order. Columns built in factor order would
+  # leave the formula naming a column that does not exist.
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(
+    flexyBayes.inla_threads = "1:1",
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_weak_identification_warning = TRUE
+  )
+  fit <- .fa_fit_past_refusal(y ~ env, ~ fa(env, 2):gen,
+                              .fa_fixture_k2_weak_first(n_gen = 60L))
+  expect_s3_class(fit, "flexybayes_inla")
+  expect_identical(.fb_fa_identified(fit)$anchors, c("2", "3"))
+})
+
+test_that("the chosen anchor recovers G on a fixture with a near-zero first loading", {
+  skip_if_not_installed("INLA")
+  skip_on_cran()
+  withr::local_options(
+    flexyBayes.inla_threads = "1:1",
+    flexyBayes.silence_default_prior_note = TRUE,
+    flexyBayes.silence_weak_identification_warning = TRUE
+  )
+  vec_l <- c(0.05, 1.6, 0.5, -0.9)
+  tab <- .fa_fixture(n_gen = 80L, n_rep = 4L, loadings = vec_l)
+  mat_true <- 0.9^2 * outer(vec_l, vec_l) + diag(0.25^2, 4L)
+  fit <- .fa_fit_past_refusal(y ~ env, ~ fa(env, 1):gen, tab)
+  got <- .fb_fa_identified(fit)
+  expect_identical(got$anchors, "2")
+  rel <- abs(diag(got$G) - diag(mat_true)) / diag(mat_true)
+  expect_lt(max(rel), 0.30)
+  r_true <- stats::cov2cor(mat_true)
+  off <- upper.tri(r_true)
+  expect_lt(max(abs(got$cor[off] - r_true[off])), 0.10)
 })
 
 # ---------------------------------------------------------------- #

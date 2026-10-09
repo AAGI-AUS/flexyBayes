@@ -12,6 +12,8 @@
 #   b("name")         - fixed-effect coefficient
 #   cor(group = name) - correlation parameter
 #   smooth(var)       - smoother variance (rw1/rw2)
+#   loading(group = name) - fa(f, k):name loadings on INLA, each the ratio
+#                       of a level's loading to the anchor's
 #
 # Distribution families supported in v0.1:
 #   pc(upper, prob)            - PC prior (penalised complexity);
@@ -98,8 +100,12 @@
 #'   either parameter.
 #' * **INLA** takes `half_normal`, `uniform`, `pc` and `exponential` on
 #'   `sigma`, `sd(group = )` and `smooth()` (`exponential` is the PC
-#'   prior written in its distributional form), and `normal` on `b()`,
-#'   which arrives through `control.fixed`.
+#'   prior written in its distributional form), `normal` on `b()`,
+#'   which arrives through `control.fixed`, and `normal` on
+#'   `loading(group = )`, the loadings of `fa(f, k):group` relative to the
+#'   anchor level. With no loading prior stated, each loading takes
+#'   `normal(mean = 1, sd = 0.316)`, which is INLA's own prior on a copy
+#'   scaling; [prior_summary()] lists it.
 #'
 #' A specification the selected backend cannot carry is refused at the
 #' fit, naming the row and both remedies -- re-express it in a
@@ -285,6 +291,19 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       return(list(type = "cor", group = group))
     }
 
+    if (fn == "loading") {
+      group <- .extract_string_arg(args_list, "group")
+      if (is.null(group)) {
+        stop(.fb_refusal_condition(
+          reason_code = "prior_target_argument_missing",
+          message = paste0(
+            "loading() prior target requires `group = \"...\"` argument."
+          )
+        ))
+      }
+      return(list(type = "loading", group = group))
+    }
+
     if (fn == "smooth") {
       if (length(args_list) < 1L) {
         stop(.fb_refusal_condition(
@@ -320,7 +339,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
       "Unsupported prior target: ",
       .fb_prior_deparse(expr),
       ". Supported: sigma, sd(group = ...), b(\"name\"), ",
-      "cor(group = ...), smooth(\"var\")."
+      "cor(group = ...), smooth(\"var\"), loading(group = ...)."
     )
   ))
 }
@@ -1146,19 +1165,11 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
     # default reaches them. It has to: left on INLA's default log-gamma
     # precision, the specific variance at the level with the largest loading
     # collapses to zero (measured: a true 0.25 came back at 0.007). The
-    # LOADINGS are copy-scaling parameters with no SD prior to set, so they
-    # keep the engine's own and are recorded as such.
+    # loadings take `loading(group = <inner>)`, filled on INLA by
+    # .fb_inla_complete_priors().
     if (identical(ttype, "fa_gxe")) {
       if (!is.null(t$inner) && nzchar(t$inner)) {
         shared <- c(shared, t$inner)
-        add_engine(
-          paste0("loadings_", t$inner),
-          paste0(
-            "fa(", t$outer, ", ", t$k, "):", t$inner,
-            " loadings are INLA copy-scaling parameters; flexyBayes sets ",
-            "no prior on them"
-          )
-        )
       }
       next
     }
@@ -1478,6 +1489,7 @@ print.fb_prior <- function(x, ...) {
     "sd" = paste0("sd(group = \"", target$group, "\")"),
     "b" = paste0("b(\"", target$name, "\")"),
     "cor" = paste0("cor(group = \"", target$group, "\")"),
+    "loading" = paste0("loading(group = \"", target$group, "\")"),
     "smooth" = paste0(
       "smooth(\"",
       target$var,
@@ -1538,6 +1550,19 @@ priors_to_inla <- function(prior) {
   .fb_check_prior_translation(prior, "inla")
 
   for (s in prior$specs) {
+    if (identical(s$target$type, "loading")) {
+      # A copy scaling, stated as INLA's normal(mean, precision). It is a
+      # ratio of two standard deviations, so the response scale leaves it
+      # alone (meta$scale_free).
+      m <- as.numeric(s$spec$args$mean %||% 0)
+      sd <- as.numeric(s$spec$args$sd)
+      out[[paste0("loading:", s$target$group)]] <- list(
+        prior = "normal",
+        param = c(m, 1 / sd^2),
+        meta = list(family = "normal", mean = m, sd = sd, scale_free = TRUE)
+      )
+      next
+    }
     if (!s$target$type %in% c("sigma", "sd", "smooth")) {
       # b() arrives through control.fixed; nothing else survives the
       # translation check above.

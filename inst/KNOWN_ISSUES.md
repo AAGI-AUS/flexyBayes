@@ -43,7 +43,7 @@ least one engine fits, without the notes.
 | Heterogeneous variances with one shared correlation | `~ corh(f):g` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. With one variance for every level and a correlation of zero or more, the same covariance is `random = ~ g + f:g`, which fits on both engines. INLA has an exchangeable group model with one variance and one shared correlation, which flexyBayes does not use. Use `diag(f):g` for separate variances without correlation, or `us(f):g` on brms for every correlation. |
 | Heterogeneous residual by factor level | `residual = ~ dsum(~ units \| f)` / `~ at(f):units` | fits | fits | One residual variance per section. INLA fits one Gaussian likelihood per level; brms fits `sigma ~ 0 + f`. Both report `sigma_<level>` on the standard-deviation scale. With `diag(f):g` beside it past 15 variance parameters, INLA fits by empirical Bayes; on 12 simulated trials every per-trial variance ASReml identifies is within 0.17 of its ASReml standard error. Refused for a family with no residual scale, and for `at(f, level):units`, which conditions on selected levels. |
 | Baseline heteroscedastic MET: iid genotype, iid genotype-by-environment and a sectioned residual | `random = ~ gen + gen:env` with the `dsum` residual | fits | fits | The baseline multi-environment-trial model. On small simulated data both engines recover the genotype, genotype-by-environment and per-section residual standard deviations. `us(env):gen` with the sectioned residual is written out on brms but has not been checked against a reference fit, and `fa()` is refused on both engines. |
-| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | flexyBayes does not fit this structure on either engine. INLA can represent it, one latent field per common factor entered at each level as a scaled copy, but repeated identical calls did not return the same covariance where the genetic signal is weak: on `agridat::besag.met` eight calls spanned a ratio of 1.23 in a genotype-by-environment variance and 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05 set before the runs. Two simulated designs and `agridat::dasilva.maize` repeated to better than 1.01. The loadings are also anchored by factor-level order, and nothing checked that the anchor level carries a loading. flexyBayes has no factor-analytic lowering for brms. `diag(env):gen` fits on both engines, and `us(env):gen` on brms. |
+| Factor-analytic genotype-by-environment covariance | `~ fa(env, k):gen` | refuses | refuses | flexyBayes does not fit this structure on either engine. INLA can represent it, one latent field per common factor entered at each level as a scaled copy, but repeated identical calls did not return the same covariance where the genetic signal is weak: on `agridat::besag.met` eight calls spanned a ratio of 1.23 in a genotype-by-environment variance and 0.12 in a genetic correlation, against tolerances of 1.10 and 0.05 set before the runs. Two simulated designs and `agridat::dasilva.maize` repeated to better than 1.01. Each factor's loading is fixed at one at an anchor environment, chosen from the data as the environment with the largest common genetic variance. flexyBayes has no factor-analytic lowering for brms. `diag(env):gen` fits on both engines, and `us(env):gen` on brms. |
 | Multi-trait covariance | `~ us(trait):vm(gen)` | refuses | refuses | flexyBayes has no lowering for this structure on either engine. brms writes it directly, as `(0 + trait \| gr(gen, cov = K))` on data with one row per trait or with `mvbind()` on data with one column per trait. INLA can build it from a known-covariance field for each trait joined by a scaled `copy`. flexyBayes emits neither. Fit it with brms directly, or fit each trait separately. |
 | Known-covariance genomic / pedigree random effect | `~ vm(g, K)`, `~ ped(a, A)` | fits | fits | On INLA flexyBayes takes the sparse-precision and pedigree-precision carriers and refuses a dense, Cholesky or blocks carrier by name; on brms it takes dense, Cholesky and precision carriers and refuses a blocks carrier. |
 | Separable AR1 spatial field | `random = ~ ar1(row):ar1(col)`, `random = ~ ar1(t)` | fits | refuses | A latent AR1 field plus the Gaussian observation nugget: four hyperparameters, one observation per grid node. ASReml's three-parameter residual without a nugget is written `residual = ~ ar1(row):ar1(col)` and fits on INLA for a Gaussian response; the 1-D residual `~ ar1(t)` refuses. flexyBayes has no brms lowering for either. |
@@ -364,16 +364,16 @@ Each is reproducible on this release. Priority is for the MET use case.
     one thread seven of eight calls agreed exactly and the eighth landed on a
     different mode, so the cause is the shape of the likelihood surface
     rather than thread scheduling. Every call reported `mode.status = 0` and
-    a passing numerical confirm. A second property was never established
-    either: the loadings are anchored at one for factor *j* at level *j*,
-    taken from factor-level order, which represents the family only where the
-    anchor level carries a common-factor loading, and nothing checked that.
+    a passing numerical confirm. The loadings are anchored at one for
+    factor *j* at an anchor level, which represents the family only where
+    that level carries a common-factor loading. From 0.17.0 the anchors are
+    the levels with the largest common genetic variance in the data; until
+    0.16.0 they were the first levels in factor order.
     *Workaround*: `diag(env):gen`, one variance per environment with no
     covariance between them, fits on both engines; `us(env):gen` fits on brms
     and estimates the correlations directly.
-    *What is open*: an anchoring rule that selects the pivot from the data
-    rather than from level order, and a parameterisation whose mode is
-    identified on a low-signal trial. The emit is unchanged and still
+    *What is open*: a parameterisation whose mode is identified on a
+    low-signal trial. The emit is unchanged and still
     reachable by a direct `emit_inla()` call, as the `us()` branch is.
 22. **Separate variances with one shared correlation, `corh(f):g`, are refused
     on both engines.** The structure sits between `diag(f):g`, with k

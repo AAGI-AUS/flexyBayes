@@ -590,7 +590,12 @@ prior_summary.default <- function(object, ...) {
     trace <- if (is.null(x$slots)) {
       ""
     } else {
-      paste0("  ", .prior_summary_input_trace(x, paste0("sd:", group)))
+      input_id <- if (startsWith(nm, "loading_")) {
+        paste0("loading:", sub("^loading_", "", nm))
+      } else {
+        paste0("sd:", group)
+      }
+      paste0("  ", .prior_summary_input_trace(x, input_id))
     }
     cat("    ", nm, " ~ ", priors[[nm]], divisor, trace, "\n", sep = "")
   }

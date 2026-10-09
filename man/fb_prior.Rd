@@ -76,8 +76,12 @@ renormalises a two-sided density over that support, which is why
 either parameter.
 \item \strong{INLA} takes \code{half_normal}, \code{uniform}, \code{pc} and \code{exponential} on
 \code{sigma}, \code{sd(group = )} and \code{smooth()} (\code{exponential} is the PC
-prior written in its distributional form), and \code{normal} on \code{b()},
-which arrives through \code{control.fixed}.
+prior written in its distributional form), \code{normal} on \code{b()},
+which arrives through \code{control.fixed}, and \code{normal} on
+\code{loading(group = )}, the loadings of \code{fa(f, k):group} relative to the
+anchor level. With no loading prior stated, each loading takes
+\code{normal(mean = 1, sd = 0.316)}, which is INLA's own prior on a copy
+scaling; \code{\link[=prior_summary]{prior_summary()}} lists it.
 }
 
 A specification the selected backend cannot carry is refused at the

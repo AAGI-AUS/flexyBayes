@@ -406,6 +406,9 @@
 #'   the first fit.
 #' @param pool From `.fb_inla_best_of_launch()`; `NULL` runs the k - 1 fits
 #'   one after another from here.
+#' @param fa_term The model's fa(f, k):g term, or `NULL`. With one, the
+#'   record also holds `fa_gate`, the agreement of the k fits on the
+#'   genetic covariance (`.fb_fa_gate()`).
 #' @return A list: `fit`, the fit with the highest marginal likelihood (the
 #'   first of equals), and `record`, `NULL` when `k` is 1, otherwise
 #'   `k`, `mlik`, `mode_status`, `chosen`, `mlik_range`, `sd` (one row per
@@ -415,7 +418,7 @@
 #'   and `parallel`, whether that number was above 1.
 #' @noRd
 #' @keywords internal
-.fb_inla_best_of <- function(fit, args, k, pool = NULL) {
+.fb_inla_best_of <- function(fit, args, k, pool = NULL, fa_term = NULL) {
   if (k == 1L) {
     return(list(fit = fit, record = NULL))
   }
@@ -489,7 +492,8 @@
       sd_rel_diff = sd_rel_diff,
       wall_s = pool$wall_s,
       workers = pool$workers,
-      parallel = pool$workers > 1L
+      parallel = pool$workers > 1L,
+      fa_gate = if (is.null(fa_term)) NULL else .fb_fa_gate(fits, fa_term)
     )
   )
 }

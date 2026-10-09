@@ -126,6 +126,7 @@
     b = target[["name"]],
     name = target[["name"]],
     smooth = target[["var"]],
+    loading = target[["group"]],
     NULL
   )
   if (is.null(key) || !nzchar(key)) NA_character_ else as.character(key)
@@ -604,7 +605,7 @@
     return(NA_character_)
   }
   ids <- inputs$input_id
-  if (startsWith(key, "wishart:")) {
+  if (startsWith(key, "wishart:") || startsWith(key, "loading:")) {
     return(if (key %in% ids) key else NA_character_)
   }
   candidates <- switch(
