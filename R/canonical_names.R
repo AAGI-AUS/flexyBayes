@@ -490,13 +490,13 @@ register_canonical_mapper <- function(backend, mapper) {
   )
 }
 
-# fa(f, k):g -- factor j enters from level j of f onward, as its anchor field
-# at level j and a scaled copy at each later level, and every level of f has
+# fa(f, k):g -- factor j enters from position j of .fb_fa_levels() onward, as
+# its anchor field there and a scaled copy at each later level, and every level of f has
 # a specific field. Each table spans the levels of g. A copy's table holds
 # that level's loading-scaled contribution rather than the anchor's values,
 # so it is labelled as the factor at that level.
 .fb_inla_spec_fa <- function(t, ctx) {
-  levs <- t$outer_levels %||% character(0)
+  levs <- .fb_fa_levels(t, t$outer_levels %||% character(0))
   inner <- ctx$levels(t$inner)
   out <- list()
   for (j in seq_len(min(t$k %||% 1L, length(levs)))) {
@@ -822,7 +822,7 @@ register_canonical_mapper <- function(backend, mapper) {
     # specific SD, which is the same quantity diag(f):g reports, so it takes
     # the same name.
     if (identical(tt, "fa_gxe")) {
-      levs <- t$outer_levels %||% character(0)
+      levs <- .fb_fa_levels(t, t$outer_levels %||% character(0))
       for (j in seq_len(t$k %||% 0L)) {
         anchor <- make.names(paste0(t$inner, "_fa", j, "_", t$outer, "_",
                                     levs[[j]]))

@@ -157,6 +157,11 @@ fb_from_asreml <- function(
   )
   random_terms <- moved$random_terms
   residual_terms <- moved$residual_terms
+  random_terms <- .fb_fa_choose_anchors(
+    random_terms,
+    data,
+    list(response = fixed_info$response, offsets = fixed_info$offsets)
+  )
 
   # weights -> addition_terms (per IR design sketch Sec.2)
   addition_terms <- if (!is.null(weights)) {

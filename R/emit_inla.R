@@ -1148,9 +1148,10 @@ emit_inla <- function(
   # copy= carries an ESTIMATED scaling, and that scaling IS the loading, so
   # the loadings arrive with a posterior rather than a point estimate.
   #
-  # Factor j is anchored at level j (its loading there is fixed at 1) and
-  # entered only from level j onward, which is the zero upper triangle ASReml
-  # uses to identify the loading matrix against rotation.
+  # Factor j is anchored at the j-th level of .fb_fa_levels() (its loading
+  # there is fixed at 1) and entered only from that position onward, which is
+  # the zero upper triangle ASReml uses to identify the loading matrix
+  # against rotation. The anchors are chosen from the data at ingest.
   #
   # The per-level specific variances are the same structure diag(f):g emits,
   # so they are built here too rather than asking the user to write both.
@@ -1160,7 +1161,7 @@ emit_inla <- function(
     }
     outer_f <- factor(data[[term$outer]])
     inner_f <- factor(data[[term$inner]])
-    levs <- levels(outer_f)
+    levs <- .fb_fa_levels(term, levels(outer_f))
     for (j in seq_len(term$k)) {
       for (e in seq(j, length(levs))) {
         idx_name <- .fb_inla_fa_index(term$outer, term$inner, j, levs[[e]])
@@ -2234,7 +2235,7 @@ emit_inla <- function(
     # fa(f, k):g -- k common factors as scaled copies, plus one specific
     # variance per level. The copy's beta is the loading.
     if (identical(term$type, "fa_gxe")) {
-      levs <- term$outer_levels
+      levs <- .fb_fa_levels(term, term$outer_levels)
       n_inner <- term$n_inner
       # The prior is not decoration here. Left on INLA's default log-gamma
       # precision, a specific variance whose level carries a large loading

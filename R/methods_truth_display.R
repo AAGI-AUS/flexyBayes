@@ -88,9 +88,8 @@
 # approximation. A reader takes it for more than that: "exact" reads as "this
 # is the model ASReml would fit". For most terms the two coincide. For a
 # factor-analytic term they do not -- the loadings are anchored to one for
-# factor j at level j, taken from factor-level order, and that spans the
-# factor-analytic family only where the leading loading block supports the
-# anchoring. The 2026-09-11 audit found FA(1) and FA(2) summaries printing
+# factor j at an anchor level, and that spans the factor-analytic family only
+# where the leading loading block supports the anchoring. The 2026-09-11 audit found FA(1) and FA(2) summaries printing
 # `Representation: exact (model, not inference)` on exactly that lowering.
 #
 # The note is driven by the translation registry rather than written here, so

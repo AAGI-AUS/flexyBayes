@@ -299,14 +299,14 @@
       condition = paste(
         "Refused from 0.13.0 with factor_analytic_not_repeatable, on both",
         "engines: INLA's representation works but does not repeat, and",
-        "flexyBayes has no factor-analytic lowering for brms. Two properties",
-        "were never",
-        "established. Repeated identical calls do not agree on a trial with",
-        "weak genetic signal. And the loadings are anchored to one for factor",
-        "j at level j, taken from factor-level order, which represents the",
-        "factor-analytic family only where the anchor level carries a",
-        "common-factor loading; there is no pivot selection and nothing",
-        "checked the precondition. The row was covariance-family until",
+        "flexyBayes has no factor-analytic lowering for brms. Repeated",
+        "identical calls do not agree on a trial with weak genetic signal.",
+        "The loadings are anchored to one for factor j at an anchor level,",
+        "which represents the factor-analytic family only where that level",
+        "carries a common-factor loading. From 0.17.0 the anchors are chosen",
+        "from the data, as the levels with the largest common genetic",
+        "variance, rather than taken from factor-level order. The row was",
+        "covariance-family until",
         "2026-09-11, conditional from then, and refused from 2026-09-16."
       ),
       oracle = paste(
