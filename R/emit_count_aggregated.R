@@ -204,9 +204,17 @@ emit_count_aggregated <- function(
   inla_args$num.threads <- .fb_inla_thread_plan(inla_args$num.threads)
 
   best_of_k <- .fb_inla_best_of_k()
+  # The k - 1 further fits in fresh R processes (R/inla_best_of.R) start
+  # here and run beside this one.
+  best_of_pool <- .fb_inla_best_of_launch(
+    inla_args,
+    best_of_k,
+    fb,
+    inla_args$data
+  )
+  on.exit(.fb_inla_best_of_stop(best_of_pool), add = TRUE)
   inla_fit <- .inla_call(inla_args)
-  # The k - 1 further fits in fresh R processes (R/inla_best_of.R).
-  best_of <- .fb_inla_best_of(inla_fit, inla_args, best_of_k)
+  best_of <- .fb_inla_best_of(inla_fit, inla_args, best_of_k, best_of_pool)
   inla_fit <- best_of$fit
 
   # Every bounded prior checked against the fit (R/inla_support_audit.R).

@@ -462,9 +462,17 @@ emit_gaussian_aggregated <- function(
   inla_call$num.threads <- .fb_inla_thread_plan(inla_call$num.threads)
 
   best_of_k <- .fb_inla_best_of_k()
+  # The k - 1 further fits in fresh R processes (R/inla_best_of.R) start
+  # here and run beside this one.
+  best_of_pool <- .fb_inla_best_of_launch(
+    inla_call,
+    best_of_k,
+    fb,
+    inla_call$data
+  )
+  on.exit(.fb_inla_best_of_stop(best_of_pool), add = TRUE)
   inla_fit <- .inla_call(inla_call)
-  # The k - 1 further fits in fresh R processes (R/inla_best_of.R).
-  best_of <- .fb_inla_best_of(inla_fit, inla_call, best_of_k)
+  best_of <- .fb_inla_best_of(inla_fit, inla_call, best_of_k, best_of_pool)
   inla_fit <- best_of$fit
   best_of <- best_of$record
   if (!is.null(standardisation)) {
