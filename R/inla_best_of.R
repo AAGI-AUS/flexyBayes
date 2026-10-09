@@ -14,8 +14,7 @@
 
 #' The number of INLA fits each model is run with
 #'
-#' Read before the first fit, so that a bad value, or k above 1 without
-#' callr, refuses before anything is fitted.
+#' Called before the first fit.
 #'
 #' @return A whole number, one or more: option `flexyBayes.inla_best_of`,
 #'   3 when unset.

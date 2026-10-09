@@ -8,7 +8,5 @@
 # test-convergence-warning.R, which re-enables it locally.
 options(flexyBayes.silence_convergence_warning = TRUE)
 
-# Each INLA fit in the suite runs once. A fit run three times starts two
-# further R processes, which do not see a test's mocked bindings; the
-# best-of-k tests set the option themselves (test-inla-best-of.R).
+# Separate R processes do not see a test's mocked bindings.
 options(flexyBayes.inla_best_of = 1L)
