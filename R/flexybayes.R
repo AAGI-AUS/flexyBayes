@@ -555,7 +555,7 @@
 #' differed by up to 26%.
 #'
 #' Each INLA fit is therefore run three times: once in this session and twice
-#' in fresh R processes started through callr, one after another. The fit
+#' in fresh R processes started through callr. The fit
 #' with the highest log marginal likelihood is returned (the first of equal
 #' ones). `options(flexyBayes.inla_best_of = k)` sets the number of fits, a
 #' whole number of one or more; `1` fits once in this session, as 0.16.0 did,
@@ -568,6 +568,11 @@
 #' difference across the fits, relative to the smallest. `print()` and
 #' `summary()` add a line when a standard deviation differs by more than 5%.
 #' The restart probe of the numerical-confirm gate examines the fit kept.
+#' The fresh-process fits run beside the session fit, at most
+#' `options(flexyBayes.inla_best_of_workers)` fits at once (default: all of
+#' them) and fewer, with a message, when the free memory holds fewer; the
+#' record gives each fit's time in seconds (`wall_s`) and whether they ran at
+#' once (`parallel`).
 #'
 #' @section Fitting in a separate process:
 #' `options(flexyBayes.isolation = "process")` runs the engine fit in a

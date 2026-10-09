@@ -25,7 +25,8 @@
 #                        marginal likelihood and mode status, the fit kept,
 #                        the range of the marginal likelihoods, and each
 #                        standard deviation per fit with its largest
-#                        difference across the fits (R/inla_best_of.R).
+#                        difference across the fits, each fit's seconds and
+#                        whether the fits ran at once (R/inla_best_of.R).
 #
 # A value is read from the engine's own return wherever the engine reports it:
 # INLA keeps the num.threads it ran with at `$.args$num.threads`, and CmdStan
