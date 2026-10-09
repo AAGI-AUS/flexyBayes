@@ -390,6 +390,7 @@
   )
   out_path <- tempfile("fb_isolation_", fileext = ".out")
   err_path <- tempfile("fb_isolation_", fileext = ".err")
+  supervisor_was_open <- .fb_isolation_supervisor_open()
   proc <- callr::r_bg(
     .fb_isolation_child_entry,
     args = list(
@@ -413,8 +414,70 @@
     pid = proc$get_pid(),
     files = c(payload_path, out_path, err_path),
     out_path = out_path,
-    err_path = err_path
+    err_path = err_path,
+    release = .fb_isolation_acquire(supervisor_was_open)
   )
+}
+
+
+# --- the processx supervisor ---------------------------------------------- #
+
+# `supervise = TRUE` makes processx start one supervisor process for the
+# session, which holds two fifo connections open until it is ended.
+# R CMD check stops an example that leaves connections open.
+.fb_isolation_supervisor <- new.env(parent = emptyenv())
+.fb_isolation_supervisor$live <- 0L
+.fb_isolation_supervisor$ours <- FALSE
+
+#' Whether the processx supervisor is running in this session
+#' @noRd
+.fb_isolation_supervisor_open <- function() {
+  any(grepl(
+    "supervisor_stdin",
+    showConnections(all = TRUE)[, "description"],
+    fixed = TRUE
+  ))
+}
+
+#' Count a started child against the supervisor
+#'
+#' @param was_open Whether the supervisor ran before this child started.
+#' @return A token for `.fb_isolation_release()`.
+#' @noRd
+#' @keywords internal
+.fb_isolation_acquire <- function(was_open) {
+  state <- .fb_isolation_supervisor
+  if (state$live == 0L) {
+    state$ours <- !was_open
+  }
+  state$live <- state$live + 1L
+  token <- new.env(parent = emptyenv())
+  token$done <- FALSE
+  token
+}
+
+#' Release a collected child; end the supervisor after the last one
+#'
+#' The supervisor is ended only if flexyBayes started it. A second release
+#' of the same handle does nothing.
+#'
+#' @param handle A `.fb_isolation_start()` handle.
+#' @return `NULL`, invisibly.
+#' @noRd
+#' @keywords internal
+.fb_isolation_release <- function(handle) {
+  token <- handle$release
+  if (!is.environment(token) || isTRUE(token$done)) {
+    return(invisible(NULL))
+  }
+  token$done <- TRUE
+  state <- .fb_isolation_supervisor
+  state$live <- state$live - 1L
+  if (state$live == 0L && state$ours) {
+    state$ours <- FALSE
+    processx::supervisor_kill()
+  }
+  invisible(NULL)
 }
 
 
@@ -542,6 +605,7 @@
 .fb_isolation_harvest <- function(handle, engine, entry_point,
                                   fold = NA_integer_) {
   on.exit(unlink(handle$files), add = TRUE)
+  on.exit(.fb_isolation_release(handle), add = TRUE)
   handle$proc$wait()
   status <- handle$proc$get_exit_status()
   if (is.na(status) || status != 0L) {
@@ -640,6 +704,7 @@
     tryCatch(handle$proc$wait(2000), error = function(e) NULL)
   }
   unlink(handle$files)
+  .fb_isolation_release(handle)
   invisible(NULL)
 }
 

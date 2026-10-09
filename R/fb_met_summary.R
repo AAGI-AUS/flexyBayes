@@ -51,8 +51,7 @@
 #'   components, including genetic correlations.
 #' @section Lifecycle:
 #' No active engine fits an `fa(env, k):gen` term: both refuse it with
-#' `factor_analytic_not_repeatable`, because repeated identical calls did not
-#' agree on the covariance. This function therefore always abstains
+#' `factor_analytic_not_repeatable`. This function therefore always abstains
 #' (`met_summary_not_available`).
 #' What an active engine does report for a multi-environment trial is the
 #' variance components, through [summary()], and on brms the
@@ -72,8 +71,7 @@ fb_met_summary <- function(
       "fb_met_summary() is not available: breeder summaries are computed ",
       "from realised factor-analytic effects, and no active backend fits ",
       "an fa(env, k):gen term -- both refuse it with ",
-      "factor_analytic_not_repeatable, because repeated identical calls ",
-      "did not agree on the covariance. ",
+      "factor_analytic_not_repeatable. ",
       "What an active engine does report for a multi-environment trial is ",
       "the variance components, through summary(), and on brms the ",
       "genotype-by-environment covariance of a diag() or us() term ",

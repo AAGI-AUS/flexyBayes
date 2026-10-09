@@ -38,6 +38,7 @@ test_that("loading(group = ) ~ normal() is a prior target", {
 })
 
 test_that("a loading prior other than normal() is refused on INLA by name", {
+  skip_if_not_installed("INLA")
   tab <- .flp_fixture(n_gen = 10L, n_rep = 2L)
   p <- fb_prior(loading(group = "gen") ~ half_normal(scale = 1))
   expect_error(.flp_copy_text(tab, p),
@@ -45,6 +46,7 @@ test_that("a loading prior other than normal() is refused on INLA by name", {
 })
 
 test_that("every copy carries the loading prior, the default when none is stated", {
+  skip_if_not_installed("INLA")
   tab <- .flp_fixture(n_gen = 10L, n_rep = 2L)
   txt <- .flp_copy_text(tab)
   n_copy <- lengths(regmatches(txt, gregexpr("copy = ", txt, fixed = TRUE)))
@@ -60,6 +62,7 @@ test_that("every copy carries the loading prior, the default when none is stated
 })
 
 test_that("the loading prior does not move with the response scale", {
+  skip_if_not_installed("INLA")
   # A loading is a ratio of two standard deviations, so the standardised
   # fit carries the same prior on y and on 1000 y.
   a <- .flp_copy_text(.flp_fixture(n_gen = 10L, n_rep = 2L))
