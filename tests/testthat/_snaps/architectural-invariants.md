@@ -92,7 +92,7 @@
       .backend_independence_registry: locked=TRUE n_keys=1
         brms||inla
       
-      .refusal_registry: locked=TRUE n_keys=179
+      .refusal_registry: locked=TRUE n_keys=180
         aggregate_argument_invalid
         aggregated_evidence_unavailable
         aggregation_out_of_scope
@@ -171,6 +171,7 @@
         heterogeneous_residual_factor_not_in_cell_key
         heterogeneous_residual_family_has_no_sigma
         heterogeneous_residual_multiple_factors
+        inla_best_of_invalid
         inla_config_precision_not_positive_definite
         inla_gate_refused
         inla_program_failed

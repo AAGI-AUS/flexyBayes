@@ -628,7 +628,8 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   expect_true("model_variable_not_in_data" %in% entries)
   expect_true("aggregation_plan_ineligible" %in% entries)
   expect_true("method_argument_not_supported" %in% entries)
-  expect_equal(length(entries), 179L)
+  expect_true("inla_best_of_invalid" %in% entries)
+  expect_equal(length(entries), 180L)
   # 0.16.0 takes penalised selection out of the package, with its 72 codes,
   # and adds selection_removed, which the removed functions raise (= 164).
   # It adds plan_argument_unknown, an argument fb_plan() does not take (= 165).
@@ -645,8 +646,10 @@ test_that("the refusal registry holds the complete refusal vocabulary", {
   # response, an argument a sibling method takes, and the aggregated
   # routes' refusals, aggregation_plan_ineligible and
   # aggregation_out_of_scope (= 179).
+  # 0.17.0 adds inla_best_of_invalid, option flexyBayes.inla_best_of that is
+  # not a whole number of one or more (= 180).
   expect_identical(unique(tab$package), "flexyBayes")
-  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 179L)
+  expect_equal(length(ls(flexyBayes:::.refusal_registry)), 180L)
   expect_true("family_response_domain_violation" %in% entries)
   expect_true("factor_analytic_not_repeatable" %in% entries)
   expect_true("stream_model_column_not_in_source" %in% entries)

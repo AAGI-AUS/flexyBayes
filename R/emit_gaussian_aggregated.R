@@ -461,7 +461,18 @@ emit_gaussian_aggregated <- function(
   }
   inla_call$num.threads <- .fb_inla_thread_plan(inla_call$num.threads)
 
+  best_of_k <- .fb_inla_best_of_k()
   inla_fit <- .inla_call(inla_call)
+  # The k - 1 further fits in fresh R processes (R/inla_best_of.R).
+  best_of <- .fb_inla_best_of(inla_fit, inla_call, best_of_k)
+  inla_fit <- best_of$fit
+  best_of <- best_of$record
+  if (!is.null(standardisation)) {
+    best_of <- .fb_best_of_shift(
+      best_of,
+      standardisation$n_obs * log(standardisation$scale)
+    )
+  }
 
   # Every bounded prior checked against the fit on the scale it ran on
   # (R/inla_support_audit.R), then mapped back.
@@ -478,7 +489,8 @@ emit_gaussian_aggregated <- function(
     fixed_form = fixed_form,
     custom_prior = custom_prior_expr,
     K = K,
-    N = N
+    N = N,
+    best_of = best_of
   )
 }
 
@@ -643,7 +655,11 @@ emit_gaussian_aggregated <- function(
       support_audit = engine_out$support_audit,
       # The versions, threads and seed the fit ran with
       # (R/reproducibility_record.R).
-      reproducibility = .fb_repro_record_inla(engine_out$inla, seed),
+      reproducibility = .fb_repro_record_inla(
+        engine_out$inla,
+        seed,
+        engine_out$best_of
+      ),
       # The standard deviations the INLA fit filled with the package default.
       prior_completion = engine_out$prior_completion,
       # Built from the PRE-aggregation data on purpose. Aggregation is a

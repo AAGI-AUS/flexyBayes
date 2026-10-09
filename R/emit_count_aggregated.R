@@ -203,7 +203,11 @@ emit_count_aggregated <- function(
   }
   inla_args$num.threads <- .fb_inla_thread_plan(inla_args$num.threads)
 
+  best_of_k <- .fb_inla_best_of_k()
   inla_fit <- .inla_call(inla_args)
+  # The k - 1 further fits in fresh R processes (R/inla_best_of.R).
+  best_of <- .fb_inla_best_of(inla_fit, inla_args, best_of_k)
+  inla_fit <- best_of$fit
 
   # Every bounded prior checked against the fit (R/inla_support_audit.R).
   support_audit <- .fb_inla_support_audit(inla_fit)
@@ -230,7 +234,8 @@ emit_count_aggregated <- function(
     prior_completion = completion$record,
     fixed_form = inla_form,
     K = fb_aggregated$K,
-    N = fb_aggregated$N
+    N = fb_aggregated$N,
+    best_of = best_of$record
   )
 }
 
@@ -449,7 +454,11 @@ emit_count_aggregated <- function(
       support_audit = engine_out[["support_audit"]],
       # The versions, threads and seed the fit ran with
       # (R/reproducibility_record.R).
-      reproducibility = .fb_repro_record_inla(engine_out[["inla"]], seed),
+      reproducibility = .fb_repro_record_inla(
+        engine_out[["inla"]],
+        seed,
+        engine_out[["best_of"]]
+      ),
       # Built from the PRE-aggregation data on purpose: cell-level
       # sufficient statistics are a computational route to the same
       # likelihood, not a different model, so an aggregated fit and a
