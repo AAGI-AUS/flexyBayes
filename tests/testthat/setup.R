@@ -7,3 +7,6 @@
 # behaviour. The warning itself is exercised on purpose in
 # test-convergence-warning.R, which re-enables it locally.
 options(flexyBayes.silence_convergence_warning = TRUE)
+
+# Separate R processes do not see a test's mocked bindings.
+options(flexyBayes.inla_best_of = 1L)

@@ -430,12 +430,29 @@ Each is reproducible on this release. Priority is for the MET use case.
     flexyBayes passes INLA the same arguments in every run. INLA's log was
     identical across runs up to its start-up benchmark of linear-algebra
     routines, and the differences remained with that benchmark switched
-    off. INLA's `restart = 3` made all four processes on the full series
-    agree, but on the lower mode, so it does not fix this. *Workaround*:
-    where a conclusion rests on a weakly informed variance, refit in several
-    fresh processes (for example with `fb_isolated_lapply()`) and compare.
-    *What is open*: no fitting route is yet known that reliably reaches the
-    highest mode.
+    off. Setting `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`,
+    `VECLIB_MAXIMUM_THREADS` and `MKL_NUM_THREADS` to 1 did not remove them
+    either: six fresh processes on the six trials reached three modes, as
+    six at 8 threads did. INLA's `restart = 3` made all four processes on the full series
+    agree, but on the lower mode, so it does not fix this.
+
+    Since 0.17.0 each INLA fit is run three times, once in the session and
+    twice in fresh R processes, and the fit with the highest log marginal
+    likelihood is returned (`options(flexyBayes.inla_best_of)`, see
+    `?flexybayes`, section *INLA threads*). The spread of the three fits is
+    kept in `$extras$reproducibility$best_of`, and `print()` names any
+    standard deviation that differs by more than 5% across them. On the six
+    trials, four processes each running three fits returned three distinct
+    modes, at log marginal likelihoods -1459.696 (twice), -1459.523 and
+    -1459.520. Within a process the three marginal likelihoods differed by
+    up to 0.29, the main-plot standard deviation by up to 13.6%, and the
+    others by 3.9% or less. Best of three narrows the spread but does not
+    make fresh processes agree. *Workaround*: where a conclusion rests on a
+    weakly informed variance, raise `flexyBayes.inla_best_of` or refit in
+    several fresh processes (for example with `fb_isolated_lapply()`) and
+    compare. *What is open*: no fitting route is yet known that reliably
+    reaches the highest mode; the best of 3 never reached the highest mode
+    seen on these data (-1459.362).
 
 ## Closed since the previous revision
 

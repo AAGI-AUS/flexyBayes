@@ -645,9 +645,22 @@ Identical calls in fresh R processes can reach different modes. On a
 48-trial barley series, four processes reached two modes, 0.10 apart in
 log marginal likelihood, whose variance component standard deviations
 differed by at most 3.4\%. On six trials of the same series, the modes
-differed by up to 26\%. Where a conclusion rests on a weakly informed
-variance, refit in several fresh processes, for example with
-\code{\link[=fb_isolated_lapply]{fb_isolated_lapply()}}, and compare.
+differed by up to 26\%.
+
+Each INLA fit is therefore run three times: once in this session and twice
+in fresh R processes started through callr, one after another. The fit
+with the highest log marginal likelihood is returned (the first of equal
+ones). \code{options(flexyBayes.inla_best_of = k)} sets the number of fits, a
+whole number of one or more; \code{1} fits once in this session, as 0.16.0 did,
+and any other value refuses with \code{inla_best_of_invalid}. Above 1 without
+callr installed, the fit refuses with \code{isolation_requires_callr}. A fit
+that fails in a separate process stops the call with that process's
+message. \verb{$extras$reproducibility$best_of} holds each fit's log marginal
+likelihood and mode status, the fit kept, the range of the marginal
+likelihoods, and each standard deviation per fit with its largest
+difference across the fits, relative to the smallest. \code{print()} and
+\code{summary()} add a line when a standard deviation differs by more than 5\%.
+The restart probe of the numerical-confirm gate examines the fit kept.
 }
 
 \section{Fitting in a separate process}{
