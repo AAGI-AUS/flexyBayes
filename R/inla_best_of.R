@@ -16,13 +16,14 @@
 
 # The memory of one INLA fit, in bytes: .FB_BEST_OF_BASE_BYTES plus
 # .FB_BEST_OF_ESTIMATE_FACTOR times the design-memory preflight's INLA
-# estimate. Fitted to two peak resident sets measured with /usr/bin/time -l:
+# estimate. Set from two peak resident sets measured with /usr/bin/time -l:
 # 0.96 GB of R plus up to 0.5 GB of the INLA program on the six-trial barley
 # subset (preflight estimate 8 MB), and 8.3 GB on the 48-trial series
 # (112 MB). The smallest per-row fit in inst/validation/benchmark_scaling.csv
-# peaked at 0.99 GB.
+# peaked at 0.99 GB. The factor is set so both measured peaks fall below the
+# estimate (about 1.7 GB and 10 GB): a low estimate would start fits into swap.
 .FB_BEST_OF_BASE_BYTES <- 1024^3
-.FB_BEST_OF_ESTIMATE_FACTOR <- 64
+.FB_BEST_OF_ESTIMATE_FACTOR <- 80
 
 #' The number of INLA fits each model is run with
 #'
