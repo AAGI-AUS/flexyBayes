@@ -1,4 +1,89 @@
-# flexyBayes (development version)
+# flexyBayes 0.17.0
+
+## Changes to fitting
+
+* Every INLA fit is now run three times, once in the session and twice in
+  fresh R processes, and the fit with the highest log marginal likelihood is
+  returned. Identical one-thread INLA calls in fresh processes can reach
+  different modes, so a single fit is not repeatable across sessions.
+  `options(flexyBayes.inla_best_of = 1)` fits once, exactly as 0.16.0 did;
+  other whole numbers set the number of fits. The further fits need callr.
+  A fit takes about three times as long.
+* `$extras$reproducibility$best_of` records each fit's log marginal
+  likelihood and mode status, the fit kept, the range of the marginal
+  likelihoods, and how far each standard deviation moved across the fits.
+  `print()` and `summary()` add one line when a standard deviation differs by
+  more than 5%.
+* A fit that fails in a separate process stops the call with that process's
+  message. An option value that is not a whole number of one or more refuses
+  with `inla_best_of_invalid`.
+* On six trials of a barley series, single fits in eight processes reached
+  four modes. Best of three in four processes reached three, two of them
+  0.003 apart in log marginal likelihood; within a process the main-plot
+  standard deviation moved by up to 13.6% and the others by 3.9% or less.
+* The two fresh-process fits of best of three now run at the same time as
+  the fit in the session, so best of three takes little longer than a single
+  fit. On six trials of a barley series a
+  package fit took a median of 29 s, against 64 s with the fits one after
+  another (three fresh processes each). The fit kept does not depend on
+  which fit finishes first: it is the one with the highest log marginal
+  likelihood, the lowest-numbered of equal ones.
+* `options(flexyBayes.inla_best_of_workers)` sets how many fits run at once,
+  the session fit included; the default is all of them, and `1` runs them one
+  after another as before. Each child runs INLA with the session's thread
+  plan, `"1:1"` by default.
+* Before the fits start, the memory one fit needs is estimated from the
+  design-memory preflight and compared with the free memory. When it holds
+  fewer fits than asked for, fewer run at once, down to one after another,
+  and a message says how much memory is free and how much a fit needs. The
+  number of fits is never changed.
+* `$extras$reproducibility$best_of` now also records each fit's time in
+  seconds (`wall_s`), the number of fits run at once (`workers`) and whether
+  that was more than one (`parallel`).
+* When fits running at once fail, the call stops with the message of the
+  lowest-numbered failed fit, and the fits still running are ended.
+
+## New features
+
+* Model C's per-trial standard deviations can be partially pooled.
+  `fb_prior(sd(group = "TRIAL:VARIETY", by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5)))`
+  pools the genotype-by-trial SDs of `diag(TRIAL):VARIETY`, and
+  `sigma(by = "TRIAL") ~ pooled(scale = ...)` pools the residual SDs of
+  `dsum(~ units | TRIAL)`; either can be used without the other. The log SDs
+  share a normal distribution with an estimated mean and SD. The prior on
+  that SD, `scale`, has no default, and a `pooled()` without it is refused.
+* Pooling is fitted on brms only. `backend = "inla"` refuses with
+  `pooled_prior_requires_brms`, and `backend = "auto"` fits on brms and says
+  so in `backend_decision()` and `fb_plan()`. Printed fits, `summary()` and
+  `prior_summary()` label the fit "per-trial SDs partially pooled" and print
+  each pooling SD's posterior median.
+* A pooled fit is a different estimator from ASReml's model C. On the stored
+  12-trial fixture, T06's residual variance moved from ASReml's 0.086 to a
+  posterior median of 0.099 (0.81 ASReml standard errors) and T09's
+  genotype-by-trial variance from 0.632 to 0.550.
+* Over 20 simulated 12-trial series, the 90% intervals covered the true
+  per-trial SDs at 91% (genotype-by-trial) and 88% (residual), and the true
+  pooling SDs at 80% and 95%. One fit takes about two minutes on two cores.
+
+## Factor-analytic covariance
+
+* `fa(env, k):gen` is still refused on both engines
+  (`factor_analytic_not_repeatable`). Fits on INLA did not reproduce ASReml
+  4.2's split of the genetic variance into common and specific parts, which
+  ASReml often places at a specific variance of zero.
+* `fb_prior()` accepts `loading(group = "gen") ~ normal(mean, sd)`, the prior
+  on the loadings of `fa(f, k):gen`. With none stated the loadings take
+  INLA's own prior on a copy scaling, `normal(mean = 1, sd = 0.316)`, which is
+  now named in the model manifest instead of applied unstated.
+* ASReml 4.2 reference fits of `fa(env, k):gen` on `agridat::besag.met` (all
+  genotypes and the first 30) and `agridat::dasilva.maize` ship in
+  `inst/validation/asreml-4.2/`.
+
+## Other changes
+
+* The seven selection functions deprecated in 0.16.0 (`fb_select()` and the
+  six beside it) still stop with `selection_removed` and remain exported in
+  this release.
 
 ## Documentation
 
