@@ -107,6 +107,10 @@
 
   specs <- list()
   for (s in prior$specs) {
+    # pooled() is lowered by .fb_brms_pooled_lowering() (R/pooled_prior.R).
+    if (identical(s$spec$family, "pooled")) {
+      next
+    }
     # The input identifier, taken before the slope unwrap below rewrites
     # the target, so each row names the specification it came from.
     input_id <- .fb_manifest_spec_input_id(s)
@@ -775,6 +779,14 @@
   )
   has_weight_offset <- .fb_weights_nonconstant(.fb_ir_weights(fb))
   if ((length(het) == 0L && !has_weight_offset) || length(specs) == 0L) {
+    return(specs)
+  }
+  # A pooled residual carries its own log-sigma rows.
+  pooled_sigma <- Filter(
+    function(s) identical(s$target$type, "sigma"),
+    .fb_pooled_specs(fb$priors)
+  )
+  if (length(pooled_sigma)) {
     return(specs)
   }
 

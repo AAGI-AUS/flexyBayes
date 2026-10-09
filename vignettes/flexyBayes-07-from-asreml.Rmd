@@ -40,6 +40,7 @@ Most arguments and terms carry over unchanged.
 | `random = ~ us(env):gen` | the same | brms |
 | `residual = ~ dsum(~ units \| env)` | the same | INLA or brms |
 | `random = ~ diag(trial):gen`, `residual = ~ dsum(~ units \| trial)` on many trials | the same; INLA uses empirical Bayes past 15 variance parameters | INLA or brms |
+| none: ASReml estimates each trial's variances on their own | `prior = fb_prior(sd(group = "trial:gen", by = "trial") ~ pooled(...))` | brms |
 | `random = ~ units`, `residual = ~ ar1(row):ar1(col)` | `random = ~ ar1(row):ar1(col)` | INLA |
 | `residual = ~ ar1(row):ar1(col)`, with no `units` | the same | INLA |
 | `random = ~ at(trial):ar1(row):ar1(col)` | the same | INLA |
@@ -414,6 +415,43 @@ residual variance, is within
 ASReml's estimate. The other 6 genotype-by-trial variances
 have REML standard errors of half their estimate or more, and there the
 two systems can differ, as on `besag.met` above.
+
+# Per-trial variances partially pooled
+
+ASReml's model C estimates each trial's genotype-by-trial variance and
+residual variance on its own. flexyBayes can pool them instead: the log
+standard deviations of a block share a normal distribution whose mean and
+standard deviation are estimated, so a trial with little information
+borrows from the others. Either set can be pooled without the other:
+
+
+``` r
+pooled_prior <- fb_prior(
+  sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
+    pooled(scale = half_normal(scale = 0.5)),
+  sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))
+)
+plan_p <- fb_plan(y ~ VARIETY,
+                  random = ~ TRIAL + TRIAL:REP + diag(TRIAL):VARIETY,
+                  residual = ~ dsum(~ units | TRIAL),
+                  data = ref_c$data, priors = pooled_prior)
+plan_p$backend_chosen
+#> [1] "brms"
+plan_p$pooled
+#> [1] "per-trial SDs partially pooled"
+```
+
+`scale` is the prior on the pooling standard deviation and has no default.
+Only brms fits the model; `backend = "auto"` sends it there.
+
+A pooled fit is not ASReml's model C. On the 12 trials above, with a unit
+half-normal prior on each pooling standard deviation, the posterior median
+of T06's residual variance was 0.099 against ASReml's 0.086, a shift of 0.81
+ASReml standard errors, and the largest genotype-by-trial variance, T09's,
+came down from 0.632 to 0.550. The pooling standard deviation of the log
+residual standard deviations had a posterior median of 0.28, where the data
+were simulated with 0.35. The printed fit is labelled "per-trial SDs
+partially pooled".
 
 # A sectioned residual and vpredict()
 

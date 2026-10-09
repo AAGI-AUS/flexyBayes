@@ -22,7 +22,7 @@ Examples:
 
 Supported distribution families: \code{pc}, \code{half_normal}, \code{half_cauchy},
 \code{student_t}, \code{normal}, \code{exponential}, \code{lkj}, \code{cauchy}, \code{gamma},
-\code{uniform}. Note that \code{uniform()} on a variance component sits
+\code{uniform}, and \code{pooled} (see "Partially pooled SDs" below). Note that \code{uniform()} on a variance component sits
 outside the PC-canonical interlingua, but both active backends
 represent it faithfully on the SD scale: the INLA backend via an
 expression-prior on the log-precision, and brms as a bounded
@@ -114,6 +114,35 @@ A Gaussian identity-link fit on INLA runs on the response divided by
 formula and \code{prior_summary()} show it on both scales.
 }
 
+\section{Partially pooled SDs}{
+
+
+\code{pooled()} puts one shared prior on a set of per-level standard
+deviations, instead of a separate prior on each. The target names the
+term, and \code{by} the factor whose levels are pooled:
+\itemize{
+\item \code{sd(group = "TRIAL:VARIETY", by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))} for the genotype-by-trial SDs
+of \code{diag(TRIAL):VARIETY};
+\item \code{sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))} for the
+residual SDs of \code{dsum(~ units | TRIAL)}.
+}
+
+Either set can be pooled without the other. The log SDs of a pooled set
+are normal with an estimated mean and an estimated SD, the pooling SD.
+\code{scale} is the prior on the pooling SD and has no default; it can be any
+prior brms accepts for a standard deviation. The mean has a
+\code{normal(log(s / 5), 2)} prior, where \code{s} is the scale of the package's
+default SD prior. On an identity link that is \code{normal(log(sd(y)), 2)}.
+
+Pooling shrinks the per-level SDs toward each other, so the estimates
+differ from ASReml's, which fits each SD separately. Only brms fits it,
+because INLA cannot put a shared prior on separate variance parameters:
+\code{backend = "inla"} refuses with \code{pooled_prior_requires_brms}, and
+\code{backend = "auto"} uses brms. Printed output labels the fit
+"per-trial SDs partially pooled", with the \code{by} factor's name in place
+of "trial".
+}
+
 \examples{
 p <- fb_prior(
   sigma                 ~ pc(upper = 2, prob = 0.05),
@@ -121,4 +150,11 @@ p <- fb_prior(
   b("treatment")        ~ student_t(df = 4, scale = 2.5)
 )
 p
+
+# Model C with both per-trial SD blocks partially pooled
+fb_prior(
+  sd(group = "TRIAL:VARIETY", by = "TRIAL") ~
+    pooled(scale = half_normal(scale = 0.5)),
+  sigma(by = "TRIAL") ~ pooled(scale = half_normal(scale = 0.5))
+)
 }

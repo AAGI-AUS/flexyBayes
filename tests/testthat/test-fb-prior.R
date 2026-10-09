@@ -96,9 +96,10 @@ test_that("fb_prior() accepts the v0.1 distribution families", {
     cauchy = quote(cauchy(location = 0, scale = 1)),
     gamma = quote(gamma(shape = 1, rate = 0.01))
   )
+  # pooled() needs a `by =` target; test-model-c-pooled.R covers it.
   expect_setequal(
     names(calls),
-    setdiff(flexyBayes:::.fb_prior_supported_families(), "uniform")
+    setdiff(flexyBayes:::.fb_prior_supported_families(), c("uniform", "pooled"))
   )
   for (fam in names(calls)) {
     f <- stats::as.formula(paste0("sigma ~ ", deparse(calls[[fam]])))

@@ -502,6 +502,14 @@ fb_plan <- function(
       } else {
         NA_character_
       },
+      pooled = if (length(.fb_pooled_specs(fb$priors))) {
+        .fb_pooled_label(lapply(
+          .fb_pooled_specs(fb$priors),
+          function(s) list(by = s$target$by)
+        ))
+      } else {
+        NA_character_
+      },
       aggregation = agg,
       representation_plan = representation_plan,
       representation_label = repr_label,
@@ -938,6 +946,9 @@ print.fb_plan <- function(x, ...) {
       "past the hyperparameter budget\n",
       sep = ""
     )
+  }
+  if (!is.na(x$pooled %||% NA_character_)) {
+    cat("  Prior:                   ", x$pooled, ", brms only\n", sep = "")
   }
 
   cat(

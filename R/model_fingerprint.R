@@ -395,7 +395,13 @@
       paste0(
         a,
         "=",
-        if (is.numeric(v)) sprintf("%.12g", v) else as.character(v)
+        if (is.numeric(v)) {
+          sprintf("%.12g", v)
+        } else if (is.list(v)) {
+          .fb_prior_spec_string(list(spec = v))
+        } else {
+          as.character(v)
+        }
       )
     },
     character(1)
