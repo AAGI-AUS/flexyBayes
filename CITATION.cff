@@ -18,9 +18,6 @@ authors:
     family-names: "Moldovan"
     email: "max.moldovan@adelaide.edu.au"
     orcid: "https://orcid.org/0000-0001-9680-8474"
-  - given-names: "Anabel"
-    family-names: "Forte Deltell"
-    orcid: "https://orcid.org/0000-0001-9534-1817"
 version: 0.17.0
 date-released: "2026-10-10"
 license: MIT
