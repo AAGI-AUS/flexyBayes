@@ -410,7 +410,7 @@ Each is reproducible on this release. Priority is for the MET use case.
     neither reading flags them and neither row of `summary(fit)$varcomp` is
     marked `weakly identified`. Read the REML standard error beside the
     posterior for such a component. *What is open*: a flag that catches
-    this case. The regression test is in
+    this case. brms fits are not checked (item 20). The regression test is in
     `tests/testthat/test-asreml-parity.R` (DEF-201), skipped while this is
     open.
 25. **`ar1(t):g` reports its correlation as `rho_row`.** For
