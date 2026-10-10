@@ -1,5 +1,5 @@
-flexyBayes Packaged: 2026-09-17 03:26:48 UTC
-flexyBayes version : 0.13.0
+flexyBayes Packaged: 2026-10-10 23:24:42 UTC
+flexyBayes version : 0.18.0
 
 R version 4.6.1 (2026-06-24)
 Platform: aarch64-apple-darwin23
@@ -10,7 +10,7 @@ BLAS:   /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRblas.0.dy
 LAPACK: /Library/Frameworks/R.framework/Versions/4.6/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
 
 locale:
-[1] C.UTF-8/C.UTF-8/C.UTF-8/C/C.UTF-8/C.UTF-8
+[1] en_AU.UTF-8/en_AU.UTF-8/en_AU.UTF-8/C/en_AU.UTF-8/en_AU.UTF-8
 
 time zone: Australia/Adelaide
 tzcode source: internal
@@ -20,7 +20,7 @@ attached base packages:
 
 other attached packages:
 [1] INLA_26.08.07     Matrix_1.7-6      brms_2.23.0       Rcpp_1.1.2       
-[5] flexyBayes_0.13.0
+[5] flexyBayes_0.18.0
 
 loaded via a namespace (and not attached):
  [1] tensorA_0.36.2.1       gtable_0.3.6           ggplot2_4.0.3         
