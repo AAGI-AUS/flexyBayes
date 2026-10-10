@@ -704,15 +704,37 @@ register_canonical_mapper <- function(backend, mapper) {
 #       "Precision for the Gaussian observations" -> "sigma" + sqrt(1/prec)
 #       "Precision for <group>"                   -> "sd_<group>" + sqrt(1/prec)
 
-# The canonical names of an AR1 field's correlations, c(row = , col = ) for
-# INLA's Rho and GroupRho. On an AR1 x AR1 field each is rho_<factor>, the
-# factor it runs along, so ar1(col):ar1(row) and ar1(row):ar1(col) name the
-# same correlation alike. A field with one AR1 factor has rho_row only.
+# Each correlation is rho_<factor>, the factor it runs along. A one-factor
+# field has one, and its col entry is never fitted.
 .fb_ar1_rho_names <- function(t) {
   if (!isTRUE(t$col_ar1)) {
-    return(c(row = "rho_row", col = "rho_col"))
+    return(c(row = paste0("rho_", t$row_var %||% t$var), col = "rho_col"))
   }
   c(row = paste0("rho_", t$row_var), col = paste0("rho_", t$col_var))
+}
+
+# Old name to current name for each one-factor AR1 field, c(rho_row = "rho_t").
+.fb_ar1_rho_renamed <- function(fb) {
+  out <- character(0)
+  for (t in c(fb$random_terms %||% list(), fb$residual_terms %||% list())) {
+    if (!(t$type %||% "") %in% c("ar1", "ar1_spatial", "ar1_spatial_at") ||
+        isTRUE(t$col_ar1)) {
+      next
+    }
+    sfx <- if (identical(t$type, "ar1_spatial_at")) {
+      paste0("__", t$by_var, t$by_levels)
+    } else {
+      ""
+    }
+    out <- c(
+      out,
+      stats::setNames(
+        paste0(.fb_ar1_rho_names(t)[["row"]], sfx),
+        paste0("rho_row", sfx)
+      )
+    )
+  }
+  out[names(out) != out]
 }
 
 .mapper_inla <- function(fit, fb_terms) {

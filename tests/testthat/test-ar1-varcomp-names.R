@@ -120,16 +120,92 @@ test_that("DEF-202: summary, the field panel and the draws agree on the names", 
                tolerance = 0.02)
 })
 
-test_that("DEF-225: a field with one AR1 factor names its correlation by factor", {
-  skip(paste(
-    "DEF-225 open: ar1(t):g reports its correlation as rho_row in",
-    "summary()$varcomp while the field panel says rho_t"
-  ))
-  skip_on_cran()
-  skip_if_not_installed("INLA")
+.vn_one_factor_fit <- function() {
   set.seed(31L)
   d <- expand.grid(t = factor(1:8), g = factor(1:12))
   d$y <- stats::rnorm(nrow(d))
-  fit <- .vn_fit(y ~ 1, random = ~ ar1(t):g, data = d)
-  expect_true("rho_t" %in% summary(fit)$varcomp$component)
+  .vn_fit(y ~ 1, random = ~ ar1(t):g, data = d)
+}
+
+test_that("DEF-225: a field with one AR1 factor names its correlation by factor", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fit <- .vn_one_factor_fit()
+  s <- summary(fit)
+  expect_true("rho_t" %in% s$varcomp$component)
+  expect_false("rho_row" %in% s$varcomp$component)
+  panel <- s$spatial_field$parameter
+  expect_true(any(grepl("(rho_t)", panel, fixed = TRUE)))
+  draws <- fb_variance_draws(fit, 20L, seed = 1L)
+  expect_true("rho_t" %in% names(draws))
+})
+
+test_that("DEF-225: the old name on a new one-factor fit refuses and names the new one", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fit <- .vn_one_factor_fit()
+  expect_error(
+    vpredict(fit, r ~ rho_row, n_draws = 20L),
+    "rho_t",
+    class = "flexybayes_refusal_vpredict_component_not_in_posterior"
+  )
+  expect_error(
+    fb_marginal_cov(fit),
+    class = "flexybayes_refusal_marginal_cov_not_buildable"
+  )
+})
+
+test_that("DEF-225: the names a field is given are rho_<factor> for one factor, rho_row/rho_col for two", {
+  one <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1_spatial", row_var = "t",
+                                             col_var = "g", col_ar1 = FALSE))
+  expect_identical(one[["row"]], "rho_t")
+  res <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1", var = "t"))
+  expect_identical(res[["row"]], "rho_t")
+  two <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1_spatial", row_var = "row",
+                                             col_var = "col", col_ar1 = TRUE))
+  expect_identical(unname(two), c("rho_row", "rho_col"))
+})
+
+test_that("DEF-225: a fit saved before 0.18.0 is told to refit when it asks for rho_row", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fit <- .vn_one_factor_fit()
+  vc <- fit$extras$variance_comps
+  vc$component[vc$component == "rho_t"] <- "rho_row"
+  fit$extras$variance_comps <- vc
+  expect_error(
+    vpredict(fit, r ~ rho_row, n_draws = 20L),
+    "saved before 0.18.0",
+    class = "flexybayes_refusal_vpredict_component_not_in_posterior"
+  )
+})
+
+test_that("DEF-225: a one-factor field per trial, or per id(trial), is named by its factor", {
+  at <- list(random_terms = list(list(
+    type = "ar1_spatial_at", row_var = "x", col_var = "col", col_ar1 = FALSE,
+    by_var = "trial", by_levels = c("A", "B")
+  )))
+  expect_identical(
+    flexyBayes:::.fb_ar1_rho_renamed(at),
+    c(rho_row__trialA = "rho_x__trialA", rho_row__trialB = "rho_x__trialB")
+  )
+  id <- list(random_terms = list(list(
+    type = "ar1_spatial", row_var = "x", col_var = "col", col_ar1 = FALSE,
+    at_var = "trial"
+  )))
+  expect_identical(
+    flexyBayes:::.fb_ar1_rho_renamed(id), c(rho_row = "rho_x")
+  )
+  expect_identical(
+    flexyBayes:::.fb_ar1_rho_names(id$random_terms[[1L]])[["row"]], "rho_x"
+  )
+})
+
+test_that("DEF-225: prior_summary on a one-factor field lists one correlation", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fit <- .vn_one_factor_fit()
+  ps <- utils::capture.output(print(prior_summary(fit)))
+  expect_true(any(grepl("rho_t", ps, fixed = TRUE)))
+  expect_false(any(grepl("rho_col", ps, fixed = TRUE)))
 })
