@@ -20,7 +20,7 @@
 # down in README.md rather than papered over here.
 
 tier: V2
-package_version: "0.17.0"
+package_version: "0.18.0"
 generated_on: 2026-08-28
 
 scenarios:

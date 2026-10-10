@@ -1,4 +1,67 @@
-# flexyBayes (development version)
+# flexyBayes 0.18.0
+
+## Selection functions
+
+* `fb_select()`, `fb_select_path()`, `fb_select_refit()`, `fb_select_fold_data()`,
+  `fb_penalty()`, `fb_resamples()` and `fb_decision()` stay in the package but
+  only refuse. A script written against the public 0.10.0 release stops with
+  the error class `flexybayes_refusal_selection_removed`, and the message
+  points to the section "Penalised selection on the whitened design" of the
+  two-stage vignette. The functions will be removed in the release after the
+  first public release that announces their removal.
+
+## Weak-identification flag
+
+* On INLA fits a second reading joins the weak-identification flag as a
+  backstop. A variance component whose 95% interval on the standard
+  deviation is 4.24 or more times its posterior median is marked `weakly
+  identified`, as is one whose interval covers 40% or more of its prior's
+  probability. The threshold is the 99th percentile of the ratio over ten
+  simulated data sets for each of five designs with five or more levels
+  (`inst/extdata/weak_identification_calibration.csv`). Of the 80 fits
+  measured, it flags one that the prior-share reading did not: a
+  five-level group with no true variance.
+* Expect more components marked than under 0.17.0, mostly terms with few
+  levels. Across the fits in the package's own tests, 55 components are
+  marked, 16 of them by the interval reading alone.
+* The `besag.met` counties C2 and C5 under `diag(env):gen` are still not
+  flagged. Their intervals are 1.7 times their medians, while ASReml's
+  standard errors are six to seven times its estimates (KNOWN_ISSUES
+  item 24).
+* The refusal of `fa()` now says that, on INLA, `summary(fit)$varcomp`
+  marks some variances the data barely identify after a `diag(env):gen`
+  fit.
+
+## Factor-analytic covariance
+
+* `fa(env, k):gen` is still refused on both engines, with the same code,
+  `factor_analytic_not_repeatable`, so scripts that catch it need no change.
+* In a test whose thresholds were set before it ran, INLA fitted 10
+  simulated trials per k (60 genotypes, 6 environments) with a known
+  covariance. The genetic-correlation intervals covered the true value 134
+  of 150 times for k = 1 and 125 of 150 for k = 2, against 136 required. The
+  refusal message, `inst/TRANSLATION.md` and `inst/KNOWN_ISSUES.md` now give
+  these results.
+* `inst/TRANSLATION.md` no longer reports the 0.13.0 measurement in which
+  identical fits on `agridat::besag.met` differed by a ratio of 1.23 in a
+  variance. The refusal now rests on the simulation test.
+
+## Bug fixes
+
+* A field with one AR1 factor, such as `random = ~ ar1(t):g`, now names its
+  correlation after that factor, `rho_t`, in `summary()`, the field panel,
+  `fb_variance_draws()` and `vpredict()`. It was `rho_row` whatever the factor
+  was called. The same holds per trial for `at(trial):ar1(x):id(col)`
+  (`rho_x__trial<level>`). A fit saved under an earlier version still shows
+  `rho_row` in `summary()` until it is refitted, while its draws already use
+  `rho_t`. Asking `vpredict()` for `rho_row` stops and names the correlation
+  to use. The names of an `ar1(row):ar1(col)` field are unchanged.
+
+## Documentation
+
+* The manual is in the package vignettes. The website at
+  <https://aagi-aus.github.io/flexyBayes/> will not load until GitHub Pages is
+  turned on for the repository.
 
 ## Authors
 
