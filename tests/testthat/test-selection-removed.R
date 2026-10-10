@@ -36,7 +36,6 @@ test_that("the two-stage vignette has the section the message points at", {
 })
 
 test_that("the Rd and API_STABILITY name the same removal release", {
-  rd <- system.file("help", package = "flexyBayes")
   src <- testthat::test_path("..", "..", "R", "selection_removed.R")
   api <- testthat::test_path("..", "..", "API_STABILITY.md")
   skip_if_not(file.exists(src) && file.exists(api))
