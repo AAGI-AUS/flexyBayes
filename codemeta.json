@@ -3,7 +3,7 @@
   "@type": "SoftwareSourceCode",
   "identifier": "flexyBayes",
   "description": "Specify mixed models using familiar ASReml or brms-style formula syntax and estimate admitted structures via INLA or brms (Stan). The supported surface includes multi-stratum designs, per-environment residual variances, baseline genotype-by-environment terms, known-precision genomic and pedigree models, separable AR1 spatial fields and univariate P-splines; selected richer covariance models use brms. Factor-analytic genotype-by-environment covariance is deliberately refused in this release. Results are returned through the standard R modelling ecosystem, while unsupported structures raise typed refusals naming the nearest implemented alternative.",
-  "name": "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax",
+  "name": "flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms",
   "codeRepository": "https://github.com/AAGI-AUS/flexyBayes",
   "issueTracker": "https://github.com/AAGI-AUS/flexyBayes/issues",
   "license": "https://spdx.org/licenses/MIT",

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use flexyBayes in your research, please cite it as below."
-title: "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax"
+title: "flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms"
 abstract: >-
   Specify mixed models using familiar ASReml or brms-style formula syntax
   and estimate them via INLA or brms (Stan). The ASReml grammar reaches

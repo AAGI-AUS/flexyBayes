@@ -1,5 +1,5 @@
 Package: flexyBayes
-Title: Flexible Bayesian Mixed Models with 'ASReml' and 'brms' Syntax
+Title: Bayesian Mixed Models with 'ASReml' Syntax via 'INLA' and 'brms'
 Version: 0.17.0
 Authors@R: c(
     person("Max", "Moldovan", email = "max.moldovan@adelaide.edu.au",
