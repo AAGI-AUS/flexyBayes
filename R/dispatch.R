@@ -694,9 +694,9 @@
           "common and specific parts, and flexyBayes has no factor-analytic ",
           "lowering for brms. Write ",
           "diag(", term$outer, "):", term$inner, ", one variance per ",
-          "environment, which fits on both engines and on INLA marks a ",
-          "variance the data barely identify `weakly identified` in ",
-          "summary(fit)$varcomp, or us(", term$outer,
+          "environment, which fits on both engines; on INLA, ",
+          "summary(fit)$varcomp marks some variances the data barely ",
+          "identify as `weakly identified`, or us(", term$outer,
           "):", term$inner, " on brms, which estimates every correlation."
         )
       ))
