@@ -704,11 +704,8 @@ register_canonical_mapper <- function(backend, mapper) {
 #       "Precision for the Gaussian observations" -> "sigma" + sqrt(1/prec)
 #       "Precision for <group>"                   -> "sd_<group>" + sqrt(1/prec)
 
-# The canonical names of an AR1 field's correlations, c(row = , col = ) for
-# INLA's Rho and GroupRho. Each is rho_<factor>, the factor it runs along, so
-# ar1(col):ar1(row) and ar1(row):ar1(col) name the same correlation alike. A
-# field with one AR1 factor has the one correlation, rho_<factor>; its col
-# entry is never fitted.
+# Each correlation is rho_<factor>, the factor it runs along. A one-factor
+# field has one, and its col entry is never fitted.
 .fb_ar1_rho_names <- function(t) {
   if (!isTRUE(t$col_ar1)) {
     return(c(row = paste0("rho_", t$row_var %||% t$var), col = "rho_col"))
