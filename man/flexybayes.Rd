@@ -103,9 +103,11 @@ below.
 
 \strong{Parsed and refused by name.} \code{fa(f, k):g}, the factor-analytic
 genotype-by-environment covariance, is refused on both engines
-(\code{factor_analytic_not_repeatable}). Fits on INLA did not reproduce
-ASReml 4.2's split of the genetic variance into common and specific
-parts, and flexyBayes has no factor-analytic lowering for brms.
+(\code{factor_analytic_not_repeatable}). On simulated trials with a known
+covariance, the genetic-correlation intervals of INLA fits covered the
+true value less often than required (134 and 125 of 150 for k = 1 and
+2, against 136), and flexyBayes has no factor-analytic lowering for
+brms.
 Write \code{diag(f):g}, which fits on both engines, or \code{us(f):g} on brms.
 The bare spelling \code{fa(v, k)}, with no grouping factor for the covariance
 to apply to, keeps its own refusal (\code{fa_not_representable}).

@@ -79,7 +79,7 @@ the slots.
 | Per-trial genotype and residual variances | `random = ~ diag(trial):g`, `residual = ~ dsum(~ units \| trial)` | ASReml 4 | inla, brms | **covariance-family** | one-to-many: one field and one likelihood per trial | Past 15 variance parameters INLA fits the model by empirical Bayes (int.strategy = "eb"): the fixed and random effects are conditional on the posterior mode of the variance parameters, and each variance keeps its own posterior. Other models past 15 refuse with hyperparam_budget. | ASReml 4.2.0.482 at this anchor on 12 simulated trials, 26 variance parameters (data-raw/model_c_reference.R): every per-trial variance ASReml identifies within 0.17 of its ASReml standard error on INLA and 0.28 on brms |
 | Unstructured covariance over a factor, on brms | `us(f):g` | ASReml 4 | brms | **covariance-family** | one-to-one: one standard-deviation row for the group | -- | Live emission and parameter-count tests; no current ASReml comparison |
 | Unstructured covariance over a factor, on INLA | `us(f):g` | ASReml 4 | inla | **refused** | refused | Estimated correlation matrices are fitted on brms only. The INLA lowering, an iidKd field under a joint Wishart prior, refuses with correlated_covariance_requires_brms and backend = "auto" routes to brms. The row was covariance-family until 2026-09-11, analogue until 2026-09-13, and refused from then. | Refusal is the claim; asserted by name. The refusal rests on ASReml 4.2.0.392 on agridat::besag.met, oracle scenarios 06 and 07 (finding O04): a genetic correlation of 0.142 against 0.930 over two environments and 0.198 / 0.231 / 0.320 against 0.898 / 0.915 / 0.955 over three, with eight identical calls on the response rescaled by ten none converged and correlations from -0.894 to +0.686. Under every identical Wishart prior tried INLA and Stan agreed, and no Wishart scale gave REML-sized variances (INLA scale diagnosis, 2026-09-13), so the joint prior rather than the integration drives the disagreement |
-| Factor-analytic covariance | `fa(f, k):g` | ASReml 4 | inla | **refused** | one-to-many: one field per common factor and one per level | Refused from 0.13.0 with factor_analytic_not_repeatable, on both engines, and flexyBayes has no factor-analytic lowering for brms. At 0.13.0 repeated identical INLA calls did not agree on a trial with weak genetic signal. From 0.17.0 the reason is that fits on INLA did not reproduce ASReml 4.2's split of the genetic variance into common and specific parts. The loadings are anchored to one for factor j at an anchor level, which represents the factor-analytic family only where that level carries a common-factor loading. From 0.17.0 the anchors are the levels with the largest common genetic variance in the data; until 0.16.0 they were the first levels in factor order. The row was covariance-family until 2026-09-11, conditional from then, and refused from 2026-09-16. | Refusal is the claim; asserted by name. There is no second-engine oracle -- flexyBayes refuses the structure on brms -- so the reference is the analytic identified covariance G = LL' + diag(psi), which is invariant to the rotation and sign of the loadings. Measured under the 0.13.0 half-normal default against a tolerance declared before the runs (ratio 1.10 on each diagonal entry, range 0.05 on each genetic correlation, eight repeats): repeated to 1.003 and 1.007 on the two simulated anchor designs and to 1.0001 on agridat::dasilva.maize, and on agridat::besag.met at 30 genotypes spanned 1.23 in a variance and 0.12 in a correlation, on INLA's default threads and on one thread alike. The factor of 15 recorded by the 2026-09-11 repeatability screen did NOT reproduce at this release: under that screen's own criterion these runs score 1.31, which it would call stable |
+| Factor-analytic covariance | `fa(f, k):g` | ASReml 4 | inla | **refused** | one-to-many: one field per common factor and one per level | Refused from 0.13.0 with factor_analytic_not_repeatable, on both engines, and flexyBayes has no factor-analytic lowering for brms. The loadings are anchored to one for factor j at an anchor level, which represents the factor-analytic family only where that level carries a common-factor loading. From 0.17.0 the anchors are the levels with the largest common genetic variance in the data; until 0.16.0 they were the first levels in factor order. The row was covariance-family until 2026-09-11, conditional from then, and refused from 2026-09-16. | Refusal is the claim; asserted by name. The refusal rests on INLA fits of 20 simulated trials with a known covariance, and on agridat::omer.sorghum against ASReml 4.2; the numbers are under Reading a row |
 | Known covariance or precision carrier | `vm(g, K)`, `vm(g, cov = fb_cov(...))` | ASReml 4 | inla, brms | **exact** | one-to-one: one field; a blocks carrier is refused on both engines | Representation metadata (dense / chol / precision / blocks) must be correct. | Dense and sparse carrier tests; no current ASReml fixture for the inverse form |
 | Pedigree relationship carrier | `ped(g, A)` | ASReml 3 alias | inla, brms | **exact** | one-to-one | ASReml 4 removed ped() in favour of vm(). Accepted here for compatibility; vm(g, A) is the current spelling. | Shares the vm() carrier machinery and its evidence |
 | Correlated random slope, on brms | `(x \| g)` | lme4 / brms | brms | **covariance-family** | one-to-one: the intercept and slope standard deviations each take a row | brms writes the term verbatim and fits it natively. | Live emission and recovery tests; no current ASReml comparison on this engine |
@@ -121,16 +121,6 @@ That closed the failure entirely for simple and nested random effects. It did
 not close it for the factor-analytic and combined multi-environment rows,
 which carry twelve and thirteen variance parameters.
 
-The factor-analytic row was measured against a tolerance fixed before the
-runs and left the fitting route at 0.13.0. Under the half-normal default the
-identified covariance repeats to better than 1.01 on two simulated designs
-and on `agridat::dasilva.maize`, and on `agridat::besag.met`, where the
-genetic signal is weak, eight identical calls span a ratio of 1.23 in a
-genotype-by-environment variance and a range of 0.12 in a genetic
-correlation, against tolerances of 1.10 and 0.05. Pinning INLA to one thread
-does not settle it: seven of eight calls then agree exactly and the eighth
-lands on a different mode.
-
 A user fitting the combined multi-environment structure to a trial with weak
 genetic signal should refit and compare before acting on a variance
 component.
@@ -151,8 +141,38 @@ genetic variance.
 
 That was why the row was `conditional` rather than `covariance-family`, and
 why the summary stopped printing `Representation: exact` for a factor-analytic
-term. From 0.13.0 the row is `refused`: the anchoring precondition was never
-enforced, and the repeatability measurement above settled that a single fit's
-components cannot be read as the covariance on a low-signal trial. The emit
-remains in the source, reachable by a direct `emit_inla()` call, as the `us()`
-branch is; what is withdrawn is the claim attached to its output.
+term. From 0.13.0 the row is `refused`. The emit remains in the source,
+reachable by a direct `emit_inla()` call, as the `us()` branch is; what is
+withdrawn is the claim attached to its output.
+
+The refusal rests on a simulation test whose thresholds were set before it
+ran. For each of k = 1 and k = 2, INLA fitted 10 simulated trials of 60
+genotypes in 6 environments with 2 replicates. The posterior median and 95%
+interval of every environment's genetic variance (G_ee) and every genetic
+correlation were compared with the known covariance. All 20 fits converged.
+
+| Check | k = 1 | k = 2 | Required |
+|---|---|---|---|
+| G_ee intervals covering the true value | 58 of 60 | 55 of 60 | at least 53 |
+| Genetic-correlation intervals covering the true value | 134 of 150 | 125 of 150 | at least 136 |
+| G_ee medians more than 15% from the true value | 30 of 60 | 29 of 60 | none |
+| Correlation medians more than 0.10 from the true value | 26 of 150 | 61 of 150 | none |
+
+No estimator could meet the two checks on posterior medians at 60
+genotypes: the genetic effects drawn for 60 genotypes already differ from
+the population covariance by about 13% on a G_ee, before any residual noise.
+The coverage rows are the informative ones.
+
+For k = 2 the fits overstated the genetic correlations. The loading prior,
+normal(1, 0.316) on every free loading, gives a negative loading a
+probability of 0.00078, so genetic correlations are positive under it. The
+simulated k = 2 covariance has second-factor loadings of -0.5 and -0.4. The
+correlation between E4 and E6, whose true value is 0.025, was overestimated
+by 0.26 on average.
+
+On `agridat::omer.sorghum` (18 genotypes, 6 environments, 4 replicates) the
+comparison is with ASReml 4.2. At INLA's posterior mode, the common part of
+the genetic variance, the diagonal of LL', differed from ASReml's by a
+relative 1.53 (153%) for k = 1 in environment E4 and 1.65 (165%) for k = 2
+in environment E5. ASReml estimated the specific variance as zero in one
+environment for k = 1 and in two for k = 2.

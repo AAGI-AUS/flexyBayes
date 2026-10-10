@@ -670,13 +670,8 @@
         )
       ))
     }
-    # fa_gxe is refused here again from 0.13.0, and for a different reason
-    # than the one withdrawn at 0.10.0.9000. That refusal claimed INLA had no
-    # factor-analytic representation, which was false: INLA enters each common
-    # factor as scaled copies of a latent field and the copy scaling is the
-    # loading. The emit works. What it does not do is return the same answer
-    # twice on a trial with weak genetic signal, and a variance component that
-    # moves between identical calls is a draw rather than an estimate.
+    # INLA can represent fa_gxe; its fits of simulated trials with a known
+    # covariance missed the coverage required in 0.18.0.
     #
     # The altitude is dispatch-wide rather than the INLA emit because the
     # limit is not INLA's representation: brms has no factor-analytic lowering
@@ -689,15 +684,18 @@
         message = paste0(
           "fa(", term$outer, ", ", term$k, "):", term$inner,
           " asks for a factor-analytic genotype-by-environment covariance, ",
-          "which flexyBayes does not fit on either engine: fits on INLA did ",
-          "not reproduce ASReml 4.2's split of the genetic variance into ",
-          "common and specific parts, and flexyBayes has no factor-analytic ",
-          "lowering for brms. Write ",
+          "which flexyBayes does not fit on either engine. In a test fixed ",
+          "before it ran, INLA fits of simulated trials with a known ",
+          "covariance missed the accuracy and coverage required: ",
+          "genetic-correlation intervals covered the true value 134 of 150 ",
+          "times for k = 1 and 125 of 150 for k = 2, against 136 required, ",
+          "and for k = 2 the genetic correlations were biased upward. ",
+          "flexyBayes has no factor-analytic lowering for brms. Write ",
           "diag(", term$outer, "):", term$inner, ", one variance per ",
-          "environment, which fits on both engines; on INLA, ",
-          "summary(fit)$varcomp marks some variances the data barely ",
-          "identify as `weakly identified`, or us(", term$outer,
-          "):", term$inner, " on brms, which estimates every correlation."
+          "environment, which fits on both engines, or us(", term$outer,
+          "):", term$inner, " on brms, which estimates every correlation. ",
+          "On INLA, summary(fit)$varcomp marks some variances the data ",
+          "barely identify as `weakly identified`."
         )
       ))
     }

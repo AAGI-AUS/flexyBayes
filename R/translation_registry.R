@@ -299,10 +299,6 @@
       condition = paste(
         "Refused from 0.13.0 with factor_analytic_not_repeatable, on both",
         "engines, and flexyBayes has no factor-analytic lowering for brms.",
-        "At 0.13.0 repeated identical INLA calls did not agree on a trial",
-        "with weak genetic signal. From 0.17.0 the reason is that fits on",
-        "INLA did not reproduce ASReml 4.2's split of the genetic variance",
-        "into common and specific parts.",
         "The loadings are anchored to one for factor j at an anchor level,",
         "which represents the factor-analytic family only where that level",
         "carries a common-factor loading. From 0.17.0 the anchors are the",
@@ -312,21 +308,10 @@
         "2026-09-11, conditional from then, and refused from 2026-09-16."
       ),
       oracle = paste(
-        "Refusal is the claim; asserted by name. There is no second-engine",
-        "oracle -- flexyBayes refuses the structure on brms -- so the",
-        "reference is the analytic",
-        "identified covariance G = LL' + diag(psi), which is invariant to the",
-        "rotation and sign of the loadings. Measured under the 0.13.0",
-        "half-normal default against a tolerance declared before the runs",
-        "(ratio 1.10 on each diagonal entry, range 0.05 on each genetic",
-        "correlation, eight repeats): repeated to 1.003 and 1.007 on the two",
-        "simulated anchor designs and to 1.0001 on agridat::dasilva.maize,",
-        "and on agridat::besag.met at 30 genotypes spanned 1.23 in a variance",
-        "and 0.12 in a correlation, on INLA's default threads and on one",
-        "thread alike. The factor of 15 recorded by the 2026-09-11",
-        "repeatability screen did NOT reproduce at this release: under that",
-        "screen's own criterion these runs score 1.31, which it would call",
-        "stable"
+        "Refusal is the claim; asserted by name. The refusal rests on INLA",
+        "fits of 20 simulated trials with a known covariance, and on",
+        "agridat::omer.sorghum against ASReml 4.2; the numbers are under",
+        "Reading a row"
       ),
       anchor = "test-factor-analytic-inla.R"
     ),

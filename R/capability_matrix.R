@@ -223,11 +223,11 @@
       brms = "refuses",
       note = "flexyBayes does not fit this structure on either engine. INLA
         can represent it, one latent field per common factor entered at each
-        level as a scaled copy, but fits on INLA did not reproduce ASReml
-        4.2's split of the genetic variance into common and specific parts,
-        which ASReml often places at a specific variance of zero. Each
-        factor's loading is fixed at one at an anchor
-        environment, chosen from the data as the environment with the
+        level as a scaled copy, but on simulated trials with a known
+        covariance the genetic-correlation intervals of INLA fits covered the
+        true value 134 of 150 times for k = 1 and 125 of 150 for k = 2,
+        against 136 required. Each factor's loading is fixed at one at an
+        anchor environment, chosen from the data as the environment with the
         largest common genetic variance. flexyBayes has no factor-analytic
         lowering for brms. `diag(env):gen` fits on
         both engines, and `us(env):gen` on brms.",

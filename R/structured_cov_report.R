@@ -20,9 +20,10 @@
 # factor-analytic term in a model that had one. It is true again from 0.13.0,
 # for a stated reason rather than by assumption -- the structure is refused
 # on both engines by factor_analytic_not_repeatable (R/dispatch.R), because
-# repeated identical INLA calls did not agree on the covariance. Should that
-# refusal ever be lifted, the G below is what this function must return, and
-# this comment is the notice that it stops being dead code the moment it is.
+# INLA fits of simulated trials missed the interval coverage required.
+# Should that refusal ever be lifted, the G below is what this function must
+# return, and this comment is the notice that it stops being dead code the
+# moment it is.
 
 #' Identified covariance for factor-analytic structured-covariance terms
 #'
