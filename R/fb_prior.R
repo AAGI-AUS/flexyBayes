@@ -1267,10 +1267,12 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
           paste0(rho[["row"]], sfx),
           "AR1 latent field correlation keeps INLA's own default hyperprior"
         )
-        add_engine(
-          paste0(rho[["col"]], sfx),
-          "AR1 latent field correlation keeps INLA's own default hyperprior"
-        )
+        if (isTRUE(t$col_ar1)) {
+          add_engine(
+            paste0(rho[["col"]], sfx),
+            "AR1 latent field correlation keeps INLA's own default hyperprior"
+          )
+        }
       }
       next
     }
@@ -1281,7 +1283,7 @@ is_fb_prior <- function(x) inherits(x, "fb_prior")
         rho[["row"]],
         "AR1 latent field correlation keeps INLA's own default hyperprior"
       )
-      if (identical(ttype, "ar1_spatial")) {
+      if (identical(ttype, "ar1_spatial") && isTRUE(t$col_ar1)) {
         add_engine(
           rho[["col"]],
           "AR1 latent field correlation keeps INLA's own default hyperprior"
