@@ -264,9 +264,9 @@ test_that("the refusal names the rank, the term and what to write instead", {
   expect_match(msg, "us(env):gen", fixed = TRUE)
   expect_match(msg, "marks some variances the data barely identify as `weakly identified`",
                fixed = TRUE)
-  # It says why, in terms of the comparison with ASReml rather than of
-  # representability.
-  expect_match(msg, "did not reproduce ASReml 4.2's split", fixed = TRUE)
+  # It says why, with the coverage the simulation test required.
+  expect_match(msg, "134 of 150", fixed = TRUE)
+  expect_match(msg, "against 136 required", fixed = TRUE)
   # And it does not offer the other engine as a way to get the fit, because
   # brms has no lowering for the structure at all.
   expect_false(grepl("backend = \"brms\"", msg, fixed = TRUE))

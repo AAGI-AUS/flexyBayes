@@ -733,7 +733,7 @@ c(
 
 | ASReml construct | Why flexyBayes refuses it | What to write instead |
 |---|---|---|
-| `fa(env, k):gen` | Fits on INLA did not reproduce ASReml 4.2's split of the genetic variance into common and specific parts, and there is no factor-analytic lowering for brms (`inst/TRANSLATION.md` has the measurements) | `diag(env):gen`, or `us(env):gen` on brms for a few environments |
+| `fa(env, k):gen` | On simulated trials with a known covariance, the genetic-correlation intervals of INLA fits covered the true value less often than required, and there is no factor-analytic lowering for brms (`inst/TRANSLATION.md` has the measurements) | `diag(env):gen`, or `us(env):gen` on brms for a few environments |
 | `corh(env):gen` | No lowering on either engine | `diag(env):gen`, or `us(env):gen` on brms |
 | `dsum(~ ar1(x) \| env)` | Reducing it to one variance per section would drop the structure written | `dsum(~ units \| env)` |
 | `us(env):gen` with `backend = "inla"` | On INLA the fitted covariance did not match REML and changed when the response was rescaled (`inst/TRANSLATION.md`) | `backend = "auto"` or `"brms"` |

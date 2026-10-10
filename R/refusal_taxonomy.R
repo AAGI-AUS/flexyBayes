@@ -3446,8 +3446,8 @@ fb_refuse <- function(
 # covariance repeated to better than 1.01, and on agridat::besag.met, a trial
 # with weak genetic signal, eight identical calls spanned 1.23 in a variance
 # and 0.12 in a genetic correlation against tolerances of 1.10 and 0.05.
-# From 0.17.0 the refusal rests on ASReml 4.2 reference fits instead: INLA
-# did not reproduce ASReml's split of G into common and specific parts.
+# From 0.18.0 the refusal rests on simulated trials with a known G, where
+# INLA's genetic-correlation intervals missed the coverage required.
 #
 # The emit is left in place, reachable by a direct emit_inla() call, as the
 # us() branch is. What is withdrawn is the claim that the fitted numbers can
@@ -3458,9 +3458,9 @@ fb_refuse <- function(
     description = paste0(
       "A factor-analytic genotype-by-environment covariance, fa(f, k):g, ",
       "sent to a fit. INLA represents it by entering each common factor as ",
-      "scaled copies of a latent field, and that representation works, but ",
-      "fits on INLA did not reproduce ASReml 4.2's split of the genetic ",
-      "variance into common and specific parts. ",
+      "scaled copies of a latent field, but on simulated trials with a ",
+      "known covariance the genetic-correlation intervals of INLA fits ",
+      "covered the true value less often than required. ",
       "flexyBayes has no factor-analytic lowering for brms, so neither ",
       "engine fits the structure here. The diagonal structure diag(f):g ",
       "fits on both engines, and us(f):g fits on brms."

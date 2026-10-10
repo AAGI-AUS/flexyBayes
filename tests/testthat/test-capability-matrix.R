@@ -671,8 +671,8 @@ test_that("the combined MET model emits both blocks on brms", {
 test_that("factor-analytic GxE refuses on both engines", {
   # Refused on both from 0.13.0 under one reason code. The refusal is
   # dispatch-wide rather than per-engine because the limit is not INLA's
-  # representation -- that works -- but that repeated identical calls did
-  # not agree on the covariance, and brms has no factor-analytic lowering
+  # representation -- that works -- but that its fits of simulated trials
+  # missed the coverage required, and brms has no factor-analytic lowering
   # to route to. A per-engine refusal would send backend = "auto" to brms
   # to collect a second, less informative message.
   skip_if_not_installed("INLA")

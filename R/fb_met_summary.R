@@ -23,8 +23,8 @@
 # fa(f, k):g and this function refused the breeder summary of a model the
 # package had just fitted. It holds again from 0.13.0 because the structure
 # is refused on both engines by factor_analytic_not_repeatable
-# (R/dispatch.R) -- repeated identical INLA calls did not agree on the
-# covariance -- and not because no engine can represent it.
+# (R/dispatch.R) -- INLA fits of simulated trials missed the interval
+# coverage required -- and not because no engine can represent it.
 
 # --- the summary -------------------------------------------------- #
 
