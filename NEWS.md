@@ -1,3 +1,12 @@
+# flexyBayes (development version)
+
+## Authors
+
+* Max Moldovan is the sole author. Anabel Forte Deltell, Emi Tanaka and
+  Francis K.C. Hui are listed as contributors in `DESCRIPTION`,
+  `CITATION.cff`, `codemeta.json` and `.zenodo.json`, and the citation names
+  the author only.
+
 # flexyBayes 0.17.0
 
 ## Changes to fitting

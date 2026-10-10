@@ -9,21 +9,6 @@
       "name": "Moldovan, Max",
       "orcid": "0000-0001-9680-8474",
       "affiliation": "Australian Agricultural Genomics Institute (AAGI-AUS); Adelaide University"
-    },
-    {
-      "name": "Tanaka, Emi",
-      "orcid": "0000-0002-1455-259X",
-      "affiliation": "Australian National University"
-    },
-    {
-      "name": "Hui, Francis K.C.",
-      "orcid": "0000-0003-0765-3533",
-      "affiliation": "Australian National University"
-    },
-    {
-      "name": "Forte Deltell, Anabel",
-      "orcid": "0000-0001-9534-1817",
-      "affiliation": "Universitat de València"
     }
   ],
   "keywords": [
@@ -50,5 +35,25 @@
     "Rue, H., Martino, S., & Chopin, N. (2009). Approximate Bayesian inference for latent Gaussian models by using integrated nested Laplace approximations. Journal of the Royal Statistical Society: Series B, 71(2), 319–392."
   ],
   "language": "eng",
-  "notes": "Development release for public package review. All exported user-facing APIs are experimental; see API_STABILITY.md and NEWS.md for scope and known limitations."
+  "notes": "Development release for public package review. All exported user-facing APIs are experimental; see API_STABILITY.md and NEWS.md for scope and known limitations.",
+  "contributors": [
+    {
+      "name": "Tanaka, Emi",
+      "orcid": "0000-0002-1455-259X",
+      "affiliation": "Australian National University",
+      "type": "Other"
+    },
+    {
+      "name": "Hui, Francis K.C.",
+      "orcid": "0000-0003-0765-3533",
+      "affiliation": "Australian National University",
+      "type": "Other"
+    },
+    {
+      "name": "Forte Deltell, Anabel",
+      "orcid": "0000-0001-9534-1817",
+      "affiliation": "Universitat de València",
+      "type": "Other"
+    }
+  ]
 }
