@@ -18,8 +18,7 @@
 # the grid added after the original table (`Per-trial separable AR1 field`,
 # `Grouped temporal AR1 field`) sit later in the list than in the table.
 # `.fb_capability_grid_m_executed_elsewhere()` names the registry rows no M
-# cell can reach (the joint shrinkage-prior rows, each routed through
-# the removed `fb_select()` rather than a bare `flexybayes()` call); every registry row
+# cell can reach (none at present); every registry row
 # must appear in one list or the other, checked by
 # `.fb_capability_grid_check_drift()` before either script builds a cell or
 # a row from them.
@@ -188,22 +187,9 @@
 }
 
 # Matrix rows no M cell can execute, each with where it is executed instead.
-# A joint shrinkage prior reaches no flexybayes() call, and the function that
-# carried it, fb_select(), now only refuses. Listed by name so the gap prints
-# on every run.
+# No capability row is executed outside the M section.
 .fb_capability_grid_m_executed_elsewhere <- function() {
-  c(
-    "Ridge shrinkage prior on candidate fixed effects" =
-      "not executed: fb_select() refuses with selection_removed",
-    "Laplace shrinkage prior on candidate fixed effects" =
-      "not executed: fb_select() refuses with selection_removed",
-    "Elastic-net shrinkage prior on candidate fixed effects" =
-      "not executed: fb_select() refuses with selection_removed",
-    "Regularised horseshoe shrinkage prior on candidate fixed effects" =
-      "not executed: fb_select() refuses with selection_removed",
-    "R2D2 shrinkage prior on candidate fixed effects" =
-      "not executed: fb_select() refuses with selection_removed"
-  )
+  stats::setNames(character(0), character(0))
 }
 
 # --- drift check and CSV rows -------------------------------------------- #

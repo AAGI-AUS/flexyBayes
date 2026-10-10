@@ -36,10 +36,14 @@ test_that("the two-stage vignette has the section the message points at", {
 })
 
 test_that("the Rd and API_STABILITY name the same removal release", {
-  src <- testthat::test_path("..", "..", "R", "selection_removed.R")
+  rd <- testthat::test_path("..", "..", "man", "fb_selection_removed.Rd")
   api <- testthat::test_path("..", "..", "API_STABILITY.md")
-  skip_if_not(file.exists(src) && file.exists(api))
-  expect_false(any(grepl("removed in the next", readLines(src))))
-  expect_false(any(grepl("Removal in a later release",
-                         readLines(api), fixed = TRUE)))
+  skip_if_not(file.exists(rd) && file.exists(api))
+  phrase <- "release after the first public release that announces their removal"
+  rd_text <- gsub("\\s+", " ", paste(readLines(rd), collapse = " "))
+  expect_true(grepl(phrase, rd_text, fixed = TRUE))
+  api_lines <- readLines(api)
+  rows <- api_lines[grepl("deprecated in 0.16.0", api_lines, fixed = TRUE)]
+  expect_length(rows, 7L)
+  expect_true(all(grepl(phrase, rows, fixed = TRUE)))
 })
