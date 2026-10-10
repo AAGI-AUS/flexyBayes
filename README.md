@@ -105,6 +105,8 @@ the models neither engine fits, are in
 
 ## Documentation
 
+The manual is in the package vignettes listed below, and the website at <https://aagi-aus.github.io/flexyBayes/> will not load until GitHub Pages is turned on for the repository.
+
 | Vignette | Content |
 |---|---|
 | `flexyBayes-01-mixed-models` | Mixed models in brief |
