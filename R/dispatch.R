@@ -686,7 +686,7 @@
           " asks for a factor-analytic genotype-by-environment covariance, ",
           "which flexyBayes does not fit on either engine. In a test fixed ",
           "before it ran, INLA fits of simulated trials with a known ",
-          "covariance missed the accuracy and coverage required: ",
+          "covariance missed the coverage required: ",
           "genetic-correlation intervals covered the true value 134 of 150 ",
           "times for k = 1 and 125 of 150 for k = 2, against 136 required, ",
           "and for k = 2 the genetic correlations were biased upward. ",

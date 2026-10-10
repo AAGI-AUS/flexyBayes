@@ -305,7 +305,7 @@
 # .fb_is_spatial_varcomp() --- does this table describe a latent field?
 #
 # Read off the canonical component names rather than the IR, so the
-# honesty sentence appears exactly when the table it explains does.
+# sentence on the field appears exactly when the table it explains does.
 #
 # @noRd
 # @keywords internal

@@ -75,7 +75,7 @@ fb_decision <- function(...) {
     reason_code = "selection_removed",
     message = paste0(
       fn, " is no longer part of flexyBayes: penalised selection was ",
-      "removed in version 0.16.0. To fit a penalised regression on the ",
+      "removed after the public 0.10.0 release. To fit a penalised regression on the ",
       "fixed effects of a mixed model, whiten the design with the fit's ",
       "marginal covariance from fb_marginal_cov() and pass it to glmnet, ",
       "as shown in vignette(\"flexyBayes-06-two-stage\"), section ",
@@ -93,7 +93,7 @@ fb_decision <- function(...) {
       "A penalised-selection function was called: fb_select(), ",
       "fb_select_path(), fb_select_refit(), fb_select_fold_data(), ",
       "fb_penalty(), fb_resamples() or fb_decision(). Penalised selection ",
-      "was removed from flexyBayes in 0.16.0, and the two-stage vignette ",
+      "was removed after the public 0.10.0 release, and the two-stage vignette ",
       "shows a penalised regression on the whitened design with glmnet."
     ),
     message_template = "%s is no longer part of flexyBayes.",

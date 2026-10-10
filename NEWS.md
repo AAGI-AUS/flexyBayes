@@ -2,6 +2,10 @@
 
 ## Selection functions
 
+* `triangulate()` and `triangulate_genomic()`, exported in the public 0.10.0
+  release, were removed in 0.14.0. A script that calls them stops with
+  "could not find function". They compared two engines fitted from one parsed
+  model, which cannot detect a translation error both engines share.
 * `fb_select()`, `fb_select_path()`, `fb_select_refit()`, `fb_select_fold_data()`,
   `fb_penalty()`, `fb_resamples()` and `fb_decision()` stay in the package but
   only refuse. A script written against the public 0.10.0 release stops with
@@ -21,9 +25,9 @@
   (`inst/extdata/weak_identification_calibration.csv`). Of the 80 fits
   measured, it flags one that the prior-share reading did not: a
   five-level group with no true variance.
-* Expect more components marked than under 0.17.0, mostly terms with few
-  levels. Across the fits in the package's own tests, 55 components are
-  marked, 16 of them by the interval reading alone.
+* Expect more weak-identification warnings than under 0.17.0, mostly on
+  terms with few levels. In the default test run, at least 16 of the 55
+  warnings printed come from the interval reading alone.
 * The `besag.met` counties C2 and C5 under `diag(env):gen` are still not
   flagged. Their intervals are 1.7 times their medians, while ASReml's
   standard errors are six to seven times its estimates (KNOWN_ISSUES
