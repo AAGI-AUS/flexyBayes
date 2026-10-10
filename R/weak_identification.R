@@ -39,6 +39,27 @@
 # The share needs the prior the engine received and a posterior on the same
 # coordinates, so it is computed on INLA fits. A prior this file cannot read
 # leaves the component unflagged.
+#
+# The share does not move when the data bound a component away from zero
+# and above by a wide margin while leaving it poorly determined, because the
+# prior is wide. A second reading takes the width of the 95% interval over
+# the posterior median, both on the standard deviation, which needs no
+# prior. Over the same ten seeds (inst/extdata/weak_identification_calibration.csv):
+#
+#   design                                 interval / median
+#   3 levels of 10 rows                    4.30 to 5.15
+#   random copy of a 6-level fixed factor  3.21 to 3.22
+#   4 levels of 10 rows                    2.61 to 3.58
+#   5 levels of 10 rows                    1.97 to 2.66
+#   8 levels of 10 rows                    1.30 to 1.50
+#   30 levels of 8 rows                    0.58 to 0.64
+#   5 levels of 6 rows, group SD 0         2.55 to 4.24
+#   20 levels of 8 rows, group SD 0        1.56 to 3.19
+#
+# A null component reads high because its median is near zero. The random
+# copy of a fixed factor reads below the threshold, so a component is
+# flagged when either reading crosses its threshold. Also computed on INLA
+# fits only.
 
 # A component whose 95% interval spans at least this share of its prior's
 # probability is weakly identified.
@@ -156,9 +177,43 @@
   out
 }
 
-# Components whose 95% interval spans at least the threshold share of their
-# prior. `sd_spatial` is left to the spatial field's own test.
+# The width of each standard deviation's 95% interval over its posterior
+# median, named by component.
 #
+# @noRd
+# @keywords internal
+.fb_interval_ratio <- function(vc) {
+  medians <- attr(vc, "posterior_median") %||% numeric(0)
+  cmp <- as.character(vc$component)
+  keep <- cmp %in% names(medians)
+  ratio <- (vc$q97.5[keep] - vc$q2.5[keep]) / unname(medians[cmp[keep]])
+  ratio <- stats::setNames(ratio, cmp[keep])
+  ratio[is.finite(ratio)]
+}
+
+# Whether each component is weakly identified: its interval spans at least
+# the threshold share of its prior, or is at least the threshold multiple of
+# its median. `sd_spatial` is left to the spatial field's own test.
+#
+# @noRd
+# @keywords internal
+.fb_weakly_identified <- function(components, prior_share, interval_ratio) {
+  read <- function(x) {
+    out <- rep(NA_real_, length(components))
+    has <- components %in% names(x)
+    out[has] <- x[components[has]]
+    out
+  }
+  share <- read(prior_share)
+  ratio <- read(interval_ratio)
+  startsWith(components, "sd_") &
+    components != "sd_spatial" &
+    (
+      (!is.na(share) & share >= .FB_WEAK_IDENTIFICATION_SHARE) |
+        (!is.na(ratio) & ratio >= .FB_WEAK_IDENTIFICATION_RATIO)
+    )
+}
+
 # @noRd
 # @keywords internal
 .fb_weak_identification_reasons <- function(object) {
@@ -167,25 +222,29 @@
     return(character(0L))
   }
   share <- attr(vc, "prior_share") %||% numeric(0)
+  ratio <- attr(vc, "interval_ratio") %||% numeric(0)
   cmp <- as.character(vc$component)
-  hit <- which(
-    startsWith(cmp, "sd_") &
-      cmp != "sd_spatial" &
-      cmp %in% names(share)
-  )
-  hit <- hit[share[cmp[hit]] >= .FB_WEAK_IDENTIFICATION_SHARE]
+  hit <- which(.fb_weakly_identified(cmp, share, ratio))
   if (length(hit) == 0L) {
     return(character(0L))
   }
   vapply(
     hit,
     function(i) {
+      read <- c(
+        if (cmp[[i]] %in% names(share)) {
+          sprintf("%.0f%% of its prior's probability", 100 * share[[cmp[[i]]]])
+        },
+        if (cmp[[i]] %in% names(ratio)) {
+          sprintf("%.2f times its median", ratio[[cmp[[i]]]])
+        }
+      )
       sprintf(
-        "%s (95%% interval %.3g to %.3g, %.0f%% of its prior's probability)",
+        "%s (95%% interval %.3g to %.3g, %s)",
         cmp[[i]],
         vc$q2.5[[i]],
         vc$q97.5[[i]],
-        100 * share[[cmp[[i]]]]
+        paste(read, collapse = ", ")
       )
     },
     character(1)
@@ -208,8 +267,9 @@
   warning(
     "flexyBayes: a variance component in this fit is weakly identified -- ",
     paste(reasons, collapse = "; "),
-    ". Its 95% interval still spans 40% or more of its prior's probability, ",
-    "so the reported value says more about the prior than about the data. ",
+    ". Its 95% interval spans 40% or more of its prior's probability, or ",
+    "is 4.24 or more times its posterior median, so the data say little ",
+    "about the reported value. ",
     "Common ",
     "causes are a grouping factor with few levels and a random term that ",
     "splits the rows as a fixed term already does. Report the component ",

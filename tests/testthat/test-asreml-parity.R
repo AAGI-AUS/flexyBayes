@@ -274,7 +274,8 @@ test_that("05 diag(env):gen with dsum residual: identified components agree", {
 test_that("DEF-201: a genotype variance REML cannot identify is flagged", {
   skip(paste(
     "DEF-201 open: on 03_diag_gxe sd_gen__envC2 has REML std.error 7.2",
-    "times its estimate and a posterior median 6 times it, unflagged"
+    "times its estimate; the posterior variance median is 19.5 and its SD",
+    "interval 1.7 times its median, below both flag thresholds"
   ))
   .ap_skip_engine()
   out <- .ap_check_shape("03_diag_gxe", weak = character(0))
