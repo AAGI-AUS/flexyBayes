@@ -341,11 +341,14 @@ Each is reproducible on this release. Priority is for the MET use case.
     Under the default half-normal prior on a standard deviation, a component
     the data barely inform is reported at a value driven mostly by the prior.
     A component whose 95% interval covers 40% or more of its prior's
-    probability, or whose 95% interval on the standard deviation is 4.24 or
-    more times its posterior median, is marked `weakly identified` in
-    `summary(fit)$varcomp`, and the fit warns. A random term with the same
-    grouping as a fixed factor is flagged by the first reading, and a
-    grouping factor with three levels by both. *What is open*: brms fits are
+    probability is marked `weakly identified` in `summary(fit)$varcomp`,
+    and the fit warns. A random term with the same grouping as a fixed
+    factor is flagged this way. From 0.18.0 a second reading joins it as a
+    backstop: a 95% interval on the standard deviation 4.24 or more times
+    its posterior median also flags the component. On the 80 calibration
+    fits it adds one flag, a five-level group with no true variance; every
+    other flagged fit was already flagged by the first reading. It does not
+    flag the `besag.met` counties of item 24. *What is open*: brms fits are
     not checked, because that needs the prior each component received read
     back from Stan.
 21. **The factor-analytic covariance left the fitting route, because repeated
@@ -406,9 +409,9 @@ Each is reproducible on this release. Priority is for the MET use case.
     best of three INLA fits the posterior median standard deviations are
     4.42 and 4.42, variances of 19.5 and 19.6, with 95% intervals of 1.73
     to 9.18 and 1.68 to 9.42 on the standard deviation. Each interval is
-    1.7 times its median and covers 3% of the prior's probability, so
-    neither reading flags them and neither row of `summary(fit)$varcomp` is
-    marked `weakly identified`. Read the REML standard error beside the
+    1.7 times its median and covers 3% of the prior's probability. Neither
+    the prior-share reading nor the interval-to-median backstop of item 20
+    flags them, so C2 and C5 are still not marked `weakly identified`. Read the REML standard error beside the
     posterior for such a component. *What is open*: a flag that catches
     this case. brms fits are not checked (item 20). The regression test is in
     `tests/testthat/test-asreml-parity.R` (DEF-201), skipped while this is
