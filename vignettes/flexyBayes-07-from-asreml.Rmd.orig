@@ -618,10 +618,11 @@ vapply(names(asreml_args), function(a) {
   component `weakly identified` when its 95% credible interval still
   covers 40% or more of the prior's probability, that is, when the data
   have barely narrowed the prior, or when the interval is 4.24 or more
-  times the posterior median on the standard deviation. Report such a component as weakly
-  identified rather than as an estimate. A large ASReml standard error
-  relative to the component tells the same story, but the two checks do
-  not always agree, as the `besag.met` counties above show.
+  times the posterior median on the standard deviation. Report such a
+  component as weakly identified rather than as an estimate. A large
+  ASReml standard error relative to the component tells the same story,
+  but the two checks do not always agree, as the `besag.met` counties
+  above show.
 - **Priors.** The default prior on every standard deviation is a
   half-normal scaled to the response, stated in a note when the model is
   fitted. `fb_prior()` sets others.
