@@ -406,12 +406,14 @@ Each is reproducible on this release. Priority is for the MET use case.
     open*: a flag that catches this case. The regression test is in
     `tests/testthat/test-asreml-parity.R` (DEF-201), skipped while this is
     open.
-25. **`ar1(t):g` reports its correlation as `rho_row`.** For
-    `random = ~ ar1(t):g`, in either factor order, `summary(fit)$varcomp`
-    calls the correlation along `t` `rho_row`, while
-    `summary(fit)$spatial_field` calls it `rho_t`. The value is the same.
-    The regression test is in `tests/testthat/test-ar1-varcomp-names.R`
-    (DEF-225), skipped while this is open.
+25. **Closed: `ar1(t):g` names its correlation `rho_t`.** For
+    `random = ~ ar1(t):g`, in either factor order, the correlation along `t`
+    is `rho_<factor>` in `summary(fit)$varcomp`, in
+    `summary(fit)$spatial_field` and in the draws. A fit saved before this
+    release still prints `rho_row` in its stored table until it is refitted,
+    and asking `vpredict()` for `rho_row` on a new fit stops and names the
+    `rho_<factor>` to use. The regression test is in
+    `tests/testthat/test-ar1-varcomp-names.R` (DEF-225).
 26. **A refit in a fresh R process can reach a different INLA mode.** INLA
     reports a converged mode in every case, so `summary()` does not show it.
     Measured with INLA 26.8.7 on one thread, the same call and the same data

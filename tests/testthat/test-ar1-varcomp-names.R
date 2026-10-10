@@ -120,16 +120,67 @@ test_that("DEF-202: summary, the field panel and the draws agree on the names", 
                tolerance = 0.02)
 })
 
-test_that("DEF-225: a field with one AR1 factor names its correlation by factor", {
-  skip(paste(
-    "DEF-225 open: ar1(t):g reports its correlation as rho_row in",
-    "summary()$varcomp while the field panel says rho_t"
-  ))
-  skip_on_cran()
-  skip_if_not_installed("INLA")
+.vn_one_factor_fit <- function() {
   set.seed(31L)
   d <- expand.grid(t = factor(1:8), g = factor(1:12))
   d$y <- stats::rnorm(nrow(d))
-  fit <- .vn_fit(y ~ 1, random = ~ ar1(t):g, data = d)
-  expect_true("rho_t" %in% summary(fit)$varcomp$component)
+  .vn_fit(y ~ 1, random = ~ ar1(t):g, data = d)
+}
+
+test_that("DEF-225: a field with one AR1 factor names its correlation by factor", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fit <- .vn_one_factor_fit()
+  s <- summary(fit)
+  expect_true("rho_t" %in% s$varcomp$component)
+  expect_false("rho_row" %in% s$varcomp$component)
+  panel <- s$spatial_field$parameter
+  expect_true(any(grepl("(rho_t)", panel, fixed = TRUE)))
+  draws <- fb_variance_draws(fit, 20L, seed = 1L)
+  expect_true("rho_t" %in% names(draws))
+})
+
+test_that("DEF-225: the old name on a new one-factor fit refuses and names the new one", {
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  fit <- .vn_one_factor_fit()
+  expect_error(
+    vpredict(fit, r ~ rho_row, n_draws = 20L),
+    "rho_t",
+    class = "flexybayes_refusal_vpredict_component_not_in_posterior"
+  )
+  expect_error(
+    fb_marginal_cov(fit),
+    class = "flexybayes_refusal_marginal_cov_not_buildable"
+  )
+})
+
+test_that("DEF-225: the names a field is given are rho_<factor> for one factor, rho_row/rho_col for two", {
+  one <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1_spatial", row_var = "t",
+                                             col_var = "g", col_ar1 = FALSE))
+  expect_identical(one[["row"]], "rho_t")
+  res <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1", var = "t"))
+  expect_identical(res[["row"]], "rho_t")
+  two <- flexyBayes:::.fb_ar1_rho_names(list(type = "ar1_spatial", row_var = "row",
+                                             col_var = "col", col_ar1 = TRUE))
+  expect_identical(unname(two), c("rho_row", "rho_col"))
+})
+
+test_that("DEF-225: a fit saved before 0.18.0 keeps rho_row in its stored table", {
+  vc <- data.frame(
+    component = c("sigma", "sd_g", "sd_spatial", "rho_row"),
+    estimate = c(1, 0.5, 0.7, 0.4),
+    sd = c(0.1, 0.1, 0.1, 0.1),
+    q2.5 = c(0.8, 0.3, 0.5, 0.1),
+    q97.5 = c(1.2, 0.7, 0.9, 0.7),
+    stringsAsFactors = FALSE
+  )
+  saved <- structure(
+    list(extras = list(variance_comps = vc)),
+    class = c("flexybayes_inla", "flexybayes")
+  )
+  expect_true("rho_row" %in% flexyBayes:::.fb_summary_varcomp(saved)$component)
+  expect_false(
+    "rho_t" %in% flexyBayes:::.fb_summary_varcomp(saved)$component
+  )
 })

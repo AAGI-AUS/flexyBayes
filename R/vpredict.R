@@ -18,6 +18,20 @@
 # not engine-native ones: .fb_canonical_draws() has already renamed and
 # put every variance component on the standard-deviation scale.
 
+# The sentence that points a pre-0.18.0 name, rho_row on a one-factor AR1
+# field, to the rho_<factor> a fit now carries; empty when none applies.
+.fb_rho_renamed_note <- function(unknown, carried, object) {
+  renamed <- .fb_ar1_rho_renamed(object$fb)
+  hit <- renamed[names(renamed) %in% unknown & renamed %in% carried]
+  if (!length(hit)) {
+    return("")
+  }
+  paste0(
+    " A one-factor AR1 field names its correlation after the factor: use ",
+    paste0("`", hit, "` for `", names(hit), "`", collapse = ", "), "."
+  )
+}
+
 # .fb_vpredict_draws() --- variance-component draws fit to be transformed.
 #
 # The generic draws path takes hyperparameters from
@@ -195,7 +209,8 @@ vpredict.flexybayes <- function(
           ", which this fit does not carry. It carries: ",
           paste(sort(names(post)), collapse = ", "),
           ". Variance components are on the standard-deviation scale, so a ",
-          "variance ratio squares them."
+          "variance ratio squares them.",
+          .fb_rho_renamed_note(unknown, names(post), object)
         )
       ))
     }
