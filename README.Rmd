@@ -102,8 +102,8 @@ reproducible example and the output of `sessionInfo()`.
 
 ```
 @software{flexyBayes,
-  title  = {flexyBayes: Flexible Bayesian Mixed Models with ASReml
-            and brms-Style Syntax},
+  title  = {flexyBayes: Bayesian Mixed Models with ASReml Syntax
+            via INLA and brms},
   author = {Moldovan, Max},
   year   = {2026},
   url    = {https://github.com/AAGI-AUS/flexyBayes}

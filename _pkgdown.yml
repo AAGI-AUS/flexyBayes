@@ -8,7 +8,7 @@ development:
   mode: auto
 
 home:
-  title: flexyBayes — Flexible Bayesian mixed models with ASReml and brms-style syntax
+  title: flexyBayes — Bayesian mixed models with ASReml syntax via INLA and brms
   description: >
     Specify mixed models using ASReml-style or brms-style formula syntax
     and estimate them via INLA or brms (Stan). The ASReml grammar reaches

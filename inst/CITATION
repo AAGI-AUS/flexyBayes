@@ -1,6 +1,6 @@
 bibentry(
   bibtype  = "Manual",
-  title    = "flexyBayes: Flexible Bayesian Mixed Models with ASReml and brms-Style Syntax",
+  title    = "flexyBayes: Bayesian Mixed Models with ASReml Syntax via INLA and brms",
   author   = person("Max", "Moldovan",
                     comment = c(ORCID = "0000-0001-9680-8474")),
   year     = "2026",

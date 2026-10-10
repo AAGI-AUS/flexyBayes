@@ -6,6 +6,9 @@
   Francis K.C. Hui are listed as contributors in `DESCRIPTION`,
   `CITATION.cff`, `codemeta.json` and `.zenodo.json`, and the citation names
   the author only.
+* The package title is now "Bayesian Mixed Models with ASReml Syntax via INLA
+  and brms" in `DESCRIPTION`, the citation, `CITATION.cff`, `codemeta.json`,
+  `.zenodo.json`, the pkgdown site and the README.
 
 # flexyBayes 0.17.0
 
