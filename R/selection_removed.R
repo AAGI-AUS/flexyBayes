@@ -9,8 +9,8 @@
 #' `fb_select_refit()`, `fb_select_fold_data()`, `fb_penalty()`,
 #' `fb_resamples()` and `fb_decision()` remain for this release so that a
 #' call to them stops with a refusal that says so, of class
-#' `flexybayes_refusal_selection_removed`. They will be removed in the next
-#' release.
+#' `flexybayes_refusal_selection_removed`. They will be removed in the release
+#' after the first public release that announces their removal.
 #'
 #' A penalised regression over candidate fixed effects can be fitted on the
 #' design whitened by the fitted marginal covariance, from
