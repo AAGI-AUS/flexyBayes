@@ -40,11 +40,9 @@
 # coordinates, so it is computed on INLA fits. A prior this file cannot read
 # leaves the component unflagged.
 #
-# The share does not move when the data bound a component away from zero
-# and above by a wide margin while leaving it poorly determined, because the
-# prior is wide. A second reading takes the width of the 95% interval over
-# the posterior median, both on the standard deviation, which needs no
-# prior. Over the same ten seeds (inst/extdata/weak_identification_calibration.csv):
+# The second reading is the width of the 95% interval over the posterior
+# median, both on the standard deviation. Over the same ten seeds
+# (inst/extdata/weak_identification_calibration.csv):
 #
 #   design                                 interval / median
 #   3 levels of 10 rows                    4.30 to 5.15
@@ -57,19 +55,16 @@
 #   20 levels of 8 rows, group SD 0        1.56 to 3.19
 #
 # A null component reads high because its median is near zero. The random
-# copy of a fixed factor reads below the threshold, so a component is
-# flagged when either reading crosses its threshold. Also computed on INLA
-# fits only.
+# copy of a fixed factor reads below the threshold, so either reading flags
+# a component. Computed on INLA fits only.
 
 # A component whose 95% interval spans at least this share of its prior's
 # probability is weakly identified.
 .FB_WEAK_IDENTIFICATION_SHARE <- 0.4
 
-# A component whose 95% interval is at least this many times its posterior
-# median, both on the standard deviation, is weakly identified. The 99th
-# percentile of the ratio over the ten-seed designs with five or more levels
-# (inst/extdata/weak_identification_calibration.csv,
-# data-raw/weak_identification_calibration.R).
+# The 99th percentile of the interval-to-median ratio over the ten-seed
+# designs with five or more levels
+# (data-raw/weak_identification_calibration.R).
 .FB_WEAK_IDENTIFICATION_RATIO <- 4.24
 
 # The distribution function, on the standard deviation, of a prior as INLA
