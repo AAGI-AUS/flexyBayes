@@ -26,9 +26,20 @@
   if (!length(hit)) {
     return("")
   }
+  saved <- any(names(hit) %in% as.character(
+    object$extras$variance_comps$component
+  ))
   paste0(
     " A one-factor AR1 field names its correlation after the factor: use ",
-    paste0("`", hit, "` for `", names(hit), "`", collapse = ", "), "."
+    paste0("`", hit, "` for `", names(hit), "`", collapse = ", "), ".",
+    if (saved) {
+      paste0(
+        " This fit was saved before 0.18.0: summary() shows `",
+        paste(names(hit), collapse = "`, `"),
+        "` from its stored table, and its draws carry the same correlation ",
+        "as `", paste(hit, collapse = "`, `"), "`. Refit to make them agree."
+      )
+    }
   )
 }
 
