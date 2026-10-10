@@ -341,10 +341,16 @@ Each is reproducible on this release. Priority is for the MET use case.
     Under the default half-normal prior on a standard deviation, a component
     the data barely inform is reported at a value driven mostly by the prior.
     A component whose 95% interval covers 40% or more of its prior's
-    probability is now marked `weakly identified` in `summary(fit)$varcomp`,
-    and the fit warns. A random term with the same grouping as a fixed factor
-    is flagged this way. *What is open*: brms fits are not checked, because
-    that needs the prior each component received read back from Stan.
+    probability is marked `weakly identified` in `summary(fit)$varcomp`,
+    and the fit warns. A random term with the same grouping as a fixed
+    factor is flagged this way. From 0.18.0 a second reading joins it as a
+    backstop: a 95% interval on the standard deviation 4.24 or more times
+    its posterior median also flags the component. On the 80 calibration
+    fits it adds one flag, a five-level group with no true variance; every
+    other flagged fit was already flagged by the first reading. It does not
+    flag the `besag.met` counties of item 24. *What is open*: brms fits are
+    not checked, because that needs the prior each component received read
+    back from Stan.
 21. **The factor-analytic covariance left the fitting route, because repeated
     identical calls did not agree.** `fa(env, k):gen` fitted on INLA from
     0.10.0.9000; from 0.13.0 both engines refuse it
@@ -399,11 +405,15 @@ Each is reproducible on this release. Priority is for the MET use case.
 24. **The weak-identification flag can stay silent on a variance REML cannot
     identify.** On `agridat::besag.met` with `random = ~ diag(env):gen`,
     ASReml estimates the county `C2` genotype variance at 3.28 with a
-    standard error of 23.6, and `C5` at 3.77 with 23.7. The INLA posterior
-    medians are 15.6 and 15.3 on the variance scale, and neither row of
-    `summary(fit)$varcomp` is marked `weakly identified`. Read the REML
-    standard error beside the posterior for such a component. *What is
-    open*: a flag that catches this case. The regression test is in
+    standard error of 23.6, and `C5` at 3.77 with 23.7. Under the default
+    best of three INLA fits the posterior median standard deviations are
+    4.42 and 4.42, variances of 19.5 and 19.6, with 95% intervals of 1.73
+    to 9.18 and 1.68 to 9.42 on the standard deviation. Each interval is
+    1.7 times its median and covers 3% of the prior's probability. Neither
+    the prior-share reading nor the interval-to-median backstop of item 20
+    flags them, so C2 and C5 are still not marked `weakly identified`. Read the REML standard error beside the
+    posterior for such a component. *What is open*: a flag that catches
+    this case. brms fits are not checked (item 20). The regression test is in
     `tests/testthat/test-asreml-parity.R` (DEF-201), skipped while this is
     open.
 25. **Closed: `ar1(t):g` names its correlation `rho_t`.** For

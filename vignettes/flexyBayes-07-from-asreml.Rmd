@@ -94,21 +94,21 @@ fit_alpha <- flexybayes(
   verbose = FALSE
 )
 #> Warning: flexyBayes: a variance component in this fit is weakly identified --
-#> sd_rep (95% interval 0.167 to 3.15, 66% of its prior's probability). Its 95%
-#> interval still spans 40% or more of its prior's probability, so the reported
-#> value says more about the prior than about the data. Common causes are a
-#> grouping factor with few levels and a random term that splits the rows as a
-#> fixed term already does. Report the component as weakly identified rather than
-#> as an estimate; state a prior you can defend with fb_prior(); or remove the
-#> term the data cannot separate. summary(fit)$varcomp marks the row `weakly
-#> identified`. Silence via options(flexyBayes.silence_weak_identification_warning
-#> = TRUE).
+#> sd_rep (95% interval 0.167 to 3.15, 66% of its prior's probability, 4.91 times
+#> its median). Its 95% interval spans 40% or more of its prior's probability, or
+#> is 4.24 or more times its posterior median, so the data say little about the
+#> reported value. Common causes are a grouping factor with few levels and a
+#> random term that splits the rows as a fixed term already does. Report the
+#> component as weakly identified rather than as an estimate; state a prior you
+#> can defend with fb_prior(); or remove the term the data cannot separate.
+#> summary(fit)$varcomp marks the row `weakly identified`. Silence via
+#> options(flexyBayes.silence_weak_identification_warning = TRUE).
 summary(fit_alpha)$varcomp[, c("component", "estimate", "conf.low",
                                "conf.high", "note")]
 #>      component  estimate  conf.low conf.high              note
-#> 1        sigma 0.2996938 0.2321726 0.3848516                  
-#> 2       sd_rep 0.8698729 0.1668337 3.1545182 weakly identified
-#> 3 sd_rep:block 0.2681673 0.1421132 0.4469397
+#> 1        sigma 0.2996941 0.2321713 0.3848511                  
+#> 2       sd_rep 0.8698998 0.1668338 3.1547277 weakly identified
+#> 3 sd_rep:block 0.2681673 0.1421128 0.4469463
 ```
 
 ASReml, asreml(yield ~ gen, random = ~ rep + rep:block):
@@ -133,9 +133,9 @@ data.frame(
   flexybayes = unname(med[c("sd_rep", "sd_rep:block", "sigma")]^2)
 )
 #>   component     asreml flexybayes
-#> 1       rep 0.11396119 0.37033813
-#> 2 rep:block 0.06195183 0.06736959
-#> 3  residual 0.08523612 0.08796654
+#> 1       rep 0.11396119 0.37034033
+#> 2 rep:block 0.06195183 0.06736901
+#> 3  residual 0.08523612 0.08796705
 ```
 
 The residual and block variances agree to within 10%. The replicate
@@ -166,7 +166,7 @@ rnd(head(both))
 #> 5 G05   5.04     0.276       5.04         0.627
 #> 6 G06   4.54     0.276       4.54         0.628
 max(abs(both$flexybayes - both$asreml))
-#> [1] 0.001464476
+#> [1] 0.001462815
 ```
 
 The means agree to within 0.0015.
@@ -295,16 +295,16 @@ data.frame(
 #>       asreml_term asreml se_ratio bound flexybayes_median_sq note
 #> 1  env:gen!env_C1   13.4     1.77     P                 16.6     
 #> 2  env:gen!env_C2   22.6     1.16     P                 23.9     
-#> 3  env:gen!env_C3   42.6     0.75     P                 41.9     
+#> 3  env:gen!env_C3   42.6     0.75     P                 42.0     
 #> 4  env:gen!env_C4   26.1     0.89     P                 26.3     
 #> 5  env:gen!env_C5   57.9     0.42     P                 58.2     
-#> 6  env:gen!env_C6    0.0       NA     B                  5.6     
+#> 6  env:gen!env_C6    0.0       NA     B                  5.7     
 #> 7        env_C1!R  299.2     0.12     P                296.1     
 #> 8        env_C2!R  315.2     0.12     P                313.7     
-#> 9        env_C3!R  347.7     0.12     P                348.4     
+#> 9        env_C3!R  347.7     0.12     P                348.5     
 #> 10       env_C4!R  266.2     0.12     P                265.9     
-#> 11       env_C5!R  210.7     0.12     P                211.9     
-#> 12       env_C6!R  709.1     0.10     P                712.3
+#> 11       env_C5!R  210.7     0.12     P                211.7     
+#> 12       env_C6!R  709.1     0.10     P                712.5
 ```
 
 `se_ratio` is ASReml's standard error divided by its estimate. The six
@@ -405,7 +405,7 @@ gap_g <- abs(med[paste0("sd_VARIETY__TRIAL", trials)]^2 - a$gxe_var) / a$gxe_se
 gap_r <- abs(med[paste0("sigma_", trials)]^2 - a$res_var) / a$res_se
 c(gxe = max(gap_g[ident]), residual = max(gap_r))
 #>       gxe  residual 
-#> 0.1648280 0.1552023
+#> 0.1648056 0.1551686
 ```
 
 ASReml identifies 6 of the 12 genotype-by-trial variances
@@ -568,10 +568,10 @@ fit_field <- flexybayes(yield ~ rep, random = ~ gen + ar1(row):ar1(col),
                         data = serp, verbose = FALSE)
 summary(fit_field)$spatial_field
 #>                         parameter      median       lower       upper
-#> 1 correlation along row (rho_row)   0.9890324   0.9704036   0.9962942
-#> 2 correlation along col (rho_col)   0.8062943   0.5390735   0.9287542
-#> 3          field SD (sigma_field) 190.2227807 109.5873345 345.4879599
-#> 4             nugget SD (sigma_e)  41.1773030  35.7047855  47.5723757
+#> 1 correlation along row (rho_row)   0.9890323   0.9704025   0.9962941
+#> 2 correlation along col (rho_col)   0.8062922   0.5390564   0.9287521
+#> 3          field SD (sigma_field) 190.2259245 109.5858631 345.4892004
+#> 4             nugget SD (sigma_e)  41.1773183  35.7047197  47.5720912
 ```
 
 The same correlations appear in `summary(fit)$varcomp` as `rho_row` and
@@ -635,7 +635,7 @@ data.frame(
 #> 9  at(TRIAL, 'T3'):ROW:RANGE!RANGE!cor  0.512      0.508
 #> 10                             units!R  0.107      0.105
 max(abs(fb_value / asr$component - 1))
-#> [1] 0.03061261
+#> [1] 0.03060834
 ```
 
 Both columns give variances, not standard deviations, for the field and
@@ -783,10 +783,12 @@ vapply(names(asreml_args), function(a) {
 - **Weak identification.** On INLA fits, `summary(fit)$varcomp` marks a
   component `weakly identified` when its 95% credible interval still
   covers 40% or more of the prior's probability, that is, when the data
-  have barely narrowed the prior. Report such a component as weakly
-  identified rather than as an estimate. A large ASReml standard error
-  relative to the component tells the same story, but the two checks do
-  not always agree, as the `besag.met` counties above show.
+  have barely narrowed the prior, or when the interval is 4.24 or more
+  times the posterior median on the standard deviation. Report such a
+  component as weakly identified rather than as an estimate. A large
+  ASReml standard error relative to the component tells the same story,
+  but the two checks do not always agree, as the `besag.met` counties
+  above show.
 - **Priors.** The default prior on every standard deviation is a
   half-normal scaled to the response, stated in a note when the model is
   fitted. `fb_prior()` sets others.

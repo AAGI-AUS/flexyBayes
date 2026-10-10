@@ -3440,6 +3440,7 @@ emit_inla <- function(
   # The share of each prior inside the 95% interval
   # (R/weak_identification.R).
   attr(out, "prior_share") <- .fb_inla_prior_share(object, mapper$map)
+  attr(out, "interval_ratio") <- .fb_interval_ratio(out)
   out
 }
 

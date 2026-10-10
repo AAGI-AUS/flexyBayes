@@ -262,6 +262,8 @@ test_that("the refusal names the rank, the term and what to write instead", {
   expect_match(msg, "fa(env, 2):gen", fixed = TRUE)
   expect_match(msg, "diag(env):gen", fixed = TRUE)
   expect_match(msg, "us(env):gen", fixed = TRUE)
+  expect_match(msg, "marks some variances the data barely identify as `weakly identified`",
+               fixed = TRUE)
   # It says why, in terms of the comparison with ASReml rather than of
   # representability.
   expect_match(msg, "did not reproduce ASReml 4.2's split", fixed = TRUE)

@@ -594,7 +594,8 @@
   upper,
   medians,
   covariate_scale = numeric(0),
-  prior_share = numeric(0)
+  prior_share = numeric(0),
+  interval_ratio = numeric(0)
 ) {
   notes <- rep("", length(components))
   # A slope SD times its covariate's SD is in response units
@@ -604,13 +605,7 @@
 
   # Weakly identified (R/weak_identification.R); the spatial field has its
   # own test.
-  share <- rep(NA_real_, length(components))
-  has_share <- components %in% names(prior_share)
-  share[has_share] <- prior_share[components[has_share]]
-  weak <- startsWith(components, "sd_") &
-    components != "sd_spatial" &
-    !is.na(share) &
-    share >= .FB_WEAK_IDENTIFICATION_SHARE
+  weak <- .fb_weakly_identified(components, prior_share, interval_ratio)
   notes[weak] <- "weakly identified"
 
   ref <- if ("sigma" %in% names(medians)) {
@@ -901,7 +896,8 @@
     out$conf.high,
     medians,
     covariate_scale = .fb_slope_covariate_scale(object),
-    prior_share = attr(vc, "prior_share") %||% numeric(0)
+    prior_share = attr(vc, "prior_share") %||% numeric(0),
+    interval_ratio = attr(vc, "interval_ratio") %||% numeric(0)
   )
   # A fit compared with the model without its AR1 field is flagged by that
   # comparison, the same reading the fit-time warning takes.
