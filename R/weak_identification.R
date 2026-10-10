@@ -44,6 +44,13 @@
 # probability is weakly identified.
 .FB_WEAK_IDENTIFICATION_SHARE <- 0.4
 
+# A component whose 95% interval is at least this many times its posterior
+# median, both on the standard deviation, is weakly identified. The 99th
+# percentile of the ratio over the ten-seed designs with five or more levels
+# (inst/extdata/weak_identification_calibration.csv,
+# data-raw/weak_identification_calibration.R).
+.FB_WEAK_IDENTIFICATION_RATIO <- 4.24
+
 # The distribution function, on the standard deviation, of a prior as INLA
 # reports it received it, or NULL for a prior this cannot read.
 #
