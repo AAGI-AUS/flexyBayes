@@ -71,7 +71,7 @@ one_fit <- function(design, levels, rows, sd_g, seed) {
 
 rows <- list()
 for (i1 in seq_len(nrow(designs))) {
-  for (seed in 1:10) {
+  for (seed in seq_len(10L)) {
     rows[[length(rows) + 1L]] <- one_fit(
       designs$design[[i1]], designs$levels[[i1]], designs$rows[[i1]],
       designs$sd_g[[i1]], seed
