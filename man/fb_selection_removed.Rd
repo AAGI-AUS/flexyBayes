@@ -37,8 +37,8 @@ flexyBayes. \code{fb_select()}, \code{fb_select_path()},
 \code{fb_select_refit()}, \code{fb_select_fold_data()}, \code{fb_penalty()},
 \code{fb_resamples()} and \code{fb_decision()} remain for this release so that a
 call to them stops with a refusal that says so, of class
-\code{flexybayes_refusal_selection_removed}. They will be removed in the next
-release.
+\code{flexybayes_refusal_selection_removed}. They will be removed in the release
+after the first public release that announces their removal.
 
 A penalised regression over candidate fixed effects can be fitted on the
 design whitened by the fitted marginal covariance, from

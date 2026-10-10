@@ -1,0 +1,46 @@
+# The seven penalised-selection exports stay callable until the removal is
+# announced in a public release; each refuses with selection_removed.
+
+removed_fns <- c(
+  "fb_select", "fb_select_path", "fb_select_refit", "fb_select_fold_data",
+  "fb_penalty", "fb_resamples", "fb_decision"
+)
+
+test_that("each removed function is still exported", {
+  ns <- getNamespaceExports("flexyBayes")
+  expect_true(all(removed_fns %in% ns))
+})
+
+test_that("each removed function signals selection_removed", {
+  for (nm in removed_fns) {
+    f <- getExportedValue("flexyBayes", nm)
+    err <- tryCatch(f(), error = function(e) e)
+    expect_s3_class(err, "flexybayes_refusal_selection_removed")
+    expect_s3_class(err, "flexybayes_refusal")
+    expect_match(conditionMessage(err), paste0(nm, "()"), fixed = TRUE)
+  }
+})
+
+test_that("the message names the vignette section", {
+  err <- tryCatch(fb_select(), error = function(e) e)
+  expect_match(conditionMessage(err), "flexyBayes-06-two-stage", fixed = TRUE)
+  expect_match(conditionMessage(err),
+               "Penalised selection on the whitened design", fixed = TRUE)
+})
+
+test_that("the two-stage vignette has the section the message points at", {
+  vig <- testthat::test_path("..", "..", "vignettes", "flexyBayes-06-two-stage.Rmd")
+  skip_if_not(file.exists(vig))
+  expect_true(any(grepl("Penalised selection on the whitened design",
+                        readLines(vig), fixed = TRUE)))
+})
+
+test_that("the Rd and API_STABILITY name the same removal release", {
+  rd <- system.file("help", package = "flexyBayes")
+  src <- testthat::test_path("..", "..", "R", "selection_removed.R")
+  api <- testthat::test_path("..", "..", "API_STABILITY.md")
+  skip_if_not(file.exists(src) && file.exists(api))
+  expect_false(any(grepl("removed in the next", readLines(src))))
+  expect_false(any(grepl("Removal in a later release",
+                         readLines(api), fixed = TRUE)))
+})
