@@ -1,4 +1,4 @@
-flexyBayes Packaged: 2026-10-10 23:24:42 UTC
+flexyBayes Packaged: 2026-10-10 23:54:25 UTC
 flexyBayes version : 0.18.0
 
 R version 4.6.1 (2026-06-24)
