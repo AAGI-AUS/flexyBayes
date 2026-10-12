@@ -60,6 +60,9 @@
   `rho_row` in `summary()` until it is refitted, while its draws already use
   `rho_t`. Asking `vpredict()` for `rho_row` stops and names the correlation
   to use. The names of an `ar1(row):ar1(col)` field are unchanged.
+* On INLA, the `prior` column of `summary(fit)$varcomp` names the residual
+  prior on every section of `dsum(~ units | f)`. It used to read "engine
+  default" although INLA received that prior on each section.
 
 ## Documentation
 

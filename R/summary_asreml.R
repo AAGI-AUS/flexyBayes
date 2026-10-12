@@ -374,6 +374,13 @@
     character(0)
   }
   sectioned <- .fb_sectioned_residual_prior(ps)
+  slots <- ps$slots
+  inla_sectioned <- "sigma" %in% names(recorded) &&
+    is.data.frame(slots) &&
+    all(c("structure", "target_key", "readback_agrees") %in% names(slots)) &&
+    any(slots$structure %in% "sectioned_residual" &
+          slots$target_key %in% "sigma" &
+          slots$readback_agrees %in% TRUE)
 
   # Ahead of the declaration on purpose. A component whose structure gives
   # the engine no slot for the declared prior did not get it, whatever the
@@ -422,6 +429,11 @@
       # the engine's own table, exactly as for the legacy bridge.
       if (nzchar(sectioned) && startsWith(cmp, "sigma_")) {
         return(sectioned)
+      }
+      # INLA has no such table: each section is its own family
+      # hyperparameter and the residual prior reaches every one of them.
+      if (inla_sectioned && startsWith(cmp, "sigma_")) {
+        return(unname(recorded[["sigma"]]))
       }
       # Ahead of the engine-default branch on purpose: a component the
       # legacy bridge priored is listed as an engine default by

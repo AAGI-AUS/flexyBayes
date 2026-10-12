@@ -335,6 +335,33 @@ test_that("the per-level residuals are rows of summary(fit)$varcomp", {
   expect_false(any(startsWith(summary(plain)$varcomp$component, "sigma_")))
 })
 
+test_that("on INLA each residual section's prior cell names the prior it received", {
+  # INLA has one family hyperparameter per section, each given the residual prior.
+  skip_on_cran()
+  skip_if_not_installed("INLA")
+  d <- .het_data(n_gen = 12L, n_rep = 2L, seed = 1L)
+  sections <- paste0("sigma_", levels(d$site))
+
+  fit <- suppressWarnings(suppressMessages(fb_inla(
+    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d,
+    prior = fb_prior(sigma ~ half_normal(1.5), sd(gen) ~ half_normal(2))
+  )))
+  vc <- summary(fit)$varcomp
+  expect_identical(
+    vc$prior[match(sections, vc$component)],
+    rep("half_normal(scale=1.5)", length(sections))
+  )
+
+  fit0 <- suppressWarnings(suppressMessages(fb_inla(
+    y ~ site, random = ~ gen, residual = ~ dsum(~ units | site), data = d
+  )))
+  vc0 <- summary(fit0)$varcomp
+  expect_identical(
+    vc0$prior[match(sections, vc0$component)],
+    rep(vc0$prior[vc0$component == "sd_gen"], length(sections))
+  )
+})
+
 test_that("a sectioned-residual fit answers the mean-model accessors", {
   # The distributional coefficients used to be swept into the fixed-effect
   # basis by a bare `^b_` match, which left coef() reporting `sigma_siteA`
