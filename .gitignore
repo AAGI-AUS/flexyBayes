@@ -47,8 +47,7 @@ tools/stress_results/
 # testthat transient failed-test records
 tests/testthat/_problems/
 
-# Review documents stay in the private workspace archive (ledger cairn
-# 2026-08-17-release-nine-review-record is the public anchor)
+# Review documents stay in the private workspace archive
 review/
 .positai
 
@@ -61,3 +60,7 @@ oracle_work/*
 # untracked files is a specification nobody can check. They are small text
 # scripts and their logs, never a rebuilt shim or a scratch library.
 !oracle_work/selection_bayes/
+
+# Working notes kept locally, never shipped
+/validation/
+/oracle_work/
